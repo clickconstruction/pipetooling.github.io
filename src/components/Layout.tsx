@@ -99,7 +99,7 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
-import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
+import { APP_BOTTOM_CHROME_VAR, bottomChromeCss, pageBottomPaddingCss } from '../lib/bottomChrome'
 import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
@@ -905,10 +905,9 @@ export default function Layout() {
           // v2.2184: fixed page chrome (the Quickfill / Dashboard section dock) and windows read this to
           // sit ABOVE the Dispatch / Job mode footer instead of behind it. Set here, not on <main>, so
           // the Person desk and the header's windows, mounted outside <main>, read it too (v2.4380).
-          ['--app-bottom-chrome' as string]:
-            dispatchModeActive || jobModeFooterActive
-              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
-              : '0px',
+          // It is the footer's measured height (v2.8035), not 60 px plus the inset, which a phone with a
+          // home indicator stands 10 px under.
+          [APP_BOTTOM_CHROME_VAR as string]: bottomChromeCss(dispatchModeActive || jobModeFooterActive, DISPATCH_MODE_FOOTER_HEIGHT_PX),
         }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
@@ -2148,10 +2147,7 @@ export default function Layout() {
           // pinned above the footer on a phone, so the card's foot never scrolls under it; 0px otherwise. The
           // card only mounts with Job Mode on, which keeps one of the two footers up, so the bar never needs
           // the plain branch — and that branch must stay unset, or it would override `.appMain`'s own padding.
-          paddingBottom:
-            dispatchModeActive || jobModeFooterActive
-              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom) + var(${JOB_MODE_PRESS_BAR_VAR}, 0px))`
-              : undefined,
+          paddingBottom: dispatchModeActive || jobModeFooterActive ? pageBottomPaddingCss() : undefined,
         }}
       >
         {taskModeActive ? <TaskModeChip onExit={exitTaskMode} /> : null}

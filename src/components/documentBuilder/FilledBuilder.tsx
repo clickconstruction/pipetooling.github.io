@@ -52,12 +52,13 @@ import {
 } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import type { GcJob, SheetRecord } from '../../lib/documentBuilder/sheetsIo'
-import { sameContents, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import { isBuilderRead, sameContents, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { BUILDER_LINK_CARD_IO, BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 import { SheetPaperEdit, SheetPaperRead } from './SheetPaper'
+import { SHEET_SEND_IO, SheetSendCard, type SheetSendIo } from './SheetSendCard'
 
 /** The reads and writes the builder makes. A smoke hands its own in. */
 export type FilledBuilderIo = Pick<typeof defaultIo, 'readGcJobs' | 'readBuilderSheets' | 'saveBuilderDraft' | 'publishBuilder' | 'markBuilderRead' | 'startSheet' | 'saveSheetDraft' | 'publishSheet'> & {
@@ -65,9 +66,11 @@ export type FilledBuilderIo = Pick<typeof defaultIo, 'readGcJobs' | 'readBuilder
   print: typeof printAndFile
   /** The link card's own reads and presses. */
   link: BuilderLinkCardIo
+  /** The send list's own reads and presses. */
+  sends: SheetSendIo
 }
 
-const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile, link: BUILDER_LINK_CARD_IO }
+const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile, link: BUILDER_LINK_CARD_IO, sends: SHEET_SEND_IO }
 
 type Props = {
   entry: DocumentBuilderEntry
@@ -627,6 +630,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   <p style={MUTED}>Publish this job's sheet first. It then prints as subs see it.</p>
                 )}
               </div>
+              <SheetSendCard builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={isBuilderRead(rec) ? '' : 'Your insurance agent has not checked your usual sheet.'} io={io.sends} />
             </>
           ) : (
             <div style={CARD}>

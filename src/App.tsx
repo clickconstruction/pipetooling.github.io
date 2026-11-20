@@ -135,7 +135,8 @@ import { PersonDeskProvider } from './contexts/PersonDeskContext'
  * In a freeze (#183 PR 1, v2.6009) the app-health kernel has seen a request
  * start and nothing land: past 5 s the screen reads "The app is slow right
  * now. Keep this open." and offers no repair link, and the watchdog holds.
- * The link stays for the case where no request could start at all. */
+ * The link stays for the case where no request could start at all.
+ * No header is over it, so `.appBareScreen` pays the phone's status bar for it. */
 function AuthGateLoadingScreen() {
   const [past5s, setPast5s] = useState(false)
   useEffect(() => {
@@ -145,7 +146,7 @@ function AuthGateLoadingScreen() {
   const health = useAppHealth()
   const slow = past5s && gateHoldsFor(health.state)
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }} data-auth-gate={slow ? 'slow' : 'loading'}>
+    <div className="appBareScreen" data-auth-gate={slow ? 'slow' : 'loading'}>
       {slow ? AUTH_GATE_SLOW_WORDS : 'Loading…'}
       {past5s && !slow ? (
         <div style={{ marginTop: '1rem', fontSize: '0.875rem' }}>

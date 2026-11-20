@@ -194,5 +194,5 @@ export default function TaskShortcut() {
   if (surface === 'standalone' && user && !loading) {
     return <StandaloneCreateTask />
   }
-  return <div style={{ padding: '2rem', textAlign: 'center' }}>Opening…</div>
+  return <div className="appBareScreen">Opening…</div>
 }

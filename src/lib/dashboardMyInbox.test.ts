@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatTDays, getDaysUntilDue } from './dashboardMyInbox'
+import { formatTDays, getDaysUntilDue, MY_INBOX_DOOR, myInboxSectionLabels } from './dashboardMyInbox'
 
 describe('getDaysUntilDue', () => {
   const today = new Date(2026, 6, 17, 14, 30, 45) // Fri 2026-07-17, mid-afternoon
@@ -51,5 +51,48 @@ describe('formatTDays', () => {
 
   it('formats overdue days as T+n', () => {
     expect(formatTDays(-2)).toBe('T+2')
+  })
+})
+
+describe('MY_INBOX_DOOR', () => {
+  it('is one door to the whole Checklist page, with no tab named', () => {
+    expect(MY_INBOX_DOOR.to).toBe('/checklist')
+    expect(MY_INBOX_DOOR.label).toBe('View all →')
+    // The spoken name holds the words on the press.
+    expect(MY_INBOX_DOOR.aria.startsWith('View all')).toBe(true)
+  })
+})
+
+describe('myInboxSectionLabels', () => {
+  const none = { shown: false, open: 0 }
+  const noCompleted = { shown: false, unread: 0 }
+
+  it('reads Due Today, then Overdue, then Recently Completed, each with its count', () => {
+    expect(
+      myInboxSectionLabels({ today: { shown: true, open: 2 }, overdue: { shown: true, open: 5 }, completed: { shown: true, unread: 3 } }),
+    ).toEqual([
+      { key: 'today', label: 'Due Today', count: '2', tone: 'plain' },
+      { key: 'overdue', label: 'Overdue', count: '5', tone: 'late' },
+      { key: 'completed', label: 'Recently Completed', count: '3 unread', tone: 'plain' },
+    ])
+  })
+
+  it('a day with nothing due and tasks overdue reads Overdue alone, never Due Today', () => {
+    expect(myInboxSectionLabels({ today: none, overdue: { shown: true, open: 3 }, completed: noCompleted })).toEqual([
+      { key: 'overdue', label: 'Overdue', count: '3', tone: 'late' },
+    ])
+  })
+
+  it('draws no pill when nothing is open or unread', () => {
+    // Every task due today is ticked off and still on screen, and every completed task is read.
+    const labels = myInboxSectionLabels({ today: { shown: true, open: 0 }, overdue: none, completed: { shown: true, unread: 0 } })
+    expect(labels.map((l) => [l.key, l.count])).toEqual([
+      ['today', null],
+      ['completed', null],
+    ])
+  })
+
+  it('has no labels when the card holds only Waiting For', () => {
+    expect(myInboxSectionLabels({ today: none, overdue: none, completed: noCompleted })).toEqual([])
   })
 })

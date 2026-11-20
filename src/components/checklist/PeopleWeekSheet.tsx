@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   PEOPLE_WEEK_DEFAULT_TIME,
   PEOPLE_WEEK_DEFAULT_WEEKDAY,
   PEOPLE_WEEK_PEOPLE_MAX,
+  PEOPLE_WEEK_SHEET_WORDS as WORDS,
+  peopleWeekAboutWords,
   peopleWeekChainWords,
   peopleWeekChains,
+  peopleWeekGlance,
+  peopleWeekPickList,
+  peopleWeekStartWords,
   planPeopleWeekEdit,
   type PeopleWeekChain,
   type PeopleWeekInsert,
@@ -18,10 +24,12 @@ import { applyPeopleWeekPlan, listPeopleWeekRequests, loadPeopleToPick, previewP
 
 /**
  * Your people's week (punch list #273, PR 5): the sheet behind **✉ Email me their week** on Checklist → Review and
- * **✉ Get this every Monday** on the Dashboard's Your people card. Pick the people, the days and the time; Start it
- * makes one weekly chain per weekday (`planPeopleWeekEdit`, the statement round's shape), Stop it ends them. See the
- * email as it would go now and Email me a test go through the dispatcher's JWT modes. The reads and writes come in as
- * `io` so a test can stand them in.
+ * **✉ Get this every Monday** on the Dashboard's Your people card. The top is a small sample of the email itself
+ * (`peopleWeekGlance`, the email's own lines about one made-up person) with **See yours now** and **Email me a test**
+ * under it, both through the dispatcher's JWT modes; the real email draws in the sample's place. Then the people (the
+ * ones picked first, the rest of a long list behind **＋ N more**), the days and the time. The blue press says the
+ * whole act (*Email me every Monday at 6:00 AM*) and makes one weekly chain per weekday (`planPeopleWeekEdit`, the
+ * statement round's shape); Stop it ends them. The reads and writes come in as `io` so a test can stand them in.
  */
 export interface PeopleWeekIo {
   list: () => Promise<PeopleWeekRequestRow[]>
@@ -74,9 +82,13 @@ export function PeopleWeekSheet({
   const [days, setDays] = useState<number[]>([PEOPLE_WEEK_DEFAULT_WEEKDAY])
   const [time, setTime] = useState(PEOPLE_WEEK_DEFAULT_TIME)
   const [filter, setFilter] = useState('')
+  /** The people picked when the rows were read: they lead the chips, and the order holds while the sheet is open. */
+  const [lead, setLead] = useState<string[]>([])
+  const [unfolded, setUnfolded] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
-  const [note, setNote] = useState<string | null>(null)
+  /** A word back after a press, drawn beside the press that made it. */
+  const [note, setNote] = useState<{ at: 'email' | 'save'; words: string } | null>(null)
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
 
   // The screen's people and the caller ride a ref, so a re-render with a new array never re-reads the rows.
@@ -93,12 +105,15 @@ export function PeopleWeekSheet({
       setPeople(who)
       if (cur) {
         setPicked(cur.peopleUserIds)
+        setLead(cur.peopleUserIds)
         setDays(cur.weekdays)
         setTime(cur.timeHm)
       } else {
         // Only the screen's people the picker can show: a subcontractor on the board is not picked out of sight.
         const pickable = new Set(who.map((p) => p.id))
-        setPicked(canPickOthers ? shown.filter((id) => pickable.has(id)).slice(0, PEOPLE_WEEK_PEOPLE_MAX) : me ? [me] : [])
+        const first = canPickOthers ? shown.filter((id) => pickable.has(id)).slice(0, PEOPLE_WEEK_PEOPLE_MAX) : me ? [me] : []
+        setPicked(first)
+        setLead(first)
         setDays([PEOPLE_WEEK_DEFAULT_WEEKDAY])
         setTime(PEOPLE_WEEK_DEFAULT_TIME)
       }
@@ -117,11 +132,14 @@ export function PeopleWeekSheet({
     setNote(null)
     setPreview(null)
     setFilter('')
+    setUnfolded(false)
     void load()
   }, [open, load])
 
   const chains = useMemo(() => peopleWeekChains(rows ?? []), [rows])
   const current: PeopleWeekChain | null = chains[0] ?? null
+  const todayYmd = todayYmdInAppTz()
+  const glance = useMemo(() => peopleWeekGlance(todayYmd), [todayYmd])
 
   useEffect(() => {
     if (!open) return
@@ -135,7 +153,7 @@ export function PeopleWeekSheet({
   if (!open) return null
 
   const nameOf = (id: string) => (id === meId ? 'you' : (people ?? []).find((p) => p.id === id)?.name || '')
-  const shown = (people ?? []).filter((p) => !filter.trim() || p.name.toLowerCase().includes(filter.trim().toLowerCase()))
+  const list = peopleWeekPickList({ people: people ?? [], lead, filter, unfolded })
   const togglePerson = (id: string) =>
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= PEOPLE_WEEK_PEOPLE_MAX ? p : [...p, id]))
   const toggleDay = (dow: number) => setDays((d) => (d.includes(dow) ? d.filter((x) => x !== dow) : [...d, dow]))
@@ -164,7 +182,7 @@ export function PeopleWeekSheet({
       async () => {
         await io.apply(plan)
         await load()
-        setNote(days.length === 0 ? 'It stopped.' : 'Saved. The first one comes on the next day you picked.')
+        setNote({ at: 'save', words: days.length === 0 ? 'It stopped.' : 'Saved. The first one comes on the next day you picked.' })
       },
       'The Monday email was not saved.',
     )
@@ -176,7 +194,7 @@ export function PeopleWeekSheet({
       async () => {
         await io.apply({ inserts: [], cancelIds: current.allRowIds })
         await load()
-        setNote('It stopped.')
+        setNote({ at: 'save', words: 'It stopped.' })
       },
       'The Monday email did not stop.',
     )
@@ -184,7 +202,7 @@ export function PeopleWeekSheet({
 
   const stopping = days.length === 0 && current !== null
   const canSave = busy === null && meId !== null && (stopping || (picked.length > 0 && days.length > 0))
-  const saveWords = busy === 'save' ? '…' : stopping ? 'Stop it' : current ? 'Save the change' : picked.length === 0 ? 'Pick who' : days.length === 0 ? 'Pick a day' : 'Start it'
+  const saveWords = busy === 'save' ? '…' : stopping ? 'Stop it' : current ? 'Save the change' : picked.length === 0 ? 'Pick who' : peopleWeekStartWords(days, time)
 
   const panel: CSSProperties = isMobile
     ? { position: 'fixed', left: 0, right: 0, bottom: 0, borderRadius: '18px 18px 0 0', padding: '14px 16px calc(16px + env(safe-area-inset-bottom, 0px))', maxHeight: '90vh', overflowY: 'auto' }
@@ -201,6 +219,86 @@ export function PeopleWeekSheet({
   })
   const quiet: CSSProperties = { padding: '0.35rem 0.7rem', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
   const label: CSSProperties = { display: 'grid', gap: '0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }
+
+  const noPicks = busy !== null || picked.length === 0
+  const emailPicture = preview ? (
+    // The email's own page, sandboxed, and light as an inbox shows it. Its subject is its first line.
+    <div data-theme="light">
+      <iframe title={preview.subject || 'Your people’s week, as it would go now'} sandbox="" srcDoc={preview.html} style={{ display: 'block', width: '100%', height: isMobile ? 300 : 380, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)' }} />
+    </div>
+  ) : (
+    // Light as an inbox shows it, on either theme: it is a picture of the email, not a part of the sheet.
+    <div data-theme="light">
+      <div data-testid="people-week-glance" style={{ display: 'grid', gap: 4, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '0.85rem', fontWeight: 800 }}>
+            <span aria-hidden="true">✉ </span>
+            {glance.subject}
+          </span>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{WORDS.sample}</span>
+        </div>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, borderTop: '1px solid var(--border)', paddingTop: 5 }}>
+          {glance.name} <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>· {glance.line}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 2, alignItems: 'baseline' }}>
+          {glance.groups.map((g) => (
+            <Fragment key={g.label}>
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{g.label}</span>
+              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>{g.line}</span>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+  const emailPresses = (
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+      {preview ? (
+        <button type="button" style={quiet} onClick={() => setPreview(null)}>
+          {WORDS.backToSample}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={noPicks}
+          style={{ ...quiet, cursor: noPicks ? 'not-allowed' : 'pointer' }}
+          onClick={() =>
+            void run(
+              'preview',
+              async () => {
+                setPreview(await io.preview(picked))
+              },
+              'The email did not load.',
+            )
+          }
+        >
+          {busy === 'preview' ? '…' : WORDS.seeYours}
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={noPicks}
+        style={{ ...quiet, cursor: noPicks ? 'not-allowed' : 'pointer' }}
+        onClick={() =>
+          void run(
+            'test',
+            async () => {
+              await io.test(picked)
+              setNote({ at: 'email', words: 'A test went to your email.' })
+            },
+            'The test did not go.',
+          )
+        }
+      >
+        {busy === 'test' ? '…' : WORDS.test}
+      </button>
+      {note?.at === 'email' ? (
+        <span role="status" style={{ color: 'var(--text-muted)' }}>
+          {note.words}
+        </span>
+      ) : null}
+    </div>
+  )
 
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1200, paddingTop: 'var(--app-top-chrome, 0px)' }}>
@@ -220,16 +318,6 @@ export function PeopleWeekSheet({
             ×
           </button>
         </div>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          One email each week about the people you pick: the cards they moved or finished, the lines ticked, the photos taken, their roadmap tasks and the jobs they clocked on, for the week just finished.
-        </p>
-
-        {problem ? (
-          <div role="alert" style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-            {problem}
-          </div>
-        ) : null}
-
         {rows === null ? (
           <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : current ? (
@@ -241,33 +329,49 @@ export function PeopleWeekSheet({
           </div>
         ) : null}
 
+        {/* The email itself, small, where a paragraph used to describe it; the real one draws in its place. */}
+        {emailPicture}
+        {emailPresses}
+
+        {problem ? (
+          <div role="alert" style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
+            {problem}
+          </div>
+        ) : null}
+
         {canPickOthers ? (
           <div style={label}>
-            <span>
-              Who is in it · {picked.length} of {PEOPLE_WEEK_PEOPLE_MAX} at most
-            </span>
-            {(people ?? []).length > 10 ? (
+            <span>{peopleWeekAboutWords(picked.length)}</span>
+            {list.findBox ? (
               <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a name" aria-label="Find a name" style={{ height: 36, padding: '0 0.6rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }} />
             ) : null}
             <div role="group" aria-label="The people in it" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', maxHeight: 180, overflowY: 'auto', padding: '2px 0' }}>
               {people === null ? (
                 <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
               ) : (
-                shown.map((p) => (
-                  <button key={p.id} type="button" aria-pressed={picked.includes(p.id)} onClick={() => togglePerson(p.id)} style={chip(picked.includes(p.id))}>
-                    {p.id === meId ? `${p.name || 'Me'} (me)` : p.name || 'Someone'}
-                  </button>
-                ))
+                <>
+                  {list.shown.map((p) => (
+                    <button key={p.id} type="button" aria-pressed={picked.includes(p.id)} onClick={() => togglePerson(p.id)} style={chip(picked.includes(p.id))}>
+                      {picked.includes(p.id) ? <span aria-hidden="true">✓ </span> : null}
+                      {p.id === meId ? `${p.name || 'Me'} (me)` : p.name || 'Someone'}
+                    </button>
+                  ))}
+                  {list.more > 0 ? (
+                    <button type="button" onClick={() => setUnfolded(true)} style={{ ...chip(false), borderStyle: 'dashed', color: 'var(--text-700)' }}>
+                      ＋ {list.more} more
+                    </button>
+                  ) : null}
+                </>
               )}
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>It is about your own week.</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{WORDS.ownWeek}</div>
         )}
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={label}>
-            The days
+            {WORDS.every}
             <div role="group" aria-label="The days it goes" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
               {DAYS.map((d) => (
                 <button key={d.dow} type="button" aria-pressed={days.includes(d.dow)} onClick={() => toggleDay(d.dow)} style={chip(days.includes(d.dow))}>
@@ -276,9 +380,10 @@ export function PeopleWeekSheet({
               ))}
             </div>
           </div>
-          <label style={label}>
-            At, Central time
+          <label style={{ ...label, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span>{WORDS.at}</span>
             <input aria-label="The time it goes" type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ height: 36, padding: '0 0.5rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }} />
+            <span>{WORDS.zone}</span>
           </label>
         </div>
 
@@ -286,55 +391,13 @@ export function PeopleWeekSheet({
           type="button"
           onClick={save}
           disabled={!canSave}
-          style={{ width: '100%', height: 46, borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? (stopping ? '#b91c1c' : '#2563eb') : DEAD_PRESS_FILL, color: canSave ? 'white' : DEAD_PRESS_TEXT }}
+          style={{ width: '100%', minHeight: 46, padding: '0.4rem 0.75rem', borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, lineHeight: 1.2, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? (stopping ? '#b91c1c' : '#2563eb') : DEAD_PRESS_FILL, color: canSave ? 'white' : DEAD_PRESS_TEXT }}
         >
           {saveWords}
         </button>
-
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-          <button
-            type="button"
-            disabled={busy !== null || picked.length === 0}
-            style={{ ...quiet, cursor: busy !== null || picked.length === 0 ? 'not-allowed' : 'pointer' }}
-            onClick={() =>
-              void run(
-                'preview',
-                async () => {
-                  setPreview(await io.preview(picked))
-                },
-                'The email did not load.',
-              )
-            }
-          >
-            {busy === 'preview' ? '…' : 'See the email as it would go now'}
-          </button>
-          <button
-            type="button"
-            disabled={busy !== null || picked.length === 0}
-            style={{ ...quiet, cursor: busy !== null || picked.length === 0 ? 'not-allowed' : 'pointer' }}
-            onClick={() =>
-              void run(
-                'test',
-                async () => {
-                  await io.test(picked)
-                  setNote('A test went to your email.')
-                },
-                'The test did not go.',
-              )
-            }
-          >
-            {busy === 'test' ? '…' : 'Email me a test'}
-          </button>
-          {note ? <span style={{ color: 'var(--text-muted)' }}>{note}</span> : null}
-        </div>
-
-        {preview ? (
-          <div style={{ display: 'grid', gap: '0.3rem' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{preview.subject}</div>
-            {/* The email's own page, sandboxed, and light as an inbox shows it. */}
-            <div data-theme="light">
-              <iframe title="Your people’s week, as it would go now" sandbox="" srcDoc={preview.html} style={{ width: '100%', height: 420, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }} />
-            </div>
+        {note?.at === 'save' ? (
+          <div role="status" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {note.words}
           </div>
         ) : null}
       </div>

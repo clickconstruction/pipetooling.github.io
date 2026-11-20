@@ -537,6 +537,10 @@ client copy `MESSAGES_TECH_TEAM`) reads a customer's, a lead's or a sub's contac
 A Pipeline job's Job activity shows its calls, texts and emails to the office team and, since v2.5471, to R5's field roles (`canReadJobMessages`): a tech reads the lines tied to a job they worked this week or last through R5's door, never an office-only note, and the link to the thread stays with readers who can open Messages on GC projects.
 A tech has no Pipeline, so since v2.5527 primary and helpers (`readsCustomerLinesInJobUpdates`) read the same lines, the customer's side only, under a **Customer** pill in Job Mode's Job updates and the Job detail window, with no link and no reply there;
 the office's Job detail stays as it was.
+The feed's filter chips follow what the viewer reads on the job (v2.8042): **Reports** and **Billing** are drawn for the office (`isOfficeRole`, the copy of `is_office_staff()`), which passes the money half of `can_read_job_activity(job, true)` and the first leg of `list_reports_for_job_ledger` on every job.
+A primary's two chips and a superintendent's Reports chip are asked of the gates themselves, once per job: `can_read_job_activity(job, true)`, `primary_can_read_job_reports(job)` and `superintendent_report_job_anchor_allowed(job)` (`jobActivityChipAccess.ts`, `useJobActivityFilterAccess`).
+A helper, a subcontractor and an estimator are drawn neither chip, unless the feed the database handed them holds such a line, as a helper's own report does (`visibleActivityFilters`).
+The chips decide nothing about the lines: the feed's reads are unchanged, and every billing line on the trail is `financial`, so `list_job_activity_events` and the table's own policy already keep it from a reader without the money half.
 The tech's door's migration also holds `contacts.has_until` (`contacts_has_until_held`, the team's UPDATE on it), the INSERT and UPDATE grant on `messages.office_only` for team lines only, `messages_office_wait_minutes` and `messages_office_hours_v1`, which only the owner or a dev changes (`is_master_or_dev()`), and `notification_history.message_id`.
 `tie_message` stamps who tied a line by hand in `messages.tied_by` (R7, v2.5425, `20261013230000`) and stays `SECURITY INVOKER`, the team holding UPDATE on that one column.
 Cut 3's reply box writes through functions too: a team note through cut 2's `add_note`, a logged call through `log_call` (v2.5710, punch list #140 PR 7: `SECURITY DEFINER` behind the same `follow_up_press` guard, since a client may insert notes and events only;
@@ -910,6 +914,8 @@ A dev writes `document_builders` and `document_builder_sheets` directly, under t
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
+Since v2.8009 a dev sends a published sheet to a trade on its job through `document-builder-send`, which refuses anyone else, a training account, a twin and an archived account itself, and refuses a company whose page was turned off.
+A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing of another company's.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
@@ -1254,6 +1260,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It answers only for a job whose desk the caller is on, and nothing for an archived caller.
 - The company's lists are read by everyone signed in and written by the office (`is_office_staff`).
   A site's settings row is read by whoever reads the site and written by the office, and a job's row follows the job's desk.
+- The GC's page reads and writes these tables only through `customer-portal` and `submit-portal-request`, as the service role (v2.8018, `_shared/startChecksPortal.ts`).
+  It reads a job only when the job's GC is the link's customer, the job shares its stage dates, and the job's own `shows_on_gc_page` is on.
+  It shows the bullets on them with the eye on, and never a bullet of ours.
+  An answer from the page is held against what the page shows at that moment, and is kept in the customer's name with `source: 'portal'`.
 - `anon` holds no grant, and a signed-in person holds only the grants that have a policy.
   The read-only blocks, the twin fence and the archived seal stand on all eight tables.
 
@@ -2927,7 +2937,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 **master_technician** does not — **`RECENT_FEATURES`** **v2.497**).
 **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**;
 excludes **primary**).
-**Bank Payments** / AR on **Jobs → Stages** is not a primary's: their Jobs page is the Reports tab alone, and since v2.7931 `count_mercury_transactions_for_bank_payments` and the other bank payments reads refuse the role, though `canRoleUseArBankCount` still names it
+**Bank Payments** / AR on **Jobs → Stages** is not a primary's: their Jobs page is the Reports tab alone, since v2.7931 `count_mercury_transactions_for_bank_payments` and the other bank payments reads refuse the role, and since v2.8030 the client gates (`canRoleUseArBankCount`, `canRecordArPayments`) leave it out too, so their page never asks
 - Send task form (create and assign checklist tasks)
 - ChecklistAddModal ("detail send") available when canSendTask is true
 

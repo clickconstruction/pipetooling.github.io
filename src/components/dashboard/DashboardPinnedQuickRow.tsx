@@ -5,6 +5,7 @@ import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
 import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
+import { JobModeTopRow } from '../jobMode/JobModeTopRow'
 import { canSeeWaitingOnLeader } from '../../lib/dashboard/waitingOnLeader'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import DashboardWaitingOnLeaderCard from './DashboardWaitingOnLeaderCard'
@@ -99,11 +100,14 @@ export interface DashboardPinnedQuickRowProps {
   /** The office person's phone (v2.3891, the owner's pick 2026-09-27): no Tally and Job Report squares beside the clock — two quiet links under it instead, so both stay one tap away. */
   quietSquares?: boolean
   /**
-   * Job Mode on a phone (punch list #189, PR 2): the classic row keeps its Tally square and drops the
-   * wide Job Report button — with `renderModals={false}` it opened nothing, and the press bar's
-   * Leave report is the same door. Only read when there is no `clockSlot`.
+   * Job Mode: the classic row gives way to the day's row (`JobModeTopRow`), equal named squares for the job
+   * the day points at, then Paint a map and My spend. The wide Job Report button left in punch list #189,
+   * PR 2: with `renderModals={false}` it opened nothing, and the press bar's Leave report is the same door.
+   * Only read when there is no `clockSlot`.
    */
   hideJobReport?: boolean
+  /** The two values the day's row shows on a day with no job left: this week's hours and tomorrow's stops. Each `null` until read. */
+  jobModeDay?: { hoursThisWeek: number | null; tomorrowJobs: number | null }
 }
 
 
@@ -296,6 +300,7 @@ export function DashboardPinnedQuickRow({
   needsYouDoor = false,
   quietSquares = false,
   hideJobReport = false,
+  jobModeDay,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
@@ -391,6 +396,9 @@ export function DashboardPinnedQuickRow({
           <PaintAMapPress userId={authUserId} role={role} shape="link" />
         </div>
       </div>
+      ) : clockSlot == null && hideJobReport ? (
+        // Job Mode: the day's row. Two squares for the job, then Paint a map and My spend, each with its name.
+        <JobModeTopRow userId={authUserId} role={role} hoursThisWeek={jobModeDay?.hoursThisWeek ?? null} tomorrowJobs={jobModeDay?.tomorrowJobs ?? null} />
       ) : (
       <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem' }}>
@@ -402,9 +410,6 @@ export function DashboardPinnedQuickRow({
             {/* Paint a map (punch list #392): a square after Job Report, at a desk and on a leader's phone. */}
             <PaintAMapPress userId={authUserId} role={role} shape="square" />
           </>
-        ) : hideJobReport ? (
-          // Job Mode: the slot the Job Report button left empty (punch list #189) holds Paint a map, with the job it lands on.
-          <PaintAMapPress userId={authUserId} role={role} shape="wide" />
         ) : (
           <button
             type="button"

@@ -16,7 +16,7 @@ The left side lists every employee. An employee here is anyone with a login acco
 
 Each row shows quick chips about how the person is set up:
 
-- {{chip:blue|Salaried}}: this person is paid a flat salary day. A salary day is 8 hours on weekdays. Inside the Salaried group the chip is omitted. Instead {{chip:yellow|no workday template}} warns when their schedule has not been set up yet.
+- {{chip:blue|Salaried}}: this person is paid a set week and not by the clock. The week is 8 hours on weekdays unless their desk sets another. Inside the Salaried group the chip is omitted. Instead {{chip:yellow|no workday template}} warns when their schedule has not been set up yet.
 - {{chip:gray|records hours}}: a salaried person who still logs hours for record-keeping.
 - {{chip:yellow|Name matches a different login user}}: the roster row is linked to one login account. But the person's name matches a different one. Fix the name, since pay screens match people by name.
 - {{chip:gray|Linked by name only}} or {{chip:gray|No login user}}: informational. These chips say how, or whether, this roster row connects to a login account.
@@ -52,10 +52,10 @@ Monday before they started, and someone who left stops accruing days.
 
 The **Pay setup** card on each person sets how they're paid. Changes save automatically after a moment.
 
-- **Hourly wage**: the rate used everywhere, including for salaried people. A salaried person's pay is this rate × 8 hours per weekday.
+- **Hourly wage**: the rate used everywhere, including for salaried people. A salaried person's pay is this rate × the hours of their set week. By default the week is 8 hours on weekdays.
 - **Office wage**: an optional second rate for office, bid or unassigned time. Hourly people only. The office wage does not apply to salaried people.
-- **Salaried**: a slider switch to the flat salary day. The salary day is 8 hours on weekdays and 0 on weekends, regardless of clock time. Turning it **off** asks for confirmation first, because it permanently deletes the person's workday schedule. Turning it back on does not restore the schedule.
-- **Record hours anyway**: shown for salaried people only. The person's logged hours appear on the Hours grids for record-keeping. But pay stays on the flat salary day.
+- **Salaried**: a slider switch to a set week. The line beside the switch names the days and hours the person is credited, such as *8 h Mon to Fri*. Clock time never changes that credit. The switch leaves the week as it is. To set a week that is not 8 hours on weekdays, see [open a person's desk](/help/open-a-persons-desk). Turning it **off** asks for confirmation first, because it permanently deletes the person's workday schedule. Turning it back on does not restore the schedule.
+- **Record hours anyway**: shown for salaried people only. The person's logged hours appear on the Hours grids for record-keeping. But pay stays on the set week.
 
 :::example Switching someone to salaried
 Check {{chip:blue|Salaried}}, then set up their **Salaried workday** card below (start time, one
@@ -73,7 +73,7 @@ The **Time off** card lists a person's time off. The card lets you add or remove
 
 For **salaried** people you choose the kind:
 
-- {{chip:yellow|Unpaid}}: the days are not paid. Unpaid days reduce the salaried weekday credit on pay reports.
+- {{chip:yellow|Unpaid}}: the days are not paid. Unpaid days reduce the salaried credit on pay reports.
 - {{chip:green|Paid}}: the person keeps their pay for those days. Paid days just do not appear on the schedule.
 
 Hourly people can have time off recorded too. But the record is informational. Hourly pay already follows the hours they log.

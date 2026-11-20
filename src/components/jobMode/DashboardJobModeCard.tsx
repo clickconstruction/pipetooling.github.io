@@ -64,6 +64,8 @@ import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import SuperintendentCard from './SuperintendentCard'
 import { useKeptRead } from '../../hooks/useKeptRead'
+import { useSiteBoxCount } from '../../hooks/useSiteBoxCount'
+import { siteBoxDoorHref, siteBoxDoorWords } from '../../lib/materials/siteBoxCount'
 import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { KeptReadStamp } from '../KeptReadStamp'
 import {
@@ -259,6 +261,48 @@ const disabledBtnOverlay: CSSProperties = {
 /** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2; the height's one source since PR 3). */
 const quietLinkPhone: CSSProperties = {
   minHeight: PHONE_PRESS_MIN_HEIGHT,
+}
+
+/** The job's own doors under its address: Job calendar and Materials on site, one row of presses (the owner's pick of 2026-11-20). */
+const jobDoorsRow: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.4rem',
+  margin: '-0.2rem 0 0',
+}
+
+const jobDoorPress: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.3rem',
+  minHeight: 30,
+  padding: '0.2rem 0.7rem',
+  border: '1px solid var(--border)',
+  borderRadius: 999,
+  background: 'var(--surface)',
+  cursor: 'pointer',
+  color: 'var(--text-link)',
+  fontFamily: 'inherit',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+}
+
+const jobDoorPressPhone: CSSProperties = { ...jobDoorPress, minHeight: 36 }
+
+/** The count on the Materials on site press: how many cages and boxes stand on the job's site. */
+const jobDoorCount: CSSProperties = {
+  minWidth: '1.3rem',
+  padding: '0 0.35rem',
+  borderRadius: 999,
+  background: 'var(--bg-blue-tint)',
+  color: 'var(--text-blue-700)',
+  fontSize: '0.7rem',
+  fontWeight: 700,
+  fontVariantNumeric: 'tabular-nums',
+  textAlign: 'center',
 }
 
 const quietClockOutBtn: CSSProperties = {
@@ -884,6 +928,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     }
     return null
   })()
+  // Materials on site (the owner's pick of 2026-11-20): one press beside Job calendar on the job the card names,
+  // with the count of the cages and boxes on that job's site when there are any.
+  const siteBoxWords = siteBoxDoorWords(useSiteBoxCount(jobCalendarTarget?.id))
 
   // The day's press (the right button): its six states are the kernel's (`pickJobModeDayPress`),
   // read once here for the desktop grid and the phone's press bar alike.
@@ -1083,19 +1130,28 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       : null)
   // The job the short page's Open this job row opens: the details' job, unless its papers still close it.
   const shortDetailsTarget = detailsTarget && !closedJobs.has(detailsTarget.id) ? detailsTarget : null
+  const openMaterialsOnSite = () => navigate(siteBoxDoorHref(jobCalendarTarget?.id ?? leaveReportTarget?.id))
+  const siteBoxCountPill = siteBoxWords.count ? (
+    <span style={jobDoorCount} data-testid="job-mode-materials-count">
+      {siteBoxWords.count}
+    </span>
+  ) : null
+  // The short page's copy, inside Open this job: a quiet link among the job's details.
   const materialsOnSiteLink = (
     <button
       type="button"
       style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-      aria-label="Materials on site"
-      title="What is in the cages and boxes on this job, and what you used"
-      onClick={() => navigate(`/tally?tab=on-site${leaveReportTarget ? `&job=${leaveReportTarget.id}` : ''}`)}
+      aria-label={siteBoxWords.aria}
+      title={siteBoxWords.title}
+      onClick={openMaterialsOnSite}
       data-testid="job-mode-materials-on-site"
     >
       <span aria-hidden>▦</span>
-      Materials on site
+      {siteBoxWords.label}
+      {siteBoxCountPill}
     </button>
   )
+  const jobDoor = phone ? jobDoorPressPhone : jobDoorPress
 
   return (
     <div style={cardWrap} data-kept-read={held ? '' : undefined} data-testid="job-mode-card">
@@ -1107,32 +1163,22 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       ) : null}
       {dayOnScreen ? renderHeader() : null}
       {dayOnScreen && jobCalendarTarget ? (
-        <button
-          type="button"
-          onClick={() => setJobCalendarOpen(true)}
-          aria-label="Open the job calendar"
-          title="See what days this job is on people's calendars"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.3rem',
-            alignSelf: 'center',
-            margin: '-0.35rem 0 0',
-            padding: '0.15rem 0.5rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-link)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden="true">
-            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
-          </svg>
-          Job calendar
-        </button>
+        <div style={jobDoorsRow} data-testid="job-mode-job-doors">
+          <button type="button" onClick={() => setJobCalendarOpen(true)} aria-label="Open the job calendar" title="See what days this job is on people's calendars" style={jobDoor}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden="true">
+              <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+            </svg>
+            Job calendar
+          </button>
+          {/* On the short page the press sits inside Open this job while the card has a job to open. */}
+          {short && shortDetailsTarget ? null : (
+            <button type="button" onClick={openMaterialsOnSite} aria-label={siteBoxWords.aria} title={siteBoxWords.title} style={jobDoor} data-testid="job-mode-materials-on-site">
+              <span aria-hidden>▦</span>
+              {siteBoxWords.label}
+              {siteBoxCountPill}
+            </button>
+          )}
+        </div>
       ) : null}
       {jobCalendarOpen && jobCalendarTarget ? (
         <JobCalendarModal
@@ -1329,9 +1375,6 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
       ) : null}
-      {/* Materials on site (punch list #209): the one press to the tally's On site tab, on the clocked-in job or its picker.
-          On the short page it sits inside Open this job while the card has a job to open. */}
-      {dayOnScreen && !(short && shortDetailsTarget) ? materialsOnSiteLink : null}
       {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
         <MessageCustomerDoor
           jobId={leaveReportTarget.id}

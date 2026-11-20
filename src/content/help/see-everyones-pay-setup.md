@@ -20,7 +20,7 @@ The Payroll tab's {{button:outline|People pay config ↗}} button opens the Pay 
 There is one row per person, every pay-config person included. People without a login stay visible here:
 
 - **Hourly $** and **Office $** are the wages. The office rate is optional and greyed out for salaried people. Blank means the same as the hourly wage.
-- **Salary** is the flat 8-hour weekday day, priced at the hourly wage. A ⏱ beside an unticked box means a workday template still exists for that login. Unticking Salary clears it.
+- **Salary** pays the person's set week at the hourly wage, whatever the clock says. The week is 8 hours on weekdays unless their desk sets another. The tick leaves the week as it is. A ⏱ beside an unticked box means a workday template still exists for that login. Unticking Salary clears it.
 - **Rec. hrs** records real hours alongside the salaried credit.
 - **Vehicle** is the deal behind the vehicle line on Review. Fuel stays on the jobs either way.
 - {{button:outline|Workday…}} is for a salaried person with a login. It sets the day's start time, split, weekends and today's override.

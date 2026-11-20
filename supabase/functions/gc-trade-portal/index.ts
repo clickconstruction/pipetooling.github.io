@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
+import { tradePageSheetsOrNone } from '../_shared/documentBuilderSheets.ts'
 import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortalSlice.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { gcTradePortalSample, gcTradePortalSampleFlow, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork, gcTradePortalSampleThread } from '../_shared/gcTradePortalSample.ts'
@@ -320,7 +321,9 @@ serve(async (req) => {
     if (!read) return jsonResponse({ error: 'linkOff' }, 404)
     // The papers ride on the statements of work, which the chart and the flow do not read, so the three run together.
     const [rows, schedule, flow, thread] = await Promise.all([withSowPapers(admin, read), scheduleFor(admin, link.company_id, read, today), flowFor(admin, link.company_id, read), threadFor(admin, link.company_id)])
-    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow, thread })
+    // The Document builder's sheets sent to this company (punch list #404): beside the slice, which they are no part of.
+    const sheets = await tradePageSheetsOrNone(admin, link.company_id)
+    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow, thread, sheets })
   } catch (e) {
     console.error('gc-trade-portal failed', e)
     return jsonResponse({ error: 'failed' }, 500)

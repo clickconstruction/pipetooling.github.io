@@ -1,4 +1,5 @@
-import { SALARIED_DEFAULT_WEEK, salariedWeekWords, salariedWeeklyPay, type SalariedWeek } from '../salariedEffectiveHours'
+import { SALARIED_DEFAULT_WEEK, salariedWeekHours, salariedWeekWords, salariedWeeklyPay, type SalariedWeek } from '../salariedEffectiveHours'
+import { val } from '../valuesInPlace'
 
 /**
  * What a salaried wage comes to, as one line for the Pay & schedule card (v2.7829):
@@ -13,4 +14,17 @@ export function salariedWeekLine(input: { isSalary: boolean; hourlyWage: number 
   const pay = salariedWeeklyPay(input.hourlyWage, week)
   const money = pay.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   return `${salariedWeekWords(week)} · ${money} a week`
+}
+
+/**
+ * What the Employment tab's **Salaried** switch says the person is credited, from their own week:
+ * *credited 8 h Mon to Fri on all pay and cost screens, whatever the clock says.* The card used to print
+ * 8 hours on weekdays for everyone, which a set week of any other shape made false. The week is marked
+ * as a value, so the card draws it apart from the words. A week with no paid days says so in place of a
+ * credit of nothing.
+ */
+export function salariedCreditSentence(week?: SalariedWeek | null): string {
+  const own = week ?? SALARIED_DEFAULT_WEEK
+  if (!(salariedWeekHours(own) > 0)) return `credited ${val('week', 'nothing')}: their set week has no paid days.`
+  return `credited ${val('week', salariedWeekWords(own))} on all pay and cost screens, whatever the clock says.`
 }

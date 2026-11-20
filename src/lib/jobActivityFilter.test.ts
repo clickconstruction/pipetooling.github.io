@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { JobThreadActivityItem } from '../components/JobThreadNotesPanel'
-import { activityItemMatchesFilter, countActivityByFilter, filterActivity } from './jobActivityFilter'
+import {
+  ACTIVITY_FILTERS,
+  FULL_ACTIVITY_FILTER_ACCESS,
+  JOB_ACTIVITY_FILTERS,
+  activityItemMatchesFilter,
+  countActivityByFilter,
+  filterActivity,
+  resolveActivityFilter,
+  visibleActivityFilters,
+} from './jobActivityFilter'
 
 const note: JobThreadActivityItem = {
   kind: 'note',
@@ -87,5 +96,59 @@ describe('countActivityByFilter', () => {
 
   it('empty input yields all zeros', () => {
     expect(countActivityByFilter([])).toEqual({ all: 0, notes: 0, reports: 0, status: 0, billing: 0, crew: 0 })
+  })
+})
+
+describe('visibleActivityFilters', () => {
+  const values = (fs: readonly { value: string }[]) => fs.map((f) => f.value)
+
+  it('draws every chip for a viewer who reads both kinds', () => {
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, FULL_ACTIVITY_FILTER_ACCESS))).toEqual(['all', 'notes', 'reports', 'status', 'billing', 'crew'])
+  })
+
+  it('covers the four combinations, in the list\'s own order', () => {
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, { canSeeBilling: false, canSeeReports: false }))).toEqual(['all', 'notes', 'status', 'crew'])
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, { canSeeBilling: true, canSeeReports: false }))).toEqual(['all', 'notes', 'status', 'billing', 'crew'])
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, { canSeeBilling: false, canSeeReports: true }))).toEqual(['all', 'notes', 'reports', 'status', 'crew'])
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, { canSeeBilling: true, canSeeReports: true }))).toEqual(['all', 'notes', 'reports', 'status', 'billing', 'crew'])
+  })
+
+  it('keeps the Customer chip, which asks nothing here', () => {
+    expect(values(visibleActivityFilters(JOB_ACTIVITY_FILTERS, { canSeeBilling: false, canSeeReports: false }))).toEqual(['all', 'notes', 'status', 'crew', 'customer'])
+  })
+
+  it('keeps a chip the viewer has access to when nothing is under it', () => {
+    const counts = { all: 3, notes: 3, reports: 0, status: 0, billing: 0, crew: 0 }
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, FULL_ACTIVITY_FILTER_ACCESS, counts))).toEqual(['all', 'notes', 'reports', 'status', 'billing', 'crew'])
+  })
+
+  it('draws a gated chip over a line the feed did hand the viewer', () => {
+    const none = { canSeeBilling: false, canSeeReports: false }
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, none, { reports: 2, billing: 0 }))).toEqual(['all', 'notes', 'reports', 'status', 'crew'])
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, none, { reports: 0, billing: 1 }))).toEqual(['all', 'notes', 'status', 'billing', 'crew'])
+  })
+
+  it('reads no counts as no lines', () => {
+    const none = { canSeeBilling: false, canSeeReports: false }
+    expect(values(visibleActivityFilters(ACTIVITY_FILTERS, none, null))).toEqual(['all', 'notes', 'status', 'crew'])
+  })
+})
+
+describe('resolveActivityFilter', () => {
+  const field = visibleActivityFilters(JOB_ACTIVITY_FILTERS, { canSeeBilling: false, canSeeReports: false })
+
+  it('keeps a filter whose chip is drawn', () => {
+    expect(resolveActivityFilter('crew', field)).toBe('crew')
+    expect(resolveActivityFilter('customer', field)).toBe('customer')
+    expect(resolveActivityFilter('all', field)).toBe('all')
+  })
+
+  it('falls back to All for a filter the viewer cannot see', () => {
+    expect(resolveActivityFilter('billing', field)).toBe('all')
+    expect(resolveActivityFilter('reports', field)).toBe('all')
+  })
+
+  it('keeps Billing for a viewer who reads it', () => {
+    expect(resolveActivityFilter('billing', visibleActivityFilters(ACTIVITY_FILTERS, FULL_ACTIVITY_FILTER_ACCESS))).toBe('billing')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageRail, paceStageCheck, paceStageList, type PaceRailPiece } from './paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageRail, paceStageCheck, paceStageList, paceStagePrices, type PaceRailPiece } from './paceCard'
 import { plainWordsFailures } from '../plainWords'
 
 const four = (pcts: Array<number | null>) => [
@@ -40,6 +40,23 @@ describe('paceStageRail', () => {
     // Exactly at a stage's end: that stage is done and the next is in hand at 0.
     const edge = paceStageRail(four([null, null, null, null]), 20)!
     expect(edge.rows.map((r) => [r.state, r.pct])).toEqual([['done', 100], ['now', 0], ['next', 0], ['next', 0]])
+  })
+
+  it('spreads by price where every stage carries one, so a first stage marked done reads done (the walk of 2026-11-20)', () => {
+    // Rough In and Top Out at 45% labor, Trim Set at 40%: Rough In is 40% of the price and 40.9% of the hours.
+    const stages = [
+      { name: 'Rough In', hours: 56.4, pctDone: null, weight: 5640 },
+      { name: 'Top Out', hours: 56.4, pctDone: null, weight: 5640 },
+      { name: 'Trim Set', hours: 25.1, pctDone: null, weight: 2820 },
+    ]
+    // The job reads 40% once Rough In is marked 100%, since the job's percent is built by price.
+    expect(paceStageRail(stages, 40)!.rows.map((r) => [r.state, r.pct])).toEqual([['done', 100], ['now', 0], ['next', 0]])
+    // By hours, the same job read Rough In at 98% and still in hand.
+    const byHours = paceStageRail(stages.map(({ weight: _w, ...s }) => s), 40)!
+    expect(byHours.rows.map((r) => [r.state, r.pct])).toEqual([['now', 98], ['next', 0], ['next', 0]])
+    // One price missing, or none above zero: the hours are the share.
+    expect(paceStageRail([{ ...stages[0]!, weight: undefined }, stages[1]!, stages[2]!], 40)!.rows[0]!.pct).toBe(98)
+    expect(paceStageRail(stages.map((s) => ({ ...s, weight: 0 })), 40)!.rows[0]!.pct).toBe(98)
   })
 
   it('reads nothing done with no percent, and every stage done at 100', () => {
@@ -166,5 +183,28 @@ describe('the rail’s checklist press and the strip’s stage list (punch list 
     ])
     expect(PACE_CARD_WORDS.stagesCount(1)).toBe('1 stage')
     expect(PACE_CARD_WORDS.stagesCount(4)).toBe('4 stages')
+  })
+})
+
+describe('paceStagePrices', () => {
+  const lines = [
+    { id: 'a', price: 5640 },
+    { id: 'b', price: 5640 },
+    { id: 'c', price: 900 },
+    { id: 'd', price: 300 },
+  ]
+  it('gives a line its own price, and the fold of the rest the price of every line no piece names', () => {
+    expect([...paceStagePrices(lines, ['a', 'b', 'other'])]).toEqual([['a', 5640], ['b', 5640], ['other', 1200]])
+    expect([...paceStagePrices(lines, ['a', 'b', 'c', 'd'])]).toEqual([['a', 5640], ['b', 5640], ['c', 900], ['d', 300]])
+  })
+  it('carries the price through the rail’s fold, so Other work is weighed by what it costs', () => {
+    const prices = paceStagePrices(lines, ['a', 'b', 'c', 'd'])
+    const pieces: PaceRailPiece[] = [
+      { id: 'a', name: 'Rough In', hours: 50, pctDone: null, kind: 'order', price: prices.get('a') },
+      { id: 'b', name: 'Top Out', hours: 50, pctDone: null, kind: 'order', price: prices.get('b') },
+      { id: 'c', name: 'Camera the line', hours: 9, pctDone: null, kind: 'any', price: prices.get('c') },
+      { id: 'd', name: 'Permit', hours: 1, pctDone: null, kind: 'any', price: prices.get('d') },
+    ]
+    expect(paceRailStages(pieces).map((s) => [s.name, s.weight])).toEqual([['Rough In', 5640], ['Top Out', 5640], [PACE_CARD_WORDS.otherWork, 1200]])
   })
 })

@@ -3,7 +3,7 @@
  * the card names, and the words under it. Every job here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { PAINT_PRESS_WORDS, paintPressHome, paintPressJobLabel, paintPressLanding, paintPressLine, paintPressShape, type PaintPressJob, type PaintPressStop } from './paintedMapPress'
+import { paintPressHome, paintPressJobLabel, paintPressLanding, paintPressShape, type PaintPressJob, type PaintPressStop } from './paintedMapPress'
 
 const cedar: PaintPressJob = { id: 'j-cedar', number: 'J2417', name: 'Cedar Hollow 12', address: '1208 Wrenfield Loop' }
 const marlowe: PaintPressJob = { id: 'j-marlowe', number: 'J2398', name: 'Marlowe Dental', address: '40 Made Up Road' }
@@ -74,14 +74,6 @@ describe('the words', () => {
     expect(paintPressJobLabel({ number: 'J2417', name: null })).toBe('J2417')
     expect(paintPressJobLabel({ number: null, name: null })).toBeNull()
   })
-
-  it('says where the map will land under the press', () => {
-    expect(paintPressLine({ kind: 'job', job: cedar, why: 'clocked' })).toBe('On J2417 · Cedar Hollow 12')
-    expect(paintPressLine({ kind: 'job', job: { id: 'x', number: null, name: null, address: null }, why: 'clocked' })).toBe('On the job you are on')
-    expect(paintPressLine({ kind: 'pick' })).toBe(PAINT_PRESS_WORDS.pick)
-    expect(PAINT_PRESS_WORDS.aria('On J2417 · Cedar Hollow 12')).toBe('Paint a map. On J2417 · Cedar Hollow 12')
-    expect(PAINT_PRESS_WORDS.aria(null)).toBe('Paint a map')
-  })
 })
 
 describe('paintPressHome', () => {
@@ -102,8 +94,8 @@ describe('paintPressHome', () => {
 })
 
 describe('paintPressShape', () => {
-  it('wide in Job Mode, a link on the office phone, a square beside the clock', () => {
-    expect(paintPressShape({ hasClockSlot: false, quietSquares: false })).toBe('wide')
+  it('a tile in Job Mode, a link on the office phone, a square beside the clock', () => {
+    expect(paintPressShape({ hasClockSlot: false, quietSquares: false })).toBe('tile')
     expect(paintPressShape({ hasClockSlot: true, quietSquares: true })).toBe('link')
     expect(paintPressShape({ hasClockSlot: true, quietSquares: false })).toBe('square')
   })

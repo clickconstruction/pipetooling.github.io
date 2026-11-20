@@ -563,6 +563,10 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
         <button type="button" className="scChip" aria-pressed={b.wantsPhoto} disabled={busy} onClick={() => void act('The bullet was not changed.', (w) => w.changeBullet(b.id, { wantsPhoto: !b.wantsPhoto }))}>
           {b.wantsPhoto ? W.asksForPhoto : W.askForPhoto}
         </button>
+        {/* The eye: whether the GC's page may show this bullet. It shows nothing until the job's own switch is on. */}
+        <button type="button" className="scChip" aria-pressed={b.eye} disabled={busy} onClick={() => void act('The bullet was not changed.', (w) => w.changeBullet(b.id, { shownToGc: !b.eye }))}>
+          {b.eye ? W.shownToGc : W.hiddenFromGc}
+        </button>
         <button type="button" className="scChip" disabled={busy} onClick={() => void act('The bullet was not taken off.', (w) => w.removeBullet(b.id, me))}>
           {W.takeOff}
         </button>

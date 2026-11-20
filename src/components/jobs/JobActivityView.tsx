@@ -8,7 +8,14 @@ import { useNoteTagBox } from './NoteTagBox'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { JobActivityFeed } from './JobActivityFeed'
 import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, type JobActivityLine } from '../../lib/jobs/jobActivityLine'
-import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../../lib/jobActivityFilter'
+import {
+  ACTIVITY_FILTERS,
+  JOB_ACTIVITY_FILTERS,
+  resolveActivityFilter,
+  visibleActivityFilters,
+  type JobActivityFilter,
+} from '../../lib/jobActivityFilter'
+import { useJobActivityFilterAccess } from '../../hooks/useJobActivityFilterAccess'
 import { canOpenGcProjects, canOpenMessages, canReadJobMessages } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
@@ -116,7 +123,7 @@ export function JobActivityView({
   // v2.6694: the author of the signed estimate the job came from wears the E chip on the people line.
   const estimateAuthor = useJobEstimateAuthor(job.id)
   const people = useMemo(() => jobPeopleRows(teamMembers ?? [], estimateAuthor), [teamMembers, estimateAuthor])
-  const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
+  const [chosenFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
@@ -134,12 +141,20 @@ export function JobActivityView({
     () => (activity && messages ? buildJobActivityLines(activity, { viewerRole, messages }) : null),
     [activity, messages, viewerRole],
   )
+  const viewerId = useOptionalAuth()?.user?.id ?? null
+  const filterCounts = useMemo(() => (allLines ? countJobActivityLines(allLines) : null), [allLines])
+  // The chips this viewer is drawn (2026-11-20): Reports and Billing only for a person who reads them on this job.
+  const filterAccess = useJobActivityFilterAccess(job.id, viewerRole, viewerId)
+  const filters = useMemo(
+    () => visibleActivityFilters(readsMessages ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS, filterAccess, filterCounts),
+    [readsMessages, filterAccess, filterCounts],
+  )
+  // A chosen filter whose chip is not drawn for this viewer reads as All.
+  const activityFilter = resolveActivityFilter(chosenFilter, filters)
   const lines = useMemo(
     () => (allLines ? filterJobActivityLines(allLines, activityFilter) : null),
     [allLines, activityFilter],
   )
-  const filterCounts = useMemo(() => (allLines ? countJobActivityLines(allLines) : null), [allLines])
-  const filters = readsMessages ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
   // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
   const pctProvenance = useMemo(
     () =>
@@ -153,7 +168,6 @@ export function JobActivityView({
   const jobName = (job.job_name ?? '').trim() || 'this job'
 
   // Tags on the job's notes (punch list #363): the chips and waiting words on a posted note, and the list under the box.
-  const viewerId = useOptionalAuth()?.user?.id ?? null
   const noteTags = useJobNoteTags(activity ? job.id : null, activity?.length ?? 0)
   const tagBox = useNoteTagBox({ jobId: job.id, draft, setDraft, inputRef, enabled: Boolean(submitNoteWithBody) && canTagInJobNotes(viewerRole), place: narrow ? 'above' : 'below' })
 

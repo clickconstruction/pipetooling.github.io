@@ -283,7 +283,8 @@ export function Toast({
 
   const cornerStyle = {
     position: 'fixed' as const,
-    top: cornerTopPx,
+    // On a Home Screen iPhone a page with no header, or one scrolled past it, starts under the status bar: never above it.
+    top: `max(${cornerTopPx}px, calc(${CORNER_TOP_FALLBACK_PX}px + var(--app-top-chrome, 0px)))`,
     right: '1rem',
     zIndex: Z_CORNER,
     animation: 'slideIn 0.3s ease-out',

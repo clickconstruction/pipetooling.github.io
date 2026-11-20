@@ -12,7 +12,7 @@ export function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
   return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
 }
 
-/** Same roles as Accounts Receivable bank payment apply. */
+/** The office and a primary: the paid verbs answer a primary on their own job (v2.5655). Wider than the bank payments window, which is the office's alone (v2.7931). */
 export function canUnlinkMercuryPayment(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }

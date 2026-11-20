@@ -26,6 +26,45 @@ export const JOB_ACTIVITY_FILTERS: { value: JobActivityFilter; label: string }[]
 ]
 
 /**
+ * What this viewer reads on this job, for the two chips that are not everyone's (2026-11-20, the owner's phone walk).
+ * Billing follows the money half of `can_read_job_activity(job, financial)`. Reports follow the job leg of
+ * `list_reports_for_job_ledger`. Where the answers come from: `jobs/jobActivityChipAccess.ts`.
+ */
+export type ActivityFilterAccess = { canSeeBilling: boolean; canSeeReports: boolean }
+
+/** Every chip: the office, which reads both halves on every job. */
+export const FULL_ACTIVITY_FILTER_ACCESS: ActivityFilterAccess = { canSeeBilling: true, canSeeReports: true }
+
+/** The chips that ask about access. Every other chip is drawn for everyone who reads the feed. */
+const GATED_FILTERS = { reports: 'canSeeReports', billing: 'canSeeBilling' } as const
+
+/**
+ * The chips this viewer is drawn, in the list's own order. A gated chip (Reports, Billing) is drawn when the viewer
+ * reads that kind of line on this job, or when the feed they were handed holds one: a helper's own report, a
+ * line the database gave them. So a chip is never hidden over a line the person can read under All, and a
+ * person with access and nothing yet keeps the dim chip.
+ */
+export function visibleActivityFilters<F extends string>(
+  filters: readonly { value: F; label: string }[],
+  access: ActivityFilterAccess,
+  counts?: Partial<Record<string, number>> | null,
+): { value: F; label: string }[] {
+  return filters.filter((f) => {
+    const key = (GATED_FILTERS as Record<string, keyof ActivityFilterAccess | undefined>)[f.value]
+    if (!key) return true
+    return access[key] || (counts?.[f.value] ?? 0) > 0
+  })
+}
+
+/** The filter to show: the chosen one when its chip is drawn, else All (a kept or linked filter the viewer cannot see). */
+export function resolveActivityFilter<F extends string>(
+  selected: F,
+  visible: readonly { value: F }[],
+): F | 'all' {
+  return visible.some((f) => f.value === selected) ? selected : 'all'
+}
+
+/**
  * Membership of a timeline item in a filter bucket:
  * - notes  → thread notes
  * - reports→ field reports

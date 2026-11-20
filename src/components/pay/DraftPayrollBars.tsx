@@ -133,7 +133,7 @@ export function DraftPayrollMoney({ amount, title }: { amount: number; title?: s
   )
 }
 
-/** *salary 8h* as a small line under a salaried person's figure (the owner, 2026-10-30: not beside the name): the hours are the flat rule, not a clock. */
+/** The small line under a salaried person's figure (the owner, 2026-10-30: not beside the name): the hours are the person's own set week, not a clock. *salary 8h* on the default week, *salary 6h* or *salary 36h wk* on another (`salaryFlatHoursShortChip`). */
 export function DraftPayrollSalaryChip({ week }: { week?: readonly number[] }) {
   return (
     <div data-draft-payroll-salary title={`${SALARY_FLAT_HOURS_CHIP}. ${SALARY_FLAT_HOURS_TITLE}`} style={{ fontSize: '0.66rem', lineHeight: 1.3, color: 'var(--text-muted)', textAlign: 'right' }}>

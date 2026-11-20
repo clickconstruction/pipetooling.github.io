@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Materials on site door</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a review page read on a phone. Each section is one way to offer the door, drawn as
+     small phones in a row that wraps: a job with boxes beside a job with none. The piece that
+     changes wears a dashed ring. Colours are the app's own token names and values (src/index.css). */
+  :root {
+    --bg-page:#f0f2f5; --surface:#ffffff; --bg-subtle:#f9fafb; --bg-muted:#f3f4f6;
+    --text-base:#1a1a1a; --text-700:#374151; --text-muted:#6b7280;
+    --border:#cfd4db; --border-strong:#aab2bd;
+    --link:#2563eb; --bg-blue-tint:#eff6ff; --text-blue-700:#1d4ed8;
+    --red:#dc2626; --text-red-700:#b91c1c;
+    --bg-amber-tint:#fffbeb; --text-amber-800:#92400e;
+    --bg-green-tint:#f0fdf4; --text-green-700:#15803d; --go:#16a34a;
+    --press:#2563eb; --press-words:#ffffff; --bezel:#1f2937; --ring:#c2410c;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-base:#f3f4f6; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563;
+    --link:#93c5fd; --bg-blue-tint:#1e3358; --text-blue-700:#93c5fd;
+    --red:#f87171; --text-red-700:#f87171;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d;
+    --bg-green-tint:#12301f; --text-green-700:#4ade80; --go:#16a34a;
+    --bezel:#000; --ring:#fb923c; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg-page:#111827; --surface:#1f2937; --bg-subtle:#18212f; --bg-muted:#374151;
+    --text-base:#f3f4f6; --text-700:#d1d5db; --text-muted:#9ca3af;
+    --border:#374151; --border-strong:#4b5563;
+    --link:#93c5fd; --bg-blue-tint:#1e3358; --text-blue-700:#93c5fd;
+    --red:#f87171; --text-red-700:#f87171;
+    --bg-amber-tint:#3a2f11; --text-amber-800:#fcd34d;
+    --bg-green-tint:#12301f; --text-green-700:#4ade80; --go:#16a34a;
+    --bezel:#000; --ring:#fb923c; color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg-page); color:var(--text-base); font-family:var(--font); font-size:15px; line-height:1.45; }
+  .page { max-width:1120px; margin:0 auto; padding-block:20px 56px;
+    padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+    display:flex; flex-direction:column; gap:28px; }
+  h1 { font-size:1.55rem; line-height:1.2; margin:0; text-wrap:balance; }
+  h2 { font-size:1.15rem; line-height:1.25; margin:0; text-wrap:balance; }
+  p { margin:0; max-width:68ch; }
+  .eyebrow { font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+  .lede { color:var(--text-700); }
+  .stack { display:flex; flex-direction:column; gap:10px; }
+  .sect { display:flex; flex-direction:column; gap:14px; padding-top:22px; border-top:1px solid var(--border); }
+  .sect-head { display:flex; flex-direction:column; gap:6px; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:999px;
+    background:var(--bg-green-tint); color:var(--text-green-700); vertical-align:middle; margin-left:6px; }
+  .cost { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:10px; }
+  .cost div { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 12px; min-width:0; }
+  .cost b { display:block; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:2px; }
+
+  /* the phones */
+  .phones { display:flex; flex-wrap:wrap; gap:18px 16px; align-items:flex-start; }
+  .phone-wrap { flex:1 1 280px; max-width:340px; min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .phone-cap { font-size:.82rem; font-weight:700; color:var(--text-700); }
+  .phone-note { font-size:.82rem; color:var(--text-muted); }
+  .phone { background:var(--bezel); border-radius:26px; padding:7px; }
+  .screen { background:var(--bg-page); border-radius:20px; overflow:hidden; display:flex; flex-direction:column; }
+  .card { background:var(--surface); margin:8px; border:1px solid var(--border); border-radius:14px; padding:12px 12px 14px;
+    display:flex; flex-direction:column; gap:10px; }
+  .state { text-align:center; color:var(--text-muted); font-size:.8rem; }
+  .job { text-align:center; display:flex; flex-direction:column; gap:2px; }
+  .job-name { font-weight:800; font-size:1.02rem; line-height:1.2; }
+  .job-name span { font-weight:600; }
+  .job-addr { color:var(--text-muted); font-size:.78rem; }
+  .doors { display:flex; flex-wrap:wrap; justify-content:center; gap:6px 14px; }
+  .qlink { color:var(--link); font-weight:600; font-size:.82rem; display:inline-flex; align-items:center; gap:.3rem; }
+  .qlink.under { text-decoration:underline; }
+  .label { font-size:.66rem; letter-spacing:.09em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+  .stops { display:flex; flex-direction:column; gap:5px; }
+  .stop { display:grid; grid-template-columns:16px 58px 1fr; gap:6px; align-items:center; font-size:.8rem; }
+  .stop i { width:14px; height:14px; border:2px solid var(--border-strong); border-radius:50%; display:block; }
+  .stop time { color:var(--text-muted); font-size:.74rem; }
+  .stop b { font-weight:600; min-width:0; overflow-wrap:anywhere; }
+  .pace { border:1.5px solid var(--red); border-radius:10px; padding:9px 10px; display:flex; flex-direction:column; gap:6px; }
+  .pace strong { color:var(--text-red-700); font-size:.9rem; line-height:1.25; }
+  .pace small { color:var(--text-muted); font-size:.74rem; }
+  .bar { height:6px; border-radius:99px; background:var(--bg-muted); overflow:hidden; }
+  .bar span { display:block; height:100%; width:72%; background:var(--red); }
+  .pace.calm { border-color:var(--border); }
+  .pace.calm strong { color:var(--text-base); }
+  .pace.calm .bar span { background:var(--go); width:40%; }
+  .pressbar { background:var(--surface); border-top:1px solid var(--border); padding:8px; display:grid; grid-template-columns:2fr 3fr; gap:6px; }
+  .pb { border-radius:9px; padding:9px 6px; text-align:center; font-weight:700; font-size:.84rem; }
+  .pb.quiet { background:var(--bg-muted); color:var(--text-base); }
+  .pb.go { background:var(--go); color:#fff; }
+  .empty-day { text-align:center; color:var(--text-muted); font-size:.84rem; padding:14px 0 6px; }
+
+  /* the new pieces */
+  .ring { outline:2px dashed var(--ring); outline-offset:4px; border-radius:8px; }
+  .gone { border:2px dashed var(--ring); border-radius:8px; color:var(--ring); font-size:.74rem; font-weight:600; text-align:center; padding:5px 6px; }
+  .factrow { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; border:1px solid var(--border); border-radius:10px;
+    padding:8px 10px; background:var(--bg-subtle); font-size:.84rem; }
+  .factrow .glyph { color:var(--link); font-size:1rem; }
+  .factrow .words { min-width:0; display:flex; flex-direction:column; }
+  .factrow .words small { color:var(--text-muted); font-size:.74rem; }
+  .factrow .chev { color:var(--text-muted); font-weight:700; }
+  .chip { display:inline-flex; align-items:center; gap:.3rem; border:1px solid var(--border); border-radius:999px; padding:4px 10px;
+    font-size:.78rem; font-weight:600; color:var(--link); background:var(--surface); }
+  .chip .n { background:var(--bg-blue-tint); color:var(--text-blue-700); border-radius:999px; padding:0 6px; font-size:.72rem; font-variant-numeric:tabular-nums; }
+  .sheet { background:var(--surface); margin:8px; border:1px solid var(--border); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:9px; }
+  .sheet h3 { margin:0; font-size:.95rem; }
+  .field { border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text-muted); font-size:.8rem; }
+  .field.tall { min-height:52px; }
+  .send { background:var(--press); color:var(--press-words); border-radius:9px; padding:9px; text-align:center; font-weight:700; font-size:.84rem; }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); padding:0 2px; }
+  .tabs span { padding:6px 9px; font-size:.78rem; font-weight:600; color:var(--text-muted); }
+  .tabs span.on { color:var(--link); border-bottom:2px solid var(--link); }
+
+  .pick { background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--go); border-radius:8px; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
+  .tablewrap { overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+  table { border-collapse:collapse; width:100%; min-width:640px; font-size:.84rem; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--border); }
+  thead th { font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); background:var(--bg-subtle); }
+  tbody tr:last-child td, tbody tr:last-child th { border-bottom:none; }
+  tbody th { font-weight:600; width:20%; }
+  td.rec { background:var(--bg-green-tint); }
+  .foot { color:var(--text-muted); font-size:.8rem; }
+</style>
+</head><body>
+<div class="page">
+
+  <header class="stack">
+    <span class="eyebrow">Design assessment · Job Mode · a phone</span>
+    <h1>Where the door to Materials on site belongs</h1>
+    <p class="lede">Today the Job Mode card shows a link to Materials on site on every job. Almost no job has anything left on site. Below is the card as it stands, then three other places for the door. Each one is drawn on a job with boxes and a job with none. The dashed ring marks what changes.</p>
+    <p class="foot">Every name, job number and count on this page is made up.</p>
+  </header>
+
+  <!-- TODAY -->
+  <section class="sect">
+    <div class="sect-head">
+      <span class="eyebrow">As it stands</span>
+      <h2>One link, on every job, in the middle of the card</h2>
+      <p>The link sits between the day's stops and the pace card. It reads the same whether the site holds forty cages or none. On a day with no schedule it is still there, and it opens whichever job the tally lists first.</p>
+    </div>
+    <div class="phones">
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with boxes</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2198 <span>| Mesa Verde Lofts</span></div><div class="job-addr">900 Canyon Loop, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2198 · Mesa Verde Lofts</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+            </div>
+            <div class="doors"><span class="qlink under ring">▦ Materials on site</span></div>
+            <div class="pace"><strong>Spending 22 points ahead of the work.</strong><small>2 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">Nothing says that boxes are here.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with none</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2210 <span>| Hall Bath Rough</span></div><div class="job-addr">18 Wren Court, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2221 · Shower Base</b></div>
+            </div>
+            <div class="doors"><span class="qlink under ring">▦ Materials on site</span></div>
+            <div class="pace calm"><strong>On pace.</strong><small>4 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">The same link. It opens an empty screen.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">No schedule for today</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="empty-day">No schedule for today</div>
+            <div class="doors"><span class="qlink under ring">▦ Materials on site</span></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">Clock in</div></div>
+        </div></div>
+        <span class="phone-note">Still there, with no job to open.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- A -->
+  <section class="sect" id="a">
+    <div class="sect-head">
+      <span class="eyebrow">Way A</span>
+      <h2>Say what is there, and say nothing when nothing is <span class="tag">Recommended</span></h2>
+      <p>The link leaves the card. A job whose site holds live boxes gets one row in the job's head, under Job calendar. The row counts what is there and opens the boxes. A job with nothing on site shows nothing at all.</p>
+      <p>The first box starts with the sticker the office hands the crew. Once stickers are printed for a job, the row draws on that job and counts them. The crew picks the box, sticks one on and points the camera at it, and the app makes the box. A crew with no sticker opens Job detail, then Materials on site, then <b>Add a container</b>.</p>
+    </div>
+    <div class="phones">
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with boxes</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2198 <span>| Mesa Verde Lofts</span></div><div class="job-addr">900 Canyon Loop, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="factrow ring"><span class="glyph">▦</span><span class="words"><span><b>14</b> cages and boxes on this site</span><small><b>2</b> due a count</small></span><span class="chev">›</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2198 · Mesa Verde Lofts</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+            </div>
+            <div class="pace"><strong>Spending 22 points ahead of the work.</strong><small>2 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">The row is a fact about the site. It counts every job on the site, since a big site's cages often sit under a sister job.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with none</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2210 <span>| Hall Bath Rough</span></div><div class="job-addr">18 Wren Court, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2221 · Shower Base</b></div>
+            </div>
+            <div class="gone">Nothing is drawn here. The stops meet the pace card.</div>
+            <div class="pace calm"><strong>On pace.</strong><small>4 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">One line shorter than today, on almost every job.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">Stickers handed out, no box yet</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2231 <span>| Alder Creek Clinic</span></div><div class="job-addr">77 Alder Creek Road, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="factrow ring"><span class="glyph">▦</span><span class="words"><span><b>6</b> stickers ready for a box</span><small>Stick one on, then scan it</small></span><span class="chev">›</span></div>
+            <div class="label">Today · 0 of 2 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2231 · Alder Creek Clinic</b></div>
+              <div class="stop"><i></i><time>1:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+            </div>
+            <div class="pace calm"><strong>On pace.</strong><small>9 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">The office printing stickers is the sign that material will be left here. The scan opens the new box sheet, which is already built.</span>
+      </div>
+    </div>
+    <div class="cost">
+      <div><b>What it costs</b>Two small reads a card: the live boxes on the job's site, and the stickers waiting on it. Leave report stays as it is.</div>
+      <div><b>What it risks</b>A crew that leaves material with no sticker has a way in two presses deep: Job detail, then Materials on site. If they skip it, the material goes uncounted, as it does today.</div>
+      <div><b>No schedule</b>Nothing on the card. A scanned label still opens any box.</div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="sect" id="b">
+    <div class="sect-head">
+      <span class="eyebrow">Way B</span>
+      <h2>One of the job's doors, beside Job calendar</h2>
+      <p>The door stays on every job. It moves up beside Job calendar and both become proper presses in one row. A site with boxes puts its count on the press. The card loses its lone middle line and gains no new one.</p>
+    </div>
+    <div class="phones">
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with boxes</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2198 <span>| Mesa Verde Lofts</span></div><div class="job-addr">900 Canyon Loop, Elm Fork, TX</div></div>
+            <div class="doors ring"><span class="chip">▣ Job calendar</span><span class="chip">▦ Materials on site <span class="n">14</span></span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2198 · Mesa Verde Lofts</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+            </div>
+            <div class="pace"><strong>Spending 22 points ahead of the work.</strong><small>2 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">The count is the only sign that this job differs.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">A job with none</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2210 <span>| Hall Bath Rough</span></div><div class="job-addr">18 Wren Court, Elm Fork, TX</div></div>
+            <div class="doors ring"><span class="chip">▣ Job calendar</span><span class="chip">▦ Materials on site</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2221 · Shower Base</b></div>
+            </div>
+            <div class="pace calm"><strong>On pace.</strong><small>4 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">Tidier, and still a door to an empty screen on almost every job.</span>
+      </div>
+    </div>
+    <div class="cost">
+      <div><b>What it costs</b>The least work. A move and a restyle, plus the same small read for the count.</div>
+      <div><b>What it risks</b>It answers how the link looks. It does not answer that the door is noise where nothing is on site.</div>
+      <div><b>The first box</b>Unchanged. The press opens the screen with <b>Add a container</b> on any job.</div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="sect" id="c">
+    <div class="sect-head">
+      <span class="eyebrow">Way C</span>
+      <h2>Off the card. The box's own label is the door</h2>
+      <p>The card never mentions materials. A person at a cage points the camera at its label and the box opens. Everything else lives one level down, in Job detail's Materials on site fold. The office's sticker starts the first box.</p>
+    </div>
+    <div class="phones">
+      <div class="phone-wrap">
+        <span class="phone-cap">Any job, with boxes or none</span>
+        <div class="phone"><div class="screen">
+          <div class="card">
+            <div class="state">Ready to start</div>
+            <div class="job"><div class="job-name">PLUM 2198 <span>| Mesa Verde Lofts</span></div><div class="job-addr">900 Canyon Loop, Elm Fork, TX</div></div>
+            <div class="doors"><span class="qlink">▣ Job calendar</span></div>
+            <div class="label">Today · 0 of 3 done</div>
+            <div class="stops">
+              <div class="stop"><i></i><time>6:00 AM</time><b>PLUM 2198 · Mesa Verde Lofts</b></div>
+              <div class="stop"><i></i><time>12:00 PM</time><b>PLUM 2210 · Hall Bath Rough</b></div>
+              <div class="stop"><i></i><time>2:00 PM</time><b>PLUM 2214 · Ortiz Repair</b></div>
+            </div>
+            <div class="gone">Nothing is drawn here, on any job.</div>
+            <div class="pace"><strong>Spending 22 points ahead of the work.</strong><small>2 days of hours left</small><div class="bar"><span></span></div></div>
+          </div>
+          <div class="pressbar"><div class="pb quiet">Leave report</div><div class="pb go">On my way</div></div>
+        </div></div>
+        <span class="phone-note">The shortest card. It also hides that forty cages are waiting.</span>
+      </div>
+      <div class="phone-wrap">
+        <span class="phone-cap">The way in: Job detail</span>
+        <div class="phone"><div class="screen">
+          <div class="sheet">
+            <h3>PLUM 2198 Mesa Verde Lofts</h3>
+            <div class="label">Today's work</div>
+            <div class="factrow"><span class="glyph">▤</span><span class="words"><span>Plans</span><small>3 sheets</small></span><span class="chev">›</span></div>
+            <div class="factrow ring"><span class="glyph">▦</span><span class="words"><span>Materials on site</span><small><b>14</b> containers · <b>96</b> lines</small></span><span class="chev">›</span></div>
+            <div class="field">Open Materials on site</div>
+          </div>
+        </div></div>
+        <span class="phone-note">Already built, and it already says what is there. It reads <i>nothing yet</i> on a job with none.</span>
+      </div>
+    </div>
+    <div class="cost">
+      <div><b>What it costs</b>The least of the three. The link comes off and nothing is added.</div>
+      <div><b>What it risks</b>A crew new to a big site is never told that the boxes are in the app. Counts go stale because nothing reminds anyone.</div>
+      <div><b>No schedule</b>Nothing on the card.</div>
+    </div>
+  </section>
+
+  <!-- compare -->
+  <section class="sect">
+    <div class="sect-head">
+      <span class="eyebrow">Side by side</span>
+      <h2>What each way shows</h2>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>As it stands</th><th>Way A</th><th>Way B</th><th>Way C</th></tr></thead>
+        <tbody>
+          <tr><th>A job with boxes</th><td>A link that says nothing</td><td class="rec">A row with the count, in the job's head</td><td>A press with the count, beside Job calendar</td><td>Nothing</td></tr>
+          <tr><th>A job with none</th><td>The same link</td><td class="rec">Nothing</td><td>The press, no count</td><td>Nothing</td></tr>
+          <tr><th>No schedule</th><td>The same link</td><td class="rec">Nothing</td><td>Nothing, with no job to name</td><td>Nothing</td></tr>
+          <tr><th>The first box</th><td>The link, then Add a container</td><td class="rec">The office's sticker puts the row on the card. The scan makes the box</td><td>The press, then Add a container</td><td>The sticker's scan, or Job detail</td></tr>
+          <tr><th>Lines on the card</th><td>One, always</td><td class="rec">One, only where boxes or stickers are</td><td>None added</td><td>None</td></tr>
+          <tr><th>Size</th><td></td><td class="rec">Small to medium</td><td>Small</td><td>Small</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- best we can do -->
+  <section class="sect">
+    <div class="sect-head">
+      <span class="eyebrow">Is this the best we can do?</span>
+      <h2>Way A, with Way B's place for the row</h2>
+    </div>
+    <div class="pick">
+      <p>A door should appear when there is something behind it. Way A is the only one that tells a crew, with no press, that boxes are on this site and how many are due a count. It is also the only one that takes the line off every other job.</p>
+      <p>The row sits in the job's head, where Way B puts its press, since what is on site is a fact about the place and not a step of the day.</p>
+      <p>Hiding the door must not hide the first box. The office hands a crew stickers before material is left, so printed stickers are the signal. The row draws on that job before its first box, and the scan makes the box. Leave report stays as it is, since a row there would be the same noise on every job that the link is today. Job detail's Materials on site fold stays as the plain way in on any job.</p>
+    </div>
+  </section>
+
+</div>
+</body></html>

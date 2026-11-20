@@ -115,6 +115,18 @@ describe('DraftPayrollModal', () => {
     expect(money[0]?.querySelector('span')?.textContent).toBe('.00')
   })
 
+  it('a salaried person on a set week reads their own hours under the figure, never the flat 8', () => {
+    const shortFriday = [0, 8, 8, 8, 8, 4, 0]
+    renderWithProviders(<DraftPayrollModal {...props({ salaryWeek: (person) => (person === 'Rosa Sample' ? shortFriday : [0, 8, 8, 8, 8, 8, 0]) })} />)
+    const chip = screen.getByText('salary 36h wk')
+    expect(chip.closest('tr')?.textContent).toContain('Rosa Sample')
+    expect(screen.queryByText('salary 8h')).toBeNull()
+    cleanup()
+    renderWithProviders(<DraftPayrollModal {...props({ salaryWeek: () => [0, 6, 6, 6, 6, 6, 0] })} />)
+    expect(screen.getByText('salary 6h')).toBeTruthy()
+    expect(screen.queryByText('salary 8h')).toBeNull()
+  })
+
   it('a report with nothing paid on it shows a blue Record payment in Cash due and not in Actions; a part-paid one keeps its bar', () => {
     const p = props()
     renderWithProviders(<DraftPayrollModal {...p} />)

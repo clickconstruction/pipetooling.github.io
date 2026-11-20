@@ -19,4 +19,4 @@ The select, insert and delete policies are untouched, and so are the restrictive
 
 **Apply order:** either way round. The client sends the same upsert as before, so the old client works on the new policy and the new policy changes nothing the old client reads. Until the push the takeover is refused as it always was.
 
-**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since a policy is not in the types.
+**Applied** to prod by 2026-11-20, in another session's push after the merge of #8938. Read the same day: the migration ledger lists `20261119170000 calling_lock_stale_takeover`; the catalog shows the one update policy `Callers refresh their own calling lock or take a stale one` for `authenticated`, with the stale clause in `USING` and the caller's own name in `WITH CHECK`, and the old policy gone; the table holds 0 rows where it held 23. No change to `database.ts`, since the migration alters a policy and deletes rows.

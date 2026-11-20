@@ -71,7 +71,7 @@ import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, denverCalendarDayKey, formatWorkDateYmdFriendly, todayYmdInAppTz } from '../../utils/dateUtils'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { canRecordArPayments } from '../../lib/jobs/stagesRoleGates'
 import {
   arRecordedPaymentAmountStr,
   arRecordedPaymentMatchesForQuery,
@@ -184,10 +184,6 @@ const BANK_PAYMENTS_SUMMARY_CARD_STYLE: CSSProperties = {
   background: 'var(--bg-subtle)',
   borderRadius: 6,
   fontSize: '0.875rem',
-}
-
-function canRoleApplyBankPayments(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
 /** The To match · All switch on the deposit list (AR refresh, v2.3379). */
@@ -416,7 +412,7 @@ export default function BankPaymentsModal({
   }, [selected])
 
   const { showToast } = useToastContext()
-  const canApply = canRoleApplyBankPayments(authRole)
+  const canApply = canRecordArPayments(authRole)
 
   // v2.4325 (punch list #76 PR 3): checks that came back are cases, worked on top of To match.
   const returnCases = useArReturnCases(open, canApply)
@@ -1126,7 +1122,7 @@ export default function BankPaymentsModal({
 
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
-      if (!canRoleApplyBankPayments(authRole)) return
+      if (!canRecordArPayments(authRole)) return
       setReturnedToggleSavingId(mercuryTransactionId)
       try {
         await withSupabaseRetry(
@@ -2434,7 +2430,7 @@ export default function BankPaymentsModal({
         {!canApply && (
           <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
             Your role cannot record job payments. Recording payments from this modal is limited to dev, master, assistant, and
-            primary (same as Mark Paid).
+            controller.
           </div>
         )}
 

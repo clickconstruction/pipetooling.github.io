@@ -2112,6 +2112,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "dev-login",
   "dev-mcp",
   "document-builder-link",
+  "document-builder-send",
   "drive-contract-scan",
   "drive-intake",
   "drive-link",

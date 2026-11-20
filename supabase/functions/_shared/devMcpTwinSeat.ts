@@ -66,11 +66,16 @@ export type TtSeatLookup = { state: 'linked'; tt_user_id: string } | { state: 'h
 
 /**
  * The panel's own reading of tt-bridge's lookup (DigitalTwinsPanel.loadAll): a failed call is a bridge it could not
- * read; a seat that is found and flagged a twin is linked; anything else is held.
+ * read; a seat that is found and flagged a twin is linked; anything else is held. The reason a failed call carries is
+ * its status and the reply's own words (v2.8046): tt-bridge's refusals say `error`, and a reply it passes on from
+ * TakeoffTooling or its gateway may say `message` or `msg` instead, which the status alone hid.
  */
 export function ttSeatLookup(r: { ok: boolean; status: number; body: unknown }): TtSeatLookup {
   const b = obj(r.body)
-  if (!r.ok) return { state: 'unread', why: typeof b?.error === 'string' && b.error ? b.error : `tt-bridge answered ${r.status}` }
+  if (!r.ok) {
+    const words = [b?.error, b?.message, b?.msg].find((w): w is string => typeof w === 'string' && w.trim() !== '')
+    return { state: 'unread', why: `tt-bridge answered ${r.status}${words ? `: ${words.trim().slice(0, 300)}` : ''}` }
+  }
   if (b?.found && b.is_digital_twin) return { state: 'linked', tt_user_id: typeof b.tt_user_id === 'string' && b.tt_user_id ? b.tt_user_id : 'linked' }
   return { state: 'held' }
 }

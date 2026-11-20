@@ -1,17 +1,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { DOCUMENT_BUILDER_LINK_WORDS as WORDS, documentBuilderLinkCodeFrom, documentBuilderLinkOpen, type DocumentBuilderLinkAnswer, type DocumentBuilderLinkState } from '../_shared/documentBuilderLink.ts'
 import {
-  DOCUMENT_BUILDER_LINK_WORDS as WORDS,
-  documentBuilderHexOf,
-  documentBuilderLinkCode,
-  documentBuilderLinkCodeFrom,
-  documentBuilderLinkOpen,
-  documentBuilderLinkSeed,
-  type DocumentBuilderLinkAnswer,
-  type DocumentBuilderLinkState,
-} from '../_shared/documentBuilderLink.ts'
+  DOCUMENT_BUILDER_LINK_COLUMNS as LINK_COLUMNS,
+  documentBuilderLinkCodeOf as codeOf,
+  documentBuilderSha256 as sha256,
+  mintDocumentBuilderLink,
+  type DocumentBuilderLinkRow as LinkRow,
+} from '../_shared/documentBuilderLinkCode.ts'
+import { documentBuilderCaller } from '../_shared/documentBuilderCaller.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
-import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * document-builder-link (punch list #404, steps 4 and 8): the Document builder's link. A link is a second way in to a
@@ -20,9 +18,8 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * caller here.
  *
  * Only the SHA-256 of a link's code is kept (`document_builder_links.code_hash`). The row also keeps a random nonce.
- * The code is HMAC-SHA256 of the row's id and nonce under a secret this function holds (DOCUMENT_BUILDER_LINK_SECRET,
- * or the service role key when that is not set), written in the link alphabet. So the function can make the same
- * code again for a dev who opens the tab on another day, and the database alone cannot.
+ * The code is made again from the row and a secret this side holds (`_shared/documentBuilderLinkCode.ts`), so the
+ * function can hand the same link to a dev who opens the tab on another day, and the database alone cannot.
  *
  *   POST { action: 'open', code }                → { kind: 'sheet', revision, sheet, job } | { kind: 'builder', revision, builder, contents }
  *       No login. What the link opens, as published: never a draft. A wrong code, a link switched off and a link a
@@ -76,31 +73,6 @@ type Admin = any
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KEY_RE = /^[a-z][a-z0-9-]{0,39}$/
-
-type LinkRow = { id: string; builder_key: string; sheet_id: string | null; nonce: string; made_at: string; ended_at: string | null; opened_at: string | null; last_opened_at: string | null; open_count: number }
-const LINK_COLUMNS = 'id, builder_key, sheet_id, nonce, made_at, ended_at, opened_at, last_opened_at, open_count'
-
-async function sha256(value: string): Promise<string> {
-  return documentBuilderHexOf(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))))
-}
-
-/** The link's code, made again from its row and the function's secret. */
-async function codeOf(linkId: string, nonce: string): Promise<string> {
-  const secret = Deno.env.get('DOCUMENT_BUILDER_LINK_SECRET')?.trim() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  // One round is 32 bytes and nearly always enough. A few more are joined on the rare run of skipped bytes.
-  let bytes = new Uint8Array(0)
-  for (let round = 0; round < 8; round++) {
-    const more = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(documentBuilderLinkSeed(linkId, nonce, round))))
-    const joined = new Uint8Array(bytes.length + more.length)
-    joined.set(bytes)
-    joined.set(more, bytes.length)
-    bytes = joined
-    const code = documentBuilderLinkCode(bytes)
-    if (code) return code
-  }
-  throw new Error('the link code could not be made')
-}
 
 function sheetOf(body: Record<string, unknown>): { builderKey: string; sheetId: string | null } | null {
   const builderKey = typeof body.builderKey === 'string' ? body.builderKey : ''
@@ -164,28 +136,10 @@ async function open(req: Request, admin: Admin, body: Record<string, unknown>): 
   return json(answer)
 }
 
-/** The signed-in dev, or the refusal to answer with. */
-async function dev(req: Request, admin: Admin, supabaseUrl: string): Promise<{ userId: string } | Response> {
-  const auth = req.headers.get('Authorization') ?? ''
-  if (!auth) return json({ error: WORDS.notYours }, 403)
-  const mine = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } })
-  const { data: u } = await mine.auth.getUser()
-  const userId = u?.user?.id
-  if (!userId) return json({ error: WORDS.notYours }, 403)
-  const archived = await refuseArchivedCaller(admin, userId, corsHeaders)
-  if (archived) return archived
-  const { data: me } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', userId).maybeSingle()
-  const flags = me as { role?: string | null; read_only?: boolean | null; is_digital_twin?: boolean | null } | null
-  if (flags?.role !== 'dev') return json({ error: WORDS.notYours }, 403)
-  // A training account and a twin write nothing: the fences hold them on a table, and this write is the service role's.
-  if (flags.read_only || flags.is_digital_twin) return json({ error: WORDS.training }, 403)
-  return { userId }
-}
-
 async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
   const target = sheetOf(body)
   if (!target) return json({ error: WORDS.failed }, 400)
-  const caller = await dev(req, admin, supabaseUrl)
+  const caller = await documentBuilderCaller(req, admin, supabaseUrl, corsHeaders, (why) => json({ error: why === 'training' ? WORDS.training : WORDS.notYours }, 403))
   if (caller instanceof Response) return caller
   const nowIso = new Date().toISOString()
 
@@ -204,21 +158,9 @@ async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   const answer = await answerOf(admin, { builder_key: target.builderKey, sheet_id: target.sheetId })
   if (!answer) return json({ error: WORDS.notPublished }, 409)
   // A new link stops the old one.
-  let stop = admin.from('document_builder_links').update({ ended_at: nowIso, ended_by: caller.userId }).eq('builder_key', target.builderKey).is('ended_at', null)
-  stop = target.sheetId ? stop.eq('sheet_id', target.sheetId) : stop.is('sheet_id', null)
-  const { error: stopError } = await stop
-  if (stopError) throw new Error(`stopping the old link: ${stopError.message}`)
-  const id = crypto.randomUUID()
-  const nonce = documentBuilderHexOf(crypto.getRandomValues(new Uint8Array(16)))
-  const code = await codeOf(id, nonce)
-  const { data, error } = await admin
-    .from('document_builder_links')
-    .insert({ id, builder_key: target.builderKey, sheet_id: target.sheetId, nonce, code_hash: await sha256(code), made_by: caller.userId, made_at: nowIso })
-    .select(LINK_COLUMNS)
-    .single()
-  if (error) throw new Error(`making the link: ${error.message}`)
-  console.log(JSON.stringify({ event: 'document_builder_link_mint', link: id, builder: target.builderKey, sheet: target.sheetId }))
-  return json({ link: await stateOf(data as LinkRow) })
+  const made = await mintDocumentBuilderLink(admin, target, caller.userId)
+  console.log(JSON.stringify({ event: 'document_builder_link_mint', link: made.row.id, builder: target.builderKey, sheet: target.sheetId }))
+  return json({ link: await stateOf(made.row) })
 }
 
 serve(async (req) => {

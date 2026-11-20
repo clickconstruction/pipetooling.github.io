@@ -73,7 +73,13 @@ describe('a twin\'s held seat made again from the dev seat (v2.7974)', () => {
     expect(ttSeatLookup({ ok: true, status: 200, body: { found: false } })).toEqual({ state: 'held' })
     // A person's account wearing the address is not the twin's seat: held, as the panel shows it.
     expect(ttSeatLookup({ ok: true, status: 200, body: { found: true, is_digital_twin: false, tt_user_id: TT_ID } })).toEqual({ state: 'held' })
-    expect(ttSeatLookup({ ok: false, status: 500, body: { error: 'TT_BRIDGE_SECRET not configured' } })).toEqual({ state: 'unread', why: 'TT_BRIDGE_SECRET not configured' })
+    expect(ttSeatLookup({ ok: false, status: 500, body: { error: 'TT_BRIDGE_SECRET not configured' } })).toEqual({ state: 'unread', why: 'tt-bridge answered 500: TT_BRIDGE_SECRET not configured' })
+    // v2.8046: a reply the bridge passes on may say message or msg where its own refusals say error. The status alone hid it.
+    expect(ttSeatLookup({ ok: false, status: 401, body: { code: 401, message: 'Missing authorization header' } })).toEqual({ state: 'unread', why: 'tt-bridge answered 401: Missing authorization header' })
+    expect(ttSeatLookup({ ok: false, status: 401, body: { msg: ' Invalid JWT ' } })).toEqual({ state: 'unread', why: 'tt-bridge answered 401: Invalid JWT' })
+    expect(ttSeatLookup({ ok: false, status: 401, body: { error: '', message: 'Unauthorized' } })).toEqual({ state: 'unread', why: 'tt-bridge answered 401: Unauthorized' })
+    expect(ttSeatLookup({ ok: false, status: 401, body: {} })).toEqual({ state: 'unread', why: 'tt-bridge answered 401' })
+    expect(ttSeatLookup({ ok: false, status: 502, body: { message: 'x'.repeat(900) } }).state === 'unread' && (ttSeatLookup({ ok: false, status: 502, body: { message: 'x'.repeat(900) } }) as { why: string }).why.length).toBe('tt-bridge answered 502: '.length + 300)
     expect(ttSeatLookup({ ok: false, status: 404, body: 'not found' })).toEqual({ state: 'unread', why: 'tt-bridge answered 404' })
     for (const bridge of [CT_BRIDGE, TT_BRIDGE]) {
       expect(bridge).toContain("'create'")

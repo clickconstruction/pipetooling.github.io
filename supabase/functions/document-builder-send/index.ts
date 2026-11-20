@@ -1,0 +1,221 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { officeYmd } from '../_shared/bidFollowupReminder.ts'
+import { documentBuilderCaller } from '../_shared/documentBuilderCaller.ts'
+import { documentBuilderLinkUrl } from '../_shared/documentBuilderLink.ts'
+import { sheetLinkCodeFor } from '../_shared/documentBuilderLinkCode.ts'
+import {
+  DOCUMENT_BUILDER_SEND_REFUSALS as REFUSALS,
+  SHEET_SEND_SENT_KIND,
+  parseSheetSend,
+  sheetSendEmail,
+  sheetSendMessageKey,
+  type DocumentBuilderSendRefusal,
+} from '../_shared/documentBuilderSend.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
+import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME, GC_TRADE_EMAIL_TEST_TYPE, newTradeToken, tradeEmailTestSubject, tradePortalLinkUrl, tradeTestLinkUrl } from '../_shared/gcTradeEmail.ts'
+import { resolveTradeLink, sha256Hex, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
+import { mailboxWithName } from '../_shared/mailboxWithName.ts'
+import { publicViewDecision } from '../_shared/publicViewCounting.ts'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+
+/**
+ * document-builder-send (punch list #404, step 5): the Document builder's send. A job's published sheet goes to one
+ * person at a trade partner on that job, as an email with one press to the page the trade already opens. The office
+ * then sees the day it went and the day it was opened. `verify_jwt = false`: the open comes from a trade's own page,
+ * which has no session, and the send checks its caller here.
+ *
+ *   POST { action: 'send', builderKey, sheetId, companyId, contactEmail, note, why, anyway?, test? }   a dev, signed in
+ *       → { ok, send: { id, contactName, sentAt, sentRevision, timesSent, openedAt, openedRevision }, page: 'on' }
+ *       → { ok, test: true, email }     a test copy: the same email to the caller's own address, and nothing written
+ *       → { error: key, words } with the key's status
+ *     In order: the caller (a dev; never an archived account, a training account or a twin), the sheet (it must be
+ *     published), the read mark (an unread revision goes only with `anyway`), the company (on a trade of this job),
+ *     the person (someone on the company's record with that email), then the company's page. A page that is on is
+ *     used. A company that never had a page gets one. A page that was turned off stays off: the send is refused,
+ *     since a send never turns a page back on. Then the sheet's own link (made when the sheet never had one), the
+ *     email, and only after it went: the send's row, the message on the company's thread and the sent copy.
+ *   POST { action: 'opened', token, sheetId }   a trade's own page, by its link
+ *       → { ok }   The day and the revision they opened are kept on their send. A signed-in teammate's look and a
+ *                  preview are not counted. A link that is off answers 404.
+ *
+ * The service role reads and writes here, so the read-only blocks and the twin fence never see it: the caller check
+ * stands in for them.
+ *
+ * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, RESEND_API_KEY, EMAIL_FROM, APP_ORIGIN.
+ */
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
+}
+const refuse = (key: DocumentBuilderSendRefusal, detail?: string) => json({ error: key, words: REFUSALS[key].words, ...(detail ? { detail } : {}) }, REFUSALS[key].status)
+
+// deno-lint-ignore no-explicit-any
+type Admin = any
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const SEND_COLUMNS = 'id, contact_name, sent_at, sent_revision, times_sent, opened_at, opened_revision'
+
+type SendRow = { id: string; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
+const sendOut = (r: SendRow) => ({ id: r.id, contactName: r.contact_name, sentAt: r.sent_at, sentRevision: r.sent_revision, timesSent: r.times_sent, openedAt: r.opened_at, openedRevision: r.opened_revision })
+
+async function send(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
+  const caller = await documentBuilderCaller(req, admin, supabaseUrl, corsHeaders, (why) => refuse(why))
+  if (caller instanceof Response) return caller
+  const m = parseSheetSend(body)
+  if (!m) return refuse('badRequest')
+
+  // The sheet, as published. A draft is never sent.
+  const { data: sheetRow } = await admin.from('document_builder_sheets').select('id, builder_key, project_id, revision, published_sheet').eq('id', m.sheetId).eq('builder_key', m.builderKey).maybeSingle()
+  const sheet = sheetRow as { id: string; builder_key: string; project_id: string; revision: number; published_sheet: unknown } | null
+  if (!sheet) return refuse('notFound')
+  if (sheet.revision < 1 || !sheet.published_sheet) return refuse('notPublished')
+  const { data: builder } = await admin.from('document_builders').select('revision, read_revision').eq('key', m.builderKey).maybeSingle()
+  const usual = builder as { revision: number; read_revision: number | null } | null
+  if (!usual) return refuse('notFound')
+  // A revision nobody has read goes only when the sender ticked Send it anyway.
+  if (usual.read_revision !== usual.revision && !m.anyway) return refuse('unread')
+
+  // The company is on a trade of this job, and the person is on the company's record.
+  const { data: company } = await admin.from('gc_companies').select('id, name, contact_name, email').eq('id', m.companyId).maybeSingle()
+  if (!company) return refuse('notFound')
+  const { data: packages } = await admin.from('gc_trade_packages').select('id').eq('project_id', sheet.project_id)
+  const packageIds = ((packages ?? []) as Array<{ id: string }>).map((p) => p.id)
+  const { count: asked } = packageIds.length ? await admin.from('gc_invites').select('id', { count: 'exact', head: true }).eq('company_id', m.companyId).in('package_id', packageIds) : { count: 0 }
+  if (!asked) return refuse('notOnJob')
+  const { data: people } = await admin.from('gc_company_people').select('name, email').eq('company_id', m.companyId).is('removed_at', null)
+  const known = [{ name: String(company.contact_name ?? ''), email: String(company.email ?? '') }, ...((people ?? []) as Array<{ name: string | null; email: string | null }>).map((p) => ({ name: String(p.name ?? ''), email: String(p.email ?? '') }))]
+  const contact = known.find((k) => k.email.trim().toLowerCase() === m.contactEmail)
+  if (!contact) return refuse('noSuchContact')
+  const contactName = contact.name.trim() || String(company.name ?? '')
+
+  // Their page: on is used, never made gets one, turned off stays off.
+  const { data: links } = await admin.from('gc_trade_portal_links').select('token, revoked_at').eq('company_id', m.companyId)
+  const pageLinks = (links ?? []) as Array<{ token: string | null; revoked_at: string | null }>
+  let token = pageLinks.find((l) => !l.revoked_at)?.token ?? null
+  if (!token && pageLinks.length > 0) return refuse('pageOff')
+
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) return refuse('noEmail')
+  const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+  const { data: project } = await admin.from('projects').select('name').eq('id', sheet.project_id).maybeSingle()
+  const job = String((project as { name: string | null } | null)?.name ?? '').trim()
+  const { data: gc } = await admin.from('gc_projects').select('project_manager_user_id').eq('project_id', sheet.project_id).maybeSingle()
+  const pmId = (gc as { project_manager_user_id: string | null } | null)?.project_manager_user_id ?? null
+  const pm = pmId ? ((await admin.from('users').select('name, email').eq('id', pmId).maybeSingle()).data as { name: string | null; email: string | null } | null) : null
+  const replyTo = (pm?.email || caller.email || '').trim() || undefined
+  const signer = (pm?.name || caller.name || GC_TRADE_EMAIL_FROM_NAME).trim()
+  const from = mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, EMAIL_FROM)
+
+  // A test copy: the same email to the caller's own address, with no page or link made, and nothing written.
+  if (m.test) {
+    if (!caller.email) return refuse('noSuchContact')
+    const code = await sheetLinkCodeFor(admin, m.builderKey, sheet.id, caller.userId, { mintIfNone: false })
+    const words = sheetSendEmail({ job, note: m.note, why: m.why, sheetUrl: code ? documentBuilderLinkUrl(origin, code) : null })
+    const email = buildGcTradeEmail({ lang: 'en', recipients: [contactName], company: String(company.name ?? ''), subject: words.subject, lines: words.lines, linkUrl: tradeTestLinkUrl(origin), signer, gc: GC_TRADE_EMAIL_FROM_NAME })
+    const sent = await sendEmailViaResend(caller.email, tradeEmailTestSubject(email.subject), email.text, email.html, resendApiKey, { from, ...(replyTo ? { replyTo } : {}), emailType: GC_TRADE_EMAIL_TEST_TYPE })
+    if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
+    return json({ ok: true, test: true, email: caller.email, wouldGo: { name: contactName, email: contact.email } })
+  }
+
+  if (!token) {
+    // The company never had a page: this send makes it, by mint_gc_trade_portal_link's rules.
+    const raw = newTradeToken()
+    const { error: mintError } = await admin.from('gc_trade_portal_links').insert({ company_id: m.companyId, token: raw, token_hash: await sha256Hex(raw), created_by: caller.userId })
+    if (mintError) return refuse('failed', `The page was not made: ${mintError.message}`)
+    token = raw
+  }
+  // The sheet's own link, for their insurance agent: made here when the sheet never had one, left off when a dev switched it off.
+  const code = await sheetLinkCodeFor(admin, m.builderKey, sheet.id, caller.userId, { mintIfNone: true })
+  const words = sheetSendEmail({ job, note: m.note, why: m.why, sheetUrl: code ? documentBuilderLinkUrl(origin, code) : null })
+  const email = buildGcTradeEmail({ lang: 'en', recipients: [contactName], company: String(company.name ?? ''), subject: words.subject, lines: words.lines, linkUrl: tradePortalLinkUrl(origin, token), signer, gc: GC_TRADE_EMAIL_FROM_NAME })
+  const sent = await sendEmailViaResend(contact.email.trim(), email.subject, email.text, email.html, resendApiKey, { from, ...(replyTo ? { replyTo } : {}), emailType: 'gc_trade_email' })
+  if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
+
+  // It went. Now the record: the send's own row, sent again on the same row while it is on their page.
+  const nowIso = new Date().toISOString()
+  const { data: liveRow } = await admin.from('document_builder_sends').select(SEND_COLUMNS).eq('builder_key', m.builderKey).eq('sheet_id', sheet.id).eq('company_id', m.companyId).is('taken_off_at', null).maybeSingle()
+  const live = liveRow as SendRow | null
+  const write = live
+    ? admin.from('document_builder_sends').update({ contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name, times_sent: live.times_sent + 1 }).eq('id', live.id)
+    : admin.from('document_builder_sends').insert({ builder_key: m.builderKey, sheet_id: sheet.id, company_id: m.companyId, contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name })
+  const { data: written, error: writeError } = await write.select(SEND_COLUMNS).single()
+  if (writeError || !written) return refuse('failed', `Sent, but not recorded: ${writeError?.message ?? 'no row'}`)
+  const row = written as SendRow
+
+  // The company's thread keeps the message, as it keeps every email to them.
+  const logId = sent.resendEmailId ? (((await admin.from('email_send_log').select('id').eq('resend_email_id', sent.resendEmailId).maybeSingle()).data as { id: string } | null)?.id ?? null) : null
+  const { error: threadError } = await admin.from('gc_trade_messages').insert({
+    company_id: m.companyId,
+    project_id: sheet.project_id,
+    kind: 'coi',
+    mail_group: 'pay',
+    msg_key: sheetSendMessageKey(row.id, row.times_sent),
+    lang: 'en',
+    subject: email.subject,
+    lines: words.lines,
+    to_names: [contactName],
+    sent_on: officeYmd(nowIso),
+    sent_by: caller.userId,
+    email_send_log_id: logId,
+  })
+  if (threadError) console.error('document-builder-send thread row', threadError.message)
+
+  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id.
+  await fileSentEmailBestEffort(
+    { kind: SHEET_SEND_SENT_KIND, title: email.subject, recipientName: String(company.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
+    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: email.html, resendEmailId: sent.resendEmailId ?? null },
+  )
+  console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, sheet: sheet.id, company: m.companyId, revision: sheet.revision, why: m.why }))
+  return json({ ok: true, send: sendOut(row), page: 'on' })
+}
+
+async function opened(req: Request, admin: Admin, body: Record<string, unknown>): Promise<Response> {
+  const token = typeof body.token === 'string' ? body.token.trim() : ''
+  const sheetId = typeof body.sheetId === 'string' ? body.sheetId.toLowerCase() : ''
+  if (token.length < 16 || token.length > 128 || !UUID_RE.test(sheetId)) return refuse('badRequest')
+  const link = await resolveTradeLink(token, async (column, value) => {
+    const { data } = await admin.from('gc_trade_portal_links').select('company_id, revoked_at').eq(column, value).maybeSingle()
+    return data as TradeLinkRow | null
+  })
+  if (!link) return refuse('linkOff')
+  const { data: liveRow } = await admin.from('document_builder_sends').select('id, opened_revision').eq('sheet_id', sheetId).eq('company_id', link.company_id).is('taken_off_at', null).maybeSingle()
+  const live = liveRow as { id: string; opened_revision: number | null } | null
+  if (!live) return refuse('notFound')
+  const { data: sheetRow } = await admin.from('document_builder_sheets').select('revision').eq('id', sheetId).maybeSingle()
+  const revision = (sheetRow as { revision: number } | null)?.revision ?? 0
+  if (revision < 1) return refuse('notFound')
+  // Who looked: someone outside is counted. A signed-in teammate and the office's preview are not.
+  const view = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+  if (view.count && live.opened_revision !== revision) {
+    const { error } = await admin.from('document_builder_sends').update({ opened_at: new Date().toISOString(), opened_revision: revision }).eq('id', live.id)
+    if (error) console.error('document-builder-send opened stamp', error.message)
+  }
+  console.log(JSON.stringify({ event: 'document_builder_send_opened', send: live.id, revision, viewer: view.viewer }))
+  return json({ ok: true })
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method !== 'POST') return json({ error: 'badRequest' }, 405)
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const admin: Admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
+    const parsed: unknown = await req.json().catch(() => null)
+    if (!parsed || typeof parsed !== 'object') return refuse('badRequest')
+    const body = parsed as Record<string, unknown>
+    if (body.action === 'send') return await send(req, admin, supabaseUrl, body)
+    if (body.action === 'opened') return await opened(req, admin, body)
+    return refuse('badRequest')
+  } catch (e) {
+    console.error('document-builder-send failed', e)
+    return refuse('failed')
+  }
+})
