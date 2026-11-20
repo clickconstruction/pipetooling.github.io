@@ -65,6 +65,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/show/:code', audience: 'homeowner', steps: [H('first-look-page'), H('first-look-thanks')] },
   // #345 (v2.7223): a painted map, shared: the way in and what is where, for a customer or a driver.
   { kind: 'route', ref: '/way/:code', audience: 'homeowner', steps: [H('painted-map-page')] },
+  // #404: a Document builder link, a job's published insurance sheet for a sub and their agent. The tab that makes one is a dev's for now.
+  { kind: 'route', ref: '/d/:code', audience: 'sub', steps: [S('insurance-sheet-link')] },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },

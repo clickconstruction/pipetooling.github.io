@@ -6595,6 +6595,8 @@ A **job's sheet** (`document_builder_sheets`, one a job the company runs as the 
 A job's sheet is **behind** when the usual was published again since it went out, and publishing the usual brings up each job that is ready and **holds** a job with no sheet yet or with changes of its own waiting.
 The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
+A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
+A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 
 ### Agreements tab

@@ -66,6 +66,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'lib/peopleDocuments/buildTeamSummaryHtml.ts': 'our own team report',
   'components/jobs/legal/LegalPortalLienGrid.tsx': 'the law firm prints from its own portal page',
   'pages/CustomerPortal.tsx': 'the customer prints from their own portal page',
+  'pages/BuilderLink.tsx': 'whoever holds a sheet\'s link prints it from the public page',
   'pages/HazmatNoticePublic.tsx': 'the customer prints from the public notice page',
   'pages/LegalPortal.tsx': 'the law firm prints from its own portal page',
   'pages/PartnerStatement.tsx': 'the partner prints from their own statement page',

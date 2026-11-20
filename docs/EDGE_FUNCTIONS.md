@@ -275,6 +275,7 @@ when_to_read:
    - [mercury-reconcile](#mercury-reconcile)
    - [import-manual-transactions](#import-manual-transactions)
    - [manage-manual-account](#manage-manual-account)
+   - [document-builder-link](#document-builder-link)
 4. [Email Wording Overrides](#email-wording-overrides)
 5. [Error Handling](#error-handling)
 6. [Deployment](#deployment)
@@ -6850,6 +6851,32 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 ```
 
 **Used by**: Banking → [`ManualAccountsModal.tsx`](../src/components/banking/ManualAccountsModal.tsx).
+
+---
+
+### document-builder-link
+
+**Purpose** (punch list #404, step 4, **v2.8008**): the Document builder's link. The page at `/d/<code>` ([`src/pages/BuilderLink.tsx`](../src/pages/BuilderLink.tsx)) opens one published insurance sheet with no sign-in, for someone with no page of their own, a sub's insurance agent say. This function is the page's only door and the only thing that writes a `document_builder_links` row. `verify_jwt = false`: the page's ask carries the link's code, which is the capability, and a dev's asks carry a JWT the function checks itself. It sends no text and no email.
+
+**Endpoint**: `POST /functions/v1/document-builder-link`
+
+**The page's ask** (no sign-in):
+- `{ action: "open", code }` → `{ kind: "sheet", revision, sheet, job }`: the sheet as published (`document_builder_sheets.published_sheet`), its revision and the job's name. Never a draft. For a link to a builder, `{ kind: "builder", revision, builder, contents }`, which no screen asks for yet. A wrong code, a link switched off and a link a new one replaced all answer the same **404** `{ error: "gone", words }`. A link with nothing published answers **404** `{ error: "nothing", words }`. An open by someone outside is counted on the link (`opened_at`, `last_opened_at`, `open_count`); a signed-in teammate's look and a preview are not (`publicViewDecision`).
+
+**A dev's asks** (signed in; the caller's role is `dev`, **403** otherwise, and **403** for an archived account, an account in training and a digital twin):
+- `{ action: "desk.state", builderKey, sheetId? }` → `{ link: { on: true, code, madeAt, opened, lastOpenedAt } }` or `{ link: { on: false } }`.
+- `{ action: "desk.mint", builderKey, sheetId? }` → the new link. The one before it stops. **409** when nothing is published: a link is made only for something a person outside may read.
+- `{ action: "desk.end", builderKey, sheetId? }` → `{ link: { on: false } }`.
+
+**How a code is kept**: only its SHA-256 (`code_hash`). The row also keeps a random `nonce`, and the code is HMAC-SHA256 of the row's id and nonce under a secret the function holds, written as sixteen letters of `23456789abcdefghjkmnpqrstuvwxyz`. So the function shows a dev the same link on another day, and the database alone cannot make it.
+
+**Rate limit**: 60 calls a minute per client address and 600 across the isolate, in memory, best effort → 429.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, and `DOCUMENT_BUILDER_LINK_SECRET` when set. With no such secret the service role key is the HMAC's key, so rotating that key changes every link's address: set the secret before the first link that matters.
+
+**Implementation**: [`supabase/functions/document-builder-link/index.ts`](../supabase/functions/document-builder-link/index.ts); the pure part in [`_shared/documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts), re-exported by [`src/lib/documentBuilder/link.ts`](../src/lib/documentBuilder/link.ts) and tested from `src/lib/documentBuilder/link.test.ts`. The tables are `docs/migrations/20261120034225_document_builder_sheets.md`. **Deploy**: `supabase functions deploy document-builder-link`.
+
+**Used by**: [`BuilderLink.tsx`](../src/pages/BuilderLink.tsx) and [`BuilderLinkCard.tsx`](../src/components/documentBuilder/BuilderLinkCard.tsx), through [`linkIo.ts`](../src/lib/documentBuilder/linkIo.ts).
 
 ---
 
