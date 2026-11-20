@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -184,6 +184,21 @@ export default function LienDeskMonths({
   headless?: boolean
 }) {
   const view = useLienTimelineView()
+  // The grid slides inside its frame when the papers do not fit the card (v2.8116). The frame then says so, and the pinned
+  // column of this notice draws its edge: read from the frame's own width, so it follows the card and not the window.
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [slides, setSlides] = useState(false)
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const read = () => setSlides(frame.scrollWidth > frame.clientWidth + 1)
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(read)
+    watch.observe(frame)
+    if (frame.firstElementChild) watch.observe(frame.firstElementChild)
+    return () => watch.disconnect()
+  }, [grid.papers.length, grid.rows.length])
   const filings = grid.papers.filter((p) => p.kind === 'filing')
   const thisPaper = grid.papers.find((p) => p.kind === 'this') ?? null
   const onRows = grid.rows.filter((r) => r.thisNotice.on)
@@ -227,7 +242,7 @@ export default function LienDeskMonths({
               {filings.length > 0 ? 'A check is a paper that already names the month.' : null}
             </p>
           ) : null}
-          <div className="lienLedgerGridFrame">
+          <div className="lienLedgerGridFrame" ref={frameRef} data-slides={slides ? 'yes' : undefined}>
             <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)} data-this={thisPaper ? 'yes' : 'no'}>
               <thead>
                 <tr>
