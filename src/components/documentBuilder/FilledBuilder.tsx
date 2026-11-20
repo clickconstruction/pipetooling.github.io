@@ -100,7 +100,7 @@ const SMALL_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', b
 const SECOND_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 9, padding: '7px 12px', fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 38, cursor: 'pointer' }
 const INPUT: CSSProperties = { width: '100%', color: 'var(--text-base)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 9px', fontFamily: 'inherit', fontSize: '1rem', minWidth: 0 }
 const LABEL: CSSProperties = { display: 'grid', gap: 4, fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)' }
-const LEGEND: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '6px 8px', fontSize: '0.75rem' }
+const LEGEND: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '6px 8px', fontSize: '0.75rem', justifySelf: 'start', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 7px' }
 const ROW: CSSProperties = { display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid var(--border)' }
 const BTNS: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }
 
@@ -112,7 +112,10 @@ function Chip({ chip }: { chip: BuilderChip }) {
   return <span style={{ ...CHIP, ...CHIP_TONES[chip.tone], whiteSpace: 'normal' }}>{chip.words}</span>
 }
 
-/** The marks' legend: the same three looks the fields wear, drawn on the page's own light ground. */
+/**
+ * The marks' legend: the same three looks the fields wear, on a light ground of its own as the sheet has. The marks are
+ * pinned light, and *Your usual* has no fill, so on the card's dark surface its dark words could not be read.
+ */
 function Legend({ marks }: { marks: Array<['usual' | 'own' | 'blank', string]> }) {
   return (
     <div data-theme="light" style={LEGEND}>
