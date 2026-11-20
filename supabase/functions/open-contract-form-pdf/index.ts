@@ -18,6 +18,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { paperForName } from '../_shared/companyPaper.ts'
+import { partyFileWords } from '../_shared/paperSigner.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
@@ -82,11 +83,11 @@ serve(async (req) => {
     // The caller must also be able to read the row (contracts RLS) — use their client.
     const { data: row, error: rowErr } = await userClient
       .from('person_contract_documents')
-      .select('id, status, form_pdf_storage_path, form_scan_storage_path, document_name, person_name, company_id')
+      .select('id, status, form_pdf_storage_path, form_scan_storage_path, document_name, person_name, company_id, party_name, signer_name')
       .eq('id', docId)
       .maybeSingle()
     if (rowErr || !row) return json({ error: 'Document not found or access denied' }, 404)
-    const r = row as { id: string; status: string; form_pdf_storage_path: string | null; form_scan_storage_path: string | null; document_name: string; person_name: string; company_id: string | null }
+    const r = row as { id: string; status: string; form_pdf_storage_path: string | null; form_scan_storage_path: string | null; document_name: string; person_name: string; company_id: string | null; party_name: string | null; signer_name: string | null }
     // A trade partner company's paper (GC mode, B6-b-i) downloads under the company's name, never its stored name.
     const companyName = r.company_id
       ? (((await admin.from('gc_companies').select('name').eq('id', r.company_id).maybeSingle()).data as { name?: string | null } | null)?.name ?? null)
@@ -96,7 +97,8 @@ serve(async (req) => {
     const ext = path.split('.').pop() ?? 'pdf'
 
     const { data: signed, error: sErr } = await admin.storage.from(FORM_PDFS_BUCKET).createSignedUrl(path, LINK_SECONDS, {
-      download: `${r.document_name} - ${paperForName(r.person_name, companyName)}${which === 'scan' ? ' (paper)' : ''}.${ext}`.replace(/[\\/:*?"<>|]+/g, ' '),
+      // An outside party's paper (punch list #403) downloads under the party's name, never its stored name.
+      download: `${r.document_name} - ${partyFileWords(r) || paperForName(r.person_name, companyName)}${which === 'scan' ? ' (paper)' : ''}.${ext}`.replace(/[\\/:*?"<>|]+/g, ' '),
     })
     if (sErr || !signed?.signedUrl) {
       console.error('signed form url', sErr)

@@ -18,6 +18,15 @@ const io = vi.hoisted(() => ({
   kept: { name: '', title: '', email: '' },
   keptReads: [] as string[],
   keptFails: false,
+  /** Whose a typed address already is, and the addresses that were looked up. */
+  known: null as null | { contactId: string; name: string; party: string },
+  lookedUp: [] as string[],
+}))
+vi.mock('../../lib/documents/paperPartyIo', () => ({
+  readContactForAddress: async (email: string) => {
+    io.lookedUp.push(email)
+    return io.known
+  },
 }))
 vi.mock('../../lib/contracts/personPaperSendIo', () => ({
   sendPersonPaperForSignature: async (input: Record<string, unknown>) => {
@@ -48,6 +57,8 @@ beforeEach(() => {
   io.kept = { name: '', title: '', email: '' }
   io.keptReads = []
   io.keptFails = false
+  io.known = null
+  io.lookedUp = []
 })
 afterEach(() => cleanup())
 
@@ -180,5 +191,104 @@ describe('ContractSendWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onClose).toHaveBeenCalled()
     expect(io.sends).toEqual([])
+  })
+
+  // ── An outside party's paper (punch list #403, step 3) ──────────────────────────────────────────────────────────────
+
+  const partyTarget = { personName: 'Lena Park', documentName: 'Mutual secrecy agreement' }
+  const rep = { name: 'Tallgrass Supply Co.', unlisted: false, keepWith: null }
+
+  it('a party’s paper says who it is with and what it will say, and sends the business the signer signs for', async () => {
+    const prepare = vi.fn(async () => 'party-row')
+    const onSent = vi.fn()
+    renderWithProviders(
+      <ContractSendWindow {...base} target={partyTarget} docId={null} party={rep} preparePartyPaper={prepare} initialEmail="lena@tallgrass.example" initialSignerName="Lena Park" initialSignerTitle="Branch manager" onClose={() => {}} onSent={onSent} />,
+    )
+    expect(screen.getByTestId('contract-send-party').textContent).toBe('Mutual secrecy agreement · Tallgrass Supply Co.')
+    expect(screen.getByTestId('contract-send-says').textContent).toBe('The paper will say: Lena Park, Branch manager, signing for Tallgrass Supply Co.')
+    // A person on file was picked: there is no company to type and nobody new to keep.
+    expect(screen.queryByLabelText('Company (optional)')).toBeNull()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(io.lookedUp).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(onSent).toHaveBeenCalledWith({ docId: 'party-row', emailed: true, planKind: null }))
+    // The party's paper is written at Send, through the caller, and never as a quick-send row.
+    expect(prepare).toHaveBeenCalledWith({ signerName: 'Lena Park', signerEmail: 'lena@tallgrass.example', typedCompany: '', keep: false })
+    expect(io.writes).toEqual([])
+    expect(io.sends).toEqual([{ documentId: 'party-row', mode: 'email', signerEmail: 'lena@tallgrass.example', signerName: 'Lena Park', signerTitle: 'Branch manager', signingFor: 'Tallgrass Supply Co.', subject: '', intro: '' }])
+  })
+
+  it('a company with nobody on file: the typed signer is kept with it unless the office unticks', async () => {
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(
+      <ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={{ name: 'Tallgrass Homes', unlisted: false, keepWith: 'Tallgrass Homes' }} preparePartyPaper={prepare} initialEmail="" initialSignerName="" onClose={() => {}} onSent={() => {}} />,
+    )
+    // Nobody is named yet, so there is nobody to keep and nothing for the paper to say.
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByTestId('contract-send-says')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Signer name'), { target: { value: 'Wren Castillo' } })
+    fireEvent.change(screen.getByLabelText('Title (optional)'), { target: { value: 'Owner' } })
+    fireEvent.change(screen.getByLabelText('Signer email'), { target: { value: 'wren@tallgrasshomes.example' } })
+    const tick = screen.getByRole('checkbox', { name: /Keep Wren Castillo with Tallgrass Homes/ }) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    expect(screen.getByTestId('contract-send-says').textContent).toBe('The paper will say: Wren Castillo, Owner, signing for Tallgrass Homes.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(prepare).toHaveBeenCalledWith({ signerName: 'Wren Castillo', signerEmail: 'wren@tallgrasshomes.example', typedCompany: '', keep: true }))
+  })
+
+  it('unticked, the signer is sent the paper and not kept', async () => {
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(
+      <ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={{ name: 'Tallgrass Homes', unlisted: false, keepWith: 'Tallgrass Homes' }} preparePartyPaper={prepare} initialEmail="wren@tallgrasshomes.example" initialSignerName="Wren Castillo" onClose={() => {}} onSent={() => {}} />,
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: /Keep Wren Castillo with Tallgrass Homes/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ keep: false })))
+  })
+
+  const unlisted = { name: '', unlisted: true, keepWith: null }
+
+  it('someone on no list: the window takes their company, and the paper says who they sign for', async () => {
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(<ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={unlisted} preparePartyPaper={prepare} initialEmail="" initialSignerName="" onClose={() => {}} onSent={() => {}} />)
+    expect(screen.getByTestId('contract-send-party').textContent).toBe('Mutual secrecy agreement · not on a list')
+    fireEvent.change(screen.getByLabelText('Signer name'), { target: { value: 'Noor Haddad' } })
+    fireEvent.change(screen.getByLabelText('Title (optional)'), { target: { value: 'Structural engineer' } })
+    expect(screen.getByTestId('contract-send-says').textContent).toBe('The paper will say: Noor Haddad, Structural engineer.')
+    fireEvent.change(screen.getByLabelText('Company (optional)'), { target: { value: 'Haddad Engineering' } })
+    expect(screen.getByTestId('contract-send-says').textContent).toBe('The paper will say: Noor Haddad, Structural engineer, signing for Haddad Engineering.')
+    fireEvent.change(screen.getByLabelText('Signer email'), { target: { value: 'noor@haddadeng.example' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(prepare).toHaveBeenCalledWith({ signerName: 'Noor Haddad', signerEmail: 'noor@haddadeng.example', typedCompany: 'Haddad Engineering', keep: false }))
+    expect(io.sends[0]).toMatchObject({ signingFor: 'Haddad Engineering', signerName: 'Noor Haddad' })
+  })
+
+  it('an address the app already keeps is named before the send, so nobody is added twice', async () => {
+    io.known = { contactId: 'k1', name: 'Lena Park', party: 'supply_house' }
+    renderWithProviders(<ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={unlisted} preparePartyPaper={async () => 'party-row'} initialEmail="lena@tallgrass.example" initialSignerName="Lena Park" onClose={() => {}} onSent={() => {}} />)
+    expect((await screen.findByTestId('contract-send-known-address', undefined, { timeout: 3000 })).textContent).toBe('The app already keeps this address: Lena Park, at a supply house. The paper goes to that record, and nobody is added twice.')
+    expect(io.lookedUp).toEqual(['lena@tallgrass.example'])
+  })
+
+  it('an address that is someone on the roster is refused: they are picked from the list', async () => {
+    io.known = { contactId: 'k2', name: 'Pat Tallman', party: 'person' }
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(<ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={unlisted} preparePartyPaper={prepare} initialEmail="pat@crew.example" initialSignerName="Pat Tallman" onClose={() => {}} onSent={() => {}} />)
+    expect((await screen.findByTestId('contract-send-known-roster', undefined, { timeout: 3000 })).textContent).toBe('This address is Pat Tallman, who is on the roster. Close this and pick them from the list.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('This address is Pat Tallman, who is on the roster. Close this and pick them from the list.')
+    expect(prepare).not.toHaveBeenCalled()
+    expect(io.sends).toEqual([])
+  })
+
+  it('a party’s paper sent again opens on its signer, writes nothing, and looks no address up', async () => {
+    const onSent = vi.fn()
+    renderWithProviders(<ContractSendWindow {...base} again target={partyTarget} docId="p1" party={rep} initialEmail="lena@tallgrass.example" initialSignerName="Lena Park" initialSignerTitle="Branch manager" onClose={() => {}} onSent={onSent} />)
+    expect(screen.getByTestId('contract-send-again-note').textContent).toBe('Mutual secrecy agreement goes to Lena Park again, with a new signing link. The link sent before stops working.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send the email again' }))
+    await waitFor(() => expect(onSent).toHaveBeenCalledWith({ docId: 'p1', emailed: true, planKind: null }))
+    expect(io.sends[0]).toMatchObject({ documentId: 'p1', signingFor: 'Tallgrass Supply Co.' })
+    expect(io.lookedUp).toEqual([])
+    expect(io.writes).toEqual([])
   })
 })

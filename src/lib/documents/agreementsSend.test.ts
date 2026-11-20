@@ -3,7 +3,7 @@
  * keeps, and who can be picked. Every name here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { papersMatching, sendablePapers, sendRosterNames } from './agreementsSend'
+import { papersMatching, sendablePapers, sendRoster, sendRosterNames } from './agreementsSend'
 import { quickSendNoContentWords, quickSendPickPlan, type QuickSendPersonRow } from '../contractsQuickSend'
 
 const bookRow = (over: Record<string, unknown>) => ({
@@ -62,6 +62,22 @@ describe('sendRosterNames', () => {
         { account_kind: 'person', is_archived: false, roster_name: null, account_name: null, pay_name: '  ' },
       ]),
     ).toEqual(['Bryce Tolland', 'Priya Nair'])
+  })
+})
+
+describe('sendRoster', () => {
+  it('is the same people, each with whether the roster says sub', () => {
+    const roster = [
+      { account_kind: 'person' as const, is_archived: false, roster_name: 'Priya Nair', account_name: 'Priya N', pay_name: 'Priya Nair', kind: 'helper' },
+      { account_kind: 'person' as const, is_archived: false, roster_name: 'Ortega Mechanical', account_name: null, pay_name: 'Ortega Mechanical', kind: 'sub' },
+      { account_kind: 'person' as const, is_archived: true, roster_name: 'Gone Away', account_name: null, pay_name: 'Gone Away', kind: 'sub' },
+      { account_kind: 'twin' as const, is_archived: false, roster_name: null, account_name: 'Twin Estimator', pay_name: 'Twin Estimator', kind: null },
+    ]
+    expect(sendRoster(roster)).toEqual([
+      { name: 'Ortega Mechanical', sub: true },
+      { name: 'Priya Nair', sub: false },
+    ])
+    expect(sendRoster(roster).map((p) => p.name)).toEqual(sendRosterNames(roster))
   })
 })
 

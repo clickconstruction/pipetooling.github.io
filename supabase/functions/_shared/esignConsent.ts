@@ -15,7 +15,8 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 export type EsignConsentInput = {
   version: number
   lang: 'en' | 'es'
-  audience: 'customer' | 'sub' | 'gc'
+  /** `outside` since punch list #403: a signer who is neither a customer nor a sub, such as a supply house's rep. */
+  audience: 'customer' | 'sub' | 'gc' | 'outside'
   documentNoun: string
   clauseText: string
 }
@@ -30,7 +31,7 @@ export function parseEsignConsent(raw: unknown): EsignConsentInput | null {
   const r = raw as Record<string, unknown>
   const version = typeof r.version === 'number' && Number.isInteger(r.version) && r.version >= 1 ? r.version : null
   const lang = r.lang === 'es' ? 'es' : r.lang === 'en' ? 'en' : null
-  const audience = r.audience === 'customer' || r.audience === 'sub' || r.audience === 'gc' ? r.audience : null
+  const audience = r.audience === 'customer' || r.audience === 'sub' || r.audience === 'gc' || r.audience === 'outside' ? r.audience : null
   const documentNoun = typeof r.documentNoun === 'string' ? r.documentNoun.trim().slice(0, 200) : ''
   const clauseText = typeof r.clauseText === 'string' ? r.clauseText.trim() : ''
   if (version == null || !lang || !audience || !clauseText || clauseText.length > MAX_CLAUSE) return null
