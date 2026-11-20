@@ -1,7 +1,18 @@
 import { Suspense, lazy, useCallback, useState, type CSSProperties, type ReactNode } from 'react'
+import { Layers } from 'lucide-react'
 import { useMapTime } from '../../hooks/useMapTime'
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { googleMapTypeForLayer, type MapLayerChoice } from '../../lib/map/googleMapType'
+import {
+  MAP_CORNER_PRESS_BOTTOM_PX,
+  MAP_CORNER_PRESS_SIDE_PX,
+  MAP_CORNER_PRESS_SIZE_PX,
+  mapProviderSwitch,
+  readMapProviderPick,
+  resolvePickedMapProvider,
+  writeMapProviderPick,
+  type MapProviderPick,
+} from '../../lib/map/mapProviderPick'
 import { mapTimeSpotFromPins, type MapTimeSpot } from '../../lib/map/mapTime'
 import { OLDER_PHOTOS_VIEW_ZOOM } from '../../lib/map/olderPhotos'
 import { MapTimeRow } from './MapTimeRow'
@@ -18,6 +29,12 @@ export type PinsMapFrameProps = PinsMapCanvasProps & {
   defaultLayer?: MapLayerChoice
   /** A map that never draws on Google: its tools are Leaflet's own (the Map page), or it has no reason to (a person's tasks). */
   leafletOnly?: boolean
+  /**
+   * A map with its own switch between Google Maps and the OpenStreetMap map: the name this device keeps
+   * the person's pick under. The switch is an icon at the map's bottom right, and Google's zoom buttons
+   * move to the top left, where the other map's are, so the corner is free and the two maps read alike.
+   */
+  providerSwitchKey?: string
   /** A map with no Time press. */
   noTime?: boolean
   /** The place Time looks at when it is not a dot: the screen's own place. It wins over the dots. */
@@ -46,15 +63,23 @@ export type PinsMapFrameProps = PinsMapCanvasProps & {
  *   Today and a date changes one tile layer and nothing else. A pin opens no popup while Time is
  *   on: the popup would cover the ground the person came to see.
  *
+ * - **The switch.** A card that hands `providerSwitchKey` lets the person pick between the two maps
+ *   of today (`mapProviderPick.ts`): an icon at the bottom right, kept on the device, never offered
+ *   when the page can draw one map alone, and waiting while Time is on. A card that hands none is
+ *   as it was.
+ *
  * Time's state lives in `useMapTime`, here, so it ends when the map leaves the screen: another tab,
  * a closed window, a card's own Hide map.
  */
-export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = false, noTime = false, timeSpot, timeDotsWords, overlay, boxStyle, style, children, ...canvas }: PinsMapFrameProps) {
+export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = false, providerSwitchKey, noTime = false, timeSpot, timeDotsWords, overlay, boxStyle, style, children, ...canvas }: PinsMapFrameProps) {
   const { pins, selectedId, height, isMobile } = canvas
   const [layerPick, setLayerPick] = useState<MapLayerChoice | null>(null)
   const [googleFailed, setGoogleFailed] = useState(false)
   const layer = layerPick ?? defaultLayer
-  const provider = leafletOnly ? 'osm' : resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
+  const [providerPick, setProviderPick] = useState<MapProviderPick | null>(() => (providerSwitchKey ? readMapProviderPick(providerSwitchKey) : null))
+  const key = googleMapsBrowserKey()
+  const hasSwitch = !leafletOnly && providerSwitchKey != null
+  const provider = leafletOnly ? 'osm' : hasSwitch ? resolvePickedMapProvider({ key, googleFailed, pick: providerPick }) : resolveDashboardMapProvider({ key, googleFailed })
   const googleUnavailable = useCallback(
     (reason: string) => {
       console.warn(`[${surface}] Google Maps unavailable, using OpenStreetMap: ${reason}`)
@@ -76,6 +101,11 @@ export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = 
   const inTime = time.frame != null
   const onLeaflet = inTime || provider !== 'google'
   const shownLayer: MapLayerChoice = inTime ? 'satellite' : layer
+  const providerPress = hasSwitch ? mapProviderSwitch({ key, googleFailed, provider, inTime }) : null
+  const pickProvider = (to: MapProviderPick) => {
+    setProviderPick(to)
+    if (providerSwitchKey) writeMapProviderPick(providerSwitchKey, to)
+  }
 
   return (
     <div data-map-frame style={{ minWidth: 0, ...style }}>
@@ -99,11 +129,24 @@ export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = 
               {children}
             </PinsMapImageryCanvasLazy>
           ) : (
-            <PinsMapGoogleCanvasLazy key={isMobile ? 'phone' : 'desk'} {...canvas} apiKey={googleMapsBrowserKey()} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} />
+            <PinsMapGoogleCanvasLazy key={isMobile ? 'phone' : 'desk'} {...canvas} apiKey={key} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} zoomAtTopLeft={hasSwitch} />
           )}
         </Suspense>
         <MapViewControl layer={layer} onLayer={pickLayer} time={noTime ? null : time} isMobile={isMobile} />
         {overlay}
+        {providerPress ? (
+          <button
+            type="button"
+            data-map-provider-switch={providerPress.to}
+            aria-label={providerPress.label}
+            title={providerPress.label}
+            onClick={() => pickProvider(providerPress.to)}
+            // Over the map's own controls (Leaflet's sit at 800 to 1000), inside the map's own stacking box.
+            style={{ position: 'absolute', zIndex: 1001, right: MAP_CORNER_PRESS_SIDE_PX, bottom: MAP_CORNER_PRESS_BOTTOM_PX, width: MAP_CORNER_PRESS_SIZE_PX, height: MAP_CORNER_PRESS_SIZE_PX, padding: 0, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+          >
+            <Layers size={20} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
       {noTime ? null : <MapTimeRow time={time} isMobile={isMobile} surface={surface} dotsWords={timeDotsWords} />}
     </div>

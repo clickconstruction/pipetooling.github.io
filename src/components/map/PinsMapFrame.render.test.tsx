@@ -28,9 +28,9 @@ vi.mock('./PinsMapImageryCanvas', () => ({
   },
 }))
 vi.mock('./PinsMapGoogleCanvas', () => ({
-  default: function GoogleCanvasStub(props: { apiKey: string; mapTypeId?: string; onUnavailable: (reason: string) => void; pins: StubPin[]; onSelect: (id: string | null) => void }) {
+  default: function GoogleCanvasStub(props: { apiKey: string; mapTypeId?: string; zoomAtTopLeft?: boolean; onUnavailable: (reason: string) => void; pins: StubPin[]; onSelect: (id: string | null) => void }) {
     return (
-      <div data-testid="google-canvas" data-key={props.apiKey} data-map-type={props.mapTypeId}>
+      <div data-testid="google-canvas" data-key={props.apiKey} data-map-type={props.mapTypeId} data-zoom-top-left={props.zoomAtTopLeft ? 'yes' : 'no'}>
         {props.pins.map((p) => (
           <button key={p.id} type="button" onClick={() => props.onSelect(p.id)}>{`dot ${p.title}`}</button>
         ))}
@@ -145,6 +145,91 @@ describe('the map of today', () => {
     await screen.findByTestId('canvas')
     expect(time()).toBeNull()
     expect(screen.getByRole('button', { name: 'Satellite' })).toBeTruthy()
+  })
+})
+
+describe('a map with its own switch between the two maps (v2.8032)', () => {
+  const KEY = 'test_map_provider'
+  const toOsm = () => screen.queryByRole('button', { name: 'Switch to the OpenStreetMap map' })
+  const toGoogle = () => screen.queryByRole('button', { name: 'Switch to Google Maps' })
+
+  it('a card that asks for none wears none, and Google keeps its zoom buttons where it puts them', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    render(<Card />)
+    const google = await screen.findByTestId('google-canvas')
+    expect(google.getAttribute('data-zoom-top-left')).toBe('no')
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('opens on Google, one press goes to the OpenStreetMap map and one comes back, and the device keeps the pick', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    const view = render(<Card providerSwitchKey={KEY} defaultLayer="satellite" />)
+    const google = await screen.findByTestId('google-canvas')
+    // The bottom right is the switch's, so Google's zoom buttons go where the other map's are.
+    expect(google.getAttribute('data-zoom-top-left')).toBe('yes')
+    expect(provider()).toBe('google')
+    // Nothing is kept until the person presses.
+    expect(localStorage.getItem(KEY)).toBeNull()
+    const press = toOsm()!
+    expect(press.getAttribute('title')).toBe('Switch to the OpenStreetMap map')
+    expect(press.textContent).toBe('')
+    fireEvent.click(press)
+    const canvas = await screen.findByTestId('canvas')
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    expect(provider()).toBe('osm')
+    // The view the person was on comes with them.
+    expect(canvas.getAttribute('data-layer')).toBe('satellite')
+    expect(localStorage.getItem(KEY)).toBe('osm')
+    // Another visit opens on the map they picked.
+    view.unmount()
+    render(<Card providerSwitchKey={KEY} defaultLayer="satellite" />)
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    fireEvent.click(toGoogle()!)
+    expect(await screen.findByTestId('google-canvas')).toBeTruthy()
+    expect(localStorage.getItem(KEY)).toBe('google')
+    expect(toOsm()).toBeTruthy()
+  })
+
+  it('with no key there is one map and no switch, whatever the device kept', async () => {
+    localStorage.setItem(KEY, 'google')
+    render(<Card providerSwitchKey={KEY} />)
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(provider()).toBe('osm')
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
+  })
+
+  it('once Google fails on the page the map is the Leaflet canvas and the switch is gone, with the pick left as it was', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(<Card providerSwitchKey={KEY} />)
+    await screen.findByTestId('google-canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'fail google' }))
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
+    expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('waits while Time is on, and is back on the map the person left', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    walk.fn = answers(FOUND)
+    render(<Card providerSwitchKey={KEY} open="pump" />)
+    await screen.findByTestId('google-canvas')
+    fireEvent.click(time())
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(provider()).toBe('archive')
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
+    fireEvent.click(time())
+    expect(await screen.findByTestId('google-canvas')).toBeTruthy()
+    expect(toOsm()).toBeTruthy()
+  })
+
+  it('a map that never draws on Google has no switch, key or not', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    render(<Card providerSwitchKey={KEY} leafletOnly />)
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
   })
 })
 

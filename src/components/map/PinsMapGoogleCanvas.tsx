@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   APIProvider,
+  ControlPosition,
   InfoWindow,
   Map as GoogleMap,
   Marker,
@@ -49,6 +50,12 @@ export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   onUnavailable: (reason: string) => void
   /** v2.7686: the base map, for a card with a Satellite / Streets switch. Omitted, the map is the road map. */
   mapTypeId?: GoogleMapTypeId
+  /**
+   * v2.8032: the zoom buttons at the top left, where the Leaflet canvas has its own, for a map that
+   * keeps its bottom right for a press of its own (the frame's switch between the two maps).
+   * Omitted, they sit where Google puts them, at the bottom right.
+   */
+  zoomAtTopLeft?: boolean
 }
 
 function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: number }) {
@@ -246,7 +253,7 @@ function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = fal
 }
 
 export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
-  const { apiKey, onUnavailable, pins, fitSignal, height, isMobile, anchor, fitPoints, mapTypeId } = props
+  const { apiKey, onUnavailable, pins, fitSignal, height, isMobile, anchor, fitPoints, mapTypeId, zoomAtTopLeft = false } = props
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -274,6 +281,8 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
             {...(mapTypeId ? { mapTypeId, ...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {}) } : {})}
             disableDefaultUI
             zoomControl
+            // Spread, so a map that leaves the buttons where Google puts them never sends the option at all
+            {...(zoomAtTopLeft ? { zoomControlOptions: { position: ControlPosition.LEFT_TOP } } : {})}
             clickableIcons={false}
             onClick={() => props.onSelect(null)}
           >

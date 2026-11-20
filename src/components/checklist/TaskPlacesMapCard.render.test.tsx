@@ -5,17 +5,22 @@
  * never hidden, no map at all when no task has a place, a fold the device remembers, and one press
  * that asks the phone where it is.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
-const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed', fix: { lat: 29.5, lng: -98.3, accuracyM: 9 } }))
+const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed', fix: { lat: 29.5, lng: -98.3, accuracyM: 9 }, held: null as null | (() => void), hold: false }))
 vi.mock('../../lib/materials/myLocation', () => ({
   requestMyFix: (onOk: (p: unknown) => void, onFail: (w: string) => void) => {
     phone.asked += 1
-    if (phone.why) onFail(phone.why)
-    else onOk({ ...phone.fix })
+    const answer = () => {
+      if (phone.why) onFail(phone.why)
+      else onOk({ ...phone.fix })
+    }
+    // A case may hold the phone's answer back, to see the press while it waits.
+    if (phone.hold) phone.held = answer
+    else answer()
   },
 }))
 /** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
@@ -51,6 +56,21 @@ vi.mock('../map/PinsMapImageryCanvas', () => ({
   },
 }))
 
+/** Google's canvas, stood in for the same way (v2.8032). */
+vi.mock('../map/PinsMapGoogleCanvas', () => ({
+  default: function GoogleCanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; mapTypeId?: string; zoomAtTopLeft?: boolean }) {
+    return (
+      <div data-testid="google-canvas" data-map-type={props.mapTypeId} data-zoom-top-left={props.zoomAtTopLeft ? 'yes' : 'no'}>
+        {props.pins.map((p) => (
+          <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
+            {`dot ${p.label ?? p.title}`}
+          </button>
+        ))}
+      </div>
+    )
+  },
+}))
+
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from './TaskPlacesMapCard'
 
 const place = (name: string, lat: number, lng = -98.3): TaskPlace => ({ name, lat, lng, accuracyM: null, setBy: null, setAt: null })
@@ -62,11 +82,19 @@ const TASKS: TaskPlacesMapTask[] = [
   { id: 'call', title: 'Call the feed store', place: null },
 ]
 
+// With no browser key the map is the Leaflet canvas, as on a build without one. The cases at the foot set a key.
+beforeEach(() => {
+  vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
+})
+
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  vi.unstubAllEnvs()
   phone.asked = 0
   phone.why = null
+  phone.hold = false
+  phone.held = null
   phone.fix = { lat: 29.5, lng: -98.3, accuracyM: 9 }
   opened.length = 0
   walked.length = 0
@@ -220,3 +248,123 @@ describe('TaskPlacesMapCard', () => {
     expect(await screen.findByTestId('canvas')).toBeTruthy()
   })
 })
+
+describe('TaskPlacesMapCard on Google Maps (v2.8032)', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+  })
+
+  it('draws on Google with a key: the same numbered dots, the photograph with street names, and the zoom buttons at the top left', async () => {
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    const google = await screen.findByTestId('google-canvas')
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    expect(google.getAttribute('data-map-type')).toBe('hybrid')
+    expect(google.getAttribute('data-zoom-top-left')).toBe('yes')
+    expect([...google.querySelectorAll('button')].map((d) => d.textContent)).toEqual(['dot 1', 'dot 2+'])
+    fireEvent.click(screen.getByRole('button', { name: 'Streets' }))
+    expect(google.getAttribute('data-map-type')).toBe('roadmap')
+    // A dot opens its tasks under the map, as on the other map.
+    fireEvent.click(screen.getByRole('button', { name: 'dot 2+' }))
+    expect(document.querySelector('[data-task-places-selected]')?.textContent).toContain('Pump house')
+  })
+
+  it('one press goes to the OpenStreetMap map, the device remembers, and one press comes back', async () => {
+    const view = render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    await screen.findByTestId('google-canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to the OpenStreetMap map' }))
+    const canvas = await screen.findByTestId('canvas')
+    expect([...canvas.querySelectorAll('button')].map((d) => d.textContent)).toEqual(['dot 1', 'dot 2+'])
+    expect(localStorage.getItem('task_places_map_provider')).toBe('osm')
+    view.unmount()
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    expect(await screen.findByTestId('canvas')).toBeTruthy()
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Google Maps' }))
+    expect(await screen.findByTestId('google-canvas')).toBeTruthy()
+    expect(localStorage.getItem('task_places_map_provider')).toBe('google')
+  })
+
+  it('Show where I am puts the person’s dot on Google, with the distance handed to the list and the line about the dot', async () => {
+    const onMe = vi.fn()
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} onMe={onMe} />)
+    const google = await screen.findByTestId('google-canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    await waitFor(() => expect(onMe).toHaveBeenCalledWith({ lat: 29.5, lng: -98.3, accuracyM: 9 }))
+    expect([...google.querySelectorAll('button')].map((d) => d.textContent)).toEqual(['dot 1', 'dot 2+', 'dot You'])
+    expect(document.querySelector('[data-task-places-me]')?.textContent).toBe('The dark dot is you. Your location stays on this phone.')
+    // The dot stays through a change of map.
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to the OpenStreetMap map' }))
+    expect(await screen.findByRole('button', { name: 'dot You' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Find me again' })).toBeTruthy()
+  })
+
+  it('a rough reading on Google shows the way to the Precise Location switch and puts no dot on the map (#402)', async () => {
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    await screen.findByTestId('google-canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(screen.queryByRole('button', { name: 'dot You' })).toBeNull()
+  })
+
+  it('Time takes Google’s map down for the archive, looks at the task’s place, and gives Google’s map back', async () => {
+    render(<TaskPlacesMapCard tasks={[TASKS[1]!]} onShowTask={() => {}} />)
+    await screen.findByTestId('google-canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    expect(await screen.findByRole('button', { name: 'dot You' })).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    const canvas = await screen.findByTestId('canvas')
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Today’s photo of Pump house, taken February 9, 2025. 1 older photo.'))
+    expect(walked).toEqual([[29.55, -98.3]])
+    expect(canvas.getAttribute('data-fit')).toBe('29.5495,-98.3005 29.5505,-98.2995')
+    // The switch waits while Time is on, and the person's own press does not.
+    expect(document.querySelector('[data-map-provider-switch]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Find me again' })).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    expect(await screen.findByTestId('google-canvas')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Switch to the OpenStreetMap map' })).toBeTruthy()
+  })
+})
+
+describe('the Show where I am press, an icon since v2.8032', () => {
+  it('carries no words on the map: its name and its title say what a press does, at each step', async () => {
+    phone.hold = true
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    await screen.findByTestId('canvas')
+    const press = document.querySelector('[data-task-places-where-i-am]') as HTMLButtonElement
+    expect(press.textContent).toBe('')
+    expect(press.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(press.getAttribute('aria-label')).toBe('Show where I am')
+    expect(press.getAttribute('title')).toBe('Show where I am')
+    expect(press.getAttribute('data-task-places-where-i-am')).toBe('idle')
+    // Waiting on the phone: the press says so, turns, and takes no second press.
+    fireEvent.click(press)
+    expect(press.getAttribute('aria-label')).toBe('Finding you…')
+    expect(press.getAttribute('title')).toBe('Finding you…')
+    expect(press.getAttribute('aria-busy')).toBe('true')
+    expect(press.disabled).toBe(true)
+    expect(press.querySelector('svg')?.getAttribute('class')).toContain('mapCornerPressSpin')
+    fireEvent.click(press)
+    expect(phone.asked).toBe(1)
+    // Found: the press offers to find the person again.
+    act(() => phone.held?.())
+    expect(press.getAttribute('aria-label')).toBe('Find me again')
+    expect(press.getAttribute('data-task-places-where-i-am')).toBe('found')
+    expect(press.getAttribute('aria-busy')).toBe('false')
+    expect(press.disabled).toBe(false)
+  })
+
+  it('sits at the bottom left of the map, a finger wide, across from the switch', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} />)
+    await screen.findByTestId('google-canvas')
+    const press = document.querySelector('[data-task-places-where-i-am]') as HTMLButtonElement
+    const other = document.querySelector('[data-map-provider-switch]') as HTMLButtonElement
+    expect([press.style.left, press.style.bottom, press.style.width, press.style.height]).toEqual(['10px', '40px', '40px', '40px'])
+    expect([other.style.right, other.style.bottom, other.style.width, other.style.height]).toEqual(['10px', '40px', '40px', '40px'])
+    expect(press.style.top).toBe('')
+  })
+})
+
