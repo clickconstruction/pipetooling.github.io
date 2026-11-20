@@ -2116,6 +2116,7 @@ punch list #277;
 since v2.6615 an entry's `N§16` opens the narrative at that section and a cited heading's *Jump to* row lists the entries that cite it);
 since v2.6547 **By theme**, the record one theme at a time with each item opened in a window over the list (Themes on the record, below), and since v2.6543 **Matter**, the analysis for counsel standing on the person (*Legal desk* → Matter on a person), and since v2.7107 **Case**, a case's open items by the number the file gave each and its log, written through `dev_case_write`.
 A waiting field report is filed from its own line.
+Since v2.7991 the fact strip ends with the person's standing, employee or subcontractor, a press that opens **Standing…**, where a stretch is recorded, changed, ended or taken off through `dev_engagement_write`, and the Timeline draws each change under Employment.
 
 **Database**: `person_files` (summary/narrative, `UNIQUE(person_id, kind)`) + `person_file_entries` (append-only) + `dev_seat_kept_plans` (a plan the dev seat made on the file, kept for a yes and decided once, v2.7122) + `person_engagements` (what a person was over time, employee or subcontractor by stretch, v2.7111, written only through `dev_engagement_write`) + `person_file_amendments` (which entry or record corrects or completes which, v2.6969;
 withdrawn, never deleted) + `person_case_items` and `person_case_log` (a case's open items and log, numbered by the database, v2.7106) + `person_file_evidence` (append-only, v2.6392;

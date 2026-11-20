@@ -143,7 +143,8 @@ right to apply in the session on his word, as today.
 | Seat | `get_person_file` and the brief carry `engagements`; `plan_engagement` → `apply_engagement`; `get_hours_statement` says how many rows it left out as placed pay. |
 
 - **PR 4a (v2.7111, built):** migration `20261113090000`, the table, the one door `dev_engagement_write` (no direct write to the table), the kernel (`standingOn(day)`, overlaps refused), the bed. Kinds built: employee and subcontractor.
-- **4b:** the strip and the Timeline. **4c:** the seat. **4d:** the mark on hours and `isPresence` in
+- **4b (v2.7991, built):** the fact strip wears the standing and opens **Standing…** (`PersonStandingWindow.tsx`: record a stretch, change from a day, end the running one, take one off with its reason), and the Timeline's Employment source draws each change (`engagementLines`). The help guide has the steps.
+- **4c:** the seat. **4d:** the mark on hours and `isPresence` in
   the statement's reader (`hoursStatementRead.ts` takes its first recorded day from every row today).
   **4e:** the other readers.
 - **His calls:** the list of kinds. And 4d changes what existing rows mean: which rows get the mark is

@@ -128,6 +128,28 @@ Every change to an item writes a line on the log. You can add a line of your own
 
 Does the item already have a number that people use? Type it in the number box. The file refuses a number that is taken.
 
+## Record what someone was, employee or subcontractor
+
+A person's roster row says what they are today. The row does not say what they were last spring. The file keeps that as stretches, one at a time.
+
+1. Open the person's file.
+2. Press the standing on the strip of facts at the top. The press reads *Standing…* when nothing is on file.
+3. Press {{button:blue|Record a stretch…}}. Pick employee or subcontractor and set the first day.
+4. Say where the fact comes from. Name the paper or the pay run under *Which one*.
+5. Press {{button:blue|Record the stretch}}.
+
+The strip then reads the standing, like *Subcontractor · since Mar 3, 2025 · still engaged*.
+
+Did the person move from one to the other? Press {{button:blue|Change to employee…}} and set the day. The running stretch ends the day before. The new one starts on that day.
+
+Press *End the stretch…* when someone leaves. Set their last day.
+
+Each change shows on the **Timeline** under *Employment*, on the day it took hold.
+
+A stretch is never deleted. Was one recorded by mistake? Press *Take it off…* and say why. The stretch leaves the file and its reason is kept.
+
+Two stretches can never share a day. The file refuses days that overlap one already on file.
+
 ## See what an agent is waiting on you for
 
 An agent can keep a plan on a person's file and wait for your yes. The plan is not written until you say so.
