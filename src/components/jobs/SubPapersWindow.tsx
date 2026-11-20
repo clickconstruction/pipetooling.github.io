@@ -427,6 +427,28 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   )
 }
 
+/**
+ * What a paper's press draws while the letterhead and the register are read: the window's own frame, with Close.
+ * Until this the press drew nothing for as long as the reads took, and looked dead on a slow line.
+ */
+export function SubPapersWaiting({ name, onClose }: { name: string; onClose: () => void }) {
+  return (
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: SCHEDULE_SHEET_Z + 1, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
+      <div role="dialog" aria-modal="true" aria-busy="true" aria-label={`Papers for ${name}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1rem 1.1rem', width: 'min(820px, 100%)', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.8rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Papers · {name}</h3>
+          <button type="button" onClick={onClose} style={{ ...quiet, marginLeft: 'auto' }}>
+            Close
+          </button>
+        </div>
+        <div role="status" data-testid="sub-papers-waiting" style={{ marginTop: 12, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          Getting the papers ready…
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function nextDay(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number)
   const t = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + 1))

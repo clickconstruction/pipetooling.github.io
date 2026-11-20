@@ -24,8 +24,10 @@ vi.mock('../../lib/supabase', () => ({
     functions: { invoke: (...args: unknown[]) => db.invoke(...args) },
   },
 }))
+// The letterhead's read. A test holds it open with `gate` to see what the window draws while it waits.
+const issuer = vi.hoisted(() => ({ gate: null as Promise<unknown> | null }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
-  fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve({ rowExists: true }),
+  fetchPhysicalInvoiceIssuerFromAppSettings: () => issuer.gate ?? Promise.resolve({ rowExists: true }),
   getPhysicalInvoiceIssuerForDocument: () => ({ companyName: 'Made-up Plumbing Co.', addressText: '1 Made-up Way\nAustin, TX', phone: '555-0100', email: 'office@example.com' }),
 }))
 // The papers' own check, with a switch: the kernel builds a set that agrees, so a test turns the refusal on.
@@ -316,6 +318,24 @@ describe('SubPapersWindow, on real rows', () => {
     expect(paper.textContent).toContain('$5,100.00')
   })
 
+  it('says it is getting the papers ready while the letterhead is read, and Close works meanwhile', async () => {
+    let letGo: (v: unknown) => void = () => undefined
+    issuer.gate = new Promise((resolve) => (letGo = resolve))
+    try {
+      const { onClose } = mount()
+      const waiting = await screen.findByRole('dialog', { name: 'Papers for Harlan Mechanical' })
+      expect(within(waiting).getByTestId('sub-papers-waiting').textContent).toBe('Getting the papers ready…')
+      expect(screen.queryByTestId('sub-paper-preview')).toBeNull()
+      fireEvent.click(within(waiting).getByRole('button', { name: 'Close' }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+      await act(async () => letGo({ rowExists: true }))
+      expect((await screen.findByTestId('sub-paper-preview')).textContent).toContain('Made-up Plumbing Co.')
+      expect(screen.queryByTestId('sub-papers-waiting')).toBeNull()
+    } finally {
+      issuer.gate = null
+    }
+  })
+
   it('Download makes the PDF, saves it under its name and files a copy on the person and the jobs', async () => {
     io.fileSentCopy.mockResolvedValue(true)
     mount('work')
@@ -553,7 +573,8 @@ describe('SubPapersWindow: Send', () => {
     mintAll()
     db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 1 }, error: null })
     open('payment', { startOnSend: true })
-    expect((await screen.findByRole('heading')).textContent).toBe('Send the payment record')
+    // The frame draws first while the letterhead is read, so wait for the window itself.
+    expect((await screen.findByRole('heading', { name: 'Send the payment record' })).textContent).toBe('Send the payment record')
     expect(screen.queryByTestId('sub-paper-preview')).toBeNull()
     expect(screen.getByTestId('sub-papers-message').textContent).toContain('Payment record PR-0226 from Made-up Plumbing Co.')
     fireEvent.click(screen.getByRole('button', { name: 'Send 1 paper by email' }))

@@ -37,7 +37,7 @@ import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
-import { SubPapersWindowView, type SubPaperContact, type SubPapersOpen } from './SubPapersWindow'
+import { SubPapersWaiting, SubPapersWindowView, type SubPaperContact, type SubPapersOpen } from './SubPapersWindow'
 
 export type SubPapersWindowProps = {
   open: SubPapersOpen
@@ -125,7 +125,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   }
   const filingOf = (paper: SubPaper) => ({ kind: SUB_PAPER_SENT_KIND[paper.kind], title: subPaperTitle(paper), recipientName: name, personId, jobIds: jobIdsOf(paper), source: paper.kind === 'work_statement' ? { table: 'people_labor_jobs', id: paper.sheetId } : null })
 
-  if (!ctx || !registerRead) return null
+  // The window's frame while the letterhead and the register are read, so the press is seen to have opened something.
+  if (!ctx || !registerRead) return <SubPapersWaiting name={name} onClose={onClose} />
   /** Register one paper. Null where the register did not answer with a paper; throws the register's reason when it refuses. */
   const mint = async (paper: SubPaper, range: StatementRange): Promise<MintedSubPaper | null> => {
     if (!personId) return null
