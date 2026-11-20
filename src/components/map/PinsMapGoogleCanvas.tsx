@@ -14,18 +14,7 @@
  * with a Satellite / Streets switch passes `mapTypeId`; a card that passes none
  * draws the road map as before. Lazy-load this file.
  */
-import {
-  Component,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ErrorInfo,
-  type MutableRefObject,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   APIProvider,
   InfoWindow,
@@ -46,12 +35,13 @@ import {
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
-import { PAINT_POLL_MS, paintClockLook } from '../../lib/map/paintClock'
 import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanvasDoors'
+import { GoogleCanvasBoundary } from './GoogleCanvasBoundary'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -59,44 +49,6 @@ export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   onUnavailable: (reason: string) => void
   /** v2.7686: the base map, for a card with a Satellite / Streets switch. Omitted, the map is the road map. */
   mapTypeId?: GoogleMapTypeId
-}
-
-/** How long the Maps script may take before the card gives up on it. */
-const LOAD_TIMEOUT_MS = 10000
-
-/**
- * Whether the map's frame is in the window, for the paint clock (`paintClock.ts`). Google builds no
- * map until its own observer sees the div, so the clock must not run before ours does. Ours has no
- * margin and Google's has 2,500 px at the least, so whenever this says yes Google's wait is over.
- * A browser with no `IntersectionObserver` gets no wait from Google either, and always reads yes.
- * A ref, not state: only the clock reads it, and a scroll must not redraw the map.
- */
-function useFrameInView(frameRef: RefObject<HTMLDivElement | null>): MutableRefObject<boolean> {
-  const inView = useRef(typeof IntersectionObserver === 'undefined')
-  useEffect(() => {
-    const frame = frameRef.current
-    if (!frame || typeof IntersectionObserver === 'undefined') return
-    const obs = new IntersectionObserver((entries) => {
-      const last = entries[entries.length - 1]
-      if (last) inView.current = last.isIntersecting
-    })
-    obs.observe(frame)
-    return () => obs.disconnect()
-  }, [frameRef])
-  return inView
-}
-
-function useStampedTheme(): string | null {
-  const [theme, setTheme] = useState<string | null>(() =>
-    typeof document === 'undefined' ? null : (document.documentElement.dataset.theme ?? null),
-  )
-  useEffect(() => {
-    if (typeof MutationObserver === 'undefined') return
-    const obs = new MutationObserver(() => setTheme(document.documentElement.dataset.theme ?? null))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => obs.disconnect()
-  }, [])
-  return theme
 }
 
 function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: number }) {
@@ -293,55 +245,14 @@ function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = fal
   )
 }
 
-/** Any exception inside the Google canvas → the card falls back rather than blanking. */
-class GoogleCanvasBoundary extends Component<{ onUnavailable: (reason: string) => void; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-  componentDidCatch(error: Error, _info: ErrorInfo) {
-    this.props.onUnavailable(`render: ${error.message}`)
-  }
-  render() {
-    return this.state.failed ? null : this.props.children
-  }
-}
-
 export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
   const { apiKey, onUnavailable, pins, fitSignal, height, isMobile, anchor, fitPoints, mapTypeId } = props
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
-  const frameInView = useFrameInView(frameRef)
-  // Paint watchdog: once the script has loaded, the map must materialise in the frame. It is the
-  // one door that catches a rejected key, and its clock runs only while the frame is in the window.
-  useEffect(() => {
-    if (!loaded) return
-    let waitedMs = 0
-    const tick = window.setInterval(() => {
-      const step = paintClockLook(waitedMs, { painted: !!frameRef.current?.querySelector('.gm-style'), inView: frameInView.current })
-      waitedMs = step.waitedMs
-      if (step.verdict === 'waiting') return
-      window.clearInterval(tick)
-      if (step.verdict === 'never-painted') onUnavailable('render: the Maps API loaded but never painted a map (key rejected or blocked?)')
-    }, PAINT_POLL_MS)
-    return () => window.clearInterval(tick)
-  }, [loaded, onUnavailable, frameInView])
-  useEffect(() => {
-    if (loaded) return
-    const t = window.setTimeout(() => onUnavailable('timeout: Maps JavaScript API did not load'), LOAD_TIMEOUT_MS)
-    return () => window.clearTimeout(t)
-  }, [loaded, onUnavailable])
-  // A rejected key (invalid, referrer-blocked, API not enabled, billing off) does NOT fail the
-  // script load — the API paints a grey map and calls this global instead.
-  useEffect(() => {
-    const w = window as Window & { gm_authFailure?: () => void }
-    const prev = w.gm_authFailure
-    w.gm_authFailure = () => onUnavailable('auth: Google rejected the browser key for this page')
-    return () => {
-      w.gm_authFailure = prev
-    }
-  }, [onUnavailable])
+  // The doors to OpenStreetMap that are not the loader's own: the load timeout, Google's word that
+  // the key is rejected, and the paint clock, which runs only while the frame is in the window.
+  useGoogleCanvasDoors({ frameRef, loaded, onUnavailable })
   const first = pins[0] ?? anchor ?? null
   // The wheel gate: the capture phase sees a press anywhere in the frame — the map, a pin, the + / − buttons.
   const [mapClicked, setMapClicked] = useState(false)
