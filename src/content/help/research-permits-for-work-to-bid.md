@@ -161,8 +161,8 @@ The last column says what the row reads as.
 
 - {{chip:green|Builds, and we win}} means they pull permits and we have won with them. Keep them close.
 - {{chip:red|Builds, we never win}} means three or more bids and no win. Ask them why.
-- {{chip:yellow|Builds, two tries}} means one or two bids so far. That is too early to say.
-- {{chip:gray|No permit on record}} means no permit carries their exact name. They may still build.
+- {{chip:yellow|Builds, two tries}} means one or two bids so far. One or two bids is too early to say.
+- {{chip:gray|No permit on record}} means no permit carries their exact name. The company may still build.
 
 Three chips filter the table. **Builds here** shows the companies with a permit. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
 
@@ -174,7 +174,7 @@ Two numbers sit over the table. The first says how many of the companies we bid 
 
 ## Read the clock
 
-The clock sits under the table on **Market**. Its bar shows how long you have once the city shows a job. The dark mark is the middle wait. The band is the middle half of the jobs.
+The clock sits under the table on **Market**. The clock's bar shows how long you have once the city shows a job. The dark mark is the middle wait. The band is the middle half of the jobs.
 
 In San Antonio the clock runs from an application to its permit. The wait is weeks long. Call while the application waits.
 
