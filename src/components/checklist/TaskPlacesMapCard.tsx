@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { LoaderCircle, Locate, LocateFixed } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { requestMyFix, type MyFix } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { MapCanvasPin } from '../../lib/map/mapCanvasTypes'
+import { MAP_CORNER_PRESS_BOTTOM_PX, MAP_CORNER_PRESS_SIDE_PX, MAP_CORNER_PRESS_SIZE_PX } from '../../lib/map/mapProviderPick'
 import { mapTimeSpotFromPins } from '../../lib/map/mapTime'
 import {
   TASK_PLACE_PRIVACY_WORDS,
   taskPlaceDotGroups,
   taskPlaceDots,
   taskPlaceNoFixWords,
+  taskPlaceWhereIAmPress,
   taskPlacesCountWords,
   taskPlacesDefaultLayer,
   tasksWithoutPlaceWords,
@@ -21,6 +24,8 @@ import { HOW_FAR_ROUGH_NOTE_WORDS } from '../../lib/tasks/taskPlaceReading'
 import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 
 const HIDDEN_KEY = 'task_places_map_hidden'
+/** The device's pick between Google Maps and the OpenStreetMap map, for this map alone. */
+const PROVIDER_KEY = 'task_places_map_provider'
 const ME_ID = '__me'
 const DUE = '#2563eb'
 const OVERDUE = '#dc2626'
@@ -55,8 +60,8 @@ type Props = {
   onMe?: (me: MyFix | null) => void
 }
 
-/** Over the map's own controls (Leaflet's sit at 800 to 1000), inside the card's own stacking box. */
-const overlay: CSSProperties = { position: 'absolute', zIndex: 1001, font: 'inherit', fontSize: '0.75rem', fontWeight: 700 }
+/** Over the map's own controls (Leaflet's sit at 800 to 1000), inside the card's own stacking box. The bottom left corner, across from the frame's switch. */
+const whereIAmPress: CSSProperties = { position: 'absolute', zIndex: 1001, left: MAP_CORNER_PRESS_SIDE_PX, bottom: MAP_CORNER_PRESS_BOTTOM_PX, width: MAP_CORNER_PRESS_SIZE_PX, height: MAP_CORNER_PRESS_SIZE_PX, padding: 0, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }
 const linkPress: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', fontSize: '0.8125rem', fontFamily: 'inherit' }
 const press: CSSProperties = { minHeight: 40, padding: '0 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'inherit' }
 
@@ -70,12 +75,15 @@ const press: CSSProperties = { minHeight: 40, padding: '0 0.8rem', borderRadius:
  * - Tasks with no place are counted in a line and stay in the list. With no place on any task
  *   there is no map at all.
  * - Hide map folds it, and the device remembers.
- * - Show where I am is a press. The reading puts a dot for the person on the map and a distance on
+ * - Show where I am is a press, an icon at the map's bottom left that carries its words as its name
+ *   (`taskPlaceWhereIAmPress`). The reading puts a dot for the person on the map and a distance on
  *   every task's line for this visit. It is not saved and not sent.
  *
- * It draws in the shared `PinsMapFrame` (punch list #395), on its Leaflet half alone: the view from
- * above laid over the streets while the dots sit on one property, the Satellite and Streets switch,
- * and the Time press. Time looks at a task's place and never at the person's own dot.
+ * It draws in the shared `PinsMapFrame` (punch list #395): the view from above while the dots sit on
+ * one property, the Satellite and Streets switch, and the Time press. Time looks at a task's place
+ * and never at the person's own dot. Since v2.8032 it is a Google map (punch list #387, step 5), with
+ * the frame's own switch to the OpenStreetMap map at the bottom right, kept on the device. Every
+ * press and line of the card works on either map.
  */
 export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
   const isMobile = useIsMobile()
@@ -135,6 +143,7 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
   const directions = selected ? directionsUrlForPoint(selected.lat, selected.lng) : null
   const without = tasksWithoutPlaceWords(withoutPlace, groups.reduce((n, g) => n + g.taskIds.length, 0))
   const height = isMobile ? 220 : 300
+  const whereIAm = taskPlaceWhereIAmPress({ asking, found: me != null })
 
   const fold = (next: boolean) => {
     setHidden(next)
@@ -154,7 +163,7 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
         <>
           <PinsMapFrame
             surface="my-tasks-map"
-            leafletOnly
+            providerSwitchKey={PROVIDER_KEY}
             defaultLayer={taskPlacesDefaultLayer(groups)}
             pins={pins}
             selectedId={selectedId}
@@ -168,11 +177,21 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
             overlay={
               <button
                 type="button"
+                data-task-places-where-i-am={whereIAm.state}
+                aria-label={whereIAm.label}
+                title={whereIAm.label}
+                aria-busy={asking}
                 onClick={showWhereIAm}
                 disabled={asking}
-                style={{ ...overlay, left: 10, top: 80, minHeight: 32, padding: '0 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: asking ? 'default' : 'pointer' }}
+                style={{ ...whereIAmPress, cursor: asking ? 'default' : 'pointer', ...(whereIAm.state === 'found' ? { color: 'var(--text-link)' } : {}) }}
               >
-                {asking ? 'Finding you…' : me ? 'Find me again' : 'Show where I am'}
+                {whereIAm.state === 'asking' ? (
+                  <LoaderCircle size={20} strokeWidth={2.2} aria-hidden="true" className="mapCornerPressSpin" />
+                ) : whereIAm.state === 'found' ? (
+                  <LocateFixed size={20} strokeWidth={2.2} aria-hidden="true" />
+                ) : (
+                  <Locate size={20} strokeWidth={2.2} aria-hidden="true" />
+                )}
               </button>
             }
           />

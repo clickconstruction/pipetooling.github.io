@@ -154,13 +154,15 @@ When an open task of yours has a place, the Today tab opens on a map. The map is
 - Tap a dot to see its tasks under the map. Tap {{button:outline|Show the task}} and the list scrolls to that task and opens it. {{button:blue|Directions}} takes you to the place.
 - Tasks with no place are not on the map. A line under the map counts them, and they are still in the list.
 
-Tap {{button:outline|Show where I am}} to add a dark dot for you. Each task's line then says how far away its place is, like *250 ft north-east*. Your location stays on your phone.
+Tap the target at the bottom left of the map to add a dark dot for you. The target is called **Show where I am**. It turns while it finds you. Each task's line then says how far away its place is, like *250 ft north-east*. Your location stays on your phone.
 
 A phone that gives only an area gets no dot and no distances. The map reads *Precise Location looks off.* and lists the steps to the switch.
 
 Tap a dot, then tap **Time** on the map to see that place on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 **Satellite** shows the ground from above. **Streets** shows roads. Tap **Hide map** to fold the map away. Your phone remembers, and **Show map** brings it back.
+
+The map is Google Maps. Tap the stack of sheets at the bottom right to switch to the OpenStreetMap map. Tap it again to come back. Your phone remembers which map you picked. Every press on the map works on either map.
 
 ## Notes are a conversation
 

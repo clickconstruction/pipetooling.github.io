@@ -137,6 +137,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 5. **The person's task map** (S). `TaskPlacesMapCard` on the shared Google canvas, as v2.7686 did for
    the team's.
    The count read on 2026-11-20 leaves room for it, but it opens a Google map on Today for everyone with task places, so the count is worth a second look when it is built.
+   Built 2026-11-20 on the owner's own word from a walk on a phone (v2.8032): Google by default, with a press on the map that switches to the OpenStreetMap map and is kept on the device.
 
 The picture and the print are call 3 and are not in the train.
 

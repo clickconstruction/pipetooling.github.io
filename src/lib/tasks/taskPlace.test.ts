@@ -34,6 +34,7 @@ import {
   taskPlaceFromRow,
   taskPlaceHowFarWords,
   taskPlaceNoFixWords,
+  taskPlaceWhereIAmPress,
   taskPlacedByWords,
   taskPlacesCountWords,
   taskPlacesDefaultLayer,
@@ -390,5 +391,17 @@ describe('directions to a point', () => {
     expect(directionsUrlForPoint(null, -98.2874)).toBeNull()
     expect(directionsUrlForPoint(95, -98.2874)).toBeNull()
     expect(directionsUrlForPoint(Number.NaN, 1)).toBeNull()
+  })
+})
+
+describe('the map’s Show where I am press', () => {
+  it('names itself by what a press does: show, then find again', () => {
+    expect(taskPlaceWhereIAmPress({ asking: false, found: false })).toEqual({ state: 'idle', label: 'Show where I am' })
+    expect(taskPlaceWhereIAmPress({ asking: false, found: true })).toEqual({ state: 'found', label: 'Find me again' })
+  })
+
+  it('says it is finding the person while the phone is asked, a second time too', () => {
+    expect(taskPlaceWhereIAmPress({ asking: true, found: false })).toEqual({ state: 'asking', label: 'Finding you…' })
+    expect(taskPlaceWhereIAmPress({ asking: true, found: true })).toEqual({ state: 'asking', label: 'Finding you…' })
   })
 })

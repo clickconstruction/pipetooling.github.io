@@ -24,7 +24,9 @@ vi.mock('@vis.gl/react-google-maps', async () => {
       return <>{p.children}</>
     },
     // The map's own div. Google fills it with `.gm-style` when it paints; a case does that by hand.
-    Map: (p: { children?: ReactNode }) => <div data-testid="map-div">{p.children}</div>,
+    Map: (p: { children?: ReactNode; zoomControlOptions?: { position: number } }) => <div data-testid="map-div" data-zoom-at={p.zoomControlOptions ? String(p.zoomControlOptions.position) : 'google’s own'}>{p.children}</div>,
+    // Google's own numbers for where a control sits.
+    ControlPosition: { LEFT_TOP: 5, RIGHT_BOTTOM: 9 },
     Marker: forwardRef(() => null),
     InfoWindow: () => null,
     useMap: () => null,
@@ -235,5 +237,15 @@ describe('the other doors, as they were', () => {
     act(() => (window as Window & { gm_authFailure?: () => void }).gm_authFailure?.())
     expect(first.onUnavailable).not.toHaveBeenCalled()
     expect(second.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
+  })
+})
+
+describe('where the zoom buttons sit (v2.8032)', () => {
+  it('a map leaves them where Google puts them unless it keeps the bottom right for a press of its own', () => {
+    const plain = mount()
+    expect(plain.view.container.querySelector('[data-testid="map-div"]')?.getAttribute('data-zoom-at')).toBe('google’s own')
+    plain.view.unmount()
+    const view = render(<PinsMapGoogleCanvas apiKey="test-key" onUnavailable={() => {}} pins={PINS} selectedId={null} onSelect={() => {}} fitSignal={0} height={300} isMobile={false} zoomAtTopLeft />)
+    expect(view.container.querySelector('[data-testid="map-div"]')?.getAttribute('data-zoom-at')).toBe('5')
   })
 })
