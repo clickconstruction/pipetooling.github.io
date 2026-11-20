@@ -126,7 +126,7 @@ export function ClausePreviewWindow({
             ))}
           </div>
           <span style={{ flex: 1 }} />
-          {sample.dead && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No sample while the paper cannot go.</span>}
+          {sample.dead && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>The sample waits until the paper can go.</span>}
           <button type="button" disabled={sample.dead} onClick={() => setPrinting(true)} style={sample.dead ? { ...clauseButtonStyle, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : clauseButtonStyle}>
             {sample.label}
           </button>

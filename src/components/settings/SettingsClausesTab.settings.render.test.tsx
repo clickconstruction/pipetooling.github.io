@@ -248,7 +248,7 @@ describe('a paper built from settings, on Contracts and clauses', () => {
     expect((within(win).getByRole('button', { name: 'Print the sample' }) as HTMLButtonElement).disabled).toBe(false)
     fireEvent.change(within(win).getByLabelText('Photos and video'), { target: { value: 'strict' } })
     expect((within(win).getByRole('button', { name: 'Print the sample' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(within(win).getByText('No sample while the paper cannot go.')).toBeTruthy()
+    expect(within(win).getByText('The sample waits until the paper can go.')).toBeTruthy()
   })
 
   it('gives an ordinary paper its first settings list, the keys made from the names', async () => {
