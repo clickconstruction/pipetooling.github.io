@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, and call 3, a sub's business is a company record of its own · the mock-up's sub screens redrawn for call 3 · nothing is built · four calls are left, one of them new
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, and call 4, the office's four roles and the estimator read an outside party's paper · the mock-up's sub screens redrawn for call 3 · nothing is built · four calls are left, two of them new
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it. Nothing is built, and four calls are left at the foot.
-next: The owner's four calls that are left, the next being who in the office reads an outside party's paper. Then PR 1, the ground, which changes no screen.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. Nothing is built, and four calls are left at the foot.
+next: The owner's four calls that are left, the next being call 7, whether a sub's company is the trade company GC mode already keeps. PR 1, the ground, can be written once call 7 says which papers are a company's.
 size: L as a train of six (M · S · M · S · M · M)
-blocker: Call 4. It says who reads an outside party's paper, and PR 1 writes that. Call 7 decides steps 5 and 6. Calls 5 and 6 shape step 3.
+blocker: Call 7. It decides steps 5 and 6, and which company papers the estimator's new read covers in PR 1. Calls 5 and 6 shape step 3. Call 8 shapes step 4.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -176,8 +176,9 @@ title and email in its own row, and the business name as it stood on the day it 
   (`gc_change_orders.signer_contact_id`, `20261012180000_change_orders_from_messages.sql`).
 - **The Agreements list.** One branch. The tag comes from the contact's kind: *Customer*, *Supply house*,
   *Trade company*. One new chip, **Outside companies**.
-- **Row security.** The papers stay the office's four roles, with no policy change. A contact is read by
-  those four and estimators, so the list can always name the party.
+- **Row security.** As weighed, the papers stay the office's four roles, with no policy change. The
+  owner's call 4 then added the estimator for an outside party's paper, which is one new read policy. A
+  contact is read by those four and estimators, so the list can always name the party.
 - **The Legal desk.** A matter reads a customer's papers by walking from the customer to its contacts.
   One step more than B.
 - **A later portal.** The customer portal, the sub's page and the trade portal each already know their
@@ -234,8 +235,10 @@ Each step is one PR with its release note and fragment. Nothing is built until t
    `party_contact_id`, `party_name`, `signer_name`, `signer_title`, `signer_email` and `signing_for`. The
    name trigger leaves a paper with a party alone. `contacts_fold_papers` carries papers through a merge.
    `agreements_on_file` gains the branch and three kinds. A kernel `paperParty.ts` says what a line reads
-   for each kind, with tests. An SQL bed proves each role reads what it reads today and no more. It
-   merges alone and is pushed before any client calls it.
+   for each kind, with tests. One new read policy lets an estimator read a paper whose party is an
+   outside company, and nothing filed under a person (call 4). An SQL bed proves each other role reads
+   what it reads today and no more, and that an estimator reads no staff paper and no sub's own paper.
+   It merges alone and is pushed before any client calls it.
 2. **The send keeps the signer (S).** `send-contract-for-signature` writes the name, title and address on
    the row for every paper, staff and sub papers too. The Send for signature window gains **Signer name**
    and **Title (optional)**. This is the column the reminders and the signer's copy in #376 wait on.
@@ -244,7 +247,8 @@ Each step is one PR with its release note and fragment. Nothing is built until t
    Agreements tab gains the **Outside companies** chip and the line's second row. The guide *find an
    agreement we sent or signed* is updated.
 4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
-   **Agreements** card lists them beside the job contracts it has today.
+   **Agreements** card lists them beside the job contracts it has today. This is where an estimator
+   reads them, since the Agreements tab is the four roles' today (call 8).
 5. **A sub's company, the ground (M).** Waits on call 7. With the session's pick there, a roster person
    gains a link to a trade company, and a company can hold people who are on the roster. The office,
    not only a dev, can send a company's paper. A person's paper freezes *signing for* from that link.
@@ -297,12 +301,15 @@ against the pick.
 - `esign_consents.audience` allows *customer*, *sub* and *gc*. A supply house needs a value.
 - `sendCompanyPaper` in `send-contract-for-signature` is the pattern for a paper to a company: it mails
   every person whose `gets` holds *contracts*.
+- The estimator's read (call 4) is on the paper's row. A signed form's PDF opens through
+  `open-contract-form-pdf`, which checks the role itself, so it needs the same rule or an estimator sees
+  the line and cannot open the file.
 - The repo is public. Every fixture, test, note and mock-up uses made-up names.
 
 ## How to verify, once built
 
-- **PR 1.** The bed, as each role: the view answers the new kinds to the office's four roles and to no
-  one else. Fold two contacts and the paper follows. A party named like a roster person keeps no
+- **PR 1.** The bed, as each role: the view answers the new kinds to the office's four roles and to an
+  estimator, and to no one else. An estimator reads no person's paper. Fold two contacts and the paper follows. A party named like a roster person keeps no
   `person_id`.
 - **PR 2.** On prod as a dev, with a ZZ Test person: send a paper, read the row, see the name and address
   on it. Nothing else about the send changes.
@@ -330,9 +337,16 @@ Each is one question. The session's pick is first.
    session's pick was one line on the sub's People row, **Signs for**, and he did not take it. His
    choice is the larger build. It covers a worker who signs for the boss's company, and it puts a
    company's W-9 and insurance on the company. It raises call 7.
-4. **Who in the office may read an outside party's paper?**
-   **The four roles that read staff and sub papers today: dev, master technician, assistant and
-   controller.** Or those four and the estimator. Or dev, master technician and controller only.
+4. **Who in the office may read an outside party's paper?** **Settled 2026-11-19: the four roles and
+   the estimator.** He answered "The same four rolls and the estimator." The session's pick was the four
+   roles alone. What it means, as the session reads it:
+   - The estimator reads a paper whose party is a customer, a supply house, a vendor or a trade company.
+   - The estimator still reads no staff paper and no paper filed under a sub as a person. Those hold pay
+     terms and tax forms, and they stay the four roles'.
+   - A sub's company's papers count as an outside company's, so the estimator reads them. He was told
+     this reading on 2026-11-19 and can turn it down.
+   - It is reading only. Sending stays with the four roles.
+   - An estimator has no Agreements tab today, by #376's call 3. That is call 8.
 5. **Does sending stay on both People and Documents?** This is #389's wider call 5.
    **Both. People sends to a person on the roster. Documents sends to anyone, and an outside company's
    paper is sent only from Documents or from its own page.** Or sending moves to Documents alone.
@@ -343,11 +357,16 @@ Each is one question. The session's pick is first.
    **Yes. One company record for any business the company subcontracts to, whoever is the GC on the
    job.** It already holds the people, the papers and a portal. Or a new list for the company's own
    subs' businesses, kept apart from GC mode.
+8. **Where does an estimator find an outside company's paper?** New on 2026-11-19, from call 4.
+   **On the party's own page: the supply house's window and the Customer page.** The Agreements tab
+   stays the four roles', as #376's call 3 settled. Or the tab opens to the estimator too, listing only
+   the lines their role reads.
 
 ## Where it stands
 
 Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled three calls on 2026-11-19. Call 1: the record lives on the contact.
+pick and was redrawn once. The owner settled four calls on 2026-11-19. Call 1: the record lives on the contact.
 Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
-own, which was not the session's pick, and which added call 7. Calls 4 to 7 are open. PR 1 waits on call
-4. Steps 5 and 6 wait on call 7.
+own, which was not the session's pick, and which added call 7. Call 4: the four roles and the estimator
+read an outside party's paper, which was not the session's pick either, and which added call 8. Calls 5
+to 8 are open. PR 1 and steps 5 and 6 wait on call 7.
