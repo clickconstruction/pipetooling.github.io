@@ -74,9 +74,12 @@ const linesWords = (n: number): string => countWords(n, 'line', 'lines')
 
 /**
  * Our material lands before day one. Ready when every line of the stage is on site, or is ordered and lands before
- * the first day. A line with no order is open, and so is one that lands on the first day or after it.
+ * the first day. A line with no order is open, and so is one that lands on the first day or after it. So is a line
+ * whose day to land has gone by with nobody marking it on site: a day before `today` is a promise that was not kept,
+ * however far ahead of the first day it reads. `today` is the company's day, 'YYYY-MM-DD'. With none the reader
+ * cannot tell a day that has gone by from one ahead, and compares with the first day alone.
  */
-export function readOrderLog(read: OrderLogRead | undefined, stageName: string, dayOne: string | null): UsReading {
+export function readOrderLog(read: OrderLogRead | undefined, stageName: string, dayOne: string | null, today = ''): UsReading {
   if (!read) return open(READER_WORDS.reading)
   if (read.state === 'no_bid') return open(READER_WORDS.noBid)
   if (read.state === 'cannot') return open(READER_WORDS.orderShut)
@@ -93,6 +96,9 @@ export function readOrderLog(read: OrderLogRead | undefined, stageName: string, 
   if (notOrdered > 0) return open(`${notOrdered} of ${linesWords(n)} ${notOrdered === 1 ? 'is' : 'are'} not ordered yet.`, READER_WORDS.orderDoor, href)
   const noDay = coming.filter((l) => !l.expectedOn).length
   if (noDay > 0) return open(`${noDay} of ${linesWords(n)} ${noDay === 1 ? 'has' : 'have'} no day to land yet.`, READER_WORDS.orderDoor, href)
+  const due = today ? coming.map((l) => l.expectedOn as string).filter((d) => d < today).sort() : []
+  if (due.length === 1) return open(`1 of ${linesWords(n)} was due ${monthDay(due[0] as string)} and is not on site.`, READER_WORDS.orderDoor, href)
+  if (due.length > 1) return open(`${due.length} of ${linesWords(n)} are past due and not on site. The oldest was due ${monthDay(due[0] as string)}.`, READER_WORDS.orderDoor, href)
   if (!dayOne) return open(READER_WORDS.noDays, READER_WORDS.orderDoor, href)
   const last = coming.map((l) => l.expectedOn as string).sort().pop() as string
   const late = coming.filter((l) => (l.expectedOn as string) >= dayOne).length
@@ -135,8 +141,11 @@ export function readsWanted(bullets: readonly Pick<StartBulletRow, 'job_id' | 'r
   return { orderLog: of('order_log'), trips: of('trip'), permits: of('permit') }
 }
 
-/** The reader a list is built with: each bullet of ours against its own stage line and what was read for its job. */
-export function readerFor(lines: readonly StageLine[], reads: ReadonlyMap<string, JobReads>): (row: StartBulletRow) => UsReading | null {
+/**
+ * The reader a list is built with: each bullet of ours against its own stage line and what was read for its job.
+ * `today` is the company's day, which the order log's reader holds a line's day to land against.
+ */
+export function readerFor(lines: readonly StageLine[], reads: ReadonlyMap<string, JobReads>, today = ''): (row: StartBulletRow) => UsReading | null {
   const lineOf = new Map(lines.map((l) => [l.fixtureId, l]))
   return (row) => {
     const line = lineOf.get(row.fixture_id)
@@ -144,7 +153,7 @@ export function readerFor(lines: readonly StageLine[], reads: ReadonlyMap<string
     const dayOne = line?.window?.[0] ?? null
     if (row.reads !== 'order_log' && row.reads !== 'trip' && row.reads !== 'permit') return null
     if (job?.failed) return open(READER_WORDS.failed)
-    if (row.reads === 'order_log') return readOrderLog(job?.orderLog, line?.name ?? '', dayOne)
+    if (row.reads === 'order_log') return readOrderLog(job?.orderLog, line?.name ?? '', dayOne, today)
     if (row.reads === 'trip') return readTrip(job?.trips, dayOne)
     if (row.reads === 'permit') return readPermit(job?.permits)
     return null

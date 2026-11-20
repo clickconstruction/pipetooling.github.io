@@ -278,6 +278,18 @@ describe('JobDocumentsStartChecks', () => {
     expect(within(row('material')).queryByRole('button', { name: /Mark it/ })).toBeNull()
   })
 
+  it('a line of the order log whose day to land has gone by reads open, however far ahead of day one it is', async () => {
+    // Expected Nov 3, never marked on site. Today is Nov 17 and day one is Dec 8.
+    const db = seeded()
+    db.rows = { ...db.rows, bullets: db.rows.bullets.map((b) => (b.id === 'material' ? { ...b, reads: 'order_log' as const } : b)) }
+    const readers: StartReadersIo = { read: async () => new Map([[JOB.id, { orderLog: { state: 'read' as const, bidId: 'bid-1', lines: [{ stage: 'top_out' as const, orderedOn: '2026-10-20', expectedOn: '2026-11-03', deliveredOn: null }] } }]]) }
+    await mount(db, JOB, readers)
+    await openStage('Top Out')
+    await waitFor(() => expect(row('material').textContent).toContain('1 of 1 line was due Nov 3 and is not on site.'))
+    expect(row('material').dataset.standing).toBe('open')
+    expect(within(row('material')).getByRole('link', { name: 'Open the order log' }).getAttribute('href')).toBe('/bids?tab=submittals&bidId=bid-1')
+  })
+
   it('a bullet turned to the app drops its hand tick, and one with no reads beside it says the app does not read it', async () => {
     const db = seeded()
     await mount(db)
