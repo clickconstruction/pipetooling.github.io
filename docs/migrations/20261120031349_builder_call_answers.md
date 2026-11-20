@@ -24,3 +24,20 @@ Applied twice on a throwaway local Postgres 15 with stub tables and the row rule
 ## Release order
 
 Merge, then push. Nothing in the client names the table yet, so the deploy does not wait on the push. The call list that reads and writes it ships after the push, and reads a missing table as no answers all the same.
+
+## Applied
+
+Pushed to prod on 2026-11-20 within minutes of #8978's merge at 04:46 UTC, with `supabase db push --linked` from a detached checkout of `origin/main`. The dry run named this one file. `npm run check:migration-drift` then read 1,404 local files against 1,404 remote versions, fully applied.
+
+## Verified on prod
+
+Through the app's own session as the dev on clicktooling.com, on the ZZ Test key `zztestbuilders`, which no builder has:
+
+- **An answer given as oneself** lands, with its reason, its day to look again and its city.
+- **An answer naming another person** is refused by the row rule.
+- **An answer outside the three** is refused by its check.
+- **An update and a delete** are refused: the table only grows.
+- **A read as `anon`** is refused.
+- **A put-back** lands after the pass, so the name would be offered again.
+
+Two ZZ rows are left on that key, the pass and its put-back. A field tech's refusal was held on the throwaway Postgres before the push, not on prod.

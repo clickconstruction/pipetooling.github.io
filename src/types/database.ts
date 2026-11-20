@@ -5740,6 +5740,67 @@ export type Database = {
           },
         ]
       }
+      builder_call_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          answered_by: string
+          builder_key: string
+          city: string
+          id: string
+          look_again_on: string | null
+          permit_id: string | null
+          prospect_id: string | null
+          reason: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          answered_by: string
+          builder_key: string
+          city?: string
+          id?: string
+          look_again_on?: string | null
+          permit_id?: string | null
+          prospect_id?: string | null
+          reason?: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          answered_by?: string
+          builder_key?: string
+          city?: string
+          id?: string
+          look_again_on?: string | null
+          permit_id?: string | null
+          prospect_id?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_call_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_call_answers_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_call_answers_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_customer_answers: {
         Row: {
           answer: string
@@ -50744,6 +50805,10 @@ export type Database = {
           hidden_hours: number
           user_id: string
         }[]
+      }
+      schedule_read_gate: {
+        Args: { p_office_reads_anyone: boolean; p_person: string }
+        Returns: undefined
       }
       score_locked_shadows: {
         Args: { p_reference_bid_id?: string }
