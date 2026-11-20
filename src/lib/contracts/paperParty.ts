@@ -9,24 +9,20 @@
  *
  * This kernel answers the words: the kinds the `agreements_on_file` view gives a party's paper, the tag on its line,
  * who signs as the line says it, and the sentence the paper will say. Pure: no React, no supabase. The view is
- * migration `20261120010000_paper_party.sql`; the list's own words are `documents/agreementsLedger.ts`.
+ * migration `20261120010000_paper_party.sql`; the list's own words are `documents/agreementsLedger.ts`. The words a
+ * paper keeps and the stored name's prefix are the send function's own (`_shared/paperSigner.ts`): one copy, read here.
  */
+import { PAPER_WORD_MAX, PARTY_PAPER_PREFIX, SIGNER_EMAIL_MAX, isPartyPaperName, paperWord, signerEmailWord } from '../../../supabase/functions/_shared/paperSigner'
+
+export { PAPER_WORD_MAX, PARTY_PAPER_PREFIX, SIGNER_EMAIL_MAX, isPartyPaperName, paperWord, signerEmailWord }
 
 // ── The name a party's paper is filed under ───────────────────────────────────────────────────────────────────────────
-
-/** The start of a party's stored name: `party:<contact id>`. The database holds the shape both ways. */
-export const PARTY_PAPER_PREFIX = 'party:'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** A party's stored name on its papers. Never shown: the party's own name is. */
 export function partyPaperName(contactId: string): string {
   return `${PARTY_PAPER_PREFIX}${contactId}`
-}
-
-/** True for a party's paper: its stored name starts with the prefix. A person's name never does. */
-export function isPartyPaperName(name: string | null | undefined): boolean {
-  return (name ?? '').startsWith(PARTY_PAPER_PREFIX)
 }
 
 /** The contact a stored name is for. Null for a person's name, or a stored name that is not well formed. */
@@ -104,24 +100,6 @@ export function partyNeedsAList(party: PaperPartyKind | null): boolean {
 }
 
 // ── Who signs ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-/** The longest a name, a title or a business may be, as the table's check holds it. */
-export const PAPER_WORD_MAX = 200
-/** The longest an address may be. */
-export const SIGNER_EMAIL_MAX = 320
-
-/** A word as the paper keeps it: trimmed, and null when nothing is left. The table refuses '' and spaces. */
-export function paperWord(value: string | null | undefined): string | null {
-  const word = (value ?? '').replace(/\s+/g, ' ').trim()
-  return word ? word.slice(0, PAPER_WORD_MAX) : null
-}
-
-/** An address as the paper keeps it: trimmed, and null when it is none. */
-export function signerEmailWord(value: string | null | undefined): string | null {
-  const email = (value ?? '').trim()
-  if (email.length < 3 || email.length > SIGNER_EMAIL_MAX || email.indexOf('@') < 1) return null
-  return email
-}
 
 /** Who signs a paper, as the paper keeps them. */
 export type PaperSigner = {

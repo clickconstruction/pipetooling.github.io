@@ -14,6 +14,10 @@ export type PersonPaperSendInput = {
   /** `email` sends the link to `signerEmail`; `link` hands it back and emails nobody. */
   mode: 'email' | 'link'
   signerEmail?: string
+  /** Who signs, kept on the paper's row (punch list #403). Blank leaves the name to the function's own rule. */
+  signerName?: string
+  /** The signer's title. Sent with every email, so a cleared box clears the row's; never sent with a link. */
+  signerTitle?: string
   /** The office's own subject and opening words; blank keeps the email's own. */
   subject?: string
   intro?: string
@@ -27,6 +31,7 @@ export async function sendPersonPaperForSignature(input: PersonPaperSendInput): 
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
   const subject = (input.subject ?? '').trim()
   const intro = (input.intro ?? '').trim()
+  const signerName = (input.signerName ?? '').trim()
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contract-for-signature`, {
     method: 'POST',
     headers: {
@@ -36,7 +41,9 @@ export async function sendPersonPaperForSignature(input: PersonPaperSendInput): 
     },
     body: JSON.stringify({
       person_contract_document_id: input.documentId,
-      ...(input.mode === 'link' ? { mode: 'link' } : { signer_email: (input.signerEmail ?? '').trim() }),
+      ...(input.mode === 'link'
+        ? { mode: 'link' }
+        : { signer_email: (input.signerEmail ?? '').trim(), ...(signerName ? { signer_name: signerName } : {}), ...(input.signerTitle !== undefined ? { signer_title: input.signerTitle.trim() } : {}) }),
       public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
       ...(subject ? { email_subject: subject } : {}),
       ...(intro ? { email_intro_plain: intro } : {}),
@@ -116,6 +123,9 @@ export async function readPortalSlugIfLive(personId: string): Promise<string | n
 export type PersonPaperSendFacts = {
   target: { personName: string; documentName: string }
   initialEmail: string
+  /** Who signed for it last time, when the paper kept them: the window opens on these. */
+  signerName?: string
+  signerTitle?: string
   personId: string | null
   sender: { name: string; email: string } | null
 }
@@ -147,9 +157,31 @@ export async function readPersonSendFactsByName(personName: string, documentName
  * paper the caller cannot read throws.
  */
 export async function readPersonPaperSendFacts(documentId: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
-  const doc = await withSupabaseRetry<{ person_name: string; document_name: string }>(
-    async () => supabase.from('person_contract_documents').select('person_name, document_name').eq('id', documentId).single(),
-    'read the paper',
-  )
-  return readPersonSendFactsByName(doc.person_name ?? '', doc.document_name ?? '', currentUserId)
+  const doc = await readPaperSendRow(documentId)
+  const facts = await readPersonSendFactsByName(doc.person_name ?? '', doc.document_name ?? '', currentUserId)
+  const kept = keptSignerOf(doc)
+  // The roster's address opens the window, as before. With none on the roster, the address the paper last went to does.
+  return { ...facts, initialEmail: facts.initialEmail || kept.email, signerName: kept.name, signerTitle: kept.title }
+}
+
+/** The signer a paper kept from its last send (punch list #403): '' for each word it never kept. */
+export type KeptSigner = { name: string; title: string; email: string }
+
+/** Read the signer a saved paper kept. For a window opened on a paper whose caller holds no row of it. Throws with the reason. */
+export async function readKeptSigner(documentId: string): Promise<KeptSigner> {
+  return keptSignerOf(await readPaperSendRow(documentId))
+}
+
+/** What a send reads of a saved paper: who it is filed under, and the signer it kept from its last send. */
+type PaperSendRow = { person_name: string; document_name: string; signer_name: string | null; signer_title: string | null; signer_email: string | null }
+// The signer's three columns join the generated types with the push's types PR; until then the list is a plain string.
+const PAPER_SEND_COLUMNS: string = 'person_name, document_name, signer_name, signer_title, signer_email'
+
+async function readPaperSendRow(documentId: string): Promise<PaperSendRow> {
+  const row = await withSupabaseRetry(async () => supabase.from('person_contract_documents').select(PAPER_SEND_COLUMNS).eq('id', documentId).single(), 'read the paper')
+  return row as unknown as PaperSendRow
+}
+
+function keptSignerOf(doc: PaperSendRow): KeptSigner {
+  return { name: (doc.signer_name ?? '').trim(), title: (doc.signer_title ?? '').trim(), email: (doc.signer_email ?? '').trim() }
 }

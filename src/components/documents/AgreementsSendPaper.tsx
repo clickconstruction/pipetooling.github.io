@@ -201,6 +201,8 @@ export function AgreementsSendPaper({
             docId={step.docId}
             quickSendPlan={step.plan}
             initialEmail={step.facts.initialEmail}
+            initialSignerName={step.facts.signerName}
+            initialSignerTitle={step.facts.signerTitle}
             sender={step.facts.sender}
             personId={step.facts.personId}
             onClose={close}

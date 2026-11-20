@@ -484,6 +484,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
             target={sendAgain.facts.target}
             docId={sendAgain.documentId}
             initialEmail={sendAgain.facts.initialEmail}
+            initialSignerName={sendAgain.facts.signerName}
+            initialSignerTitle={sendAgain.facts.signerTitle}
             sender={sendAgain.facts.sender}
             personId={sendAgain.facts.personId}
             onClose={() => setSendAgain(null)}

@@ -3,7 +3,7 @@
  * and what the app says once the send comes back. Every name and address here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { onePersonIdForName, rosterEmailForName, sendWindowSender, sentToastWords, signerEmailRefusal } from './personPaperSend'
+import { initialSignerName, onePersonIdForName, rosterEmailForName, sendWindowSender, sentToastWords, signerEmailRefusal, signerNameRefusal } from './personPaperSend'
 
 const people = [
   { id: 'p1', name: 'Priya Nair', email: ' priya@example.com ' },
@@ -66,5 +66,25 @@ describe('sentToastWords', () => {
   })
   it('says a link was made when nothing else is known', () => {
     expect(sentToastWords({ acceptUrl: null, emailed: false, emailNote: null })).toEqual({ words: 'Signing link created.', tone: 'info' })
+  })
+})
+
+describe('who signs', () => {
+  it('a send needs somebody named to sign', () => {
+    expect(signerNameRefusal('Priya Nair')).toBeNull()
+    expect(signerNameRefusal('   ')).toBe('Enter the name of the person who signs.')
+    expect(signerNameRefusal('')).toBe('Enter the name of the person who signs.')
+  })
+
+  it('the box opens on the signer the paper kept, else on the person it is filed under', () => {
+    expect(initialSignerName(' Luis Ortega ', 'Ortega Mechanical')).toBe('Luis Ortega')
+    expect(initialSignerName('', ' Priya Nair ')).toBe('Priya Nair')
+    expect(initialSignerName(undefined, 'Priya Nair')).toBe('Priya Nair')
+    expect(initialSignerName(null, null)).toBe('')
+  })
+
+  it('a stored name is never a signer: the box opens empty', () => {
+    expect(initialSignerName('', 'gc-company:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d')).toBe('')
+    expect(initialSignerName(undefined, 'party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d')).toBe('')
   })
 })
