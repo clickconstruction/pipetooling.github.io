@@ -110,7 +110,7 @@ describe('a twin\'s rung from the dev seat (v2.7918)', () => {
 
   it('refuses in words: no twin, an archived twin, a twin already on that rung', () => {
     expect(twinRungDryRun({ twin: EMAIL, to: 2 }, null, [])).toEqual({ ok: false, refused: `No twin reads as ${EMAIL}. plan_twin lists the fleet with each twin's rung.` })
-    expect(twinRungDryRun({ twin: EMAIL, to: 2 }, twin({ archived_at: '2026-11-01T00:00:00Z' }), KEYS)).toEqual({ ok: false, refused: `Nothing to plan: ${EMAIL} is archived, and an archived twin has no ladder. Restore it at Settings → System → Digital twins first.` })
+    expect(twinRungDryRun({ twin: EMAIL, to: 2 }, twin({ archived_at: '2026-11-01T00:00:00Z' }), KEYS)).toEqual({ ok: false, refused: `Nothing to plan: ${EMAIL} is archived, and an archived twin has no ladder. plan_twin_archive with restore: true brings it back first.` })
     expect(twinRungDryRun({ twin: EMAIL, to: 1 }, twin(), KEYS)).toEqual({ ok: false, refused: `Nothing to plan: ${EMAIL} already stands on read-only (rung 1).` })
     expect(twinRungDryRun({ twin: EMAIL, to: 2 }, twin({ read_only: false }), KEYS)).toEqual({ ok: false, refused: `Nothing to plan: ${EMAIL} already stands on fenced writes (rung 2).` })
   })
@@ -177,12 +177,12 @@ describe('a twin\'s rung from the dev seat (v2.7918)', () => {
     expect(branch).not.toContain('invokeAsDev(') // nothing is sent to CountTooling or TakeoffTooling
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.114.0'")
-    expect(SERVER).toContain('Writes are one hundred and forty-one verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.115.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else')
     expect(SERVER).toContain('plan_twin_rung → apply_twin_rung (a twin moved between the rungs of its safety ladder')
     expect(README).toContain('| `plan_twin_rung(rung)` · `apply_twin_rung(rung, plan_hash)` |')
     expect(README).toContain("one hundred and thirty-three since v2.7918's rung pair")
-    expect(README).toContain('one hundred and forty-one `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and forty-five `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain("v2.7918 (server 0.108.0) — a twin's rung moved from the seat")
   })
 })
