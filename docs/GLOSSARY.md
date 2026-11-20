@@ -5914,6 +5914,18 @@ The rule is one kernel, [`dateBoxEntry.ts`](../src/lib/dateBoxEntry.ts) (`isPlau
 A form that autosaves leaves a half-typed date out of the write or waits ([`autosaveDateHold.ts`](../src/lib/autosaveDateHold.ts) — the job contract, the lien waiver, Edit Job, Edit Bid, an estimate draft), and a click that sends, files or mints stops and names the box (`unfinishedDateStopsMessage`, v2.4252).
 A new date input uses the box or the kernel, never a bare `onChange` write.
 
+### Values in place
+The app's one way to draw a value on a screen (punch list #382, v2.7985;
+the owner named it for the whole app, #399): a date, a count, a name or an amount is drawn apart from the words around it, and its look says what it is.
+**Underlined and tinted** is a value a person can change: a press turns it into its own field right there, with **Keep** and **Cancel**, Enter keeps and Escape cancels ([`ChangeableValue`](../src/components/valuesInPlace/ValuesInPlace.tsx)).
+**Plain bold** is a value the app works out, and it updates by itself (`WorkedOutValue`).
+A value that can be changed, but not by this person, is shown with a dashed line and a small tag (`locked`), and a value read from a default this record may override is bold with the small word *default* after it and a press that sets the record's own (`fromDefault`).
+One fact sits on each line, the label on the left and the values in a column (`ValueLines`), and there is no *Change a date* link or edit window for a value already on the screen.
+A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`, the screen draws it with `ValueSentence`, and a text or an email reads it with `plainSentence` ([`valuesInPlace.ts`](../src/lib/valuesInPlace.ts)).
+`keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
+A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+The words to ask for it on any screen are *give this screen values in place*.
+
 ### Users lenses (People → Users)
 People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
 `?lens=` on the URL;

@@ -1,0 +1,177 @@
+/**
+ * Values in place (punch list #382, PR 1; the owner named it for the whole app, #399). A date, a count, a name or
+ * an amount on a screen is drawn apart from the words around it, and its look says what it is:
+ *
+ *   - underlined and tinted: a person can change it. A press turns it into its own field right there, with Keep
+ *     and Cancel. Enter keeps, Escape cancels.
+ *   - plain bold: the app works it out, and it updates by itself.
+ *   - a dashed line and a small tag: it can be changed, but not by this person or not now.
+ *   - bold with a small word after it: it is read from a default this record may override.
+ *
+ * One fact sits on each line, the label on the left and the values in a column, so the eye can run down the
+ * values alone. There is no *Change a date* link and no edit window for a value already on the screen.
+ *
+ * This file is the pure half: a value marked inside a sentence a kernel writes, what a field's draft means when
+ * Keep is pressed, and the words the pieces say. The drawn half is `src/components/valuesInPlace/ValuesInPlace.tsx`.
+ * The rule itself is in `CLAUDE.md` → Working conventions.
+ */
+import { isPlausibleDate } from './dateBoxEntry'
+
+// ---------- A value inside a sentence ----------
+
+/**
+ * A kernel that writes a sentence marks each value in it as ⟪kind|text⟫, so a screen can draw the value apart
+ * from the words and a place that cannot (a text, an email, a tooltip) can read it plain. The brackets are not
+ * the ⟦ ⟧ pair `lienPaperGaps.ts` marks a paper's gaps with, so one string can never be read as the other.
+ */
+const OPEN = '⟪'
+const CLOSE = '⟫'
+const MARKED = /⟪([^|⟪⟫]+)\|([^⟪⟫]*)⟫/g
+
+/** Mark a value inside a sentence: `We decide by ${val('decide', 'Sat Nov 21')}.` */
+export function val(kind: string, text: string): string {
+  return `${OPEN}${kind}|${text.replace(/[⟪⟫]/g, '')}${CLOSE}`
+}
+
+/** A piece of a marked sentence: plain words, or a value with the kind its kernel gave it. */
+export type SentencePart<K extends string = string> = string | { kind: K; text: string }
+
+/** A marked sentence as its words and its values, in order. A sentence with no mark is one piece of words. */
+export function sentenceParts<K extends string = string>(sentence: string): SentencePart<K>[] {
+  const parts: SentencePart<K>[] = []
+  let last = 0
+  for (const m of sentence.matchAll(MARKED)) {
+    const at = m.index ?? 0
+    if (at > last) parts.push(sentence.slice(last, at))
+    parts.push({ kind: m[1] as K, text: m[2] ?? '' })
+    last = at + m[0].length
+  }
+  if (last < sentence.length) parts.push(sentence.slice(last))
+  return parts
+}
+
+/** The sentence as plain words, for a place that cannot draw a value apart. */
+export function plainSentence(sentence: string): string {
+  return sentenceParts(sentence)
+    .map((p) => (typeof p === 'string' ? p : p.text))
+    .join('')
+}
+
+// ---------- The field a changeable value becomes ----------
+
+/** What a changeable value turns into when it is pressed. */
+export type ValueFieldType = 'date' | 'text' | 'number' | 'choice'
+
+/** What Keep means for a draft: nothing changed, a finished value to save, or a reason the field stays open. */
+export type KeepVerdict = { kind: 'same' } | { kind: 'keep'; value: string } | { kind: 'hold'; why: string }
+
+export type KeepInput = {
+  type: ValueFieldType
+  /** What the field holds now. */
+  draft: string
+  /** What the value was when the field opened. '' when nothing was set. */
+  value: string
+  /** The browser says the box holds a half-typed entry: a date with a part missing. */
+  unfinished?: boolean
+  /** The lowest value kept: a day ('YYYY-MM-DD') or a number. */
+  min?: string
+  /** The highest value kept. */
+  max?: string
+  /** A number field that takes no fraction: a count of days. */
+  whole?: boolean
+  /** An emptied field is kept as '' instead of held. */
+  canClear?: boolean
+  /** A reason asked for beside the field, and whether Keep waits for one. */
+  reason?: { text: string; required: boolean } | null
+  /** The screen's own check on a finished draft: why it cannot be kept, or null. */
+  check?: ((draft: string) => string | null) | null
+  /** The year a half-typed date's reason names. */
+  thisYear: number
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+/** A calendar day as a reason names it: Dec 8. */
+function dayWords(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  return m ? `${MONTHS[Number(m[2]) - 1] ?? ''} ${Number(m[3])}` : ymd
+}
+
+const EMPTY_WHY: Record<ValueFieldType, string> = {
+  date: 'Pick a day first.',
+  number: 'Type a number first.',
+  text: 'Type something first.',
+  choice: 'Pick one first.',
+}
+
+/** The words under a field that cannot be kept yet. Each is one short sentence a first-timer can act on. */
+export const KEEP_WHY = {
+  unfinishedDate: (thisYear: number) => `Finish the date first. Type the year in full, like ${thisYear}.`,
+  notANumber: 'That is not a number.',
+  notWhole: 'Type a whole number.',
+  reason: 'Say why first.',
+} as const
+
+/**
+ * What Keep does with a draft. A draft that matches the value it opened on saves nothing. An empty draft is held
+ * unless the value may be cleared. A date is held until it is a real day with its year typed in full, a number
+ * until it is one, and either while it sits outside `min` and `max`. The screen's own `check` runs last, on a
+ * draft that passed the rest.
+ */
+export function keepVerdict(input: KeepInput): KeepVerdict {
+  const { type, value, min, max } = input
+  const draft = input.draft.trim()
+  const was = value.trim()
+
+  if (type === 'date' && input.unfinished) return { kind: 'hold', why: KEEP_WHY.unfinishedDate(input.thisYear) }
+  if (draft === '') {
+    if (was === '') return { kind: 'same' }
+    return input.canClear ? withReason(input, '') : { kind: 'hold', why: EMPTY_WHY[type] }
+  }
+
+  let kept = draft
+  if (type === 'date') {
+    if (!isPlausibleDate(draft)) return { kind: 'hold', why: KEEP_WHY.unfinishedDate(input.thisYear) }
+    if (min && draft < min) return { kind: 'hold', why: `Pick ${dayWords(min)} or later.` }
+    if (max && draft > max) return { kind: 'hold', why: `Pick ${dayWords(max)} or earlier.` }
+  } else if (type === 'number') {
+    const n = Number(draft)
+    if (!Number.isFinite(n)) return { kind: 'hold', why: KEEP_WHY.notANumber }
+    if (input.whole && !Number.isInteger(n)) return { kind: 'hold', why: KEEP_WHY.notWhole }
+    if (min != null && min !== '' && n < Number(min)) return { kind: 'hold', why: `Type ${min} or more.` }
+    if (max != null && max !== '' && n > Number(max)) return { kind: 'hold', why: `Type ${max} or less.` }
+    kept = String(n)
+    if (was !== '' && Number(was) === n) return { kind: 'same' }
+  }
+  if (kept === was) return { kind: 'same' }
+
+  const refused = input.check ? input.check(kept) : null
+  if (refused) return { kind: 'hold', why: refused }
+  return withReason(input, kept)
+}
+
+function withReason(input: KeepInput, value: string): KeepVerdict {
+  if (input.reason?.required && input.reason.text.trim() === '') return { kind: 'hold', why: KEEP_WHY.reason }
+  return { kind: 'keep', value }
+}
+
+// ---------- The words the pieces say ----------
+
+/** A changeable value's name to a screen reader and a test: the value, what it is, and that a press changes it. */
+export const changeableValueName = (label: string, text: string): string => `${text}, ${label}, press to change`
+
+/** The press that sets this record's own value over a default. */
+export const SET_OWN_LABEL = 'Set its own'
+
+/** The words on the field's presses. */
+export const VALUE_FIELD_WORDS = { keep: 'Keep', keeping: 'Keeping…', cancel: 'Cancel' } as const
+
+/**
+ * The line under a block of values that says which is which. The two marked words are drawn in the looks they
+ * name, so the line is its own example.
+ */
+export const VALUES_LEGEND = {
+  changeable: 'Underlined',
+  changeableTail: ' values change where they sit: press one. ',
+  workedOut: 'Bold',
+  workedOutTail: ' values are worked out.',
+} as const
