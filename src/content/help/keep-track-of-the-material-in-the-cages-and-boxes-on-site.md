@@ -132,7 +132,9 @@ A box nobody has pinned says so. Stand at it and tap **I found it**. A phone tha
 
 A phone that gives only the area you are in pins nothing. The sheet then reads *Precise Location looks off.*, with the steps to the switch for your phone. The open sky does not fix that. Turn the switch on and tap **Try again**.
 
-The same line shows under **Show where I am** and **Use my location**. A phone that gives only an area gets no dot, no distance and no move of the map.
+The same line shows under **Show where I am** and **Use my location**. A phone that gives only an area gets no dot, no distance and no move of the map. **Use my location** works this way in three places. One is **Move the pin by hand**. One is the map you reach with **Pin a box…**. One is the site map under **Map**. A pin never takes its margin from an area.
+
+Sometimes the map has nowhere to open. The job's address is not on the map yet, and no box is pinned. Tap **Use my location** to start the map where you stand. A phone that gives only an area cannot start the map there. A phone with location off cannot either. The map then opens wide, on the whole country. Zoom in and drag the map until the ring sits on the box. **Put A1 here** waits until you have dragged the map.
 
 The app also asks for a pin when you are standing at a box. The app asks after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
 

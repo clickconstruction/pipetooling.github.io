@@ -40,6 +40,9 @@ import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressFor
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
 import { requestMyLocation, type LatLng, type MyFix } from '../../lib/materials/myLocation'
 import { taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
+import { boxMapOpening, boxMapReading, boxPinReady } from '../../lib/materials/boxMapStart'
+import { SITE_MAP_WIDE_WORDS, WHERE_I_AM_WEAK_NOTE_WORDS, WHERE_I_AM_WIDE_WORDS, siteMapRoughNoteWords, siteMapRoughWideNoteWords, whereIAmRoughNoteWords, whereIAmRoughWideNoteWords } from '../../lib/tasks/taskPlaceReading'
+import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 import { boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import WhereIsBox from '../materials/WhereIsBox'
 import PinAskStrip from '../materials/PinAskStrip'
@@ -310,8 +313,40 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [mapFly, setMapFly] = useState<MyFix | null>(null)
   const [locating, setLocating] = useState<string | null>(null)
   const [pinCenter, setPinCenter] = useState<LatLng | null>(null)
-  const myLocation = () => { setLocating('Finding you…'); requestMyLocation((p) => { setLocating(null); setMapFly({ ...p }) }, (words) => setLocating(words)) }
-  const closeSheet = () => { setSheet(null); setLocating(null); setMapFly(null) }
+  // Use my location got an area and not a spot (punch list #402): its margin, for the Precise Location line. An area
+  // never moves the map and is never the reading a pin's margin comes from.
+  const [mapRoughM, setMapRoughM] = useState<number | null>(null)
+  // Use my location got no spot. A map with nowhere to open then opens wide, so there is still a map to drag.
+  const [mapOpenWide, setMapOpenWide] = useState(false)
+  const myLocation = () => {
+    setLocating('Finding you…')
+    requestMyLocation(
+      (p) => {
+        setLocating(null)
+        const read = boxMapReading(p)
+        if (read.kind === 'area') {
+          setMapRoughM(read.roughM)
+          setMapOpenWide(true)
+          return
+        }
+        setMapRoughM(null)
+        setMapFly(read.fly)
+      },
+      (words) => {
+        setMapRoughM(null)
+        setMapOpenWide(true)
+        setLocating(words)
+      },
+    )
+  }
+  const closeSheet = () => { setSheet(null); setLocating(null); setMapFly(null); setMapRoughM(null); setMapOpenWide(false) }
+  // The sheet with the ring: where its map opens, and whether the ring is somewhere a person chose.
+  const pinFocusId = sheet?.kind === 'pin' && sheet.container.lat != null ? sheet.container.id : null
+  const pinOpening = boxMapOpening({ pins: mapPins, focusId: pinFocusId, center: jobCenter, fly: mapFly, openWide: mapOpenWide })
+  const canPin = boxPinReady(pinCenter, pinOpening.wide)
+  // The margin belongs to the reading: the line speaks of the phone only while the ring still sits on it.
+  const pinReadM = mapFly && pinCenter ? taskPlaceSheetAccuracy(mapFly, pinCenter) : null
+  const siteOpening = boxMapOpening({ pins: mapPins, focusId: sheet?.kind === 'map' ? sheet.focusId : null, center: jobCenter, painted: painted.maps, fly: mapFly, openWide: mapOpenWide })
   /** Pin a box from the site map: the ring sits at the map's centre; the footer's button puts the pin there. Drawn from either view. */
   const pinSheet = sheet?.kind === 'pin' ? (
     <Sheet
@@ -323,16 +358,28 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '0.5rem' }}>
             <button type="button" style={btn} onClick={myLocation}>Use my location</button>
-            <button type="button" style={{ ...btnPrimary, minHeight: 52, ...dis(!pinCenter) }} disabled={!pinCenter} onClick={() => { if (!pinCenter) return; /* The phone's margin stands only while the ring is still on its reading (v2.7575). */ pinContainer(sheet.container.id, pinCenter, { accuracyM: taskPlaceSheetAccuracy(mapFly, pinCenter), byName }); closeSheet(); showToast(`${sheet.container.label} pinned on the map.`, 'success') }}>Put {sheet.container.label} here</button>
+            <button type="button" style={{ ...btnPrimary, minHeight: 52, ...dis(!canPin) }} disabled={!canPin} onClick={() => { if (!pinCenter || !canPin) return; /* The phone's margin stands only while the ring is still on its reading (v2.7575). */ pinContainer(sheet.container.id, pinCenter, { accuracyM: taskPlaceSheetAccuracy(mapFly, pinCenter), byName }); closeSheet(); showToast(`${sheet.container.label} pinned on the map.`, 'success') }}>Put {sheet.container.label} here</button>
           </div>
           {locating ? <p style={{ ...muted, margin: 0 }}>{locating}</p> : null}
+          {mapRoughM != null ? (
+            // The map takes the room this footer leaves, so the steps wait behind one press of their own.
+            <div data-testid="on-site-pin-rough">
+              <PreciseReadingLine accuracyM={mapRoughM} roughNote={pinOpening.wide ? whereIAmRoughWideNoteWords : whereIAmRoughNoteWords} foldSteps />
+            </div>
+          ) : pinReadM != null ? (
+            <div data-testid="on-site-pin-read">
+              <PreciseReadingLine accuracyM={pinReadM} weakNote={WHERE_I_AM_WEAK_NOTE_WORDS} />
+            </div>
+          ) : pinOpening.wide && !canPin ? (
+            <p role="status" data-testid="on-site-map-wide" style={{ ...muted, margin: 0 }}>{WHERE_I_AM_WIDE_WORDS}</p>
+          ) : null}
           {sheet.container.lat != null ? <button type="button" style={{ ...quiet, justifySelf: 'start', color: 'var(--text-muted)', fontSize: '0.85rem' }} onClick={() => { pinContainer(sheet.container.id, null); closeSheet(); showToast(`${sheet.container.label}\u2019s pin removed.`, 'info') }}>Remove the pin</button> : null}
         </>
       }
     >
       <div style={{ flex: '1 1 auto', minHeight: 0 }}>
         <Suspense fallback={<p style={muted}>Loading the map…</p>}>
-          <OnSiteMapLazy center={jobCenter} pins={mapPins} height="100%" focusId={sheet.container.lat != null ? sheet.container.id : null} flyTo={mapFly} placing={{ label: sheet.container.label }} onCenterChange={setPinCenter} />
+          <OnSiteMapLazy center={pinOpening.center} startZoom={pinOpening.startZoom} pins={mapPins} height="100%" focusId={pinFocusId} flyTo={mapFly} placing={{ label: sheet.container.label }} onCenterChange={setPinCenter} />
         </Suspense>
       </div>
     </Sheet>
@@ -721,12 +768,20 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                   <button type="button" style={{ ...btn, minHeight: 48 }} onClick={myLocation}>Use my location</button>
                 </div>
                 {locating ? <p style={{ ...muted, margin: 0 }}>{locating}</p> : null}
+                {mapRoughM != null ? (
+                  // This map has no ring, so its sentence names none. The steps wait behind one press, as on the pin sheet.
+                  <div data-testid="on-site-map-rough">
+                    <PreciseReadingLine accuracyM={mapRoughM} roughNote={siteOpening.wide ? siteMapRoughWideNoteWords : siteMapRoughNoteWords} foldSteps />
+                  </div>
+                ) : siteOpening.wide ? (
+                  <p role="status" data-testid="on-site-map-wide" style={{ ...muted, margin: 0 }}>{SITE_MAP_WIDE_WORDS}</p>
+                ) : null}
               </>
             }
           >
             <div style={{ flex: '1 1 auto', minHeight: 0 }}>
               <Suspense fallback={<p style={muted}>Loading the map…</p>}>
-                <OnSiteMapLazy center={jobCenter} pins={mapPins} height="100%" focusId={sheet.focusId} flyTo={mapFly} onPinTap={(id) => { closeSheet(); setView({ kind: 'container', id }) }} painted={painted.maps} onPaintedTap={(id) => openPaintedMap(id)} />
+                <OnSiteMapLazy center={siteOpening.center} startZoom={siteOpening.startZoom} pins={mapPins} height="100%" focusId={sheet.focusId} flyTo={mapFly} onPinTap={(id) => { closeSheet(); setView({ kind: 'container', id }) }} painted={painted.maps} onPaintedTap={(id) => openPaintedMap(id)} />
               </Suspense>
             </div>
           </Sheet>

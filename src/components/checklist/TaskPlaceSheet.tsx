@@ -11,7 +11,7 @@ import { loadPaintedMapsEvery, type Landed, type PaintedMapWhole } from '../../l
 import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
 import { PreciseLocationLine } from '../paintedMap/PreciseLocationLine'
-import { WHERE_I_AM_WEAK_NOTE_WORDS, whereIAmRoughNoteWords } from '../../lib/tasks/taskPlaceReading'
+import { WHERE_I_AM_WEAK_NOTE_WORDS, WHERE_I_AM_WIDE_WORDS, whereIAmRoughNoteWords, whereIAmRoughWideNoteWords } from '../../lib/tasks/taskPlaceReading'
 import { TASK_PLACE_WAY_WORDS, waysNearPlace } from '../../lib/tasks/taskPlaceWay'
 import {
   TASK_PLACE_NAME_MAX,
@@ -206,7 +206,8 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
             // One reading, asked for by the press: there is no better one to wait for, so it is called rough at once.
             <div data-task-place-fix="rough">
               {/* The map above gives way to whatever is under the press, so the steps wait behind one press of their own. */}
-              <PreciseLocationLine accuracyM={roughFix} kind={phoneKind} roughHeld roughNote={whereIAmRoughNoteWords(phoneKind)} foldSteps />
+              {/* A map that has just opened wide was not left where it was, so the sentence does not say so. */}
+              <PreciseLocationLine accuracyM={roughFix} kind={phoneKind} roughHeld roughNote={wide ? whereIAmRoughWideNoteWords(phoneKind) : whereIAmRoughNoteWords(phoneKind)} foldSteps />
             </div>
           ) : onReading ? (
             <div data-task-place-fix={isPoorTaskPlaceFix(accuracyM) ? 'poor' : 'ok'}>
@@ -214,7 +215,7 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
             </div>
           ) : wide && !ready ? (
             <p role="status" data-task-place-fix="wide" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              The map opened wide. Zoom in and drag it until the ring is on the spot.
+              {WHERE_I_AM_WIDE_WORDS}
             </p>
           ) : dragged ? (
             <p role="status" data-task-place-fix="dragged" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
