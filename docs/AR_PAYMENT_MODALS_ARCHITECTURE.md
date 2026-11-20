@@ -9,7 +9,7 @@ covers:
   - src/components/jobs/CollectPaymentModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-26
+last_updated: 2026-11-20
 ---
 
 > **Line numbers are as of `f423bd6e5`** (read from `npm run map` fact sheets generated at that commit). They rot — **search the symbol**, then trust the range only as a hint. Regenerate with `npm run map -- <file>`.
@@ -325,7 +325,7 @@ Gates after every step: `npm run typecheck && npm run lint && npm test`.
 - `send-stripe-invoice` emails the customer; `update-collect-payment-stripe-customer-email` changes the Stripe customer; `add_collect_payment_fixture_from_job_book` changes the bill. Every edge body carries `stripeModeInvokeBody(stripeModeForBilling)` — a move must keep it.
 
 **Role gates**
-- Bank: `canApply` (`canRecordArPayments`: dev · master_technician · assistant · controller, the roles the database answers on every read and verb behind it since v2.7931; primary came out of the client list in v2.8030) gates apply, sweep bar, mark-returned menu, close-out offer (1298), line controls, the Book it as Income button, the cases read (`useArReturnCases(open, canApply)`) and every case handler. **Not** gated client-side: the tip strip / `addTipLine` (the RPC refuses roles outside dev · master_technician · assistant · primary). Dev-only: Mercury filter menu, kind-badge editor, the config/badge migrate-upserts (1057, 1083). `BankTransferDetailsPanel` edit: dev || master. Openers gate tighter than `canApply`: tools menu dev/master/assistant-like; `/accounts-receivable` `canRoleSeeArBankUnallocatedOrgNudge`. The bank-label read relies on RLS returning an error → `null` (no clause, never a wrong one).
+- Bank: `canApply` (`canRecordArPayments`: dev · master_technician · assistant · controller, the roles the database answers on every read and verb behind it since v2.7931; primary came out of the client list in v2.8030) gates apply, sweep bar, mark-returned menu, close-out offer (1298), line controls, the Book it as Income button, the cases read (`useArReturnCases(open, canApply)`) and every case handler. **Not** gated client-side: the tip strip / `addTipLine` (the RPC refuses roles outside dev · master_technician · assistant since v2.8109, which took primary out; the controller, whom `canApply` admits, is refused there as before). Dev-only: Mercury filter menu, kind-badge editor, the config/badge migrate-upserts (1057, 1083). `BankTransferDetailsPanel` edit: dev || master. Openers gate tighter than `canApply`: tools menu dev/master/assistant-like; `/accounts-receivable` `canRoleSeeArBankUnallocatedOrgNudge`. The bank-label read relies on RLS returning an error → `null` (no clause, never a wrong one).
 - Collect: no role gate inside except the dev/impersonation Stripe Dashboard link; the opener's button gate (`isSubcontractorLikeRole || superintendent`) plus server team-membership checks are the real gates.
 
 **Realtime / subscriptions**
