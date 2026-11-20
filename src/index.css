@@ -4477,6 +4477,7 @@ body.my-time-boundary-dragging {
   .lienLedgerGrid tr { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; column-gap: 0.5rem; padding: 0.45rem 0 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
   .lienLedgerGrid thead tr { padding-top: 0; padding-bottom: 0; }
   .lienLedgerGrid tbody tr:last-child { border-bottom: none; }
+  .lienLedgerGrid[data-this='no'] tr { grid-template-columns: minmax(0, 1fr); padding-right: 0.5rem; }
   .lienLedgerGrid th, .lienLedgerGrid td, .lienLedgerGrid tr[data-lines='one'] > td { display: block; grid-column: 1; width: auto; min-width: 0; padding: 0; border-bottom: none; white-space: normal; }
   .lienLedgerGrid th[data-col='month'], .lienLedgerGrid th[data-col='window'] { display: none; }
   .lienLedgerGrid th[data-col='paper'] { width: auto; padding: 0.3rem 0; }
