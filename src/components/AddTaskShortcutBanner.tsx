@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { UserRole } from '../hooks/useAuth'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { shouldShowAddTaskBanner, markAddTaskBannerDismissed } from '../lib/iosPwa'
+import { AppTopBanner } from './layout/AppTopBanner'
 
 const INSTALL_PAGE_HREF = '/task-install.html'
 
@@ -9,6 +10,9 @@ const INSTALL_PAGE_HREF = '/task-install.html'
  * Slim, dismissible offer shown only to task-capable users browsing in iOS Safari (not in the
  * installed standalone app — that's where "Add to Home Screen" is unavailable). Tapping "Add"
  * routes to the /task install helper. Dismissal is remembered in localStorage.
+ *
+ * It is the first line above the header, so it draws in `AppTopBanner` like the others. Safari keeps
+ * its own bar over the status bar, so the inset it would pay is 0px wherever the offer can show.
  */
 export default function AddTaskShortcutBanner({ role }: { role: UserRole | null }) {
   const [visible, setVisible] = useState(
@@ -18,14 +22,15 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
   if (!visible) return null
 
   return (
-    <div
+    <AppTopBanner
       role="region"
       aria-label="Add Task home screen shortcut"
+      padY="0.5rem"
+      padX="0.85rem"
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: '0.6rem',
-        padding: '0.5rem 0.85rem',
         background: 'var(--bg-orange-tint)',
         borderBottom: '1px solid var(--border-orange)',
         color: '#7c2d12',
@@ -85,6 +90,6 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
       >
         Dismiss
       </button>
-    </div>
+    </AppTopBanner>
   )
 }
