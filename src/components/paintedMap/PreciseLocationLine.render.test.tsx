@@ -105,6 +105,34 @@ describe('PreciseLocationLine', () => {
   })
 })
 
+describe('the steps behind one press', () => {
+  it('keeps the steps one press away on a sheet whose map needs the room, and says nothing less', () => {
+    render(<PreciseLocationLine accuracyM={3200} kind="iphone-safari" roughHeld roughNote="The map was not moved." foldSteps />)
+    const alert = screen.getByRole('alert')
+    const fold = alert.querySelector('details[data-precise-steps-fold]') as HTMLDetailsElement
+    expect(fold.open).toBe(false)
+    expect(fold.querySelector('summary')?.textContent).toBe('Show the steps')
+    // The lead, the two numbers and the screen's note stay in the open.
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.parentElement).toBe(alert)
+    expect(alert.querySelector('[data-precise-note]')?.parentElement).toBe(alert)
+    // The steps and the line for a switch that was on all along are both behind it.
+    expect([...fold.querySelectorAll('ol[data-precise-steps] li')].map((li) => li.textContent)).toEqual(preciseSteps('iphone-safari'))
+    expect(fold.querySelector('[data-precise-already-on]')).toBeTruthy()
+  })
+
+  it('draws the steps in the open everywhere else', () => {
+    render(<PreciseLocationLine accuracyM={3200} kind="iphone-safari" roughHeld />)
+    expect(document.querySelector('[data-precise-steps-fold]')).toBeNull()
+    expect(steps()).toEqual(preciseSteps('iphone-safari'))
+  })
+
+  it('names no switch on the press, so a desk reads it the same', () => {
+    render(<PreciseLocationLine accuracyM={3200} kind="other" roughHeld foldSteps />)
+    expect(document.querySelector('[data-precise-steps-fold] summary')?.textContent).not.toMatch(/switch|precise/i)
+  })
+})
+
 describe('PreciseSteps', () => {
   it('numbers a phone’s own steps, and ends on the line for a switch that was on all along', () => {
     render(<PreciseSteps kind="iphone-chrome" />)

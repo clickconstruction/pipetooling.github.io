@@ -11,12 +11,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 vi.mock('leaflet/dist/leaflet.css', () => ({}))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
 vi.mock('../paintedMap/PaintedMapsLayer', () => ({ PaintedMapsLayer: () => null }))
-const moves = vi.hoisted(() => ({ setView: 0, fitBounds: 0 }))
+const moves = vi.hoisted(() => ({ setView: 0, fitBounds: 0, /** What the map was asked to do, in order: `measure` its box, or `fly` somewhere. */ order: [] as string[], /** Each set of handlers a draw listened to the map with. */ listened: [] as unknown[] }))
 vi.mock('react-leaflet', () => {
   const map = {
-    invalidateSize: () => {},
+    invalidateSize: () => { moves.order.push('measure') },
     getContainer: () => document.createElement('div'),
-    setView: () => { moves.setView += 1 },
+    setView: (at: [number, number], _zoom?: number, how?: { animate?: boolean }) => { moves.setView += 1; moves.order.push(`fly ${at[0]},${at[1]}${how?.animate === false ? ' at once' : ' gliding'}`) },
     fitBounds: () => { moves.fitBounds += 1 },
     getCenter: () => ({ lat: 30.2, lng: -98.1 }),
   }
@@ -28,7 +28,7 @@ vi.mock('react-leaflet', () => {
     Circle: () => null,
     Polyline: () => null,
     useMap: () => map,
-    useMapEvents: () => map,
+    useMapEvents: (handlers: unknown) => { moves.listened.push(handlers); return map },
   }
 })
 const walked = vi.hoisted(() => [] as Array<[number, number]>)
@@ -59,6 +59,8 @@ afterEach(() => {
   walked.length = 0
   moves.setView = 0
   moves.fitBounds = 0
+  moves.order = []
+  moves.listened = []
 })
 
 describe('OnSiteMap', () => {
@@ -142,6 +144,30 @@ describe('OnSiteMap', () => {
     render(<OnSiteMap center={SITE} pins={PINS} height={300} />)
     expect((document.querySelector('[data-on-site-map]') as HTMLElement).style.height).toBe('')
     expect((document.querySelector('[data-map-provider]') as HTMLElement).style.height).toBe('300px')
+  })
+
+  it('measures its box before it is flown somewhere, so the ring lands on the point when the screen changed shape (#402)', () => {
+    const view = render(<OnSiteMap center={SITE} pins={[]} height={300} placing={{ label: 'A7' }} />)
+    moves.order = []
+    // A tall answer under the press went away in the same draw that asked for the fly.
+    view.rerender(<OnSiteMap center={SITE} pins={[]} height={300} placing={{ label: 'A7' }} flyTo={{ lat: 30.21, lng: -98.11 }} />)
+    // At once, with no glide: a resize that came mid-glide left the ring off the point.
+    expect(moves.order).toEqual(['measure', 'fly 30.21,-98.11 at once'])
+  })
+
+  it('listens for where the ring is with one set of handlers, so a fly that lands at once is never unheard (#402)', () => {
+    const onCenterChange = vi.fn()
+    const view = render(<OnSiteMap center={SITE} pins={[]} height={300} placing={{ label: 'A7' }} onCenterChange={onCenterChange} />)
+    view.rerender(<OnSiteMap center={SITE} pins={[]} height={300} placing={{ label: 'A7' }} onCenterChange={onCenterChange} flyTo={{ lat: 30.21, lng: -98.11 }} />)
+    view.rerender(<OnSiteMap center={SITE} pins={[]} height={280} placing={{ label: 'A7' }} onCenterChange={onCenterChange} flyTo={{ lat: 30.21, lng: -98.11 }} />)
+    // Three draws, one set of handlers: a new set each draw is taken off and put back with the fly in between.
+    expect(moves.listened.length).toBeGreaterThanOrEqual(3)
+    expect(new Set(moves.listened).size).toBe(1)
+    // And the newest caller is the one that hears it.
+    const newer = vi.fn()
+    view.rerender(<OnSiteMap center={SITE} pins={[]} height={280} placing={{ label: 'A7' }} onCenterChange={newer} flyTo={{ lat: 30.21, lng: -98.11 }} />)
+    ;(moves.listened[0] as { moveend: () => void }).moveend()
+    expect(newer).toHaveBeenLastCalledWith({ lat: 30.2, lng: -98.1 })
   })
 
   it('with nowhere to open says so and draws no map', () => {

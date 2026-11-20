@@ -16,6 +16,9 @@ import {
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
 import { PinsMapFrame } from '../map/PinsMapFrame'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
+import { HOW_FAR_ROUGH_NOTE_WORDS } from '../../lib/tasks/taskPlaceReading'
+import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 
 const HIDDEN_KEY = 'task_places_map_hidden'
 const ME_ID = '__me'
@@ -81,6 +84,8 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
   const [me, setMe] = useState<MyFix | null>(null)
   const [asking, setAsking] = useState(false)
   const [noFix, setNoFix] = useState<string | null>(null)
+  // The last press got an area and not a spot (#402): its margin, for the words. No dot and no distance came of it.
+  const [areaM, setAreaM] = useState<number | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
 
   const { groups, withoutPlace } = useMemo(() => {
@@ -103,12 +108,20 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
     requestMyFix(
       (fix) => {
         setAsking(false)
+        // A rough reading is an area. Its middle is nobody's spot, so it puts no dot on the map and no distance on
+        // the list. A dot from an earlier press stays, as it does when the phone gives nothing at all.
+        if (isRoughFix(fix.accuracyM)) {
+          setAreaM(fix.accuracyM)
+          return
+        }
+        setAreaM(null)
         setMe(fix)
         onMe?.(fix)
         setFitSignal((n) => n + 1)
       },
       (why) => {
         setAsking(false)
+        setAreaM(null)
         setNoFix(taskPlaceNoFixWords(why))
       },
     )
@@ -168,7 +181,12 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
               {noFix}
             </p>
           ) : null}
-          {me && !noFix ? (
+          {areaM != null && !noFix ? (
+            <div data-task-places-rough style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border)' }}>
+              <PreciseReadingLine accuracyM={areaM} roughNote={HOW_FAR_ROUGH_NOTE_WORDS} />
+            </div>
+          ) : null}
+          {me && !noFix && areaM == null ? (
             <p role="status" data-task-places-me style={{ margin: 0, padding: '0.4rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
               The dark dot is you. {TASK_PLACE_PRIVACY_WORDS}
             </p>

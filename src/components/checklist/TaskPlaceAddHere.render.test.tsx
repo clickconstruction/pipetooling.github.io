@@ -15,6 +15,9 @@ vi.mock('../../lib/materials/myLocation', () => ({
     else onOk(phone.fix)
   },
 }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => browser.kind }))
 const io = vi.hoisted(() => ({ calls: [] as unknown[][], refusal: null as string | null }))
 vi.mock('../../lib/tasks/taskPlaceIo', () => ({
   addTaskPlaceFromTheSpot: (...args: unknown[]) => {
@@ -32,6 +35,7 @@ afterEach(() => {
   phone.why = null
   io.calls = []
   io.refusal = null
+  browser.kind = 'iphone-safari'
 })
 
 describe('TaskPlaceAddHere', () => {
@@ -45,7 +49,7 @@ describe('TaskPlaceAddHere', () => {
     const onAdded = vi.fn()
     render(<TaskPlaceAddHere instanceId="i1" onAdded={onAdded} />)
     fireEvent.click(screen.getByRole('button', { name: 'Standing at this task? Add its place' }))
-    expect(document.querySelector('[data-task-place-add-found]')?.textContent).toBe('Found you. Your phone is sure within 20 ft.')
+    expect(document.querySelector('[data-task-place-add-found]')?.textContent).toBe('Precise Location is on. Sure within 20 ft.')
     expect(screen.getByText('This saves where you stand as the task’s place. The app does not follow you after.')).toBeTruthy()
     expect(io.calls).toEqual([])
     fireEvent.change(screen.getByLabelText('Name it, to pick it next time'), { target: { value: 'Shop bay 2' } })
@@ -59,12 +63,40 @@ describe('TaskPlaceAddHere', () => {
     phone.fix = { lat: 29.55, lng: -98.28, accuracyM: 121 }
     render(<TaskPlaceAddHere instanceId="i1" onAdded={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Standing at this task? Add its place' }))
-    expect(document.querySelector('[data-task-place-add-refused]')?.textContent).toBe('Your phone is only sure within 400 ft. Try again in the open.')
+    expect(document.querySelector('[data-task-place-add-refused]')?.textContent).toBe('The signal is weak here. Your phone is only sure within 400 ft. Try again in the open.')
     expect(screen.queryByRole('button', { name: 'Add this place' })).toBeNull()
     phone.fix = { lat: 29.55, lng: -98.28, accuracyM: 9 }
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByRole('button', { name: 'Add this place' })).toBeTruthy()
     expect(phone.asked).toBe(2)
+  })
+
+  it('a reading the phone knows fairly well is kept, and the line says the signal is weak (#402)', () => {
+    // 35 m is inside the 150 ft a place may be kept at, and past the 65 ft the line calls sure.
+    phone.fix = { lat: 29.55, lng: -98.28, accuracyM: 35 }
+    render(<TaskPlaceAddHere instanceId="i1" onAdded={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Standing at this task? Add its place' }))
+    expect(document.querySelector('[data-task-place-add-found]')?.textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft.')
+    expect(screen.getByRole('button', { name: 'Add this place' })).toBeTruthy()
+  })
+
+  it('a rough reading is not kept, and is sent to the switch and not to the open sky (#402)', () => {
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<TaskPlaceAddHere instanceId="i1" onAdded={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Standing at this task? Add its place' }))
+    const alert = screen.getByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('A place cannot be added from a reading that wide.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(document.querySelector('[data-task-place-add-refused]')?.textContent).not.toContain('Try again in the open')
+    expect(screen.queryByRole('button', { name: 'Add this place' })).toBeNull()
+    expect(io.calls).toEqual([])
+    // Try again asks the phone once more, as it does for any reading that was not kept.
+    phone.fix = { lat: 29.55, lng: -98.28, accuracyM: 5 }
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add this place' })).toBeTruthy()
   })
 
   it('a reading with no margin is not kept either', () => {

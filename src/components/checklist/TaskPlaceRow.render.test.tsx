@@ -21,6 +21,10 @@ vi.mock('../../lib/materials/myLocation', () => ({
   requestMyLocation: (onOk: (p: unknown) => void, onErr: (w: string) => void) => (phone.refusal ? onErr(phone.refusal) : onOk(phone.fix)),
 }))
 
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => browser.kind }))
+
 /** The map, stood in for: it reports its centre once it opens and again wherever it is flown. */
 vi.mock('../materials/OnSiteMap', () => ({
   default: function MapStub(props: { center: { lat: number; lng: number } | null; flyTo?: { lat: number; lng: number } | null; onCenterChange?: (c: { lat: number; lng: number }) => void; placing?: { hint?: string } | null; emptyWords?: string }) {
@@ -30,7 +34,7 @@ vi.mock('../materials/OnSiteMap', () => ({
       if (at) onCenterChange?.({ lat: at.lat, lng: at.lng })
     }, [at, onCenterChange])
     return (
-      <div data-testid="map-stub">
+      <div data-testid="map-stub" data-at={at ? `${at.lat},${at.lng}` : 'nowhere'}>
         {at ? props.placing?.hint : props.emptyWords}
         <button type="button" onClick={() => at && onCenterChange?.({ lat: at.lat + 0.001, lng: at.lng })}>drag the map</button>
       </div>
@@ -49,6 +53,7 @@ afterEach(() => {
   phone.fix = { lat: 29.5512, lng: -98.2874, accuracyM: 6 }
   phone.refusal = null
   office.known = true
+  browser.kind = 'iphone-safari'
 })
 
 function Harness({ initial = null, onChange }: { initial?: TaskPlaceDraft | null; onChange: (p: TaskPlaceDraft | null) => void }) {
@@ -93,7 +98,8 @@ describe('TaskPlaceRow', () => {
     expect(screen.getByRole('dialog', { name: 'Where is it?' })).toBeTruthy()
     expect((await screen.findByTestId('map-stub')).textContent).toContain('Drag the map until the ring is on the spot')
     fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
-    await waitFor(() => expect(document.querySelector('[data-task-place-fix="ok"]')?.textContent).toBe('Found you. Your phone is sure within 20 ft.'))
+    await waitFor(() => expect(document.querySelector('[data-task-place-fix="ok"]')?.textContent).toBe('Precise Location is on. Sure within 20 ft.'))
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).toBe('29.5512,-98.2874')
     fireEvent.change(screen.getByLabelText('Name it, to pick it next time'), { target: { value: '  Pump house ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Use this place' }))
     expect(onChange).toHaveBeenCalledWith({ lat: 29.5512, lng: -98.2874, name: 'Pump house', accuracyM: 6 })
@@ -119,7 +125,83 @@ describe('TaskPlaceRow', () => {
     fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
     await screen.findByTestId('map-stub')
     fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
-    await waitFor(() => expect(document.querySelector('[data-task-place-fix="poor"]')?.textContent).toBe('Your phone is only sure within 400 ft. Drag the map until the ring is on the spot.'))
+    await waitFor(() => expect(document.querySelector('[data-task-place-fix="poor"]')?.textContent).toBe('The signal is weak here. Your phone is only sure within 400 ft. Drag the map until the ring is on the spot.'))
+    // The map still went to the reading: the phone knows about where it is.
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).toBe('29.5512,-98.2874')
+  })
+
+  it('a weak signal at a margin that proves the switch on clears the switch, and still asks for the ring (#402)', async () => {
+    phone.fix = { lat: 29.5512, lng: -98.2874, accuracyM: 35 }
+    render(<Harness onChange={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    await screen.findByTestId('map-stub')
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    await waitFor(() => expect(document.querySelector('[data-task-place-fix]')?.textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft. Drag the map until the ring is on the spot.'))
+  })
+
+  it('a rough reading does not move the map: the sheet says the switch looks off and shows the way to it (#402)', async () => {
+    // The middle of an area miles from the office the map opened on.
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    await screen.findByTestId('map-stub')
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).toBe('29.4,-98.5')
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(document.querySelector('[data-task-place-fix]')?.getAttribute('data-task-place-fix')).toBe('rough')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map was not moved. Drag it until the ring is on the spot, or turn the switch on and press again.')
+    // The map above gives way to what is under the press, so the steps wait behind one press of their own.
+    const fold = alert.querySelector('details[data-precise-steps-fold]') as HTMLDetailsElement
+    expect(fold.open).toBe(false)
+    expect(fold.querySelector('summary')?.textContent).toBe('Show the steps')
+    expect(fold.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(alert.textContent).not.toMatch(/is off/)
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).toBe('29.4,-98.5')
+    // The place can still be set by the ring, with no margin from a reading that was not used.
+    fireEvent.click(screen.getByRole('button', { name: 'Use this place' }))
+    expect(onChange).toHaveBeenCalledWith({ lat: 29.4, lng: -98.5, name: '', accuracyM: null })
+  })
+
+  it('moves the map once the switch is on and the press is made again, and the alert goes (#402)', async () => {
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<Harness onChange={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    await screen.findByTestId('map-stub')
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    await screen.findByRole('alert')
+    phone.fix = { lat: 29.5512, lng: -98.2874, accuracyM: 4.5 }
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(document.querySelector('[data-task-place-fix="ok"]')?.textContent).toBe('Precise Location is on. Sure within 15 ft.')
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).toBe('29.5512,-98.2874')
+  })
+
+  it('with nowhere to open, a rough reading opens the map wide to be dragged, and never on the middle of the area (#402)', async () => {
+    office.known = false
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<Harness onChange={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    await screen.findByTestId('map-stub')
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    await screen.findByRole('alert')
+    await waitFor(() => expect(screen.getByTestId('map-stub').getAttribute('data-at')).not.toBe('nowhere'))
+    expect(screen.getByTestId('map-stub').getAttribute('data-at')).not.toBe('29.9,-98.9')
+    expect((screen.getByRole('button', { name: 'Use this place' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('names no switch on a desk, in the line or in the note (#402)', async () => {
+    browser.kind = 'other'
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<Harness onChange={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    await screen.findByTestId('map-stub')
+    fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain('This device only knows the area it is in. It is only sure within 2 miles. The map was not moved. Drag it until the ring is on the spot.')
+    expect(alert.textContent).not.toMatch(/the switch/)
   })
 
   it('a refusal says what to do, and the map still sets the place', async () => {

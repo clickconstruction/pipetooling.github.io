@@ -10,14 +10,16 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
-const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed' }))
+const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed', fix: { lat: 29.5, lng: -98.3, accuracyM: 9 } }))
 vi.mock('../../lib/materials/myLocation', () => ({
   requestMyFix: (onOk: (p: unknown) => void, onFail: (w: string) => void) => {
     phone.asked += 1
     if (phone.why) onFail(phone.why)
-    else onOk({ lat: 29.5, lng: -98.3, accuracyM: 9 })
+    else onOk({ ...phone.fix })
   },
 }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => 'iphone-safari' }))
 const opened = vi.hoisted(() => [] as string[])
 // Time (punch list #395): the photo archive's walk, answered here with today's photograph and one older.
 const walked = vi.hoisted(() => [] as Array<[number, number]>)
@@ -65,6 +67,7 @@ afterEach(() => {
   localStorage.clear()
   phone.asked = 0
   phone.why = null
+  phone.fix = { lat: 29.5, lng: -98.3, accuracyM: 9 }
   opened.length = 0
   walked.length = 0
 })
@@ -171,6 +174,40 @@ describe('TaskPlacesMapCard', () => {
     // The person's own dot is not a place: a press on it selects nothing.
     fireEvent.click(screen.getByRole('button', { name: 'dot You' }))
     expect(document.querySelector('[data-task-places-selected]')).toBeNull()
+  })
+
+  it('a rough reading puts no dot on the map and no distance on the list, and shows the way to the switch (#402)', async () => {
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    const onMe = vi.fn()
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} onMe={onMe} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('How far cannot be told from a reading that wide.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(onMe).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'dot You' })).toBeNull()
+    expect(document.querySelector('[data-task-places-me]')).toBeNull()
+    // The press is still Show where I am, and a sure reading then does what it always did.
+    phone.fix = { lat: 29.5, lng: -98.3, accuracyM: 9 }
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    await waitFor(() => expect(onMe).toHaveBeenCalledWith({ lat: 29.5, lng: -98.3, accuracyM: 9 }))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'dot You' })).toBeTruthy()
+  })
+
+  it('a rough answer to Find me again keeps the dot the last sure reading drew (#402)', async () => {
+    const onMe = vi.fn()
+    render(<TaskPlacesMapCard tasks={TASKS} onShowTask={() => {}} onMe={onMe} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show where I am' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'dot You' })).toBeTruthy())
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Find me again' }))
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: 'dot You' })).toBeTruthy()
+    expect(onMe).toHaveBeenCalledTimes(1)
+    // The line about the dot gives way to the words about the reading.
+    expect(document.querySelector('[data-task-places-me]')).toBeNull()
   })
 
   it('a refusal says the map still works, and the list is told nothing', async () => {

@@ -6,6 +6,10 @@
  * stands, so every search ends by correcting the record. **Move the pin by hand** is the map to drag, for a pin that
  * landed wrong or a phone that cannot say where it is.
  *
+ * A reading that is only an area (punch list #402, call 8) pins nothing, measures nothing and moves no map. The
+ * sheet then draws the Precise Location line with the way to the switch, in place of *Try again in the open*, which
+ * would not help. **Use my location** draws the line in every state, as a task's Use where I am does.
+ *
  * The words and the rules are `whereIsBox.ts`. Leaflet loads only when this is drawn.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
@@ -18,6 +22,10 @@ import type { PhotoNote } from '../../lib/materials/photo'
 import { pinContainer } from '../../lib/materials/onSiteStore'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { taskPlaceNoFixWords, taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
+import { HOW_FAR_ROUGH_NOTE_WORDS, WHERE_I_AM_WEAK_NOTE_WORDS, whereIAmRoughNoteWords } from '../../lib/tasks/taskPlaceReading'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
+import { useRoughHeld } from '../../hooks/usePreciseLocation'
+import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 import {
   WHERE_DIRECTIONS_PRESS,
   WHERE_FOUND_PRESS,
@@ -32,6 +40,7 @@ import {
   findBoxTask,
   type FindBoxTask,
   foundNoFixWords,
+  foundRoughNoteWords,
   foundVerdict,
   lastPutOf,
   WHERE_LIVE_FIX_MS,
@@ -137,21 +146,35 @@ export default function WhereIsBox({ container, containers, places, moves, movem
       setMe(null)
     }
   }, [showMe])
-  const far = me && pin ? whereIsBoxFar(me, pin) : null
+  // How sure the phone is (#402). A rough reading is an area and not a spot, so it draws no dot and measures no
+  // distance. This press follows the phone, so the sheet waits 4 seconds for a better reading before it says so.
+  const liveRough = me != null && isRoughFix(me.accuracyM)
+  const liveRoughHeld = useRoughHeld(showMe ? (me?.accuracyM ?? null) : null)
+  const meSpot = liveRough ? null : me
+  const far = meSpot && pin ? whereIsBoxFar(meSpot, pin) : null
 
   // I found it: one reading, one pin. What became of the press is said at the top of the sheet.
   const [finding, setFinding] = useState(false)
   const [found, setFound] = useState<string | null>(null)
   const [refused, setRefused] = useState<string | null>(null)
+  // I found it got an area and not a spot: its margin, for the Precise Location line. Nothing was pinned.
+  const [refusedRoughM, setRefusedRoughM] = useState<number | null>(null)
+  // A later reading that is a spot proves the switch on: what the press said about an area no longer holds.
+  useEffect(() => {
+    if (me && !isRoughFix(me.accuracyM)) setRefusedRoughM(null)
+  }, [me])
   const [asked, setAsked] = useState(false)
   const foundIt = () => {
     if (finding) return
     setRefused(null)
+    setRefusedRoughM(null)
     const take = (fix: MyFix) => {
       setFinding(false)
       const v = foundVerdict(label, fix)
       if (!v.ok) {
-        setRefused(v.words)
+        // The open sky is not the cure for a phone that gives only an area: the line shows the way to the switch.
+        if (isRoughFix(fix.accuracyM)) setRefusedRoughM(fix.accuracyM)
+        else setRefused(v.words)
         return
       }
       pinContainer(container.id, v.pin, { accuracyM: v.accuracyM, byName })
@@ -178,11 +201,29 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   const [center, setCenter] = useState<LatLng | null>(null)
   const [fly, setFly] = useState<MyFix | null>(null)
   const [locating, setLocating] = useState<string | null>(null)
-  const startPlacing = () => { setPlacing(true); setCenter(null); setFly(null); setLocating(null); setRefused(null) }
+  // Use my location got an area and not a spot: its margin, for the line. The map was not moved.
+  const [flyRoughM, setFlyRoughM] = useState<number | null>(null)
+  const startPlacing = () => { setPlacing(true); setCenter(null); setFly(null); setLocating(null); setFlyRoughM(null); setRefused(null); setRefusedRoughM(null) }
   const useMyLocation = () => {
     setLocating('Finding you…')
-    requestMyFix((p) => { setLocating(null); setFly({ ...p }) }, (why) => setLocating(why === 'refused' ? 'Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.' : why === 'none' ? 'This device gives no location. Drag the map by hand.' : 'Could not find you. Drag the map by hand.'))
+    requestMyFix(
+      (p) => {
+        setLocating(null)
+        if (isRoughFix(p.accuracyM)) {
+          setFlyRoughM(p.accuracyM)
+          return
+        }
+        setFlyRoughM(null)
+        setFly({ ...p })
+      },
+      (why) => {
+        setFlyRoughM(null)
+        setLocating(why === 'refused' ? 'Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.' : why === 'none' ? 'This device gives no location. Drag the map by hand.' : 'Could not find you. Drag the map by hand.')
+      },
+    )
   }
+  // The margin belongs to the reading: the line speaks of the phone only while the ring still sits on it.
+  const flyAccuracy = fly && center ? taskPlaceSheetAccuracy(fly, center) : null
   const putHere = () => {
     if (!center) return
     // The phone's margin stands only while the ring is still on the phone's reading; a drag makes it a person's word.
@@ -216,6 +257,11 @@ export default function WhereIsBox({ container, containers, places, moves, movem
     <div style={{ display: 'grid', gap: '0.75rem' }} data-testid="where-is-box">
       {found ? <p role="status" style={{ ...okBox, fontWeight: 600 }}>{found}</p> : null}
       {refused ? <p role="alert" style={waitBox}>{refused}</p> : null}
+      {refusedRoughM != null ? (
+        <div data-testid="where-is-box-rough">
+          <PreciseReadingLine accuracyM={refusedRoughM} roughNote={(kind) => foundRoughNoteWords(label, kind)} />
+        </div>
+      ) : null}
       <div style={{ display: 'grid', gap: '0.2rem' }} data-testid="where-is-box-words">
         <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-strong)' }}>{words.lead}</span>
         {words.lines.map((line) => <span key={line}>{line}</span>)}
@@ -243,6 +289,13 @@ export default function WhereIsBox({ container, containers, places, moves, movem
         </p>
       ) : null}
       {far?.rough && far.note && !placing ? <p style={waitBox}>{far.note}</p> : null}
+      {showMe && liveRough && !placing && refusedRoughM == null ? (
+        // Until the readings have stayed rough the line is still finding you, in the words it uses everywhere.
+        // I found it's own answer about the same area stands in for this one: the steps are drawn once.
+        <div data-testid={liveRoughHeld ? 'where-is-box-far-rough' : 'where-is-box-finding'}>
+          <PreciseReadingLine accuracyM={liveRoughHeld ? me?.accuracyM : null} roughNote={HOW_FAR_ROUGH_NOTE_WORDS} />
+        </div>
+      ) : null}
       {noFix ? <p style={muted}>{noFix}</p> : null}
       {newest && !placing ? (
         <div style={{ display: 'grid', gap: '0.3rem' }}>
@@ -257,7 +310,7 @@ export default function WhereIsBox({ container, containers, places, moves, movem
           height={placing ? (touch ? 320 : 380) : touch ? 240 : 300}
           focusId={pinned ? container.id : null}
           painted={painted}
-          me={placing ? null : me}
+          me={placing ? null : meSpot}
           lineTo={placing ? null : pin}
           placing={placing ? { label } : null}
           flyTo={placing ? fly : null}
@@ -272,10 +325,19 @@ export default function WhereIsBox({ container, containers, places, moves, movem
             <button type="button" style={center ? primary : { ...btn, background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' }} disabled={!center} onClick={putHere}>Put {label} here</button>
           </div>
           {locating ? <p style={muted}>{locating}</p> : null}
+          {flyRoughM != null ? (
+            <div data-testid="where-is-box-fly-rough">
+              <PreciseReadingLine accuracyM={flyRoughM} roughNote={whereIAmRoughNoteWords} />
+            </div>
+          ) : flyAccuracy != null ? (
+            <div data-testid="where-is-box-fly-read">
+              <PreciseReadingLine accuracyM={flyAccuracy} weakNote={WHERE_I_AM_WEAK_NOTE_WORDS} />
+            </div>
+          ) : null}
           <button type="button" style={quiet} onClick={() => setPlacing(false)}>Back, leave the pin as it is</button>
           {pinned ? <button type="button" style={{ ...quiet, color: 'var(--text-muted)', fontSize: '0.85rem' }} onClick={removePin}>Remove the pin</button> : null}
         </>
-      ) : refused ? (
+      ) : refused || refusedRoughM != null ? (
         <>
           <button type="button" style={primary} onClick={foundIt} aria-busy={finding}>{finding ? 'Finding you…' : WHERE_TRY_AGAIN_PRESS}</button>
           <button type="button" style={btn} onClick={startPlacing}>{WHERE_MOVE_PIN_PRESS}</button>

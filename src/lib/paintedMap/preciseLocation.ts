@@ -148,6 +148,9 @@ export function preciseSteps(kind: PhoneKind): string[] {
   ]
 }
 
+/** The one press the steps sit behind, on a sheet whose map needs the room they would take. */
+export const PRECISE_STEPS_FOLD_WORDS = 'Show the steps'
+
 /** Under the steps: the case where the switch was on all along. A rough reading with the switch on means the phone can hear a cell tower and nothing else. */
 export const PRECISE_ALREADY_ON_WORDS = 'Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.'
 

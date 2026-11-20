@@ -1,8 +1,8 @@
 ---
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
-group: ready
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · the four are built
+group: close
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`, call 8 on `claude/402-precise-location-use-where`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · call 8, the task screens and the box map, is v2.8011 · all five are built
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -11,9 +11,9 @@ summary: >
   signal, or a reading so rough that the switch looks off. When it looks off, the line sets the
   phone's two numbers side by side and lists the steps to the switch for this phone alone. The map
   pulls back to the whole circle, and the dot stays where it was.
-next: The first walk on an iPhone with Precise Location switched off, and call 8 as its own PR (the same line on a task's Use where I am and on the box map).
+next: The first walk on an iPhone with Precise Location switched off. Write the margin the phone shows on this card. Then the card can close.
 size: M as a train of four (S · M · S · S), then call 8 as its own follow-up (S)
-blocker: None. Every call was taken at the pick on 2026-11-19. No real phone has been read with the switch off, so the first walk on one is the proof.
+blocker: A person with an iPhone. Every call was taken at the pick on 2026-11-19 and all of it is built. No real phone has been read with the switch off, so the first walk on one is the proof.
 opinion: build — four small PRs, and it answers the first question a person on site has
 ---
 
@@ -270,6 +270,13 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
   map to whatever one reading it gets (`startWhereIAm`). On a rough reading that is the middle of an
   area miles off, with no word about why. It wants what **Put the dot where I am** got in v2.8001:
   stay put and draw the line. Not part of this card.
+- `taskPlaceFixWords` in `src/lib/tasks/taskPlace.ts` is read by no screen since v2.8011. The file is
+  copied into the dev seat's function, so taking it out means a deploy. It goes with the next real
+  change to that file.
+- **Near me**, on the window a painter picks a job from, lists the jobs within about five miles of
+  one reading (`paintedMapJobPickerIo.ts`). A rough reading lists the jobs near the middle of an
+  area. The Tally's own **My location** press flies its map the same way. Neither is part of this
+  card.
 
 ## Neighbours
 
@@ -303,6 +310,11 @@ Building, on Grace's word of 2026-11-19.
   gets no word about where the reader stands, and names the switch with the steps. The map pulls
   back to the circle when the area's edge is near the map. The journey step `painted-map-page`
   gained a sentence, and the page's two other registrations quote none of its words.
-- **Next is the walk on a real iPhone**, then call 8. What a screen does about a weak or a rough
-  reading is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`
-  and the place panel's in `paintedPlaceDot.ts`.
+- **Call 8 is v2.8011.** The seven screens that take one reading of the phone no longer act on a
+  rough one: a task's **Use where I am**, **How far am I?**, **Show where I am** and **Standing at
+  this task?**, and the box map's **Use my location**, **Show where I am**, **I found it** and
+  **Pin it here**. The two that set a spot draw the line in every state. That version's fragment
+  has the table of what each screen does and says.
+- **What is left is the walk on a real iPhone.** What a screen does about a weak or a rough reading
+  is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`, the place
+  panel's in `paintedPlaceDot.ts`, and the task screens' and the box map's in `taskPlaceReading.ts`.

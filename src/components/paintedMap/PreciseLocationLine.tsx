@@ -8,7 +8,8 @@
  * answer. What the screen does about a weak or a rough reading is its own sentence, handed in.
  */
 import type { CSSProperties } from 'react'
-import { PRECISE_ALREADY_ON_WORDS, preciseSteps, preciseWords, roughCompareWords, type PhoneKind } from '../../lib/paintedMap/preciseLocation'
+import { usePhoneKind } from '../../hooks/usePreciseLocation'
+import { PRECISE_ALREADY_ON_WORDS, PRECISE_STEPS_FOLD_WORDS, preciseSteps, preciseWords, roughCompareWords, type PhoneKind } from '../../lib/paintedMap/preciseLocation'
 
 const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
 const row: CSSProperties = { margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }
@@ -28,10 +29,10 @@ export function PreciseTick() {
  * A phone's own steps are numbered, since they are done in order. Where the page cannot tell the
  * phone there is one line for each kind, and those are not numbered: a person does one of them.
  */
-export function PreciseSteps({ kind }: { kind: PhoneKind }) {
+export function PreciseSteps({ kind, fold = false }: { kind: PhoneKind; /** Keep the steps behind one press, on a sheet whose map needs the room. */ fold?: boolean }) {
   const steps = preciseSteps(kind)
   const List = kind === 'other' ? 'ul' : 'ol'
-  return (
+  const body = (
     <>
       <List data-precise-steps={kind} style={{ margin: '0.45rem 0 0', paddingLeft: '1.25rem', display: 'grid', gap: '0.2rem' }}>
         {steps.map((s) => (
@@ -40,6 +41,13 @@ export function PreciseSteps({ kind }: { kind: PhoneKind }) {
       </List>
       <p data-precise-already-on style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem' }}>{PRECISE_ALREADY_ON_WORDS}</p>
     </>
+  )
+  if (!fold) return body
+  return (
+    <details data-precise-steps-fold style={{ marginTop: '0.35rem' }}>
+      <summary style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, padding: '0.35rem 0' }}>{PRECISE_STEPS_FOLD_WORDS}</summary>
+      {body}
+    </details>
   )
 }
 
@@ -54,9 +62,21 @@ type Props = {
   weakNote?: string
   /** Said after the words while the reading is rough: what this screen cannot do with it. */
   roughNote?: string
+  /** Keep the steps behind one press. For a sheet whose map shrinks to make room for what is under it. */
+  foldSteps?: boolean
 }
 
-export function PreciseLocationLine({ accuracyM, kind, roughHeld, weakNote, roughNote }: Props) {
+/**
+ * The line for one reading that a press asked for (punch list #402, call 8): Use where I am, How far am I?, I found
+ * it. A press has no better reading to wait for, so a rough one is called rough at once. It reads which phone this
+ * is itself, and a rough note that differs by phone is handed in as a function of the kind.
+ */
+export function PreciseReadingLine({ accuracyM, weakNote, roughNote, foldSteps }: { accuracyM: number | null | undefined; weakNote?: string; roughNote?: string | ((kind: PhoneKind) => string); foldSteps?: boolean }) {
+  const kind = usePhoneKind()
+  return <PreciseLocationLine accuracyM={accuracyM} kind={kind} roughHeld weakNote={weakNote} roughNote={typeof roughNote === 'function' ? roughNote(kind) : roughNote} foldSteps={foldSteps} />
+}
+
+export function PreciseLocationLine({ accuracyM, kind, roughHeld, weakNote, roughNote, foldSteps = false }: Props) {
   const words = preciseWords(accuracyM, kind, roughHeld)
   // The lead is what is spoken when the state changes. The margin beside it moves each second, and is not.
   if (words.state === 'finding') {
@@ -105,7 +125,7 @@ export function PreciseLocationLine({ accuracyM, kind, roughHeld, weakNote, roug
         ` ${words.tail}`
       ) : null}
       {roughNote ? <span data-precise-note>{compare ? roughNote : ` ${roughNote}`}</span> : null}
-      <PreciseSteps kind={kind} />
+      <PreciseSteps kind={kind} fold={foldSteps} />
     </div>
   )
 }
