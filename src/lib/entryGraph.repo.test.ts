@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { APP_ENTRY, eagerGraph, ENTRY_SOURCE_BUDGET_BYTES, ON_DEMAND_WINDOWS, whyEager, type ReadSource } from './entryGraph'
+import { APP_ENTRY, eagerGraph, ENTRY_SOURCE_BUDGET_BYTES, ON_DEMAND_PAGES, ON_DEMAND_WINDOWS, whyEager, type ReadSource } from './entryGraph'
 
 /**
  * The repo's own entry, held to its budget (the main chunk's split, 2026-11-20). PR CI never runs the
@@ -32,13 +32,13 @@ describe('the app entry’s eager imports', () => {
     expect(graph.files.size).toBeGreaterThan(200)
   })
 
-  it.each(ON_DEMAND_WINDOWS)('%s loads on demand, never with the entry', (window) => {
+  it.each([...ON_DEMAND_WINDOWS, ...ON_DEMAND_PAGES])('%s loads on demand, never with the entry', (window) => {
     expect(read(window), `${window} is listed in ON_DEMAND_WINDOWS and is not in the repo`).not.toBeNull()
     const chain = whyEager(graph, window)
     expect(
       chain,
       chain.length
-        ? `${window} is back in the main chunk through:\n  ${chain.join('\n  <- ')}\nA file on that chain imports its neighbour for its code. Import the type only (\`import type\`), or load the window with lazyWindow.`
+        ? `${window} is back in the main chunk through:\n  ${chain.join('\n  <- ')}\nA file on that chain imports its neighbour for its code. Import the type only (\`import type\`), or load it on demand (lazyWindow for a window, lazy for a page).`
         : '',
     ).toEqual([])
   })

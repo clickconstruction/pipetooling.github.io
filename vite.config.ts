@@ -329,7 +329,7 @@ export default defineConfig({
       // the custom sw.ts (nothing called skipWaiting), leaving clients stale forever.
       registerType: 'prompt',
       injectManifest: {
-        // Workbox default is 2 MiB; the main chunk is ~8.0 MiB on 2026-11-14 (every public page is eager in App.tsx).
+        // Workbox default is 2 MiB; the main chunk was ~8.0 MiB on 2026-11-14 (every older public page was eager in App.tsx until v2.8107).
         // A file over this cap fails the deploy build. The main chunk reached 6 MiB on 2026-10-20 by plain
         // growth (6,277 → 6,284 kB across v2.5332's merge, the same 259 chunks before and after), so the cap
         // is 7 MiB: ~0.7 MiB for growth, and it still trips on a regression like v2.4655's, which put every
@@ -347,7 +347,8 @@ export default defineConfig({
         // permit research list statically, which moved it and what it reads out of a lazy chunk into this one.
         // Six days took this MiB, so the split began the same day: the three job windows load on demand (v2.8098,
         // `lazyWindow`), which took the main chunk from 9,465,107 bytes on the live site to 5,671,756, and six more
-        // windows (v2.8104) took it to 4,307,275. The Settings page's chunk, 5,608,888 bytes, is now the largest file.
+        // windows (v2.8104) took it to 4,307,275 and twenty public pages (v2.8107) to 2,794,021. The Settings page's
+        // chunk, 5,612,523 bytes, is now the largest file by far, so the cap waits on that page's split.
         // `src/lib/entryGraph.repo.test.ts` now holds the entry's eager imports to a budget in PR CI, so growth
         // is refused on the PR that brings it. The cap stays here until the next cuts are in, then comes down.
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,

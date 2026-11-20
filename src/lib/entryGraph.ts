@@ -160,8 +160,36 @@ export const ON_DEMAND_WINDOWS: ReadonlyArray<string> = [
 ]
 
 /**
- * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
- * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. Lower this as
- * more windows move out; raise it only with the reason beside it, as the precache cap's comment asks.
+ * Pages outside the Layout that load with their route (`lazy` in `App.tsx`): a customer's, a sub's or a lawyer's
+ * page, opened from a link. None may be reachable from the entry by static imports either.
  */
-export const ENTRY_SOURCE_BUDGET_BYTES = 12.5 * 1024 * 1024
+export const ON_DEMAND_PAGES: ReadonlyArray<string> = [
+  'src/pages/BidRoom.tsx',
+  'src/pages/SubmittalRoom.tsx',
+  'src/pages/EstimateAccept.tsx',
+  'src/pages/EstimatePublicTerms.tsx',
+  'src/pages/HazmatNoticePublic.tsx',
+  'src/pages/CustomerPortal.tsx',
+  'src/pages/SubPortal.tsx',
+  'src/pages/PayLink.tsx',
+  'src/pages/LegalPortal.tsx',
+  'src/pages/GcWordAsk.tsx',
+  'src/pages/LegalConfirm.tsx',
+  'src/pages/SupplyHouseQuotePage.tsx',
+  'src/pages/PartnerStatement.tsx',
+  'src/pages/Logbook.tsx',
+  'src/pages/ContractAccept.tsx',
+  'src/pages/CustomerRating.tsx',
+  'src/pages/JobContractSign.tsx',
+  'src/pages/ContractBookPreview.tsx',
+  'src/pages/FileOpen.tsx',
+  'src/pages/TaskShortcut.tsx',
+]
+
+/**
+ * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
+ * 14.1 MB of source built a main chunk of 5,671,756 bytes, 10.8 MB one of 4,307,275 and 7.2 MB one of
+ * 2,794,021. Lower this as more moves out; raise it only with the reason beside it, as the precache cap's
+ * comment asks.
+ */
+export const ENTRY_SOURCE_BUDGET_BYTES = 8.5 * 1024 * 1024

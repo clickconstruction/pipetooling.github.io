@@ -9,8 +9,8 @@ import { IndexLanding } from './components/IndexLanding'
 import { indexLandingPath } from './lib/devBridgeLanding'
 import SignIn from './pages/SignIn'
 import Away from './pages/Away'
-import BidRoom from './pages/BidRoom'
-import SubmittalRoom from './pages/SubmittalRoom'
+const BidRoom = lazy(() => import('./pages/BidRoom'))
+const SubmittalRoom = lazy(() => import('./pages/SubmittalRoom'))
 import DevLogin from './pages/DevLogin'
 import BodyScrollLockSentinel from './components/BodyScrollLockSentinel'
 import ResetPassword from './pages/ResetPassword'
@@ -74,24 +74,24 @@ const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaf
 // GC mode's trade partner portal (P1b-ii-b): public, and loaded only when a company opens its link.
 const GcTradePortal = lazy(() => import('./pages/GcTradePortal'))
 const FileLinkPage = lazy(() => import('./pages/FileLinkPage'))
-import EstimateAccept from './pages/EstimateAccept'
-import EstimatePublicTerms from './pages/EstimatePublicTerms'
-import HazmatNoticePublic from './pages/HazmatNoticePublic'
-import CustomerPortal from './pages/CustomerPortal'
-import SubPortal from './pages/SubPortal'
-import PayLink from './pages/PayLink'
-import LegalPortal from './pages/LegalPortal'
-import GcWordAsk from './pages/GcWordAsk'
-import LegalConfirm from './pages/LegalConfirm'
-import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
-import PartnerStatement from './pages/PartnerStatement'
-import Logbook from './pages/Logbook'
-import ContractAccept from './pages/ContractAccept'
-import CustomerRating from './pages/CustomerRating'
-import JobContractSign from './pages/JobContractSign'
-import ContractBookPreview from './pages/ContractBookPreview'
-import FileOpen from './pages/FileOpen'
-import TaskShortcut from './pages/TaskShortcut'
+const EstimateAccept = lazy(() => import('./pages/EstimateAccept'))
+const EstimatePublicTerms = lazy(() => import('./pages/EstimatePublicTerms'))
+const HazmatNoticePublic = lazy(() => import('./pages/HazmatNoticePublic'))
+const CustomerPortal = lazy(() => import('./pages/CustomerPortal'))
+const SubPortal = lazy(() => import('./pages/SubPortal'))
+const PayLink = lazy(() => import('./pages/PayLink'))
+const LegalPortal = lazy(() => import('./pages/LegalPortal'))
+const GcWordAsk = lazy(() => import('./pages/GcWordAsk'))
+const LegalConfirm = lazy(() => import('./pages/LegalConfirm'))
+const SupplyHouseQuotePage = lazy(() => import('./pages/SupplyHouseQuotePage'))
+const PartnerStatement = lazy(() => import('./pages/PartnerStatement'))
+const Logbook = lazy(() => import('./pages/Logbook'))
+const ContractAccept = lazy(() => import('./pages/ContractAccept'))
+const CustomerRating = lazy(() => import('./pages/CustomerRating'))
+const JobContractSign = lazy(() => import('./pages/JobContractSign'))
+const ContractBookPreview = lazy(() => import('./pages/ContractBookPreview'))
+const FileOpen = lazy(() => import('./pages/FileOpen'))
+const TaskShortcut = lazy(() => import('./pages/TaskShortcut'))
 import { LeaveSignIn, SignedOutGate } from './components/SignInReturn'
 import { wipeServiceWorkersAndCaches } from './lib/hardReload'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
@@ -261,21 +261,23 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
-        <Route path="/task" element={<TaskShortcut />} />
-        <Route path="/estimate/accept" element={<EstimateAccept />} />
+        {/* The main chunk's split, step 3: the older public pages are chunks of their own, as the newer ones always were.
+            Each sits in a Suspense of its own, outside the Layout's: a press that lands on another lazy page must not blank this one. */}
+        <Route path="/task" element={<Suspense fallback={null}><TaskShortcut /></Suspense>} />
+        <Route path="/estimate/accept" element={<Suspense fallback={null}><EstimateAccept /></Suspense>} />
         {/* #281 (v2.6678): the estimate text's short link, my.clickplumbing.com/e/<code>, lands here with the code in the path. */}
-        <Route path="/e/:code" element={<EstimateAccept />} />
-        <Route path="/bid-room" element={<BidRoom />} />
-        <Route path="/submittal" element={<SubmittalRoom />} />
-        <Route path="/q/:token" element={<SupplyHouseQuotePage />} />
-        <Route path="/contract/accept" element={<ContractAccept />} />
-        <Route path="/contract/sign" element={<JobContractSign />} />
-        <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
-        <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
-        <Route path="/portal" element={<CustomerPortal />} />
-        <Route path="/p/:slug" element={<CustomerPortal />} />
-        <Route path="/sub" element={<SubPortal />} />
-        <Route path="/pay/:id" element={<PayLink />} />
+        <Route path="/e/:code" element={<Suspense fallback={null}><EstimateAccept /></Suspense>} />
+        <Route path="/bid-room" element={<Suspense fallback={null}><BidRoom /></Suspense>} />
+        <Route path="/submittal" element={<Suspense fallback={null}><SubmittalRoom /></Suspense>} />
+        <Route path="/q/:token" element={<Suspense fallback={null}><SupplyHouseQuotePage /></Suspense>} />
+        <Route path="/contract/accept" element={<Suspense fallback={null}><ContractAccept /></Suspense>} />
+        <Route path="/contract/sign" element={<Suspense fallback={null}><JobContractSign /></Suspense>} />
+        <Route path="/estimate/terms" element={<Suspense fallback={null}><EstimatePublicTerms /></Suspense>} />
+        <Route path="/hazmat-notice" element={<Suspense fallback={null}><HazmatNoticePublic /></Suspense>} />
+        <Route path="/portal" element={<Suspense fallback={null}><CustomerPortal /></Suspense>} />
+        <Route path="/p/:slug" element={<Suspense fallback={null}><CustomerPortal /></Suspense>} />
+        <Route path="/sub" element={<Suspense fallback={null}><SubPortal /></Suspense>} />
+        <Route path="/pay/:id" element={<Suspense fallback={null}><PayLink /></Suspense>} />
         {/* #294 (v2.6797): a box label's code, prts.co/b/<code>. Signed out it is the public box page; signed in it opens the box on the On site tab. Outside the Layout so the sign-in gate never swallows a scan. */}
         {/* v2.6868: each of the two box routes sits in its own Suspense. They are lazy, and a press on one opens the other
             (Open the box, Scan another label, Type the code): with no boundary that press suspended in a click and
@@ -333,10 +335,10 @@ function AppContent() {
             </Suspense>
           }
         />
-        <Route path="/rate" element={<CustomerRating />} />
-        <Route path="/s/:slug" element={<SubPortal />} />
-        <Route path="/legal" element={<LegalPortal />} />
-        <Route path="/ask" element={<GcWordAsk />} />
+        <Route path="/rate" element={<Suspense fallback={null}><CustomerRating /></Suspense>} />
+        <Route path="/s/:slug" element={<Suspense fallback={null}><SubPortal /></Suspense>} />
+        <Route path="/legal" element={<Suspense fallback={null}><LegalPortal /></Suspense>} />
+        <Route path="/ask" element={<Suspense fallback={null}><GcWordAsk /></Suspense>} />
         <Route
           path="/t/:token"
           element={
@@ -353,7 +355,7 @@ function AppContent() {
             </Suspense>
           }
         />
-        <Route path="/legal/confirm" element={<LegalConfirm />} />
+        <Route path="/legal/confirm" element={<Suspense fallback={null}><LegalConfirm /></Suspense>} />
         {/* The staff preview is lazy and sits outside the Layout's Suspense, so it carries its own: Back onto it after a
             reload suspended in a popstate, which React treats as a press, and blanked the page. */}
         <Route
@@ -367,12 +369,14 @@ function AppContent() {
           }
         />
         {/* A kept file's lasting link (Messages cut 6): it signs in on its own, so it returns to the file after. */}
-        <Route path="/files/:source/:id" element={<FileOpen />} />
+        <Route path="/files/:source/:id" element={<Suspense fallback={null}><FileOpen /></Suspense>} />
         <Route
           path="/contract/book-preview"
           element={
             <ProtectedRoute>
-              <ContractBookPreview />
+              <Suspense fallback={null}>
+                <ContractBookPreview />
+              </Suspense>
             </ProtectedRoute>
           }
         />
