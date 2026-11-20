@@ -5,7 +5,8 @@ import type { GcPageStage } from '../_shared/gcKernels/lib/startChecks/gcPage.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { portalLetterhead } from '../_shared/portalLetterhead.ts'
-import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { sampleStateFromToken, ymdPlusDays } from '../_shared/customerSample.ts'
+import { BROKEN_PROMISE_GRACE_DAYS } from '../_shared/gcKernels/lib/jobs/paymentChaseTouches.ts'
 import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import { portalMyJobs, SAMPLE_MY_JOBS, type PortalMyJob, type PortalMyJobRating } from '../_shared/portalMyJobs.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -717,7 +718,9 @@ serve(async (req) => {
     // Their Word PR 2: the latest pay-by date on record across the open-bill
     // jobs, so the statement can say "You told us to expect payment by …".
     // marked_by NULL with a customer-sourced event is the customer's own date.
-    let promise: { promisedYmd: string; source: 'office' | 'customer' } | null = null
+    // The day the office calls if the money has not come (punch list #217, outside-12): the promise plus the Payment
+    // Chase queue's grace, the office's own rule, so the statement's strip draws it instead of promising to hold off.
+    let promise: { promisedYmd: string; source: 'office' | 'customer'; callYmd: string } | null = null
     if (owedJobIds.length > 0) {
       const { data: promRows } = await admin
         .from('job_promised_pay_dates')
@@ -739,7 +742,8 @@ serve(async (req) => {
             .limit(1)
           if (((ev ?? [])[0] as { source?: string } | undefined)?.source === 'customer') source = 'customer'
         }
-        promise = { promisedYmd: String(latest.promised_date).slice(0, 10), source }
+        const promisedYmd = String(latest.promised_date).slice(0, 10)
+        promise = { promisedYmd, source, callYmd: ymdPlusDays(promisedYmd, BROKEN_PROMISE_GRACE_DAYS) }
       }
     }
 

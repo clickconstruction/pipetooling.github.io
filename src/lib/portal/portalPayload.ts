@@ -96,6 +96,13 @@ export type PortalSharedBill = {
   viewerRole: 'gc' | 'customer'
 }
 
+/**
+ * The pay-by date on record, and the day the office calls if the money has not come by then (punch list #217,
+ * outside-12): the promise plus the Payment Chase queue's grace, worked out by `customer-portal`; null from a function
+ * deployed before it, and the strip then works the same day out from the same rule.
+ */
+export type PortalPromise = { promisedYmd: string; source: 'office' | 'customer'; callYmd: string | null }
+
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
@@ -126,7 +133,7 @@ export type PortalPayload = {
   /** Before we start (punch list #382, PR 9): what we need from this GC before each stage, on jobs whose own switch is on. */
   startChecks: PortalStartChecksJob[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
-  promise: { promisedYmd: string; source: 'office' | 'customer' } | null
+  promise: PortalPromise | null
   /** Your payments (v2.4053): the viewer's jobs with the bills they pay and the payments on them, pre-scoped by `_shared/portalChecks.ts`; null from a function without it. */
   checks: PortalChecksPayload | null
   /** Waivers (v2.4278): one row per sent bill the viewer pays, with the conditional and unconditional lien waivers it carries — `_shared/portalWaivers.ts`; [] from a function without it. */
@@ -672,7 +679,8 @@ function parsePortalPromise(raw: unknown): PortalPayload['promise'] {
   if (raw == null || typeof raw !== 'object') return null
   const p = raw as Record<string, unknown>
   if (typeof p.promisedYmd !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(p.promisedYmd)) return null
-  return { promisedYmd: p.promisedYmd, source: p.source === 'customer' ? 'customer' : 'office' }
+  const callYmd = typeof p.callYmd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.callYmd) ? p.callYmd : null
+  return { promisedYmd: p.promisedYmd, source: p.source === 'customer' ? 'customer' : 'office', callYmd }
 }
 
 /** "Aug 4, 2026" from a YYYY-MM-DD string, TZ-safe (no Date parsing of bare dates). */

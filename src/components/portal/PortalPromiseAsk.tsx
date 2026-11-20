@@ -11,10 +11,9 @@ import { formatPortalDate } from '../../lib/portal/portalPayload'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN, portalPressFill } from '../../lib/portal/portalTheme'
 import { promiseDateChoices, promiseDateProblem } from '../../../supabase/functions/_shared/portalPromise'
-import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { portalFailure, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { postPortalPromise } from '../../lib/portal/portalPromiseIo'
 import { PortalFailureNote } from './PortalFailureNote'
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 export type PortalPromiseAskProps = {
   token: string
@@ -25,9 +24,11 @@ export type PortalPromiseAskProps = {
   formatUsd: (n: number) => string
   /** The office's number, offered beside a refusal. */
   phone?: string | null
+  /** The day went through (punch list #217): the page keeps it, so the bill's strip can draw it. */
+  onSent?: (ymd: string) => void
 }
 
-export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUsd, phone = null }: PortalPromiseAskProps) {
+export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUsd, phone = null, onSent }: PortalPromiseAskProps) {
   const choices = promiseDateChoices(todayYmd)
   const [picked, setPicked] = useState<string>('')
   const [custom, setCustom] = useState(false)
@@ -43,25 +44,15 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
       return
     }
     setUi({ kind: 'sending' })
-    if (sampleStateFromToken(token)) {
-      setUi({ kind: 'sent', ymd: picked })
-      return
-    }
-    try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, kind: 'payment_promise', date: picked, note: note.trim() || undefined }),
-      })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
-      if (!res.ok || !json?.ok) {
-        setUi({ kind: 'failed', failure: portalFailureCause(res.status, json, 'send') })
+    if (!sampleStateFromToken(token)) {
+      const sent = await postPortalPromise({ token, date: picked, note })
+      if (!sent.ok) {
+        setUi({ kind: 'failed', failure: sent.failure })
         return
       }
-      setUi({ kind: 'sent', ymd: picked })
-    } catch (e) {
-      setUi({ kind: 'failed', failure: portalFailureKind(e) })
     }
+    setUi({ kind: 'sent', ymd: picked })
+    onSent?.(picked)
   }
 
   if (ui.kind === 'sent') {
