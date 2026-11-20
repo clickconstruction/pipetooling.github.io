@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after · the automatic check of the live site found to be most of the month's count and taken off Google the same day (v2.8049, #9056) · step 5, the person's task map, built the same day on the owner's own word (v2.8032, #9037) · audited the same day on a made-up map on the local server, both maps side by side at 320, 390 and 1400 px: two mends opened (#9089, #9090) and two things left for the owner (*The audit*, below)
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -11,8 +11,9 @@ summary: >
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
-next: Before step 3, the owner's word on call 6. Steps 4 and 5 are not started, and the count is looked at again before step 4, since every outside reader's open counts. Google's own place labels over the photograph are the owner's call (below).
+next: Before step 3, the owner's word on call 6. Step 4 is not started, and the count is looked at again before it, since every outside reader's open counts. Step 5 is built (v2.8032), and its count is worth a look about a week after. Three things are the owner's call, each below. Google's own place labels over the photograph. A map that is not Google's on the page behind the window. The ten seconds a slow phone waits before the fall back.
 size: L as a train of five (S · M · L · S · S)
+ver: v2.7979 · v2.7981 · v2.7990 · v2.8032 · v2.8049
 blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
 opinion: build — the count read 2026-11-20 leaves room under the free 10,000, and the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
 mockup: not required — the presses and the tools stay where they are and only the map under them changes, and Google's own tiles cannot be drawn in a mock-up without the live key
@@ -117,6 +118,9 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
   then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
   draw on that count. Read in the console on 2026-11-20: 4,269 loads for November 1 to 20, about 6,400 for
   the month at that pace, 3,871 in October, and nothing billed.
+  Read again the same day (v2.8049): most of those loads were the automatic check of the live site, which no longer opens a Google map.
+  On the five days that check reached no page, people made 4 to 19 requests a day.
+  So the pace above is too high, and the room under the free 10,000 is wider than it reads.
 - **Old maps.** Every painted map already saved was drawn over Esri's photograph. They will open on
   Google's with the same small shift.
 
@@ -140,6 +144,29 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
    Built 2026-11-20 on the owner's own word from a walk on a phone (v2.8032): Google by default, with a press on the map that switches to the OpenStreetMap map and is kept on the device.
 
 The picture and the print are call 3 and are not in the train.
+
+## The audit, 2026-11-20
+
+Steps 1 and 2, the doors to Leaflet and the suite's change were read and walked by a second session, on the local server with a made-up key, on a made-up map on public ground and on no job.
+Google drew with the key taken off its script's address, which gives its own tiles with a watermark.
+
+What held:
+
+- **The rule.** Only the painting window, and only for looking, draws on Google. The public page `/way` made no request to Google with a key in the build, at a phone and at a desk.
+- **The drawing.** The same saved map on both canvases at 390 px: every line, dash, dot and mark on the same pixel. Google's dash has square ends and a clear gap. Leaflet's has round ends that nearly close the gap. Both read as dashed.
+- **The changes of map.** **Time** took Google down and gave it back with no new request to Google. So did closing the window and opening the map again. **Draw a line** and **Make a picture** each brought the Leaflet canvas up on the same spot, and the window kept it.
+- **A refused key and a blocked script.** The Leaflet canvas came up with every line and place, within a second of Google's canvas for a refused key, and 0.3 s after the window opened for a script that failed outright.
+
+Two mends, each its own pull request:
+
+- **A key refused earlier on the page** (#9089). Google says no once for a page. A painted map opened after a page's own map had fallen back waited eight seconds on an empty frame.
+- **A blank frame while Google loads** (#9090). With the script slow, the frame was a white box with no word for up to ten seconds. It now says *Loading the map…*.
+
+Left for the owner:
+
+- **A map that is not Google's on the page behind the window.** At a desk the window is 1,080 px wide over a dimmed page. Opened from the Map page or from Materials on site, that page's Leaflet map shows beside Google's map, at the window's edge. The rule takes Google down for Time and for a picture because of the terms' clause on maps that are not Google's (3.2.3 (e)), and by that same reading this is the one place the two still share a screen. A page that cannot be seen behind the window while Google is up would end it. This is a reading and not legal advice.
+- **The ten seconds.** A painted map is read in the field. On a slow signal the reader now waits up to ten seconds for a map that used to show its lines at once. A shorter wait for this canvas, or the lines drawn on the Leaflet canvas while Google loads, would mend it.
+- **Google's own place labels**, as the risk above says. In the walk a park's name and its one-line description sat beside the line.
 
 ## How to verify
 
