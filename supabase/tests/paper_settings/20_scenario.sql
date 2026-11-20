@@ -1,7 +1,7 @@
 -- The Contract Book takes settings (punch list #389 step 1, migration *_paper_settings). A paper may carry a settings
 -- list; a clause is tied to one choice of one setting and may be one wording of a place; the paper for a job is put
 -- together from the job's picks. One set of cases runs through the database here and through the kernel in
--- src/lib/contracts/paperSettings.cases.test.ts, which reads the JSON between the two $cases$ marks in this file, so
+-- src/lib/contracts/paperSettings.cases.test.ts, which reads the JSON of pst.cases out of this file, so
 -- the preview and the sign page cannot drift. Then: who sets a list and marks a read, what a clause's Only when may
 -- name, what nobody signed in writes by hand, and that a copy of such a paper is never made bare. Every word is a
 -- made-up placeholder: no clause wording is here. Presses run as each user; the fixture is made as postgres;
@@ -56,6 +56,9 @@ BEGIN
   EXECUTE format('SELECT %I::text FROM public.contract_template_documents WHERE id = %L', p_col, '00000000-0000-0000-0000-0000000389c1') INTO v;
   RETURN v;
 END $$;
+
+GRANT USAGE ON SCHEMA pst TO anon, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pst TO anon, authenticated;
 
 -- The cases. `def` is the settings list, `clauses` the paper's clauses, and each case names the clauses it uses, the
 -- picks, the typed blanks, the trades and the language, with what the paper must read or the words that stop it.
@@ -270,9 +273,9 @@ SELECT pst.refused('a draft has no revision to read', $q$SELECT public.mark_pape
 RESET ROLE;
 
 -- 7 · A copy of a paper built from settings is never made bare, by anyone. An ordinary paper's copy is as before.
-SELECT pst.refused('a copy of a settings paper is refused', $q$INSERT INTO public.person_contract_documents (person_name, document_name, contract_lineage_id, lineage_version, status, applied_contract_template_document_id) VALUES ('Settings bed Jordan', 'Settings bed paper (test)', gen_random_uuid(), 1, 'pending', '00000000-0000-0000-0000-0000000389c1')$q$, 'This paper is built from settings. It goes from a job, with its settings.');
+SELECT pst.refused('a copy of a settings paper is refused', $q$INSERT INTO public.person_contract_documents (person_name, document_name, contract_lineage_id, lineage_version, status, applied_contract_template_document_id) VALUES ('Settings bed Jordan', 'Settings bed paper (test)', gen_random_uuid(), 1, 'unsent', '00000000-0000-0000-0000-0000000389c1')$q$, 'This paper is built from settings. It goes from a job, with its settings.');
 INSERT INTO public.person_contract_documents (person_name, document_name, contract_lineage_id, lineage_version, status, applied_contract_template_document_id)
-  VALUES ('Settings bed Jordan', 'Draft bed paper (test)', gen_random_uuid(), 1, 'pending', '00000000-0000-0000-0000-0000000389c3');
+  VALUES ('Settings bed Jordan', 'Draft bed paper (test)', gen_random_uuid(), 1, 'unsent', '00000000-0000-0000-0000-0000000389c3');
 SELECT pst.refused('nor is a copy moved onto one', $q$UPDATE public.person_contract_documents SET applied_contract_template_document_id = '00000000-0000-0000-0000-0000000389c1' WHERE person_name = 'Settings bed Jordan'$q$, 'This paper is built from settings. It goes from a job, with its settings.');
 SELECT pst.same('an ordinary paper''s copy is made as before', (SELECT count(*)::text FROM public.person_contract_documents WHERE person_name = 'Settings bed Jordan'), '1');
 

@@ -37,6 +37,10 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 pgtest_migrate
 # A second run must change nothing: the tables, their indexes, policies and triggers are there, with the same grants.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# The settings migration (#389) replaced edit_clause and contract_paper_clauses with ones that take more names, and
+# dropped the old ones. The file above makes the old ones again, so the newer file runs after it, as on prod.
+LATER="$(ls supabase/migrations/*_paper_settings.sql)"
+psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/contract_clauses/20_scenario.sql 2>&1 || true)"
 if ! grep -q "contract_clauses PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

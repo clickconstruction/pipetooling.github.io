@@ -166,12 +166,15 @@ export function andList(names: readonly string[], lang: EsignLang = 'en'): strin
 function tradesCarried(exhibit: readonly Clause[], trades: readonly string[]): string[] {
   const named = new Set(exhibit.flatMap((c) => clauseTrades(c).map(tradeKey)))
   const seen = new Set<string>()
-  return trades.filter((t) => {
-    const k = tradeKey(t)
-    if (!named.has(k) || seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
+  // Trimmed, as the database's assembly carries them (`btrim`), so the two read the same.
+  return trades
+    .filter((t) => {
+      const k = tradeKey(t)
+      if (!named.has(k) || seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    .map((t) => t.trim())
 }
 
 /**
