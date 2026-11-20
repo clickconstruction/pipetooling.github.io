@@ -396,6 +396,11 @@ export function callEmptyWords(input: { city: string; builders: number; eligible
   return `Nothing waiting on a call under ${CALL_SHOWING_WORDS[input.showing]}.`
 }
 
+/** Under the reason when a read the list is built from failed: why no name is drawn from the reads that did come back. */
+export const CALL_LIST_UNREAD = 'The list needs this read, so it shows no name until the read comes back.'
+/** Under the reason when the answers could not be read: the list still draws, and this is what that costs. */
+export const CALL_ANSWERS_UNREAD = 'A name already answered may be on this list until the answers load.'
+
 /** The line under the list: what the order is, and what a city's records leave out. */
 export function callNoteWords(input: { city: string; trendKnown: boolean; hasApplications: boolean; recordsStart: string | null }): string {
   const order = 'Names that read as a builder come first, then a job open now, then picking up or new, then never bid.'

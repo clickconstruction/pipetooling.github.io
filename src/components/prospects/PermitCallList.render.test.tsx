@@ -78,11 +78,12 @@ const ROWS = [row(), row({ id: 'p2', address: '77 KILN ST', submitted_on: '2026-
 const answer = (over: Partial<CallAnswerRow> = {}): CallAnswerRow => ({ id: 'a1', builder_key: 'larkspurbuilders', answer: 'not_for_us', reason: 'Too far for us', look_again_on: '2027-11-19', city: 'San Antonio', prospect_id: null, permit_id: null, answered_by: 'u2', answered_at: '2026-11-18T15:00:00Z', ...over })
 
 const onAnswered = vi.fn()
+const onRetry = vi.fn()
 const onChanged = vi.fn()
 const onOpenBuilder = vi.fn()
 const onOpenPermit = vi.fn()
 
-function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: string; builders?: BuilderRow[]; permits?: MarketPermit[]; rows?: ResearchPermitRow[]; recordsStart?: string | null; loading?: boolean; error?: string | null } = {}) {
+function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: string; builders?: BuilderRow[]; permits?: MarketPermit[]; rows?: ResearchPermitRow[]; recordsStart?: string | null; loading?: boolean; error?: string | null; answersError?: string | null } = {}) {
   const builders = over.builders ?? BUILDERS
   const rows = over.rows ?? ROWS
   const recordsStart = over.recordsStart === undefined ? '2025-01-01' : over.recordsStart
@@ -102,6 +103,8 @@ function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: stri
       rows={rows}
       loading={over.loading ?? false}
       error={over.error ?? null}
+      answersError={over.answersError ?? null}
+      onRetry={onRetry}
       reach={known ? 'in the last year' : 'since Aug 27'}
       trendKnown={known}
       hasApplications={known}
@@ -125,6 +128,7 @@ beforeEach(() => {
   research.recordVerdict.mockReset().mockResolvedValue(undefined)
   marketIo.recordCallAnswer.mockReset().mockResolvedValue(undefined)
   onAnswered.mockReset()
+  onRetry.mockReset()
   onChanged.mockReset()
   onOpenBuilder.mockReset()
   onOpenPermit.mockReset()
@@ -194,6 +198,30 @@ describe('the call list', () => {
     draw({ loading: true })
     expect(screen.getByText('Reading the year of permits…')).toBeTruthy()
     expect(called()).toEqual([])
+    // No count is drawn before the list is read: a zero would read as a fact.
+    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
+  })
+
+  it('says why and waits when a read the list is built from fails, with no name, count or empty state', () => {
+    // The year of permits did not load, so the list holds no row. Nothing here may read as "all answered".
+    draw({ permits: [], error: 'Couldn’t load the year of permits: the network is down' })
+    expect(within(screen.getByRole('alert')).getByText(/the network is down/)).toBeTruthy()
+    expect(screen.getByText('The list needs this read, so it shows no name until the read comes back.')).toBeTruthy()
+    expect(called()).toEqual([])
+    expect(screen.queryByText(/Nothing waiting on a call/)).toBeNull()
+    expect(screen.queryByText(/is answered/)).toBeNull()
+    expect(screen.queryByText(/Names that read as a builder come first/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('still draws the list when the answers cannot be read, and says an answered name may be on it', () => {
+    draw({ answersError: 'Couldn’t load the answers on the call list: the network is down' })
+    expect(called()).toHaveLength(5)
+    expect(screen.getByText('A name already answered may be on this list until the answers load.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
   })
 })
 
