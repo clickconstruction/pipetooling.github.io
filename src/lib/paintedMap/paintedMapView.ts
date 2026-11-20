@@ -81,6 +81,19 @@ export function paintedOpeningView(input: { carried?: PaintedMapView | null; poi
   return PAINTED_WIDE_VIEW
 }
 
+/**
+ * What a view shows in a box: the ground at the box's four edges. Worked out from the box's own size and not asked of
+ * the map, so a box that changed height in this very draw is read as it is now. The panel beside a painted map can grow
+ * in the draw that hands in a rough reading (punch list #402), and a map that measured itself before would say it
+ * still shows ground that is now hidden.
+ */
+export function paintedViewBounds(view: PaintedMapView, box: { width: number; height: number }): { south: number; west: number; north: number; east: number } {
+  const mid = worldPx(view.center, view.zoom)
+  const sw = worldPoint({ x: mid.x - box.width / 2, y: mid.y + box.height / 2 }, view.zoom)
+  const ne = worldPoint({ x: mid.x + box.width / 2, y: mid.y - box.height / 2 }, view.zoom)
+  return { south: sw.lat, west: sw.lng, north: ne.lat, east: ne.lng }
+}
+
 /** A view as either canvas can take it: a whole zoom, within what both can draw. */
 export function clampView(view: PaintedMapView): PaintedMapView {
   const zoom = Math.min(PAINTED_MAX_ZOOM, Math.max(1, Math.round(view.zoom)))

@@ -17,14 +17,19 @@ const lib = vi.hoisted(() => ({
   moves: [] as Array<{ center?: { lat: number; lng: number }; zoom?: number }>,
   listeners: {} as Record<string, Listener>,
   removed: [] as unknown[],
+  /** Where the map is looking: where it opened, then wherever the canvas last moved it. */
+  camera: { center: { lat: 29.55, lng: -98.3 }, zoom: 17 },
+  /** The map's box as the page has it now. A case shrinks it, as when the panel beside the map grows. */
+  box: { width: 600, height: 400 },
 }))
 const fakeMap = {
-  moveCamera: (to: { center?: { lat: number; lng: number }; zoom?: number }) => lib.moves.push(to),
-  getDiv: () => ({ clientWidth: 600, clientHeight: 400 }),
-  getCenter: () => ({ lat: () => 29.55, lng: () => -98.3 }),
-  getZoom: () => 17,
-  // What the map shows: a few blocks round the made-up site.
-  getBounds: () => ({ getSouthWest: () => ({ lat: () => 29.548, lng: () => -98.302 }), getNorthEast: () => ({ lat: () => 29.557, lng: () => -98.293 }) }),
+  moveCamera: (to: { center?: { lat: number; lng: number }; zoom?: number }) => {
+    lib.moves.push(to)
+    lib.camera = { center: to.center ?? lib.camera.center, zoom: to.zoom ?? lib.camera.zoom }
+  },
+  getDiv: () => ({ clientWidth: lib.box.width, clientHeight: lib.box.height }),
+  getCenter: () => ({ lat: () => lib.camera.center.lat, lng: () => lib.camera.center.lng }),
+  getZoom: () => lib.camera.zoom,
   addListener: (name: string, fn: Listener) => {
     lib.listeners[name] = fn
     return name
@@ -135,6 +140,8 @@ beforeEach(() => {
   lib.moves.length = 0
   lib.listeners = {}
   lib.removed.length = 0
+  lib.camera = { center: { lat: 29.55, lng: -98.3 }, zoom: 17 }
+  lib.box = { width: 600, height: 400 }
   PolylineStub.made = []
   CircleStub.made = []
   OverlayStub.made = []
@@ -367,6 +374,20 @@ describe('a rough reading (punch list #402)', () => {
     expect(lib.moves).toHaveLength(1)
     rerender({ lines: [DRAWN], me: SURE, frameMargin: true })
     expect(lib.moves[1]).toEqual({ center: { lat: SURE.lat, lng: SURE.lng }, zoom: MARGIN_FRAME_ZOOM })
+  })
+
+  it('leaves the circle alone while it still shows, and fits it again to a box that got shorter in this draw', () => {
+    const { rerender } = mount({ lines: [DRAWN], me: ROUGH, frameMargin: true })
+    expect(lib.moves).toHaveLength(1)
+    // A new reading of the same area, the box as it was: the whole circle still shows, so nothing moves.
+    rerender({ lines: [DRAWN], me: { ...ROUGH, accuracyM: 3150 }, frameMargin: true })
+    expect(lib.moves).toHaveLength(1)
+    // The panel beside the map grows, and the map's box is much shorter in the same draw that hands in a reading.
+    lib.box = { width: 600, height: 150 }
+    rerender({ lines: [DRAWN], me: { ...ROUGH, accuracyM: 3100 }, frameMargin: true })
+    expect(lib.moves).toHaveLength(2)
+    const box = areaBox({ ...ROUGH, accuracyM: 3100 }, DRAWN.points)!
+    expect(lib.moves[1]).toEqual(paintedFitView([{ lat: box.south, lng: box.west }, { lat: box.north, lng: box.east }], { width: 600, height: 150 }, MARGIN_FRAME_PADDING_PX))
   })
 
   it('moves nothing for a rough reading without frameMargin', () => {

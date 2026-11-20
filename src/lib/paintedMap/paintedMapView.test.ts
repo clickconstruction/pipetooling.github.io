@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { worldPx } from './paintedMapPicture'
-import { PAINTED_FIT_MAX_ZOOM, PAINTED_FIT_PAD, PAINTED_MAX_ZOOM, PAINTED_POINT_ZOOM, PAINTED_WIDE_VIEW, clampView, paintedFitView, paintedOpeningView, worldPoint } from './paintedMapView'
+import { PAINTED_FIT_MAX_ZOOM, PAINTED_FIT_PAD, PAINTED_MAX_ZOOM, PAINTED_POINT_ZOOM, PAINTED_WIDE_VIEW, clampView, paintedFitView, paintedOpeningView, paintedViewBounds, worldPoint } from './paintedMapView'
 
 /** A made-up site north of San Antonio. */
 const GATE = { lat: 29.55, lng: -98.3 }
@@ -92,6 +92,41 @@ describe('paintedOpeningView', () => {
 
   it('opens on the country with no address either', () => {
     expect(paintedOpeningView({ points: [], start: null, box: BOX })).toEqual(PAINTED_WIDE_VIEW)
+  })
+})
+
+describe('paintedViewBounds', () => {
+  it('reads the ground at the box’s edges, centred on the view', () => {
+    const view = { center: GATE, zoom: 17 }
+    const b = paintedViewBounds(view, BOX)
+    expect(b.south).toBeLessThan(GATE.lat)
+    expect(b.north).toBeGreaterThan(GATE.lat)
+    expect(b.west).toBeLessThan(GATE.lng)
+    expect(b.east).toBeGreaterThan(GATE.lng)
+    // The box is 600 by 400 at this zoom: its edges sit that many pixels apart on the flat map.
+    const sw = worldPx({ lat: b.south, lng: b.west }, 17)
+    const ne = worldPx({ lat: b.north, lng: b.east }, 17)
+    expect(ne.x - sw.x).toBeCloseTo(600, 6)
+    expect(sw.y - ne.y).toBeCloseTo(400, 6)
+  })
+
+  it('holds everything a fit framed, with its room', () => {
+    const view = paintedFitView([GATE, FAR], BOX)!
+    const b = paintedViewBounds(view, BOX)
+    for (const p of [GATE, FAR]) {
+      expect(p.lat).toBeGreaterThan(b.south)
+      expect(p.lat).toBeLessThan(b.north)
+      expect(p.lng).toBeGreaterThan(b.west)
+      expect(p.lng).toBeLessThan(b.east)
+    }
+  })
+
+  it('shows less ground once the box gets shorter, as when the panel beside the map grows', () => {
+    const view = { center: GATE, zoom: 16 }
+    const tall = paintedViewBounds(view, { width: 360, height: 520 })
+    const short = paintedViewBounds(view, { width: 360, height: 260 })
+    expect(short.north - short.south).toBeLessThan(tall.north - tall.south)
+    expect(short.east - short.west).toBeCloseTo(tall.east - tall.west, 9)
   })
 })
 

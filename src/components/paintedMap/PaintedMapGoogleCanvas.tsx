@@ -29,7 +29,7 @@ import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/goog
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
 import { lineRuns, type PaintedPoint } from '../../lib/paintedMap/paintedLine'
-import { PAINTED_POINT_ZOOM, paintedFitView, paintedOpeningView, type PaintedMapView } from '../../lib/paintedMap/paintedMapView'
+import { PAINTED_POINT_ZOOM, paintedFitView, paintedOpeningView, paintedViewBounds, type PaintedMapView } from '../../lib/paintedMap/paintedMapView'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
@@ -197,22 +197,25 @@ function FrameMargin({ me, points }: { me: PaintedCanvasMe | null; points: Reado
   const area = me?.area === true
   useEffect(() => {
     if (!map || lat == null || lng == null) return
-    // A map that has not settled yet cannot say what it shows. The rule takes that as it is.
-    const b = map.getBounds()
-    const sw = b?.getSouthWest()
-    const ne = b?.getNorthEast()
+    // Measure first, as the Leaflet canvas does (v2.8001). The panel beside the map can change height in the very draw
+    // that hands in an area, and Google hears of a new size only later. So what the map shows is worked out from the
+    // box as it is now, and the circle is fitted to that box, never to the one the map last measured.
+    const div = map.getDiv()
+    const boxNow = { width: div.clientWidth, height: div.clientHeight }
+    const c = map.getCenter()
+    const z = map.getZoom()
     const step = marginFrameStep({
       framed: framed.current,
       me: { lat, lng, accuracyM, area },
       points: latest.current,
-      zoom: map.getZoom() ?? null,
-      view: sw && ne ? { south: sw.lat(), west: sw.lng(), north: ne.lat(), east: ne.lng() } : null,
+      zoom: z ?? null,
+      // A map that has not settled cannot say what it shows. The rule takes that as it is.
+      view: c && z != null && boxNow.width > 0 && boxNow.height > 0 ? paintedViewBounds({ center: { lat: c.lat(), lng: c.lng() }, zoom: z }, boxNow) : null,
     })
     framed.current = step.framed
     if (step.move?.kind === 'area') {
       const { box } = step.move
-      const div = map.getDiv()
-      const view = paintedFitView([{ lat: box.south, lng: box.west }, { lat: box.north, lng: box.east }], { width: div.clientWidth, height: div.clientHeight }, MARGIN_FRAME_PADDING_PX)
+      const view = paintedFitView([{ lat: box.south, lng: box.west }, { lat: box.north, lng: box.east }], boxNow, MARGIN_FRAME_PADDING_PX)
       if (view) map.moveCamera(view)
     } else if (step.move?.kind === 'person') {
       map.moveCamera({ center: { lat: step.move.at.lat, lng: step.move.at.lng }, zoom: step.move.zoom })

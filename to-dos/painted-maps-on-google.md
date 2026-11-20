@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft for the owner's read of the billing console
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -11,10 +11,10 @@ summary: >
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
-next: The owner's read of the month's count of maps opened in the Google billing console, against the 10,000 that are free. Step 2 merges on it, and is then walked on the live app on a made-up map on no job. Before step 3, the owner's word on call 6.
+next: Step 2 (#8984) merges on the count read 2026-11-20, then is walked on the live app on a made-up map on no job and thrown away after. Before step 3, the owner's word on call 6. Steps 4 and 5 are not started.
 size: L as a train of five (S · M · L · S · S)
-blocker: One look only the owner can take, and one call. Google bills by the map opened and `/way` counts every outside reader, so the month's count against the free allowance is read before step 2 merges. Step 3 waits on call 6, drawing by hand over Google's photograph.
-opinion: build, after the billing look — the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
+blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
+opinion: build — the count read 2026-11-20 leaves room under the free 10,000, and the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
 mockup: not required — the presses and the tools stay where they are and only the map under them changes, and Google's own tiles cannot be drawn in a mock-up without the live key
 ---
 
@@ -111,7 +111,8 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 - **Cost.** #345 read Google's free count as 10,000 opens of the basic map a month since March 2025,
   billed past it. Read again on Google's pricing page on 2026-11-19: 10,000 free a month for Dynamic Maps,
   then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
-  draw on that count. The real numbers are in the billing console, which no session can see.
+  draw on that count. Read in the console on 2026-11-20: 4,269 loads for November 1 to 20, about 6,400 for
+  the month at that pace, 3,871 in October, and nothing billed.
 - **Old maps.** Every painted map already saved was drawn over Esri's photograph. They will open on
   Google's with the same small shift.
 
@@ -123,7 +124,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 2. **A Google canvas for looking** (M). Lines, places, the person's dot, the first view and refit.
    Mounted in the painting window when nothing is being drawn, with the Leaflet canvas as the fall
    back. Guide `paint-a-map`, release note, fragment, the Glossary's entry amended.
-   Built 2026-11-19 (v2.7990, #8984, a draft), and not merged before the owner's read of the billing console.
+   Built 2026-11-19 (v2.7990, #8984). Held as a draft until the count was read on 2026-11-20, then armed.
    One thing differs from the line above: a window that has left Google's map to draw or to place keeps the Leaflet canvas until it closes, so a new line stays on the photograph it was drawn over.
    Google bills by the map made, and the canvas keeps one map for the whole visit, so going to Time and back or opening a second painted map makes no new one.
 3. **Drawing by hand on Google** (L). Corners, the held press, the catch, the magnifying glass and
@@ -131,6 +132,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 4. **The public page** (S). `/way` on the same canvas, once the billing look says yes.
 5. **The person's task map** (S). `TaskPlacesMapCard` on the shared Google canvas, as v2.7686 did for
    the team's.
+   The count read on 2026-11-20 leaves room for it, but it opens a Google map on Today for everyone with task places, so the count is worth a second look when it is built.
 
 The picture and the print are call 3 and are not in the train.
 
