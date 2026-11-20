@@ -44,8 +44,9 @@ The owner can also open a person's own screen from an open card under **Outstand
 
 Above **Outstanding by person** sits a map called **Where the open tasks are**. It shows up when an open task on the board has a place.
 
-- Each person has a colour. Tap a name to see that person's tasks alone. Tap the name again to see everyone.
-- A navy dot with a number is a place more than one person has a task at.
+- Every dot is orange. A dot with letters on it is one person's, and the letters are that person's initials.
+- Each name above the map wears the same letters. Tap a name to see that person's tasks alone. Tap the name again to see everyone.
+- A dot with a number is a place more than one person has a task at. The number counts the tasks there.
 - Tap a dot to read who has what there. {{button:blue|Directions}} takes you to the place.
 - A line under the map counts the open tasks with no place. They are still on the board below.
 
@@ -55,7 +56,7 @@ Tap **Hide map** to fold the map away. Your device remembers, and **Show map** b
 
 The map shows where the tasks are. It does not show where a person is, and it asks no phone for its location.
 
-Use it before you hand out the day. Two people sent to the same corner show up as one navy dot.
+Use it before you hand out the day. Two people sent to the same corner show up as one dot with a number.
 
 ## See a place on an earlier day
 

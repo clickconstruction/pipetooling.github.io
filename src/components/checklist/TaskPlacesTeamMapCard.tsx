@@ -3,15 +3,16 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { MapCanvasPin } from '../../lib/map/mapCanvasTypes'
+import { initialsFor } from '../../lib/checklistTeamBoard'
+import { pinLabelInk } from '../../lib/map/pinLabelInk'
 import {
-  TASK_PLACE_SHARED_COLOR,
   openTasksWithoutPlaceWords,
-  taskPlacePersonColor,
   taskPlaceTeamDots,
   taskPlacesCountWords,
   taskPlacesDefaultLayer,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, taskPlaceTeamDotLabel } from '../../lib/tasks/taskPlaceColors'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 
 const HIDDEN_KEY = 'task_places_team_map_hidden'
@@ -37,11 +38,15 @@ export type TaskPlacesTeamPerson = { userId: string; name: string; tasks: Array<
 const linkPress: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', fontSize: '0.8125rem', fontFamily: 'inherit' }
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, padding: '4px 11px', minHeight: 30, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }
 const chipOn: CSSProperties = { ...chip, background: 'var(--text-strong)', color: 'var(--surface)', border: '1px solid var(--text-strong)' }
+/** A person's mark beside their name: the dot as the map draws it, small, with the initials the dot wears. */
+const mark: CSSProperties = { flex: 'none', display: 'inline-grid', placeItems: 'center', minWidth: 20, height: 20, padding: '0 3px', boxSizing: 'border-box', borderRadius: 999, background: TASK_PLACE_WORK_COLOR, color: pinLabelInk(TASK_PLACE_WORK_COLOR), border: `1.5px solid ${TASK_PLACE_RING_COLOR}`, fontSize: '0.625rem', fontWeight: 800, lineHeight: 1, letterSpacing: 0 }
 
 /**
  * Where the open tasks are (punch list #328, PR 7): the leader's map on the Review tab, over
- * Outstanding by person. Every person's open tasks that have a place, one colour a person, and a
- * press on a name shows that person alone. A dot several people share is navy and wears its count.
+ * Outstanding by person. Every person's open tasks that have a place, and a press on a name shows
+ * that person alone. Since v2.8045 every dot is the work colour, the app's safety orange, and says
+ * who by what it wears: one person's dot wears their initials, the mark beside their name on the
+ * chips, and a dot several people share wears its count (`taskPlaceTeamDotLabel`).
  *
  * It shows where the tasks are, so two people sent to one corner on one morning can be seen before
  * they are sent. It never shows where a person is, and it asks no phone for anything.
@@ -58,13 +63,12 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
 
-  // The people with a place on some task, in the board's own order: that order is each person's colour.
+  // The people with a place on some task, in the board's own order, each with the initials their dots wear.
   const placed = useMemo(
     () =>
       people
-        .map((p) => ({ userId: p.userId, name: p.name, count: p.tasks.filter((t) => t.place).length }))
-        .filter((p) => p.count > 0)
-        .map((p, i) => ({ ...p, color: taskPlacePersonColor(i) })),
+        .map((p) => ({ userId: p.userId, name: p.name, initials: initialsFor(p.name), count: p.tasks.filter((t) => t.place).length }))
+        .filter((p) => p.count > 0),
     [people],
   )
   const only = onlyUserId && placed.some((p) => p.userId === onlyUserId) ? onlyUserId : null
@@ -77,7 +81,6 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
       ),
     [people, only],
   )
-  const colorOf = useMemo(() => new Map(placed.map((p) => [p.userId, p.color])), [placed])
   const nameOf = useMemo(() => new Map(people.map((p) => [p.userId, p.name])), [people])
 
   const dotsKey = dots.map((d) => `${d.id}:${d.tasks.length}`).join('|')
@@ -93,9 +96,10 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
     id: d.id,
     lat: d.lat,
     lng: d.lng,
-    color: d.personIds.length === 1 ? (colorOf.get(d.personIds[0]!) ?? TASK_PLACE_SHARED_COLOR) : TASK_PLACE_SHARED_COLOR,
+    color: TASK_PLACE_WORK_COLOR,
+    ringColor: TASK_PLACE_RING_COLOR,
     title: d.name,
-    label: d.tasks.length > 1 ? String(d.tasks.length) : undefined,
+    label: taskPlaceTeamDotLabel(d, (id) => initialsFor(nameOf.get(id))),
   }))
   const selected = dots.find((d) => d.id === selectedId) ?? null
   const directions = selected ? directionsUrlForPoint(selected.lat, selected.lng) : null
@@ -124,7 +128,7 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
             </button>
             {placed.map((p) => (
               <button key={p.userId} type="button" aria-pressed={only === p.userId} style={only === p.userId ? chipOn : chip} onClick={() => setOnlyUserId(only === p.userId ? null : p.userId)}>
-                <span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flex: 'none' }} />
+                <span aria-hidden data-task-places-team-mark style={mark}>{p.initials}</span>
                 {p.name} · {p.count}
               </button>
             ))}
@@ -141,8 +145,8 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
                 ) : null}
               </div>
               {selected.tasks.map((t) => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', minWidth: 0, fontSize: '0.875rem', color: 'var(--text-strong)' }}>
-                  <span aria-hidden style={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', background: colorOf.get(t.personId) ?? TASK_PLACE_SHARED_COLOR, transform: 'translateY(1px)' }} />
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0, fontSize: '0.875rem', color: 'var(--text-strong)' }}>
+                  <span aria-hidden data-task-places-team-mark style={mark}>{initialsFor(nameOf.get(t.personId))}</span>
                   <b style={{ flex: 'none' }}>{nameOf.get(t.personId) ?? 'Someone'}</b>
                   <span style={{ minWidth: 0 }}>{t.title}</span>
                 </div>

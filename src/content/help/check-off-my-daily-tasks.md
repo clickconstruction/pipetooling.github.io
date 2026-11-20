@@ -71,7 +71,7 @@ Tap the last box and the card is done. It takes the same path as the checkbox. T
 
 ## Find where a task is
 
-Some tasks have a place, like *Pump house*. The place's name sits under the task with a blue dot. A task with no place has no dot, and nothing else about it changes.
+Some tasks have a place, like *Pump house*. The place's name sits under the task with an orange dot. A task with no place has no dot, and nothing else about it changes.
 
 Tap the task to open it. Under its details you see a small picture of the spot from above. Tap the picture to open the map full size, where you can drag and zoom.
 
@@ -148,7 +148,7 @@ The next person who gets this task sees the place and can get directions.
 
 When an open task of yours has a place, the Today tab opens on a map. The map is called **Where my tasks are**. It sits above the list, in Task Mode too.
 
-- Each place is a dot with a number. The same number sits beside the place's name on the task below.
+- Each place is an orange dot with a number. The same number sits beside the place's name on the task below.
 - A red dot means a task there is overdue.
 - Tasks at one place share a dot. The dot shows the first number and a plus, like *2+*.
 - Tap a dot to see its tasks under the map. Tap {{button:outline|Show the task}} and the list scrolls to that task and opens it. {{button:blue|Directions}} takes you to the place.
