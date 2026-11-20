@@ -5,6 +5,10 @@
  * it over, where nothing has left the phone, a line is set right by hand, and Save writes shapes
  * with no time in them. A walk closed unsaved stays on the phone, paused. Look it over has its own
  * ＋ Place (punch list #393): the place is saved when it is added, and the walk's lines wait.
+ *
+ * While the phone is read, one line says how its location is doing in every state (punch list #402).
+ * A rough reading waits 4 seconds before the line says the switch looks off, and the map waits the
+ * same 4 seconds before it pulls back to the whole circle.
  */
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,6 +26,9 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords:
 vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: null, shrinking: false, kept: false, error: null, pick: async () => {}, clear: () => {}, markKept: () => {} }) }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: () => {} }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: () => {} }))
+/** Which phone the page takes itself to be on. The wait is the real one. */
+const device = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => device.kind }))
 
 /** The phone, stood in for: the test hands the walk its state, and the presses run the real rules. */
 const phone = vi.hoisted(() => ({
@@ -81,10 +88,10 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
 }))
 
 vi.mock('./PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number } | null; follow?: boolean; dot?: { point: { lat: number; lng: number } } | null }) {
+  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number; accuracyM: number | null; area?: boolean } | null; follow?: boolean; frameMargin?: boolean; time?: unknown; dot?: { point: { lat: number; lng: number } } | null }) {
     return (
       <div data-testid="canvas">
-        lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'} places:{(props.places ?? []).map((pl) => `${pl.number} ${pl.name}`).join(',')}
+        area:{props.me?.area ? `yes ${props.me.accuracyM}` : 'no'} margin:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'} lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'} places:{(props.places ?? []).map((pl) => `${pl.number} ${pl.name}`).join(',')}
         {props.draft ? <button type="button" onClick={() => props.draft!.onMove(0, { lat: 29.5001, lng: -98.2001 })}>move the first corner</button> : null}
       </div>
     )
@@ -108,12 +115,21 @@ const LINE: PaintedLine = { id: 'l1', mapId: 'm1', label: '', how: 'drawn', poin
 const give = (state: WalkState | null) => act(() => phone.set!(state))
 const names = () => io.calls.map((c) => c.fn)
 const bar = () => document.querySelector('[data-painted-bar]')
+const line = () => document.querySelector('[data-precise]')
+const panel = () => document.querySelector('[data-painted-walk]')?.getAttribute('data-painted-walk')
+const canvas = () => screen.getByTestId('canvas').textContent ?? ''
+const pill = () => document.querySelector('[data-painted-rough-circle]')?.textContent ?? null
+/** One rough reading, 3,000 m wide, on a walk that has just started. */
+const roughWalk = () => walkFix(startWalk(0), fix(0, 0, 1000, 3000), 1000)
+const wait = (ms: number) => act(() => { vi.advanceTimersByTime(ms) })
 
 beforeEach(() => {
   Object.defineProperty(navigator, 'geolocation', { value: {}, configurable: true })
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
+  device.kind = 'iphone-safari'
   delete (navigator as unknown as { geolocation?: unknown }).geolocation
   phone.calls = []
   phone.kept = []
@@ -133,34 +149,164 @@ describe('painting', () => {
     expect(names()).toEqual([])
   })
 
-  it('shows the length so far beside how sure the phone is, and keeps the person in view', async () => {
+  it('says it is finding you before the first reading, and draws nobody on the map', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    expect(line()?.getAttribute('data-precise')).toBe('finding')
+    expect(line()?.textContent).toBe('Finding you… This takes a few seconds in the open.')
+    expect(canvas()).toContain('me:no')
+    // The map frames by how sure the phone is for as long as the phone is read. Time is for a map that is only read.
+    expect(canvas()).toContain('margin:yes time:no')
+  })
+
+  it('shows the length so far over a line that says Precise Location is on, and keeps the person in view', async () => {
     render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
     await waitFor(() => expect(phone.calls).toEqual(['start']))
     give(walked())
     expect(document.querySelector('[data-painted-walk-readout]')?.textContent).toContain('about 260 ft')
-    expect(document.querySelector('[data-painted-sure]')?.textContent).toBe('Sure within 20 ft')
-    expect(screen.getByTestId('canvas').textContent).toContain('lines:walk-0 corners:none me:yes follow:yes')
+    // The chip at the right is gone: the line under the length says it, with the switch named.
+    expect(document.querySelector('[data-painted-sure]')).toBeNull()
+    expect(line()?.getAttribute('data-precise')).toBe('on')
+    expect(line()?.textContent).toBe('Precise Location is on. Sure within 20 ft.')
+    expect(line()?.querySelector('[data-precise-tick]')).toBeTruthy()
+    expect(canvas()).toContain('area:no margin:yes time:no lines:walk-0 corners:none me:yes follow:yes')
   })
 
-  it('says so when the phone is not sure, and draws that part faint', async () => {
+  it('clears the switch and blames the signal when the phone is not sure, and draws that part faint', async () => {
     render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
     await waitFor(() => expect(phone.calls).toEqual(['start']))
     let s = walked()
     s = walkFix(s, fix(150, -22, 26_000, 40), 26_000)
     s = walkFix(s, fix(200, 18, 30_000, 40), 30_000)
     give(s)
-    expect(document.querySelector('[data-painted-sure]')?.getAttribute('data-painted-sure')).toBe('poor')
-    expect(screen.getByText(/Only sure within 140 ft here\. This part is drawn faint\./)).toBeTruthy()
-    expect(screen.getByTestId('canvas').textContent).toContain('walk-0~')
+    expect(line()?.getAttribute('data-precise')).toBe('weak')
+    expect(line()?.textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 140 ft. This part is drawn faint. Fix it by hand when you look the line over.')
+    expect(panel()).toBe('painting')
+    expect(canvas()).toContain('walk-0~')
+    expect(canvas()).toContain('area:no')
   })
 
-  it('tells a rough location from a reading, and how to turn Precise Location on', async () => {
+  it('says only that the signal is weak past 100 m, where the margin no longer proves the switch', async () => {
     render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
     await waitFor(() => expect(phone.calls).toEqual(['start']))
-    give(walkFix(startWalk(0), fix(0, 0, 1000, 3000), 1000))
-    expect(document.querySelector('[data-painted-walk]')?.getAttribute('data-painted-walk')).toBe('rough')
-    expect(screen.getByText(/Turn on Precise Location/)).toBeTruthy()
+    give(walkFix(startWalk(0), fix(0, 0, 1000, 300), 1000))
+    expect(line()?.textContent).toBe('The signal is weak here. Your phone is only sure within 990 ft. This part is drawn faint. Fix it by hand when you look the line over.')
+    expect(canvas()).toContain('me:yes')
+  })
+
+  it('waits 4 seconds on a rough reading before it says the switch looks off, and the map waits with it', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    give(roughWalk())
+    // A first reading off a cell tower is rough too: the line is still finding you, and the map has not moved or drawn it.
+    expect(panel()).toBe('painting')
+    expect(line()?.textContent).toBe('Finding you… This takes a few seconds in the open.')
+    expect(canvas()).toContain('area:no')
+    expect(canvas()).toContain('me:no')
+    expect(pill()).toBeNull()
+    wait(3999)
+    expect(panel()).toBe('painting')
+    expect(canvas()).toContain('me:no')
+    wait(1)
+    // The same moment for both: the way to the switch on the panel, and the whole circle on the map.
+    expect(panel()).toBe('rough')
+    const alert = screen.getByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('A line cannot be painted from a reading that wide.')
+    expect([...alert.querySelectorAll('ol[data-precise-steps] li')].map((li) => li.textContent)).toEqual(['Open the Settings app.', 'Tap Privacy & Security, then Location Services.', 'Tap Safari Websites.', 'Turn on Precise Location.', 'Come back to this screen.'])
+    expect(alert.querySelector('[data-precise-already-on]')?.textContent).toBe('Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.')
+    expect(alert.textContent).not.toMatch(/is off/)
+    expect(canvas()).toContain('area:yes 3000 margin:yes')
+    expect(canvas()).toContain('me:yes')
+    expect(pill()).toBe('You are somewhere in this circle, 4 miles across.')
     expect(screen.getByRole('button', { name: 'Draw it by hand instead' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy()
+  })
+
+  it('never calls the switch off when a better reading comes inside the wait, and clears it at once when one comes after', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    let s = roughWalk()
+    give(s)
+    wait(2500)
+    s = walkFix(s, fix(0, 0, 3500, 6), 3500)
+    give(s)
+    expect(line()?.textContent).toBe('Precise Location is on. Sure within 20 ft.')
+    // The first timer is gone with the rough reading: nothing turns rough when its 4 seconds would have been up.
+    wait(10_000)
+    expect(panel()).toBe('painting')
+    expect(line()?.getAttribute('data-precise')).toBe('on')
+    expect(canvas()).toContain('area:no')
+    // Rough again: a whole new wait.
+    s = walkFix(s, fix(0, 0, 14_000, 3000), 14_000)
+    give(s)
+    wait(3999)
+    expect(panel()).toBe('painting')
+    wait(1)
+    expect(panel()).toBe('rough')
+    expect(pill()).not.toBeNull()
+    // And a sure reading takes it all back in the same draw.
+    give(walkFix(s, fix(0, 0, 19_000, 4), 19_000))
+    expect(panel()).toBe('painting')
+    expect(line()?.textContent).toBe('Precise Location is on. Sure within 15 ft.')
+    expect(canvas()).toContain('area:no')
+    expect(pill()).toBeNull()
+  })
+
+  it('starts the wait over after a pause, so coming back from Settings reads as finding you and not as off', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    give(roughWalk())
+    wait(4000)
+    expect(panel()).toBe('rough')
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    // The phone is not being read: no line about its location, no circle and no pill.
+    expect(panel()).toBe('paused-press')
+    expect(line()).toBeNull()
+    expect(canvas()).toContain('area:no margin:no')
+    expect(canvas()).toContain('me:no')
+    expect(pill()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep painting' }))
+    expect(panel()).toBe('painting')
+    expect(line()?.textContent).toBe('Finding you… This takes a few seconds in the open.')
+    wait(3999)
+    expect(panel()).toBe('painting')
+    wait(1)
+    expect(panel()).toBe('rough')
+  })
+
+  it('gives an Android phone its own names and steps, and a desk one line for each kind of phone', async () => {
+    device.kind = 'android'
+    const view = render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    give(roughWalk())
+    wait(4000)
+    let alert = screen.getByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toContain('With Use precise location on')
+    expect([...alert.querySelectorAll('ol[data-precise-steps] li')].map((li) => li.textContent)).toEqual(['Press and hold the browser’s icon, then tap App info.', 'Tap Permissions, then Location.', 'Turn on Use precise location.', 'Come back to this screen.'])
+    view.unmount()
+    vi.useRealTimers()
+    phone.calls = []
+
+    device.kind = 'other'
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    give(roughWalk())
+    wait(4000)
+    alert = screen.getByRole('alert')
+    // No switch is named in the line, and nothing is set beside the phone's number: a desk has no switch.
+    expect(alert.querySelector('b')?.textContent).toBe('This device only knows the area it is in.')
+    expect(alert.querySelector('[data-precise-compare]')).toBeNull()
+    expect(alert.textContent).toContain('It is only sure within 2 miles. A line cannot be painted from a reading that wide.')
+    expect(alert.querySelectorAll('ul[data-precise-steps] li')).toHaveLength(2)
+    expect(alert.querySelector('ol')).toBeNull()
   })
 
   it('never dead-ends a refusal: drawing by hand opens with nothing lost', async () => {

@@ -19,6 +19,13 @@
  * line or a place is being drawn, and drawing that begins while Time is on puts today's photograph
  * back first, so no corner is ever set against ground that has since changed. The public page hands
  * no `time`, so an outside reader never has it.
+ *
+ * **How sure the phone is** (punch list #402): a `me` marked `area` is a rough reading that has
+ * stayed rough. It is an area and not a spot, so its whole circle is drawn dashed with no dot in its
+ * middle, and nothing slides the map to that middle. With `frameMargin` the map pulls back until the
+ * circle and the map's own lines and places all show, and the first spot after it brings the map in
+ * to the person. The rule is `marginFrame.ts`, which any other canvas asks the same way. The canvas
+ * counts no time: its caller holds a rough reading back for the wait before calling it an area.
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -26,6 +33,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject, 
 import { createPortal } from 'react-dom'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { legMiddles } from '../../lib/paintedMap/draftLine'
+import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { PAINTED_SNAP_METERS, type NumberedPlace, type PaintedLineHow } from '../../lib/paintedMap/paintedMap'
 import { PAINT_COLOR } from './paintedMapLook'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -73,14 +81,19 @@ type Props = {
   dot?: PaintedCanvasDot | null
   /** Where the caller wants the map to go now (Start where I am); a new object each time. */
   flyTo?: PaintedPoint | null
-  /** Where the person stands, when they asked. */
-  me?: (PaintedPoint & { accuracyM: number | null }) | null
+  /** Where the person stands, when they asked. Marked `area`, it is a rough reading: a dashed circle and no dot. */
+  me?: PaintedCanvasMe | null
   /** Frame everything on the map again each time this number changes: a walk just ended, and the whole of it is to be looked over. */
   refit?: number
   /** Keep the person and the whole map in the picture together: for a reader finding the line, where `follow` is for a painter making one. */
   frameMe?: boolean
-  /** Keep the person in view as they move: the map slides to them when they near its edge. For a walk being painted. */
+  /** Keep the person in view as they move: the map slides to them when they near its edge. For a walk being painted. An area is never slid to. */
   follow?: boolean
+  /**
+   * Frame by how sure the phone is (`marginFrame.ts`): an area pulls the map back until its whole circle shows, with the
+   * map's own lines and places, and the first spot after it brings the map in to the person.
+   */
+  frameMargin?: boolean
   onPlaceTap?: (id: string) => void
   /** A picture, not a control: no drag, no zoom, no buttons. */
   still?: boolean
@@ -175,6 +188,10 @@ const ME_ICON = L.divIcon({
   html: `<span style="display:block;width:14px;height:14px;margin:4px;border-radius:50%;background:${ME_BLUE};border:3px solid ${PAPER};box-shadow:0 0 0 1px rgba(17,24,39,.5),0 1px 4px rgba(0,0,0,.5)"></span>`,
 })
 
+/** The margin around the person's dot, and the whole of a rough area: dashed and a shade fuller, so it reads as a place to be somewhere in. */
+const ME_SPOT_PATH: L.PathOptions = { color: ME_BLUE, weight: 1, fillColor: ME_BLUE, fillOpacity: 0.15 }
+const ME_AREA_PATH: L.PathOptions = { color: ME_BLUE, weight: 2, dashArray: '6 6', fillColor: ME_BLUE, fillOpacity: 0.18 }
+
 /** Leaflet measures its box once; inside a window that opens later, or a flex box that settles, it needs telling. */
 function SizeFix() {
   const map = useMap()
@@ -239,6 +256,40 @@ function Follow({ me }: { me: PaintedPoint }) {
     const inside = at.x > margin && at.x < size.x - margin && at.y > margin && at.y < size.y - margin
     if (!inside) map.panTo([me.lat, me.lng], { animate: true, duration: 0.4 })
   }, [map, me.lat, me.lng])
+  return null
+}
+
+/**
+ * Frames by how sure the phone is. The rule is `marginFrame.ts`: this asks it on each new reading and does what it
+ * says. It stays mounted across the wait, when there is no `me` to draw, so it remembers that an area came before.
+ */
+function FrameMargin({ me, points }: { me: PaintedCanvasMe | null; points: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const framed = useRef<MarginFramed>('none')
+  const latest = useRef(points)
+  latest.current = points
+  const lat = me?.lat ?? null
+  const lng = me?.lng ?? null
+  const accuracyM = me?.accuracyM ?? null
+  const area = me?.area === true
+  useEffect(() => {
+    if (lat == null || lng == null) return
+    const b = map.getBounds()
+    const step = marginFrameStep({
+      framed: framed.current,
+      me: { lat, lng, accuracyM, area },
+      points: latest.current,
+      zoom: map.getZoom(),
+      view: { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+    })
+    framed.current = step.framed
+    if (step.move?.kind === 'area') {
+      const { box } = step.move
+      map.fitBounds([[box.south, box.west], [box.north, box.east]], { padding: [MARGIN_FRAME_PADDING_PX, MARGIN_FRAME_PADDING_PX], animate: false })
+    } else if (step.move?.kind === 'person') {
+      map.setView([step.move.at.lat, step.move.at.lng], step.move.zoom, { animate: false })
+    }
+  }, [map, lat, lng, accuracyM, area])
   return null
 }
 
@@ -577,7 +628,7 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, frameMargin, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
   const isMobile = useIsMobile()
   const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
@@ -652,14 +703,17 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         <FitOnce points={framed} />
         <FlyTo to={flyTo} />
         {onView ? <ViewTracker onView={onView} /> : null}
-        {follow && me ? <Follow me={me} /> : null}
+        {follow && me && !me.area ? <Follow me={me} /> : null}
+        {frameMargin ? <FrameMargin me={me ?? null} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         {refit != null ? <Refit token={refit} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
-        {frameMe && me ? <FrameMe me={me} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
+        {frameMe && me && !me.area ? <FrameMe me={me} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         <Shapes lines={lines} places={places} draftPoints={draftShown} onPlaceTap={draft || dot ? undefined : onPlaceTap} />
         {me ? (
           <>
-            {me.accuracyM != null ? <Circle center={ll(me)} radius={me.accuracyM} pathOptions={{ color: ME_BLUE, weight: 1, fillColor: ME_BLUE, fillOpacity: 0.15 }} interactive={false} /> : null}
-            <Marker position={ll(me)} icon={ME_ICON} interactive={false} title="You" />
+            {/* Keyed by what it is: Leaflet merges a new style over the old, and a spot's circle would keep an area's dashes. */}
+            {me.accuracyM != null ? <Circle key={me.area ? 'area' : 'spot'} center={ll(me)} radius={me.accuracyM} pathOptions={me.area ? ME_AREA_PATH : ME_SPOT_PATH} interactive={false} /> : null}
+            {/* An area is not a spot: its circle is drawn, and no dot claims its middle. */}
+            {me.area ? null : <Marker position={ll(me)} icon={ME_ICON} interactive={false} title="You" />}
           </>
         ) : null}
         {draft ? <DraftLayer draft={draft} setLive={setLive} coarse={coarse} /> : null}

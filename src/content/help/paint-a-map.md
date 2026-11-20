@@ -112,7 +112,14 @@ Press {{button:red|Walk or drive it}}. Your phone asks to share where you are. S
 
 A red bar at the top says **Painting**, with a clock. Your phone is read only while that bar is red.
 
-Walk the way in with the phone in your hand. The line grows behind you on the map. The window shows the length so far and how sure your phone is, such as *Sure within 20 ft*.
+Walk the way in with the phone in your hand. The line grows behind you on the map. The window shows the length so far.
+
+Under the length, one line says how your phone's location is doing. The line is there the whole time the bar is red.
+
+- *Finding you…* shows before the first reading. The first reading takes a few seconds in the open.
+- *Precise Location is on.* shows with a green tick, and how sure your phone is, such as *Sure within 20 ft.*
+- An amber line means the signal is weak. See [When the phone is not sure](#when-the-phone-is-not-sure).
+- *Precise Location looks off.* means your phone gives only the area you are in. See [When Precise Location looks off](#when-precise-location-looks-off).
 
 **Keep the screen on.** The app holds the screen on for you. A phone's browser cannot read where you are once the screen locks. A phone in a pocket draws nothing.
 
@@ -132,11 +139,46 @@ A call, another app or the lock button all pause the painting. The window then s
 
 ### When the phone is not sure
 
-Walls and trees bend the signal. The window says *Only sure within 60 ft here*. That stretch is drawn as faint dots and is left out of the length.
+Walls and trees bend the signal. The line turns amber and says *Precise Location is on, but the signal is weak here.* It also says how sure your phone is, such as *Your phone is only sure within 60 ft.*
 
-### When the phone gives a rough location
+That stretch is drawn as faint dots and is left out of the length. Fix it by hand when you look the line over.
 
-The window says so and shows how to turn on **Precise Location**. You can press {{button:blue|Draw it by hand instead}} at any time.
+A phone that is unsure by more than about 330 feet reads *The signal is weak here.*
+
+The switch is not the trouble either way. Step into the open and the line turns green again.
+
+### When Precise Location looks off
+
+**Precise Location** is a switch in your phone's settings. With it off, your phone gives only the area you are in. That area can be miles across, so no line can be painted from it.
+
+The app is never told whether the switch is on. The app reads how sure your phone is. A phone that stays unsure by a mile or more for 4 seconds reads *Precise Location looks off.*
+
+The window then shows your phone's two numbers side by side. *Your phone now* is how sure it is. *With Precise Location on* is how sure a phone is with the switch on.
+
+The map pulls back to a dashed circle. You are somewhere in that circle. No dot is drawn, since your phone does not know the spot.
+
+Under the two numbers are the steps to the switch, for your phone alone. In Safari on an iPhone they are these.
+
+1. Open the **Settings** app.
+2. Tap **Privacy & Security**, then **Location Services**.
+3. Tap **Safari Websites**.
+4. Turn on **Precise Location**.
+5. Come back to the app.
+
+Chrome on an iPhone has its own row. Tap **Chrome** at step 3.
+
+On an Android phone the switch is named **Use precise location**.
+
+1. Press and hold the browser's icon, then tap **App info**.
+2. Tap **Permissions**, then **Location**.
+3. Turn on **Use precise location**.
+4. Come back to the app.
+
+Leaving for the settings pauses the painting, as any other app does. Press {{button:red|Keep painting from here}} when you are back. The line says *Finding you…*, then *Precise Location is on.* The map comes back in to where you stand.
+
+Is the switch on already? Then your phone may only be hearing a cell tower. Step into the open and wait a moment.
+
+You can press {{button:blue|Draw it by hand instead}} at any time.
 
 ## Look it over, then save
 
