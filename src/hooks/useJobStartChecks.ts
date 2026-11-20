@@ -21,8 +21,13 @@ import {
   type StartBulletRow,
 } from '../lib/startChecks/startCheckRows'
 import { supabaseStartChecksIo, type StartChecksIo } from '../lib/startChecks/startChecksIo'
+import { supabaseStartReadersIo, type ReaderJob, type StartReadersIo } from '../lib/startChecks/startCheckReadersIo'
+import { useStartCheckReads } from './useStartCheckReads'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+
+const NO_LINES: readonly StageLine[] = []
+const NO_BULLETS: readonly StartBulletRow[] = []
 
 export type StartChecksJob = {
   id: string
@@ -30,6 +35,8 @@ export type StartChecksJob = {
   label: string
   developmentId: string | null
   bidId: string | null
+  /** The job's address: a bullet of ours that reads the city's permits reads them here. */
+  address?: string | null
   /** The GC on the job, and the customer: who we ask when the bid names no contact. */
   gcName: string | null
   customerName: string | null
@@ -63,8 +70,13 @@ export interface JobStartChecksRead {
   io: StartChecksIo
 }
 
-export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChecksIo; far?: boolean; readUs?: (row: StartBulletRow) => UsReading | null } = {}): JobStartChecksRead {
+/**
+ * `readers` reads the app for a bullet of ours. Left out, the real one runs beside the real io, and none beside a
+ * test's in-memory io. `readUs` is a reader handed in whole, which wins.
+ */
+export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChecksIo; far?: boolean; readUs?: (row: StartBulletRow) => UsReading | null; readers?: StartReadersIo | null; role?: string | null; todayYmd?: string } = {}): JobStartChecksRead {
   const io = options.io ?? supabaseStartChecksIo
+  const readers = options.readers !== undefined ? options.readers : options.io ? null : supabaseStartReadersIo
   const [onDesk, setOnDesk] = useState<boolean | null>(null)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -128,7 +140,9 @@ export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChec
 
   const mine = loaded && loaded.jobId === job.id ? loaded : null
   const far = options.far ?? false
-  const readUs = options.readUs
+  const readerJobs = useMemo<ReaderJob[]>(() => [{ id: job.id, bidId: job.bidId, address: job.address ?? null, developmentId: job.developmentId }], [job.id, job.bidId, job.address, job.developmentId])
+  const appReads = useStartCheckReads({ io: readers, jobs: readerJobs, lines: mine?.lines ?? NO_LINES, bullets: mine?.rows.bullets ?? NO_BULLETS, role: options.role ?? null, todayYmd: options.todayYmd ?? '' })
+  const readUs = options.readUs ?? appReads
   const notice = useMemo(() => noticeFor({ onSite: !!job.developmentId, site: mine?.settings.site ?? null, job: mine?.settings.job ?? null, far }), [job.developmentId, mine, far])
   const site = useMemo<Site>(() => ({ noticeDays: notice.days, contact: contactName({ gcContact: mine?.gcContact, gc: job.gcName, customer: job.customerName }) }), [notice.days, mine, job.gcName, job.customerName])
   const stages = useMemo(
