@@ -4,6 +4,7 @@ import { DOTS_WORDS, parseMyWeek, yourWeekCard, type WeekDot, type YourWeekCard 
 import { payWeekContaining } from '../../lib/payWeekAnchor'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { supabaseYourWeekIo, type YourWeekIo } from '../../lib/techWeek/yourWeekIo'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Your week (punch list #255, v2.6589): one progress signal a tech can watch move, every week. The card on the tech's
@@ -101,10 +102,10 @@ export function DashboardYourWeekCard({ userId, io: ioIn }: { userId: string | n
   const last = words ? `${customerFirstName(words.customerName)}${words.customerName.trim().split(/\s+/)[1] ? ` ${words.customerName.trim().split(/\s+/)[1]![0]}.` : ''}` : ''
   return (
     <section style={CARD} aria-label="Your week" data-testid="your-week-card">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>{card.title}</h2>
+      <DashboardCardHead card={{ top: '0.85rem', side: '1rem', radius: 12 }} below="0" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <DashboardCardTitle>{card.title}</DashboardCardTitle>
         <span style={MUTED}>{card.range}</span>
-      </div>
+      </DashboardCardHead>
       <div style={KICKER}>{card.kicker}</div>
       <div style={BIG}>{card.head}</div>
       {card.sub ? <div style={MUTED}>{card.sub}</div> : null}

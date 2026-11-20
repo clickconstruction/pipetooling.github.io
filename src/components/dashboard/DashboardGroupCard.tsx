@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Groups related dashboard sections into one visible unit: a bordered card with
@@ -84,7 +85,7 @@ export function DashboardGroupCard({
         scrollMarginTop: 8,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: collapsible && collapsed ? 0 : '0.5rem' }}>
+      <DashboardCardHead closed={collapsible && collapsed} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         {collapsible ? (
           <button
             type="button"
@@ -103,13 +104,13 @@ export function DashboardGroupCard({
             }}
           >
             <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{collapsed ? '▶' : '▼'}</span>
-            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{title}</h2>
+            <DashboardCardTitle>{title}</DashboardCardTitle>
           </button>
         ) : (
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{title}</h2>
+          <DashboardCardTitle>{title}</DashboardCardTitle>
         )}
         {headerRight ?? null}
-      </div>
+      </DashboardCardHead>
       {collapsible && collapsed ? null : children}
     </div>
   )

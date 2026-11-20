@@ -645,7 +645,7 @@ export default function DashboardFieldCollectPaymentQueue({
         }}
       >
         <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
-        <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Field: Waiting for Approval ({rows.length})</h2>
+        <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Field: Waiting for Approval ({rows.length})</h3>
       </button>
       {expanded && (
         <>

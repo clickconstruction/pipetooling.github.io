@@ -5,6 +5,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadMyTraining, loadTrainingCatalog } from '../../lib/training/trainingIo'
 import { TRAINING_COURSE_FACTS, courseSizeWords } from '../../lib/training/courseFacts'
 import { offeredCourses, offeredPress, personStandings, standingPress, standingWords, trainingVerdict, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Dashboard → Training (punch list #111, v2.5567): the card at the bottom of the page, under My Time, where a
@@ -72,10 +73,10 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
       data-training-card={verdict?.colour ?? 'none'}
       style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.85rem 1rem 1rem' }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.6rem' }}>
-        <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Training</span>
+      <DashboardCardHead below="0.6rem" style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+        <DashboardCardTitle>Training</DashboardCardTitle>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>at your own pace</span>
-      </div>
+      </DashboardCardHead>
       {verdict && (
         <div style={{ ...TONES[verdict.colour], padding: '0.45rem 0.7rem', borderRadius: 7, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }} data-training-verdict>
           <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', background: DOTS[verdict.colour], flex: 'none' }} />

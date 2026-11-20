@@ -27,6 +27,7 @@ import {
 import { MyBidsSectionSkeleton } from './DashboardSkeletons'
 import { EmptyState } from '../EmptyState'
 import { MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 export function DashboardMyBidsSection({
   authUserId,
@@ -304,16 +305,7 @@ export function DashboardMyBidsSection({
           {/* One heading at every width. A phone had no fold at all until the owner's
               ask of 2026-11-19, so a primary's 24 bids stood open there; New Bid
               stays beside the heading while the list is folded. */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              marginBottom: myBidsSectionExpanded ? '0.5rem' : 0,
-            }}
-          >
+          <DashboardCardHead closed={!myBidsSectionExpanded} below="0.5rem" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
             <button
               type="button"
               onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
@@ -336,9 +328,7 @@ export function DashboardMyBidsSection({
               }}
             >
               <span aria-hidden>{myBidsSectionExpanded ? '▼' : '▶'}</span>
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-                {myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}
-              </h2>
+              <DashboardCardTitle>{myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}</DashboardCardTitle>
             </button>
             <Link
               to="/bids?new=true"
@@ -354,7 +344,7 @@ export function DashboardMyBidsSection({
             >
               New Bid
             </Link>
-          </div>
+          </DashboardCardHead>
           {myBidsSectionExpanded && (myBidsLoading ? (
             <MyBidsSectionSkeleton />
           ) : (

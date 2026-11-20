@@ -29,6 +29,7 @@ import { recentReportsEmptyWords } from '../../lib/dashboard/dashboardEmptyWords
 import { ReportPhotosStrip } from '../reports/ReportPhotosStrip'
 import { ReportPhotoCount } from '../reports/ReportPhotoCount'
 import { useReportPhotoCounts } from '../../hooks/useReportPhotoCounts'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Inbox redesign (v2.1469): read/done state lives in report_reads (read_at /
@@ -265,7 +266,7 @@ export function DashboardRecentReportsSection({
           {/* flex-wrap + fit-content title: at narrow widths the actions
               cluster drops to its own right-aligned line instead of the badge
               painting over "Mark all opened" (viewport sweep, v2.1469). */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: '0.5rem', rowGap: '0.25rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}>
+          <DashboardCardHead closed={!recentReportsExpanded} below="0.5rem" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: '0.5rem', rowGap: '0.25rem' }}>
             <button
               type="button"
               onClick={() => setRecentReportsExpanded((prev) => !prev)}
@@ -273,7 +274,7 @@ export function DashboardRecentReportsSection({
               style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flex: '1 1 auto', minWidth: 'fit-content', gap: '0.45rem' }}
             >
               <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{recentReportsExpanded ? '▼' : '▶'}</span>
-              <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Recent Reports</h2>
+              <DashboardCardTitle nowrap>Recent Reports</DashboardCardTitle>
               {newCount > 0 ? (
                 <span
                   aria-label={`${newCount} new ${newCount === 1 ? 'report' : 'reports'}`}
@@ -312,7 +313,7 @@ export function DashboardRecentReportsSection({
               </button>
             )}
             </span>
-          </div>
+          </DashboardCardHead>
           {recentReportsExpanded && (
             <>
               {scopeLine ? (

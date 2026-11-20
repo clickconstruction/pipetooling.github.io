@@ -10,6 +10,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import FieldPctUpdateModal from './FieldPctUpdateModal'
 import AdditionalReportModal from '../AdditionalReportModal'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Your record (v2.3368): up to three things only this person can put right —
@@ -123,10 +124,10 @@ export default function DashboardYourRecordCard({ userId, role, displayName, isS
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.75rem' }} data-testid="dashboard-your-record">
-      <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{title}</h2>
+      <DashboardCardHead card={{ top: '0.7rem', side: '0.9rem', radius: 8 }} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem' }}>
+        <DashboardCardTitle nowrap>{title}</DashboardCardTitle>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>this week · {items.length === 1 ? 'one thing' : `${items.length} things`} only you can fix</span>
-      </div>
+      </DashboardCardHead>
       <div style={{ display: 'grid', gap: '0.45rem' }}>
         {items.map((item) => {
           const c = yourRecordItemCopy(item)

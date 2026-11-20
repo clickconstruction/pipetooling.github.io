@@ -5,6 +5,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatUpcomingInspectionDateLine, type UpcomingInspectionRow } from '../../lib/dashboardUpcomingInspections'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 export function DashboardUpcomingInspectionsSection({
   authUserId,
@@ -49,7 +50,9 @@ export function DashboardUpcomingInspectionsSection({
 
   return (
     <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-      <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
+      <DashboardCardHead card={null} below="0.5rem">
+        <DashboardCardTitle>Upcoming inspection (3 days)</DashboardCardTitle>
+      </DashboardCardHead>
       {upcomingInspectionsLoading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : upcomingInspections.length === 0 ? (

@@ -22,6 +22,7 @@ import {
   sendToBillingButtonStyle,
   VIEW_REPORTS_BUTTON_STYLE,
 } from './dashboardJobRowShared'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Dashboard "Superintendent Jobs" block (v2.1004 job-row-family extraction —
@@ -66,17 +67,19 @@ export function DashboardSuperintendentJobsSection({
     <>
       {role === 'superintendent' && (superintendentJobsLoading || superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length > 0) && (
         <div style={{ marginTop: '2rem' }}>
-          <button
-            type="button"
-            onClick={() => setSuperintendentJobsExpanded((prev) => !prev)}
-            aria-expanded={superintendentJobsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: superintendentJobsExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{superintendentJobsExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-              Superintendent Jobs ({superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length})
-            </h2>
-          </button>
+          <DashboardCardHead card={null} below={superintendentJobsExpanded ? '0.75rem' : '0'}>
+            <button
+              type="button"
+              onClick={() => setSuperintendentJobsExpanded((prev) => !prev)}
+              aria-expanded={superintendentJobsExpanded}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <span aria-hidden>{superintendentJobsExpanded ? '\u25BC' : '\u25B6'}</span>
+              <DashboardCardTitle>
+                Superintendent Jobs ({superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length})
+              </DashboardCardTitle>
+            </button>
+          </DashboardCardHead>
           {superintendentJobsExpanded && (
             superintendentJobsLoading && superintendentJobs.length === 0 ? (
               <DashboardListRowSkeleton rows={2} />
