@@ -304,7 +304,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
     expect(branch).toContain('{ target: robotBookLogLine(dry.book, landedChanges), rowCount: landedChanges.length }')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.115.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
     expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else')
     expect(SERVER).toContain('plan_robot_book_price → apply_robot_book_price (prices that stand in a 🤖 Robot Default price book')
     expect(README).toContain('| `plan_robot_book_price(prices)` · `apply_robot_book_price(prices, plan_hash)` |')
