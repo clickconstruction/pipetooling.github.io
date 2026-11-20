@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
 /**
  * The Job Mode card's `short` prop (punch list #384, the short Job Mode page). Without it the card is as it was:
- * the Materials on site link and the job's details under the rail. With it the lower half sits behind one row,
+ * the Materials on site press beside Job calendar and the job's details under the rail. With it the lower half sits behind one row,
  * **Open this job**, a fold in place over the same pieces, and the rail and the press bar do not move.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { SITE_BOX_COUNT_KEY } from '../../lib/materials/siteBoxCount'
 
 const JOB_C = '00000000-0000-0000-0000-00000000cccc'
-const scenario: { openSession: Record<string, unknown> | null; role: string; on: boolean; tail: Array<{ direction: string; at: string; body: string }> } = {
+const scenario: { openSession: Record<string, unknown> | null; role: string; on: boolean; tail: Array<{ direction: string; at: string; body: string }>; siteBoxes: number } = {
   openSession: { id: 'sess-1', job_ledger_id: JOB_C, bid_id: null },
   role: 'primary',
   on: false,
   tail: [],
+  siteBoxes: 0,
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -25,6 +27,8 @@ vi.mock('../../lib/supabase', () => {
     const result = () => {
       if (table === 'job_schedule_blocks') return Promise.resolve({ data: [{ id: 'blk-3', job_id: JOB_C, time_start: '14:00', time_end: '17:00', jobs_ledger: { hcp_number: '503', click_number: null, job_name: 'Smoke Job 3', job_address: '3 Test St', service_type_id: null } }], error: null, count: 0 })
       if (table === 'clock_sessions') return single ? Promise.resolve({ data: scenario.openSession, error: null, count: 0 }) : Promise.resolve({ data: [], error: null, count: 0 })
+      // The head count behind the Materials on site press: the live boxes on the job's site.
+      if (table === 'job_containers') return Promise.resolve({ data: null, error: null, count: scenario.siteBoxes })
       if (table === 'job_contracts') return Promise.resolve({ data: [], error: null, count: 0 })
       if (table === 'jobs_ledger') return Promise.resolve({ data: single ? { customer_id: 'cust-dana' } : [], error: null, count: 0 })
       if (table === 'customers') return Promise.resolve({ data: single ? { name: 'Dana Whitfield' } : [], error: null, count: 0 })
@@ -49,7 +53,11 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, ro
 // The details are their own component with their own tests. Here only where they are drawn matters.
 vi.mock('./JobModeDetailsSection', () => ({ default: ({ jobId }: { jobId: string }) => <div data-testid="job-mode-details">{jobId}</div> }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  scenario.siteBoxes = 0
+  window.localStorage.removeItem(SITE_BOX_COUNT_KEY)
+})
 
 async function mount(short: boolean) {
   const { renderWithProviders } = await import('../../test/renderSmokeMocks')
@@ -67,12 +75,27 @@ async function mount(short: boolean) {
 
 // The whole Job Mode card mounts in each case, so each case has 15 s rather than the default 5.
 describe('DashboardJobModeCard — short', { timeout: 15_000 }, () => {
-  it('without short the card is as it was: the Materials link and the details under the rail, and no fold', async () => {
+  it('without short the card is whole: the Materials press beside Job calendar, the details under the rail, and no fold', async () => {
     await mount(false)
     await screen.findByLabelText('Leave Report')
     expect(await screen.findByTestId('job-mode-details')).toBeTruthy()
-    expect(screen.getByTestId('job-mode-materials-on-site')).toBeTruthy()
+    const doors = within(screen.getByTestId('job-mode-job-doors'))
+    expect(doors.getByRole('button', { name: 'Open the job calendar' })).toBeTruthy()
+    expect(doors.getByRole('button', { name: 'Materials on site' })).toBeTruthy()
+    // Nothing on this job's site: the press carries no count.
+    expect(screen.queryByTestId('job-mode-materials-count')).toBeNull()
     expect(screen.queryByTestId('job-mode-short-open-job')).toBeNull()
+  })
+
+  it('a site with boxes puts its count on the press, and says what it counts', async () => {
+    scenario.siteBoxes = 14
+    await mount(false)
+    await screen.findByLabelText('Leave Report')
+    const count = await screen.findByTestId('job-mode-materials-count')
+    expect(count.textContent).toBe('14')
+    const press = screen.getByTestId('job-mode-materials-on-site')
+    expect(press.getAttribute('aria-label')).toBe('Materials on site, 14 cages and boxes on this site')
+    expect(press.contains(count)).toBe(true)
   })
 
   it('with short the lower half sits behind Open this job, and the press bar stays', async () => {
@@ -103,15 +126,18 @@ describe('DashboardJobModeCard — short', { timeout: 15_000 }, () => {
     expect(screen.queryByTestId('job-mode-materials-on-site')).toBeNull()
   })
 
-  it('with short and no job on the card, the Materials link stays where it was', async () => {
+  it('with no job on the card there is no Materials press, short or whole: the card names no job to open it on', async () => {
     scenario.openSession = null
     try {
-      await mount(true)
-      await waitFor(() => expect(screen.queryByText('Loading Job Mode…')).toBeNull())
-      const open = screen.queryByTestId('job-mode-short-open-job')
-      // A scheduled next stop gives the row a job to open. With none, the link is the only way to Materials.
-      if (!open) expect(screen.getByTestId('job-mode-materials-on-site')).toBeTruthy()
-      else expect(screen.queryByTestId('job-mode-materials-on-site')).toBeNull()
+      for (const short of [true, false]) {
+        await mount(short)
+        await waitFor(() => expect(screen.queryByText('Loading Job Mode…')).toBeNull())
+        // A scheduled next stop gives the card a job, and the whole card then draws the press beside Job calendar.
+        const named = screen.queryByTestId('job-mode-job-doors') != null
+        if (named && !short) expect(screen.getByTestId('job-mode-materials-on-site')).toBeTruthy()
+        else expect(screen.queryByTestId('job-mode-materials-on-site')).toBeNull()
+        cleanup()
+      }
     } finally {
       scenario.openSession = { id: 'sess-1', job_ledger_id: JOB_C, bid_id: null }
     }

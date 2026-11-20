@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ComingUpWaitingGroupList, useComingUpWaitingGroups } from '../checklist/ChecklistComingUpSection'
 import { buildWaitingForStripSummary } from '../../lib/dashboardWaitingForStrip'
 import { isOfficeRole } from '../../lib/doorRoles'
@@ -20,7 +20,7 @@ import { handOnTask, tellForwardTaker } from '../../lib/tasks/taskDoerActsIo'
 import { taskTitlePlain } from '../../lib/tasks/taskPlace'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
-import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
+import { formatTDays, getDaysUntilDue, MY_INBOX_DOOR, myInboxSectionLabels, type MyInboxSectionLabel } from '../../lib/dashboardMyInbox'
 import { effectiveDueDate } from '../../lib/checklistDueDates'
 import { createNextChecklistRepeat } from '../../lib/checklistCompleteInstance'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
@@ -31,9 +31,88 @@ import { cardAsksForPhoto, takesRing } from '../../lib/taskProgress'
 import { setTaskPercent } from '../../lib/taskProgressIo'
 import { useTaskPhotos } from '../../hooks/useTaskPhotos'
 
+/** A section's label inside the card (v2.8040): one quiet weight for every section, a step under the card's title. */
+const SECTION_LABEL_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.45rem',
+  margin: '0 0 0.5rem',
+  fontSize: '0.8125rem',
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  color: 'var(--text-muted)',
+}
+
+/**
+ * Draws one of `myInboxSectionLabels`' labels as the section's `h3`, with its count in a pill. With `fold` the
+ * label is the press that opens and closes its section (Recently Completed), 44px tall for a thumb.
+ */
+function MyInboxSectionHead({ label, fold }: { label: MyInboxSectionLabel; fold?: { open: boolean; onToggle: () => void } }) {
+  const late = label.tone === 'late'
+  const words = (
+    <>
+      {label.label}
+      {label.count ? (
+        <span
+          style={{
+            background: late ? 'var(--bg-red-100)' : 'var(--bg-muted)',
+            color: late ? 'var(--text-red-700)' : 'var(--text-700)',
+            borderRadius: 999,
+            padding: '1px 8px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: 0,
+            textTransform: 'none',
+          }}
+        >
+          {label.count}
+        </span>
+      ) : null}
+    </>
+  )
+  if (!fold) {
+    return (
+      <h3 data-my-inbox-section={label.key} style={SECTION_LABEL_STYLE}>
+        {words}
+      </h3>
+    )
+  }
+  return (
+    <h3 data-my-inbox-section={label.key} style={{ ...SECTION_LABEL_STYLE, margin: 0 }}>
+      <button
+        type="button"
+        onClick={fold.onToggle}
+        aria-expanded={fold.open}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          minHeight: 44,
+          width: '100%',
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+          fontSize: 'inherit',
+          fontWeight: 'inherit',
+          letterSpacing: 'inherit',
+          textTransform: 'inherit',
+          color: 'inherit',
+        }}
+      >
+        <span aria-hidden style={{ fontSize: '0.6875rem' }}>{fold.open ? '▼' : '▶'}</span>
+        {words}
+      </button>
+    </h3>
+  )
+}
+
 /**
  * Dashboard "My Inbox" group card: Due Today / Overdue checklists and the
- * dev-only Recently Completed corner section, plus the checklist CRUD engine
+ * office's Recently Completed fold, plus the checklist CRUD engine
  * (toggles, forward, mute, completion notifications, days-after-completion
  * repeat) and the Forward + Mute modals (extraction-series refactor; no
  * behavior change).
@@ -50,9 +129,14 @@ import { useTaskPhotos } from '../../hooks/useTaskPhotos'
  * here mutates it via the setter. `getCurrentUserName` and `setUserError`
  * stay parent-owned (boot seam) and come in as props.
  *
- * Quirk #13 (preserve): the Recently Completed corner link only appears when
+ * Quirk #13 (preserve): the Recently Completed fold only appears when
  * `completedItems.length > 0`; its unread count filters out ignored task
  * types first, then unread.
+ *
+ * The header (v2.8040): the title's row reads "My Inbox" at the left and the
+ * card's one door at the right, as My Schedule does with Calendar. Every
+ * section under it carries a label of one quiet weight with its count; the
+ * rule for what they read is `myInboxSectionLabels`.
  */
 export function DashboardMyInboxCard({
   authUserId,
@@ -600,8 +684,21 @@ export function DashboardMyInboxCard({
     return true
   }
   const showChecklist = checklistLoading || todayChecklist.length > 0
-  /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
+  /** Recently Completed only earns its fold when something was actually completed (office work). */
   const showRecentlyCompleted = canForward && completedItems.length > 0
+  const sectionLabels = myInboxSectionLabels({
+    today: { shown: userLoading || showChecklist, open: todayChecklist.filter((i) => !i.completed_at).length },
+    overdue: { shown: outstandingLoading || outstandingItems.length > 0, open: outstandingItems.filter((i) => !i.completed_at).length },
+    completed: {
+      shown: showRecentlyCompleted,
+      unread: completedItems
+        .filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+        .filter((inst) => !readInstanceIds.has(inst.id)).length,
+    },
+  })
+  const todayLabel = sectionLabels.find((l) => l.key === 'today')
+  const overdueLabel = sectionLabels.find((l) => l.key === 'overdue')
+  const completedLabel = sectionLabels.find((l) => l.key === 'completed')
   /** My Inbox card: Due Today / Overdue / Waiting For / Recently Completed Tasks (dev) grouped as one unit. */
   const showMyInboxCard =
     userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || showRecentlyCompleted || waitingGroups.length > 0
@@ -617,47 +714,30 @@ export function DashboardMyInboxCard({
           id="dash-my-inbox"
           title="My Inbox"
           headerRight={
-            showRecentlyCompleted ? (
-              <button
-                type="button"
-                onClick={() => setCompletedItemsOpen((o) => !o)}
-                aria-expanded={completedItemsOpen}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 400,
-                  color: 'var(--text-link)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span aria-hidden style={{ fontSize: '0.6875rem', marginRight: 4 }}>{completedItemsOpen ? '▼' : '▶'}</span>
-                Recently Completed
-                {(() => {
-                  const n = completedItems
-                    .filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
-                    .filter((inst) => !readInstanceIds.has(inst.id)).length
-                  return n > 0 ? ` (${n} unread)` : ''
-                })()}
-              </button>
-            ) : null
+            // The card's one door, at the right of the title's row. The press is 44px tall; the margins give that
+            // height back, so the row stays as tall as its title.
+            <Link
+              to={MY_INBOX_DOOR.to}
+              aria-label={MY_INBOX_DOOR.aria}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 44,
+                margin: '-0.75rem 0',
+                paddingLeft: '0.75rem',
+                fontSize: '0.875rem',
+                fontWeight: 400,
+                color: 'var(--text-link)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {MY_INBOX_DOOR.label}
+            </Link>
           }
         >
-        {(userLoading || showChecklist) && (
+        {todayLabel && (
         <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
-            Due Today
-            {!isMobile && todayChecklist.some((i) => !i.completed_at) ? (
-              <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
-                {todayChecklist.filter((i) => !i.completed_at).length}
-              </span>
-            ) : null}
-            <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
-              View all →
-            </Link>
-          </h2>
+          <MyInboxSectionHead label={todayLabel} />
           {checklistLoading && todayChecklist.length === 0 ? (
             <ChecklistSkeleton />
           ) : todayChecklist.length > 0 ? (
@@ -729,19 +809,9 @@ export function DashboardMyInboxCard({
           ) : null}
         </div>
       )}
-      {(outstandingLoading || outstandingItems.length > 0) && (
+      {overdueLabel && (
         <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
-            Overdue
-            {!isMobile && outstandingItems.some((i) => !i.completed_at) ? (
-              <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-red-100)', color: 'var(--text-red-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
-                {outstandingItems.filter((i) => !i.completed_at).length}
-              </span>
-            ) : null}
-            <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
-              View all →
-            </Link>
-          </h2>
+          <MyInboxSectionHead label={overdueLabel} />
           {outstandingLoading && outstandingItems.length === 0 ? (
             <ChecklistSkeleton />
           ) : outstandingItems.length > 0 ? (
@@ -802,8 +872,9 @@ export function DashboardMyInboxCard({
           ) : null}
         </div>
       )}
-      {showRecentlyCompleted && (
+      {completedLabel && (
         <div>
+          <MyInboxSectionHead label={completedLabel} fold={{ open: completedItemsOpen, onToggle: () => setCompletedItemsOpen((o) => !o) }} />
           {completedItemsOpen && (
             <>
               {completedItemsLoading ? (

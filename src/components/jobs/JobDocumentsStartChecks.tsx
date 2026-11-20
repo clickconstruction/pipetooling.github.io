@@ -22,6 +22,7 @@ import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ReadyPercent } from '../startChecks/ReadyBar'
 import { StartCheckStage } from '../startChecks/StartCheckStage'
+import { ChangeableValue } from '../valuesInPlace/ValuesInPlace'
 import { documentsHeading } from './jobDocumentsStyles'
 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
@@ -41,6 +42,9 @@ export type JobDocumentsStartChecksJob = {
   bid_id?: string | null
   gcName?: string | null
   job_name?: string | null
+  /** The job has a GC, and shares its stage dates with them: the two things the GC's page needs before our own switch counts. */
+  hasGc?: boolean
+  sharesStageDates?: boolean
   /** The customer whose thread an ask opens in Messages: the job's GC, or its customer. */
   askCustomerId?: string | null
 }
@@ -70,6 +74,7 @@ export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayY
   const office = isOfficeRole(role)
   // Go and Hold are the office's and the job's superintendent's (the owner's call 3, on its default). The database decides.
   const can = { window: WINDOW_ROLES.has(role ?? ''), notice: read.notice.home === 'job' || office, company: office, decide: office || role === 'superintendent' }
+  const showsOnPage = read.settings.job?.shows_on_gc_page === true
   const noticeKey = job.development_id ? { developmentId: job.development_id } : { jobId: job.id }
 
   return (
@@ -80,6 +85,26 @@ export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayY
         </h3>
         <span style={muted}>{W.lead}</span>
       </div>
+      {/* The job's second switch (PR 9), as a value in place. Off by default, and their page needs the first switch too. */}
+      {job.hasGc && office ? (
+        <p style={{ ...muted, margin: 0 }} data-start-check-gc-page={showsOnPage ? 'on' : 'off'}>
+          {W.gcPage.before}{' '}
+          <ChangeableValue
+            text={showsOnPage ? W.gcPage.on : W.gcPage.off}
+            label="what the GC’s page shows"
+            type="choice"
+            value={showsOnPage ? 'on' : 'off'}
+            choices={[
+              { value: 'off', label: W.gcPage.off },
+              { value: 'on', label: W.gcPage.on },
+            ]}
+            hint="what the GC’s page shows"
+            onKeep={(v) => read.press((w) => w.setShowsOnGcPage(job.id, v === 'on', me))}
+          />{' '}
+          {W.gcPage.after}
+          {showsOnPage && !job.sharesStageDates ? <> {W.gcPage.needsSharing}</> : null}
+        </p>
+      ) : null}
       {read.failure ? (
         <OfflineRetryPanel failure={read.failure} onRetry={read.reload} surface="job-documents-start-checks" idempotent busy={read.loading} />
       ) : read.loading && read.lines.length === 0 ? (
@@ -110,7 +135,7 @@ export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayY
                 {isOpen ? (
                   <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                     {stage.finished ? <p style={{ ...muted, margin: '0 0 8px' }}>This stage is finished.</p> : null}
-                    <StartCheckStage stage={stage} line={line} rows={read.rows} site={read.site} notice={read.notice} noticeKey={noticeKey} today={today} me={me} kind={stageChecklistKindOf(stage.name)} templates={read.templates} can={can} press={read.press} io={read.io} ask={{ jobId: job.id, jobName: (job.job_name ?? '').trim() || startJob.label, customerId: job.askCustomerId ?? null }} />
+                    <StartCheckStage stage={stage} line={line} rows={read.rows} site={read.site} notice={read.notice} noticeKey={noticeKey} today={today} me={me} kind={stageChecklistKindOf(stage.name)} templates={read.templates} can={can} press={read.press} io={read.io} ask={{ jobId: job.id, jobName: (job.job_name ?? '').trim() || startJob.label, customerId: job.askCustomerId ?? null, page: showsOnPage && job.sharesStageDates === true }} />
                   </div>
                 ) : null}
               </div>

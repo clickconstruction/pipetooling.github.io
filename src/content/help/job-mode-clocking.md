@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -23,6 +23,23 @@ Your helper gets a replacement phone, signs in, and lands straight on the Job Mo
 :::
 
 The header also changes. The three task buttons become a **Contact:** row. It has a green phone button that calls the office. Then {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} are spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating**. It sends a question to the estimators. You are not opening anyone's inbox.
+
+## The row under the header
+
+A row of squares sits under the header. Each square has its name on it.
+
+The two squares on the left are for your job. Those two squares change with your day.
+
+- **Before a job, and on the way:** {{button:blue|Directions}} opens the route in your phone's maps. {{button:blue|Job details}} opens the job's window.
+- **On site:** {{button:blue|Photo}} opens the job's photos, so you can add one. {{button:blue|Job details}} stays where it was.
+- **No job left today:** **This week** shows your hours so far. **Tomorrow** shows how many jobs you have. You tap **Tomorrow** to open your schedule.
+
+The two squares on the right never move.
+
+- {{button:outline|Paint a map}} starts a map of the way in. See [Paint a map](/help/paint-a-map#start-a-map).
+- {{button:outline|My spend}} opens your card charges. A number on its corner counts the charges with no job yet.
+
+Some sites keep their materials in boxes. On one of those you also see **On site** while you are there. The number on the square counts the boxes on the site. You tap **On site** to open [the boxes](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site).
 
 ## The Job Mode card
 
@@ -113,7 +130,7 @@ The office can set a superintendent's **Dashboard view** to **Short**. With Job 
 - The job card's top stays as it is. Your next stop, today's stops and the buttons at the bottom do not move.
 - **Open this job** opens the rest of the card in place. You get the customer, photos, the ticket, checklists, materials on site and job updates.
 - Tap **This job** to fold it away again.
-- The pace line says ahead or behind in one line. Two thin bars sit under it. The blue bar is the work done. The amber bar is the hours in. Tap the line for the pace card. **Fold the pace card** closes it.
+- The pace line is the **Job pace** card's first line. Two thin bars sit under it. The blue bar is the work done. The amber bar is the hours in. Tap the line for the pace card. **Fold the pace card** closes it.
 - **Waiting on you** lists what only you can fix. The list shows only when something waits.
 - **Tomorrow** says how many stops you have and when the first is. Tap it to open the **Schedule** tab.
 - **Everything else** opens the full Dashboard for this visit. The second line of the row says how many courses you still have to do.
@@ -260,11 +277,19 @@ Nothing is emailed until they sign. If the office already sent this customer an 
 
 ## Read your project's line as a superintendent
 
-A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. Work on the bid that is not a stage shows as one row, **Other work**. The last row is the finish day.
+A superintendent on a project sees one more card on Job Mode, above the job's details. The card is named **Job pace**. The card compares two things on the job. **Hours used** is the time the crew has clocked, measured against the job's hours budget. **Work done** is the percent you set. The two bars sit one over the other on one scale. The striped end of the hours bar is the gap between them.
 
-- Press {{button:blue|Set the %}} on the stage in hand to say how far along the work is. The window takes a number for each stage.
+- *On track.* means the hours and the work are moving together. You do not need to do anything.
+- *Hours are ahead of the work.* means the job is using hours faster than it is getting done. The card says the gap in hours. If more work is done than the percent says, press {{button:blue|Set the %}}. If not, press **My finish date** and say when you will finish.
+- *Is 40% still right?* shows when the crew has put in hours since the percent was last set. Press {{button:blue|Set the %}} to change the number. Press {{button:outline|Still 40%}} to say the same number again today. That press files a status report.
+- *The work is ahead of the hours.* means the job is under its hours so far.
+- The card never shows money. When the money is ahead of the work, one grey line says the office watches it.
+- Press **What is this?** to read what the card compares and why. The fold opens by itself the first time you see the card.
+
+Under the bars, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. Work on the bid that is not a stage shows as one row, **Other work**. The last row is the finish day.
+
+- When the card is on track, {{button:outline|Set the %}} sits on the stage in hand. The window takes a number for each stage.
 - A stage with checklist questions says how many are answered under its name. Press the stage to open its checklist.
-- The **Hours** bar shows the hours in against the budget. It turns red when the job is behind.
 - When the job is behind, a row under **Finish** reads **At this pace** with the day this pace lands on. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
 - Press **My finish date** to say when you think the job finishes. Pick a day and say what is in the way. Your day shows on the card as **You said**. It does not change the planned finish or your score.
 - Two days before that day the card asks *Still finishing?* with the day. Press **Yes**, or press **Pick a day** to change it.

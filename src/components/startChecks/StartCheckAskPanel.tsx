@@ -20,7 +20,8 @@ const plainPress: CSSProperties = { border: '1px solid var(--border-strong)', ba
 const bluePress: CSSProperties = { ...plainPress, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
 
 /** Where Messages' box sends from: the job the message is tied to, and the customer whose thread it opens. */
-export type AskMessagesDoor = { jobId: string; jobName: string; customerId: string | null }
+/** `page` is on when their page shows what we need (the job's two switches), so the ask may point them to it. */
+export type AskMessagesDoor = { jobId: string; jobName: string; customerId: string | null; page?: boolean }
 
 export function StartCheckAskPanel({
   stages,
@@ -45,7 +46,7 @@ export function StartCheckAskPanel({
 }) {
   const { showToast } = useToastContext()
   const asked = useMemo(() => (hold ? [...stages] : stages.filter((s) => openOnThem(s.stage).length > 0)), [stages, hold])
-  const [text, setText] = useState(() => hold?.text ?? askText(site, asked.map((s) => s.stage)))
+  const [text, setText] = useState(() => hold?.text ?? askText(site, asked.map((s) => s.stage), { page: door.page === true }))
   const [box, setBox] = useState<'text' | 'email' | null>(null)
   const [busy, setBusy] = useState(false)
   const n = asked.reduce((sum, s) => sum + openOnThem(s.stage).length, 0)

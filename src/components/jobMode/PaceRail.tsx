@@ -2,12 +2,16 @@ import type { CSSProperties } from 'react'
 import { PACE_CARD_WORDS, type PaceRail as PaceRailRows } from '../../lib/jobMode/paceCard'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { FINISH_CALL_WORDS } from '../../lib/jobMode/finishCall'
+import { PACE_READING_WORDS } from '../../lib/jobMode/paceReading'
 
 /**
  * The pace card's rail (punch list #396): the job's stages top to bottom, done, now and next, ending in the
  * finish day. It is the same form as the day's rail on the Job Mode card's top, a circle a row with a tick
- * when done, so a superintendent has nothing new to learn. The stage in hand carries the press that opens
- * **Set the %**, the window that already takes a number for each stage.
+ * when done, so a superintendent has nothing new to learn. The stage in hand reads *in hand* and carries the
+ * press that opens **Set the %**, the window that already takes a number for each stage. The press is quiet and
+ * shows no number of its own: with no stage reported, a stage's percent is the job's percent worked out for it,
+ * and the walk of 2026-11-20 read it as a second, different percent. `setPct="none"` leaves the press off when
+ * the card's face already carries it.
  *
  * Presentational: `paceCard.ts` works out the rows and the days.
  */
@@ -18,12 +22,14 @@ const LINK: CSSProperties = { position: 'absolute', left: 10, top: 31, bottom: -
 const SIDE: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
 const BLUE = '#2563eb'
 
-export function PaceRail({ rail, finish, said, onSetPct, checks }: {
+export function PaceRail({ rail, finish, said, onSetPct, checks, setPct = 'quiet' }: {
   rail: PaceRailRows
   finish: { planned: string | null; atPace: { words: string; tone: 'ahead' | 'behind' } | null }
   /** His own finish day and what is in the way (My finish date, PR 3), once he has said one. */
   said?: { day: string; why: string | null } | null
   onSetPct: () => void
+  /** The press on the stage in hand: quiet, or left off when the card's face carries **Set the %**. */
+  setPct?: 'quiet' | 'none'
   /**
    * Each row's checklist, in the rail's order (punch list #397, PR 5): a stage with questions is a press that
    * opens its checklist and says how many are answered. Null for a stage with none, which stays words.
@@ -55,12 +61,16 @@ export function PaceRail({ rail, finish, said, onSetPct, checks }: {
             ) : (
               <span style={{ minWidth: 0, fontSize: '0.95rem', fontWeight: row.state === 'now' ? 700 : 500, color: row.state === 'next' ? 'var(--text-muted)' : 'var(--text)', overflowWrap: 'anywhere' }}>
                 {row.name}
-                <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{row.state === 'done' ? ', done' : row.state === 'now' ? ', in hand' : ', not started'}</span>
+                {row.state === 'now' ? (
+                  <span data-testid="pace-rail-in-hand" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>{PACE_READING_WORDS.inHand}</span>
+                ) : (
+                  <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{row.state === 'done' ? ', done' : ', not started'}</span>
+                )}
               </span>
             )}
-            {row.state === 'now' ? (
-              <button type="button" data-testid="pace-rail-set-pct" onClick={onSetPct} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.75rem', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {row.pct > 0 ? `${row.pct}% · ` : ''}{PACE_CARD_WORDS.setPct}
+            {row.state === 'now' && setPct === 'quiet' ? (
+              <button type="button" data-testid="pace-rail-set-pct" onClick={onSetPct} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {PACE_CARD_WORDS.setPct}
               </button>
             ) : row.state === 'next' && row.pct > 0 ? (
               <span style={SIDE}>{row.pct}%</span>

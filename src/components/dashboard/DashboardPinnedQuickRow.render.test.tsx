@@ -85,17 +85,23 @@ describe('DashboardPinnedQuickRow · Paint a map (punch list #392)', () => {
     const row = square.parentElement as HTMLElement
     expect(row.lastElementChild).toBe(square)
     expect(square.previousElementSibling?.getAttribute('aria-label')).toBe('Job Report')
-    expect(document.querySelector('[data-paint-a-map-press="link"], [data-paint-a-map-press="wide"]')).toBeNull()
+    expect(document.querySelector('[data-paint-a-map-press="link"], [data-paint-a-map-press="tile"]')).toBeNull()
   })
 
-  it('in Job Mode, wide beside the Tally square, in the slot the Job Report button left', async () => {
-    renderWithProviders(<DashboardPinnedQuickRow {...props} role="subcontractor" bannersOnly={false} hideBanners hideJobReport />)
+  it('in Job Mode, one of the day\'s row\'s squares, the same size as the others, with My spend last', async () => {
+    renderWithProviders(<DashboardPinnedQuickRow {...props} role="subcontractor" bannersOnly={false} hideBanners hideJobReport jobModeDay={{ hoursThisWeek: 28.9, tomorrowJobs: 2 }} />)
     await settle()
-    const wide = document.querySelector('[data-paint-a-map-press="wide"]') as HTMLElement
-    expect(wide).toBeTruthy()
-    // The stub's day is empty, so the second line says the person picks.
-    expect(wide.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
+    // The stub's day is empty, so the row draws the person's own squares.
+    const row = document.querySelector('[data-job-mode-top-row]') as HTMLElement
+    expect(row.getAttribute('data-job-mode-top-row')).toBe('none')
+    expect([...row.children].map((el) => el.textContent)).toEqual(['28.9 hThis week', '2 jobsTomorrow', 'Paint a map', 'My spend'])
+    const tile = row.querySelector('[data-paint-a-map-press="tile"]') as HTMLElement
+    const spend = row.querySelector('[data-top-row-square="spend"]') as HTMLElement
+    expect(tile.style.minHeight).toBe(spend.style.minHeight)
+    expect(tile.style.flex).toBe(spend.style.flex)
     expect(document.querySelector('[data-paint-a-map-press="square"]')).toBeNull()
+    // The classic row's unnamed Tally square is gone from Job Mode.
+    expect(document.querySelector('a[title="Job Parts Tally"]')).toBeNull()
   })
 
   it('is not drawn where the row is not: the banners alone', async () => {

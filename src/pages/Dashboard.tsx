@@ -502,6 +502,8 @@ export default function Dashboard() {
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
   // remains the persistent setting.
   const [jobModeShowFullDashboard, setJobModeShowFullDashboard] = useState(false)
+  /** This week's hours so far, reported by Job Mode's hours card for the top row's This week square. `null` until read. */
+  const [jobModeWeekHours, setJobModeWeekHours] = useState<number | null>(null)
   // The short Dashboard: a leader whose view is Short (`users.dashboard_view`, his own choice or the office's) gets
   // the list of what waits on him alone in place of the page. Everything else opens the page for this visit.
   const dashboardView = useDashboardView(authUser?.id ?? null, role)
@@ -1185,6 +1187,8 @@ export default function Dashboard() {
   const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
   const dispatchModeOn = pageMode.mode === 'dispatch'
+  // Job Mode's top row on a day with no job left: tomorrow's stops as a count, once the schedule is read or kept.
+  const jobModeTomorrowJobs = jobModeShortScheduleRead({ loading: subScheduleLoading, failed: subScheduleError != null, kept: subScheduleKeptAt != null }) === 'ready' ? subScheduleDayPartition.tomorrowBlocks.length : null
   const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, failed: subScheduleError != null && subScheduleKeptAt == null, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
   /** Write up a change (v2.4047): the wizard's door is on each My Schedule block, not a header button.
       Job Mode's focused view never mounts the wizard, so it gets no opener. */
@@ -1329,7 +1333,7 @@ export default function Dashboard() {
             hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
             hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
             nothing here, since the report window is the card's own Leave Report; the Tally square stays. */}
-        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport />
+        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport jobModeDay={{ hoursThisWeek: jobModeWeekHours, tomorrowJobs: jobModeTomorrowJobs }} />
         {jobModeTop}
         <DashboardJobModeCard
           userId={authUser.id}
@@ -1343,7 +1347,7 @@ export default function Dashboard() {
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
         {/* Your hours (design spike): Job Mode shows no My Time, so the ask and the eight weeks sit here as a card. */}
-        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed />
+        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed onWeek={setJobModeWeekHours} />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>

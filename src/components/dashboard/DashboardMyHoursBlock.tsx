@@ -24,6 +24,7 @@ export function DashboardMyHoursBlock({
   isSalary,
   salariedWeek = null,
   framed = false,
+  onWeek,
   io: ioIn,
 }: {
   userId: string
@@ -34,6 +35,8 @@ export function DashboardMyHoursBlock({
   salariedWeek?: SalariedWeek | null
   /** Job Mode: a card of its own instead of a row inside My Time. */
   framed?: boolean
+  /** Job Mode's top row reads this week's hours from this card's own read, so the week is read once. `null` when the read failed. */
+  onWeek?: (workedHours: number | null) => void
   io?: AvailabilityIo
 }) {
   const io = useMemo(() => ioIn ?? defaultAvailabilityIo(), [ioIn])
@@ -50,6 +53,10 @@ export function DashboardMyHoursBlock({
   useEffect(() => {
     void load()
   }, [load])
+  useEffect(() => {
+    if (row === undefined) return
+    onWeek?.(row ? (row.weeks[row.weeks.length - 1]?.workedHours ?? 0) : null)
+  }, [row, onWeek])
   if (row === undefined) return null
   const current = row?.weeks[row.weeks.length - 1] ?? null
   const last = row?.lastFullWeek ?? null
@@ -72,6 +79,7 @@ export function DashboardMyHoursBlock({
           ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.85rem 1rem', marginTop: '0.75rem' }
           : { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem 0.7rem', marginBottom: '0.75rem' }
       }
+      id={framed ? 'dash-my-hours' : undefined}
       data-testid="my-hours-block"
     >
       <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>

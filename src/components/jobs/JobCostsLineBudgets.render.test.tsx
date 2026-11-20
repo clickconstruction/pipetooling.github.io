@@ -91,6 +91,15 @@ describe('JobCostsLineBudgets', () => {
     expect(within(card).getByTestId('job-costs-beside-award').textContent).toBe('The score reads the 120 h frozen at award ◆ from the bid. The lines sum to 458 h: the line-by-line view, shown beside the award and never scored.')
   })
 
+  it('money ahead of the work reads in dollars over, the mirror of kept so far, and never in points', () => {
+    // $18,000 of $35,200 spent at 17% done. 17% of the budget is $5,984, so the job is $12,016 over where the work stands.
+    renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={200} spend={{ teamUsd: 12000, subUsd: 0, partsUsd: 6000 }} jobPctDone={17} />)
+    const card = screen.getByTestId('job-costs-line-budgets')
+    expect(card.textContent).toContain('$12,016 over so far')
+    expect(card.textContent).not.toMatch(/points/)
+    expect(card.textContent).not.toContain('kept so far')
+  })
+
   it('with nothing spent the kept figure stays quiet', () => {
     renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={0} spend={{ teamUsd: 0, subUsd: 0, partsUsd: 0 }} jobPctDone={17} />)
     const card = screen.getByTestId('job-costs-line-budgets')

@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { gcPortalStages, loadGcStageInputs, type GcPortalStages, type GcStageAdmin } from '../_shared/gcStages.ts'
+import { loadGcPageJobs } from '../_shared/startChecksPortal.ts'
+import type { GcPageStage } from '../_shared/gcKernels/lib/startChecks/gcPage.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { portalLetterhead } from '../_shared/portalLetterhead.ts'
@@ -625,9 +627,17 @@ serve(async (req) => {
     // The stage sequence (Stage Plan PR 5): GC viewers, jobs that share stage dates with this
     // viewer, the line items whose eye is on — the company's voice (never a name), no money.
     const stages: Array<{ jobId: string; jobLabel: string; jobAddress: string | null; view: GcPortalStages['view']; askWindowId: string | null; askWindow: { start: string; end: string } | null; entries: never[] }> = []
+    // Before we start (punch list #382, PR 9): what we need from this GC before each stage. Off until the job's own
+    // switch is on, beside the sharing switch above. The bullets on them with the eye on, never one of ours, no name.
+    const startChecks: Array<{ jobId: string; jobLabel: string; jobAddress: string | null; stages: GcPageStage[] }> = []
     if (link.audience === 'gc' || link.audience === 'all') {
       const sharing = jobs.filter((j) => j.gc_shares_stage_dates === true && j.gc_customer_id === link.customer_id)
       if (sharing.length > 0) {
+        const page = await loadGcPageJobs(admin, sharing.map((j) => j.id))
+        for (const j of sharing) {
+          const stagesOf = page.get(j.id)
+          if (stagesOf) startChecks.push({ jobId: j.id, jobLabel: jobLabel(j), jobAddress: (j.job_address ?? '').trim() || null, stages: stagesOf })
+        }
         const inputs = await loadGcStageInputs(admin as unknown as GcStageAdmin, sharing.map((j) => j.id))
         const todayYmd = todayYmdInAppTz()
         for (const j of sharing) {
@@ -827,6 +837,7 @@ serve(async (req) => {
       agreements,
       testReports,
       stages,
+      startChecks,
       checks,
       waivers,
       promise,

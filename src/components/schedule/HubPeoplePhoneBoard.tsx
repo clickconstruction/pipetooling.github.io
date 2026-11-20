@@ -19,7 +19,7 @@ import { latenessCellKey, type PersonDayLateness } from '../../lib/scheduleLaten
 import { scheduleHiddenPlaceholderTitle, type ScheduleHiddenCell } from '../../lib/scheduleHiddenBlocks'
 import type { SubBadge } from '../../lib/subs/subDispatch'
 import { editNoteIconColorForBlock, effectiveNoteRequirement, type DispatchNoteRequirement } from '../../lib/dispatchNoteRequirements'
-import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFooter'
+import { footClearanceCss } from '../../lib/bottomChrome'
 import { ScheduleDispatchLateChip } from './ScheduleDispatchLateChip'
 import { ScheduleBlockSheet, ScheduleSheet } from './ScheduleBlockSheet'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
@@ -110,7 +110,8 @@ export type HubPeoplePhoneBoardProps = {
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }
 
-const BOTTOM_INSET = `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`
+/** The mode bar floats on the tab bar while one is up, and on the home indicator with none (v2.8051). */
+const BOTTOM_INSET = footClearanceCss()
 
 const btn: CSSProperties = {
   fontFamily: 'inherit',

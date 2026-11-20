@@ -8,7 +8,7 @@ import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
 import { bonusWords, daysWords, hoursUnderWords, monthOf, monthRange, superintendentScores } from '../../lib/people/superintendentScores'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
-import { isWorkingProject, projectLabel, projectNumber, projectPace } from '../../lib/jobs/projectsBoard'
+import { isWorkingProject, projectLabel, projectNumber, projectPace, stagedFixtures } from '../../lib/jobs/projectsBoard'
 import { laborEventsOf, valueEventsOf, type ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import type { JobStageChecklist } from '../../lib/jobs/stageChecklist'
@@ -26,7 +26,11 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
 import { canTagInJobNotes } from '../../lib/jobs/noteTags'
 import { useJobNoteTags } from '../../hooks/useJobNoteTags'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageCheck, paceStageRail } from '../../lib/jobMode/paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageCheck, paceStagePrices, paceStageRail } from '../../lib/jobMode/paceCard'
+import { PACE_READING_WORDS, paceReading, type PaceReadingTone } from '../../lib/jobMode/paceReading'
+import { sayPercentStill } from '../../lib/jobMode/paceStillIo'
+import { PaceReadingFace, PaceWhatFold } from './PaceReadingFace'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
@@ -52,6 +56,12 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * is figured**. The folded row carries two thin bars and the finish day, so the reading is there
  * before a press. `lib/jobMode/paceCard.ts` works out the rows and the words.
  *
+ * Job pace (the owner's walk of 2026-11-20): the face has a name and compares two things, **Hours used** and
+ * **Work done**, as two bars on one scale with the gap hatched (`PaceReadingFace`, `lib/jobMode/paceReading.ts`).
+ * The headline is in hours, never money: money that leads is one calm line. A gap is amber and asks *Is 40% still
+ * right?* while hours have gone in since the percent was set, with **Still 40%** to say it again today, and red
+ * only on a percent said since. **What is this?** says what the card compares, and opens by itself once.
+ *
  * **Ask a master** (PR 2) opens `AskMasterSheet`: a question to the master on the job, sent as a job note
  * that tags him, with the card's numbers attached. The card then says who the question waits on, and that
  * an answer landed. `onAsked` tells the page a note was posted, so the job's feed reads again.
@@ -62,6 +72,8 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * **Yes** and **Pick a day** (`lib/jobMode/finishCall.ts`). It moves neither the plan nor the score.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
+/** The card's border for each tone. Calm is the neutral border: nothing is red until the gap is real. */
+const TONE_BORDER: Record<PaceReadingTone, string> = { red: '#dc2626', amber: '#d97706', green: '#16a34a', calm: 'var(--border-strong)' }
 
 export type SuperintendentPctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
@@ -103,6 +115,9 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   const [finishCalls, setFinishCalls] = useState<FinishCall[]>([])
   const [finishRev, setFinishRev] = useState(0)
   const [finishBusy, setFinishBusy] = useState(false)
+  // Still 40%: the percent said again in this sitting, held until the read comes back with its day.
+  const [saidToday, setSaidToday] = useState(false)
+  const [stillBusy, setStillBusy] = useState(false)
   const { showToast } = useToastContext()
   // What was said on this job. A read that fails leaves the card as it reads without it: his day is an addition to
   // a card that is whole, and a refusal here must never take the pace away.
@@ -146,12 +161,29 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   // The next stage with a question left, else the first stage with a checklist at all.
   const nextStage = rows.find((r) => r.state.standing === 'not_ready') ?? rows.find((r) => r.state.standing !== 'none') ?? null
   const current = sheet ? rows.find((r) => r.fixtureId === sheet.fixtureId) ?? sheet : null
-  const border = line.tone === 'ahead' ? '#16a34a' : line.tone === 'behind' ? '#dc2626' : 'var(--border-strong)'
-  const headColor = line.tone === 'ahead' ? 'var(--text-green-700)' : line.tone === 'behind' ? 'var(--text-red-700)' : 'var(--text-700)'
+  // The crew's reading: hours used against work done, in hours. Money never makes its headline.
+  const reading = paceReading({
+    pctDone: pace.input.pctDone,
+    hoursUsed: pace.input.hoursUsed,
+    subHours: pace.input.subHours ?? null,
+    hoursBudget: pace.input.hoursBudget,
+    crewHoursPerDay: line.hoursPerDay,
+    values: job.values,
+    laborDays: pace.input.laborDays ?? [],
+    todayYmd: today,
+    money: line.money ? { leads: line.money.leads, wrong: line.money.wrong } : null,
+    saidToday,
+  })
+  const border = TONE_BORDER[reading.tone]
   const label = projectLabel(job)
   // The rail's rows: the stages in order by name, and every other bid line as one last row, Other work. A line that
   // is not a stage is named by the office for the office, and the live walk found a paragraph of scope on a phone.
-  const railStages = paceRailStages(pace.stages.map((s, i) => ({ id: s.id, name: s.name, hours: s.hours, pctDone: s.pctDone, kind: pace.shares[i]?.kind ?? 'order' })))
+  // Each row's price rides along: the job's percent is built from the stages by price, so the rail spreads it the same way.
+  const prices = paceStagePrices(
+    stagedFixtures(job.fixtures ?? []).filter((f) => f.line_kind !== 'discount').map((f) => ({ id: f.id, price: Number(f.line_unit_price ?? 0) * (Number(f.count) || 1) })),
+    pace.stages.map((s) => s.id),
+  )
+  const railStages = paceRailStages(pace.stages.map((s, i) => ({ id: s.id, name: s.name, hours: s.hours, pctDone: s.pctDone, kind: pace.shares[i]?.kind ?? 'order', price: prices.get(s.id) })))
   const rail = paceStageRail(railStages, pace.input.pctDone)
   // Each row's checklist (punch list #397, PR 5): a stage is its line, so its checklist is found by the line's id.
   // The folded row opens the first of its lines' checklists with a question left, else the first with any. A row
@@ -169,12 +201,11 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
     : undefined
   const finish = paceFinish({ plannedFinishYmd: pace.input.plannedFinishYmd, days: line.days, tone: line.tone })
   const hours = paceHours({ hoursUsed: pace.input.hoursUsed, subHours: pace.input.subHours ?? null, hoursBudget: pace.input.hoursBudget })
-  const daysLeft = paceDaysLeftWords(line.daysLeft)
-  const hoursColor = line.tone === 'behind' || hours?.over ? '#dc2626' : '#f59e0b'
+  const hoursColor = reading.tone === 'red' || hours?.over ? '#dc2626' : '#f59e0b'
   const setPct = () => onSetPct({ id: job.id, hcpNumber: projectNumber(job), jobName: job.job_name ?? '', label })
   const mine = latestFinishCall(finishCalls, user?.id)
   const said = saidRow(mine)
-  const ask = finishAsk({ plannedYmd: pace.input.plannedFinishYmd, mine, todayYmd: today, saidTodayYmd: mine ? calendarYmdInAppTzFromIso(mine.createdAt) : null, behind: line.tone === 'behind' })
+  const ask = finishAsk({ plannedYmd: pace.input.plannedFinishYmd, mine, todayYmd: today, saidTodayYmd: mine ? calendarYmdInAppTzFromIso(mine.createdAt) : null, behind: reading.state === 'over' })
   // Yes: the day in the question, said again today in his name.
   const sayYes = async () => {
     if (!ask || finishBusy) return
@@ -189,19 +220,53 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
       setFinishBusy(false)
     }
   }
+  // Still 40%: the same percent, said again today. The read then carries today as the percent's day.
+  const sayStill = async () => {
+    if (reading.stillPct == null || stillBusy || !user?.id) return
+    setStillBusy(true)
+    try {
+      await sayPercentStill({ authUserId: user.id, jobId: job.id, pct: reading.stillPct })
+      showToast(PACE_READING_WORDS.stillSaved(reading.stillPct), 'success')
+      setSaidToday(true)
+      onAsked?.()
+    } catch (e) {
+      showToast(formatErrorMessage(e, PACE_READING_WORDS.stillFailed), 'error')
+    } finally {
+      setStillBusy(false)
+    }
+  }
+  // My finish date and Ask a master. They sit right under the reading when the gap is real, and under the rail otherwise.
+  const presses = (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" data-testid="pace-finish-date" onClick={() => setFinishOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+          {FINISH_CALL_WORDS.press}
+        </button>
+        {canTagInJobNotes(role) ? (
+          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+            {ASK_MASTER_WORDS.press}
+          </button>
+        ) : null}
+      </div>
+      {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
+    </div>
+  )
+  const gapIsReal = reading.state === 'over'
+  // The checklist is the other move when the card asks for one: a gap, an old percent, or no percent yet.
+  const checklistMove = reading.state === 'over' || reading.state === 'old' || reading.state === 'no-percent'
   // The short page: the headline as a row, with the two thin bars and the finish day. The hooks above still read,
   // so the open card draws at once.
   if (short && !paceOpen) {
     return (
       <JobModeShortRow
         testId="superintendent-line-short"
-        title={line.headline}
+        title={reading.headline}
         note={paceRowNote(pace.input.plannedFinishYmd)}
-        tone={line.tone === 'ahead' || line.tone === 'behind' ? line.tone : undefined}
+        tone={reading.tone === 'green' ? 'ahead' : reading.tone === 'red' ? 'behind' : undefined}
         expanded={false}
         onPress={() => setPaceOpen(true)}
         picture={
-          line.tone === 'early' ? null : (
+          !reading.bars ? null : (
             <>
               <PaceBar testId="pace-row-work" fillPct={line.donePct} color="#2563eb" thin />
               {hours ? <PaceBar testId="pace-row-hours" fillPct={hours.fillPct} color={hoursColor} thin /> : null}
@@ -212,16 +277,14 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
     )
   }
   return (
-    <div data-testid="superintendent-line" data-tone={line.tone} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 10, background: 'var(--surface)', minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: headColor }}>{line.headline}</div>
-        {daysLeft ? <div style={muted} data-testid="pace-days-left">{daysLeft}</div> : null}
-      </div>
+    <div data-testid="superintendent-line" data-tone={line.tone} data-reading={reading.state} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 10, background: 'var(--surface)', minWidth: 0 }}>
+      <PaceReadingFace reading={reading} onSetPct={setPct} onStill={() => void sayStill()} stillBusy={stillBusy} />
       {short ? (
         <button type="button" data-testid="superintendent-line-fold" aria-expanded onClick={() => setPaceOpen(false)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
           {JOB_MODE_SHORT_WORDS.pace.fold}
         </button>
       ) : null}
+      {reading.finishAsk && !ask ? <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{reading.finishAsk}</div> : null}
       {ask ? (
         <div data-testid="pace-finish-ask" style={{ border: '1px solid #2563eb', borderRadius: 10, padding: '0.6rem 0.7rem', display: 'grid', gap: 8, background: 'var(--bg-blue-tint)' }}>
           <div style={{ fontSize: '1rem', fontWeight: 700 }}>{ask.words}</div>
@@ -237,44 +300,30 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
           </div>
         </div>
       ) : null}
-      {rail ? (
-        <PaceRail rail={rail} finish={finish} said={said} onSetPct={setPct} checks={railChecks} />
-      ) : (
-        <PaceBar testId="pace-work" label={PACE_CARD_WORDS.work} words={`${Math.round(line.donePct)}%`} fillPct={line.donePct} color="#2563eb" />
-      )}
-      {hours ? <PaceBar testId="pace-hours" label={PACE_CARD_WORDS.hours} words={hours.words} fillPct={hours.fillPct} color={hoursColor} /> : null}
+      {gapIsReal ? presses : null}
+      {rail ? <PaceRail rail={rail} finish={finish} said={said} onSetPct={setPct} checks={railChecks} setPct={reading.setPctAsk != null ? 'none' : 'quiet'} /> : null}
       {/* A job with no stages to list has no rail to end in the finish day, so the day is said in words. */}
       {!rail && finish.planned ? <div style={{ fontSize: '0.85rem' }} data-testid="pace-finish-words">{PACE_CARD_WORDS.finish} {finish.planned}{finish.atPace ? `. ${PACE_CARD_WORDS.atPace}, ${finish.atPace.words}.` : '.'}</div> : null}
       {!rail && said ? <div style={{ fontSize: '0.85rem' }} data-testid="pace-said-words">{FINISH_CALL_WORDS.said} {said.day}.{said.why ? ` ${said.why}` : ''}</div> : null}
-      {line.move ? <div style={{ fontSize: '0.85rem' }}>{line.move.why}</div> : null}
-      {/* The stage in hand carries Set the % on the rail. With no rail, or when the line asks for a move, the press is here too. */}
-      {!rail || (line.move && nextStage) ? (
+      {/* The stage in hand carries Set the % on the rail, or the face does. With no rail and no press on the face, it is here. */}
+      {(!rail && reading.setPctAsk == null) || (checklistMove && nextStage) ? (
         <div style={{ display: 'flex', gap: 8 }}>
-          {!rail ? (
+          {!rail && reading.setPctAsk == null ? (
             <button type="button" onClick={setPct} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
               {PACE_CARD_WORDS.setPct}
             </button>
           ) : null}
-          {line.move && nextStage ? (
+          {checklistMove && nextStage ? (
             <button type="button" onClick={() => setSheet(nextStage)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', cursor: 'pointer' }}>
               Open the checklist
             </button>
           ) : null}
         </div>
       ) : null}
-      <div style={{ display: 'grid', gap: 6 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" data-testid="pace-finish-date" onClick={() => setFinishOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
-            {FINISH_CALL_WORDS.press}
-          </button>
-          {canTagInJobNotes(role) ? (
-          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
-            {ASK_MASTER_WORDS.press}
-          </button>
-          ) : null}
-        </div>
-        {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
-      </div>
+      {gapIsReal ? null : presses}
+      {reading.moneyLine ? <div style={muted} data-testid="pace-money-line">{reading.moneyLine}</div> : null}
+      {reading.leftLine ? <div style={muted} data-testid="pace-left"><ValueSentence text={reading.leftLine} /></div> : null}
+      <PaceWhatFold userId={user?.id} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
           {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}

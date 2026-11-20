@@ -10,8 +10,10 @@
  * - done percent against hours percent of the budget gives the days ahead or behind at the
  *   crew day; the crew day is the mean of the worked days when there are two or more, else
  *   `crewHoursPerDay` (24 h assumed: three people at eight hours);
- * - money leading the work by ten points or more outranks the hours; spend over three times
- *   the money budget reads *The money budget looks wrong.* instead of a verdict;
+ * - money leading the work by ten percentage points or more outranks the hours and reads *Money is ahead of the
+ *   work.*, with both percents on the money line (the word *points* left the screens on 2026-11-20: nobody on a
+ *   job or in the office says it); spend over three times the money budget reads *The money budget looks wrong.*
+ *   instead of a verdict. The crew's own card reads hours, never money (`lib/jobMode/paceReading.ts`);
  * - no percent yet, under 8 h in or no hours budget is too early to call;
  * - the proof line is the office's sign-off on the percent (the owner's first call of 2026-11-07:
  *   the office's sign-off is the certified percent, never a pay app), then the checklist count,
@@ -137,7 +139,7 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const money: SuperintendentLine['money'] = budgetWrong
     ? { words: `Spent is ${Math.round(spentPct! / 100)}× the money budget; the budget looks wrong, not the crew.`, leads: true, spentPct: spentPct!, wrong: true }
     : spentPct != null
-      ? { words: `${Math.round(spentPct)}% of the money spent at ${Math.round(donePct)}% done${moneyLeads ? ` · ${Math.round(leadPts!)} points ahead of the work` : ''}`, leads: moneyLeads, spentPct, wrong: false }
+      ? { words: `${Math.round(spentPct)}% of the money spent at ${Math.round(donePct)}% done`, leads: moneyLeads, spentPct, wrong: false }
       : null
   const days = moneyLeads && daysByHours > 0 ? 0 : daysByHours
   const tone: SuperintendentLine['tone'] = early ? 'early' : budgetWrong || moneyLeads ? 'behind' : days >= 1 ? 'ahead' : days <= -1 ? 'behind' : 'even'
@@ -149,7 +151,7 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
       : budgetWrong
         ? 'The money budget looks wrong.'
         : moneyLeads
-        ? `Spending ${Math.round(leadPts!)} points ahead of the work.`
+        ? 'Money is ahead of the work.'
         : tone === 'ahead'
           ? `${days} day${days === 1 ? '' : 's'} ahead at this pace.`
           : tone === 'behind'
