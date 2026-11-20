@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
-import { sitesOnDefaultNotice, startAnswersOwed, type StartAnswersOwed, type StartOwedSources } from '../lib/needsYou/startAnswersOwed'
+import { sitesOnDefaultNotice, startAnswersOwed, withoutZzTestStartJobs, type StartAnswersOwed, type StartOwedSources } from '../lib/needsYou/startAnswersOwed'
 import { startAnswersOwedIo, type StartAnswersOwedIo } from '../lib/needsYou/startAnswersOwedIo'
 import { resolveOfficeAnchor } from '../lib/officeAddressSettings'
 import { readTripFarMiles } from '../lib/trips/tripsIo'
@@ -15,8 +15,10 @@ import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
 
 type LatLng = { lat: number; lng: number }
 
-export function useStartAnswersOwed(enabled: boolean, io: StartAnswersOwedIo = startAnswersOwedIo): { owed: StartAnswersOwed | null } {
-  const [sources, setSources] = useState<StartOwedSources | null>(null)
+/** `hideZzTestJobs` leaves ZZ test jobs out, as the other lines of Needs you do (punch list #61). */
+export function useStartAnswersOwed(enabled: boolean, io: StartAnswersOwedIo = startAnswersOwedIo, hideZzTestJobs = false): { owed: StartAnswersOwed | null } {
+  const [read, setSources] = useState<StartOwedSources | null>(null)
+  const sources = useMemo(() => (read && hideZzTestJobs ? withoutZzTestStartJobs(read) : read), [read, hideZzTestJobs])
   const [shop, setShop] = useState<{ point: LatLng | null; farMiles: number } | null>(null)
   useEffect(() => {
     if (!enabled) {
