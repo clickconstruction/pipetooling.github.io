@@ -390,6 +390,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
           namesByJobId={laborJobNamesByJobId ?? {}}
           roster={roster}
           rule={TEAM_SHEET_RULE}
+          startOnSend={!!recordPaperFor.sendingKey}
           onClose={() => setRecordPaperFor(null)}
         />
       ) : null}
@@ -537,13 +538,13 @@ export function AfterRecordPaymentWindow({ recorded, onDone, onPaper }: { record
           {usd(recorded.sent)}
           {recorded.how ? ` by ${recorded.how}` : ''} to {recorded.name}, on {recorded.sheets} {recorded.sheets === 1 ? 'sheet' : 'sheets'}.
         </div>
-        <div style={{ marginTop: 10, padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6, fontSize: '0.8125rem' }}>{recorded.name} has not been given a payment record. A sub with a portal sees the payment there now.</div>
+        <div style={{ marginTop: 10, padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6, fontSize: '0.8125rem' }}>{recorded.name} has not been sent a payment record. A sub with a portal sees the payment there now.</div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
           <button type="button" onClick={onDone} style={{ font: 'inherit', fontSize: '0.875rem', padding: '0.4rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
             Done
           </button>
           <button type="button" onClick={onPaper} style={{ font: 'inherit', fontSize: '0.875rem', fontWeight: 650, padding: '0.4rem 0.9rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}>
-            Payment record…
+            Send the payment record…
           </button>
         </div>
       </div>

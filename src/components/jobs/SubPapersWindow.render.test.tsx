@@ -1,23 +1,27 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 const io = vi.hoisted(() => ({ fileSentCopy: vi.fn(), printPdfAndFile: vi.fn(), saveBlobAs: vi.fn() }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, printPdfAndFile: io.printPdfAndFile }))
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: io.saveBlobAs }))
-// The register. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
-const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn() }))
+// The register and the roster. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
+const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null }, personError: null as { message: string } | null }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
-    from: () => ({
+    from: (table: string) => ({
       select: () => ({
-        eq: async () => {
-          db.reads += 1
-          return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
-        },
+        eq: () =>
+          table === 'people'
+            ? { maybeSingle: async () => (db.personError ? { data: null, error: db.personError } : { data: db.person, error: null }) }
+            : (async () => {
+                db.reads += 1
+                return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
+              })(),
       }),
     }),
     rpc: (...args: unknown[]) => db.mint(...args),
+    functions: { invoke: (...args: unknown[]) => db.invoke(...args) },
   },
 }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
@@ -30,7 +34,8 @@ vi.mock('../../../supabase/functions/_shared/subPapers', async (actual) => {
   const real = await actual<typeof import('../../../supabase/functions/_shared/subPapers')>()
   return { ...real, subPapersAddUp: (set: Parameters<typeof real.subPapersAddUp>[0]) => (check.refuse ? { ok: false, problems: ['Work statement 2057: the payments do not sum to Paid so far.'] } : real.subPapersAddUp(set)) }
 })
-vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: 'assistant', readOnly: false }) }))
+const auth = vi.hoisted(() => ({ role: 'assistant', readOnly: false }))
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, readOnly: auth.readOnly }) }))
 
 import type { PaperContext } from '../../../supabase/functions/_shared/subPapers'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
@@ -86,6 +91,11 @@ beforeEach(() => {
   db.rows = null
   db.reads = 0
   db.mint.mockReset()
+  db.invoke.mockReset()
+  db.person = { email: 'harlan@harlanmechanical.example', phone: null }
+  db.personError = null
+  auth.role = 'assistant'
+  auth.readOnly = false
   db.mint.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.mint_sub_paper' } })
   io.fileSentCopy.mockReset()
   io.printPdfAndFile.mockReset()
@@ -185,6 +195,100 @@ describe('SubPapersWindowView, with what its caller has not handed in left out',
   })
 })
 
+describe('SubPapersWindowView: the send step', () => {
+  const sending = (over: Partial<SubPapersWindowViewProps> = {}) => mountView({ canSend: true, onSend: vi.fn(), lastStatement: null, contact: { email: 'harlan@example.com', phone: null, portalUrl: null }, ...over })
+
+  it('offers email alone unless it is handed more ways, and names a phone only where a text is offered', () => {
+    sending()
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · harlan@example.com')
+    expect(screen.queryByText('By')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Text a link' })).toBeNull()
+    cleanup()
+    sending({ sendBy: ['email', 'text'] })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · harlan@example.com · no phone on the roster')
+    expect(screen.getByRole('button', { name: 'Text a link' })).toBeTruthy()
+  })
+
+  it('says what the press does before it is pressed: the files, where they go and the copy that is kept', () => {
+    sending()
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    const dialog = screen.getByRole('dialog').textContent ?? ''
+    expect(dialog).toContain('When you press Send')
+    expect(dialog).toContain('The PDFs are made and numbered.')
+    expect(dialog).toContain('The email goes to harlan@example.com with 3 files.')
+    expect(dialog).toContain('A copy is filed under Sent copies, on the sub and on each job.')
+    expect(screen.getByTestId('sub-papers-message').textContent).toContain('Your statement of account from Made-up Plumbing Co.')
+  })
+
+  it('a sub with no email has a dead press, the reason and the door it is handed', () => {
+    const onPress = vi.fn()
+    const props = sending({ contact: { email: null, phone: null, portalUrl: null }, emailDoor: { words: 'Add one on their desk.', press: { label: 'Open their desk', onPress } } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · no email on the roster')
+    expect(screen.getByRole('alert').textContent).toBe('Harlan Mechanical has no email on the roster, so there is nowhere to send them. Add one on their desk. Open their desk')
+    // A press that cannot go lists nothing it would do.
+    expect(screen.getByRole('dialog').textContent).not.toContain('When you press Send')
+    const press = screen.getByRole('button', { name: 'Cannot send yet' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.click(press)
+    expect(props.onSend).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Open their desk' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('once the papers went it offers Done, and Back to the paper brings Send back', async () => {
+    const onClose = vi.fn()
+    const onSend = vi.fn().mockResolvedValue(true)
+    sending({ onSend, onClose })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    const done = await screen.findByRole('button', { name: 'Done' })
+    // No second Send by mistake: the press that sent is gone.
+    expect(screen.queryByRole('button', { name: 'Send 3 papers by email' })).toBeNull()
+    fireEvent.click(done)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the paper' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+  })
+
+  it('a send that did not go keeps its press', async () => {
+    const onSend = vi.fn().mockResolvedValue(false)
+    sending({ onSend })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+  })
+
+  it('one email carries 12 papers: the oldest ride, and the rest are held and named', () => {
+    // Fourteen open sheets and the statement of account are fifteen papers.
+    const many: LaborJob[] = Array.from({ length: 14 }, (_, i) => sheet(`s${i + 1}`, 'cedar', String(3001 + i), `2026-10-${String(i + 1).padStart(2, '0')}`, [['Rough-in', 100]]))
+    const sheets = paperSheetsFor('id:harlan', many, new Map(many.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]])), NAMES, ROSTER)
+    const props = sending({ sheets })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-held').textContent).toBe('3 more papers do not fit, since one email carries 12. Send them next: the work statement for #3012 Cedar Hollow Clinic, the work statement for #3013 Cedar Hollow Clinic, the work statement for #3014 Cedar Hollow Clinic.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 12 papers by email' }))
+    const sent = (props.onSend as ReturnType<typeof vi.fn>).mock.calls[0]![1] as Array<{ kind: string; job?: { label: string } }>
+    expect(sent).toHaveLength(12)
+    expect(sent[0]!.kind).toBe('statement_of_account')
+    expect(sent[11]!.job!.label).toBe('#3011 Cedar Hollow Clinic')
+  })
+
+  it('a paper made in the window does not move the window’s own period', () => {
+    const props: SubPapersWindowViewProps = { open: { kind: 'statement' }, sheets: SHEETS, ctx: CTX, contact: { email: null, phone: null, portalUrl: null }, canSend: false, lastStatement: { number: 'SA-0003', endedOn: '2026-11-10' }, onDownload: vi.fn(), onPrint: vi.fn(), onClose: vi.fn() }
+    const { rerender } = render(<SubPapersWindowView {...props} />)
+    expect(screen.getByRole('dialog').textContent).toContain('Nov 11, 2026 to Nov 16, 2026.')
+    // The statement just made is registered, and the register is read again while the window is still open.
+    rerender(<SubPapersWindowView {...props} lastStatement={{ number: 'SA-0004', endedOn: '2026-11-16' }} />)
+    expect(screen.getByRole('dialog').textContent).toContain('Nov 11, 2026 to Nov 16, 2026.')
+    expect(screen.getByRole('dialog').textContent).toContain('The last statement, SA-0003, ended Nov 10, 2026.')
+  })
+})
+
 describe('SubPapersWindow, on real rows', () => {
   const mount = (open: 'statement' | 'work' | 'payment' = 'statement') => {
     const onClose = vi.fn()
@@ -192,12 +296,11 @@ describe('SubPapersWindow, on real rows', () => {
     return { onClose }
   }
 
-  it('draws the letterhead from Settings and the person’s own sheets, with no Send', async () => {
+  it('draws the letterhead from Settings and the person’s own sheets', async () => {
     mount()
     const paper = await screen.findByTestId('sub-paper-preview')
     expect(paper.textContent).toContain('Made-up Plumbing Co.')
     expect(paper.textContent).toContain('$5,100.00')
-    expect(screen.queryByRole('button', { name: /^Send to/ })).toBeNull()
   })
 
   it('Download makes the PDF, saves it under its name and files a copy on the person and the jobs', async () => {
@@ -337,5 +440,190 @@ describe('SubPapersWindow, with the register on the database', () => {
     open('statement')
     fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The PDF could not be made: Only the office roles who see sub pay can make a sub paper.'))
+  })
+})
+
+describe('SubPapersWindow: Send', () => {
+  const open = (o: 'statement' | 'payment' = 'statement', over: { startOnSend?: boolean; onClose?: () => void } = {}) =>
+    render(<SubPapersWindow open={o === 'statement' ? { kind: 'statement' } : { kind: 'payment', sendingKey: 'snd226' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" startOnSend={over.startOnSend} onClose={over.onClose ?? (() => {})} />)
+  /** The register's answers, in the house's numbers: a work statement by its job, a statement of account from the sequence. */
+  const mintAll = () => {
+    db.mint.mockImplementation(async (_fn: string, args: { p_kind: string; p_snapshot: { job?: { label: string } } }) => ({
+      data: [{ id: 'paper', number: args.p_kind === 'statement_of_account' ? 'SA-0007' : args.p_kind === 'payment_record' ? 'PR-0226' : `WS-${(args.p_snapshot.job?.label ?? '').slice(1, 5)}-1`, revision: 1, reused: false }],
+      error: null,
+    }))
+  }
+
+  it('shows where the papers will go and what goes, by email alone, then sends each paper under its number', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · harlan@harlanmechanical.example')
+    // A texted link is not built, so there is one way and no row to pick it from.
+    expect(screen.queryByRole('button', { name: 'Text a link' })).toBeNull()
+    expect(screen.queryByText('By')).toBeNull()
+    expect(screen.getByTestId('sub-papers-message').textContent).toContain('Your statement of account from Made-up Plumbing Co.')
+    // The files are shown as they are named now, and the line under them says the names follow the numbers.
+    expect(screen.getByTestId('sub-papers-message').textContent).toContain('A paper with no number yet takes one as it is made, and its file is named for it.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Sent 3 papers to Harlan Mechanical at harlan@harlanmechanical.example. The copies are under Documents → Sent copies.'))
+    // Every work statement is registered first, then the statement of account that names them.
+    expect(db.mint.mock.calls.map((c) => (c[1] as { p_kind: string }).p_kind)).toEqual(['work_statement', 'work_statement', 'statement_of_account'])
+    expect(db.invoke).toHaveBeenCalledTimes(1)
+    const [fn, opts] = db.invoke.mock.calls[0] as [string, { body: { person_id: string; by: string; subject: string; message: string; papers: Array<{ kind: string; number: string; title: string; file_name: string; job_ids: string[]; pdf_base64: string }> } }]
+    expect(fn).toBe('send-sub-paper-email')
+    expect(opts.body).toMatchObject({ person_id: 'harlan', by: 'email', subject: 'Your statement of account from Made-up Plumbing Co.' })
+    // No address rides in the body: the function reads the roster's own.
+    expect(Object.keys(opts.body).sort()).toEqual(['by', 'message', 'papers', 'person_id', 'subject'])
+    expect(JSON.stringify(opts.body)).not.toContain('harlan@harlanmechanical.example')
+    // The email keeps the order of the window: the statement, then what rides along.
+    expect(opts.body.papers.map((p) => [p.kind, p.number, p.file_name, p.job_ids])).toEqual([
+      ['sub_statement_of_account', 'SA-0007', 'SA-0007 Statement of account.pdf', ['cedar', 'ridge']],
+      ['sub_work_statement', 'WS-2041-1', 'WS-2041-1.pdf', ['cedar']],
+      ['sub_work_statement', 'WS-2057-1', 'WS-2057-1.pdf', ['ridge']],
+    ])
+    expect(opts.body.papers.every((p) => p.pdf_base64.length > 100 && !p.pdf_base64.startsWith('data:'))).toBe(true)
+    // The statement was registered over the sheets as numbered: its snapshot names each work statement.
+    const statement = db.mint.mock.calls[2]![1] as { p_snapshot: { rows: Array<{ sheetName: string }> } }
+    expect(statement.p_snapshot.rows.map((r) => r.sheetName)).toEqual(['WS-2041-1', 'WS-2057-1'])
+    // It went, so the step offers Done and no second Send.
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Send 3 papers by email' })).toBeNull()
+  })
+
+  it('a second click before the press goes dead sends nothing more: one email, one statement number', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    const press = screen.getByRole('button', { name: 'Send 3 papers by email' })
+    // Two clicks before the page draws again, as a double click lands: the second finds a send under way.
+    act(() => {
+      press.click()
+      press.click()
+    })
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Sent 3 papers to Harlan Mechanical'))
+    expect(db.invoke).toHaveBeenCalledTimes(1)
+    expect(db.mint.mock.calls.filter((c) => (c[1] as { p_kind: string }).p_kind === 'statement_of_account')).toHaveLength(1)
+  })
+
+  it('after Record payment it opens on the send step, on the payment record alone', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 1 }, error: null })
+    open('payment', { startOnSend: true })
+    expect((await screen.findByRole('heading')).textContent).toBe('Send the payment record')
+    expect(screen.queryByTestId('sub-paper-preview')).toBeNull()
+    expect(screen.getByTestId('sub-papers-message').textContent).toContain('Payment record PR-0226 from Made-up Plumbing Co.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 paper by email' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Sent 1 paper to Harlan Mechanical at harlan@harlanmechanical.example. A copy is under Documents → Sent copies.'))
+    const [, opts] = db.invoke.mock.calls[0] as [string, { body: { papers: Array<{ kind: string; number: string; file_name: string; job_ids: string[] }> } }]
+    expect(opts.body.papers.map((p) => [p.kind, p.number, p.file_name, p.job_ids])).toEqual([['sub_payment_record', 'PR-0226', 'PR-0226 Payment record.pdf', ['cedar']]])
+    // Its number is its sending's own: the register is told the paper was made, and gives out none.
+    expect(db.mint).toHaveBeenCalledWith('mint_sub_paper', expect.objectContaining({ p_kind: 'payment_record', p_sending_id: 'snd226' }))
+  })
+
+  it('a sub with no email on the roster has a dead press that says why, and the paper can still be printed', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('alert').textContent).toBe('Harlan Mechanical has no email on the roster, so there is nowhere to send them. Print or download the paper for now. A dev can add an email to their roster row.')
+    const press = screen.getByRole('button', { name: 'Cannot send yet' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.click(press)
+    expect(db.mint).not.toHaveBeenCalled()
+    expect(db.invoke).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the paper' }))
+    expect(screen.getByRole('button', { name: 'Download the PDF' })).toBeTruthy()
+  })
+
+  it('a roster that could not be read is not a sub with no email: the press stays live and the function decides', async () => {
+    db.rows = []
+    db.personError = { message: 'Failed to fetch' }
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · the address on their roster row')
+    expect(screen.getByRole('dialog').textContent).toContain('The email goes to the address on their roster row with 3 files.')
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    // The answer names the address it went to.
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Sent 3 papers to Harlan Mechanical at harlan@harlanmechanical.example. The copies are under Documents → Sent copies.'))
+  })
+
+  it('an email that does not go says the function’s reason, names the statement number it spent, and nothing reads as sent', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { error: 'The email did not go: The domain is not verified' }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nothing was sent: The email did not go: The domain is not verified. SA-0007 took its number and did not go. The next send takes a new one.'))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+  })
+
+  it('no answer at all claims neither: it may have gone, and the window says where to look', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: null, error: new Error('Failed to send a request to the Edge Function') })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('No answer came back, so it is not known whether the email went. Look under Documents → Sent copies before you send again.'))
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+  })
+
+  it('the window stays while a press is under way', async () => {
+    db.rows = []
+    mintAll()
+    let answer: (v: unknown) => void = () => {}
+    db.invoke.mockReturnValue(new Promise((r) => (answer = r)))
+    const onClose = vi.fn()
+    open('statement', { onClose })
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await screen.findByRole('button', { name: 'Sending…' })
+    expect((screen.getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).not.toHaveBeenCalled()
+    answer({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a paper the register refuses is not sent', async () => {
+    db.rows = []
+    db.mint.mockResolvedValue({ data: null, error: { code: '42501', message: 'An archived account cannot make a sub paper.' } })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nothing was sent: An archived account cannot make a sub paper.'))
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+
+  it('only the office roles who see sub pay are offered Send: not an account in training, a superintendent or an estimator', async () => {
+    for (const who of [{ role: 'assistant', readOnly: true }, { role: 'superintendent', readOnly: false }, { role: 'estimator', readOnly: false }, { role: 'subcontractor', readOnly: false }]) {
+      auth.role = who.role
+      auth.readOnly = who.readOnly
+      open('statement', { startOnSend: true })
+      // Asked to open on the send step, it still opens on the paper: there is no send step for them.
+      await screen.findByTestId('sub-paper-preview')
+      expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull()
+      cleanup()
+    }
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+      auth.role = role
+      auth.readOnly = false
+      open()
+      expect(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' })).toBeTruthy()
+      cleanup()
+    }
   })
 })
