@@ -3987,6 +3987,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+> **v2.7914 — a primary is pushed only a report they read**: after the papers lock, the recipients are asked about by name (`recipientsWhoReadReport`, [`_shared/primaryReportScope.ts`](../supabase/functions/_shared/primaryReportScope.ts), over `reports_open_to_user`), and a recipient who is a primary is left out of a report they could not open in the app (the owner's word of 2026-11-19: their own jobs' reports and the ones they wrote). The preference table's policy lets only dev, master, assistant and controller keep a row, so a primary holds one only as a leftover from a role change, a row they can neither see nor remove; the push names the author and the job, which is why it is filtered all the same. Everyone else is pushed as before. If the question fails, a primary is pushed nothing and everyone else as before. **Redeploy required**, after the migration `20261119060000` is pushed.
+
 **Papers before a job opens (v2.7665)**: for a report on a job, a recipient who still owes that job a paper is left out of the push (`recipientsNotShut`). A report on a project or a bid goes to everyone as before.
 
 > **v2.6260 — the body counts the photos** (punch list #229, PR 5): one `report_photos` count by `report_id`, and the body ends *· 2 photos* (`reportPhotoCountClause`, [`_shared/reportPhotoEmail.ts`](../supabase/functions/_shared/reportPhotoEmail.ts)); nothing added for a report without. **Redeploy required.**
@@ -4025,6 +4027,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-email
 
+> **v2.7914 — a subscriber who is a primary gets their own jobs' reports**: both modes ask which reports the subscription's recipient may be sent (`reportsOpenToRecipient`, [`_shared/primaryReportScope.ts`](../supabase/functions/_shared/primaryReportScope.ts)): `reports_open_to_user(recipient_user_id, ids)` for one of our users, `reports_open_to_address(recipient_email, ids)` for an outside address. Both answer every id unless the recipient is a primary, and an outside address counts as one only when it is a primary's own account address (the match My email subscriptions makes). `auto` asks before it reads the photos and leaves that subscriber out (`outOfScope` in the answer); `manual` leaves the reports out and counts them (`skippedOutOfScope`, which the person's editor says). A report left out is **not** written to `report_email_dispatch_log`, so it is not on record as sent. If the question fails (the functions are not on the database yet), a primary is sent nothing, everyone else what they were sent before, and the log says which. **Redeploy required**, after the migration `20261119060000` is pushed.
+
 > **v2.6260 — the photos ride** (punch list #229, PR 5): `resolveReportContent` reads the report's `report_photos` rows and plans them with [`_shared/reportPhotoEmail.ts`](../supabase/functions/_shared/reportPhotoEmail.ts): a shot still in the `report-photos` bucket is downloaded once per report with the service role and attached (the shrunk copy, at most ten and under 8 MB in all), one the sweep already filed is a link to its Drive file, one past the cap or that does not read is named and nothing more. `buildReportEmail` draws the **Photos · 2 · attached** block after the fields; a report with no photos reads as before. **Redeploy required.**
 
 > **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
@@ -4040,7 +4044,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
 - **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). A report on a ZZ test record is answered with `skipped: 'zz_test_job'` and emailed to no one (v2.6127). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.5088.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
-- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors. A report on a ZZ test record is left out and counted in `skippedTestJobs` (v2.6127).
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors. A report on a ZZ test record is left out and counted in `skippedTestJobs` (v2.6127). A report the recipient may not read as a primary is left out and counted in `skippedOutOfScope` (v2.7914); the 50 are taken before that rule, so a primary may be sent fewer.
 
 **Endpoint**: `POST /functions/v1/send-report-email`
 
@@ -4058,9 +4062,9 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 #### Response
 
 ```typescript
-{ ok: true, sent: number, matched?: number }                       // auto
+{ ok: true, sent: number, matched?: number, outOfScope?: number }  // auto; outOfScope = matched subscribers who may not read it (v2.7914)
 { ok: true, sent: 0, skipped: 'zz_test_job', message: string }     // auto, a ZZ test record (v2.6127)
-{ ok: true, sent: number, candidates?: number, alreadySent?: number, skippedTestJobs?: number } // manual
+{ ok: true, sent: number, candidates?: number, alreadySent?: number, skippedTestJobs?: number, skippedOutOfScope?: number } // manual
 // or { error: string } with 400/401/403/404/500
 ```
 
@@ -4520,6 +4524,8 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ### recurring-job-report-preview
 
+> **v2.7914 — the bundle is its recipient's**: `buildRecurringJobReportPayload` ([`_shared/recurringJobReportCore.ts`](../supabase/functions/_shared/recurringJobReportCore.ts)) asks which of the window's field reports `recipient_user_id` may be sent (`rowsOpenToRecipient`, [`_shared/primaryReportScope.ts`](../supabase/functions/_shared/primaryReportScope.ts), over `reports_open_to_user`). A recipient who is a primary gets the reports they read in the app and no other; a job that had only such reports in the window drops out. Everyone else gets every report. The clock rows (hours, clock notes, optional cost) follow the same jobs: the core asks `report_jobs_open_to_user(recipient_user_id, job ids)` (`rowsOnJobsOpenToUser`), and a primary is sent a job's crew time only when they read that job's reports, as account manager or listed superintendent. A job they only wrote a report on keeps that report in their copy, with no crew time under it. Everyone else gets every clock row. If either question fails, a primary's copy holds what the failed question could not open and everyone else's is as before. The preview, the test send and the dispatcher share the core, so previewing as a primary shows what that primary would get. **Redeploy all three**, after the migration `20261119060000` is pushed.
+
 **Purpose**: Return server-built HTML for a job-activity digest (crew clock hours/session notes + field reports) **without sending mail**. Jobs are **all** **`jobs_ledger`** rows under **`scope_master_user_id`** that have qualifying **clock sessions** or **field reports** in the chosen window. **Recipient schedule blocks are not used** for which jobs appear. Validates JWT via `getUser`; caller must satisfy **`user_can_manage_recurring_job_report_scope`** for **`scope_master_user_id`**. Each job section shows **`jobs_ledger.job_address`** under the title when non-empty (multi-line addresses use line breaks; plain-text emails mirror the same). Optional **`include_costs`**: **`true`** adds a **Clock time** **Cost** column (**hours × people_pay_config.hourly_wage** where **`trim(users.name)`** matches **`person_name`**); missing or null wage shows **—** (service role reads pay rows).
 
 **Endpoint**: `POST /functions/v1/recurring-job-report-preview`
@@ -4544,7 +4550,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ### recurring-job-report-test-send
 
-Same payload as **`recurring-job-report-preview`** (including optional **`include_costs`**). Sends **`[TEST]`** email via **Resend** to the **authenticated user's** **`users.email`** only (never arbitrary addresses).
+Same payload as **`recurring-job-report-preview`** (including optional **`include_costs`**, and the field reports and crew time held to what `recipient_user_id` reads when that recipient is a primary, v2.7914). Sends **`[TEST]`** email via **Resend** to the **authenticated user's** **`users.email`** only (never arbitrary addresses).
 
 **Secrets**: **`RESEND_API_KEY`**, **`SUPABASE_SERVICE_ROLE_KEY`**.
 
@@ -4564,7 +4570,7 @@ Same payload as **`recurring-job-report-preview`** (including optional **`includ
 
 **Cron**: **`20260430054614_recurring_job_report_schedules.sql`** registers job **`recurring-job-report-dispatch`** with vault **`PROJECT_URL`** + **`CRON_SECRET`** (uppercase).
 
-Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (from **`recurring_job_report_schedule_recipients`**) resolve the **UTC window**, filtered activity, and whether clock rows include **Cost**; **`recurring_job_report_dispatch_log.reporting_date`** dedupes by civil **summary day** for daily scopes and **week Sunday** for **`calendar_week`** and **`calendar_last_week`**.
+Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (from **`recurring_job_report_schedule_recipients`**) resolve the **UTC window**, filtered activity, and whether clock rows include **Cost**; a recipient who is a primary gets only the field reports they read in the app, and crew time only on the jobs whose reports they read (v2.7914, the note under `recurring-job-report-preview`); **`recurring_job_report_dispatch_log.reporting_date`** dedupes by civil **summary day** for daily scopes and **week Sunday** for **`calendar_week`** and **`calendar_last_week`**.
 
 ---
 
