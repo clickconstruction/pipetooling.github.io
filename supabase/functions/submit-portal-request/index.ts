@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { gcPageAnswer, gcPagePhotoSign } from '../_shared/startChecksPortal.ts'
 import { askProblem } from '../_shared/stageAsk.ts'
 import { gcPortalStages, loadGcStageInputs, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -90,6 +91,8 @@ serve(async (req) => {
       : body.kind === 'gc_accept_work' ? 'gc_accept_work'
       : body.kind === 'gc_owner_contract_sign' ? 'gc_owner_contract_sign'
       : body.kind === 'portal_message' ? 'portal_message'
+      : body.kind === 'start_check_answer' ? 'start_check_answer'
+      : body.kind === 'start_check_photo' ? 'start_check_photo'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -101,7 +104,8 @@ serve(async (req) => {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
     const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work' || kind === 'gc_owner_contract_sign'
-    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && kind !== 'portal_message' && !gcPress && (description.length < 5 || description.length > 2000)) {
+    const startCheck = kind === 'start_check_answer' || kind === 'start_check_photo'
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && kind !== 'portal_message' && !gcPress && !startCheck && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -127,6 +131,13 @@ serve(async (req) => {
     }
     if (!link || link.revoked_at) {
       return jsonResponse({ error: 'This link is no longer active. Please contact our office.' }, 404)
+    }
+
+    // ── start_check_answer / start_check_photo (punch list #382, PR 9): the GC ticks what is ready before a stage,
+    // adds a photo, or gives the day it will be ready. Held to what their page shows right now; no line to Dispatch. ──
+    if (startCheck) {
+      const reply = kind === 'start_check_photo' ? await gcPagePhotoSign(admin, link, jobId, body) : await gcPageAnswer(admin, link, jobId, body)
+      return jsonResponse(reply.json, reply.status)
     }
 
     // ── payment_promise (Their Word PR 2): the customer names their own pay-by date ──

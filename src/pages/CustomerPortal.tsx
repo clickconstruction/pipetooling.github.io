@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PortalStartChecks } from '../components/portal/PortalStartChecks'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalGcJobs } from '../components/portal/PortalGcJobs'
@@ -572,6 +573,17 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
               />
             </div>
           ))}
+        </div>
+      ) : null}
+
+      {/* Before we start (punch list #382, PR 9): what we need from this GC before each stage. Only on a job whose two switches are on. */}
+      {payload.startChecks.length > 0 ? (
+        <div data-testid="portal-start-checks-list" style={{ margin: '1.4rem 0 0', display: 'grid', gap: '0.8rem' }}>
+          {payload.startChecks.flatMap((job) =>
+            job.stages.map((stage) => (
+              <PortalStartChecks key={`${job.jobId}:${stage.fixtureId}`} jobId={job.jobId} jobLabel={job.jobLabel} jobAddress={job.jobAddress} stage={stage} token={requestToken} todayYmd={todayYmd} phone={payload.company.phone} />
+            )),
+          )}
         </div>
       ) : null}
 

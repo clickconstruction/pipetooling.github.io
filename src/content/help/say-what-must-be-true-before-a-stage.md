@@ -212,6 +212,24 @@ Press **Take the Go back** to undo a Go. Press **Take the hold back** to undo a 
 
 Nothing is blocked. A crew can still be scheduled with no Go.
 
+## Show the list on the GC's page
+
+The GC's page shows none of this until you turn it on. It takes three things.
+
+1. The job shares its stage dates with the GC. That switch is under the GC on the job's form.
+2. Under **Before we start**, press **does not show** and pick **shows**. Press **Keep**.
+3. Each bullet has its own eye. A bullet from them starts shown.
+
+To hide one bullet, press {{chip:gray|⋯}} on its row and press {{chip:gray|Shows on the GC's page}}.
+
+Their page lists what is still needed from them, with a large box on each. Nothing is ticked for them. They tick what is ready and press **Yes, 3 are ready**. They can add a photo, or send the day it will be ready.
+
+Their tick lands here as a yes on their word, in the customer's name. A photo lands as a yes with their photo.
+
+Their page never shows a bullet of ours. It shows no name of ours, no trip and no cost.
+
+After a Go with nothing open, their page reads **Crew confirmed for** our first day.
+
 ## Add a bullet to the company's list
 
 The office can keep a good bullet for every job.

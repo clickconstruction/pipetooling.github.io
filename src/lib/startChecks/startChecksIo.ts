@@ -72,6 +72,8 @@ export interface StartChecksIo {
   takeBackDecision: (decisionId: string) => Promise<void>
   /** The days of notice on a site's row or a job's own. Null puts the default back. */
   setNotice: (home: { developmentId: string } | { jobId: string }, days: number | null, who: StartWho) => Promise<void>
+  /** The job's second switch: show what we need before each stage on the GC's page. The job's row alone. */
+  setShowsOnGcPage: (jobId: string, on: boolean, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
   setWindow: (line: { jobId: string; fixtureId: string }, start: string, end: string, who: StartWho) => Promise<void>
   addTemplate: (template: NewTemplate, who: StartWho) => Promise<void>
@@ -281,6 +283,11 @@ export const supabaseStartChecksIo: StartChecksIo = {
     const key = 'developmentId' in home ? { development_id: home.developmentId } : { job_id: home.jobId }
     const result = await db.from('start_check_settings').upsert({ ...key, notice_days: days, updated_by: who.userId, updated_by_name: who.name.slice(0, 120) }, { onConflict: 'developmentId' in home ? 'development_id' : 'job_id' })
     checkSupabaseError(result, 'keep the days of notice')
+  },
+
+  setShowsOnGcPage: async (jobId, on, who) => {
+    const result = await db.from('start_check_settings').upsert({ job_id: jobId, shows_on_gc_page: on, updated_by: who.userId, updated_by_name: who.name.slice(0, 120) }, { onConflict: 'job_id' })
+    checkSupabaseError(result, 'keep the switch')
   },
 
   setWindow: async (line, start, end, who) => {
