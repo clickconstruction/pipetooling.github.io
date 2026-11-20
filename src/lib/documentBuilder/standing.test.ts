@@ -92,6 +92,21 @@ describe('where a builder stands', () => {
     expect(sameContents({ a: 'one' }, { a: 'two' })).toBe(false)
   })
 
+  it('compares as the stored copy does: a key holding undefined is no key at all', () => {
+    expect(sameContents({ a: 1, b: undefined }, { a: 1 })).toBe(true)
+    expect(sameContents({ a: 1 }, { b: undefined, a: 1 })).toBe(true)
+    expect(sameContents({ list: [{ name: 'A made-up topic', fact: undefined }] }, { list: [{ name: 'A made-up topic' }] })).toBe(true)
+    expect(sameContents({ a: { b: undefined } }, { a: {} })).toBe(true)
+    // A key holding null is stored, so it is not the same as no key.
+    expect(sameContents({ a: 1, b: null }, { a: 1 })).toBe(false)
+    // A list keeps its places: JSON stores undefined in a list as null.
+    expect(sameContents([1, undefined, 2], [1, null, 2])).toBe(true)
+    expect(sameContents([1, undefined, 2], [1, 2])).toBe(false)
+    for (const made of [{ a: 1, b: undefined, c: [undefined, { d: undefined, e: 'x' }] }, [undefined], { only: undefined }]) {
+      expect(sameContents(made, JSON.parse(JSON.stringify(made)))).toBe(true)
+    }
+  })
+
   it('has changes not published once the draft moves on from the published copy', () => {
     expect(hasUnpublishedChanges(null)).toBe(false)
     expect(hasUnpublishedChanges(rec())).toBe(false)
