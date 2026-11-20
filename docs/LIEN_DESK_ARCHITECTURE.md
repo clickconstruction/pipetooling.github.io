@@ -76,6 +76,7 @@ last_updated: 2026-11-19
 > `applyLienNoticePaper` writes it and sets the waiting desk item aside (`voided_at`, `fields.setAsideNoticed`), never *sent*: the items guard lets only a master or dev put a status back to approved, and a set-aside item keeps its approval and signature for the undo.
 > `undoLienNoticeApply` runs from `LienFilingTabs.tsx`'s *Undo* on an applied row.
 > No reader of a job's notices changed: the month check, the affidavit's notice paragraph and its gate read filing rows.
+> Since v2.8027 (Grace's yes of 2026-11-20) a missed notice with no month still due hands the step its closed months to tick (`lienApplyMonthsOffered` in `lienNoticeApply.ts`), where it handed none and the step's Apply could only refuse.
 
 > **v2.7490 (the title bar's run door is retired, punch list #362, the owner's *Retire it everywhere* of 2026-11-16):** `LienDesk.tsx` draws no `data-lien-desk-run` on a computer;
 > the meter, the small words and `runHiddenByView` / `lastRunWidth` went with it, and [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) has no `run` part (the line needs about 1,039 px for all five tools, 284 less).

@@ -85,6 +85,13 @@ const ownerCallMock = vi.fn()
 const promiseMock = vi.fn()
 const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
+// A notice that already went (v2.7508): the papers on record at the property, empty unless a test puts one there, and the one write (v2.8027).
+const applyIo = vi.hoisted(() => ({ papers: [] as unknown[], apply: vi.fn(async (_input: unknown) => ({ filingId: 'applied1', setAside: false })) }))
+vi.mock('../../lib/jobs/lienNoticeApplyIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/jobs/lienNoticeApplyIo')>()),
+  loadLienApplyContext: async () => ({ papers: applyIo.papers, noticedMonths: [] }),
+  applyLienNoticePaper: (input: unknown) => applyIo.apply(input),
+}))
 // Is this public property? (v2.7443): the window's read and the one write.
 const readPublicPropertyMock = vi.fn()
 const readJobPathMock = vi.fn()
@@ -4237,6 +4244,30 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     } finally {
       if (had) Object.defineProperty(HTMLElement.prototype, 'scrollTo', had)
       else delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo
+    }
+  })
+
+  it('on a missed notice with nothing due, the step offers the closed month to tick, and a paper on record applies to it (v2.8027)', async () => {
+    // Made-up: a paper of Jul 10 on record on job 651 at the same property, naming May.
+    applyIo.papers = [{ key: 'sent:2026-07-10:certified_mail:11', sourceFilingId: 'f9', sourceJobId: 'j651', sourceJobLabel: '651', sentOn: '2026-07-10', method: 'certified_mail', tracking: '11', toOwner: true, toContractor: true, claimAsPrinted: 9_000, monthsPrinted: ['2026-05'], jobLabels: ['651'], documentUrl: '', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '11', sent_on: '2026-07-10' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '12', sent_on: '2026-07-10' }], packetId: 'p9', fields: {} }]
+    applyIo.apply.mockClear()
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+      await settle()
+      fireEvent.click(monthsDoor())
+      const months = await screen.findByRole('group', { name: /months it named/ })
+      // May is the closed month the desk calls missed: offered and ticked, where the step said it was asking for no month.
+      const may = within(months).getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement
+      expect(may.checked).toBe(true)
+      expect(months.textContent).not.toContain('The desk is not asking this job for a month.')
+      fireEvent.click(screen.getByRole('button', { name: /^Apply the Jul 10 notice to job 650/ }))
+      await waitFor(() => expect(applyIo.apply).toHaveBeenCalledTimes(1))
+      const input = applyIo.apply.mock.calls[0]![0] as { months: string[]; setAside: unknown }
+      expect(input.months).toEqual(['2026-05'])
+      // No notice waits on this job, so none is set aside.
+      expect(input.setAside).toBeNull()
+    } finally {
+      applyIo.papers = []
     }
   })
 

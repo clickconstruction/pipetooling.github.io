@@ -5,6 +5,7 @@ import {
   lienAppliedRowWords,
   lienApplyButtonWords,
   lienApplyChecks,
+  lienApplyMonthsOffered,
   lienApplyPayload,
   lienApplyReasonProblem,
   lienApplySetsAside,
@@ -159,5 +160,17 @@ describe('a notice that already went, applied to a job (v2.7508)', () => {
     expect(lienApplySetsAside(['2026-08', '2026-09'], ['2026-09'], ['2026-08'])).toBe(true)
     expect(lienApplySetsAside(['2026-08', '2026-09'], ['2026-09'], [])).toBe(false)
     expect(lienApplySetsAside([], ['2026-09'], [])).toBe(false)
+  })
+
+  it('offers a missed notice’s closed months to tick when nothing is still due, and only the notice’s own months elsewhere (v2.8027)', () => {
+    // A missed notice with nothing due: its own months were empty, so the closed months the desk calls missed are offered, oldest first.
+    expect(lienApplyMonthsOffered({ pile: 'missed', months: [], dueMonths: [], missedMonths: ['2026-07', '2026-05'] })).toEqual(['2026-05', '2026-07'])
+    // A month already on the notice is offered once.
+    expect(lienApplyMonthsOffered({ pile: 'missed', months: ['2026-05'], dueMonths: [], missedMonths: ['2026-05', '2026-06'] })).toEqual(['2026-05', '2026-06'])
+    // A missed notice with a month still due is a draft: the step opens with that month alone, as before.
+    expect(lienApplyMonthsOffered({ pile: 'missed', months: ['2026-09'], dueMonths: ['2026-09'], missedMonths: ['2026-07'] })).toEqual(['2026-09'])
+    // Every other pile keeps the notice's own months, a closed month beside them or not.
+    expect(lienApplyMonthsOffered({ pile: 'to_draft', months: ['2026-09'], dueMonths: ['2026-09'], missedMonths: ['2026-07'] })).toEqual(['2026-09'])
+    expect(lienApplyMonthsOffered({ pile: 'sent', months: [], dueMonths: [], missedMonths: [] })).toEqual([])
   })
 })
