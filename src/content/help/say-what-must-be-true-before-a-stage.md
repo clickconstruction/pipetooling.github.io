@@ -165,6 +165,40 @@ Rest on a card's ready bar to see what it still takes to start. On a phone, pres
 
 Press the card's one press to open the stage. You see the same four lines and the same lists as on the job.
 
+## See the stages on a line of time
+
+The Schedule look can draw its stages on one line of days.
+
+1. Press **Show it on a line of time**, under the banner.
+2. Read one row for each stage. The rows keep the order of the cards.
+3. Press **Hide the line of time** to put the line away.
+
+| Mark | What it means |
+|---|---|
+| A bar | Our days, in the colour of the stage's dot. |
+| A solid diamond | The day they say they will be ready. |
+| A hollow diamond | A day they gave before. |
+| A dotted line | The day we decide. |
+| A red line | Today. |
+
+Red words beside a row say how many days they have moved, like *moved 11 days*.
+
+A stage with no days of ours has a row with no bar.
+
+## Print the days they gave
+
+The office can print every day the customer gave, as one sheet for the site.
+
+1. Open the **Schedule** look.
+2. Press **Print the days they gave**.
+3. Print the page that opens, or save the page as a PDF.
+
+The sheet lists each stage where they gave a day. Each day shows who said so, how, and when. The last column shows how far each new day moved from the one before.
+
+The top of the sheet adds up the days moved across the site.
+
+The sheet is our own record. The app sends the sheet to nobody, and the GC's page never shows it.
+
 ## Ask them about what is open
 
 An open stage with something open on them has an **Ask** press at the bottom.
