@@ -5,6 +5,7 @@
  * pinned, and Move the pin by hand. Every name, place and point is made up. The map is a stand-in that says what it
  * was handed.
  */
+import { act, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -16,12 +17,21 @@ vi.mock('../../hooks/useAuth', async () => (await import('../../test/renderSmoke
 const opened: string[] = []
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => { opened.push(url) } }))
 vi.mock('./OnSiteMap', () => ({
-  default: (p: { pins: Array<{ label: string; tone?: string }>; me?: unknown; lineTo?: unknown; placing?: { label: string } | null; onCenterChange?: (c: { lat: number; lng: number }) => void }) => (
-    <div data-testid="map" data-pins={p.pins.map((x) => `${x.label}:${x.tone}`).join(',')} data-me={p.me ? 'yes' : 'no'} data-line={p.lineTo ? 'yes' : 'no'} data-placing={p.placing?.label ?? ''}>
-      {p.onCenterChange ? <button type="button" onClick={() => p.onCenterChange?.({ lat: 29.7, lng: -98.6 })}>drag the map</button> : null}
-    </div>
-  ),
+  default: function MapStub(p: { pins: Array<{ label: string; tone?: string }>; me?: unknown; lineTo?: unknown; placing?: { label: string } | null; flyTo?: { lat: number; lng: number } | null; onCenterChange?: (c: { lat: number; lng: number }) => void }) {
+    const { flyTo, onCenterChange } = p
+    // The real map says where its ring is each time it is flown somewhere.
+    useEffect(() => {
+      if (flyTo) onCenterChange?.({ lat: flyTo.lat, lng: flyTo.lng })
+    }, [flyTo, onCenterChange])
+    return (
+      <div data-testid="map" data-pins={p.pins.map((x) => `${x.label}:${x.tone}`).join(',')} data-me={p.me ? 'yes' : 'no'} data-line={p.lineTo ? 'yes' : 'no'} data-placing={p.placing?.label ?? ''} data-fly={flyTo ? `${flyTo.lat},${flyTo.lng}` : ''}>
+        {p.onCenterChange ? <button type="button" onClick={() => p.onCenterChange?.({ lat: 29.7, lng: -98.6 })}>drag the map</button> : null}
+      </div>
+    )
+  },
 }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). The wait is the real one. */
+vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => 'iphone-safari' }))
 
 import WhereIsBox from './WhereIsBox'
 
@@ -44,7 +54,10 @@ function phoneAt(fix: { lat: number; lng: number; accuracy: number } | null, cod
 }
 
 beforeEach(() => { pinContainer.mockReset(); onMoveBox.mockReset(); opened.length = 0 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe('WhereIsBox', () => {
   it('a pinned box: the place, the pin’s day and person, the last count, and the others of its place faint on the map', async () => {
@@ -107,6 +120,116 @@ describe('WhereIsBox', () => {
     expect(pinContainer).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Move the pin by hand' })).toBeTruthy()
+  })
+
+  it('I found it on a reading that is only an area pins nothing and shows the way to the switch, not the open sky (#402)', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    draw(pinned)
+    fireEvent.click(screen.getByRole('button', { name: 'I found it' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('A7 was not pinned. Move the pin by hand, or turn the switch on and try again.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(screen.getByTestId('where-is-box').textContent).not.toContain('Try again in the open')
+    expect(pinContainer).not.toHaveBeenCalled()
+    // The same two ways on as any reading that was not kept.
+    expect(screen.getByRole('button', { name: 'Move the pin by hand' })).toBeTruthy()
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 5 })
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(pinContainer).toHaveBeenCalledWith('a7', { lat: 29.5004, lng: -98.4003 }, { accuracyM: 5, byName: 'Priya Nair' }))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('Show where I am waits 4 seconds on a rough reading, then says no distance can be told, with no dot on the map (#402)', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    draw(pinned)
+    await screen.findByTestId('map')
+    vi.useFakeTimers()
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    // A phone with the switch on can open with one reading off a cell tower: the sheet is still finding you.
+    expect(screen.getByTestId('where-is-box-finding').textContent).toBe('Finding you… This takes a few seconds in the open.')
+    expect(screen.queryByTestId('where-is-box-far')).toBeNull()
+    expect(screen.getByTestId('map').getAttribute('data-me')).toBe('no')
+    act(() => { vi.advanceTimersByTime(3999) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    act(() => { vi.advanceTimersByTime(1) })
+    const alert = screen.getByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('How far cannot be told from a reading that wide.')
+    expect(screen.queryByTestId('where-is-box-far')).toBeNull()
+    expect(screen.getByTestId('map').getAttribute('data-me')).toBe('no')
+  })
+
+  it('with the dot on, I found it on an area draws the steps once, and the next sure reading takes that answer back (#402)', async () => {
+    // A phone that keeps answering the watch, one reading at a time.
+    let feed: (fix: { lat: number; lng: number; accuracy: number }) => void = () => {}
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn(),
+        watchPosition: (ok: (p: unknown) => void) => {
+          feed = (fix) => ok({ coords: { latitude: fix.lat, longitude: fix.lng, accuracy: fix.accuracy } })
+          return 7
+        },
+        clearWatch: vi.fn(),
+      },
+    })
+    draw(pinned)
+    await screen.findByTestId('map')
+    vi.useFakeTimers()
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    act(() => { feed({ lat: 29.9, lng: -98.9, accuracy: 3200 }) })
+    act(() => { vi.advanceTimersByTime(4000) })
+    act(() => { feed({ lat: 29.9, lng: -98.9, accuracy: 3100 }) })
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'I found it' }))
+    // The press's own answer about the area stands in for the live line: one alert, and the steps drawn once.
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByTestId('where-is-box-rough').querySelector('[data-precise-note]')?.textContent).toBe('A7 was not pinned. Move the pin by hand, or turn the switch on and try again.')
+    expect(screen.queryByTestId('where-is-box-far-rough')).toBeNull()
+    expect(document.querySelectorAll('ol[data-precise-steps]')).toHaveLength(1)
+    expect(pinContainer).not.toHaveBeenCalled()
+    // The phone's next reading is the same area: the answer stands, so the person still reads that nothing was pinned.
+    act(() => { feed({ lat: 29.9, lng: -98.9, accuracy: 3000 }) })
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByTestId('where-is-box-rough').querySelector('[data-precise-note]')?.textContent).toBe('A7 was not pinned. Move the pin by hand, or turn the switch on and try again.')
+    // The switch is on now. The next reading is a spot: the sheet stops saying it looks off and says how far.
+    act(() => { feed({ lat: 29.5004, lng: -98.4003, accuracy: 5 }) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByTestId('where-is-box-rough')).toBeNull()
+    expect(screen.getByTestId('where-is-box-far').textContent).toContain('Your phone is sure within 20 ft.')
+    expect(screen.getByTestId('map').getAttribute('data-me')).toBe('yes')
+    expect(screen.getByRole('button', { name: 'I found it' })).toBeTruthy()
+    expect(pinContainer).not.toHaveBeenCalled()
+  })
+
+  it('Use my location on a rough reading does not move the map, and on a sure one says the switch is on (#402)', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    draw(pinned)
+    fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map was not moved. Drag it until the ring is on the spot, or turn the switch on and press again.')
+    expect((await screen.findByTestId('map')).getAttribute('data-fly')).toBe('')
+    // The switch is on now: the map goes to the reading, and the line says so for as long as the ring sits on it.
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 5 })
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await waitFor(() => expect(screen.getByTestId('map').getAttribute('data-fly')).toBe('29.5004,-98.4003'))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByTestId('where-is-box-fly-read').textContent).toBe('Precise Location is on. Sure within 20 ft.')
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    expect(screen.queryByTestId('where-is-box-fly-read')).toBeNull()
+  })
+
+  it('Use my location on a weak signal moves the map and asks for the ring (#402)', async () => {
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 35 })
+    draw(pinned)
+    fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await waitFor(() => expect(screen.getByTestId('map').getAttribute('data-fly')).toBe('29.5004,-98.4003'))
+    expect(screen.getByTestId('where-is-box-fly-read').textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft. Drag the map until the ring is on the spot.')
   })
 
   it('a phone that cannot say where it is names the reason', async () => {

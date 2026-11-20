@@ -7,11 +7,14 @@ import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import type { PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { TaskMapRead } from '../../hooks/useTaskMapWhole'
 import { paintedLayerMaps } from '../../lib/paintedMap/paintedMapLayer'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
+import { HOW_FAR_ROUGH_NOTE_WORDS } from '../../lib/tasks/taskPlaceReading'
 import { TASK_MAP_WORDS, taskMapFrame, taskMapHowFarWords, taskMapLineParts, taskMapPlaceKey, taskMapStart } from '../../lib/tasks/taskMap'
 import { TASK_PLACE_NO_MAP_WORDS, TASK_PLACE_PRIVACY_WORDS, taskPlaceNoFixWords } from '../../lib/tasks/taskPlace'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
 import { PAINT_COLOR } from '../paintedMap/paintedMapLook'
+import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 import { TaskSpotPhotoView } from './TaskPlaceBlock'
 
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
@@ -70,7 +73,10 @@ export function TaskMapBlock({ whole, paintedByName = null, photoUrl = null, can
   const painted = paintedLayerMaps([whole])
   const frame = taskMapFrame(whole.lines, whole.places)
   const start = taskMapStart(whole.lines, whole.places)
-  const me = asked.kind === 'found' ? asked.me : null
+  const found = asked.kind === 'found' ? asked.me : null
+  // A rough reading is an area and not a spot (#402): no distance is said from its middle, and no dot is drawn there.
+  const areaM = found && isRoughFix(found.accuracyM) ? found.accuracyM : null
+  const me = areaM == null ? found : null
   const far = me && start ? taskMapHowFarWords(me, start) : null
   const pins: OnSiteMapPin[] = me ? [{ id: 'me', label: 'You', lat: me.lat, lng: me.lng, tone: 'me' }] : []
   const directions = start ? directionsUrlForPoint(start.lat, start.lng) : null
@@ -129,6 +135,11 @@ export function TaskMapBlock({ whole, paintedByName = null, photoUrl = null, can
           <b>{far.lead}</b>
           {far.sure ? ` ${far.sure}` : ''}
         </p>
+      ) : null}
+      {areaM != null ? (
+        <div data-task-map-far-rough>
+          <PreciseReadingLine accuracyM={areaM} roughNote={HOW_FAR_ROUGH_NOTE_WORDS} />
+        </div>
       ) : null}
       {asked.kind === 'none' ? (
         <p role="status" data-task-map-no-fix style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>

@@ -80,10 +80,21 @@ function SizeFix() {
   return null
 }
 
+/**
+ * Takes the map to a point, at once and with no glide (punch list #402).
+ *
+ * The screen around the map can change shape in the very draw that asks for this, and again when the answer to it is
+ * drawn: a tall line under a press comes or goes. So the map measures its box first. A point worked out from the old
+ * box is the old middle. And it does not glide: a resize cannot correct a glide already under way, and one that came
+ * mid-glide left the ring off the point by half of what the box had grown, with the sheet saying the ring was moved
+ * by hand.
+ */
 function FlyTo({ to, zoom }: { to: LatLng | null | undefined; zoom: number }) {
   const map = useMap()
   useEffect(() => {
-    if (to) map.setView([to.lat, to.lng], zoom)
+    if (!to) return
+    map.invalidateSize({ animate: false })
+    map.setView([to.lat, to.lng], zoom, { animate: false })
   }, [map, to, zoom])
   return null
 }
@@ -102,11 +113,23 @@ function FitMe({ me, to }: { me: LatLng | null; to: LatLng | null }) {
   return null
 }
 
+/**
+ * Says where the ring is each time the map moves. It listens with one set of handlers for the life of the map. A new
+ * set each draw is taken off and put back by an effect, and `FlyTo`'s effect runs in between: a fly that lands at once
+ * was then heard by nobody, and the sheet went on believing the ring was where it had been (punch list #402).
+ */
 function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
-  const map = useMapEvents({
-    move: () => { const c = map.getCenter(); onMove({ lat: c.lat, lng: c.lng }) },
-    moveend: () => { const c = map.getCenter(); onMove({ lat: c.lat, lng: c.lng }) },
-  })
+  const map = useMap()
+  const latest = useRef(onMove)
+  latest.current = onMove
+  const handlers = useMemo(() => {
+    const say = () => {
+      const c = map.getCenter()
+      latest.current({ lat: c.lat, lng: c.lng })
+    }
+    return { move: say, moveend: say }
+  }, [map])
+  useMapEvents(handlers)
   useEffect(() => { const c = map.getCenter(); onMove({ lat: c.lat, lng: c.lng }) }, [map, onMove])
   return null
 }

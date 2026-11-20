@@ -86,6 +86,8 @@ The line under the buttons says who set the place and when. A machine moves and 
 
 With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
 
+A phone that gives only the area you are in gets no distance. The answer then reads *Precise Location looks off.*, with the steps to the switch for your phone. Turn the switch on and tap **How far am I?** again.
+
 ### When the way in is painted
 
 Some places come with a painted map. An orange stroke sits beside the place's name.
@@ -132,6 +134,10 @@ Some tasks come with no place. If you are standing at the task, you can add its 
 3. Read the line that says how sure your phone is. Type a name, like *Shop bay 2*.
 4. Tap {{button:blue|Add this place}}.
 
+A phone that is not sure within about 150 feet adds no place. Step into the open and tap **Try again**.
+
+A line that reads *Precise Location looks off.* means your phone gave only an area. The open sky does not fix that. Follow the steps under the line, then tap **Try again**.
+
 The next person who gets this task sees the place and can get directions.
 
 - Your phone has to be sure within about 150 feet. If it is not, step out into the open and tap **Try again**.
@@ -149,6 +155,8 @@ When an open task of yours has a place, the Today tab opens on a map. The map is
 - Tasks with no place are not on the map. A line under the map counts them, and they are still in the list.
 
 Tap {{button:outline|Show where I am}} to add a dark dot for you. Each task's line then says how far away its place is, like *250 ft north-east*. Your location stays on your phone.
+
+A phone that gives only an area gets no dot and no distances. The map reads *Precise Location looks off.* and lists the steps to the switch.
 
 Tap a dot, then tap **Time** on the map to see that place on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 

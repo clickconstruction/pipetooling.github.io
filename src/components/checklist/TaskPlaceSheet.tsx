@@ -1,13 +1,17 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { useVisualViewportBox } from '../../hooks/useVisualViewportBox'
 import { visibleBand } from '../../lib/visibleBand'
 import { requestMyLocation, type MyFix } from '../../lib/materials/myLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ADD_TASK_PICKER_Z } from '../../lib/windowLayers'
 import { loadPaintedMapsEvery, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
+import { PreciseLocationLine } from '../paintedMap/PreciseLocationLine'
+import { WHERE_I_AM_WEAK_NOTE_WORDS, whereIAmRoughNoteWords } from '../../lib/tasks/taskPlaceReading'
 import { TASK_PLACE_WAY_WORDS, waysNearPlace } from '../../lib/tasks/taskPlaceWay'
 import {
   TASK_PLACE_NAME_MAX,
@@ -15,8 +19,8 @@ import {
   TASK_PLACE_WIDE_START,
   TASK_PLACE_WIDE_ZOOM,
   cleanTaskPlaceName,
+  isPoorTaskPlaceFix,
   isTaskPlaceWideStart,
-  taskPlaceFixWords,
   taskPlaceSheetAccuracy,
   type TaskPlaceDraft,
   type TaskPlacePoint,
@@ -44,8 +48,10 @@ type Props = {
  * map's (`OnSiteMap`), so a place is set the way a box's spot is.
  *
  * The phone is asked where it is on that one press and at no other time. What comes back is shown
- * on the map before anything is kept, with how sure the phone is, and a reading too wide to trust
- * asks for the ring instead of being taken (`taskPlaceFixWords`).
+ * on the map before anything is kept, with how sure the phone is, said by the Precise Location line
+ * (punch list #402, call 8). A weak signal asks for the ring instead of being taken as it is. A
+ * rough reading, which is only an area, does not move the map at all, and the line shows the way to
+ * the switch.
  *
  * **Add the way in** (punch list #345, step 5): a place can carry the painted map that leads to it.
  * The press reads the painted maps the giver can open and offers the ones that come within a mile
@@ -59,6 +65,9 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
   const [ring, setRing] = useState<TaskPlacePoint | null>(null)
   const [fly, setFly] = useState<TaskPlacePoint | null>(null)
   const [fix, setFix] = useState<MyFix | null>(null)
+  // The last Use where I am got an area and not a spot (#402): its margin, for the words. The map was not moved.
+  const [roughFix, setRoughFix] = useState<number | null>(null)
+  const phoneKind = usePhoneKind()
   const [finding, setFinding] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [name, setName] = useState(initial?.name ?? '')
@@ -93,11 +102,20 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
     requestMyLocation(
       (p) => {
         setFinding(false)
+        // A rough reading is an area, and its middle can be miles off. The map stays where it is, or opens wide to
+        // be dragged, and the line under the press shows the way to the switch.
+        if (isRoughFix(p.accuracyM)) {
+          setRoughFix(p.accuracyM)
+          setOpenWide(true)
+          return
+        }
+        setRoughFix(null)
         setFix(p)
         setFly({ lat: p.lat, lng: p.lng })
       },
       (words) => {
         setFinding(false)
+        setRoughFix(null)
         setRefusal(words)
         setOpenWide(true)
       },
@@ -106,7 +124,8 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
 
   // The margin belongs to the reading. Once the ring is dragged off it, the place is the giver's own call.
   const accuracyM = ring ? taskPlaceSheetAccuracy(fix, ring) : null
-  const fixWords = fix && ring && accuracyM != null ? taskPlaceFixWords(accuracyM) : null
+  // The ring still sits on a reading taken by the press: the line may speak of the phone from it.
+  const onReading = fix != null && ring != null && accuracyM != null
   const dragged = fix != null && ring != null && fix.accuracyM != null && accuracyM == null
   const wide = !start && !fly && openWide
   const mapStart = start ?? (fly ? { lat: fly.lat, lng: fly.lng } : wide ? TASK_PLACE_WIDE_START : null)
@@ -183,18 +202,16 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
             <p role="status" data-task-place-refusal style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
               {refusal}
             </p>
-          ) : fixWords ? (
-            <p
-              role="status"
-              data-task-place-fix={fixWords.poor ? 'poor' : 'ok'}
-              style={
-                fixWords.poor
-                  ? { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }
-                  : { margin: 0, fontSize: '0.875rem', color: 'var(--text-green-700)' }
-              }
-            >
-              {fixWords.words}
-            </p>
+          ) : roughFix != null ? (
+            // One reading, asked for by the press: there is no better one to wait for, so it is called rough at once.
+            <div data-task-place-fix="rough">
+              {/* The map above gives way to whatever is under the press, so the steps wait behind one press of their own. */}
+              <PreciseLocationLine accuracyM={roughFix} kind={phoneKind} roughHeld roughNote={whereIAmRoughNoteWords(phoneKind)} foldSteps />
+            </div>
+          ) : onReading ? (
+            <div data-task-place-fix={isPoorTaskPlaceFix(accuracyM) ? 'poor' : 'ok'}>
+              <PreciseLocationLine accuracyM={accuracyM} kind={phoneKind} roughHeld weakNote={WHERE_I_AM_WEAK_NOTE_WORDS} />
+            </div>
           ) : wide && !ready ? (
             <p role="status" data-task-place-fix="wide" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               The map opened wide. Zoom in and drag it until the ring is on the spot.

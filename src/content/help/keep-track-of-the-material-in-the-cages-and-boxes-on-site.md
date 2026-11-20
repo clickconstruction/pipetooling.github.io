@@ -130,6 +130,10 @@ When you find the box, tap {{button:blue|I found it}}. The app pins the box wher
 
 A box nobody has pinned says so. Stand at it and tap **I found it**. A phone that is not sure within about 150 ft is refused. Step into the open and tap **Try again**. Or tap **Move the pin by hand** and drag the map until the ring sits on the box. Then tap **Put A1 here**.
 
+A phone that gives only the area you are in pins nothing. The sheet then reads *Precise Location looks off.*, with the steps to the switch for your phone. The open sky does not fix that. Turn the switch on and tap **Try again**.
+
+The same line shows under **Show where I am** and **Use my location**. A phone that gives only an area gets no dot, no distance and no move of the map.
+
 The app also asks for a pin when you are standing at a box. The app asks after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
 
 A straight line can cross a fence. A painted way knows the gate, because a person drew it. Tap **Places** at the top of the tab. Under a place, tap **＋ Paint the way here**. The painting window opens on a new map named for the place, like The way to Level 2. Draw or walk the way from the gate and save it. The way then stays on the place. One way serves every box that stands there. On a box in that place, **Where is it?** reads **The way to Level 2 is painted.** Tap {{button:outline|Open the way}} to see it. [Paint a map](/help/paint-a-map) says how to draw and walk a line.

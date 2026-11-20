@@ -12,10 +12,13 @@
  *   fence, wall or gate. The words are a task place's own (`taskPlace.ts`), so a crew reads one way of saying it.
  * - I found it reads the phone once and pins the box where the finder stands. A reading the phone is not sure of
  *   within about 150 ft is refused in words, as a task's place refuses one: a bad pin is worse than no pin.
+ * - A rough reading, over 1,000 m, is an area and not a spot (punch list #402, call 8). The open sky is not its cure,
+ *   so the sheet draws the Precise Location line with the way to the switch (`foundRoughNoteWords`).
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz, ymdDaysBetween } from '../../utils/dateUtils'
 import { haversineMeters } from '../jobTravelEstimate'
 import { TASK_PLACE_HERE_METERS, TASK_PLACE_POOR_FIX_METERS, cleanTaskPlaceName, isPoorTaskPlaceFix, taskPlaceAccuracyWords, taskPlaceDirection, taskPlaceDistanceWords, type TaskPlaceDraft } from '../tasks/taskPlace'
+import type { PhoneKind } from '../paintedMap/preciseLocation'
 import { lastCountedAt, type Container, type ContainerMove, type Movement, type Place } from './onSite'
 
 /** The press on a box, and the sheet's own presses, each by its exact name. */
@@ -239,6 +242,14 @@ export function foundVerdict(label: string, fix: WhereFix): FoundVerdict {
   if (typeof acc !== 'number' || !Number.isFinite(acc) || acc < 0) return { ok: false, words: `Your phone did not say how sure it is. ${label} was not pinned. Try again in the open, or move the pin by hand.` }
   if (Math.round(acc) > TASK_PLACE_POOR_FIX_METERS) return { ok: false, words: `Your phone is only sure ${taskPlaceAccuracyWords(acc)}. ${label} was not pinned. Try again in the open, or move the pin by hand.` }
   return { ok: true, pin: { lat: fix.lat, lng: fix.lng }, accuracyM: acc, words: `${label} is pinned where you stand. Your phone was sure ${taskPlaceAccuracyWords(acc)}.` }
+}
+
+/**
+ * After the Precise Location line when I found it, or the pin strip, got a rough reading: nothing was pinned, and
+ * trying again in the open would not help. A desk has no switch to turn on.
+ */
+export function foundRoughNoteWords(label: string, kind: PhoneKind): string {
+  return kind === 'other' ? `${label} was not pinned. Move the pin by hand.` : `${label} was not pinned. Move the pin by hand, or turn the switch on and try again.`
 }
 
 /** After I found it: the place may have changed too. Null when the box has no place to confirm. */

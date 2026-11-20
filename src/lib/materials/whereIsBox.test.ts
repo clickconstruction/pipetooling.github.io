@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, Place } from './onSite'
-import { BOX_PIN_OLD_DAYS, findBoxTask, boxPinSentence, boxPinShort, foundNoFixWords, foundVerdict, lastPutOf, lastTouchOf, newestPhotoWords, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
+import { BOX_PIN_OLD_DAYS, findBoxTask, boxPinSentence, boxPinShort, foundNoFixWords, foundRoughNoteWords, foundVerdict, lastPutOf, lastTouchOf, newestPhotoWords, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
 import { PLAIN_WORDS_MAX_SENTENCE_WORDS } from '../plainWords'
 
 // Noon on the company's calendar, Tuesday Nov 17 2026. Every name, place and point here is made up.
@@ -131,6 +131,17 @@ describe('foundVerdict', () => {
 
   it('refuses a reading that does not say how sure it is', () => {
     expect(foundVerdict('A7', { ...PIN, accuracyM: null })).toEqual({ ok: false, words: 'Your phone did not say how sure it is. A7 was not pinned. Try again in the open, or move the pin by hand.' })
+  })
+
+  it('refuses a rough reading too, and has the words for after the Precise Location line (#402)', () => {
+    expect(foundVerdict('A7', { ...PIN, accuracyM: 3200 }).ok).toBe(false)
+    // The open sky is not the cure for a phone that gives only an area: the switch is.
+    expect(foundRoughNoteWords('A7', 'iphone-safari')).toBe('A7 was not pinned. Move the pin by hand, or turn the switch on and try again.')
+    expect(foundRoughNoteWords('A7', 'android')).toBe('A7 was not pinned. Move the pin by hand, or turn the switch on and try again.')
+    expect(foundRoughNoteWords('A7', 'other')).toBe('A7 was not pinned. Move the pin by hand.')
+    for (const kind of ['iphone-safari', 'other'] as const) {
+      for (const sentence of foundRoughNoteWords('A7', kind).split(/(?<=[.?!])\s+/)) expect(sentence.split(/\s+/).length).toBeLessThanOrEqual(PLAIN_WORDS_MAX_SENTENCE_WORDS)
+    }
   })
 })
 

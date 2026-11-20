@@ -8,6 +8,7 @@ import {
   PRECISE_ALREADY_ON_WORDS,
   PRECISE_PROVEN_METERS,
   PRECISE_ROUGH_HOLD_MS,
+  PRECISE_STEPS_FOLD_WORDS,
   USUAL_MARGIN_WORDS,
   areaAcrossWords,
   marginWords,
@@ -345,7 +346,7 @@ describe('the shared map, which a stranger reads', () => {
 
 describe('every sentence a first-timer reads is plain', () => {
   const said = (kind: PhoneKind): string[] => {
-    const lines: string[] = [PRECISE_ALREADY_ON_WORDS, ...preciseSteps(kind)]
+    const lines: string[] = [PRECISE_ALREADY_ON_WORDS, PRECISE_STEPS_FOLD_WORDS, ...preciseSteps(kind)]
     for (const m of [null, ...MARGINS]) {
       for (const held of [true, false]) {
         const w = preciseWords(m, kind, held)

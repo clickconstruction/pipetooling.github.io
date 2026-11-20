@@ -23,6 +23,8 @@ const fix = vi.hoisted(() => ({ me: null as null | { lat: number; lng: number; a
 vi.mock('../../lib/materials/myLocation', () => ({
   requestMyFix: (ok: (p: unknown) => void, fail: (why: string) => void) => (fix.me ? ok(fix.me) : fail('refused')),
 }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => 'iphone-safari' }))
 const opened = vi.hoisted(() => ({ urls: [] as string[] }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.urls.push(url) }))
 
@@ -143,6 +145,21 @@ describe('a task card with a painted map and no place', () => {
     fireEvent.click(screen.getByRole('button', { name: 'How far am I?' }))
     expect(document.querySelector('[data-task-map-far]')?.textContent).toMatch(/^The start is .+ north of you\. Your phone is sure /)
     expect(screen.getByTestId('still-map').getAttribute('data-pins')).toBe('me')
+  })
+
+  it('says no distance from a rough reading, puts nobody on the picture, and shows the way to the switch (#402)', async () => {
+    fix.me = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    renderCard({ mapId: 'map-1' })
+    await settle()
+    fireEvent.click(screen.getByText(/Add a note/))
+    await waitFor(() => expect(screen.getByTestId('still-map')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'How far am I?' }))
+    expect(document.querySelector('[data-task-map-far]')).toBeNull()
+    const alert = screen.getByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('How far cannot be told from a reading that wide.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(screen.getByTestId('still-map').getAttribute('data-pins')).toBe('')
   })
 
   it('a phone that will not say where it is gets the reason, and the card stands', async () => {

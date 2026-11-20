@@ -36,6 +36,14 @@ In **Where is it?** you set the place one of two ways.
 1. Stand on the spot and tap {{button:outline|Use where I am}}. The map moves to you and says how sure your phone is.
 2. Drag the map until the ring is on the spot. Do this at a desk, or when your phone is not sure.
 
+The line under **Use where I am** says how that reading did.
+
+- *Precise Location is on.* means the ring is where you stand.
+- An amber line means the signal is weak. The map is near you. Drag it until the ring is on the spot.
+- *Precise Location looks off.* means the map was not moved. Your phone gave only an area, and its middle can be miles away.
+
+When the map was not moved, tap **Show the steps** under the line. The steps are for your phone. Turn the switch on and tap **Use where I am** again. Or drag the map by hand.
+
 Type a name, like *Pump house*. Then tap {{button:blue|Use this place}}. The name becomes a chip for the next task.
 
 The app asks your phone where it is only when you tap **Use where I am**. That one reading becomes the task's place. The app does not follow you after that.

@@ -16,6 +16,8 @@ vi.mock('../../lib/materials/myLocation', () => ({
     else onOk(phone.fix)
   },
 }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => 'iphone-safari' }))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 
@@ -84,6 +86,25 @@ describe('TaskPlaceBlock', () => {
     await waitFor(() => expect(document.querySelector('[data-task-place-far]')?.textContent).toBe('250 ft north-east of you. Your phone is sure within 30 ft.'))
     expect(phone.asked).toBe(1)
     // The picture gains a dot for the person.
+    expect(screen.getByTestId('still-map').textContent).toContain('Pump house | You')
+  })
+
+  it('says no distance from a rough reading, draws no dot at its middle, and shows the way to the switch (#402)', async () => {
+    // The middle of an area miles from the place: a distance from there would be nonsense said with a straight face.
+    phone.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    render(<TaskPlaceBlock place={PLACE} placedByName="Rosa" />)
+    fireEvent.click(screen.getByRole('button', { name: 'How far am I?' }))
+    const alert = await screen.findByRole('alert')
+    expect(document.querySelector('[data-task-place-far]')).toBeNull()
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('How far cannot be told from a reading that wide.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(screen.getByTestId('still-map').textContent).not.toContain('You')
+    // The press is ready again, and a sure reading then answers as it always did.
+    phone.fix = { lat: 29.5, lng: -98.3, accuracyM: 9 }
+    fireEvent.click(screen.getByRole('button', { name: 'How far am I?' }))
+    await waitFor(() => expect(document.querySelector('[data-task-place-far]')?.textContent).toBe('250 ft north-east of you. Your phone is sure within 30 ft.'))
+    expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByTestId('still-map').textContent).toContain('Pump house | You')
   })
 

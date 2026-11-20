@@ -5,7 +5,10 @@ import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { loadPaintedMap, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import { paintedLayerMaps, type PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
 import { TASK_PLACE_WAY_WORDS, taskPlaceWayStart, taskPlaceWayWords } from '../../lib/tasks/taskPlaceWay'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
+import { HOW_FAR_ROUGH_NOTE_WORDS } from '../../lib/tasks/taskPlaceReading'
 import { PAINT_COLOR, PAINT_SWATCH } from '../paintedMap/paintedMapLook'
+import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { requestMyFix, type MyFix } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -120,7 +123,10 @@ export function TaskPlaceBlock({
     )
   }, [])
 
-  const me = asked.kind === 'found' ? asked.me : null
+  const found = asked.kind === 'found' ? asked.me : null
+  // A rough reading is an area and not a spot (#402): no distance is said from its middle, and no dot is drawn there.
+  const areaM = found && isRoughFix(found.accuracyM) ? found.accuracyM : null
+  const me = areaM == null ? found : null
   const far = me ? taskPlaceHowFarWords(me, place) : null
   const pins: OnSiteMapPin[] = [
     { id: 'place', label: place.name, lat: place.lat, lng: place.lng, tone: 'ok' },
@@ -172,6 +178,11 @@ export function TaskPlaceBlock({
           <b>{far.lead}</b>
           {far.sure ? ` ${far.sure}` : ''}
         </p>
+      ) : null}
+      {areaM != null ? (
+        <div data-task-place-far-rough>
+          <PreciseReadingLine accuracyM={areaM} roughNote={HOW_FAR_ROUGH_NOTE_WORDS} />
+        </div>
       ) : null}
       {asked.kind === 'none' ? (
         <p role="status" data-task-place-no-fix style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
