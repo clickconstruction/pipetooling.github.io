@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { droppedReason, stuckReason, stuckSaidBy } from '../checklistCardEvents'
-import { FORWARD_KEEPS_WORDS, forwardPressLabel, forwardTakers, handBackLabel, handPeople, handPressLabel, handPushToGiver, handPushToTaker, handSentence, PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
+import { PASS_ANSWER_PICTURES, TASK_MAP_START_PICTURES, TASK_MORE_PICTURES, TASK_MORE_TITLE, type TaskMoreKey, FORWARD_KEEPS_WORDS, forwardPressLabel, forwardTakers, handBackLabel, handPeople, handPressLabel, handPushToGiver, handPushToTaker, handSentence, PASS_MIN_TASKS, PASS_PRESS_LABEL, passAnswers, passCountWords, passSummary, STUCK_REASONS, sortedPush, stuckChipWords, stuckListLabel, stuckPressLabel, stuckPush, stuckRowWords, stuckRule, stuckSentence, DROP_REASONS, DROP_REASON_MAX, TASK_MAP_NOT_OPENED, TASK_MAP_SHEET_FOOT, TASK_MAP_SHEET_TITLE, TASK_MORE_LABEL, addDaysYmd, dropPressLabel, dropPush, dropReasonTidy, dropRule, dropSentence, droppedLineWords, doerLineWords, moveDayPicks, moveDayPressLabel, moveDayPush, moveDayRule, moveDaySentence, movedTimesWords, taskMapStarts, taskMoreChoices } from './taskDoerActs'
 
 describe('a map from the person doing the task', () => {
   it('offers a line by hand, a walked line and a point, in that order', () => {
@@ -26,6 +26,51 @@ describe('More', () => {
   it('names itself and its rows in plain words', () => {
     expect(TASK_MORE_LABEL).toBe('⋯ More')
     for (const row of taskMoreChoices({ once: true, done: false })) expect(plainWordsFailures(row.words)).toEqual([])
+  })
+})
+
+describe('a picture beside every choice (v2.8034)', () => {
+  // Every list More can draw: a one-time task, a repeating one, a roadmap one, each plain, picked first, Next and stuck.
+  const SHAPES = [{ once: true }, { once: false }, { once: true, roadmap: true }, { once: true, vehicle: true }].flatMap((base) => [{}, { first: true }, { next: true }, { stuck: true }].map((state) => ({ done: false, ...base, ...state })))
+
+  it('every row of More carries the picture of its own key', () => {
+    const seen = new Set<TaskMoreKey>()
+    for (const shape of SHAPES) {
+      for (const row of taskMoreChoices(shape)) {
+        expect(row.picture).toBe(TASK_MORE_PICTURES[row.key])
+        seen.add(row.key)
+      }
+    }
+    // The shapes reach every act, so no key is left with a picture nothing draws.
+    expect([...seen].sort()).toEqual(Object.keys(TASK_MORE_PICTURES).sort())
+  })
+  it('no two rows of one sheet share a drawing, so a picture alone picks a row out', () => {
+    const lists = [...SHAPES.map((shape) => taskMoreChoices(shape)), ...SHAPES.map((shape) => passAnswers(shape)), taskMapStarts(true), taskMapStarts(false)]
+    for (const rows of lists) {
+      const drawings = rows.map((r) => r.picture.icon)
+      expect(new Set(drawings).size).toBe(drawings.length)
+    }
+  })
+  it('no two acts of More share a drawing at all', () => {
+    const drawings = Object.values(TASK_MORE_PICTURES).map((p) => p.icon)
+    expect(new Set(drawings).size).toBe(drawings.length)
+  })
+  it('the four ways out the owner drew are told apart by colour too', () => {
+    const tones = (['move', 'stuck', 'drop', 'hand'] as const).map((k) => TASK_MORE_PICTURES[k].tone)
+    expect(new Set(tones).size).toBe(4)
+    // Stuck wears the amber of the stuck mark on a card, and its undoing the green of a way made clear.
+    expect(TASK_MORE_PICTURES.stuck.tone).toBe('amber')
+    expect(TASK_MORE_PICTURES.unstuck.tone).toBe('green')
+  })
+  it('an answer of the pass that is one of More\'s acts wears that act\'s picture', () => {
+    for (const key of ['move', 'stuck', 'drop'] as const) expect(PASS_ANSWER_PICTURES[key]).toBe(TASK_MORE_PICTURES[key])
+    for (const row of passAnswers({ once: true, done: false })) expect(row.picture).toBe(PASS_ANSWER_PICTURES[row.key])
+  })
+  it('each way to start a map has its own picture', () => {
+    for (const row of taskMapStarts(true)) expect(row.picture).toBe(TASK_MAP_START_PICTURES[row.key])
+  })
+  it('the sheet is still called More for this task', () => {
+    expect(TASK_MORE_TITLE).toBe('More for this task')
   })
 })
 

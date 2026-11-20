@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
+import { ON_TAB_BAR_BORDER, ON_TAB_BAR_LAP_PX, onTabBarBottomCss, onTabBarKeyboardSlideCss } from '../../lib/bottomChrome'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
   DAY_PRESS_COLORS,
@@ -26,17 +27,19 @@ const SMALL_ROW = 44
 const BIG_ROW = 56
 /**
  * The bar's height with one-line labels: padding, the 44 px row, the gap, the 56 px row, padding, the
- * top border. The bar is not held to it — a label wraps on a narrow phone or with the phone's text made
+ * top border and the bottom one. The bar is not held to it — a label wraps on a narrow phone or with the phone's text made
  * larger, and the bar grows — so Layout pads <main> by the measured height, and this is only the value
  * before a measurement exists (and in a test, which has no layout).
  */
-export const JOB_MODE_PRESS_BAR_HEIGHT_PX = PAD + SMALL_ROW + PAD + BIG_ROW + PAD + 1
+export const JOB_MODE_PRESS_BAR_HEIGHT_PX = PAD + SMALL_ROW + PAD + BIG_ROW + PAD + 1 + ON_TAB_BAR_LAP_PX
 
 const barWrap: CSSProperties = {
   position: 'fixed',
   left: 0,
   right: 0,
-  bottom: 'var(--app-bottom-chrome, 0px)',
+  // On the tab bar's measured top edge, lapped over its border (v2.8035), so no strip of the page shows
+  // between the two; the bottom border draws the covered line again.
+  bottom: onTabBarBottomCss(),
   zIndex: JOB_MODE_PRESS_BAR_Z_INDEX,
   boxSizing: 'border-box',
   padding: `${PAD}px 10px`,
@@ -44,6 +47,7 @@ const barWrap: CSSProperties = {
   gap: PAD,
   background: 'var(--surface)',
   borderTop: '1px solid var(--border)',
+  borderBottom: ON_TAB_BAR_BORDER,
   // Slides out with the tab bar while the mobile keyboard is up (its rule, DispatchModeFooter):
   // position: fixed anchors to the layout viewport, so it would otherwise float mid-screen.
   transition: 'transform 0.15s ease',
@@ -193,7 +197,7 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held
       aria-hidden={keyboardOpen || undefined}
       style={{
         ...barWrap,
-        transform: keyboardOpen ? 'translateY(calc(100% + var(--app-bottom-chrome, 0px) + 1px))' : undefined,
+        transform: keyboardOpen ? onTabBarKeyboardSlideCss() : undefined,
         pointerEvents: keyboardOpen ? 'none' : undefined,
       }}
     >

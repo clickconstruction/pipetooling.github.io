@@ -9,6 +9,7 @@
  * The rules are `startChecks.ts`, the rows `startCheckRows.ts`, and every value is drawn in place (`ValuesInPlace`).
  */
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { shrinkPhoto } from '../../lib/materials/photoShrink'
@@ -39,6 +40,7 @@ import {
   type Stage,
   type ThemBullet,
   type UsBullet,
+  type UsReads,
 } from '../../lib/startChecks/startChecks'
 import {
   MOVE_AFTER_THEIRS_DAYS,
@@ -57,6 +59,7 @@ import {
   type StartTemplateRow,
 } from '../../lib/startChecks/startCheckRows'
 import type { StartChecksIo, StartWho } from '../../lib/startChecks/startChecksIo'
+import { READS_CHOICES, readsLabel } from '../../lib/startChecks/startCheckReaders'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence, ValuesLegend, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { StartCheckAskPanel, type AskMessagesDoor } from './StartCheckAskPanel'
 import { StartCheckDecidePanel } from './StartCheckDecidePanel'
@@ -384,7 +387,7 @@ function rowShell(children: ReactNode, more: ReactNode, testId: string, standing
   )
 }
 
-function OursRow({ b, line, rows, me, kind, canCompany, busy, act }: RowProps & { b: UsBullet }) {
+function OursRow({ b, line, rows, me, kind, canCompany, busy, act, press }: RowProps & { b: UsBullet }) {
   const [more, setMore] = useState(false)
   const yes = bulletIsYes(b)
   return rowShell(
@@ -400,10 +403,18 @@ function OursRow({ b, line, rows, me, kind, canCompany, busy, act }: RowProps & 
             <button type="button" className="scWord" disabled={busy} onClick={() => void act('It was not marked.', (w) => w.tickByHand(b.id, !yes, me))}>
               {b.door}
             </button>
+          ) : b.href && b.door ? (
+            // A bullet read from the app is fixed on the screen that holds the fact: its press is a door there.
+            <Link className="scWord" to={b.href}>
+              {b.door}
+            </Link>
           ) : null}
         </div>
       </div>
-      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>{whoseTag(b, '')}</span>
+      {/* Whose it is, and where it is read from: a value a person can change, in place. */}
+      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>
+        ours, <ChangeableValue text={readsLabel(b.reads)} label="where this is read from" type="choice" value={b.reads} choices={READS_CHOICES} hint="where this is read from" onKeep={(v) => press((w) => w.changeBullet(b.id, { reads: v as UsReads }))} />
+      </span>
       <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
         ⋯
       </button>

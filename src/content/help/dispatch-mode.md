@@ -29,6 +29,8 @@ The red badge on Inbox counts **open** dispatch and estimator requests — close
 1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.
 2. Toggle **Dispatch Mode**.
 
+Dispatch Mode, Job Mode and Task Mode are [one at a time](/help/task-mode#one-mode-at-a-time). Turning Dispatch Mode on turns Job Mode off on that device. With Job Mode on, the Job Mode bar takes this bar's place.
+
 It's per-person and per-device. Switching it on for yourself on your phone changes nothing for anyone else. It changes nothing for you on your desktop either.
 
 ## The tabs

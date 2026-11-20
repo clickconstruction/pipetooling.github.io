@@ -154,7 +154,12 @@ describe('a twin\'s rung from the dev seat (v2.7918)', () => {
   it('a new twin\'s plan and closing line name this pair, where they named a press', () => {
     const dry = twinDryRun({ kind: 'estimator' }, { fleet: [], holders: [] })
     if (!dry.ok) throw new Error(dry.refused)
-    expect(String(dry.reply.then)).toContain('The twin stays read-only: plan_twin_rung moves its rung, plan_twin_key_revoke cuts a key off, and Archive is a press at Settings → System → Digital twins.')
+    expect(String(dry.reply.then)).toContain('The twin stays read-only: plan_twin_rung moves its rung, plan_twin_key_revoke cuts a key off, and plan_twin_archive takes it out of the fleet, or brings it back with restore: true. plan_twin_seat makes a held seat again. Each is also a press at Settings → System → Digital twins.')
+    // The pricing robot has no seat in the other apps, so its plan names no seat verb.
+    const pricer = twinDryRun({ kind: 'pricer' }, { fleet: [], holders: [] })
+    if (!pricer.ok) throw new Error(pricer.refused)
+    expect(String(pricer.reply.then)).toContain('or brings it back with restore: true. Each is also a press at Settings → System → Digital twins.')
+    expect(String(pricer.reply.then)).not.toContain('plan_twin_seat')
     const steps = [{ step: 'account' as const, ok: true, words: '' }, { step: 'flags' as const, ok: true, words: '' }]
     expect(twinAppliedWords(steps, dry.seat)).toContain('It is read-only until plan_twin_rung moves it to rung 2.')
   })

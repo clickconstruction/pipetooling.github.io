@@ -130,7 +130,8 @@ export type StageLine = { fixtureId: string; jobId: string; name: string; order:
 // ---------- A bullet of ours ----------
 
 /** What the app read for a bullet of ours: ready or not, the fact in a few words, and the press that fixes it. */
-export type UsReading = { ok: boolean; fact: string; door: string }
+/** `href` is the screen that holds the fact, when the press is a door and not a tick. */
+export type UsReading = { ok: boolean; fact: string; door: string; href?: string | null }
 
 /** A bullet of ours that a person ticks: nobody has, or who did and when. */
 export function handReading(row: Pick<StartBulletRow, 'hand_ok' | 'hand_ok_at' | 'hand_ok_by_name'>, dayOf: (iso: string) => string): UsReading {
@@ -140,7 +141,7 @@ export function handReading(row: Pick<StartBulletRow, 'hand_ok' | 'hand_ok_at' |
   return { ok: true, fact: `Marked done${who ? ` by ${who}` : ''}${when ? `, ${when}` : ''}.`, door: 'Mark it not done' }
 }
 
-/** A bullet of ours whose reader is not built yet reads open, and says so. */
+/** A bullet of ours with no reader handed in reads open, and says so. */
 export const UNREAD: UsReading = { ok: false, fact: 'The app does not read this yet.', door: '' }
 
 // ---------- Rows into a stage ----------
@@ -176,7 +177,7 @@ export function stageFromRows(line: StageLine, rows: StartCheckRows, ctx: StageC
     .map((b): Bullet => {
       if (b.waits_on === 'us') {
         const reading = (b.reads === 'hand' ? handReading(b, ctx.dayOf) : ctx.readUs?.(b)) ?? UNREAD
-        return { id: b.id, on: 'us', words: b.words, reads: b.reads ?? 'hand', ok: reading.ok, fact: reading.fact, door: reading.door }
+        return { id: b.id, on: 'us', words: b.words, reads: b.reads ?? 'hand', ok: reading.ok, fact: reading.fact, door: reading.door, ...(reading.href ? { href: reading.href } : {}) }
       }
       const mark = liveMark.get(b.id)
       return {

@@ -39,6 +39,16 @@ Check the truck fluids {{chip:green|Done}}
 
 Tap {{button:outline|Exit}} on the green **Task Mode** strip at the top of the page. Or, same as before, open the {{icon:gear}} gear menu and tap **Task Mode**. The full app comes back exactly as you left it. Job Mode or Dispatch Mode is on again if you had one of those on before.
 
+## One mode at a time
+
+Job Mode, Dispatch Mode and Task Mode each change the whole app. So only one of them is on at a time.
+
+- The {{icon:gear}} gear menu ticks the mode you are in. It never ticks two.
+- Tap another mode and the app switches to it. The tick moves with it.
+- Turn a mode off and you go back to the mode you had before. A sub who leaves Task Mode is back in Job Mode.
+
+**Pin Mode**, **Fix Mode** and **Dark Mode** are not part of this. Each of those goes on or off by itself.
+
 ## Good to know
 
 - The toggle is **per device and per account**. Turning it on at the shop tablet does not change your phone.

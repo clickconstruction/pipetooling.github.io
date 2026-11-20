@@ -34,7 +34,7 @@ The date and the green sentence of where the day stands. Then **Next**, **Then**
 :::
 
 :::card Waiting For
-Roadmap steps that wait on an earlier step. They show under the older tasks.
+Roadmap steps that wait on an earlier step. They show under the older tasks as one folded row. Press the row to open the list.
 :::
 
 :::

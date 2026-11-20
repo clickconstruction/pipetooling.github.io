@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; PeopleContractsTab dossiers; PeopleOverheadTab dossiers; Stage-A candidates; Test coverage; Cross-surface duplication; Recommended extraction order; What must stay in the parents; Preserve-quirks list; Recent churn
-last_updated: 2026-11-11
+last_updated: 2026-11-20
 ---
 
 ## What this surface is
@@ -49,7 +49,7 @@ Two **cross-component couplings via the DB, not via props** (neither blocks extr
 | Assign packets modal | C | 280–283, 331–340, 1771–1902, render 2453–2698 | ~130 + 246 | med (caches, `selectedContractsPersonName`) | low-med | consequence kernel only | inline → `ContractsAssignPacketsModal` |
 | Add/Edit document modal | C | state 202–274; fields 285–633; handlers 1433–1672; render 2700–3375 | ~25 states, ~520 + 676 | high (Book pick, save-and-send chain, paper entry) | high | date kernels only | inline — extract last |
 | Delete-confirm dialog | C | 1569–1594, render 3377–3461 | ~110 | low | low | none | inline |
-| Send-for-signature modal | C | state 228–249; 1299–1363; 1674–1768; render 3536–3667 | ~8 states, ~160 + 132 | low-med (send request set by 3 openers) | low | email builder tested | inline — **extract first** |
+| Send-for-signature modal | C | state 228–249; 1299–1363; 1674–1768; render 3536–3667 | ~8 states, ~160 + 132 | low-med (send request set by 3 openers) | low | email builder tested; `ContractSendWindow.render.test.tsx` | **extracted** (v2.7932: [`ContractSendWindow`](../src/components/contracts/ContractSendWindow.tsx), rules in `lib/contracts/personPaperSend.ts`, calls in `personPaperSendIo.ts`; Documents → Agreements mounts the same window) |
 | Extracted children (Library, Book, Signed record, Help, Office form, Paper entry) | C | 3474–3534 | ~60 wiring | — | — | Help modal render test | wiring stays in tab |
 | Weekly data engine (4 fetch effects + bucket effect + memos) | O | 421–682, 690–709, 818–918 | ~400 | highest | — | libs tested; `overheadTableTotals` none | stays in tab (or `usePeopleOverheadWeek`) |
 | 90-day snapshot unpack | O | 711–787 | 77 | high (6 states) | — | `overheadPoolSnapshot` 9 tests | engine **extracted**; unpack stays |
@@ -79,8 +79,8 @@ Two **cross-component couplings via the DB, not via props** (neither blocks extr
 ### Contracts data engine (stays in tab)
 
 - **State:** the four caches, `contractsLoading`, `contractsError`, `twoPartyTemplateIds`.
-- **Loader `loadContracts()` (635–671):** `Promise.all` of 4 SELECTs — `contract_templates`, `contract_template_documents` (incl. `book_body_html`, `book_body_format`, `tags`, `canonical_document_url`, `updated_at`, `book_version_date`, `audience`, `form_template_id`), `person_contract_assignments`, `person_contract_documents` (incl. lineage columns, `applied_*`, `sent_at`, `signer_last_viewed_at`, `form_template_id`, `office_completed_at`) — then a **sequential** `contract_form_templates` (`id, schema`) read for the distinct `form_template_id`s → `twoPartyTemplateIdSet` (Contract Forms PR 8). Every mutation handler ends with `loadContracts()` (full refetch, no patching).
-- **Effects:** initial load behind an 80 ms `setTimeout` (1904–1909; preserve); deep link `?doc=<uuid>` → `contractSignedRecordModalDocId` (266–271, mount-only).
+- **Loader `loadContracts()` (635–671):** `Promise.all` of 4 SELECTs — `contract_templates`, `contract_template_documents` (incl. `book_body_html`, `book_body_format`, `tags`, `canonical_document_url`, `updated_at`, `book_version_date`, `audience`, `form_template_id`), `person_contract_assignments`, `person_contract_documents` (incl. lineage columns, `applied_*`, `sent_at`, `signer_last_viewed_at`, `form_template_id`, `office_completed_at`) — then a **sequential** `contract_form_templates` (`id, schema`) read for the distinct `form_template_id`s → `twoPartyTemplateIdSet` (Contract Forms PR 8). Since v2.7938 the four select lists are `lib/contracts/contractsLibraryIo.ts`' constants. A trade company's paper (`gc-company:<id>`) and, since v2.7995, an outside party's (`party:<contact id>`) are dropped from `person_contract_documents` before the tab holds them (`isCompanyPaperName`, `isPartyPaperName`), so neither is listed or counted on People. Every mutation handler ends with `loadContracts()` (full refetch, no patching).
+- **Effects:** initial load behind an 80 ms `setTimeout` (1904–1909; preserve); deep link `?doc=<uuid>` is read once on mount (`contractsDocLinkIdOnMount`, `contractsDocLinkId`) and answered after the first read of the papers by `contractsDocLanding` (`lib/contractsDocLink.ts`, v2.7924). A signed paper, or an id the tab does not list, opens `contractSignedRecordModalDocId`. A paper that is not signed opens its person's line through `jumpToContractsPerson`, with the row marked (`contractsMarkedDocId`, `data-contract-doc-row`). A person with no line gets `contractsDocOffRosterWords` in `contractsError`.
 
 ### Pure row/payload builders (Stage-A cluster, inline closures over the caches)
 
