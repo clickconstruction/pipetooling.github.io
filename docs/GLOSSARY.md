@@ -5374,6 +5374,7 @@ A set or as-built with no link gets its own folder, **Plans › <set name>**, un
 the crew's as-built takes **Photos or a PDF** from the phone (the table holds the author's row to a job they are on whose part is the set's, `plan_set_crew_on_job`, v2.6583, and reads a crew member the part their job builds from on a development too, `plan_part_crew_can_see`, v2.6604, punch list #272, both `SECURITY DEFINER` since the team table hides a helper's own crew row;
 since v2.6609, punch list #276, the Plans section sits in the crew's own read-only job window under the job's status, `DetailJobModalPlans`, with **Add our as-built** and no **+ New set**, the old *Open plans* row kept only while the read finds no part);
 the mail door files the mail's files into the paper's folder (PR 5, the edge function `plan-set-files` over `_shared/planSetFilesRun.ts`).
+Since v2.7969 a picture from inside the mail's words, a signature's logo or a Drive link's preview (`isInlinePicture`, `src/lib/messages/inlinePicture.ts`), stays out of that folder and the line under the mail counts it (`splitMailFiles` → `pictures`).
 The card (`to-dos/plan-sets-by-part/`) retired 2026-11-07 after the mail door's live check: a tagged mail's PDF landed in **Plans › <paper name>** under the job's Plans folder and the paper took the folder's link;
 the site look gained *Move to…* and × on a paper the same day (v2.6632).
 

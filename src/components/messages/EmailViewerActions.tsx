@@ -25,6 +25,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { BidMailSetDoor } from '../bids/BidMailSetDoor'
 import { MailPaperDoor } from '../papers/MailPaperDoor'
+import { realFileCount } from '../../lib/plans/planSetFiles'
 import { Btn, input } from '../gc/gcUi'
 import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
 import { useOpenThread } from '../gc/messages/openThread'
@@ -130,7 +131,7 @@ export function EmailViewerActions({ message, invitation, presses, io, me, say, 
             senderAddress={message.direction === 'in' ? (contact?.channels.find((ch) => ch.kind === 'email')?.value ?? null) : null}
             at={message.at}
             messageId={message.id}
-            mailFileCount={(message.files ?? []).filter((f) => f.kept !== 'link').length}
+            mailFileCount={realFileCount((message.files ?? []).filter((f) => f.kept !== 'link'))}
           />
         </div>
       )}

@@ -110,6 +110,28 @@ describe('MailPaperDoor', () => {
     /** The color on the screen, since *did not land* once drew in green. */
     const colorOf = (kept: HTMLElement) => kept.querySelector('p')!.getAttribute('style') ?? ''
 
+    it('a signature’s logo and a Drive link’s preview stay out of the paper’s folder, and the line says so (v2.7969)', async () => {
+      const filesIo = filesIoOf({
+        attachmentsOf: vi.fn(async () => [file('p1', 'image001.png'), file('a1', 'spec-book.pdf'), file('p2', 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png')]),
+      })
+      await openForm(keptPaper(), filesIo)
+      keepIt()
+      const kept = await screen.findByTestId('mail-paper-kept')
+      await waitFor(() => expect(kept.textContent).toContain('The mail’s file is in the paper’s folder. 2 pictures inside the mail’s words were left out, logos or link previews.'))
+      expect((filesIo.saveAttachment as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1])).toEqual(['a1'])
+      expect(kept.getAttribute('data-tone')).toBe('success')
+      expect(screen.queryByRole('button', { name: /again/ })).toBeNull()
+    })
+
+    it('a mail with only such a picture keeps the paper and sends nothing', async () => {
+      const filesIo = filesIoOf({ attachmentsOf: vi.fn(async () => [file('p1', 'image001.png')]) })
+      await openForm(keptPaper(), filesIo)
+      keepIt()
+      const kept = await screen.findByTestId('mail-paper-kept')
+      await waitFor(() => expect(kept.textContent).toContain('The mail had no file to keep. One picture inside the mail’s words was left out, a logo or a link’s preview.'))
+      expect(filesIo.saveAttachment).not.toHaveBeenCalled()
+    })
+
     it('all landed reads green', async () => {
       await openForm(keptPaper(), filesIoOf({ attachmentsOf: vi.fn(async () => [file('a1', 'spec-book.pdf')]) }))
       keepIt()

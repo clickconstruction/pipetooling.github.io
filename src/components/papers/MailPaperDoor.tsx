@@ -5,7 +5,8 @@
  * line and its ask. The job's part is read when the press opens: the job's own part, or one of its development's
  * parts to pick; a job outside any development with no part gets its own part made. The mail's files follow the
  * paper into its own folder under the job's Plans folder (punch list #239, PR 5, `plan-set-files`), one by one past
- * any that fails, a file that stayed in Gmail named instead of sent; the link field still takes a Drive link when the
+ * any that fails, a file that stayed in Gmail named instead of sent, a signature's logo or a Drive link's preview left
+ * out and counted (v2.7969); the link field still takes a Drive link when the
  * paper lives somewhere else. What became of the files is said in words that match the color, and a file that did not
  * land, or a read that failed, is tried again on the same paper, never a second one.
  */
@@ -124,11 +125,13 @@ export function MailPaperDoor({
   const fileTheMail = async (setId: string, lineId: string, before: MailFilesResult, only: MailFile[]): Promise<{ files: MailFilesResult; retry: MailFile[] }> => {
     let ready = only
     let left = before.left
+    let pictures = before.pictures ?? 0
     if (only.length === 0) {
       try {
         const split = splitMailFiles(await filesIo.attachmentsOf(lineId))
         ready = split.ready
         left = split.left
+        pictures = split.pictures.length
       } catch (e) {
         return { files: { ...before, readFailed: formatErrorMessage(e, 'The read did not finish.') }, retry: [] }
       }
@@ -142,7 +145,7 @@ export function MailPaperDoor({
       }
     }
     return {
-      files: { ...before, readFailed: null, left, landed: before.landed + ready.length - failed.length, failed: failed.map((x) => ({ name: x.file.name, why: x.why })) },
+      files: { ...before, readFailed: null, left, pictures, landed: before.landed + ready.length - failed.length, failed: failed.map((x) => ({ name: x.file.name, why: x.why })) },
       retry: failed.map((x) => x.file),
     }
   }
