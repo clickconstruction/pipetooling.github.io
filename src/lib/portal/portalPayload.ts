@@ -1,4 +1,5 @@
 import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
+import type { GcPageStage } from '../startChecks/gcPage'
 import { TRADE_COLORS } from '../tradeColors'
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
@@ -122,6 +123,8 @@ export type PortalPayload = {
   bankTransfer: BankTransferDetails | null
   /** Stage Plan PR 5: the stage sequence on jobs that share dates with this GC — the company's voice, never a name, no money. */
   stages: PortalJobStages[]
+  /** Before we start (punch list #382, PR 9): what we need from this GC before each stage, on jobs whose own switch is on. */
+  startChecks: PortalStartChecksJob[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
   promise: { promisedYmd: string; source: 'office' | 'customer' } | null
   /** Your payments (v2.4053): the viewer's jobs with the bills they pay and the payments on them, pre-scoped by `_shared/portalChecks.ts`; null from a function without it. */
@@ -552,6 +555,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     testReports: parsePortalTestReports(r.testReports),
     bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
+    startChecks: Array.isArray(r.startChecks) ? r.startChecks.map(parseStartChecksJob).filter((x): x is PortalStartChecksJob => x != null) : [],
     promise: parsePortalPromise(r.promise),
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
@@ -751,6 +755,36 @@ function parseAsk(raw: unknown): PortalGcAsk | null {
   if (!sp) return null
   const answer = r.answer === 'accepted' ? 'accepted' : r.answer === 'proposed' ? 'proposed' : 'open'
   return { ...sp, note: typeof r.note === 'string' && r.note.trim() ? r.note.trim() : null, answer, answerNote: typeof r.answerNote === 'string' && r.answerNote.trim() ? r.answerNote.trim() : null }
+}
+
+/** One job's stages as the page shows them before we start: what is still needed from them, and what is settled. */
+export type PortalStartChecksJob = { jobId: string; jobLabel: string; jobAddress: string | null; stages: GcPageStage[] }
+
+function parseStartChecksJob(raw: unknown): PortalStartChecksJob | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const jobId = typeof r.jobId === 'string' ? r.jobId : ''
+  if (!jobId) return null
+  const text = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const stages: GcPageStage[] = []
+  for (const e of Array.isArray(r.stages) ? r.stages : []) {
+    if (e == null || typeof e !== 'object') continue
+    const s = e as Record<string, unknown>
+    const fixtureId = text(s.fixtureId)
+    if (!fixtureId) continue
+    const rowsOf = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => x != null && typeof x === 'object') : [])
+    stages.push({
+      fixtureId,
+      name: text(s.name) || 'Stage',
+      need: rowsOf(s.need).filter((b) => text(b.id) && text(b.words)).map((b) => ({ id: text(b.id), words: text(b.words), wantsPhoto: b.wantsPhoto === true, waitsOnPhoto: b.waitsOnPhoto === true })),
+      settled: rowsOf(s.settled).filter((b) => text(b.id) && text(b.words)).map((b) => ({ id: text(b.id), words: text(b.words), how: text(b.how) })),
+      marks: Array.isArray(s.marks) ? s.marks.map((m) => m === true) : [],
+      pct: Math.max(0, Math.min(100, Math.floor(Number(s.pct) || 0))),
+      crewConfirmedFor: /^\d{4}-\d{2}-\d{2}$/.test(text(s.crewConfirmedFor)) ? text(s.crewConfirmedFor) : null,
+    })
+  }
+  if (!stages.length) return null
+  return { jobId, jobLabel: text(r.jobLabel), jobAddress: text(r.jobAddress).trim() || null, stages }
 }
 
 const STEP_STATES: PortalGcStepState[] = ['done', 'now', 'next', 'later']

@@ -261,6 +261,33 @@ describe('JobDocumentsStartChecks', () => {
     expect(row('material').textContent).toContain('The app does not read this yet.')
   })
 
+  it('the job’s second switch sits in place for the office on a job with a GC, and says what else their page needs', async () => {
+    const db = seeded()
+    await mount(db, { ...JOB, hasGc: true, sharesStageDates: false } as typeof JOB)
+    const lineOf = () => document.querySelector('[data-start-check-gc-page]') as HTMLElement
+    expect(lineOf().textContent).toBe('The GC’s page does not show what we need from them before each stage.')
+    fireEvent.click(screen.getByRole('button', { name: 'does not show, what the GC’s page shows, press to change' }))
+    await keep('what the GC’s page shows', 'on')
+    await waitFor(() => expect(lineOf().dataset.startCheckGcPage).toBe('on'))
+    expect(db.job?.shows_on_gc_page).toBe(true)
+    expect(lineOf().textContent).toContain('It shows nothing until Share stage dates is on, under the GC on the job’s form.')
+    // A bullet's eye, on its more press. One on them starts shown.
+    await openStage('Top Out')
+    fireEvent.click(within(row('inspection')).getByRole('button', { name: 'More on: The framing inspection has passed.' }))
+    fireEvent.click(within(row('inspection')).getByRole('button', { name: 'Shows on the GC’s page' }))
+    await waitFor(() => expect(db.rows.bullets.find((b) => b.id === 'inspection')?.shown_to_gc).toBe(false))
+    expect(within(row('inspection')).getByRole('button', { name: 'Hidden from the GC’s page' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('offers no switch on a job with no GC, or to a seat outside the office', async () => {
+    await mount(seeded())
+    expect(document.querySelector('[data-start-check-gc-page]')).toBeNull()
+    cleanup()
+    authRole = 'superintendent'
+    await mount(seeded(), { ...JOB, hasGc: true } as typeof JOB)
+    expect(document.querySelector('[data-start-check-gc-page]')).toBeNull()
+  })
+
   it('the row’s more press asks for a photo, takes a bullet off, and keeps the day they promised', async () => {
     const db = seeded()
     await mount(db)

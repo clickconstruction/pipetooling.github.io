@@ -78,6 +78,7 @@ export const IMPORTERS = [
   'send-scheduled-reminders',
   'send-workflow-notification',
   'stripe-webhook',
+  'submit-portal-request',
   'team-scores',
   'walk',
   'watch-notify-dispatch',
@@ -332,6 +333,8 @@ export const ENTRIES = {
   'lib/bids/pricingWriteTarget.ts': { values: [], types: [] },
   // The dev seat's plan_bid_pricing: which book entry a row prices from, the tab's own rule.
   'lib/bids/resolvePricingEntry.ts': { values: [], types: [] },
+  // Before we start on the GC's page (punch list #382, PR 9): what the page may show and what it may send back.
+  'lib/startChecks/gcPage.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

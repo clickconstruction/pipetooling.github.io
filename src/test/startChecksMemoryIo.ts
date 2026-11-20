@@ -119,6 +119,10 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       if ('developmentId' in home) db.site = { id: db.site?.id ?? id('s'), development_id: home.developmentId, job_id: null, notice_days: days, shows_on_gc_page: false }
       else db.job = { id: db.job?.id ?? id('s'), development_id: null, job_id: home.jobId, notice_days: days, shows_on_gc_page: db.job?.shows_on_gc_page ?? false }
     },
+    setShowsOnGcPage: async (jobId, on) => {
+      write('setShowsOnGcPage')
+      db.job = { id: db.job?.id ?? id('s'), development_id: null, job_id: jobId, notice_days: db.job?.notice_days ?? null, shows_on_gc_page: on }
+    },
     setWindow: async (line, start, end) => {
       write('setWindow')
       db.lines = db.lines.map((l) => (l.fixtureId === line.fixtureId ? { ...l, window: [start, end] } : l))
