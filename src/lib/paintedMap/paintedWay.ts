@@ -3,12 +3,18 @@
  * they are, once they ask. Pure. Since v2.7414 a reader who is not signed in gives a name first, and
  * the page says what the company keeps before it asks: the name, the device, and where they are once
  * they press Show where I am. The sample keeps nothing and sends nothing.
+ *
+ * Since v2.8004 (punch list #402) the page tells a reading that is a spot from one that is only an
+ * area (`wayReading`). An area draws no dot and gets no word about where the reader stands, since
+ * its middle can be miles from them.
  */
 import { haversineMeters } from '../jobTravelEstimate'
 import { taskPlaceAccuracyWords, taskPlaceDirection, taskPlaceDistanceWords } from '../tasks/taskPlace'
+import type { PaintedCanvasMe } from './marginFrame'
 import { nearestOnLine, type PaintedPoint } from './paintedLine'
 import { paintedMapDeviceId, paintedMapVisitorName } from './paintedMapLink'
 import { lineHowWords, type PaintedLine } from './paintedMap'
+import { isPoorFix, isRoughFix } from './paintedTrack'
 
 /** Nearer the line than this, the reader is on it: about 80 ft, a phone's margin on a bad day. */
 export const WAY_ON_LINE_METERS = 25
@@ -21,10 +27,33 @@ export const WAY_FRAME_METERS = 2000
 /**
  * Is the reader near enough for one picture to hold them and the map? Farther off, the picture
  * stays on the map and the words say how far the start is: a map zoomed out to hold a reader
- * across town shows neither the line nor where they stand.
+ * across town shows neither the line nor where they stand. `withinM` is how near counts, for a
+ * reader who is an area and not a spot.
  */
-export function wayNearMap(me: PaintedPoint, points: ReadonlyArray<PaintedPoint>): boolean {
-  return points.some((p) => haversineMeters(me, p) <= WAY_FRAME_METERS)
+export function wayNearMap(me: PaintedPoint, points: ReadonlyArray<PaintedPoint>, withinM: number = WAY_FRAME_METERS): boolean {
+  return points.some((p) => haversineMeters(me, p) <= withinM)
+}
+
+/**
+ * What the shared page makes of the reader's newest reading (punch list #402, call 6).
+ * - `finding`: no reading yet, or a rough one the page is still waiting on. Nobody is drawn.
+ * - `spot`: the reader is a dot, and the words say where they stand against the map. `weak` says
+ *   the signal is. `together` says one picture holds the reader and the map.
+ * - `area`: the phone gives only an area. No dot, and no word about where the reader stands.
+ *   `circle` says the map pulls back to the whole of it, which it does when the area's edge is
+ *   near the map: the margin is added to how near counts.
+ */
+export type WayReading =
+  | { kind: 'finding' }
+  | { kind: 'spot'; me: PaintedCanvasMe; weak: boolean; together: boolean }
+  | { kind: 'area'; me: PaintedCanvasMe; circle: boolean }
+
+export function wayReading(me: (PaintedPoint & { accuracyM: number | null }) | null, roughHeld: boolean, points: ReadonlyArray<PaintedPoint>): WayReading {
+  if (!me) return { kind: 'finding' }
+  const at = { lat: me.lat, lng: me.lng, accuracyM: me.accuracyM }
+  if (!isRoughFix(me.accuracyM)) return { kind: 'spot', me: at, weak: isPoorFix(me.accuracyM), together: wayNearMap(me, points) }
+  if (!roughHeld) return { kind: 'finding' }
+  return { kind: 'area', me: { ...at, area: true }, circle: wayNearMap(me, points, WAY_FRAME_METERS + (me.accuracyM ?? 0)) }
 }
 
 /** The reader's dot stays on their phone. Said under it, every time. */

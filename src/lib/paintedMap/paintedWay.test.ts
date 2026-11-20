@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromPlane, type PaintedPoint } from './paintedLine'
-import { WAY_DEVICE_KEY, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_KEY, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from './paintedWay'
+import { WAY_DEVICE_KEY, WAY_FRAME_METERS, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_KEY, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayReading, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from './paintedWay'
 
 const ORIGIN: PaintedPoint = { lat: 29.5, lng: -98.2 }
 const at = (eastM: number, northM: number): PaintedPoint => fromPlane(ORIGIN, { x: eastM, y: northM })
@@ -40,6 +40,62 @@ describe('whether one picture can hold the reader and the map', () => {
   })
   it('holds nobody against a map with nothing on it', () => {
     expect(wayNearMap(at(0, 0), [])).toBe(false)
+  })
+  it('counts as near whatever distance it is told to, for a reader who is an area', () => {
+    expect(WAY_FRAME_METERS).toBe(2000)
+    expect(wayNearMap(at(-5000, 0), points)).toBe(false)
+    expect(wayNearMap(at(-5000, 0), points, 5200)).toBe(true)
+    expect(wayNearMap(at(-5000, 0), points, 4999)).toBe(false)
+  })
+})
+
+describe('what the shared page makes of a reading (#402)', () => {
+  const points = LINES[0]!.points
+  const me = (eastM: number, northM: number, accuracyM: number | null) => ({ ...at(eastM, northM), accuracyM })
+
+  it('is still finding the reader with no reading', () => {
+    expect(wayReading(null, false, points)).toEqual({ kind: 'finding' })
+    expect(wayReading(null, true, points)).toEqual({ kind: 'finding' })
+  })
+
+  it('takes a sure reading as a spot, held in one picture with the map when it is near', () => {
+    const near = me(50, 10, 5)
+    expect(wayReading(near, false, points)).toEqual({ kind: 'spot', me: near, weak: false, together: true })
+    const far = me(9000, 0, 5)
+    expect(wayReading(far, false, points)).toEqual({ kind: 'spot', me: far, weak: false, together: false })
+  })
+
+  it('takes a weak reading as a spot too, and says it is weak, at the walk’s own 20 m', () => {
+    expect(wayReading(me(50, 10, 20), false, points)).toMatchObject({ kind: 'spot', weak: false })
+    expect(wayReading(me(50, 10, 20.01), false, points)).toMatchObject({ kind: 'spot', weak: true })
+    expect(wayReading(me(50, 10, 1000), true, points)).toMatchObject({ kind: 'spot', weak: true })
+  })
+
+  it('takes a reading with no margin as a spot that claims nothing', () => {
+    expect(wayReading(me(50, 10, null), false, points)).toMatchObject({ kind: 'spot', weak: false, together: true })
+  })
+
+  it('is still finding the reader on a rough reading the page is waiting on, so nobody is drawn', () => {
+    expect(wayReading(me(50, 10, 1000.01), false, points)).toEqual({ kind: 'finding' })
+    expect(wayReading(me(50, 10, 3200), false, points)).toEqual({ kind: 'finding' })
+  })
+
+  it('takes a rough reading that has stayed rough as an area, marked so the map draws no dot', () => {
+    const r = wayReading(me(50, 10, 3200), true, points)
+    expect(r).toEqual({ kind: 'area', me: { ...me(50, 10, 3200), area: true }, circle: true })
+  })
+
+  it('shows the whole circle when the area’s edge is near the map: the margin is added to how near counts', () => {
+    // The middle is 5 km off, past the 2 km a spot gets. Its edge, 3.2 km in, is not.
+    expect(wayReading(me(-5000, 0, 3200), true, points)).toMatchObject({ kind: 'area', circle: true })
+    expect(wayReading(me(-5200, 0, 3200), true, points)).toMatchObject({ kind: 'area', circle: true })
+    expect(wayReading(me(-5300, 0, 3200), true, points)).toMatchObject({ kind: 'area', circle: false })
+    // The same middle with a tight margin is a spot across town.
+    expect(wayReading(me(-5000, 0, 5), true, points)).toMatchObject({ kind: 'spot', together: false })
+  })
+
+  it('never lets the wait turn a reading that is not rough into an area', () => {
+    for (const m of [0, 5, 20, 35, 300, 1000, null]) expect(wayReading(me(50, 10, m), true, points).kind).toBe('spot')
   })
 })
 
