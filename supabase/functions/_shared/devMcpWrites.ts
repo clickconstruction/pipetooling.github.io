@@ -41,6 +41,7 @@ import { isRobotBookPriceVerb, robotBookPriceInput } from './devMcpRobotBookPric
 import { isPriceMatrixVerb, priceMatrixInput } from './devMcpPriceMatrix.ts'
 import { isTwinArchiveVerb, twinArchiveInput } from './devMcpTwinArchive.ts'
 import { isRoundsStopVerb, roundsKeyCommitment, roundsStopInput } from './devMcpRoundsStop.ts'
+import { isTwinSeatVerb, twinSeatInput } from './devMcpTwinSeat.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
@@ -327,6 +328,12 @@ export const WRITE_VERBS = {
   // (devMcpRoundsStop.ts).
   plan_rounds_stop: { rpc: null, step: 'plan' },
   apply_rounds_stop: { rpc: null, step: 'apply' },
+  // v2.7974 / 0.117.0: a twin's held seat in CountTooling or TakeoffTooling made again as the link button on the
+  // twin's row does — ct-bridge or tt-bridge's own create as the dev, idempotent there, and the CountTooling seat's
+  // id saved on the twin's users row; no wrapper, so rpc is null — the dry run is the server's read of the twin and
+  // tt-bridge's lookup of the TakeoffTooling seat (devMcpTwinSeat.ts).
+  plan_twin_seat: { rpc: null, step: 'plan' },
+  apply_twin_seat: { rpc: null, step: 'apply' },
   // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
   // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
   // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
@@ -630,6 +637,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTwinSeatVerb(verb)) {
+    // v2.7974: the shape check is devMcpTwinSeat's; the dry run is the server's read of the twin and of its seats.
+    const built = twinSeatInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1620,6 +1633,12 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
     // key by its id, label and stop and leaves those two out.
     return { ...rest, change: roundsKeyCommitment(r.change), already: roundsKeyCommitment(r.already) }
   }
+  if (verb === 'plan_twin_seat' || verb === 'apply_twin_seat') {
+    // v2.7974: a warning carries a bridge's own words for why a lookup failed, which can differ call to call, so the
+    // plan commits to where each seat stands and leaves the warnings out.
+    const { warnings: _warnings, ...held } = rest
+    return held
+  }
   return rest
 }
 
@@ -1739,6 +1758,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_twin_seat') return `Nothing written: this plan was already applied${when}. plan_twin_seat reads where each of the twin's seats stands now; a seat still held needs a new plan.`
   if (verb === 'apply_twin_archive') return `Nothing written: this plan was already applied${when}. The twin stands as it left it; plan_twin lists the fleet, and plan_twin_archive says whether it is archived now.`
   if (verb === 'apply_rounds_stop') return `Nothing written: this plan was already applied${when}. The rounds stand as it set them; read_twin_keys lists each key with its stop.`
   if (verb === 'apply_price_matrix_request') return `Nothing written: this plan was already applied${when}. The ask stands as it left it; plan_price_matrix_request reads where the bid's ask is now.`
