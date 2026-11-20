@@ -177,6 +177,8 @@ The chips over the list filter it. Each chip shows its count. A chip is left out
 
 **Ask for** says nobody looked the name up yet. Press **Google the builder** to search for who to ask for.
 
+The list waits when the app cannot read the permits. The red line says why, and no name shows. Press **Retry** to read them again. When only the answers fail to read, the list still shows. A name already answered may then be on the list, and the line under the reason says so.
+
 ## See whether the companies we bid build here
 
 The table under the call list lists every company we priced a job for in two years. Each row shows our bids, our wins and the permits its names pulled. The permits are commercial ones from the last twelve months, in every city the app reads. A practice bid does not count. A customer named for a bid site does not count either.
