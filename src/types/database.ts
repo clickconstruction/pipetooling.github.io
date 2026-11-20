@@ -7684,9 +7684,11 @@ export type Database = {
           paper_revision: number | null
           result_v: number | null
           scope: string[]
+          slot: string | null
           state: string
           text_en: string
           text_es: string
+          when_opts: Json | null
           why: string
         }
         Insert: {
@@ -7705,9 +7707,11 @@ export type Database = {
           paper_revision?: number | null
           result_v?: number | null
           scope: string[]
+          slot?: string | null
           state?: string
           text_en: string
           text_es?: string
+          when_opts?: Json | null
           why?: string
         }
         Update: {
@@ -7726,9 +7730,11 @@ export type Database = {
           paper_revision?: number | null
           result_v?: number | null
           scope?: string[]
+          slot?: string | null
           state?: string
           text_en?: string
           text_es?: string
+          when_opts?: Json | null
           why?: string
         }
         Relationships: [
@@ -7775,9 +7781,11 @@ export type Database = {
           retired_by_name: string | null
           scope: string[]
           sequence_order: number
+          slot: string | null
           text_en: string
           text_es: string
           version: number
+          when_opts: Json | null
         }
         Insert: {
           created_at?: string
@@ -7791,9 +7799,11 @@ export type Database = {
           retired_by_name?: string | null
           scope?: string[]
           sequence_order: number
+          slot?: string | null
           text_en: string
           text_es?: string
           version?: number
+          when_opts?: Json | null
         }
         Update: {
           created_at?: string
@@ -7807,9 +7817,11 @@ export type Database = {
           retired_by_name?: string | null
           scope?: string[]
           sequence_order?: number
+          slot?: string | null
           text_en?: string
           text_es?: string
           version?: number
+          when_opts?: Json | null
         }
         Relationships: [
           {
@@ -7952,9 +7964,15 @@ export type Database = {
           id: string
           name_es: string | null
           published_at: string | null
+          read_by_name: string | null
+          read_marked_at: string | null
+          read_marked_by: string | null
+          read_on: string | null
+          read_revision: number | null
           renew_ask_days: number | null
           revision: number
           sequence_order: number
+          settings_def: Json | null
           tags: string[]
           template_id: string
           updated_at: string
@@ -7973,9 +7991,15 @@ export type Database = {
           id?: string
           name_es?: string | null
           published_at?: string | null
+          read_by_name?: string | null
+          read_marked_at?: string | null
+          read_marked_by?: string | null
+          read_on?: string | null
+          read_revision?: number | null
           renew_ask_days?: number | null
           revision?: number
           sequence_order?: number
+          settings_def?: Json | null
           tags?: string[]
           template_id: string
           updated_at?: string
@@ -7994,9 +8018,15 @@ export type Database = {
           id?: string
           name_es?: string | null
           published_at?: string | null
+          read_by_name?: string | null
+          read_marked_at?: string | null
+          read_marked_by?: string | null
+          read_on?: string | null
+          read_revision?: number | null
           renew_ask_days?: number | null
           revision?: number
           sequence_order?: number
+          settings_def?: Json | null
           tags?: string[]
           template_id?: string
           updated_at?: string
@@ -8007,6 +8037,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_template_documents_read_marked_by_fkey"
+            columns: ["read_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -10633,6 +10670,369 @@ export type Database = {
           {
             foreignKeyName: "dispatch_swim_lanes_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_builder_links: {
+        Row: {
+          builder_key: string
+          code_hash: string
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          last_opened_at: string | null
+          made_at: string
+          made_by: string | null
+          nonce: string
+          open_count: number
+          opened_at: string | null
+          sheet_id: string | null
+        }
+        Insert: {
+          builder_key: string
+          code_hash: string
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          nonce: string
+          open_count?: number
+          opened_at?: string | null
+          sheet_id?: string | null
+        }
+        Update: {
+          builder_key?: string
+          code_hash?: string
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          nonce?: string
+          open_count?: number
+          opened_at?: string | null
+          sheet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builder_links_builder_key_fkey"
+            columns: ["builder_key"]
+            isOneToOne: false
+            referencedRelation: "document_builders"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "document_builder_links_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_links_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_links_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "document_builder_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_builder_sends: {
+        Row: {
+          about_job_id: string | null
+          builder_key: string
+          company_id: string | null
+          contact_email: string
+          contact_name: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          note: string
+          opened_at: string | null
+          opened_revision: number | null
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          sent_revision: number
+          sheet_id: string | null
+          taken_off_at: string | null
+          taken_off_by: string | null
+          times_sent: number
+        }
+        Insert: {
+          about_job_id?: string | null
+          builder_key: string
+          company_id?: string | null
+          contact_email?: string
+          contact_name?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          note?: string
+          opened_at?: string | null
+          opened_revision?: number | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_revision: number
+          sheet_id?: string | null
+          taken_off_at?: string | null
+          taken_off_by?: string | null
+          times_sent?: number
+        }
+        Update: {
+          about_job_id?: string | null
+          builder_key?: string
+          company_id?: string | null
+          contact_email?: string
+          contact_name?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          note?: string
+          opened_at?: string | null
+          opened_revision?: number | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_revision?: number
+          sheet_id?: string | null
+          taken_off_at?: string | null
+          taken_off_by?: string | null
+          times_sent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builder_sends_about_job_id_fkey"
+            columns: ["about_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_builder_key_fkey"
+            columns: ["builder_key"]
+            isOneToOne: false
+            referencedRelation: "document_builders"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "document_builder_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sends_taken_off_by_fkey"
+            columns: ["taken_off_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_builder_sheets: {
+        Row: {
+          builder_key: string
+          created_at: string
+          created_by: string | null
+          draft: Json
+          id: string
+          project_id: string
+          published: Json | null
+          published_at: string | null
+          published_by: string | null
+          published_sheet: Json | null
+          revision: number
+          updated_at: string
+          updated_by: string | null
+          usual_revision: number | null
+        }
+        Insert: {
+          builder_key: string
+          created_at?: string
+          created_by?: string | null
+          draft: Json
+          id?: string
+          project_id: string
+          published?: Json | null
+          published_at?: string | null
+          published_by?: string | null
+          published_sheet?: Json | null
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+          usual_revision?: number | null
+        }
+        Update: {
+          builder_key?: string
+          created_at?: string
+          created_by?: string | null
+          draft?: Json
+          id?: string
+          project_id?: string
+          published?: Json | null
+          published_at?: string | null
+          published_by?: string | null
+          published_sheet?: Json | null
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+          usual_revision?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builder_sheets_builder_key_fkey"
+            columns: ["builder_key"]
+            isOneToOne: false
+            referencedRelation: "document_builders"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "document_builder_sheets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sheets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sheets_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_sheets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_builders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          draft: Json
+          key: string
+          kind: string
+          published: Json | null
+          published_at: string | null
+          published_by: string | null
+          read_by_name: string
+          read_marked_at: string | null
+          read_marked_by: string | null
+          read_on: string | null
+          read_revision: number | null
+          revision: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          draft: Json
+          key: string
+          kind: string
+          published?: Json | null
+          published_at?: string | null
+          published_by?: string | null
+          read_by_name?: string
+          read_marked_at?: string | null
+          read_marked_by?: string | null
+          read_on?: string | null
+          read_revision?: number | null
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          draft?: Json
+          key?: string
+          kind?: string
+          published?: Json | null
+          published_at?: string | null
+          published_by?: string | null
+          read_by_name?: string
+          read_marked_at?: string | null
+          read_marked_by?: string | null
+          read_on?: string | null
+          read_revision?: number | null
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builders_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builders_read_marked_by_fkey"
+            columns: ["read_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builders_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -37227,6 +37627,672 @@ export type Database = {
           },
         ]
       }
+      start_check_arrivals: {
+        Row: {
+          arrived_on: string
+          by_name: string
+          by_user: string | null
+          created_at: string
+          dispatch_request_id: string | null
+          fixture_id: string
+          id: string
+          job_id: string
+          not_as_told: string[]
+          trip_id: string | null
+        }
+        Insert: {
+          arrived_on: string
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          fixture_id: string
+          id?: string
+          job_id: string
+          not_as_told?: string[]
+          trip_id?: string | null
+        }
+        Update: {
+          arrived_on?: string
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          fixture_id?: string
+          id?: string
+          job_id?: string
+          not_as_told?: string[]
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_arrivals_by_user_fkey"
+            columns: ["by_user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_arrivals_dispatch_request_id_fkey"
+            columns: ["dispatch_request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_arrivals_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_arrivals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_arrivals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_asks: {
+        Row: {
+          asked_on: string
+          batch_id: string
+          bullet_id: string | null
+          by_name: string
+          by_user: string | null
+          created_at: string
+          fixture_id: string
+          how: string
+          id: string
+          job_id: string
+          kind: string
+          message_id: string | null
+          to_name: string
+        }
+        Insert: {
+          asked_on: string
+          batch_id: string
+          bullet_id?: string | null
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          fixture_id: string
+          how: string
+          id?: string
+          job_id: string
+          kind?: string
+          message_id?: string | null
+          to_name: string
+        }
+        Update: {
+          asked_on?: string
+          batch_id?: string
+          bullet_id?: string | null
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          fixture_id?: string
+          how?: string
+          id?: string
+          job_id?: string
+          kind?: string
+          message_id?: string | null
+          to_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_asks_bullet_id_fkey"
+            columns: ["bullet_id"]
+            isOneToOne: false
+            referencedRelation: "start_check_bullets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_asks_by_user_fkey"
+            columns: ["by_user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_asks_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_asks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_asks_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_bullets: {
+        Row: {
+          by_day: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          fixture_id: string
+          hand_ok: boolean
+          hand_ok_at: string | null
+          hand_ok_by: string | null
+          hand_ok_by_name: string
+          id: string
+          job_id: string
+          reads: string | null
+          removed_at: string | null
+          removed_by: string | null
+          shown_to_gc: boolean
+          sort_order: number
+          template_id: string | null
+          updated_at: string
+          waits_on: string
+          wants_photo: boolean
+          words: string
+        }
+        Insert: {
+          by_day?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          fixture_id: string
+          hand_ok?: boolean
+          hand_ok_at?: string | null
+          hand_ok_by?: string | null
+          hand_ok_by_name?: string
+          id?: string
+          job_id: string
+          reads?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          shown_to_gc?: boolean
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+          waits_on: string
+          wants_photo?: boolean
+          words: string
+        }
+        Update: {
+          by_day?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string
+          hand_ok?: boolean
+          hand_ok_at?: string | null
+          hand_ok_by?: string | null
+          hand_ok_by_name?: string
+          id?: string
+          job_id?: string
+          reads?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          shown_to_gc?: boolean
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+          waits_on?: string
+          wants_photo?: boolean
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_bullets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_bullets_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_bullets_hand_ok_by_fkey"
+            columns: ["hand_ok_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_bullets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_bullets_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_bullets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "start_check_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_decisions: {
+        Row: {
+          by_name: string
+          by_user: string | null
+          created_at: string
+          decided_on: string
+          fixture_id: string
+          hold_until: string | null
+          id: string
+          job_id: string
+          kind: string
+          open_then: Json
+          start_then: string | null
+          taken_back_at: string | null
+          taken_back_by: string | null
+          taken_back_by_name: string
+        }
+        Insert: {
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          decided_on: string
+          fixture_id: string
+          hold_until?: string | null
+          id?: string
+          job_id: string
+          kind: string
+          open_then?: Json
+          start_then?: string | null
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+          taken_back_by_name?: string
+        }
+        Update: {
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          decided_on?: string
+          fixture_id?: string
+          hold_until?: string | null
+          id?: string
+          job_id?: string
+          kind?: string
+          open_then?: Json
+          start_then?: string | null
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+          taken_back_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_decisions_by_user_fkey"
+            columns: ["by_user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_decisions_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_decisions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_decisions_taken_back_by_fkey"
+            columns: ["taken_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_marks: {
+        Row: {
+          arrival_id: string | null
+          bullet_id: string
+          by_name: string
+          by_user: string | null
+          created_at: string
+          how: string
+          id: string
+          job_id: string
+          know: string
+          photo_bytes: number | null
+          photo_drive_file_id: string | null
+          photo_fail_why: string | null
+          photo_file_name: string | null
+          photo_filed_at: string | null
+          photo_storage_path: string | null
+          photo_taken_at: string | null
+          said_on: string
+          source: string
+          taken_back_at: string | null
+          taken_back_by: string | null
+          taken_back_by_name: string
+          updated_at: string
+          who_name: string
+        }
+        Insert: {
+          arrival_id?: string | null
+          bullet_id: string
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          how?: string
+          id?: string
+          job_id: string
+          know: string
+          photo_bytes?: number | null
+          photo_drive_file_id?: string | null
+          photo_fail_why?: string | null
+          photo_file_name?: string | null
+          photo_filed_at?: string | null
+          photo_storage_path?: string | null
+          photo_taken_at?: string | null
+          said_on: string
+          source?: string
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+          taken_back_by_name?: string
+          updated_at?: string
+          who_name: string
+        }
+        Update: {
+          arrival_id?: string | null
+          bullet_id?: string
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          how?: string
+          id?: string
+          job_id?: string
+          know?: string
+          photo_bytes?: number | null
+          photo_drive_file_id?: string | null
+          photo_fail_why?: string | null
+          photo_file_name?: string | null
+          photo_filed_at?: string | null
+          photo_storage_path?: string | null
+          photo_taken_at?: string | null
+          said_on?: string
+          source?: string
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+          taken_back_by_name?: string
+          updated_at?: string
+          who_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_marks_arrival_id_fkey"
+            columns: ["arrival_id"]
+            isOneToOne: false
+            referencedRelation: "start_check_arrivals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_marks_bullet_id_fkey"
+            columns: ["bullet_id"]
+            isOneToOne: false
+            referencedRelation: "start_check_bullets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_marks_by_user_fkey"
+            columns: ["by_user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_marks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_marks_taken_back_by_fkey"
+            columns: ["taken_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_settings: {
+        Row: {
+          created_at: string
+          development_id: string | null
+          id: string
+          job_id: string | null
+          notice_days: number | null
+          shows_on_gc_page: boolean
+          updated_at: string
+          updated_by: string | null
+          updated_by_name: string
+        }
+        Insert: {
+          created_at?: string
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          notice_days?: number | null
+          shows_on_gc_page?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string
+        }
+        Update: {
+          created_at?: string
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          notice_days?: number | null
+          shows_on_gc_page?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_settings_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: true
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_settings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          reads: string | null
+          retired_at: string | null
+          retired_by: string | null
+          sort_order: number
+          stage_kind: string
+          updated_at: string
+          waits_on: string
+          wants_photo: boolean
+          words: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          reads?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          sort_order?: number
+          stage_kind: string
+          updated_at?: string
+          waits_on: string
+          wants_photo?: boolean
+          words: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          reads?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          sort_order?: number
+          stage_kind?: string
+          updated_at?: string
+          waits_on?: string
+          wants_photo?: boolean
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_templates_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_check_their_days: {
+        Row: {
+          by_name: string
+          by_user: string | null
+          created_at: string
+          fixture_id: string
+          how: string
+          id: string
+          job_id: string
+          ready_day: string
+          removed_at: string | null
+          removed_by: string | null
+          said_on: string
+          source: string
+          who_name: string
+        }
+        Insert: {
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          fixture_id: string
+          how?: string
+          id?: string
+          job_id: string
+          ready_day: string
+          removed_at?: string | null
+          removed_by?: string | null
+          said_on: string
+          source?: string
+          who_name: string
+        }
+        Update: {
+          by_name?: string
+          by_user?: string | null
+          created_at?: string
+          fixture_id?: string
+          how?: string
+          id?: string
+          job_id?: string
+          ready_day?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          said_on?: string
+          source?: string
+          who_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_check_their_days_by_user_fkey"
+            columns: ["by_user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_their_days_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_their_days_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_check_their_days_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       statement_acknowledgments: {
         Row: {
           acknowledged_at: string
@@ -45150,9 +46216,35 @@ export type Database = {
         Args: { p_scope: string[] }
         Returns: boolean
       }
+      contract_clause_when_problem: {
+        Args: { p_def: Json; p_slot: string; p_when: Json }
+        Returns: string
+      }
       contract_paper_clauses: {
-        Args: { p_lang?: string; p_paper_id: string; p_trades: string[] }
+        Args: {
+          p_fields?: Json
+          p_lang?: string
+          p_paper_id: string
+          p_settings?: Json
+          p_trades: string[]
+        }
         Returns: Json
+      }
+      contract_paper_fields: {
+        Args: { p_def: Json; p_lang: string; p_picks: Json; p_typed: Json }
+        Returns: Json
+      }
+      contract_paper_picks_problem: {
+        Args: { p_def: Json; p_picks: Json }
+        Returns: string
+      }
+      contract_paper_settings_caller: {
+        Args: { p_act: string }
+        Returns: string
+      }
+      contract_paper_settings_def_problem: {
+        Args: { p_def: Json }
+        Returns: string
       }
       contract_text_setting_keys: { Args: never; Returns: string[] }
       contract_trade_key: { Args: { p_trade: string }; Returns: string }
@@ -45679,8 +46771,10 @@ export type Database = {
           p_kind: string
           p_paper_id: string
           p_scope?: string[]
+          p_slot?: string
           p_text_en?: string
           p_text_es?: string
+          p_when_opts?: Json
           p_why?: string
         }
         Returns: Json
@@ -49264,6 +50358,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_paper_read: {
+        Args: { p_name: string; p_on: string; p_paper_id: string }
+        Returns: Json
+      }
       mark_sub_portal_slug_shared: {
         Args: { p_person_id: string }
         Returns: Json
@@ -51143,6 +52241,10 @@ export type Database = {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
       }
+      set_paper_settings: {
+        Args: { p_def: Json; p_paper_id: string }
+        Returns: Json
+      }
       set_pay_config: {
         Args: { p_changes: Json; p_person: string; p_reason: string }
         Returns: Json
@@ -51388,6 +52490,73 @@ export type Database = {
         }
         Returns: Json
       }
+      start_check_decide: {
+        Args: {
+          p_fixture_id: string
+          p_hold_until?: string
+          p_kind: string
+          p_open_then?: Json
+        }
+        Returns: {
+          by_name: string
+          by_user: string | null
+          created_at: string
+          decided_on: string
+          fixture_id: string
+          hold_until: string | null
+          id: string
+          job_id: string
+          kind: string
+          open_then: Json
+          start_then: string | null
+          taken_back_at: string | null
+          taken_back_by: string | null
+          taken_back_by_name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "start_check_decisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_check_take_back: {
+        Args: { p_decision_id: string }
+        Returns: {
+          by_name: string
+          by_user: string | null
+          created_at: string
+          decided_on: string
+          fixture_id: string
+          hold_until: string | null
+          id: string
+          job_id: string
+          kind: string
+          open_then: Json
+          start_then: string | null
+          taken_back_at: string | null
+          taken_back_by: string | null
+          taken_back_by_name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "start_check_decisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_check_windows: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          fixture_id: string
+          job_id: string
+          window_end: string
+          window_start: string
+        }[]
+      }
+      start_checks_crew: { Args: { p_job_id: string }; Returns: boolean }
+      start_checks_desk: { Args: { p_job_id: string }; Returns: boolean }
+      start_checks_may_decide: { Args: { p_job_id: string }; Returns: boolean }
       step_assignee_matches_user: {
         Args: {
           p_assigned_person_id: string
