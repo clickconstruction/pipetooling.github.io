@@ -496,7 +496,8 @@ Sizes for this card's own steps are the train's above.
    (`to-dos/outside-signer-record/README.md`), and the call is made there.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
-5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.
+5. **Documents or both.** Settled 2026-11-19 on card #403, its call 5: both. People sends to a person on
+   the roster, and Documents sends to anyone.
 6. **The GC and the gate.** Whether a GC ever signs a job's paper, and what *one signature per GC* should
    mean. `docs/recent-features/v2.7726.md` names it as the owner's call 4 and its wording is not in the
    repo.
