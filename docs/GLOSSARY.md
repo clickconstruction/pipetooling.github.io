@@ -1533,6 +1533,7 @@ Three stored values: `'1'` (on via the gear menu — also the legacy on-value), 
 a stored value always wins, and a role that fails `canLeaveJobFieldReport` reads OFF whatever the device holds.
 Pure kernel **`isJobModeEnabled(role, storedValue)`** + **`showJobModeFirstRunCard`** + **`jobModeActiveSource`** in **[`jobModeToggle.ts`](../src/lib/jobModeToggle.ts)** (16-case role matrix test);
 hook **[`useJobModeEnabled(userId, role)`](../src/hooks/useJobModeEnabled.ts)**.
+Since v2.8038 the shell and the Dashboard read it through `usePageMode`, so the Job Mode page is drawn only when Job Mode is the page's mode (*Page mode*).
 Mirrors the **`dashboard_clock_strip_scope`** pattern.
 
 **First-run card** — **[`DashboardJobModeFirstRunCard`](../src/components/dashboard/DashboardJobModeFirstRunCard.tsx)** ("Working in the field?
@@ -1579,6 +1580,7 @@ tab screens in **[`src/components/dispatchMode/`](../src/components/dispatchMode
 the hamburger and gear hide while the dock is up.
 Kernel **[`phoneDock.ts`](../src/lib/phoneDock.ts)** (registry, role default, swap, active slot, suggestions).
 Other roles keep the fixed bar.
+Dispatch Mode is the last of the three page modes, so Task Mode and Job Mode are each drawn in its place while on (*Page mode*).
 
 **See also** — **`RECENT_FEATURES.md`** **v2.888–v2.893**, help guide `dispatch-mode.md`.
 
@@ -1593,8 +1595,8 @@ Backed by the append-only **`checklist_instance_events`** card history (v2.1842)
 ### Task Mode (app-wide)
 Called **Farm Mode** until v2.7050, so an older note, fragment or guide link that says Farm Mode means this.
 The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist` (`taskModeBounceTarget`), shows a **"☑ Task Mode · Exit" strip** above the page content (**[`TaskModeChip`](../src/components/TaskModeChip.tsx)**, v2.2916 — Exit records `farm_mode_exit` in `ui_nav_clicks`), gates the `/` Person quick sheet (`canOpenPersonQuickSheet`), and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs, drawn since v2.7533 as one joined bar (**[`TaskDayBar`](../src/components/checklist/TaskDayBar.tsx)**) in place of the tab strip and the page's title.
-Wins over Job Mode and Dispatch Mode while on;
-their stored toggles are untouched.
+It is the first of the three page modes, so it is drawn over Job Mode and Dispatch Mode while on (*Page mode* below);
+their stored toggles are untouched, which is why switching it off goes back to the mode the person had.
 Toggle lib **[`taskModeToggle.ts`](../src/lib/taskModeToggle.ts)** + hook **[`useTaskModeEnabled`](../src/hooks/useTaskModeEnabled.ts)** mirror the Job Mode pair;
 the gear row's tip is `taskModeToggleTip`.
 Three stored names keep the old word so nothing a device saved is lost: the localStorage key `farm_mode_<user>`, the same-tab event `farm_mode_changed` and the usage control `farm_mode_exit`.
@@ -1602,6 +1604,17 @@ The farm itself is not the mode: a partnership's farm rate and farm job, a roadm
 Display-only — RLS and role permissions are unchanged.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.1837**, fragment `v2.7050`, help guide `task-mode.md` (its old address `farm-mode` still opens it, `helpGuideFormerSlugs.ts`).
+
+### Page mode (one at a time, app-wide)
+Task Mode, Job Mode and Dispatch Mode each change what the whole app shows, so since v2.8038 a person is in one of them or in none (`full`).
+Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the first that is on in the order Task Mode, Job Mode, Dispatch Mode;
+`pageModeTicks` is what a menu row's tick reads, on only for the mode drawn, so two rows are never ticked together;
+`pageModeWrites` is what a press stores: switching a mode on switches off the modes above it in the order and leaves the ones under it, and switching one off clears that value alone, so the page goes back to the mode underneath.
+Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
+Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
+Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the Dashboard's Job Mode card all go through its `set`.
+Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
+Pin Mode, Fix Mode and Dark Mode are not page modes.
 
 ### Tell the dev and Fix Mode (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
