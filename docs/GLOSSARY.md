@@ -7612,6 +7612,7 @@ A company truck with no insurance, registration, service or replacement value on
 - **The eye** (Stage Plan) — `jobs_ledger_fixtures.shared_with_gc`: whether the GC sees that stage on their portal.
   Flipped on **Edit Job → Stages** (the read-out above the job details);
   the job-level `gc_shares_stage_dates` switch stays the master.
+  That switch, **Share stage dates with this GC**, sits under the GC picker in Edit Job's **GC/Builder** row, for the roles that manage the GC's portal (v2.8056).
   Replaced the per-window *Offer to GC* / *Withdraw* / bundle buttons;
   `job_stage_windows.offered_to_gc` / `offered_to_gc_at` / `bundle_id` were dropped in v2.3438 (migration `20260914250000`).
 - **Where the job is** (Stage Plan) — the GC portal's stage card (`PortalStagesCard`): *Stage 2 of 4 · Top-out · on site now*, the shared Order rows as one numbered sequence (done ✓ / now / next / later), percent in words, one **Need other dates?** on the next stage, shared Any rows under *Also on this job*.

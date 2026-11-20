@@ -11,7 +11,7 @@ The sequence reads like *Stage 2 of 4 · Top-out · on site now*. The sequence p
 
 ## Turn it on for the job
 
-1. Open **Edit Job → Customer → GC/Builder**. Under the GC picker, tick **Share stage dates with this GC**. The setting is off on every job by default.
+1. Open the job's **Edit** tab and press the **GC/Builder** row. Under the GC picker, tick **Share stage dates with this GC**. The setting is off on every job by default.
 2. Tick **Offer the next stage on its own when one passes inspection**, if you like. Then the next stage's eye turns on without asking. Otherwise the dispatch inbox asks you each time.
 
 ## The eye — which stages the GC sees
