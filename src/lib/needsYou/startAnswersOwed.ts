@@ -80,7 +80,9 @@ export function sitesOnDefaultNotice(sources: StartOwedSources): Array<{ key: st
 export function startOwedTitle(d: StartAnswersOwed): string {
   const tail = `${countWords(d.answers, 'answer', 'answers')} on ${countWords(d.stages, 'stage', 'stages')}`
   const one = d.sites.length === 1 ? d.sites[0] : null
-  return one ? `${one.contact} owes us ${tail}` : `Customers owe us ${tail}`
+  // The contact can be *the customer* when nobody is named, and a line never opens lower case (the walk, 2026-11-20).
+  const line = one ? `${one.contact} owes us ${tail}` : `Customers owe us ${tail}`
+  return line.charAt(0).toUpperCase() + line.slice(1)
 }
 
 /** Under the title: the site, how many more, and what the press does. */

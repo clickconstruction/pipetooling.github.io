@@ -69,6 +69,7 @@ describe('the line on Needs you', () => {
     expect(startOwedTitle(one)).toBe('Ray owes us 6 answers on 2 stages')
     expect(startOwedTitle(two)).toBe('Customers owe us 7 answers on 3 stages')
     expect(startOwedTitle({ sites: [{ ...one.sites[0]!, answers: 1, stages: 1 }], answers: 1, stages: 1 })).toBe('Ray owes us 1 answer on 1 stage')
+    expect(startOwedTitle({ sites: [{ ...one.sites[0]!, contact: 'the customer' }], answers: 6, stages: 2 })).toBe('The customer owes us 6 answers on 2 stages')
     expect(startOwedDetail(one)).toBe('Heron Point. Each is something that must be true before a stage starts. Ask before the day we decide.')
     expect(startOwedDetail(two)).toBe('Heron Point and 1 more site. Each is something that must be true before a stage starts. Ask before the day we decide.')
     expect(startOwedDetail({ sites: [], answers: 0, stages: 0 })).toBe('')
