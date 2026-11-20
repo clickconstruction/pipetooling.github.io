@@ -99,7 +99,7 @@ describe('BuilderSendList', () => {
     expect(all.disabled).toBe(false)
     fireEvent.click(all)
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(2))
-    expect(props.onSend.mock.calls.map((c) => [c[0].id, c[1].email, c[3], c[4]])).toEqual([
+    expect(vi.mocked(props.onSend).mock.calls.map((c) => [c[0].id, c[1].email, c[3], c[4]])).toEqual([
       ['lonemesa', 'ben@lonemesa.test', 'first', true],
       ['pecos', 'gil@pecos.test', 'first', true],
     ])
@@ -119,7 +119,7 @@ describe('BuilderSendList', () => {
     const props = draw()
     fireEvent.click(screen.getByRole('button', { name: 'Send it again, Cedar Fork Drain' }))
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
-    expect(props.onSend.mock.calls[0]?.slice(1, 4)).toEqual([{ name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }, '', 'again'])
+    expect(vi.mocked(props.onSend).mock.calls[0]?.slice(1, 4)).toEqual([{ name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }, '', 'again'])
     fireEvent.click(screen.getByRole('button', { name: 'Take it off the page of Cedar Fork Drain' }))
     await waitFor(() => expect(props.onTakeOff).toHaveBeenCalledWith(PARTIES[0]))
     cleanup()
@@ -127,7 +127,7 @@ describe('BuilderSendList', () => {
     expect(within(row('cedarfork')).getByText('Changed since they opened it')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Tell them it changed, Cedar Fork Drain' }))
     await waitFor(() => expect(next.onSend).toHaveBeenCalledTimes(1))
-    expect(next.onSend.mock.calls[0]?.[3]).toBe('changed')
+    expect(vi.mocked(next.onSend).mock.calls[0]?.[3]).toBe('changed')
   })
 
   it('names the reason when one send is refused', async () => {
