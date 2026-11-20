@@ -63,7 +63,7 @@ describe('navRowFit', () => {
   })
 
   it('skips a press the person does not have', () => {
-    // Fix Mode off: no wrench. The people press is the first to go.
+    // The wrench's switch off: no wrench. The people press is the first to go.
     expect(navRowFit(row(320), { ...DEV, wrench: 0 })).toEqual({ inMenu: ['people'], tight: false })
     // An estimator has the customers press and no people press.
     expect(navRowFit(row(320), { ...ASSISTANT, people: 0 })).toEqual({ inMenu: ['wrench', 'customers'], tight: false })
@@ -178,7 +178,7 @@ describe('readNavRow', () => {
 
   it('counts a press the person does not have as nothing, drawn or not', () => {
     const read = readNavRow(buildRow({ windowPx: 375, wrench: true }), { wrench: false, people: false, customers: false })!
-    // A wrench the row may not move is a part that stays: Fix Mode's wrench with the dock up.
+    // A wrench the row may not move is a part that stays: the switched-on wrench with the dock up.
     expect(read.parts).toMatchObject({ wrench: 0, people: 0, customers: 0, fixed: 36 + 35 * 3 + 36 + 8 * 4 })
   })
 

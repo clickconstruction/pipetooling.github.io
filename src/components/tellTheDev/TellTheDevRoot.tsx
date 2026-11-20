@@ -7,7 +7,7 @@
  * sheet. Every door asks through `requestTellTheDev`, and the page is read inside that press,
  * before a menu or a window can close under it.
  *
- * Fix Mode off draws nothing and hears nothing.
+ * The gear menu's switch off draws nothing and hears nothing.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'

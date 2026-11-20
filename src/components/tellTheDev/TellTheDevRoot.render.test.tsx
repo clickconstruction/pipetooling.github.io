@@ -32,7 +32,7 @@ beforeEach(() => {
 const ROUTE = '/jobs?tab=stages&t=secret'
 
 describe('TellTheDevRoot', () => {
-  it('draws nothing with Fix Mode off, and hears no door', async () => {
+  it('draws nothing with the switch off, and hears no door', async () => {
     renderWithProviders(
       <>
         <TellTheDevHeaderButton />

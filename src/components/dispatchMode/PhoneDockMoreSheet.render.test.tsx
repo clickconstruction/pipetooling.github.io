@@ -38,6 +38,36 @@ function mount(overrides: Partial<PhoneDockMoreSheetProps> = {}) {
 }
 
 describe('PhoneDockMoreSheet', () => {
+  it('lists the modes under Modes and the show-or-hide switches under Show, each a switch (v2.8043)', () => {
+    const onPin = vi.fn()
+    const props = mount({
+      modes: [
+        { key: 'job', label: 'Job Mode', on: true, onToggle: vi.fn() },
+        { key: 'task', label: 'Task Mode', on: false, onToggle: vi.fn() },
+        { key: 'pin', label: 'Pin bar', group: 'show', icon: <svg data-testid="pin-icon" />, on: false, onToggle: onPin },
+        { key: 'fix', label: 'Tell the dev', group: 'show', on: true, onToggle: vi.fn() },
+        { key: 'dark', label: 'Dark Mode', group: 'show', on: false, onToggle: vi.fn() },
+      ],
+    })
+    const modesLabel = screen.getByText('Modes')
+    const showLabel = screen.getByText('Show')
+    const under = (label: HTMLElement) => Array.from(label.nextElementSibling!.querySelectorAll('[role="switch"]')).map((b) => b.textContent)
+    expect(under(modesLabel)).toEqual(['Job Mode✓', 'Task Mode'])
+    expect(under(showLabel)).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
+    // The icon of the thing a switch shows rides its row.
+    expect(screen.getByRole('switch', { name: 'Pin bar' }).contains(screen.getByTestId('pin-icon'))).toBe(true)
+    expect(screen.getByRole('switch', { name: 'Tell the dev' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('switch', { name: 'Pin bar' }))
+    expect(onPin).toHaveBeenCalledTimes(1)
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('draws no Show label with no switch to list, and no Modes label with no mode', () => {
+    mount({ modes: [{ key: 'dark', label: 'Dark Mode', group: 'show', on: false, onToggle: vi.fn() }] })
+    expect(screen.queryByText('Modes')).toBeNull()
+    expect(screen.getByText('Show')).toBeTruthy()
+  })
+
   it('opens on More with the four in The dock row, PO in the third slot (v2.4093)', () => {
     mount()
     expect(screen.getByRole('heading', { name: 'More' })).toBeTruthy()

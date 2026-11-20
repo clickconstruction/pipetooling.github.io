@@ -23,9 +23,9 @@ export function requestTellTheDev(request: TellTheDevOpenRequest): void {
 }
 
 /**
- * Whether a box is there to answer: the shell is mounted, a person is signed in and Fix Mode is
- * on. A door drawn outside the shell (an error line, a window's title row) asks this before it
- * shows, so a public page and a person with Fix Mode off see no wrench.
+ * Whether a box is there to answer: the shell is mounted, a person is signed in and the gear
+ * menu's switch is on. A door drawn outside the shell (an error line, a window's title row) asks this before it
+ * shows, so a public page and a person with the switch off see no wrench.
  */
 let listening = false
 

@@ -1,5 +1,6 @@
 /**
- * Tell the dev (punch list #380): Fix mode, the gear menu's switch for the wrench.
+ * Tell the dev (punch list #380): the gear menu's switch for the wrench. The row reads Tell the dev;
+ * it read Fix Mode until v2.8043, and the names here and the stored key keep that word.
  *
  * On, the wrench shows: floating at a desk, in the header on a phone, in a window's title row and
  * on an error line. Off, every wrench is gone from this person's screens on this device. It starts

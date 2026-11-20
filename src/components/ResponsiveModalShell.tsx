@@ -63,7 +63,7 @@ export default function ResponsiveModalShell({
   /**
    * Tell the dev (punch list #380): on a phone the header's wrench is out of reach behind a
    * window, so the title row carries one. It shows only while a box is there to answer (a signed-in
-   * person with Fix Mode on). False for the box's own sheet.
+   * person with Tell the dev's switch on). False for the box's own sheet.
    */
   tellTheDevDoor?: boolean
 }) {

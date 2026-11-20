@@ -1,9 +1,10 @@
 /**
- * Per-user, per-device toggle for Pin Mode (v2.1972) — whether the page-bottom
- * pin footer (Pin / Pin bid / Pin for… / full-screen strip) renders at all.
+ * Per-user, per-device switch for the pin bar (v2.1972; the row read Pin Mode until v2.8043, and the
+ * stored key keeps that word) — whether the page-bottom pin bar (Pin / Pin bid / Pin for… /
+ * full-screen strip) renders at all.
  *
  * Off by default: the footer is a power-user affordance, and most sessions
- * never pin anything. Turning Pin Mode on from the gear menu shows the strip
+ * never pin anything. Ticking Pin bar in the gear menu shows the strip
  * on every pinnable page; existing pins keep working either way — the
  * Dashboard quick bar and Settings management don't gate on this.
  *

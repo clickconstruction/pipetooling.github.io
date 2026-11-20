@@ -121,7 +121,7 @@ Office roles have **Your dashboard → Report notifications**. There you pick wh
 
 ## Pinned pages
 
-Pages you pin appear in a quick bar for fast navigation. Pins sync across your devices. You manage your pins from Settings, where you can remove or clear them. The pin footer at the bottom of pages only shows while **Pin Mode** is on. Pin Mode is in the gear menu. See the "How do I turn on Pin Mode to pin pages?" guide.
+Pages you pin appear in a quick bar for fast navigation. Pins sync across your devices. You manage your pins from Settings, where you can remove or clear them. The pin bar at the bottom of pages only shows while **Pin bar** is ticked. Pin bar is in the gear menu. See [turn on the pin bar to pin pages](/help/pin-mode).
 
 **Pin a specific bid**: you open a bid on any Bids tab, say BP352 on Pricing. The {{button:outline|Pin bid}} button at the bottom of the page pins *that bid's tab*. The Dashboard chip reads like ***BP352 · pricing***. The chip takes you straight back to the exact bid. You can pin as many bids as you like. You unpin from the same button, or from Settings, when you're done with one.
 
