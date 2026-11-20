@@ -7,6 +7,7 @@
 gc-schedule
 bid-changes
 stage-kind
+start-checks
 ar-unbanked-checks
 ar-stripe-cases
 primary-money-desks
@@ -151,4 +152,3 @@ salaried-week
 primary-scope-reports
 primary-scope-job-photos
 paper-party
-start-checks
