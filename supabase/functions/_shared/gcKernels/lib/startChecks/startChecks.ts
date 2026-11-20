@@ -109,8 +109,8 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const monthDay = (ymd: string): string => `${MONTHS[at(ymd).getUTCMonth()]} ${at(ymd).getUTCDate()}`
 /** Sat Nov 21. */
 export const weekDay = (ymd: string): string => `${DAYS[at(ymd).getUTCDay()]} ${monthDay(ymd)}`
-/** Dec 1 to 12, or Nov 30 to Dec 13 across a month end. */
-export const daySpan = (a: string, b: string): string => (at(a).getUTCMonth() === at(b).getUTCMonth() && a.slice(0, 4) === b.slice(0, 4) ? `${monthDay(a)} to ${at(b).getUTCDate()}` : `${monthDay(a)} to ${monthDay(b)}`)
+/** Dec 1 to 12, or Nov 30 to Dec 13 across a month end, or Dec 1 when the span is one day. */
+export const daySpan = (a: string, b: string): string => (a === b ? monthDay(a) : at(a).getUTCMonth() === at(b).getUTCMonth() && a.slice(0, 4) === b.slice(0, 4) ? `${monthDay(a)} to ${at(b).getUTCDate()}` : `${monthDay(a)} to ${monthDay(b)}`)
 export const countWords = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
 /** "today", "in 4 days", "3 days ago". */
 export function inDaysWords(today: string, ymd: string): string {

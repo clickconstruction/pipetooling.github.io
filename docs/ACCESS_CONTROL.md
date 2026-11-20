@@ -1254,6 +1254,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It answers only for a job whose desk the caller is on, and nothing for an archived caller.
 - The company's lists are read by everyone signed in and written by the office (`is_office_staff`).
   A site's settings row is read by whoever reads the site and written by the office, and a job's row follows the job's desk.
+- The GC's page reads and writes these tables only through `customer-portal` and `submit-portal-request`, as the service role (v2.8018, `_shared/startChecksPortal.ts`).
+  It reads a job only when the job's GC is the link's customer, the job shares its stage dates, and the job's own `shows_on_gc_page` is on.
+  It shows the bullets on them with the eye on, and never a bullet of ours.
+  An answer from the page is held against what the page shows at that moment, and is kept in the customer's name with `source: 'portal'`.
 - `anon` holds no grant, and a signed-in person holds only the grants that have a policy.
   The read-only blocks, the twin fence and the archived seal stand on all eight tables.
 
