@@ -403,5 +403,15 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
   they gave are on the local branch `claude/382-line-of-time`, with their tests and no docs. The dev seat's verb is
   not built. It goes after #8996 and card 315's seat PRs, with about 20 KB of room under the dev-mcp ceiling, and its
   version note goes in `docs/dev-mcp/SERVER_NOTES.md`.
+- **Found on the walk against prod** (2026-11-20, a ZZ Test job, the office and a sample superintendent). Notes for
+  Grace, none of them built:
+  - A superintendent is on a job's desk and may press Go by the table's rules (call 3). No screen reaches them yet:
+    the job window's Documents tab and the Development page do not open for that role. Job Mode's superintendent
+    card is the natural home, beside PR 10.
+  - The Schedule look's banner still offers Ask right after an ask is kept. The stage's own card moves on to Go or
+    hold.
+  - Two jobs on one part of a site read alike on the Schedule look, since a card names the part and not the job.
+  - The Needs you line takes its contact job by job. A site whose GC is named only on the development reads *The
+    customer owes us…* there, while the Schedule look names the GC.
 - **Next:** Grace's word on PR 10 and PR 11.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
