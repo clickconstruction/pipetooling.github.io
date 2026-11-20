@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { DROP_REASONS, DROP_REASON_MAX, DROP_TITLE, dropPressLabel, dropReasonTidy, dropRule, dropSentence } from '../../lib/tasks/taskDoerActs'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { TaskSheetHead } from './TaskSheetHead'
 
 /**
  * No longer applies (punch list #369, step C4, tool 3): the person doing a one-time task closes it without doing it,
@@ -70,15 +71,7 @@ export function TaskDropSheet({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby="task-drop-title" onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="task-drop-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
-            {DROP_TITLE}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
-            ×
-          </button>
-        </div>
-        <p style={{ margin: '4px 0 12px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{taskTitle}</p>
+        <TaskSheetHead title={DROP_TITLE} labelId="task-drop-title" taskTitle={taskTitle} onClose={onClose} />
         <div role="group" aria-label="Why" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
           {DROP_REASONS.map((r) => {
             const on = dropReasonTidy(reason) === r

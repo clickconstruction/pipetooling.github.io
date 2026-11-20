@@ -1,13 +1,13 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { Circle, X } from 'lucide-react'
 import type { TaskChoice } from '../../lib/tasks/taskDoerActs'
 import { TaskChoiceRows } from './TaskChoiceRows'
+import { TaskSheetHead } from './TaskSheetHead'
 
 /**
- * A short list of choices for a task (punch list #369): a centred title, the task on one line in a quiet pill, and
- * rows that each show and say what they do (`TaskChoiceRows`, v2.8034). The map's three ways in use it, and so does
+ * A short list of choices for a task (punch list #369): the head every task sheet shares (`TaskSheetHead`) and rows
+ * that each show and say what they do (`TaskChoiceRows`, v2.8034). The map's three ways in use it, and so does
  * the card's More. On the finishing sheet's frame, so it docks to the bottom of a phone and centres at a desk.
  */
 export function TaskChoiceSheet<K extends string>({
@@ -50,26 +50,7 @@ export function TaskChoiceSheet<K extends string>({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby={labelId} onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 36px', alignItems: 'center' }}>
-          <span aria-hidden="true" />
-          <h2 id={labelId} style={{ margin: 0, fontSize: '1.125rem', textAlign: 'center' }}>
-            {title}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: 'none', borderRadius: 18, background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
-            <X size={20} strokeWidth={2} aria-hidden="true" />
-          </button>
-        </div>
-        {/* The task this is about: its tick's ring and its words on one line, so it reads as the thing acted on. */}
-        {taskTitle ? (
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 14px' }}>
-            <span data-choice-task title={taskTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', padding: '5px 12px', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-strong)', fontSize: '0.8125rem', lineHeight: 1.3 }}>
-              <Circle size={13} strokeWidth={2.25} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{taskTitle}</span>
-            </span>
-          </div>
-        ) : (
-          <div style={{ height: 12 }} />
-        )}
+        <TaskSheetHead title={title} labelId={labelId} taskTitle={taskTitle} onClose={onClose} />
         <TaskChoiceRows choices={choices} onPick={onPick} />
         {foot ? <div style={{ marginTop: 10 }}>{foot}</div> : null}
       </div>

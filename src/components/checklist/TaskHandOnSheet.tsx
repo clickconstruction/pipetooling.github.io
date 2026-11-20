@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { HAND_ASK, HAND_LIST_MAX, HAND_REASON_MAX, HAND_TITLE, handBackLabel, handPeople, handPressLabel, handSentence, type HandPerson } from '../../lib/tasks/taskDoerActs'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { TaskSheetHead } from './TaskSheetHead'
 
 /**
  * Hand it on (punch list #369, step C7, tool 7): the person doing a task gives it to the right person, or back to
@@ -94,15 +95,7 @@ export function TaskHandOnSheet({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby="task-hand-on-title" onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="task-hand-on-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
-            {HAND_TITLE}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
-            ×
-          </button>
-        </div>
-        <p style={{ margin: '4px 0 10px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{taskTitle}</p>
+        <TaskSheetHead title={HAND_TITLE} labelId="task-hand-on-title" taskTitle={taskTitle} onClose={onClose} />
         <div style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: 8 }}>{HAND_ASK}</div>
         {giver ? (
           <div style={{ marginBottom: 10 }}>
