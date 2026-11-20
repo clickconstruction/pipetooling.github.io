@@ -1,7 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { budgetStandsForJob, budgetWhyWords, componentBurn, jobBudgetAwardOf, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
+import { budgetStandsForJob, componentBurn, jobBudgetAwardOf, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
+import { budgetWhySentence } from '../../lib/jobs/jobBudgetWhy'
 import type { JobBudgetState, SuggestedBid } from '../../hooks/useJobBudget'
 import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
 
@@ -96,7 +97,7 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
 
   const why = useMemo(
     () =>
-      budgetWhyWords({
+      budgetWhySentence({
         labor: componentBurn({ usedUsd: spend.teamUsd, budgetUsd: c && c.laborUsd > 0 ? c.laborUsd : null, pctDone: p.pctDone }),
         materials: componentBurn({ usedUsd: spend.partsUsd, budgetUsd: c && c.materialsUsd > 0 ? c.materialsUsd : null, pctDone: p.pctDone }),
         subs: componentBurn({ usedUsd: spend.subUsd, budgetUsd: c && c.subsUsd > 0 ? c.subsUsd : null, pctDone: p.pctDone }),

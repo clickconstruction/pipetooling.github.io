@@ -62,7 +62,7 @@ describe('JobBudgetCard · Frame A', () => {
     expect(within(materials).getByText('$37,900')).toBeTruthy()
     expect(within(materials).getByText('$31,200')).toBeTruthy()
     expect(within(materials).getByText('$49,221')).toBeTruthy() // 37,900 ÷ 0.77 at today's pace
-    expect(within(card).getByTestId('budget-why').textContent).toContain('Materials are $6,700 over the estimate with 23 % of the work left, labor is 9 points ahead of progress, and subs are 20 points under.')
+    expect(within(card).getByTestId('budget-why').textContent).toContain('Materials are $6,700 over the estimate with 23 % of the work left, labor is $4,233 over for the work done, and subs are $1,305 under for the work done.')
     expect(within(card).getByRole('button', { name: 'Refresh from bid ↻' })).toBeTruthy()
     expect(within(card).getByRole('button', { name: 'Clear' })).toBeTruthy()
   })
