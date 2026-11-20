@@ -6571,6 +6571,29 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .vipLineLabel { color: var(--text-muted); }
 .vipLineValues { min-width: 0; }
 .vipLegend { margin: 8px 0 0; color: var(--text-muted); font-size: 0.78125rem; }
+/* Before we start (punch list #382): a stage's list (`StartCheckStage.tsx`). `.scBox` is a bullet's tick box,
+   `.scChip` a small choice, `.scWord` a press that is words alone. Their hover, focus and phone sizes need a class. */
+.scBox { position: relative; flex: none; width: 24px; height: 24px; margin: 0; padding: 0; border: 2px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: #fff; font: inherit; font-size: 14px; font-weight: 700; line-height: 1; cursor: pointer; }
+.scBox:hover, .scBox:active { background: var(--bg-blue-tint); }
+.scBox[aria-pressed='true'], .scBox[aria-pressed='true']:hover { border-color: #15803d; background: #15803d; }
+.scBox:disabled, .scBox:disabled:hover { cursor: default; opacity: 0.75; }
+.scBox:disabled:not([aria-pressed='true']), .scBox:disabled:not([aria-pressed='true']):hover { background: var(--surface); }
+.scBox:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+.scChip { margin: 0; padding: 2px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); color: var(--text-muted); font: inherit; font-size: 0.78125rem; font-weight: 500; line-height: 1.5; cursor: pointer; }
+.scChip:hover, .scChip:active { background: var(--bg-muted); color: var(--text-strong); }
+.scChip[aria-pressed='true'], .scChip[aria-pressed='true']:hover { border-color: var(--text-blue-700); background: var(--bg-blue-tint); color: var(--text-blue-700); font-weight: 700; }
+.scChip:disabled { cursor: wait; opacity: 0.6; }
+.scWord { position: relative; margin: 0; padding: 0; border: none; background: none; color: var(--text-link); font: inherit; font-size: 0.8125rem; font-weight: 600; line-height: inherit; cursor: pointer; }
+.scWord:hover, .scWord:active { background: none; text-decoration: underline; text-underline-offset: 3px; }
+.scWord:disabled { color: var(--text-muted); text-decoration: none; cursor: wait; }
+.scMore { margin: 0; padding: 0 4px; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 1.125rem; line-height: 1; cursor: pointer; position: relative; }
+.scMore:hover, .scMore:active { background: none; color: var(--text-strong); }
+.scAdd { flex: 1 1 14rem; min-width: 0; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-base); font: inherit; font-size: 0.875rem; }
+@media (pointer: coarse), (max-width: 640px) {
+  .scBox::after, .scMore::after, .scWord::after { content: ''; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .scChip { min-height: 32px; padding: 4px 12px; }
+  .scAdd { min-height: 44px; font-size: 16px; }
+}
 /* A thumb gets 44 px on every press: a value's press grows above and below its line without moving the words, and
    the lines stand far enough apart that two presses never share a spot. The open field's box and presses are 44 px
    tall, and the box types at 16 px so a phone does not zoom in on it. */

@@ -5953,6 +5953,19 @@ A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
 The words to ask for it on any screen are *give this screen values in place*.
 
+### Before we start (a stage's list)
+For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;
+the rules v2.7992, the tables v2.7997, the list on a stage v2.8003).
+A **bullet** waits on them (the GC, the customer) or on us.
+A bullet on them is open or a **yes**, and a yes says how we know: their word, their photo, or we saw it.
+A bullet that **asks for a photo** is not a yes on their word alone.
+A bullet of ours is ticked by nobody: it shows where it stands and the press that fixes it.
+The **ready bar** is one small box a bullet with a percent after it, every bullet counting the same, and it reads 100% only when every bullet has a yes (`readiness`).
+The **notice** is the days we need before our first day, one number a site, ten by default for a far site and two for a near one, and **We decide by** is our first day less the notice (`goNoGoDay`).
+Every day they give for ready is kept, and first to newest is how far they have **moved** (`movedDays`).
+The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
+The rules are [`startChecks.ts`](../src/lib/startChecks/startChecks.ts), the rows [`startCheckRows.ts`](../src/lib/startChecks/startCheckRows.ts), and nothing in it blocks a schedule, a clock-in or a bill.
+
 ### Users lenses (People → Users)
 People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
 `?lens=` on the URL;

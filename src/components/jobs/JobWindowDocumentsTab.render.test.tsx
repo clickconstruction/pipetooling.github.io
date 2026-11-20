@@ -195,6 +195,13 @@ vi.mock('../../lib/photos/jobPhotosIo', async (importOriginal) => {
   return { ...real, supabaseJobPhotosIo: () => ({ ...real.supabaseJobPhotosIo(), list: (jobId: string) => photosReadSpy(jobId) }) }
 })
 
+// Before we start has its own render test (`JobDocumentsStartChecks.render.test.tsx`). Here the database says this
+// person is not on the job's desk, so the section draws nothing and reads nothing more.
+vi.mock('../../lib/startChecks/startChecksIo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/startChecks/startChecksIo')>()
+  return { ...real, supabaseStartChecksIo: { ...real.supabaseStartChecksIo, onDesk: () => Promise.resolve(false) } }
+})
+
 // The guard: the run's `fetch` refuses and keeps the address. Nothing above should ever reach it.
 const fetchSpy = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
   const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
