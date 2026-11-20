@@ -310,7 +310,7 @@ describe('the notice that counts is the earliest one still owed (v2.4308)', () =
   })
 
   it('a job with no property kind draws its flags where its words are, on the residential clock', () => {
-    // Job 927, Mike Holmby – Candelaria: July through September, no kind. July's window closed Sep 15 on
+    // Job 927, Mike Holmby – Chilton: July through September, no kind. July's window closed Sep 15 on
     // the residential clock; August's notice is the first owed. (Before, the flags sat a month later than the words.)
     const holmby = job({ jobId: '927', gcId: 'gc-holmby', gcName: 'Michael Holmby', r: { todayYmd: OCT_1, propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] } })
     expect(holmby.runway.noticeByYmd).toBe('2026-10-15')

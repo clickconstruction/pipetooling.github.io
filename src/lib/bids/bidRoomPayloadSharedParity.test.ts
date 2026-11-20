@@ -8,7 +8,7 @@ describe('bid room payload parser parity', () => {
     const built = buildBidRoomRevisionPayload({
       projectName: 'Glover Salter Babcock Reeve',
       projectAddress: '123 Main',
-      gcName: 'NORTHSTAR',
+      gcName: 'NESBITT',
       serviceTypeName: 'Plumbing',
       sections: [
         { name: 'To Plans', isAlternate: false, revenueSum: 249971.29, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 537.27 }], bidVersionId: 'v-tp' },

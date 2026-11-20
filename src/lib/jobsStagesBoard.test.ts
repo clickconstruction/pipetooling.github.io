@@ -427,7 +427,7 @@ describe('filterJobsByStagesSearch', () => {
       id: 'job-hcp',
       hcp_number: '861',
       click_number: '',
-      job_name: 'NexGen',
+      job_name: 'Newell',
       job_address: '1 A',
       invoices: [],
     })

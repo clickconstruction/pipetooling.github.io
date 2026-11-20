@@ -30,8 +30,8 @@ describe('buildBillPile (v2.5834)', () => {
 
   it('reads a working job with no percent as half done and keeps it apart as the guess', () => {
     // Dunmere Mallin: no %, $21,950, $17,560 billed → half the contract is already billed, the guess is $0 but the job is still grey.
-    // NexGen: no %, $16,700, $13,360 billed → $0 too. Carrow Camera: $350, nothing billed → $175.
-    const pile = buildBillPile({ jobs: [job({ id: 'dunmere', revenueUsd: 21_950, billedUsd: 17_560 }), job({ id: 'nexgen', revenueUsd: 16_700, billedUsd: 13_360 }), job({ id: 'carrow', revenueUsd: 350 })] })
+    // Newell: no %, $16,700, $13,360 billed → $0 too. Carrow Camera: $350, nothing billed → $175.
+    const pile = buildBillPile({ jobs: [job({ id: 'dunmere', revenueUsd: 21_950, billedUsd: 17_560 }), job({ id: 'newell', revenueUsd: 16_700, billedUsd: 13_360 }), job({ id: 'carrow', revenueUsd: 350 })] })
     expect(BILL_GUESS_PCT).toBe(50)
     expect(pile.guessUsd).toBe(175)
     expect(pile.guessJobs).toBe(3)
@@ -65,7 +65,7 @@ describe('buildBillPile (v2.5834)', () => {
     ]
     // Heron: the row says 40 %, an old report said 100 % — the office's word stands.
     expect(effectiveBillPct({ id: 'j', pctComplete: 40 }, points, '2026-10-24')).toEqual({ pct: 40, source: 'hand' })
-    // NexGen: no percent on the row, the newest report on or before today fills it.
+    // Newell: no percent on the row, the newest report on or before today fills it.
     expect(effectiveBillPct({ id: 'n', pctComplete: null }, points, '2026-10-24')).toEqual({ pct: 80, source: 'report' })
     // A hand point alone is not a fill: the row already carries the latest hand-set percent.
     expect(effectiveBillPct({ id: 'h', pctComplete: null }, points, '2026-10-24')).toBeNull()

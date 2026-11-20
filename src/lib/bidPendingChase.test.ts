@@ -65,7 +65,7 @@ describe('groupPendingChaseByBuilder', () => {
       [
         bid({ id: 'a', value: 50_000 }),
         bid({ id: 'b', value: 25_000, lastContactIso: '2026-08-20T12:00:00Z' }),
-        bid({ id: 'c', builderKey: 'gc-2', builderName: 'Joeris', value: 10_000 }),
+        bid({ id: 'c', builderKey: 'gc-2', builderName: 'Jessup', value: 10_000 }),
       ],
       NOW,
     )

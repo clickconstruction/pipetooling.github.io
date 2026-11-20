@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipient } from './bidGcRecipients'
 
 const sheffield: BidGcRecipient = { customerId: 'gc-sheffield', name: 'Sheffield', phone: '512-555-0100' }
-const joeris: BidGcRecipient = { customerId: 'gc-joeris', name: 'Joeris', phone: null }
+const jessup: BidGcRecipient = { customerId: 'gc-jessup', name: 'Jessup', phone: null }
 
 const entry = { builderKey: 'gc-kestrin', builderName: 'Kestrin Contracting', id: 'bid-1' }
 
@@ -16,17 +16,17 @@ describe('expandLensBidByRecipients', () => {
   })
 
   it('emits one copy per recipient with the recipient as the builder', () => {
-    const out = expandLensBidByRecipients(entry, [sheffield, joeris])
+    const out = expandLensBidByRecipients(entry, [sheffield, jessup])
     expect(out).toHaveLength(3)
     expect(out[1]).toMatchObject({ builderKey: 'gc-sheffield', builderName: 'Sheffield', id: 'bid-1' })
     expect(out[1]!.viaRecipient).toEqual(sheffield)
-    expect(out[2]).toMatchObject({ builderKey: 'gc-joeris', builderName: 'Joeris' })
+    expect(out[2]).toMatchObject({ builderKey: 'gc-jessup', builderName: 'Jessup' })
   })
 
   it('skips a recipient that matches the primary builder key', () => {
-    const out = expandLensBidByRecipients(entry, [{ customerId: 'gc-kestrin', name: 'Kestrin', phone: null }, joeris])
+    const out = expandLensBidByRecipients(entry, [{ customerId: 'gc-kestrin', name: 'Kestrin', phone: null }, jessup])
     expect(out).toHaveLength(2)
-    expect(out.map((e) => e.builderKey)).toEqual(['gc-kestrin', 'gc-joeris'])
+    expect(out.map((e) => e.builderKey)).toEqual(['gc-kestrin', 'gc-jessup'])
   })
 
   it('copies keep every other field of the source entry', () => {
