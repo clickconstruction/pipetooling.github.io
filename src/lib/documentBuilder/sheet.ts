@@ -86,7 +86,7 @@ export type ResolvedSheet = {
 }
 
 /** The words a new line, name or amount starts on. They are placeholders: a sheet cannot be published with one. */
-export const SHEET_NEW = { line: 'A new line.', name: 'A name', coverLabel: 'A coverage', coverLimit: 'An amount' } as const
+export const SHEET_NEW = { line: 'A new line.', name: 'A name', coverLabel: 'A coverage', coverLimit: 'An amount', address1: 'Your address, first line', address2: 'Your address, second line' } as const
 
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -141,7 +141,11 @@ export function parseSheetDef(value: unknown): ParsedSheetDef {
 /** What stops a standing sheet being published, one line each. An empty list is a pass. */
 export function sheetDefProblems(def: SheetDef): string[] {
   const problems: string[] = []
-  for (const k of SHEET_FIELD_KEYS) if (!def.fields[k].trim()) problems.push(`${SHEET_FIELD_NAMES[k]} has no words.`)
+  for (const k of SHEET_FIELD_KEYS) {
+    const words = def.fields[k].trim()
+    if (!words) problems.push(`${SHEET_FIELD_NAMES[k]} has no words.`)
+    else if (words === SHEET_NEW.address1 || words === SHEET_NEW.address2) problems.push(`${SHEET_FIELD_NAMES[k]} has not been typed yet.`)
+  }
   const openKeys = def.open.map((l) => l.key)
   def.open.forEach((line, i) => {
     if (!line.text.trim() || line.text.trim() === SHEET_NEW.line) problems.push(`Opening line ${i + 1} has no words yet.`)
@@ -302,19 +306,33 @@ export function withoutJobExtra(job: JobSheet, extraKey: string): JobSheet {
 }
 
 /**
- * A job's own words made the usual: the standing sheet takes them, and the job stops keeping them. Both change, so
- * the standing sheet then has a change no job has yet.
+ * A job's own words made the usual: the standing sheet's draft takes them. The job keeps its words meanwhile, so its
+ * own sheet never reads differently because of the press. Once the usual is published the two read the same, and
+ * `pruneJobSheet` lets the job's copy go.
  */
-export function makeFieldUsual(def: SheetDef, job: JobSheet, path: string): { def: SheetDef; job: JobSheet } {
+export function usualFromJobField(def: SheetDef, job: JobSheet, path: string): SheetDef {
   const words = job.over[path]
-  if (words == null) return { def, job }
-  return { def: withUsualWords(def, path, words), job: withoutJobWords(job, path) }
+  return words == null ? def : withUsualWords(def, path, words)
 }
-/** A line added for one job made a usual line: every job then asks for it. */
-export function makeExtraUsual(def: SheetDef, job: JobSheet, extraKey: string): { def: SheetDef; job: JobSheet } {
+/** A line added for one job made a usual line: every job then asks for it, once the usual is published. */
+export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string): SheetDef {
   const line = job.extra.find((x) => x.key === extraKey)
-  if (!line) return { def, job }
-  return { def: withUsualCover(def, { label: line.label, limit: line.limit }), job: withoutJobExtra(job, extraKey) }
+  if (!line || usualHasCover(def, line)) return def
+  return withUsualCover(def, { label: line.label, limit: line.limit })
+}
+/** True when the standing sheet already asks for this coverage, word for word. */
+export function usualHasCover(def: SheetDef, line: { label: string; limit: string }): boolean {
+  return def.cover.some((c) => c.label === line.label && c.limit === line.limit)
+}
+/**
+ * A job's own part with everything let go that now reads as the usual: a field typed the same, and an added line the
+ * usual asks for word for word. So a job keeps only what differs, also after the usual moves toward it.
+ */
+export function pruneJobSheet(def: SheetDef, job: JobSheet): JobSheet {
+  const over = Object.fromEntries(Object.entries(job.over).filter(([path, words]) => usualWords(def, path) !== words))
+  const extra = job.extra.filter((x) => !usualHasCover(def, x))
+  if (Object.keys(over).length === Object.keys(job.over).length && extra.length === job.extra.length) return job
+  return { ...job, over, extra }
 }
 
 // ---------------------------------------------------------------------------
@@ -336,7 +354,7 @@ export function sheetDiffers(def: SheetDef, job: JobSheet): SheetDiffer[] {
   const fields: SheetDiffer[] = order.flatMap((path): SheetDiffer[] => {
     const words = job.over[path]
     const usual = usualWords(def, path)
-    return words != null && usual != null ? [{ kind: 'field', path, name: pathName(def, path), usual, words }] : []
+    return words != null && usual != null && words !== usual ? [{ kind: 'field', path, name: pathName(def, path), usual, words }] : []
   })
   const off: SheetDiffer[] = def.cover.filter((c) => job.off.includes(c.key)).map((c) => ({ kind: 'off', coverKey: c.key, name: c.label }))
   const extra: SheetDiffer[] = job.extra.map((x) => ({ kind: 'extra', extraKey: x.key, name: x.label }))

@@ -8,12 +8,14 @@
  * builder takes the tab's whole body, with the address keeping which one (`?tab=builder&builder=sub-nda`), so a reload
  * and the browser's Back both land where the person was.
  *
- * Today the one builder is the Sub NDA: its step-by-step flow (`DocumentBuilderFlow`) over the draft the database
- * holds. The review's press requires nothing of anyone.
+ * There are two kinds. The Sub NDA is walked: its step-by-step flow (`DocumentBuilderFlow`) over the draft the
+ * database holds, whose review press requires nothing of anyone. Insurance requirements for subs is filled: one
+ * sheet with blanks for each job (`FilledBuilder`).
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { DocumentBuilderFlow } from '../documentBuilder/DocumentBuilderFlow'
+import { FilledBuilder } from '../documentBuilder/FilledBuilder'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
@@ -30,7 +32,9 @@ import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
 import { FRAME_SCROLL_MARGIN_CSS, frameHeightCss, framePlace, frameScrollsIntoView, type FramePlace } from '../../lib/documentBuilder/frame'
+import { filledRowChips } from '../../lib/documentBuilder/sheetScreen'
 import { builderRowPress, builderStandingChips, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import { GC_COMPANY } from '../../lib/gc/company'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 
 type Props = {
@@ -196,7 +200,7 @@ function BuilderBar({ entry, rec, onBack }: { entry: DocumentBuilderEntry; rec: 
         {`‹ ${WORDS.back}`}
       </button>
       <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)' }}>{entry.name}</span>
-      <Chips chips={builderStandingChips(entry, rec)} />
+      <Chips chips={entry.kind === 'filled' ? filledRowChips(entry, rec, null) : builderStandingChips(entry, rec)} />
     </div>
   )
 }
@@ -246,7 +250,8 @@ export default function DocumentsBuilderTab({ read = readDocumentBuilders, load 
 
   const loadDraft = useCallback(
     async (entry: DocumentBuilderEntry) => {
-      const draft = firstDraftOf(entry)
+      // The sheet goes out under the company's own name, so its first draft starts on it.
+      const draft = firstDraftOf(entry, GC_COMPANY)
       if (draft == null || loading != null) return
       setLoading(entry.id)
       setRefusal(null)
@@ -275,6 +280,7 @@ export default function DocumentsBuilderTab({ read = readDocumentBuilders, load 
 
   if (open) {
     const rec = records.get(open.id) ?? null
+    if (rec && open.kind === 'filled') return <FilledBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} />
     if (rec) return <WalkedBuilder entry={open} rec={rec} onBack={() => setOpen(null)} />
     return (
       <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
@@ -302,7 +308,7 @@ export default function DocumentsBuilderTab({ read = readDocumentBuilders, load 
               <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-strong)' }}>{b.name}</div>
                 <div style={MUTED}>{b.says}</div>
-                <Chips chips={builderStandingChips(b, rec)} />
+                <Chips chips={b.kind === 'filled' ? filledRowChips(b, rec, null) : builderStandingChips(b, rec)} />
               </div>
               {builderRowPress(rec) === 'open' ? (
                 <button type="button" aria-label={`${WORDS.open} ${b.name}`} style={mainPress(false)} onClick={() => setOpen(b.id)}>

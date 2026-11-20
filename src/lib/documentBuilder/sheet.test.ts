@@ -13,18 +13,20 @@ import {
   freshKey,
   jobSheetMissing,
   layOver,
-  makeExtraUsual,
-  makeFieldUsual,
   openPath,
   parseJobSheet,
   parseResolvedSheet,
   parseSheetDef,
   pathName,
+  pruneJobSheet,
   sheetAsks,
   sheetDefProblems,
   sheetDiffers,
   sheetWords,
   startJobSheet,
+  usualFromJobExtra,
+  usualFromJobField,
+  usualHasCover,
   usualHeldWords,
   usualPublishPlan,
   usualWords,
@@ -190,22 +192,34 @@ describe('what differs on a job', () => {
     expect(withoutJobExtra(added, 'x1').extra.map((x) => x.key)).toEqual(['x2'])
   })
 
-  it('makes a job’s own words the usual: the standing sheet takes them and the job lets go', () => {
+  it('makes a job’s own words the usual: the standing sheet takes them, and the job keeps reading the same', () => {
     const path = coverPath('umb', 'limit')
     const job = withJobWords(USUAL, CEDAR(), path, 'Made-up amount 9')
-    const made = makeFieldUsual(USUAL, job, path)
-    expect(usualWords(made.def, path)).toBe('Made-up amount 9')
-    expect(made.job.over).toEqual({})
-    expect(layOver(made.def, made.job)).toEqual(layOver(USUAL, job))
-    expect(makeFieldUsual(USUAL, CEDAR(), path)).toEqual({ def: USUAL, job: CEDAR() })
+    const made = usualFromJobField(USUAL, job, path)
+    expect(usualWords(made, path)).toBe('Made-up amount 9')
+    expect(layOver(made, job)).toEqual(layOver(USUAL, job))
+    expect(usualFromJobField(USUAL, CEDAR(), path)).toBe(USUAL)
   })
 
-  it('makes a line added for one job a usual line', () => {
+  it('lets a job’s copy go once the usual reads the same, and no longer lists it', () => {
+    const path = coverPath('umb', 'limit')
+    const job = withJobWords(USUAL, CEDAR(), path, 'Made-up amount 9')
+    const made = usualFromJobField(USUAL, job, path)
+    expect(sheetDiffers(made, job)).toEqual([])
+    expect(pruneJobSheet(made, job).over).toEqual({})
+    expect(pruneJobSheet(USUAL, job)).toBe(job)
+  })
+
+  it('makes a line added for one job a usual line, once, and lets the job’s copy go', () => {
     const job = withJobExtraWords(withJobExtraWords(withJobExtra(CEDAR()), 'x1', 'label', 'Pollution liability'), 'x1', 'limit', 'Made-up amount 6')
-    const made = makeExtraUsual(USUAL, job, 'x1')
-    expect(made.def.cover.at(-1)).toEqual({ key: 'c6', label: 'Pollution liability', limit: 'Made-up amount 6' })
-    expect(made.job.extra).toEqual([])
-    expect(layOver(made.def, made.job).cover).toEqual(layOver(USUAL, job).cover)
+    const made = usualFromJobExtra(USUAL, job, 'x1')
+    expect(made.cover[made.cover.length - 1]).toEqual({ key: 'c6', label: 'Pollution liability', limit: 'Made-up amount 6' })
+    expect(usualHasCover(made, { label: 'Pollution liability', limit: 'Made-up amount 6' })).toBe(true)
+    expect(usualFromJobExtra(made, job, 'x1')).toBe(made)
+    expect(usualFromJobExtra(USUAL, job, 'nope')).toBe(USUAL)
+    const pruned = pruneJobSheet(made, job)
+    expect(pruned.extra).toEqual([])
+    expect(layOver(made, pruned).cover).toEqual(layOver(USUAL, job).cover)
   })
 })
 
