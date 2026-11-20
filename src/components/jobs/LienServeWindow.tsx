@@ -456,13 +456,19 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
   }
 
   let slot = -1
-  const numberInput = (job: LienServeJob, copy: ServiceCopy, name: string, draft: ServiceCopyDraft) => {
+  const numberInput = (job: LienServeJob, copy: ServiceCopy, name: string, draft: ServiceCopyDraft, codeDay = false) => {
     slot += 1
     const at = slot
     const key = `${job.filing.id}:${copy}`
     const otherKey = `${job.filing.id}:${copy === 'owner' ? 'original_contractor' : 'owner'}`
     return (
       <div key={copy} data-lien-serve-envelope={copy} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 16rem)', gap: '0.35rem 0.6rem', alignItems: 'center', padding: '0.25rem 0' }}>
+        {/* Inside the envelope the code named, so the line is on the screen with the box the landing centres: on a phone a line at the top of the lien sat above the second envelope's screen. */}
+        {codeDay ? (
+          <div data-lien-serve-code-day role="note" style={{ gridColumn: '1 / -1', fontSize: '0.78rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 6, padding: '0.35rem 0.6rem' }}>
+            {LIEN_SERVE_NUMBERS_WORDS.codeDay(formatYmdMonthDay(servedOn))}
+          </div>
+        ) : null}
         <div style={{ fontSize: '0.78rem', minWidth: 0 }}>
           <span style={{ fontWeight: 700 }}>{TO[copy]}</span>
           {name ? <span style={{ color: 'var(--text-muted)' }}> · {name}</span> : null}
@@ -529,6 +535,9 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
     const envelopes: Array<{ recipient: ServiceCopy; name: string }> = r.envelopes.length > 0 ? r.envelopes : [{ recipient: 'owner', name: r.job.to?.owner?.name ?? '' }, ...(d.contractor ? [{ recipient: 'original_contractor' as const, name: r.job.to?.contractor?.name ?? '' }] : [])]
     const holdsProof = [d.owner, d.contractor].some((c) => c != null && (c.tracking.trim() !== '' || c.receiptUrl.trim() !== ''))
     const day = dayOf(r.job)
+    // A lien opened from a divider's code says which day its first number records, beside the box the code named; a code naming an envelope this lien does not draw says it on the first.
+    const fromCode = land?.part === 'numbers' && land.fromCode && land.jobId === r.job.jobId && !d.mailed && Boolean(servedOn)
+    const codeDayOn = fromCode ? (envelopes.find((e) => e.recipient === (land.recipient ?? 'owner')) ?? envelopes[0])?.recipient ?? null : null
     return (
       <div key={id} data-lien-serve-row={r.job.jobNumber} data-lien-serve-job={r.job.jobId} data-lien-serve-mailed={d.mailed ? 'yes' : 'no'} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center', marginBottom: '0.2rem' }}>
@@ -546,13 +555,8 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
             </label>
           </span>
         </div>
-        {land?.part === 'numbers' && land.fromCode && land.jobId === r.job.jobId && !d.mailed && servedOn ? (
-          <div data-lien-serve-code-day role="note" style={{ fontSize: '0.78rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 6, padding: '0.35rem 0.6rem', margin: '0.2rem 0' }}>
-            {LIEN_SERVE_NUMBERS_WORDS.codeDay(formatYmdMonthDay(servedOn))}
-          </div>
-        ) : null}
         {numberLine(r.job)}
-        {envelopes.map((e) => numberInput(r.job, e.recipient, e.name, e.recipient === 'owner' ? d.owner : (d.contractor ?? { tracking: '', receiptUrl: '' })))}
+        {envelopes.map((e) => numberInput(r.job, e.recipient, e.name, e.recipient === 'owner' ? d.owner : (d.contractor ?? { tracking: '', receiptUrl: '' }), e.recipient === codeDayOn))}
         {!d.mailed && holdsProof ? (
           <div data-lien-serve-tick-when style={{ ...small, marginTop: '0.2rem' }}>
             {LIEN_SERVE_NUMBERS_WORDS.tickWhen}
