@@ -3,18 +3,14 @@
  * own screen goes, under this person's own row security, so a bullet never shows a fact its reader could not open:
  * the order log as Bids → Submittals builds it (`buildProcurementLog` over the newest revision's rows, the rows that
  * stand approved on an earlier one, the records and each tag's stage), the site's trips as the Trips look reads them,
- * and the city's permits at the job's address as the bid form's site panel reads them. A seat that cannot read a
- * source is told so in words (`cannot`). The rules are `startCheckReaders.ts`.
+ * and the city's permits at the job's address as the bid form's site panel reads them (`startCheckPermitsIo.ts`,
+ * fetched when asked for). A seat that cannot read a source is told so in words (`cannot`). The rules are
+ * `startCheckReaders.ts`.
  */
 import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { isOfficeRole } from '../doorRoles'
-import { readBidAddress, permitsOnSite } from '../research/bidSite'
-import { loadPermitsByHouseNumber } from '../research/bidSiteIo'
-import { isOurName, ourNameKeys } from '../research/ourNames'
-import { loadOurNames } from '../research/ourNamesIo'
-import { RESEARCH_CITIES } from '../research/permitResearch'
 import type { SubmittalPartRow } from '../submittals/itemParts'
 import { buildProcurementLog, type ProcurementItemSource } from '../submittals/procurementLog'
 import type { ProcurementItemLike } from '../submittals/procurementItemSources'
@@ -98,28 +94,15 @@ async function readTrips(jobs: readonly ReaderJob[], role: string | null, todayY
   return out
 }
 
+/**
+ * The permit read is the only one whose rules the rest of the app loads on demand (the city list, the feeds, the
+ * names), so it is fetched when a bullet asks for it, by a seat that may read permits. A static import here put
+ * all of it in the first download (v2.8015); `startCheckReadersIo.test.ts` holds the line.
+ */
 async function readPermits(jobs: readonly ReaderJob[], role: string | null): Promise<Map<string, PermitsRead>> {
-  const out = new Map<string, PermitsRead>()
-  if (!(isOfficeRole(role) || role === 'estimator')) {
-    for (const j of jobs) out.set(j.id, { state: 'cannot' })
-    return out
-  }
-  const keys = ourNameKeys(await loadOurNames())
-  for (const j of jobs) {
-    const site = readBidAddress(j.address, RESEARCH_CITIES)
-    if (site.kind !== 'site') {
-      out.set(j.id, { state: 'no_records' })
-      continue
-    }
-    const rows = await loadPermitsByHouseNumber(site.city, [site.number])
-    if (rows == null) {
-      out.set(j.id, { state: 'no_records' })
-      continue
-    }
-    const ours = permitsOnSite(site, rows).filter((p) => p.kind === 'plumbing' && isOurName(p.contact, keys))
-    out.set(j.id, { state: 'read', permits: ours.map((p) => ({ number: (p.permit_number ?? '').trim() || 'on file', issued: p.stage === 'issued', issuedOn: p.stage === 'issued' ? p.issued_on : null })) })
-  }
-  return out
+  if (!(isOfficeRole(role) || role === 'estimator')) return new Map<string, PermitsRead>(jobs.map((j) => [j.id, { state: 'cannot' }]))
+  const { readPermitsOnSites } = await import('./startCheckPermitsIo')
+  return readPermitsOnSites(jobs)
 }
 
 export const supabaseStartReadersIo: StartReadersIo = {
