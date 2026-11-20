@@ -30,6 +30,8 @@ import type { PersonTimelineSource } from './personTimeline.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 import { counselOnlyStillHeld } from './devMcpCounselOnly.ts'
 import { AMENDMENTS_NOTE, amendmentCounts, amendmentDays, newestAmendments, readPersonAmendments, seatAmendmentBits } from './devMcpAmendments.ts'
+import { ENGAGEMENT_SELECT, engagementsBlock } from './devMcpEngagement.ts'
+import type { PersonEngagementRow } from './personEngagements.ts'
 import { BRIEF_CASE_LOG_LINES, CASE_ITEMS_WHOLE, CASE_ITEM_SELECT, CASE_LOG_SELECT, briefCaseLog, briefOpenItems, exhibitBits, exhibitNoOf, type CaseItemRead, type CaseItemsDial, type CaseLogRead } from './devMcpCase.ts'
 
 export type CaseBriefAsk = { person: string }
@@ -141,7 +143,6 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const manifestReads = Promise.all([
     counted<{ text_source: string | null; text_why: string | null }>('file_index', 'drive_file_id,text_source,text_why', eq('person_id', personId), 'drive_file_id'),
     counted<{ id: string }>('person_case_log', 'id', eq('person_id', personId)),
-    counted<{ withdrawn_at: string | null }>('person_engagements', 'id,withdrawn_at', eq('person_id', personId)),
     counted<{ state: string }>('dev_seat_kept_plans', 'id,state', eq('person_id', personId)),
     counted<{ untagging_at: string | null }>('email_tag_threads', 'id,untagging_at', eq('person_id', personId)),
     // The Timeline's sources, through get_person_file's own reads and kernel: its tally and counts are whole whatever it shortened.
@@ -152,7 +153,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // The entries without their words — the count is exact, and `entries.at_cap` is true only past readAllRows' own stop.
   let entriesCapped = false
-  const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes, caseItems, caseLogNewest] = await Promise.all([
+  const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes, caseItems, caseLogNewest, engagementRows] = await Promise.all([
     read<EntryRow>('entries', async () => {
       const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,source,created_at,gmail_message_id', filters: eq('person_id', personId) })
       entriesCapped = all.capped
@@ -176,6 +177,8 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     // one read; the log's whole count is the manifest's own read below.
     read<CaseItemRead>('case items', every('case items', 'person_case_items', CASE_ITEM_SELECT, eq('person_id', personId))),
     read<CaseLogRead>('case log', () => reader.rows('person_case_log', { select: CASE_LOG_SELECT, filters: eq('person_id', personId), order: [{ column: 'logged_at', ascending: false }], limit: BRIEF_CASE_LOG_LINES })),
+    // v2.8000 (punch list #315, upgrade 4c): the standing over time, a source the brief draws.
+    read<PersonEngagementRow>('standing', every('standing', 'person_engagements', ENGAGEMENT_SELECT, eq('person_id', personId))),
   ])
 
   // Newest first, as the Timeline orders them: the day, then when it was written. The newest ten's words are one more read.
@@ -277,7 +280,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // v2.7651: the manifest. A part the brief reads takes its count from the rows above, or `held` when its source is
   // named in the brief's `held`; the rest comes from the manifest's own reads and from get_person_file's tally.
-  const [fileIndexRows, caseLogRows, engagementRows, keptPlanRows, mailRows, fileRead] = await manifestReads
+  const [fileIndexRows, caseLogRows, keptPlanRows, mailRows, fileRead] = await manifestReads
   const whyHeld = (source: string): ManifestHeld | null => {
     const h = held.find((x) => x.source === source)
     return h ? { held: h.reason } : null
@@ -313,7 +316,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     correctionLinks: !isDev ? { held: 'dev only' } : amendRead && !amendRead.heldWhy ? amendmentCounts(amendRead).live : { held: amendRead?.heldWhy ?? 'not read' },
     caseItems: whyHeld('case items') ?? { count: caseItems.length, open: caseItems.filter((i) => !i.closed_at).length },
     caseLog: isHeldRead(caseLogRows) ? caseLogRows : caseLogRows.length,
-    standing: isHeldRead(engagementRows) ? engagementRows : engagementRows.filter((e) => !e.withdrawn_at).length,
+    standing: whyHeld('standing') ?? engagementRows.filter((e) => !e.withdrawn_at).length,
     keptPlans: isHeldRead(keptPlanRows) ? keptPlanRows : { count: keptPlanRows.length, waiting: keptPlanRows.filter((k) => k.state === 'waiting').length },
     mailConversations: isHeldRead(mailRows) ? mailRows : mailRows.filter((t) => !t.untagging_at).length,
     themes: whyHeld('themes') ?? { themes: themeRows.length, kept: liveMarks.filter((x) => !waits(x)).length, proposed: liveMarks.filter(waits).length },
@@ -386,6 +389,9 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     // newest lines. Null when the source could not be read, and `held` says why.
     open_items: openItemsAt(CASE_ITEMS_WHOLE),
     log: caseLogAt(BRIEF_CASE_LOG_LINES),
+    // v2.8000 (punch list #315, upgrade 4c): what the person was over time, employee or subcontractor by stretch,
+    // with where each fact comes from. Null when it could not be read, and `held` says why.
+    engagements: whyHeld('standing') ? null : engagementsBlock(engagementRows, who.todayYmd),
     matter: matter
       ? {
           id: matter.id,
