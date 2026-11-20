@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) rides with this change · not built: the seat's verbs for the numbers, the case and the kept plans, Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
+status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) · building resumed 2026-11-19 on Grace's word · v2.7976 the seat's reads of the numbers and plan_case (dev-mcp 0.118.0) · not built: the seat's verbs for the kept plans, Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,8 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125
-next: Paused 2026-11-13 on Grace's word (finish and ship only, nothing new). When building resumes, in order: upgrade 2 PR 3 (the seat's reads of the numbers and plan_case), the seat's keep and list for the kept plans, Apply and Drop once the owner picks who may press, the rest of upgrade 4, 5b and 5c.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125, v2.7976
+next: Building resumed 2026-11-19 on Grace's word ("Please build"). In order: the seat's keep and list for the kept plans, the standing on the fact strip and the Timeline, the seat's plan_engagement, then 5b and 5c. Waiting on the owner's calls and not built: Apply and Drop from the tab, the mark on hours, the backfill of old exhibit numbers on any real file.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -106,7 +106,7 @@ numbers. And one door takes items and log lines together, so the seat needs one 
 - **PR 1 (v2.7106, built):** the migration, the kernel with its tests, the bed
   (`npm run test:pg:person-file-numbers`), the docs. New records are numbered from the push on.
 - **PR 2 (v2.7107, built, #7882):** the numbers on the screen, *Number them…*, the Case view, the help guide, the mock-up.
-- **PR 3:** the seat's reads and `plan_case`.
+- **PR 3 (v2.7976, built, server 0.118.0):** `get_person_file`, `get_case_brief` and `search_case` carry `exhibit_no`; the brief gains `open_items` and `log`; `plan_person_evidence`'s reply names the number the record would take and the apply's the number it took; one new pair, `plan_case` → `apply_case`, over `dev_case_write`. The call log keeps a case change by its kinds and numbers, never its words.
 - **His calls:** running the backfill on a real file, and what each clash and each lettered number it reports becomes. Whether the titles with no number are numbered after the highest.
   Moving a file's prose items into rows, with their numbers, per person. Whether a session may add a log line
   without his *Apply it*. *Agent notes* stays as prose for the standing rules and the map.
