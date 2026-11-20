@@ -872,6 +872,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const items: MoveMenuItem[] = []
     if (r.kind === 'stage') {
       items.push({ label: 'Change window…', onClick: () => setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: null, stageId: r.stage.id, span: r.span }) })
+      // Before we start (punch list #382): what must be true before this stage is written on the job's Documents tab.
+      const jobId = g.jobId
+      if (jobForm && jobId) items.push({ label: 'Before we start…', onClick: () => jobForm.openEditJob(jobId, { initialTab: 'documents' }) })
       items.push('sep')
       items.push({ label: 'Remove the window', danger: true, onClick: () => void removeWindow(r.window, r.stage.name) })
       return items
