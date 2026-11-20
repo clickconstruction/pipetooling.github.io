@@ -7,6 +7,7 @@
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
+import { forgetGoogleKeyRefusalForTests } from '../../lib/map/googleAuthFailure'
 import { MARGIN_FRAME_PADDING_PX, MARGIN_FRAME_ZOOM, areaBox } from '../../lib/paintedMap/marginFrame'
 import { paintedFitView, PAINTED_POINT_ZOOM, PAINTED_WIDE_VIEW } from '../../lib/paintedMap/paintedMapView'
 
@@ -153,6 +154,7 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   delete (window as Window & { gm_authFailure?: () => void }).gm_authFailure
+  forgetGoogleKeyRefusalForTests()
 })
 
 describe('where it opens', () => {

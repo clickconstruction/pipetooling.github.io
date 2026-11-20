@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { googleAuthFailureListenerCount, onGoogleAuthFailure } from './googleAuthFailure'
+import { forgetGoogleKeyRefusalForTests, googleAuthFailureListenerCount, googleKeyRefusedOnPage, onGoogleAuthFailure } from './googleAuthFailure'
 
 type AuthWindow = Window & { gm_authFailure?: () => void }
 const w = window as AuthWindow
@@ -17,6 +17,7 @@ const hear = (listener: () => void) => {
 afterEach(() => {
   stops.splice(0).forEach((stop) => stop())
   delete w.gm_authFailure
+  forgetGoogleKeyRefusalForTests()
 })
 
 describe('onGoogleAuthFailure', () => {
@@ -97,5 +98,37 @@ describe('onGoogleAuthFailure', () => {
     refuse()
     expect(a).toHaveBeenCalledTimes(1)
     expect(b).toHaveBeenCalledTimes(1)
+  })
+
+  it('a canvas that comes up after the refusal is told at once', () => {
+    // Google refuses a key once for a page. A map made after that paints nothing and is told nothing by Google.
+    const first = vi.fn()
+    hear(first)
+    refuse()
+    const later = vi.fn()
+    hear(later)
+    expect(later).toHaveBeenCalledTimes(1)
+    expect(first).toHaveBeenCalledTimes(1)
+    // It was told and is not kept: a second word from Google would tell it nothing new.
+    expect(googleAuthFailureListenerCount()).toBe(1)
+  })
+
+  it('remembers the refusal for the page, and a page that was never refused says so', () => {
+    expect(googleKeyRefusedOnPage()).toBe(false)
+    hear(vi.fn())
+    expect(googleKeyRefusedOnPage()).toBe(false)
+    refuse()
+    expect(googleKeyRefusedOnPage()).toBe(true)
+  })
+
+  it('remembers a refusal nobody was listening for', () => {
+    // The last Google map left the screen a moment before Google answered.
+    const stop = hear(vi.fn())
+    stop()
+    refuse()
+    expect(googleKeyRefusedOnPage()).toBe(true)
+    const later = vi.fn()
+    hear(later)
+    expect(later).toHaveBeenCalledTimes(1)
   })
 })

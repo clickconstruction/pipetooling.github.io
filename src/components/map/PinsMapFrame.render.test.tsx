@@ -6,6 +6,7 @@
  */
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { forgetGoogleKeyRefusalForTests, onGoogleAuthFailure } from '../../lib/map/googleAuthFailure'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const phone = vi.hoisted(() => ({ on: false }))
@@ -82,12 +83,21 @@ const caption = () => document.querySelector('[data-map-time-caption]')?.textCon
 const time = () => document.querySelector('[data-map-time-press]') as HTMLButtonElement
 const dates = () => [...document.querySelectorAll('[role="group"][aria-label="Photo dates"] button[aria-pressed]')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])
 
+/** Google says no, as it does once for a page: through its one global. */
+const googleRefusesTheKey = () => {
+  const stop = onGoogleAuthFailure(() => {})
+  ;(window as Window & { gm_authFailure?: () => void }).gm_authFailure?.()
+  stop()
+}
+
 beforeEach(() => {
   vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
 })
 
 afterEach(() => {
   cleanup()
+  delete (window as Window & { gm_authFailure?: () => void }).gm_authFailure
+  forgetGoogleKeyRefusalForTests()
   localStorage.clear()
   opened.length = 0
   phone.on = false
@@ -109,6 +119,16 @@ describe('the map of today', () => {
     expect(canvas.getAttribute('data-layer')).toBe('satellite')
     expect(canvas.getAttribute('data-imagery')).toBe('')
     expect(document.querySelector('[data-map-provider]')?.className).toBe('mapImagery')
+  })
+
+  it('with a key Google already refused on this page, opens on the Leaflet canvas and never asks Google', async () => {
+    // Google refuses a key once for a page. A map that came up later used to wait eight seconds on an empty frame.
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    googleRefusesTheKey()
+    render(<Card />)
+    await screen.findByTestId('canvas')
+    expect(provider()).toBe('osm')
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
   })
 
   it('with a key draws on Google, Satellite as its photograph with street names, and falls back once it fails', async () => {
