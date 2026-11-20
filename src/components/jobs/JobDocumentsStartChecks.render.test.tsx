@@ -371,6 +371,23 @@ describe('JobDocumentsStartChecks', () => {
     await waitFor(() => expect(row('inspection').textContent).toContain('by email. No answer yet.'))
   })
 
+  it('the job’s superintendent may press Go, and a primary on the desk is offered no decision', async () => {
+    authRole = 'superintendent'
+    const db = seeded({ decider: 'Sam' })
+    await mount(db)
+    const stage = await openStage('Top Out')
+    fireEvent.click(within(stage).getByRole('button', { name: 'Go or hold' }))
+    fireEvent.click(within(stage).getByRole('button', { name: 'Go, on their promise' }))
+    await waitFor(() => expect(db.rows.decisions[0]).toMatchObject({ kind: 'go', by_name: 'Sam' }))
+    await waitFor(() => expect((document.querySelector('[data-start-check-decision="go"]') as HTMLElement).textContent).toBe('Go. Sam, Nov 17.'))
+    cleanup()
+    authRole = 'primary'
+    await mount(seeded())
+    const again = await openStage('Top Out')
+    expect(within(again).queryByRole('button', { name: 'Go or hold' })).toBeNull()
+    expect(within(again).getByRole('button', { name: 'Ask Ray about 2' })).toBeTruthy()
+  })
+
   it('a press that fails says why, and the row stands as it was', async () => {
     const db = seeded()
     await mount(db)
