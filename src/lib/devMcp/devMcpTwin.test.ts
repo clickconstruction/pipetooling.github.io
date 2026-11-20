@@ -148,7 +148,7 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
     expect(whole).toBe('Made: Twin Estimator 4 (twin-estimator-4@twins.pipetooling.local) stands in the fleet with its CountTooling and TakeoffTooling seats. Next: mint_twin_setup_code { label, twin: "twin-estimator-4@twins.pipetooling.local" } for its key. It is read-only until plan_twin_rung moves it to rung 2.')
     const held = twinAppliedWords([ok('account'), ok('flags'), { step: 'counttooling_seat', ok: false, words: 'ct-bridge made no seat: answered 500' }, ok('takeofftooling_seat')], seat)
     expect(held).toContain('Held: counttooling seat (ct-bridge made no seat: answered 500).')
-    expect(held).toContain("The link button on the twin's row at Settings → System → Digital twins makes a held seat again.")
+    expect(held).toContain('plan_twin_seat { seat: { twin: "twin-estimator-4@twins.pipetooling.local" } } makes a held seat again, as the link button on the twin\'s row at Settings → System → Digital twins does.')
     const unflagged = twinAppliedWords([ok('account'), { step: 'flags', ok: false, words: 'RLS let no row through' }], seat)
     expect(unflagged).toContain('Stopped: the login twin-estimator-4@twins.pipetooling.local is made but its row is not flagged a twin')
     expect(unflagged).not.toContain('mint_twin_setup_code')
@@ -185,5 +185,17 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
     expect(README).toContain("one hundred and twenty-nine since v2.7879's twin pair")
     expect(README).toContain('one hundred and fifty-two `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain('v2.7879 (server 0.105.0) — a digital twin made from the seat')
+  })
+
+  it('no sentence sends a reader to the panel for what the seat does itself: a held seat and Archive name their verbs', () => {
+    const KERNEL = readFileSync('supabase/functions/_shared/devMcpTwin.ts', 'utf8')
+    expect(SERVER).toContain("a seat that was held is made again with plan_twin_seat, as the link button on the twin's row at Settings → System → Digital twins makes it.")
+    expect(SERVER).toContain('plan_twin_rung for its rung, plan_twin_key_revoke for a key and plan_twin_archive to take it out of the fleet or bring it back.')
+    for (const source of [SERVER, KERNEL]) {
+      expect(source).not.toContain('stays a press')
+      expect(source).not.toContain('Archive is a press')
+      expect(source).not.toContain('made again with the link button')
+      expect(source).not.toContain('The link button on the twin')
+    }
   })
 })

@@ -442,7 +442,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'apply_twin',
-    description: "Make the twin you planned: the same twin plus the plan_hash from plan_twin. Reads the fleet again first and writes only when it still matches, so a twin minted since the plan refuses this one. Then: the login through create-user as you, with no roster row and a password nobody is told; the twin flags on its row; for a bid robot its CountTooling seat through ct-bridge, with the join key stored, and its TakeoffTooling seat through tt-bridge. Each step is reported done or held with its reason, and what landed stays; a seat that was held is made again with the link button on the twin's row in Settings. No key is made and the twin is read-only: mint_twin_setup_code next, plan_twin_rung for its rung and plan_twin_key_revoke for a key; Archive stays a press in Settings → Digital twins.",
+    description: "Make the twin you planned: the same twin plus the plan_hash from plan_twin. Reads the fleet again first and writes only when it still matches, so a twin minted since the plan refuses this one. Then: the login through create-user as you, with no roster row and a password nobody is told; the twin flags on its row; for a bid robot its CountTooling seat through ct-bridge, with the join key stored, and its TakeoffTooling seat through tt-bridge. Each step is reported done or held with its reason, and what landed stays; a seat that was held is made again with plan_twin_seat, as the link button on the twin's row at Settings → System → Digital twins makes it. No key is made and the twin is read-only: mint_twin_setup_code next, plan_twin_rung for its rung, plan_twin_key_revoke for a key and plan_twin_archive to take it out of the fleet or bring it back.",
     inputSchema: { type: 'object', properties: { twin: { type: 'object', description: 'The same twin you planned' }, plan_hash: { type: 'string', description: 'The plan_hash plan_twin answered' } }, required: ['twin', 'plan_hash'] },
   },
   {
@@ -4964,7 +4964,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const flagged = oneRow(flag)
       steps.push({ step: 'flags', ok: flagged, words: flagged ? `the row is flagged a twin and read-only${p.kind === 'pricer' ? ', kind pricer' : ''}.` : `the flags were not set: ${flag.ok ? 'RLS let no row through' : fnWords(flag)}` })
       if (flagged && p.kind === 'estimator') {
-        // The other apps' seats, fail-soft as the panel's are: the twin stands either way, and the row's link button is the retry.
+        // The other apps' seats, fail-soft as the panel's are: the twin stands either way, and plan_twin_seat or the row's link button is the retry.
         const ctEmail = ctTwinSeatEmail(seat.email)
         const ct = await invokeAsDev(session, 'ct-bridge', twinBridgeBody(ctEmail, seat.name))
         const ctId = ct.ok && ct.body && typeof ct.body === 'object' && typeof (ct.body as { ct_user_id?: unknown }).ct_user_id === 'string' ? (ct.body as { ct_user_id: string }).ct_user_id : null
