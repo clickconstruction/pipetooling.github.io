@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -23,6 +23,23 @@ Your helper gets a replacement phone, signs in, and lands straight on the Job Mo
 :::
 
 The header also changes. The three task buttons become a **Contact:** row. It has a green phone button that calls the office. Then {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} are spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating**. It sends a question to the estimators. You are not opening anyone's inbox.
+
+## The row under the header
+
+A row of squares sits under the header. Each square has its name on it.
+
+The two squares on the left are for your job. Those two squares change with your day.
+
+- **Before a job, and on the way:** {{button:blue|Directions}} opens the route in your phone's maps. {{button:blue|Job details}} opens the job's window.
+- **On site:** {{button:blue|Photo}} opens the job's photos, so you can add one. {{button:blue|Job details}} stays where it was.
+- **No job left today:** **This week** shows your hours so far. **Tomorrow** shows how many jobs you have. You tap **Tomorrow** to open your schedule.
+
+The two squares on the right never move.
+
+- {{button:outline|Paint a map}} starts a map of the way in. See [Paint a map](/help/paint-a-map#start-a-map).
+- {{button:outline|My spend}} opens your card charges. A number on its corner counts the charges with no job yet.
+
+Some sites keep their materials in boxes. On one of those you also see **On site** while you are there. The number on the square counts the boxes on the site. You tap **On site** to open [the boxes](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site).
 
 ## The Job Mode card
 
