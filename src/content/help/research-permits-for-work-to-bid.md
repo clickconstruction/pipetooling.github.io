@@ -212,7 +212,7 @@ A city with too few dated permits draws no clock.
 
 The line under the bars says how tied the builders are to one plumber. A builder is judged on three or more jobs with a named plumber. One plumber on three jobs in four means the builder uses one. One plumber on half means the builder leans to one. Fewer means the builder shops around.
 
-The builders that shop around are the open doors. Their names sit under the line. Press one to open the builder.
+The builders that shop around are the open doors. The names of those builders sit under the line. Press one to open the builder.
 
 San Antonio's permits never name a plumber. The box is not drawn there.
 

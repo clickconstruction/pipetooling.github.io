@@ -352,6 +352,11 @@ export function callWorkWords(row: Pick<CallRow, 'mostly' | 'typical'>): string 
   return parts.length > 0 ? parts.join(' ') : null
 }
 
+/** After the open jobs: that no plumbing permit is tied to them, which is why they are open. */
+export function openJobsTail(jobs: number): string {
+  return jobs === 1 ? 'It has no plumbing permit yet.' : 'They have no plumbing permit yet.'
+}
+
 /** "We priced 4 of their jobs and won none. The last was Jun 3." Null when we never bid them. */
 export function callHistoryWords(row: Pick<CallRow, 'bids' | 'won' | 'lastBidOn'>, todayYmd: string): string | null {
   if (row.bids === 0) return null

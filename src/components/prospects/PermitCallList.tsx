@@ -26,6 +26,7 @@ import {
   callTags,
   callWorkWords,
   lookAgainOn,
+  openJobsTail,
   permitRowOfSite,
   pursuePermit,
   standingWords,
@@ -270,7 +271,7 @@ export function PermitCallList({
                           </span>
                         )
                       })}
-                      {call.openJobs.length > 4 ? ` · and ${call.openJobs.length - 4} more` : ''}. {call.openJobs.length === 1 ? 'It has no plumbing permit.' : 'None has a plumbing permit.'}
+                      {call.openJobs.length > 4 ? ` · and ${call.openJobs.length - 4} more` : ''}. {openJobsTail(call.openJobs.length)}
                     </div>
                   )}
                   {history && <div style={{ fontSize: '0.8125rem' }}>{history}</div>}

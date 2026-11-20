@@ -20,6 +20,7 @@ import {
   lookAgainOn,
   nameReads,
   openJobsByBuilder,
+  openJobsTail,
   permitRowOfSite,
   pursuePermit,
   standingWords,
@@ -343,6 +344,8 @@ describe('the words', () => {
     expect(callHistoryWords({ bids: 4, won: 0, lastBidOn: '2026-06-03' }, TODAY)).toBe('We priced 4 of their jobs and won none. The last was Jun 3.')
     expect(callHistoryWords({ bids: 1, won: 1, lastBidOn: null }, TODAY)).toBe('We priced 1 of their job and won 1.')
     expect(callHistoryWords({ bids: 0, won: 0, lastBidOn: null }, TODAY)).toBeNull()
+    expect(openJobsTail(1)).toBe('It has no plumbing permit yet.')
+    expect(openJobsTail(3)).toBe('They have no plumbing permit yet.')
   })
 
   it('says what an empty list means', () => {

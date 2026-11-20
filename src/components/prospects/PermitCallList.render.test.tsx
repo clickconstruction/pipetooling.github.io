@@ -140,7 +140,7 @@ describe('the call list', () => {
     const first = document.querySelector('[data-call-row="ridgewaybuilders"]') as HTMLElement
     for (const tag of ['Picking up', 'Never bid', '2 jobs open now']) expect(within(first).getByText(tag)).toBeTruthy()
     expect(within(first).getByText('8 permits in the last year, 6 in the last 90 days against 2 in the 90 before. Mostly commercial remodel.')).toBeTruthy()
-    expect(first.textContent).toContain('Open now: 2100 SAMPLE PKWY, applied Nov 4 · 77 KILN ST, applied Oct 28. None has a plumbing permit.')
+    expect(first.textContent).toContain('Open now: 2100 SAMPLE PKWY, applied Nov 4 · 77 KILN ST, applied Oct 28. They have no plumbing permit yet.')
     expect(screen.getByText(/^3 more wait behind these\./)).toBeTruthy()
     expect(screen.getByText('Names that read as a builder come first, then a job open now, then picking up or new, then never bid.')).toBeTruthy()
     // Our history with a name we bid, on the chip that holds it.
