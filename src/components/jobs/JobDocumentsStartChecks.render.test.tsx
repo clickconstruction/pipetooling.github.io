@@ -12,6 +12,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderSettled, settle } from '../../test/renderSmokeMocks'
 import { memoryStart, memoryStartChecksIo, type MemoryStart } from '../../test/startChecksMemoryIo'
 import type { StartBulletRow, StartMarkRow } from '../../lib/startChecks/startCheckRows'
+import type { ReadsAsked, StartReadersIo } from '../../lib/startChecks/startCheckReadersIo'
 import { JobDocumentsStartChecks } from './JobDocumentsStartChecks'
 
 vi.mock('../../lib/supabase', async () => {
@@ -50,7 +51,7 @@ function seeded(over: Partial<MemoryStart> = {}): MemoryStart {
         bullet('material', { words: 'Our material lands before day one.', waits_on: 'us', reads: 'hand', shown_to_gc: false }),
       ],
       marks: [mark('m-framing', 'framing'), mark('m-power', 'power', { know: 'saw', who_name: 'Luis', how: 'on site', said_on: '2026-11-03' })],
-      asks: [{ id: 'k1', batch_id: 'b1', job_id: JOB.id, fixture_id: 'f1', bullet_id: 'inspection', kind: 'ask', how: 'text', to_name: 'Ray', asked_on: '2026-11-14', created_at: at() }],
+      asks: [{ id: 'k1', batch_id: 'b1', job_id: JOB.id, fixture_id: 'f1', bullet_id: 'inspection', kind: 'ask', how: 'text', to_name: 'Ray', asked_on: '2026-11-14', created_at: '2026-11-14T15:00:00Z' }],
       theirDays: [],
       decisions: [],
       arrivals: [],
@@ -59,9 +60,9 @@ function seeded(over: Partial<MemoryStart> = {}): MemoryStart {
   })
 }
 
-async function mount(db: MemoryStart, job = JOB) {
+async function mount(db: MemoryStart, job = JOB, readers?: StartReadersIo) {
   const onRequestTab = vi.fn()
-  await renderSettled(<JobDocumentsStartChecks job={job} io={memoryStartChecksIo(db)} todayYmd={TODAY} onRequestTab={onRequestTab} />, { loaded: async () => void (db.onDesk ? await screen.findAllByRole('button', { name: /Top Out|Bill/ }) : await settle()) })
+  await renderSettled(<JobDocumentsStartChecks job={job} io={memoryStartChecksIo(db)} readers={readers} todayYmd={TODAY} onRequestTab={onRequestTab} />, { loaded: async () => void (db.onDesk ? await screen.findAllByRole('button', { name: /Top Out|Bill/ }) : await settle()) })
   return { onRequestTab }
 }
 const openStage = async (name: string) => {
@@ -221,6 +222,43 @@ describe('JobDocumentsStartChecks', () => {
     await waitFor(() => expect(row('material').dataset.standing).toBe('yes'))
     expect(row('material').textContent).toContain('Marked done by Dana')
     expect(db.rows.bullets.find((b) => b.id === 'material')?.hand_ok).toBe(true)
+  })
+
+  it('a bullet of ours says where it is read from, and one read from the order log shows the fact and its door', async () => {
+    const db = seeded()
+    const asked: ReadsAsked[] = []
+    const readers: StartReadersIo = {
+      read: async (a) => {
+        asked.push(a)
+        return new Map([[JOB.id, { orderLog: { state: 'read' as const, bidId: 'bid-1', lines: [{ stage: 'top_out' as const, orderedOn: '2026-11-10', expectedOn: '2026-12-02', deliveredOn: null }] } }]])
+      },
+    }
+    await mount(db, JOB, readers)
+    await openStage('Top Out')
+    // Ticked by hand, nothing is read.
+    expect(asked).toEqual([])
+    fireEvent.click(within(row('material')).getByRole('button', { name: 'ticked by hand, where this is read from, press to change' }))
+    await keep('where this is read from', 'order_log')
+    await waitFor(() => expect(row('material').textContent).toContain('0 of 1 line on site. The last lands Dec 2, 6 days ahead.'))
+    expect(row('material').dataset.standing).toBe('yes')
+    expect(db.rows.bullets.find((b) => b.id === 'material')?.reads).toBe('order_log')
+    expect(asked[0]).toMatchObject({ orderLog: [JOB.id], trips: [], permits: [], role: 'assistant', todayYmd: TODAY, jobs: [{ id: JOB.id, bidId: 'bid-1' }] })
+    expect(within(row('material')).getByRole('link', { name: 'Open the order log' }).getAttribute('href')).toBe('/bids?tab=submittals&bidId=bid-1')
+    // No hand tick is offered on a bullet the app reads.
+    expect(within(row('material')).queryByRole('button', { name: /Mark it/ })).toBeNull()
+  })
+
+  it('a bullet turned to the app drops its hand tick, and one with no reads beside it says the app does not read it', async () => {
+    const db = seeded()
+    await mount(db)
+    await openStage('Top Out')
+    fireEvent.click(within(row('material')).getByRole('button', { name: 'Mark it done' }))
+    await waitFor(() => expect(row('material').dataset.standing).toBe('yes'))
+    fireEvent.click(within(row('material')).getByRole('button', { name: 'ticked by hand, where this is read from, press to change' }))
+    await keep('where this is read from', 'trip')
+    await waitFor(() => expect(row('material').dataset.standing).toBe('open'))
+    expect(db.rows.bullets.find((b) => b.id === 'material')).toMatchObject({ reads: 'trip', hand_ok: false })
+    expect(row('material').textContent).toContain('The app does not read this yet.')
   })
 
   it('the row’s more press asks for a photo, takes a bullet off, and keeps the day they promised', async () => {

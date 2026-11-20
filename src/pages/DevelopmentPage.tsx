@@ -426,12 +426,12 @@ export default function DevelopmentPage() {
   // only the jobs this person is on the desk of, and shows only when one of them has a stage line. Who we ask is the GC's
   // contact on the bids, as the head names them. The site's distance is read only while its notice is on the default.
   const scheduleJobs = useMemo<SiteStartJob[]>(
-    () => (shown ? shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), part: siteRead?.parts.find((p) => p.id === (j.plan_part_id ?? null))?.name?.trim() || (j.job_name ?? '').trim() || jobLabel(j) })) : []),
+    () => (shown ? shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), bidId: j.bid_id ?? null, address: j.job_address ?? null, part: siteRead?.parts.find((p) => p.id === (j.plan_part_id ?? null))?.name?.trim() || (j.job_name ?? '').trim() || jobLabel(j) })) : []),
     [shown, jobLabel, siteRead?.parts],
   )
   const [scheduleWantsFar, setScheduleWantsFar] = useState(false)
   const siteFar = useSiteIsFar(siteAddress, scheduleWantsFar)
-  const siteStart = useSiteStartChecks({ developmentId: developmentId ?? '', jobs: scheduleJobs, contact: contactName({ gcContact: people?.gcContact?.name, gc: data?.customer?.name }), far: siteFar, enabled: !!data && !!developmentId })
+  const siteStart = useSiteStartChecks({ developmentId: developmentId ?? '', jobs: scheduleJobs, contact: contactName({ gcContact: people?.gcContact?.name, gc: data?.customer?.name }), far: siteFar, enabled: !!data && !!developmentId, role, todayYmd: todayYmdInAppTz() })
   const scheduleNeedsFar = siteStart.shows && !siteStart.notice.own
   useEffect(() => {
     if (scheduleNeedsFar) setScheduleWantsFar(true)

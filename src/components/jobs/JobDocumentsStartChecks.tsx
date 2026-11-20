@@ -2,7 +2,8 @@
  * Before we start, on the job window's Documents tab (punch list #382, PR 4): the job's stages, each with the list
  * of what must be true before the crew goes. It stands beside the stage checklists, so there is one place to write
  * a stage's lists: this one for before we start, that one for at the stage. Each stage is a line with its ready bar,
- * and opens to the four lines and the two lists (`StartCheckStage`). A person who is not on the job's desk sees no
+ * and opens to the four lines and the two lists (`StartCheckStage`). A bullet of ours says where it is read from: a
+ * hand tick, or the order log, Trips or the city's permits (PR 8). A person who is not on the job's desk sees no
  * section. Nothing here reaches the GC, and nothing blocks a stage.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
@@ -15,6 +16,7 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import { daySpan, readiness, readyMarks, stageStanding } from '../../lib/startChecks/startChecks'
 import { START_CHECK_WORDS as W } from '../../lib/startChecks/startCheckRows'
 import type { StartChecksIo } from '../../lib/startChecks/startChecksIo'
+import type { StartReadersIo } from '../../lib/startChecks/startCheckReadersIo'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
@@ -43,7 +45,7 @@ export type JobDocumentsStartChecksJob = {
   askCustomerId?: string | null
 }
 
-export function JobDocumentsStartChecks({ job, io, onRequestTab, todayYmd }: { job: JobDocumentsStartChecksJob; io?: StartChecksIo; onRequestTab?: (tab: JobWindowTabKey) => void; todayYmd?: string }) {
+export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayYmd }: { job: JobDocumentsStartChecksJob; io?: StartChecksIo; readers?: StartReadersIo | null; onRequestTab?: (tab: JobWindowTabKey) => void; todayYmd?: string }) {
   const { role, user, profileName } = useAuth()
   const today = todayYmd ?? todayYmdInAppTz()
   // The site's distance is read only when the default notice needs it: for a person on the desk, on a job with a
@@ -51,10 +53,10 @@ export function JobDocumentsStartChecks({ job, io, onRequestTab, todayYmd }: { j
   const [wantsFar, setWantsFar] = useState(false)
   const far = useSiteIsFar(job.job_address, wantsFar)
   const startJob = useMemo<StartChecksJob>(
-    () => ({ id: job.id, label: (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.id.slice(0, 8), developmentId: job.development_id ?? null, bidId: job.bid_id ?? null, gcName: job.gcName ?? null, customerName: job.customer_name ?? null }),
-    [job.id, job.hcp_number, job.click_number, job.development_id, job.bid_id, job.gcName, job.customer_name],
+    () => ({ id: job.id, label: (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.id.slice(0, 8), developmentId: job.development_id ?? null, bidId: job.bid_id ?? null, address: job.job_address ?? null, gcName: job.gcName ?? null, customerName: job.customer_name ?? null }),
+    [job.id, job.hcp_number, job.click_number, job.development_id, job.bid_id, job.job_address, job.gcName, job.customer_name],
   )
-  const read = useJobStartChecks(startJob, { io, far })
+  const read = useJobStartChecks(startJob, { io, far, readers, role, todayYmd: today })
   const me = useMemo(() => ({ userId: user?.id ?? null, name: profileName ?? '' }), [user?.id, profileName])
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const needsFar = read.onDesk === true && read.lines.length > 0 && !read.notice.own

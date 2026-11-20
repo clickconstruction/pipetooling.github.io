@@ -53,6 +53,8 @@ export type UsBullet = {
   fact: string
   /** The press that fixes it: "Open the order log". */
   door: string
+  /** Where that press goes, when it is a door to another screen. Absent for a hand tick. */
+  href?: string | null
 }
 
 export type Bullet = ThemBullet | UsBullet
