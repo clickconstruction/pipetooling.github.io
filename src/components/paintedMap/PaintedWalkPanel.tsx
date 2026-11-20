@@ -1,18 +1,25 @@
 /**
  * Painting a walk: what the person reads and presses while the phone is being followed (punch list
- * #345). The length so far and how sure the phone is sit side by side the whole way. Every pause
- * says why, and a refusal always offers drawing by hand, which needs no location.
+ * #345). The length so far sits over the line that says how the phone's location is doing, and the
+ * line is there in every state while the phone is read (#402): finding, on, a weak signal, or a
+ * rough area with the way to the switch. Every pause says why, and a refusal always offers drawing
+ * by hand, which needs no location.
  */
 import type { CSSProperties } from 'react'
+import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { aboutLengthWords } from '../../lib/paintedMap/paintedMap'
 import { canResumeWalk, walkSure, type WalkState } from '../../lib/paintedMap/paintedWalk'
-import { WALK_CANNOT_STAY_AWAKE_WORDS, WALK_ROUGH_WORDS, walkPausedWords, walkPoorWords, walkRefusalWords, walkSureWords, type WalkRefusal } from '../../lib/paintedMap/paintedWalkWords'
+import { WALK_CANNOT_STAY_AWAKE_WORDS, WALK_ROUGH_NOTE_WORDS, WALK_WEAK_NOTE_WORDS, walkPausedWords, walkRefusalWords, type WalkRefusal } from '../../lib/paintedMap/paintedWalkWords'
+import { preciseStateOf } from '../../lib/paintedMap/preciseLocation'
+import { PreciseLocationLine } from './PreciseLocationLine'
 
 type Props = {
   state: WalkState
   refusal: WalkRefusal | null
   awake: 'held' | 'cannot' | 'off'
+  /** The readings have stayed rough for the wait (`useRoughHeld`). The window counts it once, for this panel and for the map beside it. */
+  roughHeld: boolean
   /** The walk's length so far, in metres, with what was painted before this stroke. */
   lengthM: number
   placeCount: number
@@ -32,8 +39,9 @@ const redPress: CSSProperties = { ...press, background: '#dc2626', borderColor: 
 const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' }
 const amber: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem' }
 
-export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, hasLine, onPlace, onPause, onResume, onTryAgain, onDone, onDrawInstead }: Props) {
-  const sure = walkSure(state)
+export function PaintedWalkPanel({ state, refusal, awake, roughHeld, lengthM, placeCount, hasLine, onPlace, onPause, onResume, onTryAgain, onDone, onDrawInstead }: Props) {
+  const kind = usePhoneKind()
+  const { accuracyM } = walkSure(state)
   const painting = state.status === 'painting'
   const doneStyle = hasLine || placeCount > 0 ? bluePress : deadPress
 
@@ -52,17 +60,11 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
     )
   }
 
-  if (painting && state.rough) {
+  // A rough reading is called rough only once the readings have stayed rough. Until then the line says it is still finding you.
+  if (painting && preciseStateOf(accuracyM, roughHeld) === 'rough') {
     return (
       <div data-painted-walk="rough" style={{ display: 'grid', gap: '0.6rem' }}>
-        <div role="alert" style={amber}>
-          <b>{WALK_ROUGH_WORDS.lead}</b> {WALK_ROUGH_WORDS.tail}
-          <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
-            {WALK_ROUGH_WORDS.steps.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ul>
-        </div>
+        <PreciseLocationLine accuracyM={accuracyM} kind={kind} roughHeld roughNote={WALK_ROUGH_NOTE_WORDS} />
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" style={press} onClick={onPause}>Pause</button>
           <button type="button" style={bluePress} onClick={onDrawInstead}>Draw it by hand instead</button>
@@ -78,12 +80,6 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
         {hasLine ? 'so far' : 'start walking'}
         {placeCount > 0 ? ` · ${placeCount} place${placeCount === 1 ? '' : 's'}` : ''}
       </span>
-      {painting ? (
-        <span data-painted-sure={sure.poor ? 'poor' : 'ok'} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.8125rem', fontWeight: 700, color: sure.poor ? 'var(--text-amber-800)' : sure.accuracyM == null ? 'var(--text-muted)' : 'var(--text-green-700)' }}>
-          <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: sure.poor ? '#d97706' : sure.accuracyM == null ? 'var(--border-strong)' : '#16a34a' }} />
-          {walkSureWords(sure.accuracyM)}
-        </span>
-      ) : null}
     </div>
   )
 
@@ -91,7 +87,7 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
     return (
       <div data-painted-walk="painting" style={{ display: 'grid', gap: '0.6rem' }}>
         {readout}
-        {sure.poor ? <p role="status" style={amber}>{walkPoorWords(sure.accuracyM)} Fix it by hand when you look the line over.</p> : null}
+        <PreciseLocationLine accuracyM={accuracyM} kind={kind} roughHeld={roughHeld} weakNote={WALK_WEAK_NOTE_WORDS} />
         {awake === 'cannot' ? <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_CANNOT_STAY_AWAKE_WORDS}</p> : null}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" data-painted-walk-place style={press} onClick={onPlace}>＋ Place</button>

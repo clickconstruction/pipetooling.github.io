@@ -3173,6 +3173,7 @@ It is drawn only when the row has a way to offer, a row under *On this job* neve
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;
 a stretch the phone was not sure of is drawn faint and left out of the length.
+While the phone is read, one line under the length says how its location is doing (→ *Precise Location*).
 Done opens **Look it over**, where nothing has left the phone, and a walk closed unsaved is kept on the phone for a day and offered back.
 **Look it over** has its own **＋ Place** since v2.7773 (`placeOnReview` in `PaintedMapWindow`): the place panel opens over the waiting lines, and the place is saved when it is added, as the walk's own is, so **Throw the walk away?** says what is already saved stays (`walkThrowAwayWords`).
 Closing the window on an unsaved walk asks **Close the map?** with three presses since v2.7690: **Close, and keep the walk on this phone**, **Close, and throw the walk away**, and **Stay** (`ConfirmDialog`'s `keep`, the blue press over the red one).
@@ -3197,6 +3198,20 @@ The same sheet paints a new one (since v2.7366): **Draw it by hand** or **Walk o
 On the Roadmap (since v2.7368) the Add task window and a roadmap task's card (`RoadmapTaskPlaceSection`, each pick saving itself through `saveRoadmapTaskMap`) have the same press, picking only (`canPaint` and `canOpen` false): the painted map's window sits under the roadmap's windows, so a map is neither painted nor opened from there, and the person opens it from the task on Today.
 Kernels in `src/lib/paintedMap/`.
 Guide `paint-a-map`.
+
+### Precise Location
+The switch in a phone's settings that lets a page read the phone's exact position, and the line on a painted map's walk that says how that reading is doing (punch list #402, the line since v2.7994;
+the words and the thresholds in `src/lib/paintedMap/preciseLocation.ts` since v2.7984, the line `PreciseLocationLine`).
+No browser tells a page whether the switch is on, so the app reads each reading's margin: at or under 100 m proves the switch on (`provesPrecise`), and over 1,000 m is the rough area a phone gives with it off, or a phone that hears a cell tower and nothing else.
+The line is there in every state while the phone is read: *Finding you…*, *Precise Location is on.* with a tick, a weak signal in one amber box, and *Precise Location looks off.*
+It says *looks off* and never *is off*, and only once the readings have stayed rough for 4 seconds, which the screen counts in state that one timer sets (`useRoughHeld`, `PRECISE_ROUGH_HOLD_MS`).
+From 20 m to 100 m the line clears the switch and blames the signal, and from 100 m to 1,000 m it says only that the signal is weak.
+A rough reading sets the phone's two numbers side by side, *Your phone now* and *With Precise Location on*, and lists the steps to the switch for this phone alone, read from the browser's name for itself (`phoneKindOf`, `preciseSteps`).
+A desk, or a phone the page cannot tell, gets one line for each kind of phone and no switch named, and on Android the switch is **Use precise location**.
+A margin is worded in feet up to half a mile and in whole miles past it, always rounded up (`marginWords`).
+On the map a rough reading that has stayed rough is an area and not a spot: its whole circle is drawn dashed with no dot, the map pulls back until the circle and the map's own lines show, and the first spot after it brings the map in to the person (`marginFrame.ts`, the canvas's `frameMargin` and `me.area`).
+What a screen does about a weak or a rough reading is its own sentence, kept with the screen (`WALK_WEAK_NOTE_WORDS`, `WALK_ROUGH_NOTE_WORDS`).
+Guide `paint-a-map`, *When Precise Location looks off*.
 
 ### Your people
 The office's Dashboard section under My Inbox since v2.6600 (punch list #273;

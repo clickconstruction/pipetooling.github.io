@@ -11,6 +11,7 @@ import ConfirmDialog from '../ConfirmDialog'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { useAuth } from '../../hooks/useAuth'
 import { usePaintedWalk, writeKeptWalk } from '../../hooks/usePaintedWalk'
+import { useRoughHeld } from '../../hooks/usePreciseLocation'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -73,7 +74,8 @@ import {
   type PaintedMapWhole,
 } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedPoint, SnapTarget } from '../../lib/paintedMap/paintedLine'
-import { clockWords, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { clockWords, isRoughFix, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { roughCircleWords } from '../../lib/paintedMap/preciseLocation'
 import { walkHasLine, walkPause, walkPaintedMs, walkStrokes, type WalkState, type WalkStroke } from '../../lib/paintedMap/paintedWalk'
 import { lineLengthMeters } from '../../lib/paintedMap/paintedLine'
 import { haversineMeters } from '../../lib/jobTravelEstimate'
@@ -81,6 +83,7 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
+import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasPlace } from './PaintedMapCanvas'
 import { PaintAMapJobPicker } from './PaintAMapJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
@@ -825,7 +828,15 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     [lines, reshaping, pending, fixing, liveStrokes],
   )
   const painting = walk.state?.status === 'painting'
-  const walkMe = mode === 'walk' && walk.state?.last ? { lat: walk.state.last.lat, lng: walk.state.last.lng, accuracyM: walk.state.last.accuracyM } : null
+  // How sure the phone is (#402). A rough reading is called rough only once the readings have stayed rough for the
+  // wait, and the wait is counted here once: the panel's line and the map beside it turn on the same answer. Across a
+  // pause the phone is not read, so the wait starts over when painting does.
+  const walkLast = walk.state?.last ?? null
+  const walkRough = isRoughFix(walkLast?.accuracyM)
+  const roughHeld = useRoughHeld(painting ? (walkLast?.accuracyM ?? null) : null)
+  // Where the person is drawn. A rough reading still being waited on draws nothing and moves nothing: the phone has
+  // not found them yet. Once it has stayed rough it is an area, the whole circle with no dot in its middle.
+  const walkMe: PaintedCanvasMe | null = mode === 'walk' && walkLast && (!walkRough || roughHeld) ? { lat: walkLast.lat, lng: walkLast.lng, accuracyM: walkLast.accuracyM, area: walkRough } : null
   const walkLengthM = pending.reduce((sum, s) => sum + s.lengthM, 0) + liveStrokes.reduce((sum, s) => sum + s.lengthM, 0)
 
   return createPortal(
@@ -878,8 +889,15 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
               </Suspense>
+              {mode === 'walk' && painting && walkMe?.area ? (
+                // The map has pulled back to the whole of what the phone knows. The pill says what the dashed circle is.
+                // On a phone the map's credit line runs to two rows, so the pill sits above both.
+                <div data-painted-rough-circle style={{ position: 'absolute', left: 8, right: 8, bottom: phone ? 42 : 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
+                  <span style={{ background: 'rgba(17, 24, 39, 0.84)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999, textAlign: 'center' }}>{roughCircleWords(walkMe.accuracyM)}</span>
+                </div>
+              ) : null}
               {mode === 'place' ? (
                 <div style={{ position: 'absolute', left: 8, right: 8, bottom: 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
                   <span style={{ background: 'rgba(17, 24, 39, 0.84)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999, textAlign: 'center' }}>{glass ? 'Lift your finger to set it.' : 'Drag the blue dot onto the spot.'}</span>
@@ -903,6 +921,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   state={walk.state}
                   refusal={walk.refusal}
                   awake={walk.awake}
+                  roughHeld={roughHeld}
                   lengthM={walkLengthM}
                   placeCount={places.length}
                   hasLine={pending.length > 0 || walkHasLine(walk.state)}
