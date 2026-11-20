@@ -1449,6 +1449,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
   Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.
   It writes three columns and nothing else, and the table stays read only by grant.
+  Since v2.7983 the papers window sends a paper by email: its **Send to** press shows for the same office roles (`isOfficeRole`) and not for an account in training, so a superintendent gets none.
+  `send-sub-paper-email` holds the gate itself (the office roles, no training account, no archived account) and sends only to the roster's own address for the person, read under the caller's policies.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;

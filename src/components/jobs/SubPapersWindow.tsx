@@ -11,6 +11,11 @@
  * with `paymentRecords` (on since the payment record's own press landed), the send step with `canSend` and an `onSend`, and *Since the last statement* once a
  * `lastStatement` is handed in (null for a sub with none yet, absent while nothing records one).
  *
+ * The send step (on since the Send press landed) says who it goes to, the message as the sub reads it, the files
+ * and what the press does. It offers only the ways it is handed (`sendBy`): email is the one built. A sub with no
+ * address has a dead press, the reason and the door its caller hands in (`emailDoor`). Papers past what one email
+ * carries are held and named. Once it went, the step says so and offers Done in place of a second Send.
+ *
  * The set is checked before any paper is drawn (`subPapersAddUp`). A set that does not add up shows what is off in
  * place of the paper, and its presses are dead.
  */
@@ -33,14 +38,21 @@ import {
 } from '../../../supabase/functions/_shared/subPapers'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { paymentRecordHtml, statementOfAccountHtml, SUB_PAPER_CSS, workStatementHtml } from '../../lib/subWorkOrders/subPapersHtml'
-import { subPaperSendPlan, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
+import { subPaperSendPlan, subPaperSendSet, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
 import { ledgerPeriodRange } from '../../lib/subWorkOrders/subPaymentsLedger'
 
 export type SubPapersOpen = { kind: 'statement' } | { kind: 'work'; sheetId: string } | { kind: 'payment'; sendingKey: string }
 
-export type SubPaperContact = { email: string | null; phone: string | null; portalUrl: string | null }
+/** `emailUnread`: the roster could not be read just now, so the address is not known here. The function reads it itself. */
+export type SubPaperContact = { email: string | null; phone: string | null; portalUrl: string | null; emailUnread?: boolean }
 
 type PeriodKey = 'since' | 'month' | 'year' | 'all' | 'custom'
+
+/** Email is the one way built. A caller that has more hands them in. */
+const EMAIL_ALONE: readonly SubPaperSendBy[] = ['email']
+
+/** The door a dead Send needs: where an address is added, in words, and the press that opens it when the viewer can use it. */
+export type SubPaperEmailDoor = { words: string; press?: { label: string; onPress: () => void } }
 
 export type SubPapersWindowViewProps = {
   open: SubPapersOpen
@@ -52,6 +64,10 @@ export type SubPapersWindowViewProps = {
   /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
   canSend: boolean
+  /** The ways a paper may go. Only what is built is handed in: a texted link is not, and the By row is left out when there is one way. */
+  sendBy?: readonly SubPaperSendBy[]
+  /** Where an email is added for a sub who has none, drawn under the reason the press is dead. */
+  emailDoor?: SubPaperEmailDoor | null
   /** Start on the send step (the window after Record payment does). */
   startOnSend?: boolean
   busy?: string | null
@@ -59,8 +75,8 @@ export type SubPapersWindowViewProps = {
   said?: { tone: 'ok' | 'bad'; words: string } | null
   onDownload: (paper: SubPaper, range: StatementRange) => void
   onPrint: (paper: SubPaper, range: StatementRange) => void
-  /** Absent until Send lands: the window then makes, prints and downloads only. */
-  onSend?: (plan: SubPaperSendPlan, papers: SubPaper[], by: SubPaperSendBy, range: StatementRange) => void
+  /** Absent where nothing sends: the window then makes, prints and downloads only. It answers true once the papers went, and the step then offers Done. */
+  onSend?: (plan: SubPaperSendPlan, papers: SubPaper[], by: SubPaperSendBy, range: StatementRange) => void | Promise<boolean>
   onClose: () => void
 }
 
@@ -70,15 +86,21 @@ const seg = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78r
 const k: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', marginBottom: 3 }
 const field: CSSProperties = { marginTop: 10 }
 
-export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement, paymentRecords = false, canSend: maySend, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
+export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, paymentRecords = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
   const [view, setView] = useState<SubPapersOpen>(open)
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
+  /** The papers went on this visit to the send step: it offers Done, never a second Send by mistake. */
+  const [went, setWent] = useState(false)
+  // The last statement as it stood when the window opened. A paper made here is registered at once, and it must
+  // not move this window's own period under the person: a second press sends the period they are looking at.
+  const [lastStatement] = useState(lastStatementNow)
   const [period, setPeriod] = useState<PeriodKey>(lastStatement ? 'since' : 'all')
   const [custom, setCustom] = useState<{ from: string; to: string }>({ from: '', to: ctx.today })
   const [attachOpen, setAttachOpen] = useState(true)
   const [attachPayments, setAttachPayments] = useState(false)
-  const [by, setBy] = useState<SubPaperSendBy>('email')
+  const ways = SUB_PAPER_SEND_BY.filter((o) => sendBy.includes(o.key))
+  const [by, setBy] = useState<SubPaperSendBy>(ways[0]?.key ?? 'email')
 
   const range: StatementRange = useMemo(() => {
     if (period === 'since') return lastStatement ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
@@ -104,9 +126,12 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
 
   const openWork = built.work.filter((w) => w.stillOpen > 0)
   const periodPayments = built.payments.filter((p) => statement.lastPayments.some((l) => l.key === p.key))
-  const attached: SubPaper[] = view.kind === 'statement' ? [...(attachOpen ? openWork : []), ...(attachPayments ? periodPayments : [])] : []
+  // One email carries so many papers. The oldest ride first, and what does not fit is held and named.
+  const picked: SubPaper[] = view.kind === 'statement' ? [...(attachOpen ? openWork : []), ...(attachPayments ? periodPayments : [])] : []
+  const { attached, held } = by === 'email' ? subPaperSendSet(picked) : { attached: picked, held: [] }
   const last = built.sendings[built.sendings.length - 1]
-  const plan = paper ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead: paper, attached, by, email: contact.email, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
+  const plan = paper ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead: paper, attached, held, by, email: contact.email, emailUnread: contact.emailUnread, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
+  const texts = ways.some((o) => o.key === 'text')
   const ok = built.check.ok && !!paper
   const unnumbered = sheets.filter((s) => !s.number).length
   const backcharges = sheets.reduce((n, s) => n + s.money.filter((m) => m.amount < 0 && statement.rows.some((r) => r.sheetId === s.id)).length, 0)
@@ -243,19 +268,21 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
           <>
             <div style={field}>
               <div style={k}>To</div>
-              <div style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>{[ctx.sub.name, contact.email ?? 'no email on the roster', contact.phone ?? 'no phone on the roster'].join(' · ')}</div>
+              <div data-testid="sub-papers-to" style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>{[ctx.sub.name, contact.email ?? (contact.emailUnread ? 'the address on their roster row' : 'no email on the roster'), ...(texts ? [contact.phone ?? 'no phone on the roster'] : [])].join(' · ')}</div>
             </div>
-            <div style={field}>
-              <div style={k}>By</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {SUB_PAPER_SEND_BY.map((o) => (
-                  <button key={o.key} type="button" aria-pressed={by === o.key} style={seg(by === o.key)} onClick={() => setBy(o.key)}>
-                    {o.label}
-                  </button>
-                ))}
+            {ways.length > 1 ? (
+              <div style={field}>
+                <div style={k}>By</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {ways.map((o) => (
+                    <button key={o.key} type="button" aria-pressed={by === o.key} style={seg(by === o.key)} onClick={() => setBy(o.key)}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{ways.find((o) => o.key === by)?.hint}</div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{SUB_PAPER_SEND_BY.find((o) => o.key === by)?.hint}</div>
-            </div>
+            ) : null}
             <div style={field}>
               <div style={k}>They will get</div>
               <div data-testid="sub-papers-message" style={{ fontSize: '0.8125rem', padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6 }}>
@@ -270,23 +297,47 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
                         </span>
                       ))}
                     </div>
+                    {/* Where the register is live, a paper with no number yet takes one as it is made, and its file is named for it. */}
+                    {lastStatement !== undefined && [paper, ...attached].some((p) => !p.number && p.kind !== 'payment_record') ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>A paper with no number yet takes one as it is made, and its file is named for it.</div> : null}
                   </>
                 ) : (
                   plan.text
                 )}
               </div>
             </div>
-            <div style={{ ...field, fontSize: '0.8125rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6 }}>
-              <b>When you press {by === 'link' ? 'Copy' : 'Send'}</b>
-              <ol style={{ margin: '0.25rem 0 0 1.1rem', padding: 0 }}>
-                {plan.steps.map((s) => (
-                  <li key={s}>{s}</li>
-                ))}
-              </ol>
-            </div>
+            {/* A press that cannot go lists nothing it would do: the reason under it is the whole story. */}
+            {plan.blocked ? null : (
+              <div style={{ ...field, fontSize: '0.8125rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6 }}>
+                <b>When you press {by === 'link' ? 'Copy' : 'Send'}</b>
+                <ol style={{ margin: '0.25rem 0 0 1.1rem', padding: 0 }}>
+                  {plan.steps.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {plan.held ? (
+              <div data-testid="sub-papers-held" style={{ ...field, fontSize: '0.8125rem', color: 'var(--text-amber-900)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.65rem' }}>
+                {plan.held}
+              </div>
+            ) : null}
             {plan.blocked ? (
               <div role="alert" style={{ ...field, fontSize: '0.8125rem', color: 'var(--text-amber-900)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.65rem' }}>
                 {plan.blocked}
+                {plan.needs === 'email' && emailDoor ? (
+                  <>
+                    {' '}
+                    {emailDoor.words}
+                    {emailDoor.press ? (
+                      <>
+                        {' '}
+                        <button type="button" onClick={emailDoor.press.onPress} style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                          {emailDoor.press.label}
+                        </button>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             ) : null}
           </>
@@ -301,12 +352,35 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement,
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
           {step === 'send' ? (
             <>
-              <button type="button" style={quiet} onClick={() => setStep('paper')}>
+              <button
+                type="button"
+                style={quiet}
+                onClick={() => {
+                  setWent(false)
+                  setStep('paper')
+                }}
+              >
                 Back to the paper
               </button>
-              <button type="button" disabled={!ok || !plan?.confirmLabel || !canSend || !!busy} style={press(ok && !!plan?.confirmLabel && canSend && !busy)} onClick={() => plan && paper && onSend?.(plan, [paper, ...attached], by, range)}>
-                {busy ?? plan?.confirmLabel ?? 'Cannot send yet'}
-              </button>
+              {went ? (
+                <button type="button" style={press(true)} onClick={onClose}>
+                  Done
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!ok || !plan?.confirmLabel || !canSend || !!busy}
+                  style={press(ok && !!plan?.confirmLabel && canSend && !busy)}
+                  onClick={() => {
+                    if (!plan || !paper) return
+                    void Promise.resolve(onSend?.(plan, [paper, ...attached], by, range)).then((sent) => {
+                      if (sent === true) setWent(true)
+                    })
+                  }}
+                >
+                  {busy ?? plan?.confirmLabel ?? 'Cannot send yet'}
+                </button>
+              )}
             </>
           ) : (
             <>

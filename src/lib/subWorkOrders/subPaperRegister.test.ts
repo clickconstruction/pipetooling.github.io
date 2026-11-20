@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPaymentRecord, buildStatementOfAccount, buildWorkStatement, paperSendings, type PaperContext, type PaperMoneyLine, type PaperSheet } from '../../../supabase/functions/_shared/subPapers'
-import { mintRefusal, mintSubPaperArgs, mintedFrom, numberedSubPaper, subPaperFingerprint, subPaperRegister, type SubPaperRow } from './subPaperRegister'
+import { mintRefusal, mintSubPaperArgs, mintedFrom, numberedSheet, numberedSubPaper, registerSubPaperSet, subPaperFingerprint, subPaperRegister, type MintedSubPaper, type SubPaperRow } from './subPaperRegister'
+import type { SubPaper } from './subPaperSend'
 
 // Made-up people, jobs and money.
 const CTX: PaperContext = { company: { name: 'Made-up Plumbing Co.', lines: [] }, sub: { name: 'Harlan Mechanical', lines: [] }, today: '2026-11-16', preparedAt: 'Nov 16, 2026 at 9:30 am', zone: 'Central time' }
@@ -109,5 +110,88 @@ describe('what the register answers', () => {
     expect(mintRefusal({ code: 'PGRST202', message: 'Could not find the function public.mint_sub_paper' })).toEqual({ missing: true, words: 'Could not find the function public.mint_sub_paper' })
     expect(mintRefusal({ code: '42501', message: 'A training account cannot make a sub paper.' })).toEqual({ missing: false, words: 'A training account cannot make a sub paper.' })
     expect(mintRefusal(null)).toEqual({ missing: false, words: 'the register gave no reason' })
+  })
+})
+
+describe('numberedSheet: the sheet every paper in a set is built over', () => {
+  it('takes the number and the revision, and on a new revision the day of the copy it replaces', () => {
+    const before = subPaperRegister([row({ revision: 1, issued_at: '2026-10-29T15:00:00Z' })], dayOf)
+    expect(numberedSheet(SHEETS[0]!, { number: 'WS-2041-1', revision: 2, reused: false }, before)).toMatchObject({ id: 'cedar-1', number: 'WS-2041-1', revision: 2, replacesCopyOf: '2026-10-29' })
+    expect(numberedSheet(SHEETS[1]!, { number: 'WS-2057-1', revision: 1, reused: false }, before)).toMatchObject({ id: 'ridge-1', number: 'WS-2057-1', revision: 1, replacesCopyOf: '' })
+  })
+})
+
+describe('registerSubPaperSet: papers that go out together read as one set', () => {
+  const none = subPaperRegister([], dayOf)
+  const statement = buildStatementOfAccount(SHEETS, ALL, CTX)
+  const work = SHEETS.map((s) => buildWorkStatement(s, CTX))
+  const record = buildPaymentRecord(paperSendings(SHEETS).find((s) => s.key === 'snd226')!, SHEETS, CTX)
+  /** A register that answers as the database does, and keeps what it was handed, in order. */
+  const registerOf = (answer: (p: SubPaper) => MintedSubPaper | null = (p) => ({ number: p.kind === 'work_statement' ? `WS-${p.job.label.slice(1, 5)}-1` : p.kind === 'statement_of_account' ? 'SA-0007' : p.number, revision: 1, reused: false })) => {
+    const seen: SubPaper[] = []
+    return { seen, io: { mint: async (p: SubPaper) => (seen.push(p), answer(p)), sheets: SHEETS, ctx: CTX, range: ALL, register: none } }
+  }
+
+  it('registers every work statement first and the statement of account last, whatever order they were given in', async () => {
+    const { seen, io } = registerOf()
+    await registerSubPaperSet([statement, record, ...work], io)
+    expect(seen.map((p) => p.kind)).toEqual(['work_statement', 'work_statement', 'payment_record', 'statement_of_account'])
+  })
+
+  it('hands the papers back in the order given, each under its number', async () => {
+    const { io } = registerOf()
+    const made = await registerSubPaperSet([statement, ...work, record], io)
+    expect(made.map((p) => [p.kind, p.number])).toEqual([
+      ['statement_of_account', 'SA-0007'],
+      ['work_statement', 'WS-2041-1'],
+      ['work_statement', 'WS-2057-1'],
+      ['payment_record', 'PR-0226'],
+    ])
+    expect(made[1]!.foot).toBe('WS-2041-1')
+  })
+
+  it('the statement of account and the payment record name each sheet by the number on the file beside them', async () => {
+    const { seen, io } = registerOf()
+    const made = await registerSubPaperSet([statement, ...work, record], io)
+    const sa = made[0]!
+    const pr = made[3]!
+    expect(sa.kind === 'statement_of_account' && sa.rows.map((r) => r.sheetName)).toEqual(['WS-2041-1', 'WS-2057-1'])
+    expect(pr.kind === 'payment_record' && pr.applied.map((a) => a.sheetName)).toEqual(['WS-2041-1'])
+    // What the register keeps is the paper as it went: the snapshot names the work statements too.
+    const kept = seen[3]!
+    expect(kept.kind === 'statement_of_account' && kept.rows.map((r) => r.sheetName)).toEqual(['WS-2041-1', 'WS-2057-1'])
+    // Alone, a statement of account names a sheet with no work statement by its day, as it always did.
+    const alone = (await registerSubPaperSet([statement], registerOf().io))[0]!
+    expect(alone.kind === 'statement_of_account' && alone.rows.map((r) => r.sheetName)).toEqual(['Sheet of Oct 28, 2026', 'Sheet of Nov 3, 2026'])
+  })
+
+  it('the figures do not move: a set registered together fingerprints as each paper did alone', async () => {
+    const { io } = registerOf()
+    const made = await registerSubPaperSet([statement, ...work, record], io)
+    expect(made.map(subPaperFingerprint)).toEqual([statement, ...work, record].map(subPaperFingerprint))
+  })
+
+  it('a register that is not on the database yet leaves every paper as it was', async () => {
+    const { io } = registerOf(() => null)
+    const made = await registerSubPaperSet([statement, work[0]!], io)
+    expect(made.map((p) => p.number)).toEqual(['', ''])
+    expect(made[1]).toBe(work[0])
+  })
+
+  it('a refusal stops the set, and a statement of account behind it takes no number', async () => {
+    const seen: string[] = []
+    const io = {
+      mint: async (p: SubPaper): Promise<MintedSubPaper | null> => {
+        seen.push(p.kind)
+        if (p.kind === 'work_statement' && p.sheetId === 'ridge-1') throw new Error('That sheet is gone.')
+        return { number: 'WS-2041-1', revision: 1, reused: false }
+      },
+      sheets: SHEETS,
+      ctx: CTX,
+      range: ALL,
+      register: none,
+    }
+    await expect(registerSubPaperSet([statement, ...work], io)).rejects.toThrow('That sheet is gone.')
+    expect(seen).toEqual(['work_statement', 'work_statement'])
   })
 })
