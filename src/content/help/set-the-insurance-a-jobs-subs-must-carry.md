@@ -2,7 +2,7 @@
 title: set the insurance a job's subs must carry
 category: Office
 roles: dev
-keywords: insurance, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
+keywords: insurance, send, send the sheet, send it again, tell them it changed, take it off their page, not opened yet, their page is off, send it anyway, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
 where: /documents?tab=builder&builder=insurance
 ---
 The insurance builder makes one sheet for each job you run as the GC. The sheet tells a sub what insurance to carry on that job.
@@ -117,4 +117,42 @@ The link always shows the published revision. It never shows a draft.
 
 The card says how often someone outside opened the link. Your own look is not counted.
 
-The builder sends nothing to anyone yet. A person copies the link. See [use the document builder](/help/use-the-document-builder) for the tab itself.
+## Send a sheet to the job's trades
+
+The card **Send the sheet to this job's trades** lists every trade asked to quote on the job.
+
+1. Open the job's sheet and publish it.
+2. Find the trade's row on the card.
+3. Press {{button:outline-blue|Send it to them}}.
+4. Pick who at the company gets the email.
+5. Read the note and change it if you want.
+6. Press the blue button. It names the person, like {{button:blue|Send to Dana}}.
+
+The trade gets an email with a link to their own page. The sheet is on that page.
+
+- {{chip:gray|No page yet}} means the trade never had a page. Sending to that trade alone makes one.
+- {{chip:yellow|Their page is off}} means someone turned the page off. A send never turns a page back on.
+- **Turn their page on** is its own press, in the box.
+
+A sheet your agent has not checked goes only after you tick **Send it anyway**.
+
+## Send to every trade that is ready
+
+One press under the list sends to every trade that is ready. The button says how many.
+
+A trade is ready when its page is on and someone there has an email. The rest are listed under the button, each with its reason. A trade that fails is named afterwards, and the others still go.
+
+## Read where a send stands
+
+- {{chip:gray|Sent Nov 20 to Dana Reyes}} names the day and the person.
+- {{chip:yellow|Not opened yet}} means they have not opened this revision.
+- {{chip:green|Opened Nov 21}} names the day they opened it.
+- {{chip:yellow|Changed since they opened it}} means you published a newer revision since.
+
+- {{button:outline-blue|Send it again}} sends a reminder.
+- {{button:outline-blue|Tell them it changed}} tells them of the new revision.
+- {{button:outline-blue|Take it off their page}} ends the send. The sheet leaves their page.
+
+Each send is kept under [Sent copies](/documents?tab=sent) on Documents.
+
+Only a dev can send for now. See [use the document builder](/help/use-the-document-builder) for the tab itself.

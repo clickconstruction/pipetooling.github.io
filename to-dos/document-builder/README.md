@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 5, the send to a job's trades. Steps 1 to 4 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008), and step 5's table is in the database.
+next: Step 6, a certificate held against a job's sheet, waits on the owner's call. Steps 7 to 9, the Sub NDA on the GC's view, come next. Steps 1 to 5 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009).
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -538,7 +538,8 @@ of it. The same day he said to build it.
 | 2 · A builder's contents move into the database | **Built**, v2.7988 (the tables) and v2.8005 (the tab). The tab reads `document_builders`, a builder with no row offers **Load the first draft**, and the Sub NDA's flow runs on the row's draft. v2.7988 also laid the tables steps 3 to 5 need, in a second migration: `document_builder_sheets`, `document_builder_links`, `document_builder_sends`. |
 | 3 · The standing sheet and a job's sheet | **Built**, v2.8007. A second builder, **Insurance requirements for subs**: the usual sheet and one sheet a job, typed on in place, a job holding only what differs, and a publish of the usual that goes to each job that is ready and names the ones it held. Every amount is the placeholder *An amount*. Nothing leaves the building yet. |
 | 4 · The sheet's link | **Built**, v2.8008. A published sheet has one live link, `/d/<code>`, that opens it with no login, made, copied, replaced and switched off from a card on the sheet. Only the code's hash is kept. The function is `document-builder-link`. Nothing is sent: a person copies the link. |
-| 5 to 10 | Not built. |
+| 5 · Send it to a job's trades | **Built**, v2.8009. A card on a published sheet lists the job's trades, each with where its send stands. A box sends to one person at one trade, and one press sends to every trade that is ready and lists the ones it held. A send never turns a page back on, and a trade with no page gets one only from a send to that trade alone. The trade reads the sheet on its own page. The function is `document-builder-send`. |
+| 6 to 10 | Not built. |
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from
