@@ -133,7 +133,7 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
   return (
     <div className="lienMonthClosed">
       <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>
-      {w.noted ? <span className="lienLedgerFaint" style={{ whiteSpace: 'nowrap' }}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
+      {w.noted ? <span className="lienLedgerFaint lienLedgerNoted">noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
       {openWords ? <span className="lienMonthClosedTail lienLedgerFaint" title={openWords}>{w.noted ? '· ' : ''}{openWords}</span> : null}
       {!w.noted && onNoteMissed ? (
         <button type="button" onClick={() => onNoteMissed(r.month)} data-lien-desk-note-missed className="lienLedgerNoteMissed" title="Write the closed window down with your name — not a skip, just that it was seen">
