@@ -27,6 +27,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import RateMyCrewDeck from '../team-feedback/RateMyCrewDeck'
 import { EmptyState } from '../EmptyState'
 import { SUPERVISOR_CREW_EMPTY, supervisorReportsOwedEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 type Props = {
   authUserId: string | null | undefined
@@ -105,8 +106,8 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
   const summary = reportsSummary(view)
   return (
     <section aria-label="My crew" style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.05rem' }}>My crew</h2>
+      <DashboardCardHead card={null} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <DashboardCardTitle>My crew</DashboardCardTitle>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>job-days you supervised · nothing here is assigned</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', marginLeft: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.3rem', fontSize: '0.8rem' }} role="group" aria-label="Week">
           <button type="button" style={navButtonStyle} onClick={() => setRange((r) => ({ from: ymdAddDays(r.from, -7), to: ymdAddDays(r.to, -7) }))} aria-label="Earlier week">
@@ -122,7 +123,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
             </button>
           )}
         </span>
-      </div>
+      </DashboardCardHead>
       {/* A failed read replaces the cards: "Nothing owed." over a week nobody could read would be a guess. */}
       {error ? (
         <OfflineRetryPanel failure={error} onRetry={load} surface="my-crew" idempotent busy={reading} />

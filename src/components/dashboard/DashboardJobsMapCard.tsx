@@ -36,6 +36,7 @@ import { EmptyState } from '../EmptyState'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 import { DashboardJobsMapPopupBody } from './DashboardJobsMapPopupBody'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 const OUTLINE_BUTTON_STYLE: React.CSSProperties = {
   padding: '0.35rem 0.75rem',
@@ -147,10 +148,10 @@ export function DashboardJobsMapCard({
         gap: isMobile ? '0.625rem' : '0.75rem',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <DashboardCardHead card={{ top: isMobile ? '0.75rem' : '1rem', side: isMobile ? '0.75rem' : '1rem', radius: isMobile ? 12 : 8 }} below="0" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'var(--text-muted)' }}>
           <PinGlyph />
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Your jobs on a map</h3>
+          <DashboardCardTitle>Your jobs on a map</DashboardCardTitle>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
           {!isMobile && legend.length > 0 ? <Legend legend={legend} /> : null}
@@ -163,7 +164,7 @@ export function DashboardJobsMapCard({
             {hidden ? 'Show map' : isMobile ? 'Hide' : 'Hide map'}
           </button>
         </div>
-      </div>
+      </DashboardCardHead>
 
       {hidden ? null : (
         <>

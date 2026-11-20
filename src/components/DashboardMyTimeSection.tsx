@@ -13,6 +13,7 @@ import type { SalariedWeek } from '../lib/salariedEffectiveHours'
 import { myTimeWeekEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
+import { DashboardCardHead, DashboardCardTitle } from './dashboard/DashboardCardTitle'
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -694,9 +695,9 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
       {/* One My Time card (v2.1551): header, duration tiles, always-visible week
           grid, breakdown behind the toggle, one action row. The orange clock
           strip above stays as-is (owner request). */}
-      <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.6rem' }}>
-        My Time
-      </div>
+      <DashboardCardHead below="0.6rem">
+        <DashboardCardTitle>My Time</DashboardCardTitle>
+      </DashboardCardHead>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
         <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem', textAlign: 'center' }}>
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Today</div>

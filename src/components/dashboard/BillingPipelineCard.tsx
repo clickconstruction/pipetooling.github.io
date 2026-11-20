@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Groups the three billing sections (Field approval → Ready to Bill → Billed
@@ -21,8 +22,8 @@ export function BillingPipelineCard({ children, onInfoClick }: { children: React
         marginBottom: '1rem',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Billing Pipeline</h2>
+      <DashboardCardHead below="0.5rem" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <DashboardCardTitle>Billing Pipeline</DashboardCardTitle>
         {onInfoClick ? (
           <button
             type="button"
@@ -51,7 +52,7 @@ export function BillingPipelineCard({ children, onInfoClick }: { children: React
             i
           </button>
         ) : null}
-      </div>
+      </DashboardCardHead>
       {children}
     </div>
   )

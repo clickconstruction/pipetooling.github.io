@@ -8,6 +8,7 @@ import { QUICKFILL_AFTERNOON_SECTIONS, QUICKFILL_PERSONAL_SECTIONS } from '../..
 import { officeRoundHeadline, officeRoundState, roundStartPress, roundStartStation, roundStartWords, type OfficeRoundState, type RoundCloseEvent, type RoundStart } from '../../lib/quickfill/roundClose'
 import { foldRetiredSectionId, QUICKFILL_SECTION_LABEL_BY_ID, QUICKFILL_SECTIONS } from '../../lib/quickfill/sections'
 import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * The office's round on the Dashboard (punch list #176, change 5): the round's close sheet in
@@ -88,11 +89,11 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
       data-testid="dashboard-office-round"
       style={{ background: 'var(--surface)', border: `1px solid ${missed ? 'var(--border-red)' : 'var(--border)'}`, borderRadius: 10, padding: '0.85rem 1.25rem 0.5rem', marginBottom: '1rem', boxSizing: 'border-box' }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
-        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700 }}>The office's round</h2>
+      <DashboardCardHead card={{ top: '0.85rem', side: '1.25rem', radius: 10 }} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <DashboardCardTitle>The office's round</DashboardCardTitle>
         <span style={{ ...chipStyle, borderRadius: 999, padding: '1px 9px', fontSize: '0.75rem', fontWeight: 700 }}>{chip}</span>
         <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{officeRoundHeadline(state, formatDayLabel)}</span>
-      </div>
+      </DashboardCardHead>
       {state.kind === 'today' ? (
         <>
           {state.sheet.questions.map((l) => door(l, 'Answer'))}

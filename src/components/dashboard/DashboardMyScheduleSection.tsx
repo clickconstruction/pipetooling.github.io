@@ -41,6 +41,7 @@ import {
   jobCardMobileActionButtonStyle,
   WriteUpChangeGlyph,
 } from './dashboardJobRowShared'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 export type DashboardMyScheduleSectionProps = {
   role: UserRole | null
@@ -289,18 +290,9 @@ export function DashboardMyScheduleSection({
         scrollMarginTop: 8,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-          marginBottom: '0.75rem',
-        }}
-      >
+      <DashboardCardHead style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '0.6rem', minWidth: 0 }}>
-          <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
+          <DashboardCardTitle nowrap>My Schedule</DashboardCardTitle>
           {/* v2.1553: the two-line "(schedule wrong? click to call dispatch)"
               parenthetical becomes one round phone button beside the title. */}
           {firstAssistantDispatchPhone && (
@@ -376,7 +368,7 @@ export function DashboardMyScheduleSection({
             Calendar →
           </Link>
         </div>
-      </div>
+      </DashboardCardHead>
       {kept ? (
         <KeptReadStamp lead={PHONE_DAY_KEPT_LEAD} readAt={subScheduleKeptAt} failed={subScheduleKeptFailed} onRetry={reloadSubSchedule} />
       ) : null}

@@ -28,6 +28,7 @@ import { dayBookDoorHref } from '../../lib/people/dayBookDoor'
 import { canOpenDayBook } from '../../lib/people/dayBookAccess'
 import { EmptyState } from '../EmptyState'
 import { crewDayEmptyWords, crewDayOfficeOnlyEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * Dashboard "Crew Day" section (v2.2602): who was on what jobs and what they
@@ -266,18 +267,9 @@ export function DashboardCrewDaySection({
         scrollMarginTop: 8,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-          marginBottom: '0.5rem',
-        }}
-      >
+      <DashboardCardHead below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Crew Day</h2>
+          <DashboardCardTitle nowrap>Crew Day</DashboardCardTitle>
           {/* Office roles only (v2.2615): superintendents don't get the email —
               the dashboard is their window (owner decision; server enforces too). */}
           {isCrewDayEmailRole(role) ? (
@@ -317,7 +309,7 @@ export function DashboardCrewDaySection({
             <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {dayDateSuffix(ymd)}</span>
           </span>
         </div>
-      </div>
+      </DashboardCardHead>
 
       {role === 'superintendent' ? (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>

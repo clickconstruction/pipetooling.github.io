@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-19
+last_updated: 2026-11-20
 ---
 
 ## Overview
@@ -26,6 +26,7 @@ last_updated: 2026-11-19
 3. **Job Mode replaces the top of the page.** When `useJobModeEnabled(userId, role)` is on — absent key ⇒ ON for sub-like roles, OFF otherwise, stored value wins (v2.2877, `isJobModeEnabled` in `jobModeToggle.ts`) — an early `return` (1146–1236) renders the pinned row (banners hidden), a hidden clock mount, the customer's words strip (`DashboardCustomerWordsStrip`, v2.6584: a four or five star answer on a job this person clocked onto, through `my_customer_words()`, also above Your record on the full page), the job card, the Your week card (`DashboardYourWeekCard`, v2.6589: the one signal the office picked on the People desk, read through `my_week()`; nothing until picked; also above Your record on the full page), Your record, My Schedule and the Training card (v2.5586) until the user taps "Show full dashboard" (`jobModeShowFullDashboard`, resets each page load). The full render mounts `DashboardJobModeFirstRunCard` (master/superintendent, nothing stored) above the pinned/quick row.
 4. **The page is a slot host now.** The top of the main return is one `DashboardPinnedQuickRow` that receives the clock (`clockSlot`), My Schedule + Your record + Estimate button (`afterJobReportRow`) and Financials (`interstitial`) as slots — the parent builds those elements, the row positions them.
 5. **File layout.** Module scope 1–136 (imports; lazy `DashboardMyTeamSection` 118, `DashboardSupervisorSection` 120, `DashboardTrialVerdictSection` 121; `HOURS_DAY_CORRECT_BLOCK_TOAST` 125; `DASHBOARD_MODAL_OVERLAY_STYLE` 128–136). Inside `Dashboard()`: state/effects/handlers 138–1090; render-prep consts `billingPipelineSectionProps` 1029–1051, `pinnedQuickRowSharedProps` 1099–1114, `myScheduleSection` 1119–1138, `crewDaySection` 1141; Job Mode early return 1146–1236; `dockSections` 1240–1279, `myInboxCard` 1281–1294, `clockActivityStripBlock` 1298–1339; main render 1341–1851.
+6. **One head for every card.** A card's title row is a [`DashboardCardHead`](../src/components/dashboard/DashboardCardTitle.tsx) with a `DashboardCardTitle` (the card's one `h2`) in it: a tinted band across the card's top with the Edit Job heading's orange edge, drawn from [`dashboardCardTitleStyle.ts`](../src/lib/dashboard/dashboardCardTitleStyle.ts). The full page and both Job Mode pages share it, `DashboardGroupCard` included, so a change to how a title reads is one edit there; a card whose padding is not the common `0.85rem 1rem` hands its box as `card`, a section with no card hands `card={null}`, and a heading inside a card is an `h3`.
 
 ### How to read a dossier
 

@@ -243,7 +243,7 @@ export function DashboardBillingPipelineSection({
               style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
             >
               <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h2>
+              <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h3>
             </button>
             {readyToBillExpanded && (
             <>
@@ -454,7 +454,7 @@ export function DashboardBillingPipelineSection({
                 style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
               >
                 <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
-                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h2>
+                <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h3>
               </button>
               {waitingForPaymentExpanded && (
               <>

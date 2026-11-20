@@ -11,6 +11,7 @@ import { lienReminderOutcome, lienReminderWords } from '../../lib/jobs/lienLeade
 import { sendLienReminder } from '../../lib/jobs/lienReminderRun'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * The office's Waiting on card (punch list #365, PR 2): on an assistant's Dashboard, under Needs you, the lines
@@ -24,7 +25,6 @@ import { formatDenverTimeOnly } from '../../utils/dateUtils'
  */
 
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.9rem 1rem', marginBottom: '1rem', boxSizing: 'border-box' }
-const HEAD: CSSProperties = { display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0 0 0.4rem', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { marginLeft: 'auto', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 999, padding: '1px 9px', fontSize: '0.8125rem', fontWeight: 700, letterSpacing: 0 }
 const ROW: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '4px 12px', alignItems: 'center', padding: '0.65rem 0', borderTop: '1px solid var(--border)' }
 const TITLE: CSSProperties = { fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)', minWidth: 0 }
@@ -50,12 +50,12 @@ export function WaitingOnLeaderBody({ card, notRead, reminding, reminded, onRemi
   const who = card.leaderName?.trim().split(/\s+/)[0] ?? ''
   return (
     <section aria-label={card.title} data-waiting-on-leader style={CARD}>
-      <h2 style={HEAD}>
-        <span>{card.title}</span>
+      <DashboardCardHead card={{ top: '0.9rem', side: '1rem', radius: 12 }} below="0.4rem" style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+        <DashboardCardTitle>{card.title}</DashboardCardTitle>
         <span data-waiting-on-leader-count style={PILL}>
           {card.count}
         </span>
-      </h2>
+      </DashboardCardHead>
       {card.rows.map((row, i) => {
         const words = row.remind ? lienReminderWords(row.remind, card.leaderName, reminded[row.key] ?? null) : null
         const busy = reminding === row.key

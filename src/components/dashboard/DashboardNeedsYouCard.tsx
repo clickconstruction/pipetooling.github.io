@@ -17,6 +17,7 @@ import { EmptyState } from '../EmptyState'
 import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -343,8 +344,8 @@ export function DashboardNeedsYouCard({
           <span style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>The Board ›</span>
         </button>
       ) : null}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.75rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>Needs you</h2>
+      <DashboardCardHead card={{ top: lienBoardStrip && lienBoardStrip.length ? null : '1rem', side: '1.25rem', radius: 10 }} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+        <DashboardCardTitle>Needs you</DashboardCardTitle>
         <span
           style={{
             background: 'var(--bg-amber-100)',
@@ -364,7 +365,7 @@ export function DashboardNeedsYouCard({
             {currentIndex + 1} of {items.length}
           </span>
         ) : null}
-      </div>
+      </DashboardCardHead>
 
       {fill && fillIn ? (
         <>

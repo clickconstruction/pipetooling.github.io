@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react'
 import TrialVerdictCards from '../team-feedback/TrialVerdictCards'
 import { dashboardTrialCards } from '../../lib/hiring/trialVerdicts'
 import { canEverLeadTrialHelper, useTrialVerdictFeed } from '../../lib/hiring/useTrialVerdictFeed'
+import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 type Props = { authUserId: string | null | undefined; role: string | null }
 
@@ -30,10 +31,10 @@ export default function DashboardTrialVerdictSection({ authUserId, role }: Props
   if (!enabled || !authUserId || !loaded || !hasCards) return null
   return (
     <section ref={ref} id={TRIAL_VERDICT_SECTION_ID} aria-label="Trial helpers" style={{ marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Trial helpers</h2>
+      <DashboardCardHead card={null} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <DashboardCardTitle>Trial helpers</DashboardCardTitle>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>the office reads your answer by name · it decides who gets hired</span>
-      </div>
+      </DashboardCardHead>
       <div style={{ maxWidth: 520 }}>
         <TrialVerdictCards cards={shown} userId={authUserId} onSaved={() => void reload()} />
       </div>

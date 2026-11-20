@@ -20,6 +20,7 @@ import {
   type FleetServiceEvent,
 } from '../lib/vehicleFleet'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { DashboardCardHead, DashboardCardTitle } from './dashboard/DashboardCardTitle'
 
 /**
  * Dashboard "My Vehicle" card (v2.1648, Vehicles fleet phase 4): renders just
@@ -240,9 +241,9 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
         padding: '0.85rem 1rem 1rem',
       }}
     >
-      <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.6rem' }}>
-        My Vehicle
-      </div>
+      <DashboardCardHead below="0.6rem">
+        <DashboardCardTitle>My Vehicle</DashboardCardTitle>
+      </DashboardCardHead>
       {/* A read is safe to repeat: when the signal returns the card reads again by itself. */}
       {loadFailure ? <OfflineRetryPanel failure={loadFailure} onRetry={load} surface="my-vehicle" idempotent busy={reading} /> : null}
       {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', margin: '0 0 0.6rem' }}>{error}</p>}
