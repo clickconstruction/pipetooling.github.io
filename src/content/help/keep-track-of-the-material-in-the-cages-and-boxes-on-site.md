@@ -9,7 +9,7 @@ On a big job the material lives in stencilled cages and boxes left on the site. 
 
 ## Open the tab
 
-Open **Tally**. It opens on **On site**, the first tab. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site** beside **Job calendar**. Tap it and the tab opens on the job the card names. A number on it counts the cages and boxes on that job's site.
+Open **Tally**. The Tally opens on **On site**, the first tab. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site** beside **Job calendar**. Tap **Materials on site** and the tab opens on the job the card names. The number on the press counts the cages and boxes on that job's site.
 
 ## Find the job
 
