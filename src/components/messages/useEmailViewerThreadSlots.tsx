@@ -13,6 +13,7 @@ import { lineInvitation } from '../../lib/followUp/newLaneRows'
 import { canOpenMessages } from '../../lib/gc/access'
 import { isInlinePicture } from '../../lib/bids/bidMailSet'
 import { viewerPresses, type ViewerPress } from '../../lib/messages/emailViewerActions'
+import { mailPaperLinks } from '../../lib/papers/mailPaperLinks'
 import { supabaseEmailViewerIo, type EmailViewerIo } from '../../lib/messages/emailViewerActionsIo'
 import type { ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
@@ -50,7 +51,9 @@ export function useEmailViewerThreadSlots(io?: EmailViewerIo): Pick<ThreadSlots,
               const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
               // A link is no file, and a signature's picture (image001.png) or Gmail's picture of a Drive link is not one to keep (v2.7556, v2.7954).
               const files = (m.files ?? []).filter((f) => f.kept !== 'link' && !isInlinePicture(f)).length
-              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files }).filter(
+              // A link to a file is something a job's paper can hold (v2.7973); the bid's press still reads files alone.
+              const links = mailPaperLinks((m.files ?? []).filter((f) => f.kept === 'link').map((f) => f.url)).length
+              const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files, links }).filter(
                 (p): p is Exclude<ViewerPress, 'change_order'> => p !== 'change_order',
               )
               if (presses.length === 0) return null

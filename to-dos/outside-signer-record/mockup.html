@@ -113,6 +113,7 @@
   .k-jobs { background: var(--bg-blue-tint); color: var(--text-blue-700); }
   .k-people { background: var(--bg-amber-tint); color: var(--text-amber-800); }
   .k-out { background: var(--bg-teal-tint); color: var(--text-teal-700); }
+  .k-none { background: transparent; color: var(--text-700); box-shadow: inset 0 0 0 1px var(--border-strong); }
   .st { display: inline-block; font-size: 11.2px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
   .st.waiting { background: var(--bg-amber-100); color: var(--text-amber-800); }
   .st.signed { background: var(--bg-green-tint); color: var(--text-green-700); }
@@ -195,6 +196,7 @@
     <a href="#short">The short of it</a>
     <a href="#list">Agreements with outside papers</a>
     <a href="#send">Send a paper</a>
+    <a href="#nolist">Someone in no list</a>
     <a href="#phone">On a phone</a>
     <a href="#people">What People still shows</a>
     <a href="#options">The four options</a>
@@ -314,7 +316,8 @@
         <div class="prow"><div><b>Tallgrass Supply Co.</b><span class="m">Someone not listed. You name the signer next.</span></div><span class="ktag k-out">Supply house</span></div>
         <div class="prow"><div><b>Tallgrass Homes</b><span class="m">No one on file. You name the signer next.</span></div><span class="ktag k-out">Customer</span></div>
         <div class="prow"><div><b>Pat Tallman</b><span class="m">Signs for themselves</span></div><span class="ktag k-people">Staff</span></div>
-        <p class="fine">Not here? Add them on <span class="lnk">Customers</span>, <span class="lnk">Supply houses</span> or <span class="lnk">People</span> first. A paper goes to someone the app knows.</p>
+        <div class="prow"><div><b>Someone not in any list</b><span class="m">Type their name and email next.</span></div><span class="ktag k-none">Not on a list</span></div>
+        <p class="fine">Someone typed in can be added to a list later, from their line on Agreements.</p>
       </div>
     </div>
 
@@ -335,6 +338,59 @@
     </div>
   </div>
   <p class="note"><b>For a person, nothing is added.</b> Pick a sub or a teammate in window 2. Window 3 opens as it does today, with their name filled in. A sub who works under a company is found by either name, and their own paper carries the line <b>signing for Juniper Mechanical LLC</b>.</p>
+</section>
+
+<section id="nolist">
+  <h2>Someone who is in no list</h2>
+  <p class="lede">The owner's call 6. The office types a name and an email and sends. Afterwards one press adds them to a list, and their paper comes with them.</p>
+  <div class="steps">
+
+    <div class="step">
+      <span class="cap">1 · Type them in <span class="tag">New</span></span>
+      <div class="win">
+        <div class="head"><h3>Send for signature</h3><span class="x">×</span></div>
+        <p class="hint">Mutual secrecy agreement · not on a list</p>
+        <label class="f">Signer name<div class="field">Noor Haddad</div></label>
+        <label class="f">Title (optional)<div class="field">Structural engineer</div></label>
+        <label class="f">Company (optional)<div class="field">Haddad Engineering</div></label>
+        <label class="f">Signer email<div class="field">noor@haddadeng.example</div></label>
+        <div class="says">The paper will say: <b>Noor Haddad, Structural engineer, signing for Haddad Engineering.</b></div>
+        <p class="fine">An address the app already knows is named here, so nobody is added twice.</p>
+        <div class="foot"><span class="quiet">Cancel</span><span class="press">Send email</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="cap">2 · Their line on Agreements <span class="tag">New</span></span>
+      <div class="frame" style="margin-top:0">
+        <div class="page" style="padding-top:10px">
+          <div class="arow fresh" style="border-radius:8px;border-bottom:0">
+            <div class="l" style="flex-basis:220px">
+              <div><span class="ktag k-none">Not on a list</span><span class="ttl">Mutual secrecy agreement</span></div>
+              <div class="sub"><b>Haddad Engineering</b> · Noor Haddad signs, Structural engineer</div>
+            </div>
+            <div class="r"><span class="st waiting">Sent, not opened</span><span class="when">Sent Nov 19</span><span class="quiet">Send again</span><span class="quiet">Copy the signing link</span><span class="press">Add to a list</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="say">The line works like any other while they are on no list. <b>Add to a list</b> stays on it, signed or not, until someone presses it.</p>
+    </div>
+
+    <div class="step">
+      <span class="cap">3 · Add to a list <span class="tag">New</span></span>
+      <div class="win">
+        <div class="head"><h3>Add Noor Haddad to a list</h3><span class="x">×</span></div>
+        <p class="hint">What are they? Their paper comes with them.</p>
+        <div class="opt on"><span class="dot"></span><div class="who"><b>A new customer</b><span>Haddad Engineering, with Noor Haddad as a person there</span></div></div>
+        <div class="opt"><span class="dot"></span><div class="who"><b>A new supply house or vendor</b><span>Haddad Engineering, with Noor Haddad as a rep</span></div></div>
+        <div class="opt"><span class="dot"></span><div class="who"><b>A new trade company</b><span>Haddad Engineering, with Noor Haddad as a person there</span></div></div>
+        <div class="opt"><span class="dot"></span><div class="who"><b>Someone at a company we already have</b><span>Search customers, supply houses and trade companies</span></div></div>
+        <div class="says">1 paper comes with them: <b>Mutual secrecy agreement</b>.</div>
+        <div class="foot"><span class="quiet">Cancel</span><span class="press">Add as a customer</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><b>Nothing is copied.</b> Messages already does this for a number nobody has named, with <b>Who is this?</b> The typed-in signer is the same kind of record, and <b>Add to a list</b> is the same step. After it the line's tag reads <b>Customer</b>, and the paper shows on the Customer page.</p>
 </section>
 
 <section id="phone">
@@ -442,7 +498,7 @@
         <tr><td class="h">A · A party list of its own</td><td>A new list of outside parties. Every customer, supply house and sub points at it.</td><td>Large. A fifth list to keep in step with the four the app has.</td><td>Nothing, but the same company then lives in two places.</td></tr>
         <tr><td class="h">B · On each record</td><td>The paper hangs on the customer, the supply house or the person. One link per kind.</td><td>Medium. A new link and a new branch of the list for every kind.</td><td>A new kind of party without more database work.</td></tr>
         <tr><td class="h">C · Everyone on the roster</td><td>A vendor or a GC's contact becomes a row on People.</td><td>Small to start. Then outsiders show in pay, hours and crew pickers.</td><td>A business as the party. A supply house would be in two lists.</td></tr>
-        <tr class="pick"><td class="h">D · The paper names a contact <span class="tag">The pick</span></td><td>Messages already keeps one contact for every customer, supply house, rep, sub and trade company. The paper points at it and keeps the signer's name and email.</td><td>Medium. One link, whatever the kind. No new list and no new screen to keep parties.</td><td>A paper to someone in no list at all, until they are added to one.</td></tr>
+        <tr class="pick"><td class="h">D · The paper names a contact <span class="tag">The pick</span></td><td>Messages already keeps one contact for every customer, supply house, rep, sub and trade company. The paper points at it and keeps the signer's name and email.</td><td>Medium. One link, whatever the kind. No new list and no new screen to keep parties.</td><td>Nothing asked for so far. A typed-in signer is a contact with no record yet, and <b>Add to a list</b> names them later.</td></tr>
       </tbody>
     </table>
   </div>
@@ -459,7 +515,7 @@
   <p class="lede" style="margin-top:14px">Three things were weighed and kept as first drawn.</p>
   <ol class="calls">
     <li><b>One chip, Outside companies.</b> A chip each for customers, supply houses and trade companies would be three chips for three lines. The tag on each line says the kind.</li>
-    <li><b>No "Add a new company" in the window.</b> It would make a party that is on no page of the app. The window points to Customers, Supply houses and People, where a record has its other facts.</li>
+    <li><b>No "Add a new company" in the window.</b> It would make a party that is on no page of the app. <b>Changed by the owner's call 6:</b> the window now takes a typed name, and <b>Add to a list</b> gives them a page afterwards.</li>
     <li><b>The line says who signs, in words.</b> A paper with a business needs the human beside it, so the second line reads <b>signed by Dana Ruiz, Project manager</b>.</li>
   </ol>
   <p class="note"><b>Changed by the owner's call 3.</b> The second drawing gave a sub one line on their People row, <b>Signs for</b>. A worker who signs for the boss's company did not fit it. He chose a company record of its own with its workers under it, and the People screen above is redrawn for that. By his call 7 that record is the trade company the app already keeps, so the tag reads <b>Trade company</b>.</p>

@@ -6,7 +6,8 @@
  * parts to pick; a job outside any development with no part gets its own part made. The mail's files follow the
  * paper into its own folder under the job's Plans folder (punch list #239, PR 5, `plan-set-files`), one by one past
  * any that fails, a file that stayed in Gmail named instead of sent, a signature's logo or a Drive link's preview left
- * out and counted (v2.7969); the link field still takes a Drive link when the
+ * out and counted (v2.7969); a link to a file in the mail's words fills the Link box, with a pick when the mail
+ * carries more than one (v2.7973); the link field still takes a Drive link when the
  * paper lives somewhere else. What became of the files is said in words that match the color, and a file that did not
  * land, or a read that failed, is tried again on the same paper, never a second one.
  */
@@ -18,6 +19,7 @@ import { supabaseJobPlansIo, type JobPlansIo } from '../../lib/plans/planSetsIo'
 import { jobShortLabel, partNameForJob, type PlanSetRow } from '../../lib/plans/planSets'
 import { PLAN_SET_FILES_WORDS, fileAgainLabel, mailFilesWords, splitMailFiles, type MailFile, type MailFilesResult } from '../../lib/plans/planSetFiles'
 import { supabasePlanSetFilesIo, type PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
+import { MAIL_PAPER_LINK_WORDS, mailLinkChoices } from '../../lib/papers/mailPaperLinks'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
@@ -34,6 +36,8 @@ type Kept = {
   /** The files that did not land, kept for that second try. */
   retry: MailFile[]
 }
+
+const NO_LINKS: ReadonlyArray<string> = []
 
 const noFiles = (linkTyped: boolean): MailFilesResult => ({ readFailed: null, landed: 0, failed: [], left: [], linkTyped, noLineFiles: 0 })
 
@@ -57,6 +61,7 @@ export function MailPaperDoor({
   at,
   messageId = null,
   mailFileCount = 0,
+  mailLinks = NO_LINKS,
   io: ioProp,
   filesIo = supabasePlanSetFilesIo,
 }: {
@@ -69,6 +74,8 @@ export function MailPaperDoor({
   messageId?: string | null
   /** How many files the mail shows, so a mail no line holds yet can say they stay behind. */
   mailFileCount?: number
+  /** The mail's links to a file on a file host, each once (`mailPaperLinks`): the first fills the Link box. */
+  mailLinks?: ReadonlyArray<string>
   io?: JobPlansIo
   filesIo?: PlanSetFilesIo
 }) {
@@ -103,7 +110,7 @@ export function MailPaperDoor({
         from: fromGuess(senderAddress),
         cameOn: at.slice(0, 10),
         memo: '',
-        link: '',
+        link: mailLinks[0] ?? '',
         goesWithSetId: r.part?.current_set_id ?? null,
         replacesPaperId: null,
         asks: false,
@@ -284,10 +291,31 @@ export function MailPaperDoor({
         <span>Memo</span>
         <input style={input} value={draft.memo} placeholder="what it says, in a line" onChange={(e) => put({ memo: e.target.value })} />
       </label>
+      {mailLinks.length > 1 ? (
+        <label style={field}>
+          <span>{MAIL_PAPER_LINK_WORDS.pick}</span>
+          <select style={input} data-testid="mail-paper-link-pick" value={mailLinks.includes(draft.link) ? draft.link : ''} onChange={(e) => put({ link: e.target.value })}>
+            {mailLinks.includes(draft.link) ? null : <option value="">another link</option>}
+            {mailLinkChoices(mailLinks).map((c) => (
+              <option key={c.url} value={c.url}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label style={field}>
         <span>Link</span>
         <input style={input} value={draft.link} placeholder="A Drive link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
       </label>
+      {draft.link && mailLinks.includes(draft.link) ? (
+        <p style={muted} data-testid="mail-paper-link-filled">
+          {MAIL_PAPER_LINK_WORDS.filled}{' '}
+          <a href={draft.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
+            {MAIL_PAPER_LINK_WORDS.open} ↗
+          </a>
+        </p>
+      ) : null}
       {!messageId && mailFileCount > 0 ? <p style={muted}>{PLAN_SET_FILES_WORDS.mailNoLineAhead(mailFileCount)}</p> : null}
       <label style={field}>
         <span>Asks us</span>

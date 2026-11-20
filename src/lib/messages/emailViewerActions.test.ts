@@ -51,6 +51,18 @@ describe('viewerPresses: which presses the email viewer’s row offers (v2.6509)
     expect(VIEWER_PRESS_WORDS.keep_paper.label).toBe('Keep this mail as a paper')
   })
 
+  it('a link to a file earns a job’s email the same press, and a bid’s email none (v2.7973)', () => {
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 0, links: 1 }))).toEqual(['keep_paper'])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', links: 2, direction: 'out' }))).toEqual(['keep_paper'])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 1, links: 1 }))).toEqual(['keep_paper'])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', files: 0, links: 0 }))).toEqual([])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', links: 1, channel: 'text' }))).toEqual([])
+    expect(viewerPresses(email({ jobId: 'pipeline:j-579', links: 1, role: 'helpers' }))).toEqual([])
+    // The bid's press files bytes into a set: a link has none.
+    expect(viewerPresses(email({ jobId: 'bid:b-512', files: 0, links: 2 }))).toEqual(['open_bid'])
+    expect(VIEWER_PRESS_WORDS.keep_paper.tip).toContain('A link in it fills the paper’s Link box.')
+  })
+
   it('offers nothing to someone off the office team, nor on a note or an event', () => {
     expect(viewerPresses(email({ role: 'superintendent', invitation: true }))).toEqual([])
     expect(viewerPresses(email({ role: null }))).toEqual([])

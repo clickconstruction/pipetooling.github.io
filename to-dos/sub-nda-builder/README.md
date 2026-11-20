@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, a grid of what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
+next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -174,7 +174,11 @@ yet accepted:
     have* where the level asks something of the site, and the topic's slider at the bottom. The page
     changes while the handle is dragged. A page moved off the basis says so and offers *Back to* it.
   - Step 11 is *Review*, with *Change* on each topic and the office's confirm.
-- Under it, the settled levels on the whole-job slider, with each level's place under it.
+- Under the flow, **the grid**: seven topics by four levels on one page, each box with its rule, what
+  puts a person in breach and what the site must have, all placeholders for him to correct. A list under
+  it names what is the same in every paper today, with the session's suggestion of what could move with
+  the level: what counts as secret, and what happens after a breach.
+- Under the grid, the settled levels on the whole-job slider, with each level's place under it.
 - On the office's page, *Set it step by step* opens the flow.
 
 **Why the places are these.** A place is strict in two ways: how hard it is to get on site, and how much
@@ -496,7 +500,8 @@ Sizes for this card's own steps are the train's above.
    (`to-dos/outside-signer-record/README.md`), and the call is made there.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
-5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.
+5. **Documents or both.** Settled 2026-11-19 on card #403, its call 5: both. People sends to a person on
+   the roster, and Documents sends to anyone.
 6. **The GC and the gate.** Whether a GC ever signs a job's paper, and what *one signature per GC* should
    mean. `docs/recent-features/v2.7726.md` names it as the owner's call 4 and its wording is not in the
    repo.
@@ -517,7 +522,12 @@ The same day he decided where the builder lives for now: a **Document builder** 
 a dev only, apart from any job. That is its own card, [#404](../document-builder/README.md), with the
 flow as he shaped it in the spike, a second builder for a job's insurance requirements, and a train of
 ten steps. **#404 is built first.** This card's own train, which ends with a job requiring the paper
-its settings make, comes after it and is untouched by it.
+its settings make, comes after it and is untouched by it. Where this card's mock-up and the spike differ
+on the flow, the spike is newer.
+
+The grid of seven topics by four levels is drawn in this card's mock-up. Every line in it is one
+session's placeholder, and the owner has not yet read it box by box. That read comes before any wording
+goes to an attorney. Where the grid and the spike's own contents differ, the spike is newer.
 
 He also asked whether this should become a contract builder long term. The session's answer: yes as a
 direction, since a paper's settings are data, and a call to make once a second paper works. #404's
