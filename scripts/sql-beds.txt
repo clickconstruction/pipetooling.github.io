@@ -96,6 +96,7 @@ legal-firm-coverage
 job-warranty
 combine-rows
 dev-clock-session-write
+calling-lock-takeover
 on-site-move
 on-site-guards
 employment-stints
@@ -152,4 +153,3 @@ salaried-week
 primary-scope-reports
 primary-scope-job-photos
 paper-party
-calling-lock-takeover
