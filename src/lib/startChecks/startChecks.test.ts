@@ -25,12 +25,15 @@ import {
   openOnThem,
   openOnUs,
   readiness,
+  readyList,
   readyMarks,
   saidNo,
+  scheduleLookWords,
   settledWords,
   sharedBullets,
   siteBanner,
   siteMovedDays,
+  siteMovedWords,
   stageStanding,
   stagesToAsk,
   standingInWords,
@@ -385,6 +388,46 @@ describe('the site', () => {
     expect(holdText(SITE, ours, '2026-12-15')).toBe('Ray, we are holding our start on the Lodge top out. We planned Tue Dec 8.\nOur next opening is Tue Dec 15. Tell us the day it is ready and we will lock it in.')
     for (const line of holdText(SITE, bunk, '2026-12-15').split('\n').filter((l) => !/^\d+\./.test(l))) expect(plainWordsFailures(line)).toEqual([])
     for (const line of askText(SITE, [lodge, bunk], { page: true }).split('\n').filter((l) => l && !/^\d+\./.test(l))) expect(plainWordsFailures(line)).toEqual([])
+  })
+})
+
+describe('the list behind the ready bar', () => {
+  it('lists what it takes to start: a No first, then the open bullets with where each stands, then the ones with a yes', () => {
+    const asked = them('The framing inspection has passed.', { asks: [{ day: '2026-11-14', how: 'text' }], byDay: '2026-11-26' })
+    const no = them('The trench to the building is open.')
+    const met = them('Power is on for our tools.', { yes: yes('saw') })
+    const ours = us('Our material lands before day one.', false)
+    const s = stage({ bullets: [asked, met, no, ours], arrival: { day: TODAY, by: 'Luis', notAsTold: [no.id] } })
+    expect(readyList(s)).toEqual({
+      title: 'What it takes to start Top Out',
+      count: '1 of 4 ready, which is 25%. Every bullet counts the same.',
+      open: [
+        { id: no.id, words: 'The trench to the building is open.', line: 'Luis said No on site, Nov 17.', no: true },
+        { id: asked.id, words: 'The framing inspection has passed.', line: 'Asked Nov 14 by text. No answer yet. They say by Nov 26.', no: false },
+        { id: ours.id, words: 'Our material lands before day one.', line: 'Ours. Three lines are not ordered', no: false },
+      ],
+      met: [{ id: met.id, words: 'Power is on for our tools.' }],
+    })
+    const all = readyList(stage({ bullets: [met] }))
+    expect(all.title).toBe('Top Out has every yes')
+    expect(all.count).toBe('1 of 1 ready, which is 100%. Every bullet counts the same.')
+    expect(all.open).toEqual([])
+    for (const line of [all.title, all.count, 'What it takes to start Top Out', 'Luis said No on site, Nov 17.']) expect(plainWordsFailures(line)).toEqual([])
+  })
+
+  it('names the look on the strip: the stages ahead, and what they owe us', () => {
+    const near = stage({ window: ['2026-12-01', '2026-12-12'], bullets: [them('A.'), them('B.')] })
+    const far = stage({ window: ['2027-01-12', '2027-01-23'], bullets: [them('C.')] })
+    expect(scheduleLookWords([near, far, stage({ finished: true })], SITE, TODAY)).toEqual({ n: 2, count: '2 stages', need: '2 answers owed' })
+    expect(scheduleLookWords([far], SITE, TODAY)).toEqual({ n: 1, count: '1 stage', need: null })
+    expect(scheduleLookWords([], SITE, TODAY)).toEqual({ n: 0, count: '0 stages', need: null })
+  })
+
+  it('says how far they have moved on the site, or nothing', () => {
+    const day = (d: string) => ({ day: d, said: TODAY, who: 'Ray', how: 'phone' })
+    expect(siteMovedWords([stage({ theirDays: [day('2026-12-01'), day('2026-12-12')] }), stage({ theirDays: [day('2026-11-24'), day('2026-11-28')] })])).toBe('They have moved 15 days on this site so far.')
+    expect(siteMovedWords([stage({ theirDays: [day('2026-12-01'), day('2026-12-02')] })])).toBe('They have moved 1 day on this site so far.')
+    expect(siteMovedWords([stage()])).toBeNull()
   })
 })
 

@@ -16,8 +16,11 @@ import { useJumpStrip } from '../gc/useJumpStrip'
 
 export type DevelopmentJumpKey = 'changed' | 'pieces' | 'money' | 'plans' | 'questions' | 'photos'
 
-/** The seventh look (punch list #379): Trips, drawn only on a site that has a trip or is far from the shop. */
-export type DevelopmentStripKey = DevelopmentJumpKey | 'trips'
+/**
+ * The looks a site may add after the six. Trips (punch list #379) is drawn only on a site that has a trip or is far
+ * from the shop. Schedule (punch list #382) is drawn only on a site with a stage line the reader is on the desk of.
+ */
+export type DevelopmentStripKey = DevelopmentJumpKey | 'trips' | 'schedule'
 
 export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentStripKey, string> = {
   changed: 'development-what-changed',
@@ -27,10 +30,13 @@ export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentStripKey, string> = {
   questions: 'development-questions',
   photos: 'development-photos',
   trips: 'development-trips',
+  schedule: 'development-schedule',
 }
 
 const SIX: DevelopmentJumpKey[] = ['changed', 'pieces', 'money', 'plans', 'questions', 'photos']
-const LABEL: Record<DevelopmentStripKey, string> = { changed: 'History', pieces: 'Jobs & bids', money: 'Money', plans: 'Plans', questions: 'Questions', photos: 'Photos', trips: 'Trips' }
+const LABEL: Record<DevelopmentStripKey, string> = { changed: 'History', pieces: 'Jobs & bids', money: 'Money', plans: 'Plans', questions: 'Questions', photos: 'Photos', trips: 'Trips', schedule: 'Schedule' }
+/** How the tell names each look. */
+const TELL_NAME: Record<DevelopmentStripKey, string> = { changed: 'the history', pieces: 'the jobs and bids', money: 'the money', plans: 'the plans', questions: 'the questions', photos: 'the photos', trips: 'the trips', schedule: 'the schedule' }
 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
 
@@ -42,9 +48,9 @@ const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'
  */
 const looksName = (n: number): string => `${COUNT_WORDS[n] ?? n} looks`
 
-export const REVIEW_TELL = 'Six looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos. The filled number is where you are.'
-/** The tell on a site that has the Trips look too. */
-export const REVIEW_TELL_WITH_TRIPS = 'Seven looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos, the trips. The filled number is where you are.'
+/** The tell for the looks a site has, counted and named from its own list. */
+const reviewTell = (order: readonly DevelopmentStripKey[]): string => `${looksName(order.length)} at the site, top to bottom: ${order.map((k) => TELL_NAME[k]).join(', ')}. The filled number is where you are.`
+
 
 /**
  * What a look says of itself: `count` the plain count with its noun (*0 new*, *23*, *1 set*), `need`
@@ -53,13 +59,14 @@ export const REVIEW_TELL_WITH_TRIPS = 'Seven looks at the site, top to bottom: t
  */
 export type DevelopmentLook = { n: number; count: string; need: string | null }
 
-export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook } }) {
+export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook; schedule?: DevelopmentLook } }) {
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
-  // The six, and Trips after them on a site that has the look.
+  // The six, then Trips and Schedule after them on a site that has each look.
   const hasTrips = !!looks.trips
-  const ORDER = useMemo<DevelopmentStripKey[]>(() => (hasTrips ? [...SIX, 'trips'] : SIX), [hasTrips])
+  const hasSchedule = !!looks.schedule
+  const ORDER = useMemo<DevelopmentStripKey[]>(() => [...SIX, ...(hasTrips ? (['trips'] as const) : []), ...(hasSchedule ? (['schedule'] as const) : [])], [hasTrips, hasSchedule])
   const LOOKS_NAME = looksName(ORDER.length)
-  const lookOf = (key: DevelopmentStripKey): DevelopmentLook => (key === 'trips' ? (looks.trips ?? { n: 0, count: '', need: null }) : looks[key])
+  const lookOf = (key: DevelopmentStripKey): DevelopmentLook => (key === 'trips' || key === 'schedule' ? (looks[key] ?? { n: 0, count: '', need: null }) : looks[key])
   const { active, jumpTo } = useJumpStrip(true, ORDER, (k) => DEVELOPMENT_JUMP_ANCHOR[k as DevelopmentStripKey])
   const barRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -110,7 +117,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
 
   return (
     <div ref={barRef} className="stagesStageBar messagesJumpStrip developmentReviewStrip" data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
-      <div className="stagesStageBarEnd reviewCap" title={hasTrips ? REVIEW_TELL_WITH_TRIPS : REVIEW_TELL} data-testid="review-cap">
+      <div className="stagesStageBarEnd reviewCap" title={reviewTell(ORDER)} data-testid="review-cap">
         <strong>{LOOKS_NAME}</strong>
       </div>
       <nav aria-label={`${LOOKS_NAME} at the site`} className="stagesStageSegs">

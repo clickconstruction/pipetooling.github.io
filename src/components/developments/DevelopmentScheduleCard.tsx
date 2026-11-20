@@ -1,0 +1,157 @@
+/**
+ * The Development page's Schedule look (punch list #382, PR 5): every stage ahead on the site, each saying where it
+ * stands in one sentence. A banner on top says what the customer owes us and how far they have moved. Under it is one
+ * card a stage, sorted by trouble: red, then amber, green and grey, and by first day inside a colour. A card has a
+ * coloured dot, the stage's name, our days, the ready bar with its list, one sentence with its values in place, and
+ * one press that opens it to the four lines and the two lists (`StartCheckStage`). The look draws only on a site
+ * where this person is on a job's desk and a job has a stage line. Nothing here reaches the GC.
+ */
+import { useMemo, useState, type CSSProperties } from 'react'
+import { stageChecklistKindOf } from '../../lib/jobs/stageChecklist'
+import { addDays, byTrouble, daySpan, daysBetween, readiness, readyList, readyMarks, scheduleLookWords, siteBanner, siteMovedWords, stageStanding, type NextPress, type ValueKind } from '../../lib/startChecks/startChecks'
+import type { SiteStartChecksRead } from '../../hooks/useSiteStartChecks'
+import type { StartWho } from '../../lib/startChecks/startChecksIo'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { ReadyMarks } from '../startChecks/ReadyBar'
+import { StartCheckStage } from '../startChecks/StartCheckStage'
+import { ChangeableValue, ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { Card, type CardFold } from './developmentPageBits'
+
+const muted: CSSProperties = { color: 'var(--text-muted)' }
+const plainPress: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '7px 12px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }
+const bluePress: CSSProperties = { ...plainPress, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
+
+/** What the one press reads while the card is shut. The ask and the decision have their own presses inside the open stage. */
+const PRESS_WORDS: Record<NextPress, string> = { write: 'Write the list', plan: 'Plan our days', move: 'Move our start', look: 'Open the stage', ask: 'Open', decide: 'Open', go: 'Open', ours: 'Open', none: 'Open' }
+
+export function DevelopmentScheduleCard({
+  anchorId,
+  developmentId,
+  read,
+  todayYmd,
+  me,
+  can,
+  foldFor,
+  contactLine,
+}: {
+  anchorId: string
+  developmentId: string
+  read: SiteStartChecksRead
+  todayYmd: string
+  me: StartWho
+  can: { window: boolean; notice: boolean; company: boolean }
+  foldFor: (line: string) => CardFold
+  /** Who the contact is, under the banner: "Ray Ortiz, the GC's contact on the bids". */
+  contactLine: string | null
+}) {
+  const [openId, setOpenId] = useState<string | null>(null)
+  const stages = useMemo(() => read.stages.map((s) => s.stage), [read.stages])
+  const lineOf = useMemo(() => new Map(read.stages.map((s) => [s.stage.id, s.line])), [read.stages])
+  const sorted = useMemo(() => byTrouble(stages, read.site, todayYmd), [stages, read.site, todayYmd])
+  if (!read.shows) return null
+  const words = scheduleLookWords(stages, read.site, todayYmd)
+  const banner = siteBanner(stages, read.site, todayYmd)
+  const moved = siteMovedWords(stages)
+
+  return (
+    <Card id={anchorId} title="Schedule" fold={foldFor(words.need ? `${words.count} · ${words.need}` : words.count)} meta="what must be true before each stage, and where it stands">
+      {read.failure ? (
+        <OfflineRetryPanel failure={read.failure} onRetry={read.reload} surface="development-schedule" idempotent busy={read.loading} />
+      ) : (
+        <div data-development-schedule>
+          <div style={{ padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)' }} data-schedule-banner>
+            <div style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>
+              <ValueSentence text={banner.sentence} />
+            </div>
+            {contactLine || moved ? (
+              <div style={{ fontSize: '0.8125rem', ...muted }}>
+                {contactLine}
+                {contactLine && moved ? ' ' : ''}
+                {moved}
+              </div>
+            ) : null}
+          </div>
+
+          <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+            {sorted.map((stage) => {
+              const line = lineOf.get(stage.id)
+              if (!line) return null
+              const st = stageStanding(stage, read.site, todayYmd)
+              const open = openId === stage.id
+              const ready = readiness(stage.bullets)
+              return (
+                <div key={stage.id} className="scStageCard" data-light={st.light} data-schedule-stage={stage.id}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <span className="scDot" data-light={st.light} role="img" aria-label={st.headline} title={st.headline} />
+                    <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: '1rem' }}>
+                        {stage.part ? `${stage.part} · ` : ''}
+                        {stage.name}{' '}
+                        <span style={{ fontWeight: 500, fontSize: '0.8125rem', ...muted }}>· {stage.window ? daySpan(stage.window[0], stage.window[1]) : 'no days yet'}</span>
+                        <ReadyMarks list={readyList(stage)} marks={readyMarks(stage)} pct={ready.pct} urgent={st.light === 'red'} />
+                      </div>
+                      <div style={{ marginTop: 2, lineHeight: 1.7 }} data-schedule-sentence>
+                        <ValueSentence<ValueKind>
+                          text={st.sentence}
+                          values={{
+                            start: (text) =>
+                              can.window && stage.window ? (
+                                <ChangeableValue
+                                  text={text}
+                                  label="our first day"
+                                  type="date"
+                                  value={stage.window[0]}
+                                  hint="our first day"
+                                  onKeep={(v) => {
+                                    // Our last day moves with our first, so the window keeps its length.
+                                    const [first, last] = stage.window as [string, string]
+                                    return read.press((w) => w.setWindow({ jobId: line.jobId, fixtureId: line.fixtureId }, v, addDays(v, Math.max(0, daysBetween(first, last))), me))
+                                  }}
+                                />
+                              ) : null,
+                            their: (text) => (
+                              <ChangeableValue
+                                text={text}
+                                label="the day they say ready"
+                                type="date"
+                                value={stage.theirDays[stage.theirDays.length - 1]?.day ?? ''}
+                                hint="a new day from them, kept beside the old one"
+                                onKeep={(v) => read.press((w) => w.giveTheirDay({ jobId: line.jobId, fixtureId: line.fixtureId, readyDay: v, saidOn: todayYmd, who: read.site.contact, how: 'told us' }, me))}
+                              />
+                            ),
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <button type="button" className="scPress" style={open || st.next === 'none' || st.light === 'grey' ? plainPress : bluePress} aria-expanded={open} onClick={() => setOpenId(open ? null : stage.id)}>
+                      {open ? 'Close' : PRESS_WORDS[st.next]}
+                    </button>
+                  </div>
+                  {open ? (
+                    <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                      <StartCheckStage
+                        stage={stage}
+                        line={line}
+                        rows={read.rows}
+                        site={read.site}
+                        notice={read.notice}
+                        noticeKey={{ developmentId }}
+                        today={todayYmd}
+                        me={me}
+                        kind={stageChecklistKindOf(stage.name)}
+                        templates={read.templates}
+                        can={can}
+                        press={read.press}
+                        io={read.io}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}

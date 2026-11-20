@@ -134,7 +134,7 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
       <button type="button" className="scChip" aria-pressed={on === 'us'} onClick={() => setOn('us')}>
         {W.ours}
       </button>
-      <button type="button" style={{ ...plainPress, opacity: words.trim() && !busy ? 1 : 0.55, cursor: words.trim() && !busy ? 'pointer' : 'default' }} disabled={!words.trim() || busy} onClick={add}>
+      <button type="button" className="scPress" style={{ ...plainPress, opacity: words.trim() && !busy ? 1 : 0.55, cursor: words.trim() && !busy ? 'pointer' : 'default' }} disabled={!words.trim() || busy} onClick={add}>
         {W.add}
       </button>
     </div>
@@ -166,10 +166,10 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
           ))}
         </ol>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <button type="button" style={bluePress} disabled={busy} onClick={use}>
+          <button type="button" className="scPress" style={bluePress} disabled={busy} onClick={use}>
             {say.use}
           </button>
-          <button type="button" style={plainPress} onClick={() => setWriting(true)}>
+          <button type="button" className="scPress" style={plainPress} onClick={() => setWriting(true)}>
             {say.own}
           </button>
         </div>
@@ -268,7 +268,7 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
 
       {t && window && startClash(stage) && can.window ? (
         <div style={{ marginTop: 8 }}>
-          <button type="button" style={bluePress} disabled={busy} onClick={() => void act('Our start did not move.', (w) => w.setWindow({ jobId: line.jobId, fixtureId: line.fixtureId }, addDays(t.day, MOVE_AFTER_THEIRS_DAYS), addDays(t.day, MOVE_AFTER_THEIRS_DAYS + len), me))}>
+          <button type="button" className="scPress" style={bluePress} disabled={busy} onClick={() => void act('Our start did not move.', (w) => w.setWindow({ jobId: line.jobId, fixtureId: line.fixtureId }, addDays(t.day, MOVE_AFTER_THEIRS_DAYS), addDays(t.day, MOVE_AFTER_THEIRS_DAYS + len), me))}>
             Move our start to {weekDay(addDays(t.day, MOVE_AFTER_THEIRS_DAYS))}, three days after theirs
           </button>
         </div>
