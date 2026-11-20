@@ -159,7 +159,7 @@ right to apply in the session on his word, as today.
 | Screens | 5a: each section of the summary and narrative shows when it last changed and how many entries are newer. 5b: the matter's Evidence row opens the person's document in place of a copy, with the lock when it is counsel-only. 5c: a chip when the Drive file and the text no longer match. |
 | Seat | `get_person_document`'s index carries each section's freshness; `plan_matter_document { person_document_id }`; the brief names a reference as one. |
 
-- **PR 5a (v2.7108, built, #7884):** kernel `sectionFreshness` with tests, drawn as a fold that reads the prior versions only when opened (a chip on every section would read every version on every visit). The seat's `get_person_document` does not carry it yet.
+- **PR 5a (v2.7108, built, #7884):** kernel `sectionFreshness` with tests, drawn as a fold that reads the prior versions only when opened (a chip on every section would read every version on every visit). The seat's `get_person_document` carries it since v2.8002 (server 0.121.0): `freshness: true` on the summary's or the narrative's index.
 - **PR 5a as mapped:** kernel `sectionFreshness` with tests and the chips. No migration, so it can
   ship at any point in the train.
 - **5b:** the reference, on PR 0's fence. **5c:** the Drive chip and a report, by hash alone, of the copies

@@ -141,7 +141,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.120.0'
+const SERVER_VERSION = '0.121.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -682,8 +682,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_person_document',
-    description: "A document on a person's HR file a piece at a time (v2.6621, punch list #278): without section, the index — every heading with its number, level, line and size — of a named document (doc_id, from get_case_brief) or of the summary or narrative (kind); with section (a number as the heading carries it, or a heading's text), that section's text alone with the sections before and after named, so a 300 KB document never crosses the door whole. The sections are cut as plan_person_doc's ops name them, and read_next gives the op that changes what you read. Dev-only.",
-    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (documents.id, from get_case_brief or get_person_file)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, section: { type: 'string', description: 'a section number or heading; the index alone when left out' } }, required: ['person'] },
+    description: "A document on a person's HR file a piece at a time (v2.6621, punch list #278): without section, the index — every heading with its number, level, line and size — of a named document (doc_id, from get_case_brief) or of the summary or narrative (kind); with section (a number as the heading carries it, or a heading's text), that section's text alone with the sections before and after named, so a 300 KB document never crosses the door whole. The sections are cut as plan_person_doc's ops name them, and read_next gives the op that changes what you read. Dev-only. Since 0.121.0 freshness: true on the summary's or the narrative's index (kind, no section) adds freshness: for each section the day it took its present words, how many entries were written since and how many of those cite it, read from the newest twelve prior versions, as People → HR's fold says it.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (documents.id, from get_case_brief or get_person_file)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, section: { type: 'string', description: 'a section number or heading; the index alone when left out' }, freshness: { type: 'boolean', description: 'with kind and no section: when each section last changed and how many entries are newer' } }, required: ['person'] },
   },
   {
     name: 'get_matter_document',
@@ -2369,7 +2369,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
 
     case 'get_person_document': {
       // v2.6621 (punch list #278 PR 3): one GET of dev_doc_read as the dev (devMcpDocRead.ts); another role is refused in words.
-      const out = await getPersonDocument(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, section: args.section }, { role: who.role })
+      const out = await getPersonDocument(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, section: args.section, freshness: args.freshness }, { role: who.role, ymdOf: calendarYmdInAppTzFromIso })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.section ? 1 : out.sections.length })
     }

@@ -26,6 +26,24 @@ export type DocSection = {
 /** A prior version of the document, as `person_file_revisions` keeps it. */
 export type DocRevision = { content: string; replaced_at: string }
 
+export type SectionCitation = { raw: string; section: number }
+
+/** `N§16`, `N §16`, `§16` — a section of the narrative; the number is 1 to 999. */
+export const SECTION_CITE_RE = /(?:\bN\s?)?§\s?(\d{1,3})\b/g
+
+/** The citations in a line's words, in order, each once (lifted from the tab's `hrDocCitations.ts`, v2.8002). */
+export function parseSectionCitations(text: string): SectionCitation[] {
+  const out: SectionCitation[] = []
+  const seen = new Set<number>()
+  for (const m of text.matchAll(SECTION_CITE_RE)) {
+    const n = Number(m[1])
+    if (!Number.isFinite(n) || n <= 0 || seen.has(n)) continue
+    seen.add(n)
+    out.push({ raw: m[0], section: n })
+  }
+  return out
+}
+
 /** An entry on the file: when it was written, and the section numbers its words cite (`N§16`). */
 export type FreshnessEntry = { created_at: string; cites?: ReadonlyArray<number> }
 
