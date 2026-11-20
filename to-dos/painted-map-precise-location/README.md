@@ -2,7 +2,7 @@
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
 group: close
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`, call 8 on `claude/402-precise-location-use-where`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · call 8, the task screens and the box map, is v2.8011 · all five are built
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`, call 8 on `claude/402-precise-location-use-where`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · call 8, the task screens and the box map, is v2.8011 · all five merged and live on clicktooling.com by 2026-11-20 (#8981, #8989, #9000, #9008, #9016) · walked on the live site with a stood-in reading: `/way` as an iPhone, an Android and a desk, and the box map in light and dark
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -277,6 +277,8 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
   one reading (`paintedMapJobPickerIo.ts`). A rough reading lists the jobs near the middle of an
   area. The Tally's own **My location** press flies its map the same way. Neither is part of this
   card.
+- On a desk, `/way`'s sure sentence says *Your phone is sure within 15 ft.*, while its weak one
+  says *This device is only sure…*. The sure sentence is older than this card. Not part of it.
 
 ## Neighbours
 
@@ -289,32 +291,40 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
 
 ## Where it stands
 
-Building, on Grace's word of 2026-11-19.
+Built on Grace's word of 2026-11-19, and merged and live on 2026-11-20.
 
-- **PR 1, the kernel, is v2.7984.** `preciseLocation.ts` and its tests, with no screen changed. It
+- **PR 1, the kernel, is v2.7984 (#8981).** `preciseLocation.ts` and its tests, with no screen changed. It
   differs from the prototype's kernel in three places, each a reading of the picks: a page inside
   another app's own window on an iPhone is another browser, a desk is not called a phone, and nothing
   is set beside a reading that is not rough. That version's fragment has them.
-- **PR 2, the walk, is v2.7994.** The line is on the walk panel in every state, and the map pulls
+- **PR 2, the walk, is v2.7994 (#8989).** The line is on the walk panel in every state, and the map pulls
   back to the whole circle once the readings have stayed rough for 4 s. The window counts the wait
   once, for the line and for the map. The headless walk ran as Safari on an iPhone in light and
   dark, as Chrome on Android and as a desk, and that version's fragment has what it showed.
 - **A second canvas** (#387's Google map) does what that fragment lists under *What a second canvas
   must do*: it takes `me.area`, draws the dashed circle with no dot, and asks `marginFrameStep`.
-- **PR 3, Put the dot where I am, is v2.8001.** A rough reading leaves the dot and the map where
+- **PR 3, Put the dot where I am, is v2.8001 (#9000).** A rough reading leaves the dot and the map where
   they were, and the place panel draws the line with *The dot was not moved.* A press has no better
   reading to wait for, so the line calls it rough at once. The panel speaks of the phone only from
   a reading taken on that visit, so a place opened to change no longer says *Found you.*
-- **PR 4, the shared map, is v2.8004.** `/way` sorts each reading with `wayReading`: a sure one
+- **PR 4, the shared map, is v2.8004 (#9008).** `/way` sorts each reading with `wayReading`: a sure one
   keeps today's words with the tick, a weak one says the signal is weak, and an area draws no dot,
   gets no word about where the reader stands, and names the switch with the steps. The map pulls
   back to the circle when the area's edge is near the map. The journey step `painted-map-page`
   gained a sentence, and the page's two other registrations quote none of its words.
-- **Call 8 is v2.8011.** The seven screens that take one reading of the phone no longer act on a
+- **Call 8 is v2.8011 (#9016).** The seven screens that take one reading of the phone no longer act on a
   rough one: a task's **Use where I am**, **How far am I?**, **Show where I am** and **Standing at
   this task?**, and the box map's **Use my location**, **Show where I am**, **I found it** and
   **Pin it here**. The two that set a spot draw the line in every state. That version's fragment
-  has the table of what each screen does and says.
+  has the table of what each screen does and says. A walk of the box map found the steps drawn
+  twice after **I found it**, and *looks off* left beside the distance by a later sure reading. Both
+  were fixed in the same PR, and its fragment says how.
+- **Walked on the live site** on 2026-11-20, with a stand-in for the phone's reading and every write
+  refused. On `/way/sample`, as an iPhone, an Android and a desk, a rough reading turned at about
+  4 s to the area words, the steps and the dashed circle, with no dot. On the box map's **Where is
+  it?** sheet, in light and dark, **Show where I am** turned at about 4 s with no dot and no
+  distance. **I found it** pinned nothing. **Use my location** left the map where it was on a rough
+  reading, and put the ring on the reading on a weak and a sure one.
 - **What is left is the walk on a real iPhone.** What a screen does about a weak or a rough reading
   is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`, the place
   panel's in `paintedPlaceDot.ts`, and the task screens' and the box map's in `taskPlaceReading.ts`.
