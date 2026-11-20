@@ -127,7 +127,11 @@ plus a second builder and the parts both share.
 - #389's own train (the Contract Book takes settings, then a job requires the paper) is untouched and
   comes later. Its step 4, the office's settings page on a job, would reuse this flow.
 - #389's `mockup.html` is its own drawing of the flow and the wider screens. Where it and the spike
-  differ on the flow, **the spike is newer**: the owner shaped it after that drawing.
+  differ on the flow, **the spike is newer**: the owner shaped it after that drawing. The same holds
+  for the contents: where #389's drawing and the spike's fixture differ, the fixture is newer.
+- #389's *Points for an attorney* holds three questions that belong to this flow: what *aligned with
+  military bases and defense plants* promises (12), what the disclaimer must say and whether a tick
+  makes it hold (13), and what a rule nobody enforces does to the rest of the paper (14).
 
 ## The idea, in one line
 
@@ -168,15 +172,21 @@ The mock-up's section numbers are in brackets.
 Eleven steps in one frame of one height, so the slider stays put while the page above it changes.
 
 1. **Before you start.** Three plain lines: not legal advice, use it with your own attorney present,
-   experimental. A box, *I have read this.*, must be ticked before any later step opens. The minute it
-   was ticked is kept.
+   experimental. They are his three points, put into short sentences. A box, *I have read this.*, must
+   be ticked before any later step opens. The box was the session's addition, which he saw and did not
+   object to. The minute it was ticked is kept.
 2. **The basis.** The level the paper should express. Four rows, each a level with its line: *Aligned
    with regular businesses*, *Aligned with hospitals, banks and government buildings*, *Aligned with
    military bases and defense plants*, *Aligned with private research labs*. The slider sets the same
    thing. Above the slider, four facts for the picked level change in place as it moves: *Secrecy
    lasts*, *Time to return files*, *Time to report a leak*, *The site must have*. *Off* on this slider
    means no paper, and *Next* then skips to *Review*.
-3. **Match the paper to the site.** His note on real site conditions, and what the basis asks of the site.
+3. **Match the paper to the site.** His note on real site conditions, and what the basis asks of the
+   site. **Its last two lines are not his words.** His note stopped mid-sentence, after "active
+   perimeter enforcment staff". The lines *A rule nobody enforces protects nothing. It also puts people
+   in breach of a rule they cannot follow.* and *Ask your attorney what an unenforced rule does to the
+   paper.* are the session's ending. He was asked whether that was the point he meant and has not
+   answered.
 4. to 10. **One page a topic.** In this order on the page: one line of what the level means, then
    *What puts a person in breach*, then *What the site must have*, then *The core clause* as one thin
    strip of grey bars. The slider is at the bottom and the page changes while the handle is dragged.
@@ -446,6 +456,7 @@ The build can start on the defaults. Each can be flipped.
 | What a send to a GC is about, when nobody picks | All their jobs | The builder is not about one job. |
 | What a GC can do with the Sub NDA at first | Look only | Sending picks is step 10. |
 | What a GC reads as its name | *Secrecy on your jobs* | *Sub NDA* is the owner's word for it. |
+| What counts as secret, and what happens after a breach | The same in every paper, as #389 has them | #389's session suggests both could move with the level. Today everything about the job is secret, including that it exists, which is heavy for *Standard* and cannot hold on a public job. This is that session's suggestion and not the owner's call. Publicity, a sub's business answering for its people, and what the paper never stops stay the same in every paper, and the last must. |
 
 The spike made these guesses in the flow. None was overruled, and none was confirmed in words:
 
@@ -453,10 +464,15 @@ The spike made these guesses in the flow. None was overruled, and none was confi
 - A level becomes the basis once every page has been moved onto it.
 - The review's press requires nothing of anyone.
 - The first three facts on *The basis* come from the three topics that are a number. The four topics
-  that are a rule have no fact. A grid of levels by topics would be the place for them.
+  that are a rule have no fact. A grid of levels by topics would be the place for them, and #389's
+  session has drawn one in its own mock-up: all 28 boxes, for the read named under *Where it is still
+  weak*. It was not on `main` when this card was written.
 
 ## Where it is still weak
 
+- **The Sub NDA's contents were never read box by box.** What each level means, the breach lines and
+  the site lines, for seven topics at four levels, were written in one pass as placeholders. The owner
+  has not gone through them one by one. That read comes before any wording goes to an attorney.
 - **The tab is sorted by builder, and the work is sorted by job.** Both documents end at what a sub
   owes on one job. A row for each job would be the truer home later.
 - **Each builder mixes setting it up with using it.** Splitting the two is what lets the office in.
