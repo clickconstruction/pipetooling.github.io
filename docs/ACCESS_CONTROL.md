@@ -916,6 +916,7 @@ Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
 Since v2.8009 a dev sends a published sheet to a trade on its job through `document-builder-send`, which refuses anyone else, a training account, a twin and an archived account itself, and refuses a company whose page was turned off.
 A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing of another company's.
+Since v2.8024 a dev also types on a walked builder's draft, publishes it as the next revision and marks a revision as read by an attorney, through the same row and the same trigger.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
