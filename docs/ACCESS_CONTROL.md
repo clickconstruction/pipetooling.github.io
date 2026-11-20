@@ -1234,6 +1234,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   an ended link, an expired one and a wrong code read the same on the page.
   Since v2.7414 the page asks a signed-out reader's name before the map and says what is kept;
   **Show where I am** says the company will see where the reader is, and sends the first point and then the latest to `painted_map_link_visits` through the function.
+  Since v2.8105 a rough reading still being waited on is sent to nobody, an area is sent with its margin, and the page then says the company sees only that area.
   The sample page sends nothing.
 - **On screen** (v2.7211): the line under the address in the job window's top band, on the Job Mode card and on the On my way sheet (`JobPaintedMapsStrip`), and under a development's address (`DevelopmentPaintedMapsStrip`), reads the maps under this gate, for every role that can open the job or the development.
   It has no role check of its own: a caller the gate turns away gets an empty list and sees only **＋ Paint a map**, and a save they may not make is refused by the database in words.

@@ -4,6 +4,8 @@
  */
 import type { PaintedLine, PaintedPlace } from './paintedMap'
 import { paintedPlaceKindFrom } from './paintedPlaceKind'
+import { isRoughFix } from './paintedTrack'
+import { areaAcrossWords } from './preciseLocation'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { SharedLine, SharedPaintedMap } from '../../../supabase/functions/_shared/paintedMapLink'
 
@@ -70,31 +72,53 @@ export type PaintedMapVisitRow = {
   first_lat: number | null
   first_lng: number | null
   first_located_at: string | null
+  /** How sure the phone was of the first point, in metres. Left out by a reader of rows older than v2.8105. */
+  first_accuracy_m?: number | null
   last_lat: number | null
   last_lng: number | null
   last_located_at: string | null
+  last_accuracy_m?: number | null
 }
 
-/** One visit in words. `whereUrl` opens the place the reader showed in a map app, when they showed one. */
+/**
+ * One visit in words. `whereUrl` opens the place the reader showed in a map app, when they showed one. It is null
+ * when their phone gave only an area: an area's middle is nobody's place, so the office is handed no pin on it.
+ */
 export type PaintedMapVisitLine = { id: string; name: string; teammate: boolean; detail: string; where: string | null; whereUrl: string | null }
+
+type VisitPoint = { lat: number; lng: number; at: string; accuracyM: number | null }
+
+/**
+ * The point a visit's line speaks of (v2.8105, punch list #402). A reader's phone can hand back only the area it is
+ * in, and the page sends that as it is, with its margin. So the line takes the latest point that is a spot, then
+ * the first one when that is a spot, and only when neither is does it speak of an area: the latest one.
+ */
+export function visitPoint(row: PaintedMapVisitRow): VisitPoint | null {
+  const latest = row.last_lat != null && row.last_lng != null && row.last_located_at ? { lat: row.last_lat, lng: row.last_lng, at: row.last_located_at, accuracyM: row.last_accuracy_m ?? null } : null
+  const first = row.first_lat != null && row.first_lng != null && row.first_located_at ? { lat: row.first_lat, lng: row.first_lng, at: row.first_located_at, accuracyM: row.first_accuracy_m ?? null } : null
+  const spot = [latest, first].find((p) => p && !isRoughFix(p.accuracyM))
+  return spot ?? latest ?? first
+}
 
 /**
  * `Dana Reyes` · `iPhone · Safari · opened Nov 15, 3:02 PM · 2 times` · `Showed where they were, Nov 15, 3:05 PM.`
- * The place is the latest one kept, or the first when there is only one. `whenOf` says a moment in the app's words.
+ * The place is the latest one kept that is a spot (`visitPoint`). A reader whose phone gave only an area reads
+ * `Showed only the area they were in, 4 miles across, Nov 15, 3:05 PM.` and has no place to open. `whenOf` says a
+ * moment in the app's words.
  */
 export function visitLine(row: PaintedMapVisitRow, whenOf: (iso: string) => string | null): PaintedMapVisitLine {
   const opened = whenOf(row.last_opened_at)
   const detail = [row.device_words.trim() || null, opened ? `opened ${opened}` : null, row.open_count > 1 ? `${row.open_count.toLocaleString('en-US')} times` : null].filter(Boolean).join(' · ')
-  const latest = row.last_lat != null && row.last_lng != null && row.last_located_at
-  const point = latest ? { lat: row.last_lat!, lng: row.last_lng!, at: row.last_located_at! } : row.first_lat != null && row.first_lng != null && row.first_located_at ? { lat: row.first_lat, lng: row.first_lng, at: row.first_located_at } : null
+  const point = visitPoint(row)
   const shown = point ? whenOf(point.at) : null
+  const across = point ? areaAcrossWords(point.accuracyM) : null
   return {
     id: row.id,
     name: row.visitor_name,
     teammate: !!row.user_id,
     detail,
-    where: point ? `Showed where they were${shown ? `, ${shown}` : ''}.` : null,
-    whereUrl: point ? `https://www.google.com/maps/search/?api=1&query=${point.lat.toFixed(6)},${point.lng.toFixed(6)}` : null,
+    where: point ? `${across ? `Showed only the area they were in, ${across}` : 'Showed where they were'}${shown ? `, ${shown}` : ''}.` : null,
+    whereUrl: point && !across ? `https://www.google.com/maps/search/?api=1&query=${point.lat.toFixed(6)},${point.lng.toFixed(6)}` : null,
   }
 }
 

@@ -532,6 +532,8 @@ When a phone gives only an area, the page lists the steps to turn on **Precise L
 
 The map pulls back to a dashed circle when that area is near the map. The reader is somewhere in the circle.
 
+The company is then sent the area and how wide it is. The page says so under the steps.
+
 ### See who opened it
 
 Open **Share** on the map again. Under the presses, **Who opened it** lists each reader.
@@ -539,6 +541,8 @@ Open **Share** on the map again. Under the presses, **Who opened it** lists each
 A row says the name they gave, their phone or computer, when they opened it and how many times. A teammate's row says **signed in**.
 
 A reader who pressed **Show where I am** has one more line. Press **See that place** to open it in a map app.
+
+A reader whose phone gave only an area reads *Showed only the area they were in*, with how wide it was. An area has no place to open.
 
 Only the office and whoever painted the map see this list.
 

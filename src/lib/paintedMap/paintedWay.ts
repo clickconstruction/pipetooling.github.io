@@ -159,8 +159,19 @@ export function wayScreenWords(width: unknown, height: unknown, ratio: unknown):
 
 /** The page sends where the reader is at once, then about once a minute while Show where I am is on. */
 export const WAY_POINT_EVERY_MS = 60_000
-export function wayPointIsDue(lastSentMs: number | null, nowMs: number): boolean {
-  return lastSentMs == null || nowMs - lastSentMs >= WAY_POINT_EVERY_MS
+/** A spot that follows an area is sent this soon: the function keeps no two points of a visit nearer than this. */
+export const WAY_SPOT_AFTER_AREA_MS = 20_000
+/**
+ * Is a reading due to be sent? The first at once, then about one a minute.
+ *
+ * Since v2.8105 (punch list #402) the page sends only what it has made up its mind about (`wayReading`): a spot, or
+ * an area once the readings have stayed rough for the wait. A reading still being waited on is sent to nobody, so a
+ * first reading off a cell tower is never kept as where the reader was. An area is sent as it is, with its margin,
+ * and the office reads it as an area. A spot that follows an area is better news, so it does not wait out the minute.
+ */
+export function wayPointIsDue(lastSentMs: number | null, nowMs: number, turn?: { lastWasArea: boolean; isArea: boolean }): boolean {
+  if (lastSentMs == null || nowMs - lastSentMs >= WAY_POINT_EVERY_MS) return true
+  return !!turn && turn.lastWasArea && !turn.isArea && nowMs - lastSentMs >= WAY_SPOT_AFTER_AREA_MS
 }
 
 export const WAY_NAME_WORDS = {
@@ -188,6 +199,17 @@ export function wayWillSeeWords(company: string | null | undefined): string {
 export function wayIsSeenWords(company: string | null | undefined): string {
   return `${sender(company)} sees where you are while this is on. Press Hide where I am to stop. Keep this page open and the dot moves with you.`
 }
+
+/**
+ * Said in the box while Show where I am is on and the phone gives only an area (v2.8105): the company is sent the
+ * area and its width, and reads it as an area. No dot is drawn, so nothing is said of one.
+ */
+export function wayAreaSeenWords(company: string | null | undefined): string {
+  return `${sender(company)} sees only this area while this is on. Press Hide where I am to stop.`
+}
+
+/** The sample's line under an area: nothing leaves the phone, and there is no dot to speak of. */
+export const WAY_AREA_PRIVACY_WORDS = 'Where you are stays on your phone. We never see it.'
 
 /** `You opened this map as Dana Reyes.` */
 export function wayOpenedAsWords(name: string): string {

@@ -6245,7 +6245,7 @@ interface Body {
 
 The log lines say that a visit or a place was kept. They never carry the name, the device or the address.
 
-The page that asks is live since **v2.7414**: it opens every link with `way.open`, and sends `way.here` at once and then about once a minute while **Show where I am** is on. The sample page calls neither.
+The page that asks is live since **v2.7414**: it opens every link with `way.open`, and sends `way.here` at once and then about once a minute while **Show where I am** is on. Since **v2.8105** it sends only a reading it has settled on: nothing while a rough one (a margin over 1,000 m) is still waited on, then the area with its `accuracyM`, and the first spot after an area as soon as 20 seconds have passed, which is this function's own gap. The function is unchanged. The sample page calls neither.
 
 **The app's asks** (signed in; the caller must read the map under their own RLS and be its maker or pass `is_office_staff()`; an archived account, an account in training and a digital twin are refused, **403**):
 - `POST { action: "desk.mint", mapId }` → `{ ok, code, endsOn }`: ten letters from `23456789abcdefghjkmnpqrstuvwxyz`, no letter likelier than another, handed out once with only the SHA-256 kept, good for ninety days, three tries on a clash. An earlier link stays open until its own day. **409** for a map with nothing on it, and past twenty open links on one map.
