@@ -3,13 +3,17 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { canApproveClause } from '../../lib/gc/access'
 import { editClause, proposedToast, publishedToast, reachOfTold, type ClauseBook, type ClauseChange } from '../../lib/contracts/approval'
-import { clauseLabel, tradeKey, type Clause, type ClauseScope } from '../../lib/contracts/assemble'
+import { clauseLabel, liveClauses, settingsView, tradeKey, type Clause, type ClauseScope } from '../../lib/contracts/assemble'
+import { newSlotKey, whenWords, type ClauseWhen } from '../../lib/contracts/paperSettings'
 import { saveClauseChange, tellClauseApprovers } from '../../lib/contracts/clausesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseField, ClauseWindow } from './ClauseWindow'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from './clauseStyles'
 
 export type ClauseEditMode = 'new' | 'edit' | 'retire'
+
+/** The pick that makes a new place for a setting's wordings. No place has this key: a key has no space in it. */
+const NEW_PLACE = 'a new place'
 
 const capitalized = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -46,6 +50,15 @@ export function ClauseEditWindow({
   const [forEveryone, setForEveryone] = useState(!clause || clause.scope === 'all')
   const [picked, setPicked] = useState<string[]>(clause && clause.scope !== 'all' ? [...clause.scope] : [])
   const [another, setAnother] = useState('')
+  // Only when (#389): on a paper with a settings list, a clause may be tied to one choice of one setting.
+  const def = book.paper.settingsDef ?? null
+  const tiedTo = Object.entries(clause?.when ?? {})
+  /** A clause tied to two settings at once is not made here. Its tie is shown and kept as it is. */
+  const keepsItsTie = tiedTo.length > 1
+  const [whenSetting, setWhenSetting] = useState(tiedTo[0]?.[0] ?? '')
+  const [whenChoice, setWhenChoice] = useState(tiedTo[0]?.[1] ?? '')
+  /** '' is no other wording, NEW_PLACE the first wording of a new place, else the place's key. */
+  const [place, setPlace] = useState(clause?.slot ?? '')
   const [why, setWhy] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -60,6 +73,22 @@ export function ClauseEditWindow({
     const t = another.trim().replace(/\s+/g, ' ')
     if (t && !isPicked(t)) setPicked((now) => [...now, t])
     setAnother('')
+  }
+
+  const whenSettingDef = def?.settings.find((s) => s.key === whenSetting) ?? null
+  /** The places already tied to the picked setting, each named by a clause that is a wording of it. */
+  const places = useMemo(() => {
+    if (!whenSetting) return []
+    const view = settingsView(book.clauses)
+    const rows = [...view.base, ...view.exhibits.flatMap((x) => x.rows)]
+    const slots = [...new Set(liveClauses(book.clauses).flatMap((c) => (c.slot && c.when && whenSetting in c.when && c.id !== clause?.id ? [c.slot] : [])))]
+    return slots.map((slot) => ({ slot, n: rows.find((r) => r.clause.slot === slot)?.n ?? null }))
+  }, [book.clauses, whenSetting, clause?.id])
+  const tie = (): { when: ClauseWhen; slot: string | null } => {
+    if (keepsItsTie) return { when: clause?.when ?? null, slot: clause?.slot ?? null }
+    if (!def || !whenSetting || !whenChoice) return { when: null, slot: null }
+    const taken = liveClauses(book.clauses).flatMap((c) => (c.slot ? [c.slot] : []))
+    return { when: { [whenSetting]: whenChoice }, slot: place === NEW_PLACE ? newSlotKey(whenSetting, taken) : place || null }
   }
 
   const label = clause ? clauseLabel(book.clauses, clause.id) : 'a new clause'
@@ -77,11 +106,16 @@ export function ClauseEditWindow({
   const change = (): ClauseChange => {
     if (mode === 'retire') return { kind: 'retire', clauseId: clause?.id ?? '' }
     const scope: ClauseScope = forEveryone ? 'all' : picked
-    return mode === 'new' ? { kind: 'new', en, es, scope } : { kind: 'edit', clauseId: clause?.id ?? '', en, es, scope }
+    const tied = tie()
+    return mode === 'new' ? { kind: 'new', en, es, scope, ...tied } : { kind: 'edit', clauseId: clause?.id ?? '', en, es, scope, ...tied }
   }
 
   const save = async () => {
     const c = change()
+    if (mode !== 'retire' && def && whenSetting && !whenChoice && !keepsItsTie) {
+      setProblem(`Pick the choice of ${whenSettingDef?.label ?? 'the setting'} that puts this clause in the paper.`)
+      return
+    }
     const checked = editClause(book, c, { userId: user?.id ?? '', name: profileName ?? '', role }, { at: new Date().toISOString(), why, approvers, newId: () => 'pending' })
     if (checked.kind === 'refused') {
       setProblem(checked.why)
@@ -158,6 +192,63 @@ export function ClauseEditWindow({
               </div>
             )}
           </fieldset>
+          {def && (
+            <div data-clause-only-when style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }}>
+              <span style={{ fontWeight: 600 }}>Only when</span>
+              {keepsItsTie ? (
+                <span style={{ color: 'var(--text-muted)' }}>{whenWords(def, clause?.when ?? null)}. This tie is kept as it is.</span>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <select
+                      aria-label="Setting"
+                      value={whenSetting}
+                      onChange={(e) => {
+                        setWhenSetting(e.target.value)
+                        setWhenChoice('')
+                        setPlace('')
+                      }}
+                      style={{ ...clauseInputStyle, width: 'auto', flex: '1 1 200px' }}
+                    >
+                      <option value="">In every paper</option>
+                      {def.settings.map((s) => (
+                        <option key={s.key} value={s.key}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                    {whenSettingDef && (
+                      <>
+                        <span>is</span>
+                        <select aria-label="Choice" value={whenChoice} onChange={(e) => setWhenChoice(e.target.value)} style={{ ...clauseInputStyle, width: 'auto', flex: '1 1 160px' }}>
+                          <option value="">Pick a choice</option>
+                          {whenSettingDef.choices.map((c) => (
+                            <option key={c.key} value={c.key}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                  {whenSettingDef && (
+                    <ClauseField label="For the other choices" note="A place needs one wording for each choice, except a choice that leaves the topic out.">
+                      <select aria-label="For the other choices" value={place} onChange={(e) => setPlace(e.target.value)} style={clauseInputStyle}>
+                        <option value="">No other wording. It is left out for every other choice.</option>
+                        {places.map((p) => (
+                          <option key={p.slot} value={p.slot}>
+                            {p.n == null ? 'Another wording of the same place' : `Another wording of clause ${p.n}`}
+                          </option>
+                        ))}
+                        {clause?.slot && !places.some((p) => p.slot === clause.slot) && <option value={clause.slot}>The place it is in now</option>}
+                        <option value={NEW_PLACE}>The first wording of a new place</option>
+                      </select>
+                    </ClauseField>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
       <ClauseField label="Why">

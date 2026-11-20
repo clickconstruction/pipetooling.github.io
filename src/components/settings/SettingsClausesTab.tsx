@@ -3,14 +3,16 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { canApproveClause } from '../../lib/gc/access'
 import { approvedToast, approveProposal, orWords, scopeFor, type ClauseBook, type ClauseProposal } from '../../lib/contracts/approval'
-import { scopeWords, settingsView, type Clause } from '../../lib/contracts/assemble'
-import { buildablePapers, clauseHistory, clausePaperAnchor, clausePaperCards, paperFromRow, tradeChoices, type ClausePaperCard } from '../../lib/contracts/clauseRows'
-import { approveClauseProposal, loadClauseLibrary, tellClauseEditor, type ClauseLibrary } from '../../lib/contracts/clausesIo'
-import { formatDenverDateTimeShort } from '../../utils/dateUtils'
+import { liveClauses, scopeWords, settingsView, type Clause, type ContractPaper } from '../../lib/contracts/assemble'
+import { buildablePapers, clauseHistory, clausePaperAnchor, clausePaperCards, paperFromRow, paperReadWords, tradeChoices, type ClausePaperCard } from '../../lib/contracts/clauseRows'
+import { approveClauseProposal, loadClauseLibrary, markPaperRead, tellClauseEditor, type ClauseLibrary } from '../../lib/contracts/clausesIo'
+import { bookGaps, whenWords } from '../../lib/contracts/paperSettings'
+import { formatDenverDateTimeShort, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseDeclineWindow } from '../contracts/ClauseDeclineWindow'
 import { ClauseEditWindow, type ClauseEditMode } from '../contracts/ClauseEditWindow'
 import { ClausePreviewWindow } from '../contracts/ClausePreviewWindow'
+import { PaperSettingsWindow } from '../contracts/PaperSettingsWindow'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
 import { EmptyState } from '../EmptyState'
 
@@ -55,6 +57,11 @@ export function SettingsClausesTab() {
   const [historyOf, setHistoryOf] = useState<string | null>(null)
   const [buildId, setBuildId] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  // A paper built from settings (#389): its settings list's window, and the form that marks a revision as read.
+  const [settingsOf, setSettingsOf] = useState<ContractPaper | null>(null)
+  const [readOf, setReadOf] = useState<string | null>(null)
+  const [readName, setReadName] = useState('')
+  const [readOn, setReadOn] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -86,6 +93,21 @@ export function SettingsClausesTab() {
       // The editor hears of it (messages-notify); the toast says whether the email went.
       const told = await tellClauseEditor(p.id)
       showToast(approvedToast(signer.name || 'you', p.by, p.kind, Boolean(told?.emailSent)), 'success')
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const markRead = async (paper: ContractPaper) => {
+    setBusy(paper.id)
+    try {
+      await markPaperRead(paper.id, readName.trim(), readOn)
+      showToast(`Revision ${paper.revision} of ${paper.title} is marked as read by ${readName.trim()}.`, 'success')
+      setReadOf(null)
+      setReadName('')
       await load()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
@@ -143,13 +165,14 @@ export function SettingsClausesTab() {
     )
   }
 
-  const clauseRow = (card: ClausePaperCard, clause: Clause, n: number | null) => {
+  const clauseRow = (card: ClausePaperCard, clause: Clause, n: number | string | null) => {
+    const def = card.book.paper.settingsDef ?? null
     const waiting = card.waiting.filter((p) => p.clauseId === clause.id)
     const retired = clause.retiredAt != null
     return (
       <div key={`${clause.id}-${n ?? 'r'}`} data-clause-row={clause.id} style={{ display: 'grid', gap: '0.35rem', padding: '0.35rem 0', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6rem 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
-          <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{n ?? '–'}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(1.6rem, auto) 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
+          <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{n ?? '–'}</span>
           <div style={{ minWidth: 0 }}>
             <div>{clause.en}</div>
             {clause.es && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{clause.es}</div>}
@@ -159,6 +182,11 @@ export function SettingsClausesTab() {
                   {w}
                 </span>
               ))}
+              {def && (
+                <span data-clause-when style={{ ...pill(clause.when == null), ...(clause.when == null ? {} : { background: 'var(--bg-amber-tint)', borderColor: 'var(--bg-amber-200)' }) }}>
+                  {whenWords(def, clause.when ?? null)}
+                </span>
+              )}
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>v{clause.v}</span>
               {retired && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>retired {when(clause.retiredAt ?? '')}</span>}
             </div>
@@ -190,6 +218,9 @@ export function SettingsClausesTab() {
     const live = view.base.length + new Set(view.exhibits.flatMap((x) => x.rows.map((r) => r.clause.id))).size
     const news = card.waiting.filter((p) => p.kind === 'new')
     const { paper } = card.book
+    const def = paper.settingsDef ?? null
+    const gaps = def ? bookGaps(def, liveClauses(card.book.clauses).map((c) => ({ id: c.id, order: c.order, slot: c.slot ?? null, when: c.when ?? null }))) : []
+    const read = paperReadWords(paper, card.read, formatWorkDateYmdMonthDayShort)
     return (
       <section key={paper.id} id={clausePaperAnchor(paper.id)} data-clause-paper-card={paper.id} style={cardStyle}>
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -200,18 +231,72 @@ export function SettingsClausesTab() {
           </span>
           {card.waiting.length > 0 && <strong style={{ color: 'var(--text-amber-800)', fontSize: '0.8rem' }}>{card.waiting.length} waiting on approval</strong>}
           <span style={{ flex: 1 }} />
+          {approver && (
+            <button type="button" onClick={() => setSettingsOf(paper)} style={small}>
+              Settings list
+            </button>
+          )}
           <button type="button" onClick={() => setPreviewing(card.book)} style={small}>
-            Preview per trade
+            {def ? 'Preview with settings' : 'Preview per trade'}
           </button>
           <button type="button" onClick={() => setEditing({ mode: 'new', book: card.book, clause: null })} style={small}>
             + a clause
           </button>
         </div>
+        {def && (
+          <div data-paper-settings-strip={paper.id} style={{ display: 'grid', gap: '0.4rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <strong>Built from settings</strong>
+              <span data-paper-read style={{ ...pill(false), background: read.read ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', borderColor: read.read ? 'var(--text-green-700)' : 'var(--bg-amber-200)' }}>{read.words}</span>
+              {approver && paper.revision >= 1 && !read.read && (
+                <button
+                  type="button"
+                  aria-expanded={readOf === paper.id}
+                  onClick={() => {
+                    setReadOf(readOf === paper.id ? null : paper.id)
+                    setReadOn(todayYmdInAppTz())
+                  }}
+                  style={small}
+                >
+                  {`Mark revision ${paper.revision} as read by an attorney`}
+                </button>
+              )}
+            </div>
+            {readOf === paper.id && (
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'end' }}>
+                <label style={{ display: 'grid', gap: 2, fontSize: '0.8rem', flex: '1 1 200px' }}>
+                  The attorney who read it
+                  <input value={readName} onChange={(e) => setReadName(e.target.value)} style={clauseInputStyle} />
+                </label>
+                <label style={{ display: 'grid', gap: 2, fontSize: '0.8rem' }}>
+                  The day it was read
+                  <input type="date" value={readOn} onChange={(e) => setReadOn(e.target.value)} style={{ ...clauseInputStyle, width: 'auto' }} />
+                </label>
+                <button type="button" disabled={busy === paper.id || !readName.trim() || !readOn} onClick={() => void markRead(paper)} style={smallPrimary}>
+                  {busy === paper.id ? 'Marking…' : `Mark revision ${paper.revision} as read`}
+                </button>
+                <button type="button" onClick={() => setReadOf(null)} style={small}>
+                  Cancel
+                </button>
+              </div>
+            )}
+            {gaps.length === 0 ? (
+              <span data-paper-gaps="none" style={{ color: 'var(--text-muted)' }}>Every choice has its wording.</span>
+            ) : (
+              <ul data-paper-gaps style={{ margin: 0, paddingLeft: '1.1rem', color: 'var(--text-amber-800)', display: 'grid', gap: 2 }}>
+                {gaps.map((g) => (
+                  <li key={g}>{g}</li>
+                ))}
+              </ul>
+            )}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>A paper built from settings goes from a job, with the job&apos;s settings. A gap stops it, in these words.</span>
+          </div>
+        )}
         <div style={sectionHead}>Everyone</div>
         {view.base.length === 0 ? (
           <EmptyState compact main="None yet." next={{ label: '+ a clause', onPress: () => setEditing({ mode: 'new', book: card.book, clause: null }) }} tail="adds the first." />
         ) : (
-          view.base.map((r) => clauseRow(card, r.clause, r.n))
+          view.base.map((r) => clauseRow(card, r.clause, `${r.n}${r.letter ?? ''}`))
         )}
         <div style={sectionHead}>The trade exhibits</div>
         {view.exhibits.length === 0 ? (
@@ -220,7 +305,7 @@ export function SettingsClausesTab() {
           view.exhibits.map((x) => (
             <div key={x.trade} data-clause-exhibit={x.trade} style={{ display: 'grid' }}>
               <div style={{ fontWeight: 600, fontSize: '0.85rem', marginTop: '0.2rem' }}>Exhibit for {x.trade}</div>
-              {x.rows.map((r) => clauseRow(card, r.clause, r.n))}
+              {x.rows.map((r) => clauseRow(card, r.clause, `${r.n}${r.letter ?? ''}`))}
             </div>
           ))
         )}
@@ -289,6 +374,16 @@ export function SettingsClausesTab() {
         />
       )}
       {previewing && lib && <ClausePreviewWindow book={previewing} companies={lib.companies} onClose={() => setPreviewing(null)} />}
+      {settingsOf && (
+        <PaperSettingsWindow
+          paper={settingsOf}
+          onClose={() => setSettingsOf(null)}
+          onSaved={() => {
+            setSettingsOf(null)
+            void load()
+          }}
+        />
+      )}
       {declining && (
         <ClauseDeclineWindow
           proposalId={declining.id}
