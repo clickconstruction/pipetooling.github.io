@@ -358,6 +358,19 @@ describe('JobDocumentsStartChecks', () => {
     expect(within(row('inspection')).queryByRole('button', { name: /company’s list/ })).toBeNull()
   })
 
+  it('an open stage offers Ask for what is open on them, tied to the job and its customer’s thread', async () => {
+    const db = seeded()
+    await mount(db, { ...JOB, job_name: 'Lodge plumbing', askCustomerId: 'cust-9' } as typeof JOB)
+    const stage = await openStage('Top Out')
+    // Two are open on them: the inspection, and the framing bullet that still needs its photo.
+    fireEvent.click(within(stage).getByRole('button', { name: 'Ask Ray about 2' }))
+    const panel = document.querySelector('[data-start-check-ask]') as HTMLElement
+    expect((within(panel).getByLabelText('The ask') as HTMLTextAreaElement).value).toContain('1. Framing is done and the roof is dried in. A photo would settle it.')
+    fireEvent.click(within(panel).getByRole('button', { name: 'I emailed it' }))
+    await waitFor(() => expect(db.rows.asks.filter((a) => a.how === 'email').map((a) => a.bullet_id).sort()).toEqual(['framing', 'inspection']))
+    await waitFor(() => expect(row('inspection').textContent).toContain('by email. No answer yet.'))
+  })
+
   it('a press that fails says why, and the row stands as it was', async () => {
     const db = seeded()
     await mount(db)

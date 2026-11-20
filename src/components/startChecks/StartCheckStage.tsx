@@ -25,6 +25,7 @@ import {
   monthDay,
   movedDays,
   openBullets,
+  openOnThem,
   saidNo,
   startClash,
   theirDay,
@@ -54,6 +55,7 @@ import {
 } from '../../lib/startChecks/startCheckRows'
 import type { StartChecksIo, StartWho } from '../../lib/startChecks/startChecksIo'
 import { ChangeableValue, ValueLine, ValueLines, ValuesLegend, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { StartCheckAskPanel, type AskMessagesDoor } from './StartCheckAskPanel'
 
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const cap: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -85,14 +87,17 @@ export interface StartCheckStageProps {
   /** Run a write, then read again. A failure is thrown. */
   press: (write: (io: StartChecksIo) => Promise<void>) => Promise<void>
   io: StartChecksIo
+  /** Where an ask goes out from Messages: the job it is tied to and the customer's thread. Absent, the stage offers no ask. */
+  ask?: AskMessagesDoor
 }
 
-export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, today, me, kind, templates, can, press, io }: StartCheckStageProps) {
+export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, today, me, kind, templates, can, press, io, ask }: StartCheckStageProps) {
   const { showToast } = useToastContext()
   const [words, setWords] = useState('')
   const [on, setOn] = useState<'them' | 'us'>('them')
   const [writing, setWriting] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [asking, setAsking] = useState(false)
 
   /** A press on a row: the row waits, and a failure says why in a toast. */
   const act = async (what: string, write: (io: StartChecksIo) => Promise<void>) => {
@@ -294,6 +299,14 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
         </div>
       ) : null}
       {addRow}
+      {ask && openOnThem(stage).length ? (
+        <div style={{ marginTop: 12 }}>
+          <button type="button" className="scPress" style={bluePress} aria-expanded={asking} onClick={() => setAsking(!asking)}>
+            Ask {site.contact} about {openOnThem(stage).length}
+          </button>
+        </div>
+      ) : null}
+      {ask && asking ? <StartCheckAskPanel stages={[{ stage, line }]} site={site} today={today} me={me} door={ask} press={press} onClose={() => setAsking(false)} /> : null}
     </div>
   )
 }

@@ -90,6 +90,11 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       write('giveTheirDay')
       put({ theirDays: [...db.rows.theirDays, { id: id('d'), job_id: day.jobId, fixture_id: day.fixtureId, ready_day: day.readyDay, said_on: day.saidOn, who_name: day.who, how: day.how, source: 'office', removed_at: null, created_at: now() }] })
     },
+    keepAsk: async (ask) => {
+      write('keepAsk')
+      const batch = id('batch')
+      put({ asks: [...db.rows.asks, ...ask.rows.map((r) => ({ id: id('k'), batch_id: batch, job_id: r.jobId, fixture_id: r.fixtureId, bullet_id: r.bulletId, kind: ask.kind, how: ask.how, to_name: ask.to, asked_on: ask.day, created_at: now() }))] })
+    },
     setNotice: async (home, days) => {
       write('setNotice')
       if ('developmentId' in home) db.site = { id: db.site?.id ?? id('s'), development_id: home.developmentId, job_id: null, notice_days: days, shows_on_gc_page: false }

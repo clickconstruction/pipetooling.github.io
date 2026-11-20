@@ -50,6 +50,7 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'in-kind-credit-due': 'assistant',
   'projects-no-baseline': 'assistant',
   'stages-done-not-billed': 'assistant',
+  'start-answers-owed': 'assistant',
   'receipts-to-chase': 'assistant',
   'jobs-stale-open': 'assistant',
   'dispatch-requests-aged': 'assistant',

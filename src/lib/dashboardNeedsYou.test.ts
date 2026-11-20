@@ -280,6 +280,18 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ stagesDoneEnabled: true, stagesDone: null }))).toEqual([])
   })
 
+  it('answers a customer owes us before a stage (punch list #382, PR 6): one amber line with the count, gated by the flag', () => {
+    const owed = { sites: [{ key: 'dev-1', developmentId: 'dev-1', jobId: 'j1', name: 'ZZ Test Heron Point', contact: 'Ray', answers: 6, stages: 2 }], answers: 6, stages: 2 }
+    const one = buildNeedsYouItems(inputs({ startAnswersOwedEnabled: true, startAnswersOwed: owed }))
+    expect(one.map((i) => i.key)).toEqual(['start-answers-owed'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'Before we start', title: 'Ray owes us 6 answers on 2 stages', figure: '6', actionLabel: 'Open the list' })
+    expect(one[0]!.detail).toBe('ZZ Test Heron Point. Each is something that must be true before a stage starts. Ask before the day we decide.')
+    expect(NEEDS_YOU_RANK['start-answers-owed']).toBe(40)
+    expect(buildNeedsYouItems(inputs({ startAnswersOwedEnabled: false, startAnswersOwed: owed }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ startAnswersOwedEnabled: true, startAnswersOwed: { sites: [], answers: 0, stages: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ startAnswersOwedEnabled: true, startAnswersOwed: null }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])
