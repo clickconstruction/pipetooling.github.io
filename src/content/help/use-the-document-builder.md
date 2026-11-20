@@ -46,6 +46,8 @@ The Sub NDA opens on two sides. The right side is what a GC sees. The left side 
 1. Press any words on the right side and type over them.
 2. Wait for the bar to read *Draft saved*.
 
+The bar reads *Draft not saved* when a save fails. Type again to send the draft again.
+
 - **Add a line** adds a line at the end of a list.
 - The small **×** beside a line takes it off.
 - A breach line that a stricter level keeps is one rule. Change it on the level that brings it.
