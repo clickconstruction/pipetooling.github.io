@@ -138,6 +138,26 @@ export function texasPoint(lat: unknown, lng: unknown): { lat: number; lng: numb
   return la > 25 && la < 37 && lo > -107 && lo < -93 ? { lat: la, lng: lo } : null
 }
 
+/**
+ * Austin's mark for a contractor's main account, which the city writes into the name itself:
+ * asterisks, the word MAIN, and often more asterisks ("Tall Pine Builders, LLC ***MAIN***",
+ * "**Main**", "*MAIN", "*** MAIN"), or the word in brackets ("(MAIN)", "(Main GC account)"). It is
+ * the city's bookkeeping, not part of the name. Read with `gi`. The source is one string because
+ * migration `20261120110000_permit_austin_main_mark` holds the same pattern for the rows already
+ * stored, and `permitCities.test.ts` fails when the two drift apart.
+ */
+export const AUSTIN_MAIN_MARK = String.raw`\*+\s*main(?![a-z0-9])\**|\(\s*main(?:\s+(?:gc\s+)?account)?\s*\)`
+
+/**
+ * A name off Austin's feed without the city's mark, or null when nothing but the mark was there.
+ * Left in, the mark splits one company into a marked and an unmarked builder, and after a comma
+ * ("Name, Inc.**MAIN**") it becomes the whole key, the same key for every such company.
+ */
+export function austinName(value: unknown): string | null {
+  const name = textOf(value)
+  return name == null ? null : textOf(name.replace(new RegExp(AUSTIN_MAIN_MARK, 'gi'), ' '))
+}
+
 /** One Austin record as a `permits` row, or null when the pull does not keep its kind or it has no number. */
 export function permitRowFromAustin(record: Record<string, unknown>): PermitRow | null {
   const cls = classifyAustin(record)
@@ -147,7 +167,8 @@ export function permitRowFromAustin(record: Record<string, unknown>): PermitRow 
   const address = textOf(record['original_address1'])
   const point = texasPoint(record['latitude'], record['longitude'])
   // Who pulled it: the contractor's company on the permit, else the applicant's, else the person named.
-  const contact = textOf(record['contractor_company_name']) ?? textOf(record['applicant_org']) ?? textOf(record['contractor_full_name']) ?? textOf(record['applicant_full_name'])
+  // Each without the city's MAIN mark; `raw` keeps the feed's own text.
+  const contact = austinName(record['contractor_company_name']) ?? austinName(record['applicant_org']) ?? austinName(record['contractor_full_name']) ?? austinName(record['applicant_full_name'])
   const zip = (textOf(record['original_zip']) ?? '').match(/^\d{5}/)?.[0] ?? null
   return {
     city: 'Austin',

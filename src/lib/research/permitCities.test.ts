@@ -1,11 +1,14 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+  AUSTIN_MAIN_MARK,
   AUSTIN_READER,
   NEW_BRAUNFELS_READER,
   PERMIT_CITIES,
   PERMIT_CITY_NAMES,
   SAN_MARCOS_READER,
   SEGUIN_READER,
+  austinName,
   austinWhere,
   classifyAustin,
   classifyNewBraunfels,
@@ -158,6 +161,77 @@ describe('one Austin record as a permits row', () => {
     expect(shortDescription(null)).toBeNull()
     expect(texasPoint('0', '0')).toBeNull()
     expect(texasPoint('30.27', '-97.74')).toEqual({ lat: 30.27, lng: -97.74 })
+  })
+})
+
+describe("Austin's MAIN mark on a contractor's name", () => {
+  // Every spelling the feed held on 2026-11-20, each after a made-up name.
+  const STARRED = ['***MAIN***', '**MAIN**', '**Main**', '**MAIN***', '**MAIN', '***Main***', '*MAIN*', '***MAIN', '***Main', '***MAIN**', '*MAIN', '*** MAIN', '****Main*****', '*Main*', '*MAIN**']
+  const BRACKETED = ['(MAIN)', '(Main)', '(Main GC account)']
+
+  it.each([...STARRED, ...BRACKETED])('takes %s off the end of a name, glued on or after a space', (mark) => {
+    expect(austinName(`Tall Pine Builders, LLC${mark}`)).toBe('Tall Pine Builders, LLC')
+    expect(austinName(`Tall Pine Builders, LLC ${mark}`)).toBe('Tall Pine Builders, LLC')
+    expect(austinName(`Cedar Fork Construction Inc.${mark}`)).toBe('Cedar Fork Construction Inc.')
+    expect(austinName(`  Jordan   Vale ${mark} `)).toBe('Jordan Vale')
+  })
+
+  it('takes the mark out of the middle of a name and closes the gap', () => {
+    expect(austinName('Vale/Reed (MAIN) Construction Company')).toBe('Vale/Reed Construction Company')
+    expect(austinName('Vale Reed **MAIN** Construction')).toBe('Vale Reed Construction')
+  })
+
+  it('leaves a name that only holds the word', () => {
+    for (const name of ['Main Street Builders, LLC', 'Hill Country Home Maintenance', 'Domain Construction', 'Mainstream Services', 'Cedar Fork (Formerly Main Line Restoration)', 'Vale * Reed Plumbing', 'Reed Plumbing (DBA: Vale Plumbing)', '**Mainland Homes']) {
+      expect(austinName(name)).toBe(name)
+    }
+  })
+
+  it('reads a name that was nothing but the mark as no name', () => {
+    expect(austinName('**MAIN**')).toBeNull()
+    expect(austinName(' (MAIN) ')).toBeNull()
+    expect(austinName('')).toBeNull()
+    expect(austinName(null)).toBeNull()
+    expect(austinName(42)).toBeNull()
+  })
+
+  it('one company is one builder, with the mark and without it', () => {
+    const plain = permitRowFromAustin(austin({ contractor_company_name: 'Cedar Fork Homes' }))
+    for (const mark of STARRED) {
+      const marked = permitRowFromAustin(austin({ contractor_company_name: `Cedar Fork Homes${mark}` }))
+      expect(marked?.contact).toBe('Cedar Fork Homes')
+      expect(marked?.builder_key).toBe(plain?.builder_key)
+    }
+  })
+
+  it('a name with a comma keeps its own key, never the mark as the key', () => {
+    // Before, the splitter took "Inc.**MAIN**" as the company and every such contractor keyed to "main".
+    const a = permitRowFromAustin(austin({ contractor_company_name: 'Tall Pine Builders, Inc.**MAIN**' }))
+    const b = permitRowFromAustin(austin({ contractor_company_name: 'Cedar Fork Homes, LLC(MAIN)' }))
+    expect(a).toMatchObject({ contact: 'Tall Pine Builders, Inc.', builder_key: 'tallpinebuilders' })
+    expect(b).toMatchObject({ contact: 'Cedar Fork Homes, LLC', builder_key: 'cedarforkhomes' })
+  })
+
+  it('reads past a name that was only the mark, and keeps the feed\'s own text in raw', () => {
+    const record = austin({ contractor_company_name: '*MAIN', applicant_org: '*MAIN', contractor_full_name: 'Jordan Vale' })
+    const row = permitRowFromAustin(record)
+    expect(row?.contact).toBe('Jordan Vale')
+    expect(row?.raw).toBe(record)
+    const marked = austin({ contractor_company_name: 'Tall Pine Builders, LLC ***MAIN***' })
+    expect((permitRowFromAustin(marked)?.raw as Record<string, unknown>)['contractor_company_name']).toBe('Tall Pine Builders, LLC ***MAIN***')
+  })
+
+  it('a plumbing permit loses the mark too, so it keys with the building permit', () => {
+    const building = permitRowFromAustin(austin({ contractor_company_name: 'Sample Plumbing Co' }))
+    const plumbing = permitRowFromAustin(austin({ permittype: 'PP', permit_type_desc: 'Plumbing Permit', permit_number: '2026-000002 PP', work_class: 'New', contractor_company_name: 'Sample Plumbing Co***MAIN**' }))
+    expect(plumbing).toMatchObject({ kind: 'plumbing', contact: 'Sample Plumbing Co' })
+    expect(plumbing?.builder_key).toBe(building?.builder_key)
+  })
+
+  it('the one-off for the rows already stored holds the same pattern', () => {
+    const sql = readFileSync('supabase/migrations/20261120110000_permit_austin_main_mark.sql', 'utf8')
+    expect(sql).toContain(`'${AUSTIN_MAIN_MARK}'`)
+    expect(sql).toMatch(/WHERE p\.city = 'Austin'/)
   })
 })
 
