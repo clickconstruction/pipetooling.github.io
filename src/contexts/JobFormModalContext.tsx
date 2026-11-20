@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, Suspense, useCallback, useContext, useState } from 'react'
 import type { NewJobCustomerPrefill } from '../lib/messages/leadDoors'
 import type { JobDraft } from '../lib/bids/jobDraft'
 import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
-import JobFormModal from '../components/jobs/JobFormModal'
+import { WindowOpening } from '../components/WindowOpening'
+import { lazyWindow } from '../lib/lazyWindow'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
 import JobAccountsAfterCreatePrompt from '../components/jobs/JobAccountsAfterCreatePrompt'
 import JobSubmittalsAfterCreatePrompt from '../components/jobs/JobSubmittalsAfterCreatePrompt'
@@ -86,6 +87,12 @@ type InternalOpenState =
     }
 
 const JobFormModalContext = createContext<JobFormModalContextValue | null>(null)
+
+// The form is a chunk of its own (`lazyWindow`): this provider is mounted for everyone signed in, and importing
+// the form here put it and all it reads in the entry's chunk. The Job window imports the same form, so the
+// warm-up `JobDetailModalProvider` runs for the window brings the form with it.
+const JobFormModal = lazyWindow(() => import('../components/jobs/JobFormModal'))
+const JOB_FORM_OPENING = <WindowOpening words="Opening the job form…" />
 
 /** Incremented so JobFormModal remounts on each open with clean internal state. */
 let jobFormModalInstanceSeed = 0
@@ -171,6 +178,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
   return (
     <JobFormModalContext.Provider value={value}>
       {children}
+      <Suspense fallback={JOB_FORM_OPENING}>
       {openState.kind === 'edit' ? (
         <JobFormModal
           key={instanceKey}
@@ -211,6 +219,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           }}
         />
       ) : null}
+      </Suspense>
       <JobContractAfterCreatePrompt
         jobId={contractPromptJobId}
         onClose={() => {

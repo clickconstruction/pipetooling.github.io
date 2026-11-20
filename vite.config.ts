@@ -345,7 +345,10 @@ export default defineConfig({
         // the last good deploy, at 9,432,596, which left 4,588 bytes), and every deploy build failed from 13:37Z,
         // so the cap is 10 MiB. About 86 kB of that step was not growth: v2.8015's start-check readers import the
         // permit research list statically, which moved it and what it reads out of a lazy chunk into this one.
-        // Six days took this MiB, so the split is due now.
+        // Six days took this MiB, so the split began the same day: the three job windows load on demand (v2.8098,
+        // `lazyWindow`), which took the main chunk from 9,465,107 bytes on the live site to 5,671,756.
+        // `src/lib/entryGraph.repo.test.ts` now holds the entry's eager imports to a budget in PR CI, so growth
+        // is refused on the PR that brings it. The cap stays here until the next cuts are in, then comes down.
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**', '**/lensEngine-*.js'],
