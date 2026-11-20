@@ -141,6 +141,12 @@ export function tripJoinTitle(record: Pick<TripRecord, 'tripNumber'>, next: Pick
 const listWords = (items: ReadonlyArray<string>): string => (items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
 
 /**
+ * Said whenever one of the two trips holds a line. A join moves the tie and changes no word on the line, so a line
+ * named *Trip 8, 1 person, Nov 14 to 15* still says so on the joined Trip 7 (seen on the live walk, v2.7975).
+ */
+export const TRIP_JOIN_LINE_NAME_NOTE = 'The line keeps its name. Change the name on the job’s Bill tab if it should show the joined trip.'
+
+/**
  * What the joined trip takes from the next trip, and what goes. Each is one plain sentence for the window; the list
  * is empty of a sentence that has nothing to say.
  */
@@ -156,6 +162,7 @@ export function tripJoinNotes(record: TripRecord, next: TripRecord, lines: TripJ
   if (!record.billing && next.billing) out.push(`The joined trip takes the billing ${b === 'The next trip' ? 'the next trip' : b} said: ${TRIP_BILLING_LABEL[next.billing]}.`)
   if (lines.here && !lines.next) out.push(`${a} is on a bill. Its line stays with it.`)
   if (!lines.here && lines.next) out.push(`${b} is on a bill. Its line moves to the joined trip.`)
+  if (lines.here !== lines.next) out.push(TRIP_JOIN_LINE_NAME_NOTE)
   out.push(`${b} goes, and its number is not used again. It waits under Deleted trips, marked as joined.`)
   return out
 }

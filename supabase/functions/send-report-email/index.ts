@@ -7,6 +7,7 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { readReportSubject, reportSendSkip, type ReportSubject } from '../_shared/reportSubject.ts'
 import { photoBytesBase64, planReportEmailPhotos, type ReportEmailPhoto, type ReportEmailPhotoRow } from '../_shared/reportPhotoEmail.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { reportsOpenToRecipient, rowsOpenToRecipient, type ReportRecipient } from '../_shared/primaryReportScope.ts'
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -27,6 +28,11 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * A report on a ZZ test record — its job's or its customer's name, a project's or a bid's, starts with ZZ
  * (`_shared/reportSubject.ts`, v2.6127) — is emailed to no one in either mode: auto answers with the reason,
  * manual leaves it out and counts it. A session's walk on a ZZ job stays in the building.
+ *
+ * A subscriber who is a primary is sent only the reports they read in the app (the owner's word of 2026-11-19,
+ * `_shared/primaryReportScope.ts`): a report on a job that is not theirs is left out in both modes, counted in the
+ * answer, and never written to the dispatch log, so it is not on record as sent. An outside address is narrowed only
+ * when it is a primary's own account address. Every other subscriber is sent what they were.
  *
  * Idempotency: report_email_dispatch_log UNIQUE(subscription_id, report_id).
  * Auth: requires a logged-in user (JWT). Manual mode additionally requires the
@@ -141,6 +147,11 @@ async function resolveReportContent(admin: AdminClient, report: ReportRow, subje
     },
     attachments,
   }
+}
+
+/** Who a subscription sends to, for the primary's report scope: the user it names, or its outside address. */
+function subscriptionRecipient(sub: SubscriptionRow): ReportRecipient {
+  return { userId: sub.recipient_user_id, email: sub.recipient_email }
 }
 
 /** Resolve a subscription's destination address; null when unsendable (archived/empty). */
@@ -282,13 +293,22 @@ serve(async (req) => {
       )
       if (matched.length === 0) return json({ ok: true, sent: 0, message: 'No matching subscriptions' })
 
+      // A primary reads their own jobs' reports (2026-11-19): a subscriber who may not read this one is not sent it,
+      // and no dispatch row is written for them. Asked before the photos are read, so a held report costs nothing.
+      const reads = await Promise.all(matched.map((s) => reportsOpenToRecipient(admin, subscriptionRecipient(s), [report.id])))
+      const toSend = matched.filter((_, i) => reads[i]!.has(report.id))
+      const outOfScope = matched.length - toSend.length
+      if (toSend.length === 0) {
+        return json({ ok: true, sent: 0, matched: matched.length, outOfScope, message: 'No subscriber reads this report' })
+      }
+
       const resolved = await resolveReportContent(admin, report, subject)
       let sent = 0
-      for (const sub of matched) {
+      for (const sub of toSend) {
         const outcome = await sendReportToSubscription(admin, sub, report, resolved, resendApiKey, 'auto')
         if (outcome === 'sent') sent++
       }
-      return json({ ok: true, sent, matched: matched.length })
+      return json({ ok: true, sent, matched: matched.length, outOfScope })
     }
 
     // ---- manual ----
@@ -341,7 +361,11 @@ serve(async (req) => {
     const dispatched = new Set(
       ((dispatchedData ?? []) as Array<{ report_id: string }>).map((r) => r.report_id),
     )
-    const toSend = reports.filter((r) => !dispatched.has(r.id))
+    const notSent = reports.filter((r) => !dispatched.has(r.id))
+    // A primary reads their own jobs' reports (2026-11-19): the ones this subscriber may not read are left out and
+    // counted, and stay out of the dispatch log. The editor says so.
+    const toSend = await rowsOpenToRecipient(admin, subscriptionRecipient(sub), notSent)
+    const skippedOutOfScope = notSent.length - toSend.length
 
     let sent = 0
     let skippedTestJobs = 0
@@ -356,7 +380,7 @@ serve(async (req) => {
       const outcome = await sendReportToSubscription(admin, sub, report, resolved, resendApiKey, 'manual')
       if (outcome === 'sent') sent++
     }
-    return json({ ok: true, sent, candidates: reports.length, alreadySent: dispatched.size, skippedTestJobs })
+    return json({ ok: true, sent, candidates: reports.length, alreadySent: dispatched.size, skippedTestJobs, skippedOutOfScope })
   } catch (error) {
     console.error('send-report-email error:', error)
     return json({ error: error instanceof Error ? error.message : 'Internal server error' }, 500)

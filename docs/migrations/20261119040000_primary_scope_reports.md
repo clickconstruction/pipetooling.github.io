@@ -50,14 +50,14 @@ The four function bodies are `pg_get_functiondef` taken on 2026-11-19 from a cop
 | A photo still waiting in the bucket | a signed link on `report-photos` | the bucket's read policy |
 | Unread and done marks | `report_reads` | the caller's own rows; a mark on a report they no longer read counts nowhere |
 | Push on a new report | `user_report_notification_preferences` | its policy lets only dev, master, assistant and controller keep a preference |
-| Field report emails and the digest | `report_email_subscriptions`, `recurring_job_report_schedule_recipients` | the office picks the recipients, and a primary cannot (`can_manage_report_email_subscriptions`); not filtered by this rule |
+| Field report emails and the digest | `report_email_subscriptions`, `recurring_job_report_schedule_recipients` | the office picks the recipients, and a primary cannot (`can_manage_report_email_subscriptions`); not filtered by this migration, and filtered per recipient since [`20261119060000`](./20261119060000_primary_reports_named_user.md) |
 
 ## What it leaves alone
 
 - **Writing.** `insert_report`, the insert policy and the New-report job picker (`search_jobs_for_reports`) are as they were: a primary still writes a report on any job, and reads it back because they wrote it.
 - **The two dashboard job lists' last-report time** (`list_assigned_jobs_for_dashboard`, `list_ready_to_bill_assigned_jobs_for_dashboard`): a time on a job the caller is on the crew of, not a report.
 - **The office-only and superintendent-only reads** (`get_crew_day_payload`, `list_project_board`, `list_superintendent_jobs_for_dashboard`, `get_supervised_days_payload`): none admits a primary.
-- **The email streams.** On 2026-11-19 prod had one field-report subscription and two digest recipients, all the same master, and no primary. A primary the office subscribes later would be sent every report in that stream's scope.
+- **The email streams.** On 2026-11-19 prod had one field-report subscription and two digest recipients, all the same master, and no primary. A primary the office subscribes later would be sent every report in that stream's scope, until [`20261119060000`](./20261119060000_primary_reports_named_user.md) and the functions that ask it are live.
 - **Job-level doors that pass a primary on the role alone** and are not reports: `can_report_stage_progress` (stage photos, the `job-photos` function's Drive list), `list_job_crew_position`'s crew and sheet columns, `job_test_reports` (`can_reach_job_for_test_report`).
 
 ## The calls made here, for the owner to confirm
