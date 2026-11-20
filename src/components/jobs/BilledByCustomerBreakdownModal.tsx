@@ -312,7 +312,9 @@ function BillCard({
           <StripeInvoiceSendFromStripeButton
             jobsLedgerInvoiceId={b.invoiceId}
             stripeInvoiceId={b.stripeInvoiceId}
-            customerEmail={b.customerEmail}
+            // The payer's own address, never the job's customer's on a bill that went to the GC (v2.7972).
+            customerEmail={b.billedTo === 'gc' ? null : (b.billToEmail ?? b.customerEmail)}
+            payer={b.billedTo}
             stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
             onSent={() => {
               // The send succeeded; the chase touch is best-effort bookkeeping

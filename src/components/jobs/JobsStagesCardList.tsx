@@ -41,6 +41,7 @@ import { activityBoxTeaser, NOBODY_HAS_ANSWERED, phoneRowCustomerTeaser, type Jo
 import { showTaskDispatchButton } from '../../lib/headerTaskDispatchEstimatorEligible'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import { stripeBillEmailHint } from '../../lib/jobs/stripeBillEmailHint'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -542,7 +543,9 @@ function cardStripeEmailedHint(ctx: StagesRowRenderContext, job: JobWithDetails,
       <StripeInvoiceSendFromStripeButton
         jobsLedgerInvoiceId={line.id}
         stripeInvoiceId={String(line.stripe_invoice_id).trim()}
-        customerEmail={job.customer_email ?? null}
+        // The address the window names is the payer's own, never the customer's on a bill that went to the GC (v2.7972).
+        customerEmail={stripeBillEmailHint(job, line).email}
+        payer={stripeBillEmailHint(job, line).payer}
         stripeModeForBilling={stripeModeForBillingFromRole(ctx.authRole)}
         onSent={() => void ctx.loadJobs()}
         compact
