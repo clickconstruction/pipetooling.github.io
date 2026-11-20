@@ -23,6 +23,7 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForD
 import { fileSentCopy, printPdfAndFile } from '../../lib/sent/sentCopiesIo'
 import { saveBlobAs } from '../../lib/storageSave'
 import { isOfficeRole } from '../../lib/doorRoles'
+import { FunctionsHttpError } from '@supabase/functions-js'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { supabase } from '../../lib/supabase'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
@@ -30,7 +31,7 @@ import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterS
 import { mintRefusal, mintSubPaperArgs, mintedFrom, registerSubPaperSet, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type MintedSubPaper, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import { drawSubPaperPdf } from '../../lib/subWorkOrders/subPaperPdfDraw'
-import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
+import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendUnknownWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -57,7 +58,10 @@ const NO_CONTACT: SubPaperContact = { email: null, phone: null, portalUrl: null 
 /** A texted link is not built, so email is the one way a paper goes. */
 const SEND_BY: readonly SubPaperSendBy[] = ['email']
 
-/** A file as the base64 an email attachment is: read as a data URL, with its prefix taken off. */
+/**
+ * A file as the base64 an email attachment is: read as a data URL, with its prefix taken off. A FileReader, since
+ * the test page's Blob has no `arrayBuffer` for the shared `blobToBase64` to read.
+ */
 function blobBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -165,11 +169,18 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
         try {
           // Each paper is registered before it is drawn, so every file goes out under its number.
           made = await makeSet(papers, sendRange)
-          const files: Array<{ kind: string; number: string; title: string; file_name: string; job_ids: string[]; pdf_base64: string }> = []
-          for (const p of made) files.push({ kind: SUB_PAPER_SENT_KIND[p.kind], number: p.number, title: subPaperTitle(p), file_name: subPaperAttachmentName(p), job_ids: jobIdsOf(p), pdf_base64: await blobBase64(await drawSubPaperPdf(p, sendRange)) })
+          // Only the registering needs an order: the PDFs are drawn together.
+          const files = await Promise.all(made.map(async (p) => ({ kind: SUB_PAPER_SENT_KIND[p.kind], number: p.number, title: subPaperTitle(p), file_name: subPaperAttachmentName(p), job_ids: jobIdsOf(p), pdf_base64: await blobBase64(await drawSubPaperPdf(p, sendRange)) })))
           // No address rides in the body: the function sends to the roster's own, read under the caller's policies.
           const { data, error } = await supabase.functions.invoke('send-sub-paper-email', { body: { person_id: personId, by, subject: plan.subject, message: plan.body, papers: files } })
-          if (error) throw new Error((await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'the send function gave no reason'))
+          if (error) {
+            // An answer with a refusal means nothing went. No answer at all means the email may have gone.
+            if (!(error instanceof FunctionsHttpError)) {
+              setSaid({ tone: 'bad', words: subPaperSendUnknownWords() })
+              return false
+            }
+            throw new Error((await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'the send function gave no reason'))
+          }
           const answer = (data ?? {}) as { error?: string; to?: string }
           if (answer.error) throw new Error(answer.error)
           setSaid({ tone: 'ok', words: subPaperSentWords({ count: made.length, subName: name, to: answer.to ?? null }) })

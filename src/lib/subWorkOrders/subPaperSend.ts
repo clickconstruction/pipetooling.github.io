@@ -141,6 +141,14 @@ export function subPaperSentWords(i: { count: number; subName: string; to: strin
 }
 
 /**
+ * What the window says when no answer came back: the request left and the function may have mailed the papers
+ * before the line dropped. It claims neither, and says where to look before a second send.
+ */
+export function subPaperSendUnknownWords(): string {
+  return 'No answer came back, so it is not known whether the email went. Look under Documents → Sent copies before you send again.'
+}
+
+/**
  * What the window says when the email did not go. A statement of account takes a new number every time it is
  * made, so one that was numbered for this send is named: the office knows that number went nowhere.
  */

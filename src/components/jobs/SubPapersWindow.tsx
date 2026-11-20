@@ -132,18 +132,22 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const last = built.sendings[built.sendings.length - 1]
   const plan = paper ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead: paper, attached, held, by, email: contact.email, emailUnread: contact.emailUnread, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
   const texts = ways.some((o) => o.key === 'text')
+  // A press under way keeps the window: its answer is said here, and a window closed and opened again could send twice.
+  const closeUnlessBusy = () => {
+    if (!busy) onClose()
+  }
   const ok = built.check.ok && !!paper
   const unnumbered = sheets.filter((s) => !s.number).length
   const backcharges = sheets.reduce((n, s) => n + s.money.filter((m) => m.amount < 0 && statement.rows.some((r) => r.sheetId === s.id)).length, 0)
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
+    <div role="presentation" onClick={closeUnlessBusy} style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
       <div role="dialog" aria-modal="true" aria-label={`Papers for ${ctx.sub.name}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1rem 1.1rem', width: 'min(820px, 100%)', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.8rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>
             {step === 'send' ? `Send ${paper?.kind === 'statement_of_account' ? 'the statement of account' : paper?.kind === 'payment_record' ? 'the payment record' : 'the work statement'}` : `${paper?.title ?? 'Papers'} · ${ctx.sub.name}`}
           </h3>
-          <button type="button" onClick={onClose} style={{ ...quiet, marginLeft: 'auto' }}>
+          <button type="button" disabled={!!busy} onClick={closeUnlessBusy} style={{ ...quiet, marginLeft: 'auto', opacity: busy ? 0.55 : 1 }}>
             Close
           </button>
         </div>

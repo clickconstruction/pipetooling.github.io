@@ -569,6 +569,35 @@ describe('SubPapersWindow: Send', () => {
     expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
   })
 
+  it('no answer at all claims neither: it may have gone, and the window says where to look', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: null, error: new Error('Failed to send a request to the Edge Function') })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('No answer came back, so it is not known whether the email went. Look under Documents → Sent copies before you send again.'))
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+  })
+
+  it('the window stays while a press is under way', async () => {
+    db.rows = []
+    mintAll()
+    let answer: (v: unknown) => void = () => {}
+    db.invoke.mockReturnValue(new Promise((r) => (answer = r)))
+    const onClose = vi.fn()
+    open('statement', { onClose })
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await screen.findByRole('button', { name: 'Sending…' })
+    expect((screen.getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).not.toHaveBeenCalled()
+    answer({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('a paper the register refuses is not sent', async () => {
     db.rows = []
     db.mint.mockResolvedValue({ data: null, error: { code: '42501', message: 'An archived account cannot make a sub paper.' } })
