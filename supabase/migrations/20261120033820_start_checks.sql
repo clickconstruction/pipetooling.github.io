@@ -25,6 +25,7 @@ SET lock_timeout = '3s';
 --   the crew       start_checks_crew(job): on the job's team, clocked in on it, or a sub who reads it. It reads the
 --                  bullets on them and their yeses, for the look on arrival. It writes nothing here yet.
 --   A primary reads no job's list beyond is_job_people. A job shut by its papers is shut here too.
+--   start_check_windows reads our days for the desk, since a primary reads no stage window by the table's own policy.
 --   The GC's page writes with the service role, in the release that shows it. anon holds no grant.
 --
 -- Additive and idempotent. Nothing in the app reads these tables until the client that follows.
@@ -683,6 +684,26 @@ $fn$;
 COMMENT ON FUNCTION public.start_check_take_back(uuid) IS 'Before we start (#382): take a Go or a Hold back. The row stays, marked with who took it back and when. A second call changes nothing. Refuses a training account, a digital twin and an archived caller itself.';
 REVOKE EXECUTE ON FUNCTION public.start_check_take_back(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.start_check_take_back(uuid) TO authenticated, service_role;
+
+-- Our days for a job's stages, for the desk. job_stage_windows is read by the office, an estimator and a
+-- superintendent, and by no primary. A primary with a claim on a job is on its desk, and a list that could not say
+-- our first day would say nothing. This read names the window's two days and nothing else, and only for a job
+-- whose desk the caller is on, so it opens no job to a primary beyond is_job_people.
+CREATE OR REPLACE FUNCTION public.start_check_windows(p_job_ids uuid[])
+RETURNS TABLE (job_id uuid, fixture_id uuid, window_start date, window_end date)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT w.job_id, w.fixture_id, w.window_start, w.window_end
+    FROM public.job_stage_windows w
+   WHERE w.job_id = ANY (COALESCE(p_job_ids, '{}'::uuid[]))
+     AND NOT public.caller_is_archived()
+     AND public.start_checks_desk(w.job_id);
+$$;
+COMMENT ON FUNCTION public.start_check_windows(uuid[]) IS 'Before we start (#382): our window for each stage line of the jobs named, its two days and nothing else, for a caller on the job''s desk (start_checks_desk). Nothing for a job the caller is not on, and nothing for an archived caller.';
+REVOKE EXECUTE ON FUNCTION public.start_check_windows(uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.start_check_windows(uuid[]) TO authenticated, service_role;
 
 -- ---------- 6 · The photos ----------
 

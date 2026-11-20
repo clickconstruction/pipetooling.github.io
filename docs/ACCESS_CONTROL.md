@@ -1224,6 +1224,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The name on a decision is read from the caller's own row.
   A Hold moves the stage's window in `job_stage_windows` with its length kept, which a superintendent could not write by hand.
   Both refuse a training account, a digital twin and an archived caller themselves.
+- **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
+  It answers only for a job whose desk the caller is on, and nothing for an archived caller.
 - The company's lists are read by everyone signed in and written by the office (`is_office_staff`).
   A site's settings row is read by whoever reads the site and written by the office, and a job's row follows the job's desk.
 - `anon` holds no grant, and a signed-in person holds only the grants that have a policy.

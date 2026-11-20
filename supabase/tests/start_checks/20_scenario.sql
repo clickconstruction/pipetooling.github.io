@@ -108,7 +108,7 @@ SELECT scb.same('bullets has one of each policy of its own', (SELECT string_agg(
 SELECT scb.same('anon holds nothing on the tables', (SELECT count(*) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name LIKE 'start\_check\_%' AND grantee = 'anon')::text, '0');
 SELECT scb.same('a signed-in person reads a decision and writes none', (SELECT string_agg(privilege_type, ', ' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'start_check_decisions' AND grantee = 'authenticated'), 'DELETE, SELECT');
 SELECT scb.same('a day they gave can only be marked removed', (SELECT string_agg(column_name, ', ' ORDER BY column_name) FROM information_schema.column_privileges WHERE table_schema = 'public' AND table_name = 'start_check_their_days' AND grantee = 'authenticated' AND privilege_type = 'UPDATE'), 'removed_at, removed_by');
-SELECT scb.same('anon runs neither door', (SELECT count(*) FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name IN ('start_check_decide', 'start_check_take_back', 'start_checks_desk', 'start_checks_may_decide', 'start_checks_crew') AND grantee IN ('anon', 'PUBLIC'))::text, '0');
+SELECT scb.same('anon runs neither door', (SELECT count(*) FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name IN ('start_check_decide', 'start_check_take_back', 'start_check_windows', 'start_checks_desk', 'start_checks_may_decide', 'start_checks_crew') AND grantee IN ('anon', 'PUBLIC'))::text, '0');
 
 -- 1 · Dana, the office, writes the list on Rough In: one on them that asks for a photo, one on them, one of ours
 -- read from the order log, one of ours ticked by hand.
@@ -223,6 +223,18 @@ SELECT scb.refused('a twin writing a bullet', $q$INSERT INTO public.start_check_
 SELECT scb.as_user('00000000-0000-0000-0000-0000003820ae'); SET LOCAL ROLE authenticated;
 SELECT scb.same('someone who left reads nothing', scb.reads(), '0 bullets, 0 yeses, 0 asks, 0 days, 0 decisions, 0 arrivals'); RESET ROLE;
 \endif
+
+-- Our days, read for the desk: the office and the job's own people read the two days, and nobody else reads any.
+SELECT scb.as_user('00000000-0000-0000-0000-0000003820a5'); SET LOCAL ROLE authenticated;
+SELECT scb.same('a primary with a claim reads our days on that job', (SELECT string_agg(window_start::text || ' to ' || window_end::text, ',') FROM public.start_check_windows(ARRAY['00000000-0000-0000-0000-0000003820b1', '00000000-0000-0000-0000-0000003820b2']::uuid[])), '2026-12-15 to 2026-12-19'); RESET ROLE;
+SELECT scb.as_user('00000000-0000-0000-0000-0000003820a6'); SET LOCAL ROLE authenticated;
+SELECT scb.same('a primary with no claim reads no day', (SELECT count(*)::text FROM public.start_check_windows(ARRAY['00000000-0000-0000-0000-0000003820b1']::uuid[])), '0'); RESET ROLE;
+SELECT scb.as_user('00000000-0000-0000-0000-0000003820aa'); SET LOCAL ROLE authenticated;
+SELECT scb.same('the crew reads no day', (SELECT count(*)::text FROM public.start_check_windows(ARRAY['00000000-0000-0000-0000-0000003820b1']::uuid[])), '0'); RESET ROLE;
+SELECT scb.as_user('00000000-0000-0000-0000-0000003820ae'); SET LOCAL ROLE authenticated;
+SELECT scb.same('someone who left reads no day', (SELECT count(*)::text FROM public.start_check_windows(ARRAY['00000000-0000-0000-0000-0000003820b1']::uuid[])), '0'); RESET ROLE;
+SELECT scb.as_user('00000000-0000-0000-0000-0000003820a8'); SET LOCAL ROLE authenticated;
+SELECT scb.same('a superintendent reads our days on their job, and a null list reads nothing', (SELECT count(*)::text FROM public.start_check_windows(ARRAY['00000000-0000-0000-0000-0000003820b1']::uuid[])) || ' ' || (SELECT count(*)::text FROM public.start_check_windows(NULL)), '1 0'); RESET ROLE;
 
 -- An arrival, as the service role writes it for now: Hector found one bullet not as told.
 INSERT INTO public.start_check_arrivals (id, job_id, fixture_id, arrived_on, not_as_told, by_user, by_name) VALUES
