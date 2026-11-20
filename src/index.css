@@ -6525,6 +6525,12 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .scDot[data-light='green'] { background: #16a34a; }
 .scDot[data-light='amber'] { background: #f59e0b; }
 .scDot[data-light='red'] { background: #dc2626; }
+/* The Schedule look on a line of time (punch list #382, PR 11): a stage's bar in its light's colour, and the days moved in red. */
+.scLineBar { background: var(--border-strong); }
+.scLineBar[data-light='green'] { background: #16a34a; }
+.scLineBar[data-light='amber'] { background: #f59e0b; }
+.scLineBar[data-light='red'] { background: #dc2626; }
+.scLineMoved { color: var(--text-red-700); font-weight: 700; }
 .scAdd { flex: 1 1 14rem; min-width: 0; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-base); font: inherit; font-size: 0.875rem; }
 @media (pointer: coarse), (max-width: 640px) {
   .scReady { min-height: 32px; }
