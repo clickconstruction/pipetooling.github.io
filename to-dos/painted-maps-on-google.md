@@ -117,6 +117,8 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
   then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
   draw on that count. Read in the console on 2026-11-20: 4,269 loads for November 1 to 20, about 6,400 for
   the month at that pace, 3,871 in October, and nothing billed.
+  Most of those loads were the automatic smoke test run after each deploy, and since v2.8049 (#9056) it uses no Google service.
+  People alone made roughly 10 to 40 map loads a day, read the same day in the console's chart of the Maps JavaScript API by day.
 - **Old maps.** Every painted map already saved was drawn over Esri's photograph. They will open on
   Google's with the same small shift.
 
