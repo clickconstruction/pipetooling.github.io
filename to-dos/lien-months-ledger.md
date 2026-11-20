@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#PRNUM), from the card's words, because the spike's branch was gone
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -101,7 +101,7 @@ line above, so the rail repeats it and pays with a three-line head row and a fig
 puts the one thing the section adds, the record behind the claim, in one block that reads in order,
 and is the cheaper build.
 
-## Built: v2.7989 (#PRNUM, 2026-11-19)
+## Built: v2.7989 (#8990, 2026-11-19)
 
 One PR, client only. The fragment is `docs/recent-features/v2.7989.md`.
 
