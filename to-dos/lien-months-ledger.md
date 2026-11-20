@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One call rides with that look, the head of the notice's column, under Built below.
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -113,10 +113,11 @@ One PR, client only. The fragment is `docs/recent-features/v2.7989.md`.
   the notice's column. That foot is now the claim's own line, so the figure is said once.
 - **The by-hand line keeps its words** as they were. Point 6 above quotes a reworded line, and the
   rule under point 7 says no words change beyond the lead line. The rule won.
-- **One call went up.** Point 4 puts the claim figure faint in the head of the notice's column.
-  v2.7430, the office's pick of 2026-11-15, took the figure out of the head. The build keeps the head
-  as the name alone. The choice was sent to the lead session for Grace, and the head is one line to
-  change if the answer is the figure.
+- **One choice is open for Grace.** Point 4 puts the claim figure faint in the head of the notice's
+  column. v2.7430, the office's pick of 2026-11-15, took the figure out of the head. The choice was
+  put to her through the lead session on 2026-11-19, and she had not answered when the PR merged. It
+  is built with the head as the name alone, because that is what is on the live desk. The head is one
+  line to change if her answer is the figure.
 - **The phone.** The grid no longer slides. Each month sits over its window, an earlier paper is a
   mark like A ✓, and the tick has a column of its own at the right edge.
 
