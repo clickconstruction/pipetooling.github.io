@@ -5885,7 +5885,8 @@ CI/CD automation running workflows on GitHub events.
 **Steps**: `ci.yml` typechecks, lints, links every edge function with esbuild (`check:edge-bundles`, v2.6315: a missing named export fails the PR, not the boot;
 since v2.7256 an upload past 4.5 MB does too, not the deploy) and tests from the `.cache` main saved;
 `deploy.yml` installs, builds (`tsc -b && vite build`;
-the build fails when a precached file passes the cap in `vite.config.ts`, 9 MiB since 2026-11-14 when the main chunk crossed 8 MiB) and deploys to GitHub Pages;
+the build fails when a precached file passes the cap in `vite.config.ts`, 10 MiB since 2026-11-20 when the main chunk crossed 9 MiB;
+`src/lib/entryGraph.repo.test.ts` holds the entry's eager imports to a budget in PR CI, so a PR that grows the main chunk fails before a deploy does) and deploys to GitHub Pages;
 `warm-caches.yml` re-runs typecheck and lint only to save the cache
 
 ### Go anywhere (the header search's doors)
