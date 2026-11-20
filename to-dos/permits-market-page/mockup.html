@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permits · Market: who builds, and who to call</title>
+<style>
+  :root { --ink:#16283c; --muted:#5b6777; --line:#d5dae1; --bg:#f3f5f7; --card:#fff; --blue:#2563eb; --chip:#e6e9ee; --green:#166534; --green-bg:#e7f6ec; --amber-bg:#fff7e6; --amber-line:#f0c36d; --amber-ink:#7a4b00; --red-ink:#9b1c1c; --red-bg:#fdecec; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:1080px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:34px 0 8px; } h3 { font-size:14.5px; margin:0 0 2px; }
+  .lede { color:var(--muted); margin:0 0 14px; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0 0 12px; }
+  .rec { border-left:4px solid var(--blue); }
+  .live { background:#eef1f5; border:1px dashed #b9c1cc; border-radius:10px; padding:10px 14px; margin:0 0 12px; }
+  .live .cap { color:#3b4757; }
+  table { border-collapse:collapse; width:100%; font-size:14px; } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:600; } tr:last-child td { border-bottom:0; } td.n, th.n { text-align:right; white-space:nowrap; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .scroll { overflow-x:auto; }
+  .cap { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
+  ul { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+
+  /* The page, drawn. */
+  .page { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:16px; }
+  .head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .head b { font-size:16px; }
+  .sel { border:1px solid var(--line); border-radius:8px; padding:6px 26px 6px 10px; font-size:13px; background:#fff; position:relative; white-space:nowrap; }
+  .sel::after { content:"▾"; position:absolute; right:8px; color:var(--muted); }
+  .strip { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .chip { background:var(--chip); border-radius:999px; padding:5px 11px; font-size:12.5px; white-space:nowrap; }
+  .chip.on { background:var(--ink); color:#fff; font-weight:600; }
+  .tag { display:inline-block; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:600; white-space:nowrap; margin:0 3px 3px 0; }
+  .tag.g { background:var(--green-bg); color:var(--green); } .tag.a { background:var(--amber-bg); color:var(--amber-ink); } .tag.b { background:#e8f0fe; color:#1d4ed8; } .tag.r { background:var(--red-bg); color:var(--red-ink); } .tag.k { background:var(--chip); color:var(--ink); }
+  .tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+  .tile { border:1px solid var(--line); border-radius:10px; padding:10px; min-width:0; background:#fff; }
+  .tile strong { display:block; font-size:22px; line-height:1.15; } .tile span { font-size:12px; color:var(--muted); display:block; }
+  .sec { border-top:1px solid var(--line); padding-top:14px; }
+  .sec > .why { font-size:13px; color:var(--muted); margin:0 0 10px; }
+  .call { border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:grid; grid-template-columns:28px minmax(0,1fr) auto; gap:10px; align-items:start; margin-bottom:8px; }
+  .call .rank { width:26px; height:26px; border-radius:999px; background:var(--ink); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .call .name { font-weight:700; font-size:15px; }
+  .call .f { font-size:13px; margin-top:3px; } .call .f b { font-weight:600; }
+  .call .door { font-size:13px; margin-top:6px; padding:6px 8px; background:#f6f8fa; border-radius:8px; }
+  .call .acts { display:flex; flex-direction:column; gap:6px; }
+  .btn { border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; background:#fff; white-space:nowrap; text-align:center; }
+  .btn.pri { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .bar { display:grid; grid-template-columns:150px minmax(0,1fr) 44px; gap:8px; align-items:center; font-size:13px; margin:4px 0; }
+  .bar i { display:block; height:12px; border-radius:6px; background:#93b4f5; } .bar span:last-child { text-align:right; color:var(--muted); }
+  .cols { display:flex; align-items:flex-end; gap:5px; height:110px; border-bottom:1px solid var(--line); padding-top:6px; }
+  .cols div { flex:1 1 0; background:#93b4f5; border-radius:4px 4px 0 0; min-width:0; position:relative; }
+  .cols div b { position:absolute; top:-17px; left:0; right:0; text-align:center; font-size:10.5px; font-weight:600; color:var(--muted); }
+  .months { display:flex; gap:5px; font-size:10.5px; color:var(--muted); } .months span { flex:1 1 0; text-align:center; min-width:0; }
+  .clock { position:relative; height:26px; background:#eef1f5; border-radius:8px; margin:6px 0 2px; }
+  .clock i { position:absolute; top:0; bottom:0; background:#93b4f5; border-radius:8px; } .clock b { position:absolute; top:3px; font-size:12px; transform:translateX(-50%); white-space:nowrap; }
+  .clock u { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); }
+  .scale { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+  .note { font-size:12.5px; color:var(--muted); margin-top:6px; }
+  .pick { display:inline-block; background:var(--blue); color:#fff; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; border-radius:999px; padding:2px 9px; margin-left:6px; vertical-align:middle; }
+  @media (max-width:640px) { .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); } .call { grid-template-columns:28px minmax(0,1fr); } .call .acts { grid-column:2; flex-direction:row; flex-wrap:wrap; } .bar { grid-template-columns:110px minmax(0,1fr) 40px; } }
+</style></head><body><main>
+
+<h1>Permits: a Market page. Who builds, and who to call.</h1>
+<p class="lede">Prospects → Permits · punch list #405 · a proposal, nothing is built · every company, person, address and number on this page is made up, as on every mock-up here. The live numbers were read on Nov 19, 2026 and given to the owner. Nothing was written to the live data.</p>
+
+<div class="box rec"><b>The idea in one line.</b> Today the only way in is to ask a company to let us bid. This page says <b>which companies to ask</b>, <b>why now</b>, <b>who to ask for</b>, and whether the companies we already bid <b>actually build</b>. It leads with a call list of five names a week, sized to the one person who makes the calls. The charts come last.</div>
+
+<div class="box">
+  <p class="cap">What a first read of the data found</p>
+  <ul>
+    <li><b>Few of the companies we bid pull permits here.</b> The companies we priced for in two years, and the names on the permits, barely overlap. The match is by exact name, so the real overlap is larger. It is still the finding to explain.</li>
+    <li><b>Hundreds of names pull three or more commercial permits a year in San Antonio.</b> We have a bid on record with a handful.</li>
+    <li><b>A San Antonio application comes weeks before its permit.</b> That is the window to call in.</li>
+    <li><b>In Austin the plumber's permit lands within days of the building permit.</b> By then the job is gone. The permit is news about the builder, not the job.</li>
+    <li><b>In Austin a few plumbers hold a large share of the jobs</b>, and some builders use a different plumber on every job. Those builders are the open doors.</li>
+    <li><b>The office has marked no builder Good or Avoid yet.</b> The page starts without that judgement and gains it as marks are said.</li>
+  </ul>
+</div>
+
+<h2>The page, drawn</h2>
+<div class="page">
+  <div class="head">
+    <b>Market</b>
+    <span class="sel">San Antonio · newest Nov 13</span>
+    <span class="sub">Skim · Investigating · Closed · Builders · <b>Market</b></span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><strong>5</strong><span>builders to call this week</span></div>
+    <div class="tile"><strong>14</strong><span>of their jobs are applied for, with no plumber yet</span></div>
+    <div class="tile"><strong>9 of 80</strong><span>companies we bid pulled a permit here</span></div>
+    <div class="tile"><strong>~6 weeks</strong><span>from an application to its permit</span></div>
+  </div>
+
+  <div class="sec">
+    <h3>Call this week</h3>
+    <p class="why">Builders who are busy now, who we have never bid, and who have a job applied for that no plumber is on. Five a week, so one person can call them all. Each row says why it is here. Nothing is a score.</p>
+    <div class="strip" style="margin-bottom:10px">
+      <span class="chip on">This week 5</span><span class="chip">Has a job open now 9</span><span class="chip">Picking up 120</span><span class="chip">New and busy 30</span><span class="chip">Never bid 250</span><span class="chip">Jobs over $1M 40</span>
+    </div>
+
+    <div class="call">
+      <div class="rank">1</div>
+      <div>
+        <div class="name">Ridgeway Builders</div>
+        <div><span class="tag g">Picking up</span><span class="tag b">Never bid</span><span class="tag a">3 jobs open now</span><span class="tag k">General contractor</span></div>
+        <div class="f"><b>14 permits</b> in 12 months, <b>6 in the last 90 days</b> against 2 in the 90 before. Mostly restaurant and retail finish-outs. Typical job $400k to $1.2M.</div>
+        <div class="f"><b>Open now:</b> 2100 Sample Pkwy, applied Nov 4 · 77 Kiln St, applied Oct 28 · 5 Aster Rdg, applied Oct 9. None has a plumbing permit.</div>
+        <div class="door"><b>Ask for</b> Dana Whitlock, Estimator · (210) 555-0142 · their site has a subcontractor form · <span class="sub">looked up Nov 12, checked by Eve</span></div>
+      </div>
+      <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+    </div>
+
+    <div class="call">
+      <div class="rank">2</div>
+      <div>
+        <div class="name">Tall Pine Development</div>
+        <div><span class="tag g">New and busy</span><span class="tag b">Never bid</span><span class="tag a">1 job open now</span><span class="tag k">Owner who builds</span></div>
+        <div class="f"><b>5 permits</b>, all in the last 90 days. New buildings, 8,000 to 20,000 sq ft. Values $1.8M to $4M.</div>
+        <div class="f"><b>Open now:</b> 60 Millrace Row, applied Nov 6.</div>
+        <div class="door"><b>Ask for</b> the construction manager · (210) 555-0177 · <span class="sub">looked up Nov 12, not yet checked by a person</span></div>
+      </div>
+      <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+    </div>
+
+    <div class="call">
+      <div class="rank">3</div>
+      <div>
+        <div class="name">Juniper Hospitality Group</div>
+        <div><span class="tag r">We bid 4, won 0</span><span class="tag g">Builds a lot</span><span class="tag a">2 jobs open now</span></div>
+        <div class="f"><b>11 permits</b> in 12 months. We priced four of their jobs and won none. The last was in June.</div>
+        <div class="f"><b>Worth one call to ask why.</b> Two of the four were lost on price. Two have no reason on record.</div>
+        <div class="door"><b>We know</b> Sam Ortega, Project Manager, from the June bid · (210) 555-0119</div>
+      </div>
+      <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+    </div>
+    <div class="sub">2 more · a name leaves this list when it is answered, the way a permit leaves the skim, and the next one takes its place the week after.</div>
+  </div>
+
+  <div class="sec">
+    <h3>Do the companies we bid build here?</h3>
+    <p class="why">Every company we priced a job for in two years, beside the permits it pulled. This is where estimating hours go, so it is the table that can change them.</p>
+    <div class="strip" style="margin-bottom:8px"><span class="chip on">Builds here 9</span><span class="chip">No permit on record 71</span><span class="chip">Tie a name 12</span></div>
+    <div class="scroll"><table>
+      <tr><th>Company</th><th class="n">Our bids</th><th class="n">Won</th><th class="n">Permits here, 12 mo</th><th>Reads as</th></tr>
+      <tr><td>Juniper Hospitality Group</td><td class="n">4</td><td class="n">0</td><td class="n">11</td><td><span class="tag r">Builds, we never win</span> ask why</td></tr>
+      <tr><td>Harbor Fitouts</td><td class="n">6</td><td class="n">3</td><td class="n">8</td><td><span class="tag g">Builds, and we win</span> keep close</td></tr>
+      <tr><td>Lime Build</td><td class="n">2</td><td class="n">0</td><td class="n">5</td><td><span class="tag a">Builds, two tries</span> too early to say</td></tr>
+      <tr><td>Larkspur Commercial</td><td class="n">9</td><td class="n">0</td><td class="n">0</td><td><span class="tag k">No permit on record</span> 6 of the 9 read "GC lost the project"</td></tr>
+      <tr><td>Aster Ridge Contracting</td><td class="n">5</td><td class="n">1</td><td class="n">0</td><td><span class="tag k">No permit on record</span> may build outside our cities, or under another name: <u>tie a name</u></td></tr>
+    </table></div>
+    <div class="note">"No permit on record" is not "never builds". The company may file under a person, an expediter or another name. The row offers <b>Tie a name</b>, which the Builders page already has.</div>
+  </div>
+
+  <div class="sec two">
+    <div>
+      <h3>The clock</h3>
+      <p class="why">How long you have, from the day the city first shows a job.</p>
+      <div class="sub">San Antonio · application to permit</div>
+      <div class="clock"><i style="left:21%;width:46%"></i><u style="left:37%"></u><b style="left:46%">45 days</b></div>
+      <div class="scale"><span>applied</span><span>25</span><span>80</span><span>120 days</span></div>
+      <div class="sub" style="margin-top:12px">Austin · building permit to the plumber's permit</div>
+      <div class="clock"><i style="left:1%;width:8%"></i><u style="left:4%"></u><b style="left:10%">5 days</b></div>
+      <div class="scale"><span>issued</span><span></span><span></span><span>120 days</span></div>
+      <div class="note"><b>San Antonio:</b> call on the application. <b>Austin:</b> the job is taken by the time we see it. Read Austin for who builds.</div>
+    </div>
+    <div>
+      <h3>Who holds the work <span class="sub">· Austin</span></h3>
+      <p class="why">The plumbers on the permits, and how tied each builder is to one.</p>
+      <div class="bar"><span>Copperline Mechanical</span><i style="width:100%"></i><span>30</span></div>
+      <div class="bar"><span>Blue Heron Plumbing</span><i style="width:73%"></i><span>22</span></div>
+      <div class="bar"><span>Quill Plumbing</span><i style="width:60%"></i><span>18</span></div>
+      <div class="bar"><span>90 others</span><i style="width:100%;background:#d5dae1"></i><span>190</span></div>
+      <div class="note">Of 20 builders with three or more named jobs: <b>6 use one plumber</b> nearly every time, <b>9 lean</b> to one, <b>5 shop around</b>. The five are the open doors. San Antonio's permits never name the plumber, so this box is not drawn there.</div>
+    </div>
+  </div>
+
+  <div class="sec two">
+    <div>
+      <h3>How much is being built <span class="sub">· San Antonio, commercial permits a month</span></h3>
+      <div class="cols" style="margin-top:22px">
+        <div style="height:37%"><b>150</b></div><div style="height:54%"><b>220</b></div><div style="height:59%"><b>240</b></div><div style="height:66%"><b>270</b></div><div style="height:71%"><b>290</b></div><div style="height:80%"><b>330</b></div><div style="height:85%"><b>350</b></div><div style="height:90%"><b>370</b></div><div style="height:88%"><b>360</b></div><div style="height:78%"><b>320</b></div><div style="height:100%"><b>410</b></div>
+      </div>
+      <div class="months"><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div>
+    </div>
+    <div>
+      <h3>What kind, and how big <span class="sub">· San Antonio, 12 months</span></h3>
+      <div class="bar"><span>Applications</span><i style="width:100%"></i><span>1,700</span></div>
+      <div class="bar"><span>Remodels</span><i style="width:47%"></i><span>800</span></div>
+      <div class="bar"><span>New buildings</span><i style="width:32%"></i><span>550</span></div>
+      <div class="bar"><span>Site work</span><i style="width:24%"></i><span>400</span></div>
+      <div class="bar"><span>Additions</span><i style="width:4%"></i><span>70</span></div>
+      <div class="note">Of 2,000 with a value on the permit: <b>1,200 are $250k or more</b>, <b>800 are $1M or more</b>. The middle one is $450k.</div>
+    </div>
+  </div>
+</div>
+<p class="sub">Every number on the drawn page is made up, to show the shape.</p>
+
+<h2>What each part stands on</h2>
+<div class="box scroll"><table>
+  <tr><th>Part of the page</th><th>What it reads</th><th>How solid today</th></tr>
+  <tr><td>Who is busy, picking up, new</td><td>Building permits by name, last 90 days against the 90 before</td><td><b>Solid in San Antonio</b>, where records start Jan 2025. Three months old in the other four.</td></tr>
+  <tr><td>Open now</td><td>An application with no plumbing permit tied to it</td><td><b>Solid in San Antonio</b> since the fix of Nov 19. Austin shows no applications, only issued permits.</td></tr>
+  <tr><td>Do the companies we bid build</td><td>Our bids' customers and GCs matched to permit names</td><td><b>Weak until names are tied.</b> The match is exact. San Antonio's applicant is often a filer, not the builder. This is the part research fixes.</td></tr>
+  <tr><td>Ask for</td><td>A one-time lookup of each name, kept on the builder</td><td><b>Not built.</b> A trial of 20 names found a builder worth a call behind about half. Each fact needs its source and a person's check.</td></tr>
+  <tr><td>The clock</td><td>Days between the dates on the permits</td><td><b>Solid.</b> The dates are on every permit.</td></tr>
+  <tr><td>Who holds the work</td><td>The name on a plumbing permit at the job's address</td><td><b>Austin and New Braunfels only.</b> Few builders can be judged after three months of records. It grows every week.</td></tr>
+  <tr><td>How big</td><td>The value and square feet on the permit</td><td><b>San Antonio: most have a value.</b> Austin's values look unreliable: too many are one round figure.</td></tr>
+  <tr><td>Good, Avoid, what kind of company</td><td>The office's own marks</td><td><b>Empty until the office says them.</b></td></tr>
+</table></div>
+
+<h2>Is this the best we can do?</h2>
+<div class="box">
+  <h3>A page that leads with a call list <span class="pick">my pick</span></h3>
+  <p>What is drawn above. It wins because the question is "who do we ask?", and a list of twelve names with reasons answers it. Charts alone would be interesting and change nothing.</p>
+</div>
+<div class="box">
+  <h3>Grow the Builders page instead of adding one</h3>
+  <p>Builders already lists every name with its permits and our bids. It lost as the home for this because it is a place to look a name up. It holds over a thousand rows in San Antonio and has no opinion. Market is the opinion, and every row on it opens the builder's sheet, so nothing is kept twice.</p>
+</div>
+<div class="box">
+  <h3>A Monday note with the top five, and no page</h3>
+  <p>The strongest objection to any page: almost none of the permits that arrived since August were skimmed. People do not open this tab. A note that arrives says more than a page that waits. It lost as the first build only because the note needs the same list behind it. I would send the top block as a Monday email as the second step.</p>
+</div>
+<div class="box">
+  <h3>What asking the question changed</h3>
+  <ul>
+    <li><b>No score.</b> A first draft ranked builders by one number. A number hides its reasons and invites argument. The tags are the reasons.</li>
+    <li><b>The bid table moved up to second.</b> It is the only part that says where to stop spending estimating time, and it needs no research to build.</li>
+    <li><b>No map.</b> The Permits tab has one. A second map here would repeat it.</li>
+    <li><b>The plumber box is drawn only where the city names plumbers.</b> In San Antonio it would be empty.</li>
+    <li><b>A name leaves the list when it is answered.</b> Otherwise the same names sit there every week and the list stops being read.</li>
+    <li><b>Five names, not twelve.</b> The owner makes the calls himself. A list he can finish in a week gets finished. A longer one gets skipped.</li>
+  </ul>
+</div>
+<div class="box rec">
+  <h3>Decided, and still yours to say</h3>
+  <ul>
+    <li><b>Who makes the calls: the owner.</b> His word, 2026-11-19. So the list is five names a week, and the Monday note goes to him.</li>
+    <li><b>May an agent look up the top names once?</b> About 150 names a city, a minute each, public sources only, nobody contacted, every fact with its source and a person's check before it reads as checked.</li>
+    <li><b>What comes first?</b> I would build it in three steps: the bid table and the clock, which need no research. Then the call list with its reasons. Then <i>Ask for</i>, once the lookups exist.</li>
+    <li><b>Which city?</b> San Antonio has the history and the applications. I would start there and let Austin follow.</li>
+  </ul>
+</div>
+
+</main></body></html>
