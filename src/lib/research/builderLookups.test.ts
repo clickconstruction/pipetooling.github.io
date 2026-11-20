@@ -136,6 +136,8 @@ describe('the words', () => {
     expect(sourceWords('https://ridgewaybuilders.example')).toBe('ridgewaybuilders.example')
     expect(sourceWords('https://www.google.com/maps/place/Ridgeway+Builders/@29.4,-98.5')).toBe('its Google Maps listing')
     expect(sourceWords('https://maps.app.goo.gl/abc123')).toBe('its Google Maps listing')
+    expect(sourceWords('https://maps.google.com/?cid=1234567890')).toBe('its Google Maps listing')
+    expect(sourceWords('https://www.google.com/search?q=ridgeway')).toBe('google.com/search')
     expect(sourceWords('https://ridgewaybuilders.example/a/very/long/path/to/the/people/page')).toBe('ridgewaybuilders.example/a/very/long/path/t…')
     expect(sourceWords('not a web address')).toBe('not a web address')
   })

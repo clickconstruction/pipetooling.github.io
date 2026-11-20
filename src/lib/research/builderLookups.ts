@@ -157,7 +157,7 @@ export function sourceWords(url: string): string {
     return url.trim()
   }
   const host = at.hostname.replace(/^www\./, '')
-  if (/(^|\.)google\.[a-z.]+$/.test(host) && at.pathname.startsWith('/maps')) return 'its Google Maps listing'
+  if (/(^|\.)google\.[a-z.]+$/.test(host) && (host.startsWith('maps.') || at.pathname.startsWith('/maps'))) return 'its Google Maps listing'
   if (host === 'maps.app.goo.gl' || host === 'goo.gl') return 'its Google Maps listing'
   const path = at.pathname.replace(/\/+$/, '')
   const whole = `${host}${path}`
