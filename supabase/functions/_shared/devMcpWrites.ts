@@ -74,7 +74,7 @@ import { bidTakeoffInput, isBidTakeoffVerb } from './devMcpBidTakeoff.ts'
 import { bidLaborInput, isBidLaborVerb } from './devMcpBidLabor.ts'
 import { bidPricesInput, isBidPricesVerb } from './devMcpBidPrices.ts'
 import { bidSubmissionInput, isBidSubmissionVerb } from './devMcpBidSubmission.ts'
-import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
+import { isSubLaborPaymentVerb, isSubLaborVerb, isSubStatementVerb, subLaborInput, subLaborPaymentInput, subStatementInput } from './devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -427,6 +427,10 @@ export const WRITE_VERBS = {
   // server's read of the sheet, its payments and the bank row with every job it is already allocated to.
   plan_sub_labor_payment: { rpc: null, step: 'plan' },
   apply_sub_labor_payment: { rpc: null, step: 'apply' },
+  // v2.8052 / 0.121.0: a person's statement of account, as the papers window's Download makes it, through the
+  // sub-statement function as the dev; rpc is null, the dry run that function's read of the person's own sheets.
+  plan_sub_statement: { rpc: null, step: 'plan' },
+  apply_sub_statement: { rpc: null, step: 'apply' },
   // v2.7584 / 0.95.0: a Checklist task given as the New task window gives it — the checklist_items row, the people's
   // rows, the day rows and the Done when… lines, as the dev under RLS, through the window's own send kernel
   // (src/lib/tasks/newTaskSend.ts by the kernel copy); rpc is null, the dry run the server's read of the people, their
@@ -827,6 +831,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isSubLaborPaymentVerb(verb)) {
     // v2.6944: the same for a payment on a sheet; the dry run is the server's read of the sheet, its payments and the bank row.
     const built = subLaborPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubStatementVerb(verb)) {
+    // v2.8052: the function shapes the person and the period; the dry run is its read of their own sheets.
+    const built = subStatementInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1784,6 +1794,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_bid_update') return `Nothing written: this plan was already applied on this bid${when}. The bid already reads that way; get_bid shows it. A plan commits to the columns' before values and the bid's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_sub_labor') return `Nothing written: this plan was already applied${when}. The sheet already reads that way; plan_sub_labor lists the job's sheets. A plan commits to the job's sheets as they stood, so a further change needs a new plan.`
   if (verb === 'apply_sub_labor_payment') return `Nothing written: this plan was already applied${when}. The payment is on the sheet (or off it) already; plan_sub_labor_payment lists the sheet's payments. A second payment of the same amount on the same day needs duplicate_ok and a new plan.`
+  if (verb === 'apply_sub_statement') return `Nothing written: this plan was already applied${when}${prior.target ? ` (${prior.target})` : ''}. The statement is made and its copy is under Documents → Sent copies. The same figures again are the papers window's own press.`
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`

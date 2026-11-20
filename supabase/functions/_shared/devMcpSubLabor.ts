@@ -293,6 +293,31 @@ export function subLaborPaymentInput(verb: SubLaborPaymentVerb, input: Json, tod
   return { ok: true, p, target: sheetId, planHash: hash.planHash }
 }
 
+// ── a statement of account (v2.8052) ──────────────────────────────────────────────────────────────────────────────
+
+export const SUB_STATEMENT_VERBS = ['plan_sub_statement', 'apply_sub_statement'] as const
+export type SubStatementVerb = (typeof SUB_STATEMENT_VERBS)[number]
+export function isSubStatementVerb(name: string): name is SubStatementVerb {
+  return (SUB_STATEMENT_VERBS as readonly string[]).includes(name)
+}
+/** The function that plans and makes the paper as the dev. The papers' kernels live there: this seat's upload has no room for them. */
+export const SUB_STATEMENT_FUNCTION = 'sub-statement'
+export type SubStatementPayload = { person: string; period: Json | string }
+
+/**
+ * plan_sub_statement / apply_sub_statement's input, shaped only as far as naming a person: the function reads the
+ * person and the period itself and answers a refusal in words.
+ */
+export function subStatementInput(verb: SubStatementVerb, input: Json): { ok: true; p: SubStatementPayload; target: null; planHash: string | null } | { ok: false; error: string } {
+  const src = obj(input.statement)
+  const person = src && typeof src.person === 'string' ? src.person.trim().replace(/\s+/g, ' ') : ''
+  if (!person) return { ok: false, error: `${verb} needs statement: { person (a people.id, a users.id or the whole name), period?: 'to_date' | 'since_last' | 'this_month' | 'this_year' | { from?, to? } }.` }
+  const hash = readPlanHash(verb, 'plan_sub_statement', input)
+  if (!hash.ok) return hash
+  const period = src!.period
+  return { ok: true, p: { person, period: typeof period === 'string' ? period : (obj(period) ?? 'to_date') }, target: null, planHash: hash.planHash }
+}
+
 // ── the rows ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export type LaborJobRow = { id: string; job_name: string | null; job_address: string | null; click_number: string | null; hcp_number: string | null; status: string | null; revenue: number | string | null; customer_name: string | null }

@@ -553,6 +553,11 @@ verify_jwt = false
 [functions.send-sub-paper-email]
 verify_jwt = false
 
+# A person's statement of account planned or made off the screen (the dev seat's plan_sub_statement and
+# apply_sub_statement): JWT, the office roles and training mode checked in the function; every read is the caller's.
+[functions.sub-statement]
+verify_jwt = false
+
 [functions.send-lien-filing-email]
 verify_jwt = false
 

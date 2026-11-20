@@ -2254,6 +2254,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "stripe-invoice-agreed-write-down",
   "stripe-webhook",
   "sub-portal",
+  "sub-statement",
   "submit-gc-trade-portal",
   "submit-legal-portal",
   "submit-portal-request",
