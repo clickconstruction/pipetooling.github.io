@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 9, the GC's page, the first thing a GC sees. Then PR 10, on arrival, and PR 11, the line of time.
+next: PR 10, on arrival in Job Mode. Then PR 11, the line of time and the dev seat's verbs.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: None. The owner approved the design. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -385,5 +385,9 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
   permit for a job, so the permit is read from the city's feed at the job's address and only in the cities we read.
   Each read runs under the reader's own row security, so a superintendent can read a bullet open that the office
   reads ready: a read every desk seat sees alike needs a definer read on the server, and is not built.
-- **Next:** PR 9, the GC's page.
+- **PR 9, the GC's page: built** (v2.8018). Off on every job until the office turns on the job's own switch,
+  beside the sharing switch, and then each bullet's eye. Their page lists what is still needed, takes a tick, a
+  photo or a day, and reads **Crew confirmed** after our Go with nothing open. The page has no person's name, so
+  a yes from it carries the customer's.
+- **Next:** PR 10, on arrival.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.

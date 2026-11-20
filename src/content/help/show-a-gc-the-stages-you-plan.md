@@ -49,6 +49,10 @@ When you move a sheet to Post-inspection on its story, the next **Order** stage'
 
 Only the **next** stage carries **Need other dates?** on the portal. The GC picks two days and gives a why. The ask lands in the dispatch inbox, like *Selwick General asks for Top-out Sep 22 → Oct 2 on #1004*. The ask also lands on the stage row on **Jobs → Subs → Work**, like *GC asked Sep 22 – Oct 2 · "framing slipped"*. Press {{button:blue|Accept}} to make that the window. Or press **Answer with…** to propose your own dates, with a why the GC reads. The sub may have already picked days that no longer fit. Then their portal asks them to confirm new dates inside the new window. Until they do, the GC reads *we're picking new days inside the window*.
 
+## What we need before a stage
+
+The same page can list what we need from the GC before each stage. It is off until you turn it on. See [say what must be true before a stage](/help/say-what-must-be-true-before-a-stage#show-the-list-on-the-gc-s-page).
+
 ## Related
 
 - To set which line items are stages and in what order, see *split a job into stages and bill stage by stage*.
