@@ -193,6 +193,41 @@ export function keptPlanByHashQuery(planVerb: string, planHash: string): string 
   return `select=id,person_id,verb,plan_hash,args,state&verb=eq.${planVerb}&plan_hash=eq.${planHash}&state=eq.waiting&limit=5`
 }
 
+/** v2.8102: every kept plan under a verb and hash that waits or was taken off: what an apply reads before it writes. */
+export function keptPlanOffQuery(planVerb: string, planHash: string): string | null {
+  if (!isKeepablePlanVerb(planVerb) || !HASH_RE.test(planHash)) return null
+  return `select=id,args,state,decided_label,decided_why&verb=eq.${planVerb}&plan_hash=eq.${planHash}&state=in.(waiting,dropped,stale)&order=kept_at.desc&limit=20`
+}
+
+/**
+ * v2.8102: why an apply is refused for a kept plan that was taken off, or null. Only the rows whose arguments are the
+ * arguments sent count. One that still waits lets the apply through, since a plan kept again after a drop is a new
+ * ask. Else the newest dropped or stale one refuses it, with who and why.
+ */
+export function keptPlanOffWords(rows: ReadonlyArray<{ args?: unknown; state: string; decided_label?: string | null; decided_why?: string | null }>, sent: Json): string | null {
+  const mine = rows.filter((r) => sameKeptArgs(r.args, sent))
+  if (mine.some((r) => r.state === 'waiting')) return null
+  const off = mine.find((r) => r.state === 'dropped' || r.state === 'stale')
+  if (!off) return null
+  const why = off.decided_why?.trim() ? `: ${off.decided_why.trim()}` : ''
+  if (off.state === 'stale') return `Nothing written: this plan was kept for a yes and went stale${why} Plan again, and keep the new plan if it still needs a yes.`
+  return `Nothing written: this plan was kept for a yes and dropped${off.decided_label?.trim() ? ` by ${off.decided_label.trim()}` : ''}${why}. A dropped plan is never applied. If it is wanted after all, plan it again with keep: true and wait for the yes.`
+}
+
+/** v2.8102: the fixed documents an HR entry plan replaces or adds to. The plan commits to when each last changed. */
+export function hrEntryReplacedKinds(p: unknown): string[] {
+  const e = obj(p)
+  if (!e) return []
+  return [...(typeof e.summary === 'string' ? ['summary'] : []), ...(typeof e.narrative === 'string' || typeof e.narrative_append === 'string' ? ['narrative'] : [])]
+}
+
+/** The dry run's reply with `replaces`: when each replaced document last changed, null for one not written yet. */
+export function withReplaces(reply: unknown, kinds: readonly string[], rows: ReadonlyArray<{ kind?: unknown; updated_at?: unknown }>): unknown {
+  const r = obj(reply)
+  if (!r || kinds.length === 0) return reply
+  return { ...r, replaces: Object.fromEntries(kinds.map((k) => [k, rows.find((x) => x.kind === k)?.updated_at ?? null])) }
+}
+
 const applyWords = (verb: string): string => `${keptPlanApplyVerb(verb)} with the kept arguments and plan_hash`
 
 /** One row of the list: who it is about, what it would do in the keeper's words, how long it has waited. */
