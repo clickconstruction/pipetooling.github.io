@@ -16,6 +16,8 @@ import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import {
   TASK_PLACE_NO_MAP_WORDS,
   TASK_PLACE_PRIVACY_WORDS,
+  TASK_PLACE_WORK_COLOR,
+  taskPlaceDotColor,
   taskPlaceHowFarWords,
   taskPlaceNoFixWords,
   taskPlacedByWords,
@@ -32,18 +34,19 @@ const noMap: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--te
 
 /**
  * The place's name on a task, under its due line (punch list #328, PR 3). A dot and the name, and
- * the dot wears the task's number once the list has a map over it. A task with no place draws
+ * the dot wears the task's number once the list has a map over it. The dot is the map's own dot,
+ * small: the work colour, and red on a late task (`taskPlaceDotColor`, v2.8045). A task with no place draws
  * nothing: no empty line, no nudge.
  */
-export function TaskPlaceLine({ place, number, overdue, old, far }: { place: TaskPlace; number?: number | null; overdue?: boolean; /** Amber, for an older task that is not late. */ old?: boolean; /** `250 ft north-east`, once the person asked where they are. */ far?: string | null }) {
+export function TaskPlaceLine({ place, number, overdue, far }: { place: TaskPlace; number?: number | null; overdue?: boolean; /** An older task that is not late. Its dot is the work colour since v2.8045, as its dot on the map is. */ old?: boolean; /** `250 ft north-east`, once the person asked where they are. */ far?: string | null }) {
   return (
     <span data-task-place-line style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600, minWidth: 0 }}>
       <span
         aria-hidden
         style={
           number != null
-            ? { flex: 'none', display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: '50%', background: overdue ? '#dc2626' : old ? '#b45309' : '#2563eb', color: '#fff', fontSize: '0.6875rem', fontWeight: 800 }
-            : { flex: 'none', width: 10, height: 10, borderRadius: '50%', background: '#2563eb', boxShadow: '0 0 0 2px var(--surface), 0 0 0 3px #2563eb' }
+            ? { flex: 'none', display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: '50%', background: taskPlaceDotColor({ overdue: overdue === true }), color: '#fff', fontSize: '0.6875rem', fontWeight: 800 }
+            : { flex: 'none', width: 10, height: 10, borderRadius: '50%', background: TASK_PLACE_WORK_COLOR, boxShadow: `0 0 0 2px var(--surface), 0 0 0 3px ${TASK_PLACE_WORK_COLOR}` }
         }
       >
         {number != null ? number : ''}

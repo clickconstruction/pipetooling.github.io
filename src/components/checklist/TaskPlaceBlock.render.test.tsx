@@ -60,6 +60,18 @@ describe('TaskPlaceLine', () => {
     r.rerender(<TaskPlaceLine place={PLACE} number={2} />)
     expect(document.querySelector('[data-task-place-line]')?.textContent).toBe('2Pump house')
   })
+
+  it('its dot is the map\'s own: the work colour, an older task\'s too, and red on a late task (v2.8045)', () => {
+    const dot = () => (document.querySelector('[data-task-place-line] span[aria-hidden]') as HTMLElement).style.background
+    const r = render(<TaskPlaceLine place={PLACE} />)
+    expect(dot()).toBe('rgb(199, 80, 0)')
+    r.rerender(<TaskPlaceLine place={PLACE} number={2} />)
+    expect(dot()).toBe('rgb(199, 80, 0)')
+    r.rerender(<TaskPlaceLine place={PLACE} number={2} old />)
+    expect(dot()).toBe('rgb(199, 80, 0)')
+    r.rerender(<TaskPlaceLine place={PLACE} number={2} overdue />)
+    expect(dot()).toBe('rgb(220, 38, 38)')
+  })
 })
 
 describe('TaskPlaceBlock', () => {

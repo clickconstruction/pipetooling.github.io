@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { TaskPlace } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_LATE_COLOR, TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
 const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed', fix: { lat: 29.5, lng: -98.3, accuracyM: 9 }, held: null as null | (() => void), hold: false }))
@@ -42,11 +42,11 @@ vi.mock('../../lib/map/olderPhotosIo', () => ({
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 /** The canvas, stood in for: each dot is a button that reads its label and its colour, and the view is named. */
 vi.mock('../map/PinsMapImageryCanvas', () => ({
-  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; height: number; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null }) {
+  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string; ringColor?: string }>; onSelect: (id: string | null) => void; height: number; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null }) {
     return (
       <div data-testid="canvas" data-height={props.height} data-imagery={props.imagery?.url ?? ''} data-fit={props.fitPoints ? props.fitPoints.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(' ') : ''}>
         {props.pins.map((p) => (
-          <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
+          <button key={p.id} type="button" data-color={p.color} data-ring={p.ringColor ?? ''} onClick={() => props.onSelect(p.id)}>
             {`dot ${p.label ?? p.title}`}
           </button>
         ))}
@@ -113,10 +113,23 @@ describe('TaskPlacesMapCard', () => {
     expect(canvas.getAttribute('data-height')).toBe('220')
     const dots = [...canvas.querySelectorAll('button')]
     expect(dots.map((d) => d.textContent)).toEqual(['dot 1', 'dot 2+'])
-    expect(dots[0]!.getAttribute('data-color')).toBe('#dc2626')
-    expect(dots[1]!.getAttribute('data-color')).toBe('#2563eb')
+    // Work is the app's safety orange, and red means late (v2.8045). Every dot wears a white ring.
+    expect(dots[0]!.getAttribute('data-color')).toBe(TASK_PLACE_LATE_COLOR)
+    expect(dots[1]!.getAttribute('data-color')).toBe(TASK_PLACE_WORK_COLOR)
+    expect(dots.map((d) => d.getAttribute('data-ring'))).toEqual([TASK_PLACE_RING_COLOR, TASK_PLACE_RING_COLOR])
     expect(document.querySelector('[data-task-places-without]')?.textContent).toBe('2 more tasks have no place. They are in the list below.')
     expect(phone.asked).toBe(0)
+  })
+
+  it('an older task that is not late draws in the work colour, as a task due today does, and its number in the bar matches', async () => {
+    render(<TaskPlacesMapCard tasks={[{ id: 'old', title: 'Grease the pump bearings', place: place('Pump house', 29.55), old: true }, { id: 'late', title: 'Fix the latch', place: place('North gate', 29.556), overdue: true }]} onShowTask={() => {}} />)
+    const canvas = await screen.findByTestId('canvas')
+    expect([...canvas.querySelectorAll('button')].map((d) => d.getAttribute('data-color'))).toEqual([TASK_PLACE_WORK_COLOR, TASK_PLACE_LATE_COLOR])
+    const rgb = (hex: string) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`
+    fireEvent.click(screen.getByRole('button', { name: 'dot 1' }))
+    expect((document.querySelector('[data-task-places-selected] span[aria-hidden]') as HTMLElement).style.background).toBe(rgb(TASK_PLACE_WORK_COLOR))
+    fireEvent.click(screen.getByRole('button', { name: 'dot 2' }))
+    expect((document.querySelector('[data-task-places-selected] span[aria-hidden]') as HTMLElement).style.background).toBe(rgb(TASK_PLACE_LATE_COLOR))
   })
 
   it('a press on a dot lists every task at that place, with Show the task on each and Directions once', async () => {

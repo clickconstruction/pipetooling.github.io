@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 /**
- * Where the open tasks are (punch list #328, PR 7): the leader's map over Outstanding by person. A
- * colour a person, a press on a name shows that person alone, a dot several people share wears its
- * count, the tasks with no place are counted, and no phone is asked for anything.
+ * Where the open tasks are (punch list #328, PR 7): the leader's map over Outstanding by person.
+ * Every dot is the work colour (v2.8045), one person's dot wears their initials, a press on a name
+ * shows that person alone, a dot several people share wears its count, the tasks with no place are
+ * counted, and no phone is asked for anything.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { TASK_PLACE_PERSON_COLORS, TASK_PLACE_SHARED_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 const opened = vi.hoisted(() => [] as string[])
@@ -14,11 +15,11 @@ vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url:
 const asked = vi.hoisted(() => ({ n: 0 }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyFix: () => { asked.n += 1 }, requestMyLocation: () => { asked.n += 1 } }))
 vi.mock('../map/PinsMapImageryCanvas', () => ({
-  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; height: number; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null; fitMaxZoom?: number }) {
+  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string; ringColor?: string }>; onSelect: (id: string | null) => void; height: number; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null; fitMaxZoom?: number }) {
     return (
       <div data-testid="canvas" data-height={props.height} data-layer={props.layer} data-imagery={props.imagery?.url ?? ''} data-fit={props.fitPoints ? props.fitPoints.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(' ') : ''} data-fit-max={props.fitMaxZoom ?? ''}>
         {props.pins.map((p) => (
-          <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
+          <button key={p.id} type="button" data-color={p.color} data-ring={p.ringColor ?? ''} onClick={() => props.onSelect(p.id)}>
             {`dot ${p.title}${p.label ? ` ×${p.label}` : ''}`}
           </button>
         ))}
@@ -29,11 +30,11 @@ vi.mock('../map/PinsMapImageryCanvas', () => ({
 
 // The Google canvas (v2.7686): the same dots, plus the map type the card asks for and a press that fails it.
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
-  default: function GoogleCanvasStub(props: { apiKey: string; mapTypeId?: string; onUnavailable: (reason: string) => void; pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; scrollZoomAfterClick?: boolean }) {
+  default: function GoogleCanvasStub(props: { apiKey: string; mapTypeId?: string; onUnavailable: (reason: string) => void; pins: Array<{ id: string; label?: string; title: string; color: string; ringColor?: string }>; onSelect: (id: string | null) => void; scrollZoomAfterClick?: boolean }) {
     return (
       <div data-testid="google-canvas" data-key={props.apiKey} data-map-type={props.mapTypeId} data-scroll-gate={String(props.scrollZoomAfterClick ?? false)}>
         {props.pins.map((p) => (
-          <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
+          <button key={p.id} type="button" data-color={p.color} data-ring={p.ringColor ?? ''} onClick={() => props.onSelect(p.id)}>
             {`dot ${p.title}${p.label ? ` ×${p.label}` : ''}`}
           </button>
         ))}
@@ -85,28 +86,34 @@ describe('TaskPlacesTeamMapCard', () => {
     expect(document.querySelector('[data-task-places-team-map]')).toBeNull()
   })
 
-  it('a colour a person, a navy dot with its count where people share a place, and the rest counted', async () => {
+  it('every dot is the work colour with a white ring: initials on one person\'s dot, the count where people share a place, and the rest counted', async () => {
     render(<TaskPlacesTeamMapCard people={PEOPLE} />)
     expect(screen.getByRole('heading', { name: 'Where the open tasks are' })).toBeTruthy()
     // Only the people with a place on some task get a chip. Wes has none.
-    expect(screen.getAllByRole('button', { pressed: false }).map((b) => b.textContent).filter((t) => /·/.test(t ?? ''))).toEqual(['Theo · 2', 'Imani · 1'])
+    // Each chip wears the person's mark, the initials their dots wear, in the dot's own colour.
+    expect(screen.getAllByRole('button', { pressed: false }).map((b) => b.textContent).filter((t) => /·/.test(t ?? ''))).toEqual(['TTheo · 2', 'IImani · 1'])
+    const marks = [...document.querySelectorAll('[role="group"][aria-label="Whose tasks"] [data-task-places-team-mark]')] as HTMLElement[]
+    expect(marks.map((m) => [m.textContent, m.getAttribute('aria-hidden'), m.style.background, m.style.color])).toEqual([
+      ['T', 'true', 'rgb(199, 80, 0)', 'rgb(255, 255, 255)'],
+      ['I', 'true', 'rgb(199, 80, 0)', 'rgb(255, 255, 255)'],
+    ])
     expect(screen.getByRole('button', { name: 'Everyone · 3' }).getAttribute('aria-pressed')).toBe('true')
     const canvas = await screen.findByTestId('canvas')
     expect(canvas.getAttribute('data-height')).toBe('300')
     const dots = [...canvas.querySelectorAll('button')]
-    expect(dots.map((d) => [d.textContent, d.getAttribute('data-color')])).toEqual([
-      ['dot Pump house ×2', TASK_PLACE_SHARED_COLOR],
-      ['dot North gate', TASK_PLACE_PERSON_COLORS[0]],
+    expect(dots.map((d) => [d.textContent, d.getAttribute('data-color'), d.getAttribute('data-ring')])).toEqual([
+      ['dot Pump house ×2', TASK_PLACE_WORK_COLOR, TASK_PLACE_RING_COLOR],
+      ['dot North gate ×T', TASK_PLACE_WORK_COLOR, TASK_PLACE_RING_COLOR],
     ])
     expect(document.querySelector('[data-task-places-team-without]')?.textContent).toBe('2 more open tasks have no place.')
     expect(asked.n).toBe(0)
   })
 
-  it('a press on a name shows that person alone, in their colour, and a second press brings everyone back', async () => {
+  it('a press on a name shows that person alone, their initials on the dot, and a second press brings everyone back', async () => {
     render(<TaskPlacesTeamMapCard people={PEOPLE} />)
     fireEvent.click(screen.getByRole('button', { name: 'Imani · 1' }))
     const canvas = await screen.findByTestId('canvas')
-    expect([...canvas.querySelectorAll('button')].map((d) => [d.textContent, d.getAttribute('data-color')])).toEqual([['dot Pump house', TASK_PLACE_PERSON_COLORS[1]]])
+    expect([...canvas.querySelectorAll('button')].map((d) => [d.textContent, d.getAttribute('data-color')])).toEqual([['dot Pump house ×I', TASK_PLACE_WORK_COLOR]])
     expect(document.querySelector('[data-task-places-team-without]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Imani · 1' }))
     expect(canvas.querySelectorAll('button')).toHaveLength(2)
@@ -142,8 +149,8 @@ describe('TaskPlacesTeamMapCard', () => {
       expect(canvas.getAttribute('data-key')).toBe('test-key')
       expect(canvas.getAttribute('data-scroll-gate')).toBe('true')
       expect([...canvas.querySelectorAll('button[data-color]')].map((d) => [d.textContent, d.getAttribute('data-color')])).toEqual([
-        ['dot Pump house ×2', TASK_PLACE_SHARED_COLOR],
-        ['dot North gate', TASK_PLACE_PERSON_COLORS[0]],
+        ['dot Pump house ×2', TASK_PLACE_WORK_COLOR],
+        ['dot North gate ×T', TASK_PLACE_WORK_COLOR],
       ])
       expect(document.querySelector('[data-task-places-team-without]')?.textContent).toBe('2 more open tasks have no place.')
     })
@@ -164,7 +171,7 @@ describe('TaskPlacesTeamMapCard', () => {
       render(<TaskPlacesTeamMapCard people={PEOPLE} />)
       const canvas = await screen.findByTestId('google-canvas')
       fireEvent.click(screen.getByRole('button', { name: 'Imani · 1' }))
-      expect([...canvas.querySelectorAll('button[data-color]')].map((d) => d.textContent)).toEqual(['dot Pump house'])
+      expect([...canvas.querySelectorAll('button[data-color]')].map((d) => d.textContent)).toEqual(['dot Pump house ×I'])
       fireEvent.click(screen.getByRole('button', { name: 'Everyone · 3' }))
       fireEvent.click(screen.getByRole('button', { name: 'dot Pump house ×2' }))
       expect(document.querySelector('[data-task-places-team-selected]')?.textContent).toContain('ImaniSwap the pump valve')
@@ -210,7 +217,7 @@ describe('TaskPlacesTeamMapCard', () => {
       expect(walk.spots).toEqual([])
       expect(canvas.getAttribute('data-fit')).toBe('')
 
-      fireEvent.click(screen.getByRole('button', { name: 'dot North gate' }))
+      fireEvent.click(screen.getByRole('button', { name: 'dot North gate ×T' }))
       await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Today’s photo of North gate, taken October 8, 2023. 2 older photos.'))
       expect(walk.spots.map((s) => [s.lat, s.lng])).toEqual([[29.556, -98.3]])
       expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('archive')
@@ -233,7 +240,7 @@ describe('TaskPlacesTeamMapCard', () => {
       vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
       walk.fn = answers
       render(<TaskPlacesTeamMapCard people={PEOPLE} />)
-      fireEvent.click(await screen.findByRole('button', { name: 'dot North gate' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'dot North gate ×T' }))
       fireEvent.click(timePress())
       await screen.findByTestId('canvas')
       expect(screen.queryByTestId('google-canvas')).toBeNull()
@@ -245,7 +252,7 @@ describe('TaskPlacesTeamMapCard', () => {
     it('Hide map ends it: the map that comes back is the map of today', async () => {
       walk.fn = answers
       render(<TaskPlacesTeamMapCard people={PEOPLE} />)
-      fireEvent.click(await screen.findByRole('button', { name: 'dot North gate' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'dot North gate ×T' }))
       fireEvent.click(timePress())
       fireEvent.click(await screen.findByRole('button', { name: 'Mar 2021' }))
       fireEvent.click(screen.getByRole('button', { name: 'Hide map' }))
