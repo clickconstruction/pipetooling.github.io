@@ -18,6 +18,7 @@
  * Pure: the screens read the rows, this decides what the paper says.
  */
 import type { EsignLang } from '../esignConsent'
+import { blankMissing, clausePlaces, fillBlanks, picksProblem, placeProblem, resolvedFields, whenKept, type ClauseWhen, type PaperPicks, type SettingsDef } from './paperSettings'
 
 /** Everyone, or the trades the office named on the clause. */
 export type ClauseScope = 'all' | readonly string[]
@@ -36,6 +37,10 @@ export interface Clause {
   /** Set when it was retired. It leaves the next paper and stays on every signed copy that carried it. */
   retiredAt: string | null
   retiredBy: string | null
+  /** The place it is a wording of, on a paper built from settings. Null or absent: a place of its own. */
+  slot?: string | null
+  /** The choice that puts it in the paper. Null or absent: in every paper. */
+  when?: ClauseWhen
 }
 
 /** A contract paper the clauses hang on: the Contract library's document, in Form Studio's frame. */
@@ -51,6 +56,8 @@ export interface ContractPaper {
   revision: number
   /** When the newest revision was published. */
   publishedAt: string | null
+  /** The settings list of a paper built from settings (#389). Null or absent on every other paper. */
+  settingsDef?: SettingsDef | null
 }
 
 /** Who a paper is assembled for. */
@@ -62,6 +69,10 @@ export interface AssembleFor {
   /** The job's name. Null on a paper that is for no job. */
   job: string | null
   lang: EsignLang
+  /** A job's picks on a paper built from settings: one choice a setting. Such a paper does not go without them. */
+  picks?: PaperPicks | null
+  /** What was typed for the job's blanks, on top of what the picks fill. */
+  fields?: Record<string, string> | null
 }
 
 /** A clause as it reads on one paper: its number there, its words in the paper's language, its id and version. */
@@ -127,6 +138,12 @@ export function clauseCoversAny(clause: Pick<Clause, 'scope'>, trades: readonly 
 
 const byOrder = (a: Clause, b: Clause): number => a.order - b.order || a.id.localeCompare(b.id)
 
+/** The live clauses in the paper's order: a wording of a place reads where that place's first wording is. */
+function byPlace(live: readonly Clause[]): Clause[] {
+  const places = clausePlaces(live.map((c) => ({ id: c.id, order: c.order, slot: c.slot ?? null, when: c.when ?? null })))
+  return [...live].sort((a, b) => (places.get(a.id) ?? a.order) - (places.get(b.id) ?? b.order) || byOrder(a, b))
+}
+
 /** The clauses the next paper carries, in order: none retired. */
 export function liveClauses(clauses: readonly Clause[]): Clause[] {
   return clauses.filter((c) => c.retiredAt == null).sort(byOrder)
@@ -149,12 +166,15 @@ export function andList(names: readonly string[], lang: EsignLang = 'en'): strin
 function tradesCarried(exhibit: readonly Clause[], trades: readonly string[]): string[] {
   const named = new Set(exhibit.flatMap((c) => clauseTrades(c).map(tradeKey)))
   const seen = new Set<string>()
-  return trades.filter((t) => {
-    const k = tradeKey(t)
-    if (!named.has(k) || seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
+  // Trimmed, as the database's assembly carries them (`btrim`), so the two read the same.
+  return trades
+    .filter((t) => {
+      const k = tradeKey(t)
+      if (!named.has(k) || seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    .map((t) => t.trim())
 }
 
 /**
@@ -163,11 +183,17 @@ function tradesCarried(exhibit: readonly Clause[], trades: readonly string[]): s
  * and has none, carries its `problem` and does not go.
  */
 export function assemblePaper(paper: ContractPaper, clauses: readonly Clause[], forWhom: AssembleFor): AssembledPaper {
-  const live = liveClauses(clauses)
-  const base = live.filter(isBaseClause)
-  const exhibit = live.filter((c) => !isBaseClause(c) && clauseCoversAny(c, forWhom.trades))
-  const numbered = (list: readonly Clause[], from: number): AssembledClause[] =>
-    list.map((c, i) => ({ id: c.id, v: c.v, n: from + i, text: clauseText(c, forWhom.lang) }))
+  const def = paper.settingsDef ?? null
+  const picks = forWhom.picks ?? null
+  const live = byPlace(liveClauses(clauses))
+  // For this company: the base, and the exhibit for its trades. Then, on a paper built from settings, for these picks.
+  const forCompany = live.filter((c) => isBaseClause(c) || clauseCoversAny(c, forWhom.trades))
+  const kept = forCompany.filter((c) => whenKept(c.when ?? null, picks))
+  const base = kept.filter(isBaseClause)
+  const exhibit = kept.filter((c) => !isBaseClause(c))
+  const fields = def && picks && !picksProblem(def, picks) ? resolvedFields(def, picks, forWhom.fields ?? null, forWhom.lang) : {}
+  const words = (c: Clause): string => (def ? fillBlanks(def, clauseText(c, forWhom.lang), fields) : clauseText(c, forWhom.lang))
+  const numbered = (list: readonly Clause[], from: number): AssembledClause[] => list.map((c, i) => ({ id: c.id, v: c.v, n: from + i, text: words(c) }))
   const needsJob = paper.between.includes('{job}')
   const problem =
     paper.revision < 1
@@ -176,7 +202,9 @@ export function assemblePaper(paper: ContractPaper, clauses: readonly Clause[], 
         ? `Pick the job ${paper.name} is for.`
         : live.length === 0
           ? `${capitalized(paper.name)} has no clauses yet.`
-          : null
+          : def
+            ? settingsProblem(def, forCompany, kept, picks, fields, forWhom.lang)
+            : null
   return {
     paperId: paper.id,
     title: paper.title,
@@ -188,6 +216,23 @@ export function assemblePaper(paper: ContractPaper, clauses: readonly Clause[], 
     exhibitFor: tradesCarried(exhibit, forWhom.trades),
     problem,
   }
+}
+
+/**
+ * What stops a paper built from settings, in the order the database checks: no picks or a setting unpicked, a place
+ * with no wording or two, then a blank with no value, named by the number its clause has on this paper.
+ */
+function settingsProblem(def: SettingsDef, forCompany: readonly Clause[], kept: readonly Clause[], picks: PaperPicks | null, fields: Record<string, string>, lang: EsignLang): string | null {
+  const unpicked = picksProblem(def, picks)
+  if (unpicked || !picks) return unpicked
+  const place = placeProblem(def, forCompany.map((c) => ({ id: c.id, order: c.order, slot: c.slot ?? null, when: c.when ?? null })), picks)
+  if (place) return place
+  const ordered = [...kept.filter(isBaseClause), ...kept.filter((c) => !isBaseClause(c))]
+  for (const [i, c] of ordered.entries()) {
+    const missing = blankMissing(def, clauseText(c, lang), fields)
+    if (missing) return `Clause ${i + 1} has a blank with no value: ${missing.label}.`
+  }
+  return null
 }
 
 /**
