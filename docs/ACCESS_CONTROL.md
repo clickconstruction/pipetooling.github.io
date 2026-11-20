@@ -1219,7 +1219,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The crew is **`start_checks_crew(job)`**: on the job's team, clocked in on it, or a sub who reads it, and never a primary.
   The crew **reads** the bullets on them that are still on the list and their live yeses, and writes nothing.
   A helper on no job, a superintendent on no job, and an estimator or a primary with no claim read nothing.
-  A job shut by its papers is shut here too (`job_shut_to_me` in each gate, and `job_papers_fence` on the seven job tables).
+  A job shut by its papers is shut here too (`job_shut_to_me` in each gate).
 - **`start_check_decide(fixture, kind, open_then, hold_until)`** and **`start_check_take_back(decision)`** are the one door for Go and Hold, SECURITY DEFINER, for **`start_checks_may_decide(job)`**: the office and the job's superintendent.
   The name on a decision is read from the caller's own row.
   A Hold moves the stage's window in `job_stage_windows` with its length kept, which a superintendent could not write by hand.

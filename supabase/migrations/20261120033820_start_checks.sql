@@ -521,28 +521,8 @@ DROP POLICY IF EXISTS start_check_settings_delete ON public.start_check_settings
 CREATE POLICY start_check_settings_delete ON public.start_check_settings FOR DELETE TO authenticated
   USING ((SELECT public.is_dev()));
 
--- A job shut by its papers is shut here too, whatever a policy above says.
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_bullets;
-CREATE POLICY job_papers_fence ON public.start_check_bullets AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_marks;
-CREATE POLICY job_papers_fence ON public.start_check_marks AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_asks;
-CREATE POLICY job_papers_fence ON public.start_check_asks AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_their_days;
-CREATE POLICY job_papers_fence ON public.start_check_their_days AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_decisions;
-CREATE POLICY job_papers_fence ON public.start_check_decisions AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_arrivals;
-CREATE POLICY job_papers_fence ON public.start_check_arrivals AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
-DROP POLICY IF EXISTS job_papers_fence ON public.start_check_settings;
-CREATE POLICY job_papers_fence ON public.start_check_settings AS RESTRICTIVE FOR ALL TO authenticated
-  USING (job_id IS NULL OR job_id <> ALL ((SELECT public.jobs_shut_to_me())::uuid[]));
+-- A job shut by its papers is shut here too: each gate above asks job_shut_to_me, so these tables carry no
+-- job_papers_fence of their own. That short fence is for a table that grants a job's rows with no helper.
 
 REVOKE ALL ON public.start_check_templates, public.start_check_bullets, public.start_check_marks, public.start_check_asks,
   public.start_check_their_days, public.start_check_decisions, public.start_check_arrivals, public.start_check_settings FROM anon;
