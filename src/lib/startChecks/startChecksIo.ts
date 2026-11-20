@@ -37,6 +37,10 @@ export type BulletPatch = Partial<{ words: string; wantsPhoto: boolean; shownToG
 export type NewYes = { id?: string; bulletId: string; jobId: string; know: Know; who: string; how: string; day: string; photo?: StartPhoto | null }
 export type YesPatch = Partial<{ know: Know; who: string; how: string; day: string }>
 export type StartPhoto = { path: string; fileName: string; bytes: number; takenAt: string }
+/** How an ask went out. */
+export type AskHow = 'text' | 'email' | 'phone'
+/** One ask to keep: one message to one person, a row for each bullet it covers, or a hold note that names a stage alone. */
+export type NewAsk = { kind: 'ask' | 'hold_note'; how: AskHow; to: string; day: string; rows: ReadonlyArray<{ jobId: string; fixtureId: string; bulletId: string | null }> }
 export type NewTemplate = { kind: StartStageKind; order: number; words: string; on: 'them' | 'us'; wantsPhoto: boolean; reads: UsReads | null }
 
 export interface StartChecksIo {
@@ -59,6 +63,8 @@ export interface StartChecksIo {
   changeYes: (markId: string, patch: YesPatch) => Promise<void>
   takeBackYes: (markId: string, who: StartWho) => Promise<void>
   giveTheirDay: (day: { jobId: string; fixtureId: string; readyDay: string; saidOn: string; who: string; how: string }, who: StartWho) => Promise<void>
+  /** Every ask is kept: the day and how. One press is one batch, however many stages it covers. */
+  keepAsk: (ask: NewAsk, who: StartWho) => Promise<void>
   /** The days of notice on a site's row or a job's own. Null puts the default back. */
   setNotice: (home: { developmentId: string } | { jobId: string }, days: number | null, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
@@ -240,6 +246,15 @@ export const supabaseStartChecksIo: StartChecksIo = {
       by_name: who.name.slice(0, 120),
     })
     checkSupabaseError(result, 'keep the day they gave')
+  },
+
+  keepAsk: async (ask, who) => {
+    if (!ask.rows.length) return
+    const batchId = crypto.randomUUID()
+    const result = await db.from('start_check_asks').insert(
+      ask.rows.map((r) => ({ batch_id: batchId, job_id: r.jobId, fixture_id: r.fixtureId, bullet_id: r.bulletId, kind: ask.kind, how: ask.how, to_name: ask.to.trim().slice(0, 120), asked_on: ask.day, by_user: who.userId, by_name: who.name.slice(0, 120) })),
+    )
+    checkSupabaseError(result, 'keep the ask')
   },
 
   setNotice: async (home, days, who) => {

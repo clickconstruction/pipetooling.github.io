@@ -8,11 +8,12 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { stageChecklistKindOf } from '../../lib/jobs/stageChecklist'
-import { addDays, byTrouble, daySpan, daysBetween, readiness, readyList, readyMarks, scheduleLookWords, siteBanner, siteMovedWords, stageStanding, type NextPress, type ValueKind } from '../../lib/startChecks/startChecks'
+import { addDays, byTrouble, daySpan, daysBetween, readiness, readyList, readyMarks, scheduleLookWords, siteBanner, siteMovedWords, stageStanding, stagesToAsk, type NextPress, type ValueKind } from '../../lib/startChecks/startChecks'
 import type { SiteStartChecksRead } from '../../hooks/useSiteStartChecks'
 import type { StartWho } from '../../lib/startChecks/startChecksIo'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ReadyMarks } from '../startChecks/ReadyBar'
+import { StartCheckAskPanel } from '../startChecks/StartCheckAskPanel'
 import { StartCheckStage } from '../startChecks/StartCheckStage'
 import { ChangeableValue, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { Card, type CardFold } from './developmentPageBits'
@@ -33,6 +34,8 @@ export function DevelopmentScheduleCard({
   can,
   foldFor,
   contactLine,
+  askCustomerId,
+  jobNameOf,
 }: {
   anchorId: string
   developmentId: string
@@ -43,8 +46,12 @@ export function DevelopmentScheduleCard({
   foldFor: (line: string) => CardFold
   /** Who the contact is, under the banner: "Ray Ortiz, the GC's contact on the bids". */
   contactLine: string | null
+  /** The customer whose thread an ask opens in Messages, and each job's name for the box. Null: the site names no customer. */
+  askCustomerId: string | null
+  jobNameOf: (jobId: string) => string
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [asking, setAsking] = useState(false)
   const stages = useMemo(() => read.stages.map((s) => s.stage), [read.stages])
   const lineOf = useMemo(() => new Map(read.stages.map((s) => [s.stage.id, s.line])), [read.stages])
   const sorted = useMemo(() => byTrouble(stages, read.site, todayYmd), [stages, read.site, todayYmd])
@@ -52,6 +59,12 @@ export function DevelopmentScheduleCard({
   const words = scheduleLookWords(stages, read.site, todayYmd)
   const banner = siteBanner(stages, read.site, todayYmd)
   const moved = siteMovedWords(stages)
+  // One ask covers every stage whose day to decide is near. Messages ties it to the first of them.
+  const toAsk = stagesToAsk(stages, read.site, todayYmd).flatMap((stage) => {
+    const line = lineOf.get(stage.id)
+    return line ? [{ stage, line }] : []
+  })
+  const doorFor = (jobId: string) => ({ jobId, jobName: jobNameOf(jobId), customerId: askCustomerId })
 
   return (
     <Card id={anchorId} title="Schedule" fold={foldFor(words.need ? `${words.count} · ${words.need}` : words.count)} meta="what must be true before each stage, and where it stands">
@@ -59,18 +72,26 @@ export function DevelopmentScheduleCard({
         <OfflineRetryPanel failure={read.failure} onRetry={read.reload} surface="development-schedule" idempotent busy={read.loading} />
       ) : (
         <div data-development-schedule>
-          <div style={{ padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)' }} data-schedule-banner>
-            <div style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>
-              <ValueSentence text={banner.sentence} />
-            </div>
-            {contactLine || moved ? (
-              <div style={{ fontSize: '0.8125rem', ...muted }}>
-                {contactLine}
-                {contactLine && moved ? ' ' : ''}
-                {moved}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: `1px solid ${banner.askLabel ? '#2563eb' : 'var(--border)'}`, borderRadius: 12, background: 'var(--surface)' }} data-schedule-banner>
+            <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+              <div style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>
+                <ValueSentence text={banner.sentence} />
               </div>
+              {contactLine || moved ? (
+                <div style={{ fontSize: '0.8125rem', ...muted }}>
+                  {contactLine}
+                  {contactLine && moved ? ' ' : ''}
+                  {moved}
+                </div>
+              ) : null}
+            </div>
+            {banner.askLabel && toAsk[0] ? (
+              <button type="button" className="scPress" style={bluePress} aria-expanded={asking} onClick={() => setAsking(!asking)}>
+                {banner.askLabel}
+              </button>
             ) : null}
           </div>
+          {asking && toAsk[0] ? <StartCheckAskPanel stages={toAsk} site={read.site} today={todayYmd} me={me} door={doorFor(toAsk[0].line.jobId)} press={read.press} onClose={() => setAsking(false)} /> : null}
 
           <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
             {sorted.map((stage) => {
@@ -143,6 +164,7 @@ export function DevelopmentScheduleCard({
                         can={can}
                         press={read.press}
                         io={read.io}
+                        ask={doorFor(line.jobId)}
                       />
                     </div>
                   ) : null}

@@ -362,6 +362,20 @@ export function askText(site: Site, stages: readonly Stage[], options: AskOption
   return lines.join('\n')
 }
 
+/** The words on the Ask panel. */
+export const ASK_WORDS = {
+  lead: (stages: number) => `One message for ${countWords(stages, 'stage', 'stages')}. Change any word. Nothing goes out by itself.`,
+  textIt: 'Text it',
+  emailIt: 'Email it',
+  copy: 'Copy',
+  another: 'Sent it another way?',
+  texted: 'I texted it',
+  emailed: 'I emailed it',
+  called: 'I called',
+  boxLead: 'This is their box in Messages, filled with the ask. Nothing is sent until you send it there.',
+  noThread: 'This job names no customer to message. Copy the ask and send it your way.',
+} as const
+
 /**
  * The hold note, written for the office to read, change and send. A hold tells nobody by itself. It is plain
  * words, with no marks.

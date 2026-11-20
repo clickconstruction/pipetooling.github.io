@@ -38,6 +38,9 @@ export type JobDocumentsStartChecksJob = {
   development_id?: string | null
   bid_id?: string | null
   gcName?: string | null
+  job_name?: string | null
+  /** The customer whose thread an ask opens in Messages: the job's GC, or its customer. */
+  askCustomerId?: string | null
 }
 
 export function JobDocumentsStartChecks({ job, io, onRequestTab, todayYmd }: { job: JobDocumentsStartChecksJob; io?: StartChecksIo; onRequestTab?: (tab: JobWindowTabKey) => void; todayYmd?: string }) {
@@ -104,7 +107,7 @@ export function JobDocumentsStartChecks({ job, io, onRequestTab, todayYmd }: { j
                 {isOpen ? (
                   <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                     {stage.finished ? <p style={{ ...muted, margin: '0 0 8px' }}>This stage is finished.</p> : null}
-                    <StartCheckStage stage={stage} line={line} rows={read.rows} site={read.site} notice={read.notice} noticeKey={noticeKey} today={today} me={me} kind={stageChecklistKindOf(stage.name)} templates={read.templates} can={can} press={read.press} io={read.io} />
+                    <StartCheckStage stage={stage} line={line} rows={read.rows} site={read.site} notice={read.notice} noticeKey={noticeKey} today={today} me={me} kind={stageChecklistKindOf(stage.name)} templates={read.templates} can={can} press={read.press} io={read.io} ask={{ jobId: job.id, jobName: (job.job_name ?? '').trim() || startJob.label, customerId: job.askCustomerId ?? null }} />
                   </div>
                 ) : null}
               </div>

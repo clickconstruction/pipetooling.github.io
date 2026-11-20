@@ -147,6 +147,28 @@ Rest on a card's ready bar to see what it still takes to start. On a phone, pres
 
 Press the card's one press to open the stage. You see the same four lines and the same lists as on the job.
 
+## Ask them about what is open
+
+An open stage with something open on them has an **Ask** press at the bottom.
+
+1. Press the **Ask** press. It names who you are asking and how many things.
+2. Read the message. Change any word.
+3. Press {{button:blue|Text it}} or {{button:outline|Email it}}.
+4. Their box in Messages opens under the ask, filled with your words.
+5. Send it from that box.
+
+Nothing goes out when you press **Text it**. The message leaves only when you send it from the box.
+
+Read who the box is addressed to before you send. It is the customer on the job.
+
+Did you ask another way? Press {{chip:gray|I texted it}}, {{chip:gray|I emailed it}} or {{chip:gray|I called}}. The ask is kept and nothing is sent.
+
+Every ask is kept with its day. An open bullet then reads when you asked and how.
+
+On the Schedule look, the banner has one **Ask** press for the whole site. It covers every stage whose day to decide is near.
+
+The office's Dashboard says when a customer owes us answers. Press **Open the list** on that line to go to the site.
+
 ## Add a bullet to the company's list
 
 The office can keep a good bullet for every job.

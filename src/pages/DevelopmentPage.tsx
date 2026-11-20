@@ -1875,6 +1875,11 @@ export default function DevelopmentPage() {
           can={{ window: role != null && ['dev', 'master_technician', 'assistant', 'controller', 'estimator'].includes(role), notice: isOfficeRole(role), company: isOfficeRole(role) }}
           foldFor={(line) => ({ open: !isFolded(lookFolds, 'schedule', false), onToggle: () => toggleLook('schedule'), line })}
           contactLine={people?.gcContact?.name ? `${people.gcContact.name} is the GC’s contact on the bids.` : null}
+          askCustomerId={data.customer?.id ?? null}
+          jobNameOf={(jobId) => {
+            const j = shown.jobs.find((x) => x.id === jobId)
+            return j ? (j.job_name ?? '').trim() || jobLabel(j) : ''
+          }}
         />
       </div>
       {chipConfirm ? (

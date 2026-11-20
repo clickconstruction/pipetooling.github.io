@@ -41,6 +41,7 @@ import { useJobKindGaps } from './useJobKindGaps'
 import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
 import { useStagesDone } from './useStagesDone'
+import { useStartAnswersOwed } from './useStartAnswersOwed'
 import { useReceiptChases } from './useReceiptChases'
 import { receiptChaseDetail } from '../lib/needsYou/fillInReceipts'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
@@ -216,6 +217,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // A stage the crew put at 100% that sits on no bill (punch list #397, PR 7).
   const stagesDoneEnabled = on('stagesDone')
   const { done: stagesDone } = useStagesDone(stagesDoneEnabled)
+  // What customers owe us before a stage starts (punch list #382, PR 6).
+  const startAnswersOwedEnabled = on('startAnswersOwed')
+  const { owed: startAnswersOwed } = useStartAnswersOwed(startAnswersOwedEnabled)
   // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2).
   const receiptChasesEnabled = on('receiptChases')
   const { chases: receiptChaseCountsNow } = useReceiptChases(receiptChasesEnabled)
@@ -341,6 +345,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     baselineGaps,
     stagesDoneEnabled,
     stagesDone,
+    startAnswersOwedEnabled,
+    startAnswersOwed,
     receiptChasesEnabled,
     receiptChases,
     lineBudgetsReviewEnabled,
@@ -475,6 +481,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lookAlikeCity: lookAlikes?.city ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
     stagesDoneFirstJobId: stagesDone?.rows[0]?.jobId ?? null,
+    startOwedFirst: startAnswersOwed?.sites[0] ? { developmentId: startAnswersOwed.sites[0].developmentId, jobId: startAnswersOwed.sites[0].jobId } : null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
     materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
     inKindCreditFirst: inKindCredits?.due[0] ? { customerId: inKindCredits.due[0].customerId, arrangementId: inKindCredits.due[0].arrangementId, month: inKindCredits.due[0].month } : null,
