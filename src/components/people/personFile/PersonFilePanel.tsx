@@ -256,6 +256,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [savingEntry, setSavingEntry] = useState(false)
   /** Punch list #315: the links that say which entry or record corrects or completes which, the composer's picks, and a link being withdrawn. */
   const [amendRows, setAmendRows] = useState<PersonAmendmentRow[]>([])
+  /** Why the links could not be read, so a corrected entry is never drawn as standing without a word (v2.8061). */
+  const [amendHeld, setAmendHeld] = useState<string | null>(null)
   const [draftTargets, setDraftTargets] = useState<AmendmentTarget[]>([])
   const [withdrawingLinkId, setWithdrawingLinkId] = useState<string | null>(null)
   const [withdrawWhy, setWithdrawWhy] = useState('')
@@ -263,6 +265,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   /** Punch list #315, upgrade 2: the number each evidence record goes by, the records with none yet, and the case's items and log. */
   const [exhibitNoById, setExhibitNoById] = useState<Map<string, number>>(new Map())
   const [unnumbered, setUnnumbered] = useState(0)
+  const [numbersHeld, setNumbersHeld] = useState<string | null>(null)
   const [caseItems, setCaseItems] = useState<PersonCaseItem[]>([])
   const [caseLog, setCaseLog] = useState<PersonCaseLogLine[]>([])
   const [caseHeld, setCaseHeld] = useState<string | null>(null)
@@ -357,10 +360,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const reloadAmendments = useCallback(async () => {
     if (!viewer.isDev || !personId) {
       setAmendRows([])
+      setAmendHeld(null)
       return
     }
     const r = await loadPersonAmendments(personId)
     setAmendRows(r.rows)
+    setAmendHeld(r.heldWhy)
   }, [viewer.isDev, personId])
 
   useEffect(() => {
@@ -371,10 +376,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     if (!viewer.isDev || !personId) {
       setExhibitNoById(new Map())
       setUnnumbered(0)
+      setNumbersHeld(null)
       return
     }
     const r = await loadExhibitNumbers(personId)
     setExhibitNoById(r.byId)
+    setNumbersHeld(r.heldWhy)
     // A read that failed (the column is not there before its migration) says nothing about which records lack a number.
     setUnnumbered(r.heldWhy ? 0 : r.unnumbered)
   }, [viewer.isDev, personId])
@@ -2315,9 +2322,16 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   // The strip's Matter chip (v2.6582): the matter's stage once one stands on the person, a press to the Matter view.
   const matterChip = personMatterChipWords(matterStanding)
   // The strip's standing press (#315, upgrade 4b): what the person is, or was last, and the door to Standing…
-  const standingChip = viewer.isDev && personId ? standingWords(standingRows) ?? 'Standing…' : null
+  const standingChip = viewer.isDev && personId ? (standingHeld ? 'Standing not read' : standingWords(standingRows) ?? 'Standing…') : null
 
-  const heldWords = (sources?.held ?? []).map((h) => `${PERSON_TIMELINE_SOURCES.find((s) => s.source === h.source)?.label ?? h.source} (${h.reason})`)
+  // The three reads of their own (#315) are named beside the Timeline's sources when one fails: a file with its
+  // correction chips, its Ev numbers or its standing missing must not read as a file that has none (v2.8061).
+  const heldWords = [
+    ...(sources?.held ?? []).map((h) => `${PERSON_TIMELINE_SOURCES.find((s) => s.source === h.source)?.label ?? h.source} (${h.reason})`),
+    ...(amendHeld ? [`the correction links, so a corrected entry is not marked (${amendHeld})`] : []),
+    ...(numbersHeld ? [`the evidence numbers (${numbersHeld})`] : []),
+    ...(standingHeld ? [`the standing (${standingHeld})`] : []),
+  ]
 
   const themesView = (
     <PersonThemesView
