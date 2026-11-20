@@ -2,16 +2,16 @@
 name: "Values in place: where else the app should mark its values and change them where they sit"
 number: 399
 group: gated
-status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · nothing built
+status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · the shared piece is built (v2.7985, #382's PR 1) · no screen here is built
 summary: >
   #382 approved one way to draw a value on a screen. A date, a count, a name or an amount is drawn apart
   from the words. If a person can change it, it is underlined and tinted, and a press turns it into a field
   right there with Keep and Cancel. If the app works it out, it is plain bold and updates by itself. One fact
   sits on each line, with the values in a column. This card lists the other screens where that look fits,
   what the shared piece must hold before they can use it, and an order to roll it out.
-next: Wait for #382's PR 1, the shared values-in-place piece. Then take the first group below, one screen a PR.
+next: The shared piece is on main (v2.7985, #382's PR 1). Take the first group below, one screen a PR.
 size: L as a train, one S per screen once the piece exists
-blocker: "#382's PR 1, the shared piece. Nothing here starts before it is on main."
+blocker: None in the code. The shared piece this card waited on is on main (v2.7985).
 opinion: build, one screen at a time, after the shared piece — the owner asked for it across the app, and one piece keeps every screen's look the same
 ---
 
@@ -33,6 +33,13 @@ He asked to find *all the other places in the app we should apply this approach 
 
 These came out of the survey. #382's PR 1 should know them before it fixes its shape, or the screens below
 will each grow their own copy.
+
+**Held, as of v2.7985.** The piece is `src/components/valuesInPlace/ValuesInPlace.tsx` over
+`src/lib/valuesInPlace.ts`. How it holds each need below, with the name of the prop, is the table in
+`docs/recent-features/v2.7985.md`. In short: `locked` is the third look, `fromDefault` and `backToDefault` the
+fourth kind, `hint`, `preview` and `reason` the room around the field, `onKeep` the save a screen hands in,
+`val` with `ValueSentence` the parts a kernel hands back, a dotted line under words in the text colour the
+look, `⟪ ⟫` the marker, 44 px the phone's press, and `ValuesInPlaceOff` the off switch.
 
 - **A third look: shown but locked.** Many values can be changed, but not by this person or not now.
   `LockTag` in `src/components/personDesk/personDeskShared.tsx` already draws one kind of it.
@@ -125,7 +132,7 @@ the first group ships.
 
 ## An order to roll it out
 
-1. **#382's PR 1**, the shared piece, holding the needs above.
+1. **#382's PR 1**, the shared piece, holding the needs above. Built, v2.7985.
 2. **The Lien desk group.** Its kernels already split typed and worked-out values (`lienNoticePreview.ts`),
    and its dates drive deadlines, so a person sees at once what a change moves.
 3. **Jobs and billing.** Start with the Bill Customer dates, where today's cuts left the dates dialog its own
@@ -148,4 +155,4 @@ presses Escape and sees nothing saved. A worked-out value has no press.
 
 ## Where it stands
 
-Surveyed on 2026-11-18. Nothing built. It waits on #382's PR 1.
+Surveyed on 2026-11-18. The shared piece is built (v2.7985, #382's PR 1). No screen on this card is built.
