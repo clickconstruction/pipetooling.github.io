@@ -2,8 +2,9 @@
  * Before we start (punch list #382, PR 4): one job's stages with their lists, read for a person on the job's desk.
  * The stage lines, our days, the rows, the settings, the company's lists and who we ask come in together, and
  * `stageFromRows` reads each line against its own. A press writes through the io and reads again, so the list a
- * person sees is what the database holds. A person who is not on the desk gets no rows and no screen. A press that
- * fails throws, so the value or the row that made it says why where it stands.
+ * person sees is what the database holds. A person who is not on the desk gets no rows and no screen. A desk check
+ * that fails is not a no: the desk stays unknown, with the failure, until Retry asks again. A press that fails
+ * throws, so the value or the row that made it says why where it stands.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Site, Stage } from '../lib/startChecks/startChecks'
@@ -52,7 +53,7 @@ type Loaded = {
 }
 
 export interface JobStartChecksRead {
-  /** False until the database says this person is on the job's desk. Null while it is asked. */
+  /** True once the database says this person is on the job's desk. Null while it is asked, and when the asking failed. */
   onDesk: boolean | null
   loading: boolean
   failure: OfflineRecoveryLastError | null
@@ -78,22 +79,39 @@ export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChec
   const io = options.io ?? supabaseStartChecksIo
   const readers = options.readers !== undefined ? options.readers : options.io ? null : supabaseStartReadersIo
   const [onDesk, setOnDesk] = useState<boolean | null>(null)
+  // The desk check is out: the first one, or one asked again after it failed.
+  const [asking, setAsking] = useState(true)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [loading, setLoading] = useState(false)
   const [gen, setGen] = useState(0)
+  const [deskGen, setDeskGen] = useState(0)
+
+  // Another job's failure is not this job's.
+  useEffect(() => setFailure(null), [io, job.id])
 
   useEffect(() => {
     let live = true
     setOnDesk(null)
+    setAsking(true)
     io.onDesk(job.id).then(
-      (yes) => live && setOnDesk(yes),
-      () => live && setOnDesk(false),
+      (yes) => {
+        if (!live) return
+        setOnDesk(yes)
+        if (!yes) setFailure(null)
+        setAsking(false)
+      },
+      (e: unknown) => {
+        if (!live) return
+        // A check that failed is not a no. The desk stays unknown, and the section says why and offers Retry.
+        setFailure(recoveryFailureFromError(e, 'The list could not be read.'))
+        setAsking(false)
+      },
     )
     return () => {
       live = false
     }
-  }, [io, job.id])
+  }, [io, job.id, deskGen])
 
   const read = useCallback(async (): Promise<Loaded> => {
     const [lines, rows, settings, templates, gcContact] = await Promise.all([
@@ -128,7 +146,8 @@ export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChec
     }
   }, [onDesk, read, gen])
 
-  const reload = useCallback(() => setGen((g) => g + 1), [])
+  // Retry asks again for what failed: the desk check while the desk is unknown, the list once it is known.
+  const reload = useCallback(() => (onDesk === true ? setGen((g) => g + 1) : setDeskGen((g) => g + 1)), [onDesk])
   const press = useCallback(
     async (write: (io: StartChecksIo) => Promise<void>) => {
       await write(io)
@@ -152,7 +171,7 @@ export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChec
 
   return {
     onDesk,
-    loading: onDesk === null || loading,
+    loading: asking || loading,
     failure,
     lines: mine?.lines ?? [],
     stages,

@@ -101,8 +101,9 @@ async function readOf<T>(table: string, cols: string, jobIds: readonly string[],
 }
 
 export async function onStartChecksDesk(jobId: string): Promise<boolean> {
-  const { data, error } = await db.rpc('start_checks_desk', { p_job_id: jobId })
-  return !error && data === true
+  // A check that fails throws: it is not a no, and the screen says why and offers Retry.
+  const data = await withSupabaseRetry(async () => db.rpc('start_checks_desk', { p_job_id: jobId }), 'check the job’s desk')
+  return data === true
 }
 
 export async function readStageLines(jobId: string): Promise<StageLine[]> {

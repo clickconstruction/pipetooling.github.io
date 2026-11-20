@@ -89,6 +89,26 @@ describe('JobDocumentsStartChecks', () => {
     expect(screen.queryByTestId('job-documents-start-checks')).toBeNull()
   })
 
+  it('a desk check that fails on a lost signal draws the heading with Retry, and Retry asks again and draws the list', async () => {
+    const db = seeded({ failDesk: new TypeError('Failed to fetch') })
+    await renderSettled(<JobDocumentsStartChecks job={JOB} io={memoryStartChecksIo(db)} todayYmd={TODAY} />, { loaded: () => screen.findByRole('button', { name: 'Retry' }) })
+    const section = screen.getByTestId('job-documents-start-checks')
+    expect(within(section).getByRole('heading', { name: 'Before we start' })).toBeTruthy()
+    expect(within(section).getByRole('alert')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Top Out/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('button', { name: /^Top Out/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('after a desk check that failed, a no on Retry draws no section', async () => {
+    const db = seeded({ onDesk: false, failDesk: new TypeError('Failed to fetch') })
+    await renderSettled(<JobDocumentsStartChecks job={JOB} io={memoryStartChecksIo(db)} todayYmd={TODAY} />, { loaded: () => screen.findByRole('button', { name: 'Retry' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(screen.queryByTestId('job-documents-start-checks')).toBeNull())
+  })
+
   it('draws each stage as a line with its days and its ready bar', async () => {
     await mount(seeded())
     expect(screen.getByRole('heading', { name: 'Before we start' })).toBeTruthy()

@@ -118,6 +118,17 @@ describe('the Schedule look', () => {
     expect(cards().map((c) => c.dataset.scheduleStage)).toEqual(['under', 'rough'])
   })
 
+  it('a desk check that fails shows Retry in place of a look that is a job short, and Retry reads every job', async () => {
+    // The first job's check is lost. Left out without a word, the look would draw the other job's two stages alone.
+    await mount(seeded({ failDesk: new TypeError('Failed to fetch') }))
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(screen.getByTestId('shows').textContent).toBe('true')
+    expect(cards().length).toBe(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
   it('draws the banner: what they owe us, who the contact is, and how far they have moved', async () => {
     await mount(seeded())
     await waitFor(() => expect(cards().length).toBe(4))
