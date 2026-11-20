@@ -120,7 +120,8 @@ describe('DashboardJobModeCard — the press bar on a phone', { timeout: 15_000 
     await screen.findByText(/Today · 1 of 3 done/)
     const bar = await screen.findByTestId('job-mode-press-bar')
     expect(bar.style.position).toBe('fixed')
-    expect(bar.style.bottom).toBe('var(--app-bottom-chrome, 0px)')
+    // On the tab bar's measured top edge, lapped over its border (v2.8035).
+    expect(bar.style.bottom).toBe('calc(var(--app-bottom-chrome, 0px) - 1px)')
     expect(Number(bar.style.zIndex)).toBeGreaterThan(700)
 
     const turnaway = screen.getByTestId('job-mode-press-turnaway')

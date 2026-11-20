@@ -1,10 +1,11 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { useAuth } from '../../hooks/useAuth'
 import { useLongPress } from '../../hooks/useLongPress'
+import { APP_TAB_BAR_VAR, tabBarHeightPx } from '../../lib/bottomChrome'
 import { activeDockKey, phoneDockPage, type PhoneDockPageKey } from '../../lib/phoneDock'
 import { SHORT_DASHBOARD_HOME_STATE, SHORT_DASHBOARD_PATH } from '../../lib/dashboard/shortDashboard'
 import { PhoneDockGlyph } from './PhoneDockGlyph'
@@ -17,6 +18,11 @@ import {
   EMPTY_DISPATCH_BADGE_COUNTS,
 } from '../../lib/dispatchInboxBadge'
 
+/**
+ * The tab bar's minimum height. It is not the bar's height: the minimum is over a border box, so on a
+ * phone with a home indicator the inset is counted inside it and the bar stands at its content plus
+ * the inset. What sits on the bar reads its measured height (`--app-tab-bar`, `src/lib/bottomChrome.ts`).
+ */
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 /**
  * The bar's stacking level: above everything a page draws, under every window. A window is a
@@ -180,6 +186,32 @@ export function DispatchModeFooter({
   const location = useLocation()
   const keyboardOpen = useOnScreenKeyboardOpen()
   const { user: authUser, role } = useAuth()
+  const navRef = useRef<HTMLElement>(null)
+
+  // The bar's real height, published while it is mounted (v2.8035): the press bar, the page's padding
+  // and every window that stops above the bar sit on it, so none floats over a strip of the page.
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    const nav = navRef.current
+    if (!nav) return
+    // The box with its padding and border, untouched by the keyboard's slide (a translate).
+    const apply = () => {
+      const px = tabBarHeightPx(nav.getBoundingClientRect().height)
+      if (px == null) root.style.removeProperty(APP_TAB_BAR_VAR)
+      else root.style.setProperty(APP_TAB_BAR_VAR, `${px}px`)
+    }
+    apply()
+    // The border box: a turned phone changes the inset, which is padding, and leaves the content box alone.
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null
+    observer?.observe(nav, { box: 'border-box' })
+    window.addEventListener('resize', apply)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', apply)
+      root.style.removeProperty(APP_TAB_BAR_VAR)
+    }
+  }, [])
+
   const roleDock = variant === 'dispatch' && slots && onOpenMore ? { slots, onOpenMore } : null
   const active = roleDock ? null : activeTabForPath(location.pathname, variant, shortHome)
   const activeSlot = roleDock ? activeDockKey(location.pathname, location.search, roleDock.slots) : null
@@ -192,6 +224,7 @@ export function DispatchModeFooter({
 
   return (
     <nav
+      ref={navRef}
       aria-label={variant === 'job' ? 'Job Mode tabs' : 'Dispatch Mode tabs'}
       data-app-bottom-chrome=""
       aria-hidden={keyboardOpen || undefined}
