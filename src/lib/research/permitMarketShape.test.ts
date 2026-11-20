@@ -77,7 +77,7 @@ describe('builderTies', () => {
 })
 
 describe('how much is being built', () => {
-  const permit = (over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'ridgewaybuilders', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-10-01', declared_value: null, ...over })
+  const permit = (over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'ridgewaybuilders', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-10-01', declared_value: null, address_key: null, ...over })
 
   it('counts the whole months of the year, and leaves this month out', () => {
     const permits = [permit({ issued_on: '2025-11-25' }), permit({ issued_on: '2025-12-02' }), permit({ issued_on: '2026-10-01' }), permit({ issued_on: '2026-10-30' }), permit({ issued_on: null, submitted_on: '2026-10-31', stage: 'applied' }), permit({ issued_on: '2026-11-03' })]
