@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 import { PaperPartyAddToList } from './PaperPartyAddToList'
 
 const io = vi.hoisted(() => ({
@@ -15,6 +16,9 @@ const io = vi.hoisted(() => ({
   did: [] as string[],
   failName: null as null | Error,
   failRead: null as null | Error,
+  /** What a customer search and the short lists' read throw, when they fail. */
+  failSearch: null as unknown,
+  failLists: null as unknown,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -26,8 +30,14 @@ vi.mock('../../lib/documents/paperPartyIo', () => ({
     return io.person
   },
   readPartyPaperNames: async () => io.papers,
-  readPartyShortLists: async () => ({ customerPeople: [], supplyHouses: [{ id: 'h1', name: 'Tallgrass Supply Co.' }], reps: [] }),
-  searchPartyCustomers: async (typed: string) => (typed.toLowerCase().includes('ridge') ? [{ id: 'c1', name: 'Ridgeway Builders' }] : []),
+  readPartyShortLists: async () => {
+    if (io.failLists) throw io.failLists
+    return { customerPeople: [], supplyHouses: [{ id: 'h1', name: 'Tallgrass Supply Co.' }], reps: [] }
+  },
+  searchPartyCustomers: async (typed: string) => {
+    if (io.failSearch) throw io.failSearch
+    return typed.toLowerCase().includes('ridge') ? [{ id: 'c1', name: 'Ridgeway Builders' }] : []
+  },
   addSupplyHouse: async (name: string) => {
     io.did.push(`house ${name}`)
     return 'h-new'
@@ -63,6 +73,8 @@ beforeEach(() => {
   io.did = []
   io.failName = null
   io.failRead = null
+  io.failSearch = null
+  io.failLists = null
 })
 afterEach(() => cleanup())
 
@@ -119,6 +131,45 @@ describe('PaperPartyAddToList', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
     fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'tall' } })
     expect(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ })).toBeTruthy()
+  })
+
+  it('a customer search that fails says so under the find box, and reads again on Retry', async () => {
+    io.failSearch = new Error('TypeError: Failed to fetch')
+    await open()
+    fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+    fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'ridge' } })
+    const retry = await screen.findByRole('button', { name: 'Retry' }, { timeout: 3000 })
+    expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Ridgeway Builders/ })).toBeNull()
+    io.failSearch = null
+    fireEvent.click(retry)
+    expect(await screen.findByRole('button', { name: /^Ridgeway Builders/ }, { timeout: 3000 })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
+  it('supply houses that do not read say so, and read again on Retry', async () => {
+    io.failLists = new Error('TypeError: Failed to fetch')
+    await open()
+    fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+    const retry = await screen.findByRole('button', { name: 'Retry' })
+    expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
+    io.failLists = null
+    fireEvent.click(retry)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull())
+    fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'tall' } })
+    expect(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ })).toBeTruthy()
+  })
+
+  it('a refused read names its reason after the window’s own sentence', async () => {
+    io.failLists = { code: '42501', message: 'permission denied for table supply_houses' }
+    io.failSearch = { code: '42501', message: 'permission denied for table customers' }
+    await open()
+    fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+    const houses = await screen.findByText(/^The supply houses did not read/)
+    expect(houses.textContent).not.toBe('The supply houses did not read.')
+    fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'ridge' } })
+    const customers = await screen.findByText(/^The customers did not read/, undefined, { timeout: 3000 })
+    expect(customers.textContent).not.toBe('The customers did not read.')
   })
 
   it('a new customer is made in the app’s own form, on the company’s name, then they are kept there', async () => {
