@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-11-01
+last_updated: 2026-11-20
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -540,6 +540,50 @@ green the whole time** — this is the first partial stall on record.
   single CREATE OR REPLACE FUNCTION each, lock_timeout 3s) and a ~530-row
   backfill transaction (18:0x) all completed cleanly well before onset;
   no DDL was in flight during the window.
+
+### 2026-11-20 — Mode B (24-minute stall 20:05–20:29 UTC, ended by a restart; found by a dev seat read)
+
+Found by an agent session whose dev seat reads began to time out at about
+20:10 UTC: the seat listed its tools in under a second and hung on `whoami`,
+the first verb that touches the database. The office was at work (14:05 CST).
+
+- **Step 0**: `http-only` **401 in 0.11–0.15s**, `db-touching` **000 at 20s**
+  on every probe from 20:24:21 to 20:28:22; the first answer was at
+  **20:29:07** (a 401 with SQLSTATE 42501 in 0.16s, which is Postgres
+  answering). A second session's probe at 20:25:49 read the same.
+- **Pooler**: `EAUTHQUERY auth_query secret check timed out` at about 20:23,
+  then `ECIRCUITBREAKER` from 20:23:44; `supabase inspect db blocking`
+  answered `ECIRCUITBREAKER` at 20:26:15. Live forensics were blind, as the
+  playbook says. status.supabase.com read all green throughout.
+- **Sampler** (Step 2a): one gap of **1,438 s**, last sample 20:05:01.97,
+  next 20:29:00.06. Two single missed minutes came first, 19:55 and 20:00.
+- **Leading indicator**: `sample_duration_ms` read 288 at 19:50:00 (34
+  backends `active` with no wait event, 9 `idle in transaction`), 202 at
+  19:54, 193 at 20:03 and **3,750** on the last sample before the stall.
+  Normal that hour was 7–30. Fifteen minutes of warning, not ninety.
+- **Cron** (Step 2b): **18 jobs at 20:00:00 failed with
+  `job startup timeout`**, five minutes before the sampler stopped. The six
+  runs that started at 20:05:02 took 7–11 s each and were the last.
+- **Wait events** (Step 2c): no `Lock` wait in the ninety minutes before.
+  Three backends on an `LWLock` at 19:54. Nothing was lock-blocked, so not
+  Mode A, and no migration held it: the newest version on the ledger was
+  unchanged, and no `db push` was in flight.
+- **Connections** were ordinary: 74–84 before, 46 at the first sample after.
+- **Restart**: `pg_postmaster_start_time()` read **20:28:33 UTC**, and reads
+  answered 34 s later. Whether that was the Dashboard's Restart or Postgres
+  restarting itself was not read here; the Postgres log says which.
+- **Not in flight**: three short read-only catalog reads over the pooler from
+  the session that found it, at 19:55:55, 19:56:48 and about 19:57:30. The
+  19:50 spike came before the first, and the stall began seven and a half
+  minutes after the last.
+- **Lessons**: (1) `job startup timeout` on the top-of-the-hour cron batch came
+  five minutes before the app went dark, so one failed batch is worth a Step 0
+  at once; (2) a dev seat that lists its tools and hangs on `whoami` is the
+  same signature as Step 0, edge alive and Postgres silent; (3) while the
+  breaker is tripped, probe through the API once a minute and open no pooler
+  connection, since each attempt is one more credential lookup Postgres cannot
+  answer; (4) a 401 with a SQLSTATE in its body is a recovery signal, as any
+  HTTP response is.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
