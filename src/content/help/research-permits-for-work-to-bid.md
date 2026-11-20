@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: market, call list, call this week, who to call, picking up, new and busy, never bid, not for us, who holds the work, how much is being built, who builds, companies we bid, tie a name, clock, application to permit, quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: market, call list, call this week, who to call, ask for, who to ask for, looked up, not checked, checked, office phone, picking up, new and busy, never bid, not for us, who holds the work, how much is being built, who builds, companies we bid, tie a name, clock, application to permit, quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -175,9 +175,33 @@ Either answer takes the name off the list for everyone. The next name takes its 
 
 The chips over the list filter it. Each chip shows its count. A chip is left out in a city whose records cannot fill it.
 
-**Ask for** says nobody looked the name up yet. Press **Google the builder** to search for who to ask for.
+**Ask for** on a row says who to ask for at the company. Read [Check who to ask for](#check-who-to-ask-for) before you call.
 
-The list waits when the app cannot read the permits. The red line says why, and no name shows. Press **Retry** to read them again. When only the answers fail to read, the list still shows. A name already answered may then be on the list, and the line under the reason says so.
+The list waits when the app cannot read the permits. The red line says why, and no name shows. Press **Retry** to read them again. When only the answers fail to read, the list still shows. A name already answered may then be on the list, and the line under the reason says so. When only the lookups fail to read, the list still shows. No row then says who to ask for.
+
+## Check who to ask for
+
+**Ask for** sits on each row of **Call this week**. The block holds what was looked up about the company. Up to three facts show, one on a line.
+
+- **What it is** says the kind of company. The five kinds are builder, owner, design firm, permit service and trade.
+- **Office** is the office phone.
+- **Ask for** is one person and their title.
+
+Each fact names the page it came from and the day it was read. Press the page to open it. Nobody at the company was called or written to.
+
+A fact in grey was looked up and not checked. {{chip:gray|Looked up, not checked}} sits beside **Ask for** until someone checks a fact. Treat a grey fact as a lead, since a lookup can be wrong.
+
+Press **Checked** when a fact holds. You check the phone by calling it. You check the person by asking for them. The fact turns bold, like the facts from the permits. Your name and the day go on the line.
+
+Press **Wrong** when a fact does not hold. The fact leaves the row for everyone, and the line says who marked it. Press **Put back** to undo a slip. Press **Not right** on a checked fact that has gone stale.
+
+A looked-up kind also tags the name. The tag is an outline until someone checks the kind. A checked builder moves up with the names that have a building word. A checked design firm, permit service or trade waits behind the other companies.
+
+No lookup takes a name off the list. Press **Not for us** to do that. The kind you say on the builder's sheet always wins over a looked-up kind.
+
+*Could not tell from a public page* means no page said what the company is. Nothing is guessed. Press **Google the builder** to search for what is missing.
+
+A name with no lookup says *Nobody looked this name up yet.* A lookup is run once for a set of names. A name that reads as one person is never looked up.
 
 ## See whether the companies we bid build here
 

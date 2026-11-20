@@ -10,6 +10,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { plumbingOnFile, shortDay, shortMoney, ymdPlusDays, type ResearchPermitRow } from './permitResearch'
 import { BUILDER_KIND_WORDS, builderName, isBuilderKind, placeOf, type BuilderKind, type BuilderRow } from './permitBuilders'
 import { marketJobs, marketPermitsSince, type MarketPermit } from './permitMarket'
+import { lookupOrder, lookupTag, type BuilderLookup } from './builderLookups'
 import type { SitePermit } from './permitPublic'
 
 // ---------- the answers ----------
@@ -218,8 +219,12 @@ export type CallRow = {
   mostly: string | null
   /** An answer whose day to look again has come, on a name with a new job: it is offered again, and says so. */
   earlier: CallStanding | null
-  /** The name says it builds (`saysItBuilds`): it leads the list. */
+  /** The name says it builds (`saysItBuilds`), or a lookup a person checked says it is a builder: it leads the list. */
   leads: boolean
+  /** A lookup a person checked says it is a design firm, a permit service or a trade: it waits behind the other companies. */
+  waits: boolean
+  /** What was looked up about the name (`builderLookups.ts`). Null when nobody looked. */
+  lookup: BuilderLookup | null
   builder: BuilderRow
 }
 
@@ -239,7 +244,9 @@ function quarter(sorted: readonly number[], share: number): number {
  *
  * The order, with no score: a name that says it builds (`saysItBuilds`), then a name that reads
  * as a company, then a job open now, then picking up or new and busy, then never bid, then the
- * most jobs in ninety days.
+ * most jobs in ninety days. A lookup a person checked moves a name between the first two
+ * (`lookupOrder`): a checked builder leads, and a checked design firm, permit service or trade
+ * waits behind the companies. A lookup nobody checked moves nothing, and no lookup removes a name.
  */
 export function callRows(input: {
   builders: readonly BuilderRow[]
@@ -247,6 +254,8 @@ export function callRows(input: {
   /** The tab's rows for the city, for the jobs open now. */
   rows: readonly ResearchPermitRow[]
   standings: ReadonlyMap<string, CallStanding>
+  /** What was looked up, by builder key. A fact tags a name, and orders it only once a person checked it. It never removes a name. */
+  lookups?: ReadonlyMap<string, BuilderLookup>
   recordsStartYmd: string | null
   todayYmd: string
 }): CallRow[] {
@@ -280,6 +289,8 @@ export function callRows(input: {
     const openJobs = open.get(b.key) ?? []
     if (standing && !backWithNewJob(standing, openJobs)) continue
     const values = reliable ? [...t.values].sort((x, y) => x - y) : []
+    const lookup = input.lookups?.get(b.key) ?? null
+    const looked = lookupOrder(lookup, isBuilderKind(b.kind))
     let mostly: string | null = null
     for (const [work, n] of t.work) if (n * 2 >= t.issued && (mostly == null || n > (t.work.get(mostly) ?? 0))) mostly = work
     out.push({
@@ -300,15 +311,18 @@ export function callRows(input: {
       typical: values.length >= 3 ? { low: quarter(values, 0.25), high: quarter(values, 0.75) } : null,
       mostly,
       earlier: standing,
-      leads: saysItBuilds(b),
+      leads: looked === 'waits' ? false : looked === 'leads' || saysItBuilds(b),
+      waits: looked === 'waits',
+      lookup,
       builder: b,
     })
   }
   const up = (r: CallRow) => r.trend === 'picking_up' || r.trend === 'new_busy'
+  const company = (r: CallRow) => r.reads === 'builder' && !r.waits
   return out.sort(
     (a, b) =>
       Number(b.leads) - Number(a.leads) ||
-      Number(b.reads === 'builder') - Number(a.reads === 'builder') ||
+      Number(company(b)) - Number(company(a)) ||
       Number(b.openJobs.length > 0) - Number(a.openJobs.length > 0) ||
       Number(up(b)) - Number(up(a)) ||
       Number(b.bids === 0) - Number(a.bids === 0) ||
@@ -358,7 +372,8 @@ export function callChips(input: { trendKnown: boolean; hasApplications: boolean
 
 // ---------- the words ----------
 
-export type CallTag = { words: string; tone: 'green' | 'amber' | 'red' | 'blue' | 'grey' }
+/** `outline` is a tag from a lookup nobody checked: drawn as an outline, not a fill. */
+export type CallTag = { words: string; tone: 'green' | 'amber' | 'red' | 'blue' | 'grey'; outline?: boolean }
 
 const TREND_WORDS: Record<CallTrend, CallTag> = {
   picking_up: { words: 'Picking up', tone: 'green' },
@@ -377,7 +392,10 @@ export function callTags(row: CallRow, todayYmd: string): CallTag[] {
   else tags.push({ words: `We bid ${row.bids}, won ${row.won}`, tone: row.won > 0 ? 'green' : row.bids >= NO_WIN_RED_BIDS ? 'red' : 'amber' })
   if (row.openJobs.length > 0) tags.push({ words: `${row.openJobs.length} job${row.openJobs.length === 1 ? '' : 's'} open now`, tone: 'amber' })
   if (row.good) tags.push({ words: 'Good', tone: 'green' })
+  // The office's own kind is the tag where it is said. Else a looked-up kind, which says more than a reading of the name.
+  const looked = row.kind ? null : lookupTag(row.lookup)
   if (row.kind) tags.push({ words: BUILDER_KIND_WORDS[row.kind], tone: 'grey' })
+  else if (looked) tags.push(looked)
   else if (row.reads === 'files') tags.push({ words: 'May file for others', tone: 'grey' })
   else if (row.reads === 'person') tags.push({ words: 'Could be a person', tone: 'grey' })
   if (row.earlier) tags.push({ words: `${row.earlier.answer === 'pursue' ? 'Pursued' : 'Passed'} ${shortDay(answeredDay(row.earlier.row), todayYmd)}`, tone: 'grey' })
@@ -515,6 +533,15 @@ export function permitRowOfSite(city: string, p: SitePermit, builder: Pick<Build
 
 /** The reason kept on the answer and on the permit when a name is pursued from the list. */
 export const PURSUED_FROM_LIST = 'Pursued from the call list.'
+
+/**
+ * The names a one-time lookup takes: the first `n` on the list, in its own order, that do not
+ * read as one person. A private person is never looked up. A name already looked up is skipped,
+ * so a second run takes the next ones.
+ */
+export function lookupCandidates(rows: readonly CallRow[], n: number): CallRow[] {
+  return rows.filter((r) => r.reads !== 'person' && r.lookup == null).slice(0, n)
+}
 
 /** What Ask for says until a name is looked up, and what the press beside it does. */
 export const ASK_FOR_EMPTY = { main: 'Nobody looked this name up yet.', tail: 'opens a search for who to ask for.' } as const

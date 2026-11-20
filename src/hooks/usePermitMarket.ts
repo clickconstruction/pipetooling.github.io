@@ -3,7 +3,7 @@ import { formatErrorMessage } from '../utils/errorHandling'
 import { RESEARCH_CITIES } from '../lib/research/permitResearch'
 import { marketBidsSince, marketPermitsSince, type CityBuilders, type MarketBid, type MarketPermit } from '../lib/research/permitMarket'
 import type { CallAnswerRow } from '../lib/research/permitCallList'
-import { loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits } from '../lib/research/permitMarketIo'
+import { loadBuilderLookups, loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits, type BuilderLookupReads } from '../lib/research/permitMarketIo'
 
 /** What the Market view reads once: our bids of two years and every city's Builders rows. */
 export type PermitMarketGround = { bids: MarketBid[]; builders: CityBuilders[] }
@@ -22,6 +22,10 @@ export type PermitMarketReads = {
   answers: CallAnswerRow[] | null
   answersError: string | null
   reloadAnswers: () => void
+  /** What was looked up about builders, with the checks on it. Null while it reads. Empty before the tables are on the database, and when the first read fails. */
+  lookups: BuilderLookupReads | null
+  lookupsError: string | null
+  reloadLookups: () => void
 }
 
 /**
@@ -30,7 +34,8 @@ export type PermitMarketReads = {
  * city, so picking another city reads only that city's year of permits. The answers on the call
  * list are read once and again after each answer. A read that fails says why in its own error,
  * and the parts that do not need it still draw. `reloadPermits` and `reloadAnswers` ask again
- * after a read that failed.
+ * after a read that failed. What was looked up about builders is read once and again after each
+ * check, the same way, and `reloadLookups` asks again.
  */
 export function usePermitMarket(city: string, todayYmd: string): PermitMarketReads {
   const [ground, setGround] = useState<PermitMarketGround | null>(null)
@@ -42,6 +47,9 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
   const [answersError, setAnswersError] = useState<string | null>(null)
   const [answersAsked, setAnswersAsked] = useState(0)
   const [permitsAsked, setPermitsAsked] = useState(0)
+  const [lookups, setLookups] = useState<BuilderLookupReads | null>(null)
+  const [lookupsError, setLookupsError] = useState<string | null>(null)
+  const [lookupsAsked, setLookupsAsked] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -96,7 +104,30 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
     }
   }, [answersAsked])
 
+  useEffect(() => {
+    let live = true
+    loadBuilderLookups()
+      .then((read) => {
+        if (!live) return
+        setLookups(read ?? { rows: [], checks: [] })
+        setLookupsError(null)
+      })
+      .catch((e) => {
+        if (!live) return
+        setLookupsError(formatErrorMessage(e))
+        // The list still draws, and each Ask for block says the lookups could not be read.
+        setLookups((held) => held ?? { rows: [], checks: [] })
+      })
+    return () => {
+      live = false
+    }
+  }, [lookupsAsked])
+
   const reload = useCallback(() => setAsked((n) => n + 1), [])
+  const reloadLookups = useCallback(() => {
+    setLookupsError(null)
+    setLookupsAsked((n) => n + 1)
+  }, [])
   const reloadAnswers = useCallback(() => {
     setAnswersError(null)
     setAnswersAsked((n) => n + 1)
@@ -108,5 +139,5 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
   }, [])
   // Another city's permits are never drawn under this city's name while its own read is on the way.
   const mine = permits?.city === city ? permits : null
-  return { ground, loading, error, reload, permits: mine?.rows ?? null, permitsError: mine?.error ?? null, reloadPermits, answers, answersError, reloadAnswers }
+  return { ground, loading, error, reload, permits: mine?.rows ?? null, permitsError: mine?.error ?? null, reloadPermits, answers, answersError, reloadAnswers, lookups, lookupsError, reloadLookups }
 }

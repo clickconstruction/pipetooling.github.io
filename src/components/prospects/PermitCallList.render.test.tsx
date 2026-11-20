@@ -6,6 +6,7 @@ import type { BuilderRow } from '../../lib/research/permitBuilders'
 import type { MarketPermit } from '../../lib/research/permitMarket'
 import type { ResearchPermitRow } from '../../lib/research/permitResearch'
 import { callChips, callRows, foldCallAnswers, type CallAnswerRow, type CallStanding } from '../../lib/research/permitCallList'
+import { foldLookups, type LookupCheckRow, type LookupRow } from '../../lib/research/builderLookups'
 
 /**
  * Permits, Market: the call list (punch list #405, step two). Five names with their reasons, the
@@ -14,7 +15,7 @@ import { callChips, callRows, foldCallAnswers, type CallAnswerRow, type CallStan
  * either. Every company, person, address and number here is made up.
  */
 const research = vi.hoisted(() => ({ approachFromPermit: vi.fn(), loadPermitsOfBuilder: vi.fn(), recordVerdict: vi.fn() }))
-const marketIo = vi.hoisted(() => ({ recordCallAnswer: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ recordCallAnswer: vi.fn(), recordLookupCheck: vi.fn() }))
 vi.mock('../../lib/research/permitResearchIo', () => research)
 vi.mock('../../lib/research/permitMarketIo', () => marketIo)
 
@@ -78,17 +79,18 @@ const ROWS = [row(), row({ id: 'p2', address: '77 KILN ST', submitted_on: '2026-
 const answer = (over: Partial<CallAnswerRow> = {}): CallAnswerRow => ({ id: 'a1', builder_key: 'larkspurbuilders', answer: 'not_for_us', reason: 'Too far for us', look_again_on: '2027-11-19', city: 'San Antonio', prospect_id: null, permit_id: null, answered_by: 'u2', answered_at: '2026-11-18T15:00:00Z', ...over })
 
 const onAnswered = vi.fn()
+const onLookupChecked = vi.fn()
 const onRetry = vi.fn()
 const onChanged = vi.fn()
 const onOpenBuilder = vi.fn()
 const onOpenPermit = vi.fn()
 
-function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: string; builders?: BuilderRow[]; permits?: MarketPermit[]; rows?: ResearchPermitRow[]; recordsStart?: string | null; loading?: boolean; error?: string | null; answersError?: string | null } = {}) {
+function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: string; builders?: BuilderRow[]; permits?: MarketPermit[]; rows?: ResearchPermitRow[]; recordsStart?: string | null; loading?: boolean; error?: string | null; answersError?: string | null; lookups?: LookupRow[]; checks?: LookupCheckRow[]; lookupsError?: string | null } = {}) {
   const builders = over.builders ?? BUILDERS
   const rows = over.rows ?? ROWS
   const recordsStart = over.recordsStart === undefined ? '2025-01-01' : over.recordsStart
   const standings: Map<string, CallStanding> = foldCallAnswers(over.answers ?? [], TODAY)
-  const list = callRows({ builders, permits: over.permits ?? PERMITS, rows, standings, recordsStartYmd: recordsStart, todayYmd: TODAY })
+  const list = callRows({ builders, permits: over.permits ?? PERMITS, rows, standings, lookups: foldLookups(over.lookups ?? [], over.checks ?? []), recordsStartYmd: recordsStart, todayYmd: TODAY })
   const known = recordsStart === '2025-01-01'
   return renderWithProviders(
     <PermitCallList
@@ -104,6 +106,7 @@ function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: stri
       loading={over.loading ?? false}
       error={over.error ?? null}
       answersError={over.answersError ?? null}
+      lookupsError={over.lookupsError ?? null}
       onRetry={onRetry}
       reach={known ? 'in the last year' : 'since Aug 27'}
       trendKnown={known}
@@ -114,6 +117,7 @@ function draw(over: { answers?: CallAnswerRow[]; isMobile?: boolean; city?: stri
         { id: 'u2', name: 'Sam' },
       ]}
       onAnswered={onAnswered}
+      onLookupChecked={onLookupChecked}
       onChanged={onChanged}
       onOpenBuilder={onOpenBuilder}
       onOpenPermit={onOpenPermit}
@@ -127,6 +131,8 @@ beforeEach(() => {
   research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
   research.recordVerdict.mockReset().mockResolvedValue(undefined)
   marketIo.recordCallAnswer.mockReset().mockResolvedValue(undefined)
+  marketIo.recordLookupCheck.mockReset().mockResolvedValue(undefined)
+  onLookupChecked.mockReset()
   onAnswered.mockReset()
   onRetry.mockReset()
   onChanged.mockReset()
@@ -321,5 +327,99 @@ describe('answering a name', () => {
     const first = document.querySelector('[data-call-row="ridgewaybuilders"]') as HTMLElement
     expect(first.style.gridTemplateColumns).toBe('26px minmax(0, 1fr)')
     expect(within(first).getByRole('button', { name: 'Pursue Ridgeway Builders' })).toBeTruthy()
+  })
+})
+
+describe('Ask for, once a name is looked up', () => {
+  const fact = (over: Partial<LookupRow>): LookupRow => ({ id: 'f-phone', builder_key: 'ridgewaybuilders', fact: 'phone', value: '(210) 555-0142', detail: '', source_url: 'https://ridgewaybuilders.example/contact', looked_up_on: '2026-11-18', looked_up_by: 'dev', looked_up_how: 'agent', city: 'San Antonio', created_at: '2026-11-18T18:00:00Z', ...over })
+  const FACTS = [
+    fact({ id: 'f-kind', fact: 'kind', value: 'builder', source_url: 'https://ridgewaybuilders.example/about' }),
+    fact({}),
+    fact({ id: 'f-person', fact: 'person', value: 'Dana Whitlock', detail: 'Director of Preconstruction', source_url: 'https://ridgewaybuilders.example/team' }),
+  ]
+  const first = () => document.querySelector('[data-call-row="ridgewaybuilders"]') as HTMLElement
+
+  it('draws each fact grey with its page and day, tags the name as an outline, and leaves the other names as they were', () => {
+    draw({ lookups: FACTS })
+    const row = first()
+    expect(within(row).getByText('Looked up, not checked')).toBeTruthy()
+    expect(within(row).getByText('Looked up: a builder').getAttribute('data-tag')).toBe('looked-up')
+    expect([...row.querySelectorAll('[data-lookup-fact]')].map((el) => [el.getAttribute('data-lookup-fact'), el.getAttribute('data-lookup-state')])).toEqual([
+      ['kind', 'unchecked'],
+      ['phone', 'unchecked'],
+      ['person', 'unchecked'],
+    ])
+    expect(row.querySelectorAll('[data-value="looked-up"]')).toHaveLength(3)
+    expect(row.querySelector('[data-value="worked-out"]')).toBeNull()
+    expect(within(row).getByRole('link', { name: '(210) 555-0142' }).getAttribute('href')).toBe('tel:+12105550142')
+    expect(within(row).getByRole('link', { name: 'ridgewaybuilders.example/team' }).getAttribute('href')).toBe('https://ridgewaybuilders.example/team')
+    expect(within(row).getByText(/Director of Preconstruction/)).toBeTruthy()
+    expect(within(row).getByText(/Nobody was called or written to\./)).toBeTruthy()
+    expect(within(row).queryByText('Nobody looked this name up yet.')).toBeNull()
+    const second = document.querySelector('[data-call-row="tallpinebuilders"]') as HTMLElement
+    expect(within(second).getByText('Nobody looked this name up yet.')).toBeTruthy()
+  })
+
+  it('keeps a press of Checked on one fact, with a toast, and reads the lookups again', async () => {
+    draw({ lookups: FACTS })
+    fireEvent.click(within(first()).getByRole('button', { name: 'Checked: the office phone of Ridgeway Builders' }))
+    await waitFor(() => expect(marketIo.recordLookupCheck).toHaveBeenCalledWith({ lookupId: 'f-phone', verdict: 'checked' }))
+    await waitFor(() => expect(onLookupChecked).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Checked the office phone of Ridgeway Builders.')).toBeTruthy()
+    expect(marketIo.recordCallAnswer).not.toHaveBeenCalled()
+  })
+
+  it('says why a press was not kept, and reads nothing again', async () => {
+    marketIo.recordLookupCheck.mockRejectedValue(new Error('Could not keep the check: the network is down'))
+    draw({ lookups: FACTS })
+    fireEvent.click(within(first()).getByRole('button', { name: 'Wrong: the person to ask for of Ridgeway Builders' }))
+    expect(await screen.findByText('Could not keep the check: the network is down')).toBeTruthy()
+    expect(onLookupChecked).not.toHaveBeenCalled()
+  })
+
+  it('draws a checked fact plain bold with who and when, and a fact marked wrong as a line with Put back', async () => {
+    const checks: LookupCheckRow[] = [
+      { id: 'c1', lookup_id: 'f-phone', verdict: 'checked', said_by: 'u1', said_at: '2026-11-19T15:00:00Z' },
+      { id: 'c2', lookup_id: 'f-person', verdict: 'wrong', said_by: 'u2', said_at: '2026-11-19T16:00:00Z' },
+    ]
+    draw({ lookups: FACTS, checks })
+    const row = first()
+    expect(within(row).getByText('1 of 2 checked')).toBeTruthy()
+    const phone = row.querySelector('[data-lookup-fact="phone"]') as HTMLElement
+    expect(phone.getAttribute('data-lookup-state')).toBe('checked')
+    expect(phone.querySelector('[data-value="worked-out"]')?.textContent).toBe('(210) 555-0142')
+    expect(phone.textContent).toContain('Checked by you, Nov 19')
+    const person = row.querySelector('[data-lookup-fact="person"]') as HTMLElement
+    expect(person.getAttribute('data-lookup-state')).toBe('wrong')
+    expect(person.textContent).toContain('Marked wrong by Sam, Nov 19.')
+    // The wrong value is off the row.
+    expect(within(row).queryByText(/Dana Whitlock/)).toBeNull()
+    fireEvent.click(within(person).getByRole('button', { name: 'Put back: the person to ask for of Ridgeway Builders' }))
+    await waitFor(() => expect(marketIo.recordLookupCheck).toHaveBeenCalledWith({ lookupId: 'f-person', verdict: 'back' }))
+    fireEvent.click(within(phone).getByRole('button', { name: 'Not right: the office phone of Ridgeway Builders' }))
+    await waitFor(() => expect(marketIo.recordLookupCheck).toHaveBeenLastCalledWith({ lookupId: 'f-phone', verdict: 'wrong' }))
+    // A gap brings the Google press back.
+    expect(within(row).getByRole('link', { name: 'Search Google for Ridgeway Builders' })).toBeTruthy()
+  })
+
+  it('says a kind could not be told and what was not found, and guesses nothing', () => {
+    draw({ lookups: [fact({ id: 'f-kind', fact: 'kind', value: 'unknown', source_url: '' }), fact({})] })
+    const row = first()
+    expect(row.querySelector('[data-lookup-fact="kind"]')?.textContent).toBe('Could not tell from a public page. Looked Nov 18.')
+    expect(row.querySelector('[data-tag="looked-up"]')).toBeNull()
+    expect(within(row).getByText('No person to ask for was found on a public business page.')).toBeTruthy()
+    expect(within(row).getByText('opens a search for what is missing.')).toBeTruthy()
+  })
+
+  it('still draws the list when the lookups cannot be read, and no row claims nobody looked', () => {
+    draw({ lookupsError: 'Could not read what was looked up about the builders: the network is down' })
+    expect(called()).toHaveLength(5)
+    const alert = screen.getByRole('alert')
+    expect(within(alert).getByText('Could not read what was looked up about the builders: the network is down')).toBeTruthy()
+    expect(within(alert).getByText('The list still draws. No name shows who to ask for until this read comes back.')).toBeTruthy()
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(within(first()).getByText('What was looked up could not be read.')).toBeTruthy()
+    expect(screen.queryByText('Nobody looked this name up yet.')).toBeNull()
   })
 })

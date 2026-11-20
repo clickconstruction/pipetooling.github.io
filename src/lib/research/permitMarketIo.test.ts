@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { from, getSession, rpc } = vi.hoisted(() => ({ from: vi.fn(), getSession: vi.fn(), rpc: vi.fn() }))
 vi.mock('../supabase', () => ({ supabase: { from, rpc, auth: { getSession } } }))
 
-import { loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits, recordCallAnswer } from './permitMarketIo'
+import { loadBuilderLookups, loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits, recordCallAnswer, recordLookupCheck } from './permitMarketIo'
 
 type Answer = { data: unknown[] | null; error: { code: string; message: string } | null; status: number; count?: number | null }
 
@@ -145,6 +145,42 @@ describe('the answers on the call list', () => {
   it('refuses to write for nobody', async () => {
     getSession.mockResolvedValue({ data: { session: null } })
     await expect(recordCallAnswer({ builderKey: 'ridgewaybuilders', answer: 'back', reason: '', lookAgainOn: null, city: 'San Antonio' })).rejects.toThrow('Sign in again to answer.')
+    expect(from).not.toHaveBeenCalled()
+  })
+})
+
+describe('what was looked up about the builders', () => {
+  const facts = [{ id: 'f1', builder_key: 'ridgewaybuilders', fact: 'phone', value: '(210) 555-0142' }]
+  const checks = [{ id: 'c1', lookup_id: 'f1', verdict: 'checked', said_by: 'u1' }]
+
+  it('reads every fact and every press on one, oldest first', async () => {
+    const logs: Record<string, Array<Record<string, unknown>>> = { builder_lookups: [], builder_lookup_checks: [] }
+    from.mockImplementation((name: string) => table(() => ({ data: name === 'builder_lookups' ? facts : checks, error: null, status: 200 }), logs[name]))
+    expect(await loadBuilderLookups()).toEqual({ rows: facts, checks })
+    expect(logs.builder_lookups?.[0]?.select).toBe('id, builder_key, fact, value, detail, source_url, looked_up_on, looked_up_by, looked_up_how, city, created_at')
+    expect(logs.builder_lookups?.[0]?.order).toEqual([['created_at', { ascending: true }], ['id']])
+    expect(logs.builder_lookup_checks?.[0]?.select).toBe('id, lookup_id, verdict, said_by, said_at')
+    expect(logs.builder_lookup_checks?.[0]?.order).toEqual([['said_at', { ascending: true }], ['id']])
+  })
+
+  it('reads as none before the tables are on the database, and says why on any other refusal', async () => {
+    from.mockImplementation(() => table(() => ({ data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.builder_lookups' in the schema cache" }, status: 404 })))
+    expect(await loadBuilderLookups()).toBeNull()
+    from.mockImplementation(() => table(() => ({ data: null, error: { code: '42501', message: 'permission denied for table builder_lookups' }, status: 403 })))
+    await expect(loadBuilderLookups()).rejects.toThrow(/read what was looked up about the builders|read the checks on what was looked up/)
+  })
+
+  it('writes a press on a fact as the person signed in', async () => {
+    const insert = vi.fn().mockResolvedValue({ data: null, error: null, status: 201 })
+    from.mockImplementation(() => ({ insert }))
+    await recordLookupCheck({ lookupId: 'f1', verdict: 'wrong' })
+    expect(from).toHaveBeenCalledWith('builder_lookup_checks')
+    expect(insert).toHaveBeenCalledWith({ lookup_id: 'f1', verdict: 'wrong', said_by: 'u1' })
+  })
+
+  it('refuses to write a press for nobody', async () => {
+    getSession.mockResolvedValue({ data: { session: null } })
+    await expect(recordLookupCheck({ lookupId: 'f1', verdict: 'checked' })).rejects.toThrow('Sign in again to check a fact.')
     expect(from).not.toHaveBeenCalled()
   })
 })

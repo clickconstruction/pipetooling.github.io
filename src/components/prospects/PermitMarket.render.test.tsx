@@ -14,7 +14,7 @@ import type { ResearchPermitRow } from '../../lib/research/permitResearch'
  * four tiles, who holds the work and how much is being built. The call list has its own test.
  * Every company, person and number here is made up.
  */
-const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), recordLookupCheck: vi.fn() }))
 const research = vi.hoisted(() => ({ loadBuilders: vi.fn(), loadPermitsOfBuilder: vi.fn(), markBuilder: vi.fn(), saveBuilder: vi.fn(), pullPermitsBack: vi.fn(), loadRecordsStart: vi.fn(), approachFromPermit: vi.fn(), recordVerdict: vi.fn() }))
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), loadPermitsOfName: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(() => () => {}) }))
 const answersIo = vi.hoisted(() => ({ loadBuilderAnswersGround: vi.fn() }))
@@ -83,6 +83,7 @@ beforeEach(() => {
   marketIo.loadBuildersOfCities.mockReset().mockResolvedValue(BUILDERS)
   marketIo.loadMarketPermits.mockReset().mockResolvedValue(PERMITS)
   marketIo.loadCallAnswers.mockReset().mockResolvedValue([])
+  marketIo.loadBuilderLookups.mockReset().mockResolvedValue({ rows: [], checks: [] })
   marketIo.recordCallAnswer.mockReset().mockResolvedValue(undefined)
   research.loadBuilders.mockReset().mockResolvedValue([])
   research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])

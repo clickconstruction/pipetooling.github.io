@@ -20,6 +20,7 @@ import {
   callWorkWords,
   foldCallAnswers,
   lookAgainOn,
+  lookupCandidates,
   nameReads,
   openJobsByBuilder,
   openJobsTail,
@@ -34,6 +35,7 @@ import {
   type CallAnswerRow,
   type CallStanding,
 } from './permitCallList'
+import { foldLookups, type LookupCheckRow, type LookupRow } from './builderLookups'
 
 /** Every company, person, address and number here is made up. */
 const TODAY = '2026-11-19'
@@ -486,5 +488,80 @@ describe('pursue', () => {
   it('turns a permit read off the table into the row a lead is made from', () => {
     const made = permitRowOfSite('San Antonio', { id: 's1', permit_number: 'COM-BLG-PMT26-00000009', permit_type: 'Comm New Building Permit', kind: 'building', stage: 'issued', work_type: 'New commercial', submitted_on: '2026-01-02', issued_on: '2026-02-03', contact: 'Ridgeway Builders', address: '60 MILLRACE ROW', declared_value: 1_800_000 }, { key: 'ridgewaybuilders', name: null, kind: 'gc' })
     expect(made).toMatchObject({ id: 's1', city: 'San Antonio', stage: 'issued', filed_on: '2026-02-03', address: '60 MILLRACE ROW', contact: 'Ridgeway Builders', builder_key: 'ridgewaybuilders', builder_kind: 'gc', verdict: null, plumber: null })
+  })
+})
+
+describe('what was looked up', () => {
+  const builders = [builder('ridgewaybuilders', 'Ridgeway Builders'), builder('haldenassociates', 'Halden & Associates, Inc.'), builder('copperlinegroup', 'Copperline Group LLC'), builder('danawhitlock', 'Dana Whitlock')]
+  const permits = [...issued('ridgewaybuilders', '2026-10-20', 5), ...issued('haldenassociates', '2026-10-20', 9), ...issued('copperlinegroup', '2026-10-20', 6), ...issued('danawhitlock', '2026-10-20', 4)]
+  const kind = (key: string, value: string, id = `k-${key}`): LookupRow => ({ id, builder_key: key, fact: 'kind', value, detail: '', source_url: `https://${key}.example/about`, looked_up_on: '2026-11-18', looked_up_by: 'dev', looked_up_how: 'agent', city: 'San Antonio', created_at: '2026-11-18T18:00:00Z' })
+  const checked = (lookupId: string): LookupCheckRow => ({ id: `c-${lookupId}`, lookup_id: lookupId, verdict: 'checked', said_by: 'u1', said_at: '2026-11-19T15:00:00Z' })
+  const list = (rows: LookupRow[], checks: LookupCheckRow[] = [], over: BuilderRow[] = builders) => callRows({ builders: over, permits, rows: [], standings: NONE, lookups: foldLookups(rows, checks), recordsStartYmd: RECORDS, todayYmd: TODAY })
+  const keys = (rows: LookupRow[], checks: LookupCheckRow[] = [], over: BuilderRow[] = builders) => list(rows, checks, over).map((r) => r.key)
+
+  // Every name here is new and busy and never bid, so the order turns on the name and then on the ninety days.
+  // With nothing looked up: the name with a building word leads, then the companies, then the name that reads as a person.
+  const asIs = ['ridgewaybuilders', 'haldenassociates', 'copperlinegroup', 'danawhitlock']
+
+  it('carries the lookup on its row, and null where nobody looked', () => {
+    const rows = list([kind('haldenassociates', 'design_firm')])
+    expect(rows.find((r) => r.key === 'haldenassociates')?.lookup?.kind?.row.value).toBe('design_firm')
+    expect(rows.find((r) => r.key === 'ridgewaybuilders')?.lookup).toBeNull()
+  })
+
+  it('moves no name on a lookup nobody checked', () => {
+    expect(keys([])).toEqual(asIs)
+    expect(keys([kind('haldenassociates', 'design_firm'), kind('copperlinegroup', 'builder')])).toEqual(asIs)
+  })
+
+  it('leads with a builder a person checked, and holds a checked design firm, permit service or trade behind the companies', () => {
+    const copper = kind('copperlinegroup', 'builder')
+    expect(keys([copper], [checked(copper.id)])).toEqual(['copperlinegroup', 'ridgewaybuilders', 'haldenassociates', 'danawhitlock'])
+    for (const value of ['design_firm', 'permit_service', 'trade']) {
+      const halden = kind('haldenassociates', value)
+      expect(keys([halden], [checked(halden.id)])).toEqual(['ridgewaybuilders', 'copperlinegroup', 'haldenassociates', 'danawhitlock'])
+    }
+  })
+
+  it('holds a name with a building word behind the companies once a person checked it is a trade', () => {
+    const ridgeway = kind('ridgewaybuilders', 'trade')
+    expect(keys([ridgeway], [checked(ridgeway.id)])).toEqual(['haldenassociates', 'copperlinegroup', 'ridgewaybuilders', 'danawhitlock'])
+  })
+
+  it('never takes a name off the list, whatever was looked up', () => {
+    const rows = [kind('ridgewaybuilders', 'trade'), kind('haldenassociates', 'permit_service'), kind('copperlinegroup', 'unknown'), kind('danawhitlock', 'design_firm')]
+    expect(keys(rows, rows.map((r) => checked(r.id))).sort()).toEqual([...asIs].sort())
+  })
+
+  it('lets the office’s own kind order and tag the name, whatever was looked up', () => {
+    const over = builders.map((b) => (b.key === 'copperlinegroup' ? { ...b, kind: 'owner' } : b))
+    const copper = kind('copperlinegroup', 'builder')
+    expect(keys([copper], [checked(copper.id)], over)).toEqual(asIs)
+    const row = list([copper], [checked(copper.id)], over).find((r) => r.key === 'copperlinegroup') as never
+    expect(callTags(row, TODAY).map((t) => t.words)).toEqual(['New and busy', 'Never bid', 'Owner'])
+  })
+
+  it('tags a looked-up kind as an outline until it is checked, in place of the reading of the name', () => {
+    const halden = kind('haldenassociates', 'design_firm')
+    const tags = (checks: LookupCheckRow[]) => callTags(list([halden], checks).find((r) => r.key === 'haldenassociates') as never, TODAY)
+    expect(tags([])).toEqual([
+      { words: 'New and busy', tone: 'green' },
+      { words: 'Never bid', tone: 'blue' },
+      { words: 'Looked up: a design firm', tone: 'grey', outline: true },
+    ])
+    expect(tags([checked(halden.id)])).toEqual([
+      { words: 'New and busy', tone: 'green' },
+      { words: 'Never bid', tone: 'blue' },
+      { words: 'A design firm, checked', tone: 'grey', outline: false },
+    ])
+    // A kind that could not be told tags nothing, and the reading of the name stands.
+    const dana = callTags(list([kind('danawhitlock', 'unknown')]).find((r) => r.key === 'danawhitlock') as never, TODAY)
+    expect(dana.map((t) => t.words)).toEqual(['New and busy', 'Never bid', 'Could be a person'])
+  })
+
+  it('picks the names to look up: the first on the list, never one that reads as a person, never one already looked up', () => {
+    expect(lookupCandidates(list([]), 25).map((r) => r.key)).toEqual(['ridgewaybuilders', 'haldenassociates', 'copperlinegroup'])
+    expect(lookupCandidates(list([]), 2).map((r) => r.key)).toEqual(['ridgewaybuilders', 'haldenassociates'])
+    expect(lookupCandidates(list([kind('ridgewaybuilders', 'builder')]), 2).map((r) => r.key)).toEqual(['haldenassociates', 'copperlinegroup'])
   })
 })

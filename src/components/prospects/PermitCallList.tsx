@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { EmptyState } from '../EmptyState'
 import { PermitChip } from '../bids/PermitChip'
-import { GoogleSearchPress } from './GoogleSearchPress'
+import { PermitAskFor } from './PermitAskFor'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import type { Researcher } from './PermitSkimDeck'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -9,11 +9,10 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { leadMadeWords, shortDay, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { builderName, pursueReason, type BuilderRow } from '../../lib/research/permitBuilders'
-import { googleAskForCompany } from '../../lib/research/permitPublic'
 import { approachFromPermit, loadPermitsOfBuilder, recordVerdict } from '../../lib/research/permitResearchIo'
-import { recordCallAnswer } from '../../lib/research/permitMarketIo'
+import { recordCallAnswer, recordLookupCheck } from '../../lib/research/permitMarketIo'
+import { LOOKUPS_UNREAD_COST, lookupPressedWords, type LookupStanding, type LookupVerdict } from '../../lib/research/builderLookups'
 import {
-  ASK_FOR_EMPTY,
   CALL_ANSWERS_UNREAD,
   CALL_LIST_UNREAD,
   CALL_SHOWING_WORDS,
@@ -43,8 +42,9 @@ import {
  * with it. **Pursue** makes the lead the skim's Pursue makes, from the builder's newest open job.
  * **Not for us** passes on the name. Either answer takes the name off the list and the next
  * takes its place. The answers are kept in `builder_call_answers`, so the list is the same for
- * everyone and on a reload, and **Put back** undoes one. *Ask for* stands empty until a name is
- * looked up, with the Google press beside it.
+ * everyone and on a reload, and **Put back** undoes one. *Ask for* ([`PermitAskFor`]) shows what
+ * was looked up about the name, grey until a person presses **Checked**, and stands empty with
+ * the Google press for a name nobody looked up. A tag from a lookup nobody checked is an outline.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
 const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
@@ -53,6 +53,8 @@ const primary: CSSProperties = { ...press, background: '#2563eb', border: '1px s
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 // A press inside a line of words: the underline alone marks it, in the words' own colour.
 const wordPress: CSSProperties = { background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 2, textAlign: 'left' }
+// A tag from a lookup nobody checked: an outline, so it never reads as the office's word or a permit fact.
+const outlineTag: CSSProperties = { display: 'inline-block', borderRadius: 999, padding: '0 8px', fontSize: '0.72rem', fontWeight: 500, whiteSpace: 'nowrap', border: '1px dashed currentColor', color: 'var(--text-muted)' }
 const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 600 }
 
 /** How many rows a chip other than This week draws before it asks. */
@@ -73,6 +75,7 @@ export function PermitCallList({
   loading,
   error,
   answersError,
+  lookupsError,
   onRetry,
   reach,
   trendKnown,
@@ -80,6 +83,7 @@ export function PermitCallList({
   recordsStart,
   researchers,
   onAnswered,
+  onLookupChecked,
   onChanged,
   onOpenBuilder,
   onOpenPermit,
@@ -101,6 +105,8 @@ export function PermitCallList({
   error: string | null
   /** Why the answers could not be read. The list still draws, and says an answered name may be on it. */
   answersError: string | null
+  /** Why what was looked up could not be read. The list still draws, and no row claims nobody looked. */
+  lookupsError: string | null
   onRetry: () => void
   /** "in the last year" or "since Aug 26": how far back a count here can see. */
   reach: string | null
@@ -110,6 +116,8 @@ export function PermitCallList({
   researchers: readonly Researcher[]
   /** An answer was written: the answers read again. */
   onAnswered: () => void
+  /** A press on a looked-up fact was written: the lookups read again. */
+  onLookupChecked: () => void
   /** A pursue wrote a verdict on a permit: the tab's rows read again. */
   onChanged: () => void
   onOpenBuilder: (row: BuilderRow) => void
@@ -125,11 +133,13 @@ export function PermitCallList({
   const [sheetError, setSheetError] = useState<string | null>(null)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [answeredOpen, setAnsweredOpen] = useState(false)
+  const [checkingId, setCheckingId] = useState<string | null>(null)
 
   const counts = useMemo(() => callChipCounts(list), [list])
   const shown = useMemo(() => callRowsShowing(list, showing), [list, showing])
   const visible = showing === 'week' ? shown : shown.slice(0, more)
   const nameOf = (userId: string) => (userId === authUserId ? 'You' : (researchers.find((r) => r.id === userId)?.name ?? null))
+  const personOf = (userId: string) => researchers.find((r) => r.id === userId)?.name ?? null
   // The answers that still hold a name off the list, the newest first, for this city's names. An answer whose day has come holds its name off until the name has a new job, so a name not offered is still listed here.
   const answered = useMemo(() => {
     const byKey = new Map(builders.map((b) => [b.key, b]))
@@ -216,6 +226,20 @@ export function PermitCallList({
     }
   }
 
+  /** Checked, Wrong, Not right or Put back on one looked-up fact. The press is kept for everyone, with who and when. */
+  const checkFact = async (call: CallRow, standing: LookupStanding, verdict: LookupVerdict) => {
+    setCheckingId(standing.row.id)
+    try {
+      await recordLookupCheck({ lookupId: standing.row.id, verdict })
+      showToast(lookupPressedWords(verdict, standing.row.fact, call.name), 'success')
+      onLookupChecked()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setCheckingId(null)
+    }
+  }
+
   return (
     <section aria-labelledby="market-call-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
@@ -244,6 +268,16 @@ export function PermitCallList({
         </div>
       )}
 
+      {!error && lookupsError && (
+        <div role="alert" style={{ display: 'grid', gap: 6, justifyItems: 'start' }}>
+          <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{lookupsError}</div>
+          <div style={muted}>{LOOKUPS_UNREAD_COST}</div>
+          <button type="button" onClick={onRetry} style={press}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {error ? null : loading ? (
         <div style={muted}>Reading the year of permits…</div>
       ) : visible.length === 0 ? (
@@ -262,9 +296,15 @@ export function PermitCallList({
                 <div style={{ minWidth: 0, display: 'grid', gap: 5 }}>
                   <strong style={{ fontSize: '0.9375rem', overflowWrap: 'anywhere' }}>{call.name}</strong>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {callTags(call, todayYmd).map((t) => (
-                      <PermitChip key={t.words} chip={t} />
-                    ))}
+                    {callTags(call, todayYmd).map((t) =>
+                      t.outline ? (
+                        <span key={t.words} data-tag="looked-up" style={outlineTag}>
+                          {t.words}
+                        </span>
+                      ) : (
+                        <PermitChip key={t.words} chip={t} />
+                      ),
+                    )}
                   </div>
                   <div style={{ fontSize: '0.8125rem' }}>
                     {callCountWords(call, reach, trendKnown)}
@@ -294,12 +334,7 @@ export function PermitCallList({
                     </div>
                   )}
                   {history && <div style={{ fontSize: '0.8125rem' }}>{history}</div>}
-                  <div style={{ fontSize: '0.8125rem', background: 'var(--bg-200)', borderRadius: 8, padding: '6px 8px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong>Ask for</strong>
-                    <span>{ASK_FOR_EMPTY.main}</span>
-                    <GoogleSearchPress ask={googleAskForCompany(call.name, city)} words="Google the builder" />
-                    <span style={muted}>{ASK_FOR_EMPTY.tail}</span>
-                  </div>
+                  <PermitAskFor name={call.name} city={city} lookup={call.lookup} unread={lookupsError != null} me={authUserId} nameOf={personOf} todayYmd={todayYmd} busyId={checkingId} onPress={(standing, verdict) => void checkFact(call, standing, verdict)} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: 6, flexWrap: 'wrap', gridColumn: isMobile ? '2' : undefined }}>
                   <button type="button" aria-label={`Pursue ${call.name}`} aria-disabled={busy} onClick={() => !busy && void startPursue(call)} style={busy ? { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : primary}>

@@ -13,6 +13,7 @@ import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { reachDay, reachWords, recordsReach } from '../../lib/research/permitReach'
 import { cityNamesPlumbers, type BuilderRow } from '../../lib/research/permitBuilders'
 import { callChips, callRows, callRowsShowing, callTiles, foldCallAnswers, trendKnown, valuesReliable } from '../../lib/research/permitCallList'
+import { foldLookups } from '../../lib/research/builderLookups'
 import { builderTies, noValueBandsWords, permitsByKind, permitsByMonth, plumbersByJobs, valueBands, valueBandsWords } from '../../lib/research/permitMarketShape'
 import { withAnsweredBids } from '../../lib/research/builderAnswers'
 import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
@@ -132,13 +133,16 @@ export function PermitMarket({
   // The open jobs come off the tab's rows, so the list waits for them: an order that shifts under the reader is worse than a wait.
   // A read the list is built from failed: the list says so and waits. Drawn without it, the list reads as empty, or as having no job open.
   const callError = market.permitsError ?? rowsError
-  const callLoading = callError == null && (permits == null || market.answers == null || rowsLoading)
+  // What was looked up is waited for too: a checked lookup moves a name in the order.
+  const lookups = useMemo(() => foldLookups(market.lookups?.rows ?? [], market.lookups?.checks ?? []), [market.lookups])
+  const callLoading = callError == null && (permits == null || market.answers == null || market.lookups == null || rowsLoading)
   const retryCall = () => {
     if (market.permitsError) market.reloadPermits()
     if (market.answersError) market.reloadAnswers()
+    if (market.lookupsError) market.reloadLookups()
     if (rowsError) onRetryRows()
   }
-  const callList = useMemo(() => (permits ? callRows({ builders: cityBuilders, permits, rows, standings, recordsStartYmd: recordsStart, todayYmd }) : []), [permits, cityBuilders, rows, standings, recordsStart, todayYmd])
+  const callList = useMemo(() => (permits ? callRows({ builders: cityBuilders, permits, rows, standings, lookups, recordsStartYmd: recordsStart, todayYmd }) : []), [permits, cityBuilders, rows, standings, lookups, recordsStart, todayYmd])
   const chips = useMemo(() => callChips({ trendKnown: known, hasApplications, valuesReliable: reliable }), [known, hasApplications, reliable])
   const board = useMemo(() => plumbersByJobs(rows, todayYmd), [rows, todayYmd])
   const ties = useMemo(() => builderTies(rows, todayYmd), [rows, todayYmd])
@@ -222,6 +226,7 @@ export function PermitMarket({
         loading={callLoading}
         error={callError}
         answersError={market.answersError}
+        lookupsError={market.lookupsError}
         onRetry={retryCall}
         reach={reachSays}
         trendKnown={known}
@@ -229,6 +234,7 @@ export function PermitMarket({
         recordsStart={recordsStart ? reachDay(recordsStart, todayYmd) : null}
         researchers={researchers}
         onAnswered={market.reloadAnswers}
+        onLookupChecked={market.reloadLookups}
         onChanged={onChanged}
         onOpenBuilder={(row) => setOpened({ city, row })}
         onOpenPermit={onOpenPermit}
