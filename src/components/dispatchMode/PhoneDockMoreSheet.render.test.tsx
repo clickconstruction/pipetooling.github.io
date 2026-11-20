@@ -62,6 +62,18 @@ describe('PhoneDockMoreSheet', () => {
     expect(props.onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('uses the gear menu’s four labels, so the two menus name their groups alike (v2.8059)', () => {
+    mount({
+      modes: [
+        { key: 'task', label: 'Task Mode', on: false, onToggle: vi.fn() },
+        { key: 'dark', label: 'Dark Mode', group: 'show', on: false, onToggle: vi.fn() },
+      ],
+    })
+    for (const label of ['Pages', 'Modes', 'Show', 'Help and settings']) expect(screen.getByText(label)).toBeTruthy()
+    // The last group holds Help and Settings, and its label is no longer a second "Settings".
+    expect(screen.getAllByText('Settings')).toHaveLength(1)
+  })
+
   it('draws no Show label with no switch to list, and no Modes label with no mode', () => {
     mount({ modes: [{ key: 'dark', label: 'Dark Mode', group: 'show', on: false, onToggle: vi.fn() }] })
     expect(screen.queryByText('Modes')).toBeNull()
