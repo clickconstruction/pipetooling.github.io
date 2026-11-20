@@ -77,6 +77,10 @@ last_updated: 2026-11-20
 > `undoLienNoticeApply` runs from `LienFilingTabs.tsx`'s *Undo* on an applied row.
 > No reader of a job's notices changed: the month check, the affidavit's notice paragraph and its gate read filing rows.
 > Since v2.8027 (Grace's yes of 2026-11-20) a missed notice with no month still due hands the step its closed months to tick (`lienApplyMonthsOffered` in `lienNoticeApply.ts`), where it handed none and the step's Apply could only refuse.
+> Since v2.8115 (the owner's answers of 2026-11-20 to the audit of punch list #361) that step opens with no paper picked and no month ticked on such a notice (`lienApplyStartsBlank`, handed down as `apply.startBlank`), where the closed months arrived ticked and one typed reason cleared the warnings for all of them.
+> A draft, awaiting, ready, printed or held notice still opens it with its own months ticked and a lone paper picked.
+> With no month to apply, `LienNoticeAlreadyWent` is the by-hand record at once: handed no month it does not read the property's papers, and when every month offered already has a notice on the job the read ends on the by-hand record.
+> The step tells the desk when it has its final pane (`onReady`, once per read and at mount when none is made), and `byHandPane` lands the pane on its last section again, since the watch on the footer's growth stops after 4 s and a read held longer grew the step past the window.
 
 > **v2.7490 (the title bar's run door is retired, punch list #362, the owner's *Retire it everywhere* of 2026-11-16):** `LienDesk.tsx` draws no `data-lien-desk-run` on a computer;
 > the meter, the small words and `runHiddenByView` / `lastRunWidth` went with it, and [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) has no `run` part (the line needs about 1,039 px for all five tools, 284 less).

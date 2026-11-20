@@ -9,6 +9,7 @@ import {
   lienApplyPayload,
   lienApplyReasonProblem,
   lienApplySetsAside,
+  lienApplyStartsBlank,
   lienNoticedMonthsOnJob,
   lienPaperKey,
   lienPaperWords,
@@ -172,5 +173,17 @@ describe('a notice that already went, applied to a job (v2.7508)', () => {
     // Every other pile keeps the notice's own months, a closed month beside them or not.
     expect(lienApplyMonthsOffered({ pile: 'to_draft', months: ['2026-09'], dueMonths: ['2026-09'], missedMonths: ['2026-07'] })).toEqual(['2026-09'])
     expect(lienApplyMonthsOffered({ pile: 'sent', months: [], dueMonths: [], missedMonths: [] })).toEqual([])
+  })
+
+  it('starts the step blank only on a missed notice with no month still due', () => {
+    // The months offered there are closed ones the desk is not asking for: the office says which the paper stood for.
+    expect(lienApplyStartsBlank({ pile: 'missed', dueMonths: [] })).toBe(true)
+    // A missed notice with a month still due opens on that month, ticked, as a draft does.
+    expect(lienApplyStartsBlank({ pile: 'missed', dueMonths: ['2026-09'] })).toBe(false)
+    // Every other pile keeps its own months ticked and a lone paper picked.
+    for (const pile of ['to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent']) {
+      expect(lienApplyStartsBlank({ pile, dueMonths: ['2026-09'] })).toBe(false)
+      expect(lienApplyStartsBlank({ pile, dueMonths: [] })).toBe(false)
+    }
   })
 })

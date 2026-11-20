@@ -33,6 +33,7 @@ export default function LienNoticeApplyPane({
   months,
   propertyKind,
   lastWorkYmd,
+  startBlank = false,
   userId,
   userName,
   onClose,
@@ -48,6 +49,8 @@ export default function LienNoticeApplyPane({
   months: ReadonlyArray<string>
   propertyKind: string
   lastWorkYmd: string | null
+  /** Open with no paper picked and no month ticked: the months offered are closed ones, and the office says which the paper stood for. */
+  startBlank?: boolean
   userId: string | null
   userName: string
   onClose: () => void
@@ -59,8 +62,8 @@ export default function LienNoticeApplyPane({
 }) {
   const { showToast } = useToastContext()
   const open = useMemo(() => months.filter((m) => !noticedMonths.includes(m)), [months, noticedMonths])
-  const [pickedKey, setPickedKey] = useState<string | null>(papers.length === 1 ? papers[0]!.key : null)
-  const [ticked, setTicked] = useState<Set<string>>(() => new Set(open))
+  const [pickedKey, setPickedKey] = useState<string | null>(!startBlank && papers.length === 1 ? papers[0]!.key : null)
+  const [ticked, setTicked] = useState<Set<string>>(() => new Set(startBlank ? [] : open))
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
 

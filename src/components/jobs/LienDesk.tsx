@@ -135,7 +135,7 @@ import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
-import { lienApplyMonthsOffered } from '../../lib/jobs/lienNoticeApply'
+import { lienApplyMonthsOffered, lienApplyStartsBlank } from '../../lib/jobs/lienNoticeApply'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -2660,6 +2660,8 @@ export default function LienDesk({
           jobNumber: effectiveJobLedgerNumber(job?.hcp_number, job?.click_number) || selected.jobId.slice(0, 8),
           // A missed notice with nothing due offers its closed months to tick too (v2.8027), so a paper already on record can stand for one.
           months: lienApplyMonthsOffered({ pile: selected.pile, months: monthsList, dueMonths: selected.dueMonths, missedMonths: selected.missedMonths }),
+          // Those closed months are not ones the desk asks for, so the step opens with no paper picked and none ticked (the owner's answer of 2026-11-20).
+          startBlank: lienApplyStartsBlank({ pile: selected.pile, dueMonths: selected.dueMonths }),
           propertyKind: selected.propertyKind ?? '',
           lastWorkYmd: job?.lien_last_work_on ?? null,
           userName: authName,
@@ -2687,6 +2689,11 @@ export default function LienDesk({
         // On a phone (v2.4446) the step is a sheet over the desk's card, as in the Lien window: in the footer its 120 px fields cut off their own values.
         layout={isMobile ? 'sheet' : 'box'}
         onCloseWindow={() => setByHandOpen(false)}
+        // The step says when its read of the property's papers has ended and its final pane is drawn, and the pane lands on it again
+        // (the owner's answer of 2026-11-20): the watch on the footer's growth stops after 4 s, and a read held longer grew the step past the window.
+        onReady={() => {
+          if (footInPane) goToSectionRef.current('sign')
+        }}
       />
     ) : null
 
