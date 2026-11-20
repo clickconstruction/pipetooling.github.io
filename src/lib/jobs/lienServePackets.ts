@@ -16,7 +16,9 @@
  * order it comes off the printer, and has boxes for each certified mail number. Pure; `lienServePdf.ts` draws the
  * sheet and the stack and `lienServePrintIo.ts` prints and files.
  */
+import { APP_ORIGIN } from '../appOrigin'
 import { batchWords, type BatchWords } from '../batchWords'
+import { lienDeskHref } from '../lien/lienDeskRoute'
 import { lienServeHolds, lienServeLetterDrawable, lienServeRecipients, type LienServeFacts, type LienServeHold, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { formatYmdMonthDay } from './billedExpectedPay'
@@ -230,8 +232,20 @@ export const LIEN_SERVE_SHEET_WORDS = {
   columns: ['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'],
   /** The label beside the boxes under each envelope's line. */
   numberLabel: 'Certified mail number',
+  /** Under the mail sheet's own code, which opens the list of mail numbers. */
+  code: 'Scan to enter the numbers',
   held: 'Not in this print',
 } as const
+
+/**
+ * The address a printed code opens (v2.7964; the owner, 2026-11-19: "as soon as someone got a certified mail tracking
+ * number, they could enter it right there into the app"): the Lien desk with Filed liens: copies to mail on one
+ * envelope's number box, or on the list of mail numbers when no job is named. It names a job and whose envelope and
+ * nothing else, and the desk asks for a sign-in, so a page left on a desk gives nothing away.
+ */
+export function lienServeMailLink(jobId: string | null, recipient: 'owner' | 'original_contractor' | null = null, origin: string = APP_ORIGIN): string {
+  return `${origin}${lienDeskHref({ copies: { jobId: jobId && jobId.trim() ? jobId.trim() : null, recipient } })}`
+}
 
 /**
  * The divider in front of each envelope's pages (the owner, 2026-11-19, after a 22-envelope print: "to avoid the
@@ -246,6 +260,8 @@ export const LIEN_SERVE_DIVIDER_WORDS = {
   stop: 'Do not mail this page.',
   face: 'The envelope’s face. Write or print the envelope like this.',
   pull: 'Pull this page out before you seal the envelope. It stays on the desk with the mail sheet.',
+  /** Beside the divider's code. Entering a lien's first number marks it mailed that day, so the code is for after the envelope is mailed. */
+  code: ['Scan once this envelope is mailed.', 'It opens this envelope’s number box in the app.'],
   stays: 'stays on the desk',
 } as const
 
@@ -314,7 +330,7 @@ export function lienEnvelopeAddressLines(address: string): string[] {
 }
 
 /** One envelope's line on the mail sheet. */
-export type LienServeSheetRow = { n: number; job: string; to: string; name: string; address: string; /** The address as the envelope carries it (`lienEnvelopeAddressLines`). */ addressLines: string[]; pages: string; mailBy: string }
+export type LienServeSheetRow = { n: number; job: string; to: string; name: string; address: string; /** The address as the envelope carries it (`lienEnvelopeAddressLines`). */ addressLines: string[]; pages: string; mailBy: string; /** What the divider's code opens: this envelope's number box (`lienServeMailLink`). */ link: string }
 
 /** The mail sheet as the print draws it (`lienServePdf.ts`): its words, every envelope in the stack's order and what was left out. */
 export type LienServeSheet = {
@@ -329,6 +345,8 @@ export type LienServeSheet = {
   numberLabel: string
   /** The return address on each divider's envelope face (`lienServeReturnAddress`); empty draws none. */
   from: string[]
+  /** What the sheet's own code opens: the list of mail numbers (`lienServeMailLink`). */
+  link: string
   rows: LienServeSheetRow[]
   heldHead: string
   held: Array<{ job: string; words: string; act: string }>
@@ -347,7 +365,7 @@ export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, op
     const pages = r.file.pages + (opts.letter && r.letter ? 1 : 0)
     return r.envelopes.map((e) => {
       n += 1
-      return { n, job: r.job.jobLabel, to: TO_SHORT[e.recipient], name: e.name, address: e.address, addressLines: lienEnvelopeAddressLines(e.address), pages: lienCopyPagesWords(pages).replace(/ pages?$/, ''), mailBy: r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '' }
+      return { n, job: r.job.jobLabel, to: TO_SHORT[e.recipient], name: e.name, address: e.address, addressLines: lienEnvelopeAddressLines(e.address), link: lienServeMailLink(r.job.jobId, e.recipient), pages: lienCopyPagesWords(pages).replace(/ pages?$/, ''), mailBy: r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '' }
     })
   })
   const anyLetter = opts.letter && run.ready.some((r) => r.letter)
@@ -362,6 +380,7 @@ export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, op
     columns: LIEN_SERVE_SHEET_WORDS.columns,
     numberLabel: LIEN_SERVE_SHEET_WORDS.numberLabel,
     from: [...(opts.from ?? [])],
+    link: lienServeMailLink(null),
     rows,
     heldHead: LIEN_SERVE_SHEET_WORDS.held,
     held: [

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PDFDocument, PDFName, PDFPage } from 'pdf-lib'
-import { buildLienServeJobPdf, buildLienServeStackPdf, drawLienMailSheet, inspectLienCopy, type LienServePdfJob } from './lienServePdf'
+import { qrMatrix } from '../../../supabase/functions/_shared/qrMatrix'
+import { buildLienServeJobPdf, buildLienServeStackPdf, drawLienEnvelopeDivider, drawLienMailSheet, inspectLienCopy, type LienServePdfJob } from './lienServePdf'
 import type { LienServeSheet } from './lienServePackets'
 
 /** A real PDF of `n` pages. Each page's width is `base + its number`, so a page can be told from every other in a print. */
@@ -26,7 +27,8 @@ const sheet = (rows: number, held = 0): LienServeSheet => ({
   columns: ['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'],
   numberLabel: 'Certified mail number',
   from: ['Sample Plumbing LLC', 'PO Box 100', 'Kyle, TX 78640'],
-  rows: Array.from({ length: rows }, (_, i) => ({ n: i + 1, job: `22${i} · Sample Job with a long name that wraps`, to: i % 2 ? 'Original contractor' : 'Owner', name: 'Hollow Creek Holdings LLC — Peña & Søn', address: '88 Sample Ridge Rd, Suite 400, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd, Suite 400', 'Austin, TX 78700'], pages: '3', mailBy: i === 0 ? 'Nov 11 · late' : 'Nov 23' })),
+  link: 'https://app.example/lien-desk?copies=1',
+  rows: Array.from({ length: rows }, (_, i) => ({ n: i + 1, job: `22${i} · Sample Job with a long name that wraps`, to: i % 2 ? 'Original contractor' : 'Owner', name: 'Hollow Creek Holdings LLC — Peña & Søn', address: '88 Sample Ridge Rd, Suite 400, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd, Suite 400', 'Austin, TX 78700'], link: `https://app.example/lien-desk?copies=99999999-2222-4222-8222-22222222222${i % 10}&to=${i % 2 ? 'contractor' : 'owner'}`, pages: '3', mailBy: i === 0 ? 'Nov 11 · late' : 'Nov 23' })),
   heldHead: 'Not in this print',
   held: Array.from({ length: held }, (_, i) => ({ job: `23${i} · Held Job`, words: 'Not printed: no stamped copy saved.', act: 'Add the clerk’s stamped scan on the job’s Lien window.' })),
   foot: ['Mail sheet printed November 19, 2026', 'The first envelope’s divider is the next page'],
@@ -125,6 +127,50 @@ describe('the run', () => {
       expect(drawn.filter((t) => t === 'Sample Plumbing LLC')).toHaveLength(3)
       expect(drawn.some((t) => /return receipt|article no/i.test(t))).toBe(false)
     } finally {
+      words.mockRestore()
+    }
+  })
+
+  it('draws each divider’s own code and the mail sheet’s, module for module, and none for an address that cannot be one', async () => {
+    const rects = vi.spyOn(PDFPage.prototype, 'drawRectangle')
+    const words = vi.spyOn(PDFPage.prototype, 'drawText')
+    /** The dark modules the filled runs of one code cover, read back off the drawing: `side` points square from (`x`, `top`). */
+    const read = (side: number, n: number, pick: (o: { x?: number; y?: number; width?: number; height?: number }) => boolean) => {
+      const runs = rects.mock.calls.map(([o]) => o!).filter((o) => o.borderColor === undefined && pick(o))
+      const cell = side / n
+      const x0 = Math.min(...runs.map((o) => Number(o.x)))
+      const top = Math.max(...runs.map((o) => Number(o.y) + cell))
+      const grid = Array.from({ length: n }, () => new Array<boolean>(n).fill(false))
+      for (const o of runs) {
+        const r = Math.round((top - Number(o.y)) / cell) - 1
+        const c = Math.round((Number(o.x) - x0) / cell)
+        for (let i = 0; i < Math.round(Number(o.width) / cell); i += 1) grid[r]![c + i] = true
+      }
+      return grid
+    }
+    try {
+      const s = sheet(2)
+      const sheetCode = qrMatrix(s.link)!
+      const doc = await PDFDocument.create()
+      await drawLienMailSheet(doc, s)
+      // The sheet's code is 60 points square in the steps box: its runs are a module high.
+      expect(read(60, sheetCode.length, (o) => Math.abs(Number(o.height) - 60 / sheetCode.length - 0.05) < 1e-6)).toEqual(sheetCode)
+      expect(words.mock.calls.map(([t]) => t)).toContain('SCAN TO ENTER THE NUMBERS')
+      rects.mockClear()
+      words.mockClear()
+      const row = s.rows[1]!
+      const code = qrMatrix(row.link)!
+      await drawLienEnvelopeDivider(doc, row, s)
+      expect(read(84, code.length, (o) => Math.abs(Number(o.height) - 84 / code.length - 0.05) < 1e-6)).toEqual(code)
+      expect(words.mock.calls.map(([t]) => t)).toEqual(expect.arrayContaining(['Scan once this envelope is mailed.', 'It opens this envelope’s number box in the app.']))
+      // No address, no code and no words about one.
+      rects.mockClear()
+      words.mockClear()
+      await drawLienEnvelopeDivider(doc, { ...row, link: '' }, s)
+      expect(rects.mock.calls.map(([o]) => o!).filter((o) => o.borderColor === undefined && Number(o.height) < 5)).toEqual([])
+      expect(words.mock.calls.map(([t]) => t)).not.toContain('Scan once this envelope is mailed.')
+    } finally {
+      rects.mockRestore()
       words.mockRestore()
     }
   })

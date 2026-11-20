@@ -4718,12 +4718,18 @@ The dev seat's `sheetSentTo` and Banking's `bankSideSheets` read the same rule s
 The papers the office hands a sub (punch list #350): a **Statement of account** for a period (what each sheet comes to, what was paid, what is *Still open*, the last payments and one line of how it adds up) and a **Work statement** for one sheet (its lines, back-charges, payments, *Paid so far* and *Still open on this statement*);
 and a **Payment record** for one sending (who was paid, how, what it was applied to with open before and after, and what stays open), under the sending's own number `PR-<n>` since v2.7475.
 No paper says invoice, receipt or owed, and six sentences that wait on counsel print boxed as draft wording (`SUB_PAPER_COUNSEL_PENDING`).
-The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in `SubPapersWindow.tsx`): *Statement of account…* on a person's group in **Jobs → Subs → Pay** and on their block in **People → Subs**, *Work statement…* in Print's place on the ⋯ menu of a sheet that is one person's (a shared sheet and a crew sheet keep Print) and under an open sheet in the block, *Payment record…* beside a payment in a sheet's opened row, and the window after Record payment (`AfterRecordPaymentWindow`), which says the sub has been given nothing and offers the record.
+The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in `SubPapersWindow.tsx`): *Statement of account…* on a person's group in **Jobs → Subs → Pay** and on their block in **People → Subs**, *Work statement…* in Print's place on the ⋯ menu of a sheet that is one person's (a shared sheet and a crew sheet keep Print) and under an open sheet in the block, *Payment record…* beside a payment in a sheet's opened row, and the window after Record payment (`AfterRecordPaymentWindow`), which says the sub has been sent nothing and, since v2.7983, offers to send the record (*Send the payment record…* opens the papers window on its send step).
 It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the whole set with `subPapersAddUp` and draws none when it fails, previews the paper as the print page (`subPapersHtml.ts`), and Print and Download draw the PDF in the browser (`_shared/subPapersPdf.ts`) and file a sent copy (`sub_statement_of_account`, `sub_work_statement`, `sub_payment_record`) on the person and each job.
 The letterhead is the bill's issuer block from Settings.
 A month or a year closes on today, never on a day that has not come.
-Since v2.7552 a paper is numbered the moment it is made: Print and Download first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call, and `_shared/subPaperMarks.ts` the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
-The window sends nothing yet.
+Since v2.7552 a paper is numbered the moment it is made: Print, Download and, since v2.7983, Send first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call, and `_shared/subPaperMarks.ts` the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
+Since v2.7983 the window sends: *Send to <name>…* opens a send step that shows who the paper goes to, the message, the files and what the press does, and its press posts the PDFs to `send-sub-paper-email`.
+The function mails them to the roster's own address for the person and files each paper as a sent copy of its own, and the window hands it no address.
+Email is the one way built, and the press shows only for the office roles who see sub pay (`isOfficeRole`), never for an account in training.
+The papers of one email are registered as one set (`registerSubPaperSet`), every work statement first and the statement of account last, so the statement names each work statement by the number on the file beside it.
+One email carries 12 papers (`subPaperSendSet`, the function's own limit), and what does not fit is held and named.
+A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
+A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
 Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
@@ -5919,6 +5925,18 @@ The rule is one kernel, [`dateBoxEntry.ts`](../src/lib/dateBoxEntry.ts) (`isPlau
 A form that autosaves leaves a half-typed date out of the write or waits ([`autosaveDateHold.ts`](../src/lib/autosaveDateHold.ts) — the job contract, the lien waiver, Edit Job, Edit Bid, an estimate draft), and a click that sends, files or mints stops and names the box (`unfinishedDateStopsMessage`, v2.4252).
 A new date input uses the box or the kernel, never a bare `onChange` write.
 
+### Values in place
+The app's one way to draw a value on a screen (punch list #382, v2.7985;
+the owner named it for the whole app, #399): a date, a count, a name or an amount is drawn apart from the words around it, and its look says what it is.
+**Underlined and tinted** is a value a person can change: a press turns it into its own field right there, with **Keep** and **Cancel**, Enter keeps and Escape cancels ([`ChangeableValue`](../src/components/valuesInPlace/ValuesInPlace.tsx)).
+**Plain bold** is a value the app works out, and it updates by itself (`WorkedOutValue`).
+A value that can be changed, but not by this person, is shown with a dashed line and a small tag (`locked`), and a value read from a default this record may override is bold with the small word *default* after it and a press that sets the record's own (`fromDefault`).
+One fact sits on each line, the label on the left and the values in a column (`ValueLines`), and there is no *Change a date* link or edit window for a value already on the screen.
+A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`, the screen draws it with `ValueSentence`, and a text or an email reads it with `plainSentence` ([`valuesInPlace.ts`](../src/lib/valuesInPlace.ts)).
+`keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
+A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+The words to ask for it on any screen are *give this screen values in place*.
+
 ### Users lenses (People → Users)
 People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
 `?lens=` on the URL;
@@ -6500,6 +6518,23 @@ and it reads the record back above the button before the press, *The record will
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
+### Document builder (Documents → Document builder)
+
+v2.7980 (punch list #404).
+The last tab on the Documents page, for a dev only, where builders live.
+A **builder** makes one kind of paper from a few settings.
+A **walked** builder is one someone walks page by page, picking a level.
+A **filled** builder is one page with blanks that each job fills.
+The tab lists the builders one row each, with chips that say where each stands and an **Open** press, and a new kind is added in code ([`builders.ts`](../src/lib/documentBuilder/builders.ts), [`DocumentsBuilderTab.tsx`](../src/components/documents/DocumentsBuilderTab.tsx)).
+The first builder is the **Sub NDA**, the owner's name for a job's secrecy paper for the people the company brings onto the job.
+Its **levels** are *Standard*, *Elevated*, *Aggressive* and *Strict*, loosest first, each beside the kind of place it is *aligned with*.
+Its **topics** are seven, each on one level or on *Off*, and three of them are in every paper and have no *Off*.
+The **basis** is the level the whole paper starts on, and a page moved to another level is *off the basis*.
+The flow is eleven steps in one frame: *Before you start*, *The basis*, *Match the paper to the site*, one page a topic and *Review* ([`DocumentBuilderFlow.tsx`](../src/components/documentBuilder/DocumentBuilderFlow.tsx) over the rules in [`documentBuilder.ts`](../src/lib/documentBuilder/documentBuilder.ts)).
+A topic's page lists *What puts a person in breach*, the lines the level brings above the ones it keeps under *Also applies*, then *What the site must have*, then *The core clause* as grey bars.
+Every word in it is a placeholder that no attorney has read, no clause wording is in the app or the repo, and the flow runs on a made-up job and saves nothing.
+In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
+
 ### Agreements tab
 
 v2.7617 (punch list #376).
@@ -6515,6 +6550,17 @@ A job contract that waits opens its Contract window from the line ([`agreementsA
 Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Contract Book and a person and opens the same email window: People → Contracts' quick send on this page ([`AgreementsSendPaper.tsx`](../src/components/documents/AgreementsSendPaper.tsx)).
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
+
+### Party and signer (of a paper)
+
+v2.7977 (punch list #403), the ground: no screen shows them yet.
+The **party** is who a paper is with, and it is a record: a customer, a supply house, a trade company, or someone on no list yet.
+The paper points at the party's contact (`person_contract_documents.party_contact_id`, a `contacts` row) and is filed under `party:<contact id>`, a name no person can have, so a company named like a teammate never lands on the teammate.
+The **signer** is the human who signs: a name, a title and an address kept on the paper as it was sent (`signer_name`, `signer_title`, `signer_email`), with the business they sign for in words (`signing_for`).
+The two are kept apart because a rep leaves a supply house and the paper must still say who signed.
+`party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
+The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
+*Not on a list* is a party whose contact has no record yet.
 
 ### Sent copies
 

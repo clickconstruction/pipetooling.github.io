@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 1, the tab with the spike's flow in it, alone and with no database. Then step 2, and insurance (steps 3 to 6) before the rest of the Sub NDA.
+next: Step 2, a builder's contents move into the database, a migration alone. Then insurance (steps 3 to 6) before the rest of the Sub NDA. Step 1, the tab with the flow in it, is built (v2.7980).
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -529,6 +529,15 @@ So the same turns are not taken twice.
 
 ## Where it stands
 
-Nothing of the tab is built. The Sub NDA's flow runs as a spike on `spike/document-builder`. The owner
-approved the design on 2026-11-19 and asked for it to be saved so another person can build all of it.
-Start with step 1.
+The owner approved the design on 2026-11-19 and asked for it to be saved so another person can build all
+of it. The same day he said to build it.
+
+| Step | State |
+|---|---|
+| 1 · The tab, with the spike in it | **Built**, v2.7980. A dev opens Documents → Document builder → Sub NDA and walks the flow on the made-up job. The spike's files came across by path, renamed. The branch `spike/document-builder` is not merged and stays as it is. |
+| 2 to 10 | Not built. |
+
+One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
+pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from
+the builder's own top there, and the builder scrolls itself to the top once (`frame.ts`). On a computer
+it still ends at the bottom of the screen, as the spike had it.

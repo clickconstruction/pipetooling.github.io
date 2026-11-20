@@ -6457,6 +6457,55 @@ tr[data-stages-row-stamped] {
   .windowClose { width: 44px; height: 44px; margin: -6px -13px -6px 0; }
 }
 
+/* Values in place (punch list #382 PR 1, shared across the app, `ValuesInPlace.tsx`): a value is drawn apart from
+   the words around it, and its look says what it is. `.vipChange` is a value a person can change: bold and tinted
+   with a dotted line under it, the words in their own colour, so it never reads as a link. A press turns it into
+   `.vipField`, its own field with Keep and Cancel. `.vipWorked` is a value the app works out: plain bold.
+   `.vipLocked` can be changed, but not by this person. `.vipLines` is one fact a line, the labels in one column
+   and the values in the next. Hover, focus and a phone's taller press need a class, so the looks live here. */
+.vipChange { display: inline-block; position: relative; margin: 0; padding: 0 3px; border: none; border-bottom: 2px dotted var(--text-link); border-radius: 4px 4px 0 0; background: var(--bg-blue-tint); color: var(--text-strong); font: inherit; font-weight: 700; line-height: inherit; text-align: inherit; white-space: nowrap; cursor: pointer; }
+button.vipChange:hover, button.vipChange:active { background: var(--bg-blue-200); }
+button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+.vipChangeSample { cursor: default; }
+.vipWorked { font-weight: 700; color: var(--text-strong); }
+.vipWorked[data-tone='red'] { color: var(--text-red-700); }
+.vipWorked[data-tone='green'] { color: var(--text-green-700); }
+.vipLocked { font-weight: 600; color: var(--text-base); border-bottom: 1px dashed var(--border-strong); }
+.vipTag { padding: 0 0.35rem; border: 1px dashed var(--border-strong); border-radius: 3px; color: var(--text-muted); font-size: 0.65625rem; font-weight: 700; line-height: 1.6; white-space: nowrap; }
+.vipDefaultWord { color: var(--text-muted); font-size: 0.8em; }
+.vipSetOwn, .vipCancel { position: relative; margin: 0; padding: 0; border: none; background: none; color: var(--text-link); font: inherit; font-size: 0.8125rem; font-weight: 600; line-height: inherit; cursor: pointer; }
+.vipSetOwn:hover, .vipSetOwn:active, .vipCancel:hover, .vipCancel:active { background: none; text-decoration: underline; text-underline-offset: 3px; }
+.vipCancel:disabled { color: var(--text-muted); text-decoration: none; cursor: default; }
+.vipField { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; max-width: 100%; vertical-align: middle; font-weight: 400; cursor: default; }
+.vipInput { min-width: 0; padding: 2px 6px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-base); font: inherit; font-size: 0.875rem; }
+.vipInput[data-type='number'] { width: 4.5rem; }
+.vipInput[data-type='text'] { width: 9rem; }
+.vipInput.vipReason { flex: 1 1 10rem; width: auto; }
+.vipInput[aria-invalid='true'] { border-color: var(--text-red-700); }
+.vipKeep { margin: 0; padding: 2px 10px; border: 1px solid #2563eb; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.vipKeep:hover, .vipKeep:active { background: #1d4ed8; border-color: #1d4ed8; }
+.vipKeep:disabled { border-color: var(--bg-200); background: var(--bg-200); color: var(--text-700); cursor: wait; }
+/* The note takes a line of its own under the box, and adds nothing to the field's width: the words after the field stay beside it. */
+.vipNote { flex: none; display: block; width: 0; min-width: 100%; color: var(--text-muted); font-size: 0.78125rem; line-height: 1.4; }
+.vipNote > span + span::before { content: ' '; }
+.vipWhy { color: var(--text-red-700); font-weight: 600; }
+.vipLines { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr); gap: 8px 16px; align-items: baseline; line-height: 1.6; }
+.vipLineLabel { color: var(--text-muted); }
+.vipLineValues { min-width: 0; }
+.vipLegend { margin: 8px 0 0; color: var(--text-muted); font-size: 0.78125rem; }
+/* A thumb gets 44 px on every press: a value's press grows above and below its line without moving the words, and
+   the lines stand far enough apart that two presses never share a spot. The open field's box and presses are 44 px
+   tall, and the box types at 16 px so a phone does not zoom in on it. */
+@media (pointer: coarse), (max-width: 640px) {
+  .vipChange::after, .vipSetOwn::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .vipChangeSample::after { content: none; }
+  .vipLines { row-gap: 18px; }
+  .vipInput, .vipKeep, .vipCancel { min-height: 44px; }
+  .vipInput { font-size: 16px; }
+  .vipKeep { padding: 2px 16px; }
+  .vipCancel { padding: 0 6px; }
+}
+
 /* The Payment forecast window's header (v2.7019): the title and the intro sit left of the two presses, so no
    words run under them. Both presses are 32 px tall on the desk. A phone gives each a 44 px press: the close
    (`.windowClose`, above) beside the title, the Email press on its own row under the intro. */
@@ -7372,3 +7421,72 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
 .lienDeskTitleBar > .lienDeskOutlineHeading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .lienDeskTitleDoor { margin: 0; padding: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 4px; text-align: left; }
 .lienDeskTitleDoor:hover, .lienDeskTitleDoor:focus-visible { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; outline: none; }
+
+/* The document builder's level slider (punch list #404, the flow of #389). The track is drawn here and not by the
+   browser, which picks a dark track under an amber or red accent. The element is a 32 px band for a finger with a
+   6 px track painted in its middle. `--builder-tone` is the level's colour and `--builder-fill` is how far the handle
+   sits along the track; both come from the element's own style. */
+.documentBuilderSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: linear-gradient(
+      to right,
+      var(--builder-tone) 0,
+      var(--builder-tone) var(--builder-fill),
+      var(--bg-200) var(--builder-fill),
+      var(--bg-200) 100%
+    )
+    center / 100% 6px no-repeat;
+  border-radius: 999px;
+}
+.documentBuilderSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--builder-tone);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--builder-tone);
+}
+.documentBuilderSlider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--builder-tone);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--builder-tone);
+}
+.documentBuilderSlider::-moz-range-track {
+  background: transparent;
+}
+.documentBuilderSlider:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+
+/* The document builder's page and its lines ease in (punch list #404). No fill mode: once the animation ends it must
+   let go of `transform`, which the flow then moves by hand when a line changes place. */
+@keyframes documentBuilderIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.documentBuilderIn {
+  animation: documentBuilderIn 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .documentBuilderIn {
+    animation: none;
+  }
+}

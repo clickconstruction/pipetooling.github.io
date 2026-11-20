@@ -287,6 +287,8 @@ const SIGN_IN_DOORS: ReadonlyArray<{ door: string; address: string; kept: 'gate'
   { door: "a lien cover sheet's Scan to record", address: lienWindowHref(JOB, 'affidavit'), kept: 'gate' },
   { door: "a lien batch sheet's Scan to record", address: lienDeskHref({ kind: 'affidavit' }), kept: 'gate' },
   { door: "a lien notice sheet's Scan to record", address: lienWindowHref(JOB, 'notice'), kept: 'gate' },
+  { door: "a lien copies divider's Scan once this envelope is mailed", address: lienDeskHref({ copies: { jobId: JOB, recipient: 'owner' } }), kept: 'gate' },
+  { door: "a lien copies mail sheet's Scan to enter the numbers", address: lienDeskHref({ copies: { jobId: null } }), kept: 'gate' },
   { door: "a lien sheet's Scan for the full guide, after its share page", address: helpGuideAppPath('file-a-lien-and-never-miss-its-deadlines'), kept: 'gate' },
   { door: "Today's mail's guide code, after its share page", address: helpGuideAppPath('send-lien-notices-from-the-lien-desk'), kept: 'gate' },
   { door: "a machine's label", address: '/m/A1B2C3D4', kept: 'gate' },

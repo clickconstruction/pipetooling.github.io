@@ -12,7 +12,8 @@
  * The rules a saved copy is read by are `lienStampedCopy.ts`; the sheet's words are `lienServeMailSheet`.
  */
 import type { PDFDocument, PDFFont, PDFPage } from 'pdf-lib'
-import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, LIEN_SERVE_DIVIDER_WORDS, lienServeDivider, type LienServeSheet, type LienServeSheetRow } from './lienServePackets'
+import { qrMatrix } from '../../../supabase/functions/_shared/qrMatrix'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, LIEN_SERVE_DIVIDER_WORDS, LIEN_SERVE_SHEET_WORDS, lienServeDivider, type LienServeSheet, type LienServeSheetRow } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, LIEN_COPY_NOT_PRINTABLE_HOLD, lienCopyKind, type LienCopyKind, type LienCopyRead } from './lienStampedCopy'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -234,6 +235,35 @@ function wrap(font: PDFFont, text: string, size: number, width: number): string[
   return lines
 }
 
+/** The side of the mail sheet's code and of a divider's, in points: large enough that a module prints near two thirds of a millimetre. */
+const SHEET_CODE = 60
+const DIVIDER_CODE = 84
+
+/**
+ * `link` as a code with its top left corner at (`x`, `top`), `side` points square, drawn as filled runs so it prints
+ * sharp at any size. False, with nothing drawn, when the address cannot be a code (it is empty, or too long).
+ */
+function drawCode(page: PDFPage, link: string, x: number, top: number, side: number, ink: ReturnType<Awaited<ReturnType<typeof loadPdfLib>>['rgb']>): boolean {
+  const modules = link ? qrMatrix(link) : null
+  if (!modules) return false
+  const cell = side / modules.length
+  modules.forEach((row, r) => {
+    let c = 0
+    while (c < row.length) {
+      if (!row[c]) {
+        c += 1
+        continue
+      }
+      let end = c
+      while (end + 1 < row.length && row[end + 1]) end += 1
+      // A hair wider and taller than its cells, so two runs that touch leave no white seam between them.
+      page.drawRectangle({ x: x + c * cell, y: top - (r + 1) * cell, width: (end - c + 1) * cell + 0.05, height: cell + 0.05, color: ink })
+      c = end + 1
+    }
+  })
+  return true
+}
+
 /** The mail sheet's pages at the front of `doc`, as `lienServeMailSheet` words them. */
 export async function drawLienMailSheet(doc: PDFDocument, sheet: LienServeSheet): Promise<void> {
   const lib = await loadPdfLib()
@@ -278,9 +308,18 @@ export async function drawLienMailSheet(doc: PDFDocument, sheet: LienServeSheet)
   y -= 14
 
   // The steps, each with a box to tick.
-  const stepLines = sheet.steps.map((s) => wrap(regular, s, 9, width - 40))
-  const boxH = 24 + stepLines.reduce((n, l) => n + l.length * 11.5 + 3, 0)
+  // The sheet's code sits in the box's right corner and opens the list of mail numbers; the steps wrap short of it.
+  const coded = Boolean(sheet.link && qrMatrix(sheet.link))
+  const codeBlock = coded ? 96 : 0
+  const stepLines = sheet.steps.map((s) => wrap(regular, s, 9, width - 40 - codeBlock))
+  const boxH = Math.max(24 + stepLines.reduce((n, l) => n + l.length * 11.5 + 3, 0), coded ? SHEET_CODE + 34 : 0)
   page.drawRectangle({ x: MARGIN, y: y - boxH, width, height: boxH, borderColor: rgb(RULE), borderWidth: 0.8 })
+  if (coded) {
+    const blockX = PAGE_W - MARGIN - codeBlock
+    drawCode(page, sheet.link, blockX + (codeBlock - SHEET_CODE) / 2 - 4, y - 12, SHEET_CODE, rgb(INK))
+    const said = LIEN_SERVE_SHEET_WORDS.code.toUpperCase()
+    text(said, blockX + (codeBlock - bold.widthOfTextAtSize(fontSafe(bold, said), 5.6)) / 2 - 4, y - 12 - SHEET_CODE - 10, { font: bold, size: 5.6, color: MUTED })
+  }
   y -= 15
   text(sheet.stepsHead, MARGIN + 10, y, { font: bold, size: 9.5 })
   y -= 5
@@ -450,13 +489,23 @@ export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSh
   text(d.faceFoot, right - 10 - regular.widthOfTextAtSize(fontSafe(regular, d.faceFoot), 7), faceTop - FACE_H + 7, { size: 7, color: MUTED })
   y = faceTop - FACE_H - 30
 
+  // The envelope's code, right of the ticks: it opens this envelope's number box, for once it is mailed.
+  const codeTop = y + 12
+  if (drawCode(page, row.link, right - DIVIDER_CODE, codeTop, DIVIDER_CODE, rgb(INK))) {
+    const [lead, rest] = LIEN_SERVE_DIVIDER_WORDS.code
+    const said = (s: string, at: number, opt: { font?: PDFFont; size: number; color?: [number, number, number] }) => text(s, right - DIVIDER_CODE - 12 - (opt.font ?? regular).widthOfTextAtSize(fontSafe(opt.font ?? regular, s), opt.size), at, opt)
+    said(lead, codeTop - 34, { font: bold, size: 10 })
+    said(rest, codeTop - 48, { size: 8.5, color: MUTED })
+  }
+
   // Three things to tick, one under the other, in the order they are done.
   for (const tick of d.ticks) {
     page.drawRectangle({ x: MARGIN, y: y - 2, width: 11, height: 11, borderColor: rgb(MUTED), borderWidth: 0.9 })
     text(tick, MARGIN + 19, y, { size: 11 })
     y -= 21
   }
-  y -= 5
+  // The rule clears the code as well as the ticks.
+  y = Math.min(y - 5, codeTop - DIVIDER_CODE - 12)
   page.drawLine({ start: { x: MARGIN, y }, end: { x: right, y }, thickness: 0.6, color: rgb(RULE) })
   y -= 18
   wrap(regular, d.pull, 10, width).forEach((line, i) => textCentre(line, y - i * 12.5, { size: 10, color: MUTED }))
