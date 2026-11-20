@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · Add to a list is built (v2.7998) · all four on main and on prod by 2026-11-20, each walked there with ZZ test records · the walks found one gap, noted under Where it stands · three calls are left: 8, which shapes step 4, and 9 and 10, which the build of PR 1 raised
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · Add to a list is built (v2.7998) · all four on main and on prod by 2026-11-20, each walked there with ZZ test records · the walks found one gap, noted under Where it stands · 2026-11-20 the owner settled call 8, an estimator finds an outside company's paper on its own page and on the Agreements tab, and the mock-up draws that tab · two calls are left, 9 and 10, which the build of PR 1 raised
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. PR 1, the ground, is built, and three calls are left at the foot.
-next: The owner's call 8, which shapes step 4. Calls 9 and 10 are his too: two narrower readings PR 1 was built with.
-size: L as a train of seven (M · S · M · S · S · M · M)
-blocker: Call 8 before step 4.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. An estimator finds an outside company's paper on its own page and on the Agreements tab. PR 1, the ground, is built, and two calls are left at the foot.
+next: Step 4, which no call holds now: the party's own page, then the Agreements tab for an estimator. Calls 9 and 10 are the owner's: two narrower readings PR 1 was built with.
+size: L as a train of eight (M · S · M · S · S · S · M · M); left: steps 4 to 6 (S · S · M · M)
+blocker: None for step 4. Calls 9 and 10 each widen one line of what PR 1 built, if he turns them.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -270,9 +270,13 @@ Each step is one PR with its release note and fragment. The word to build came o
    **Add to a list built 2026-11-19 as v2.7998.** It offers a new customer, a new supply house or vendor,
    and someone at a customer or a supply house the app has. A trade company is not offered yet: the office
    has no page for one until step 6, and the second look kept a party off no page of the app.
-4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
-   **Agreements** card lists them beside the job contracts it has today. This is where an estimator
-   reads them, since the Agreements tab is the four roles' today (call 8).
+4. **The party's own page (S), then the tab for an estimator (S).** Two PRs. A supply house's window
+   lists its papers. The Customer page's **Agreements** card lists them beside the job contracts it has
+   today. Then the Agreements tab opens to an estimator (call 8): `canSeeAgreements` takes the role,
+   and the list shows what the database answers them, which is outside companies' agreements and work
+   orders. Chips for kinds they cannot read are left out. They get no **Send a paper**, no **Contract
+   library** and no press on a line, since sending stays with the four roles. An old link to the tab
+   stops landing them on Estimates. The guide and `docs/ACCESS_CONTROL.md` are updated.
 5. **A sub's company, the ground (M).** A roster person gains a link to a trade company
    (`gc_companies`, call 7), and a company can hold people who are on the roster. The office, not only
    a dev, can send a company's paper. A person's paper freezes *signing for* from that link.
@@ -306,6 +310,9 @@ That screen was rendered again at both widths and in both themes.
 Redrawn a fourth time the same day, for his call 6. The window's last row is **Someone not in any list**,
 and a new section draws the typed-in send, its line on Agreements and the **Add to a list** window. It
 replaces the line that sent the office to another page first. Rendered at both widths and in both themes.
+
+Redrawn a fifth time on 2026-11-20, for his call 8: a section draws the Agreements tab as an estimator
+sees it. Rendered at both widths and in both themes.
 
 ## How this meets the NDA builder spike
 
@@ -361,7 +368,10 @@ against the pick.
   address, see the line read *Not on a list*, press **Add to a list**, pick the ZZ Test customer, and
   see the same paper on the Customer page. Type an address a contact already holds and see the window
   name them.
-- **PR 4.** The supply house's window and the Customer page show the paper.
+- **PR 4.** The supply house's window and the Customer page show the paper. As an estimator's sample
+  account: the tab is there, it lists outside companies' agreements and work orders and nothing else,
+  it has no **Send a paper**, and no staff paper, sub's own paper, job contract or paper of a party on
+  no list is on it.
 - **PR 5 and 6.** On prod with a ZZ Test sub and a made-up company: link the sub to the company, send the
   company a paper as the office, and send the sub a paper of their own. The company's paper shows once
   under the company. The sub's paper carries *signing for* the company. A second ZZ Test worker linked to
@@ -391,7 +401,7 @@ Each is one question. The session's pick is first.
    - A sub's company's papers count as an outside company's, so the estimator reads them. He was told
      this reading on 2026-11-19 and can turn it down.
    - It is reading only. Sending stays with the four roles.
-   - An estimator has no Agreements tab today, by #376's call 3. That is call 8.
+   - An estimator had no Agreements tab, by #376's call 3. Call 8 opens it.
 5. **Does sending stay on both People and Documents?** This is #389's wider call 5. **Settled
    2026-11-19: both.** He answered "Yes, both". People sends to a person on the roster, as today.
    Documents sends to anyone. An outside company's paper is sent only from Documents or from its own
@@ -405,9 +415,11 @@ Each is one question. The session's pick is first.
    business the company subcontracts to, whoever is the GC on the job. Not taken: a new list for the
    company's own subs' businesses, kept apart from GC mode.
 8. **Where does an estimator find an outside company's paper?** New on 2026-11-19, from call 4.
-   **On the party's own page: the supply house's window and the Customer page.** The Agreements tab
-   stays the four roles', as #376's call 3 settled. Or the tab opens to the estimator too, listing only
-   the lines their role reads.
+   **Settled 2026-11-20: both.** He answered "On the company's page and on agreements too". The
+   session's pick was the party's own page alone. The tab opens to the estimator and lists only the
+   lines their role reads. This changes #376's call 3, which gave the tab to the four roles, and that
+   card says so. As the session reads it, the estimator's tab is for reading: no **Send a paper** and no
+   press on a line.
 9. **Does the estimator's read stop at agreements?** New on 2026-11-19, from building PR 1.
    **Yes, agreements only, and PR 1 is built so.** On 2026-10-10 the Board's call kept a trade company's
    W-9 and certificate to their states for the office, because the row carries the tax number's last
@@ -429,8 +441,8 @@ draws the pick and was redrawn once. The owner settled seven calls on 2026-11-19
 Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
 own, which was not the session's pick, and which added call 7. Call 4: the four roles and the estimator
 read an outside party's paper, which was not the session's pick either, and which added call 8. Call 7:
-a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8 is open, and so are 9 and 10, which
-the build of PR 1 raised. PR 2, the send keeps the signer, is built (v2.7986). Grace's word to build came on 2026-11-19.
+a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8, settled 2026-11-20: an estimator finds an outside company's paper on its own page and on the
+Agreements tab, which was not the session's pick. Calls 9 and 10 are open, which the build of PR 1 raised. PR 2, the send keeps the signer, is built (v2.7986). Grace's word to build came on 2026-11-19.
 
 Steps 1 to 3 are on main and live since 2026-11-20: PR 1 (#8977, its migration pushed), PR 2 (#8992), **Who is it with?** (#9004) and **Add to a list** (#9010), with their edge functions deployed. Each was walked on prod as the dev with ZZ test records and the mail service's test addresses. The send kept the signer's name, title and address. Papers went to a ZZ test customer, a made-up supply house and a typed name, and their lines read Customer, Supply house and Not on a list. One was signed through its link with no login, and its e-sign record says `outside`. An address the app already keeps was named before the send. **Add to a list** then put the typed name at the ZZ test customer, and their paper came with them. The Customer page showing the paper is step 4's, not built.
 
