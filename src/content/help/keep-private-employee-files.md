@@ -133,7 +133,7 @@ Does the item already have a number that people use? Type it in the number box. 
 A person's roster row says what they are today. The row does not say what they were last spring. The file keeps that as stretches, one at a time.
 
 1. Open the person's file.
-2. Press the standing on the strip of facts at the top. The press reads *Standing…* when nothing is on file.
+2. Press the standing on the strip of facts at the top. The press reads *Standing…* when nothing is on file. The press reads *Standing not read* when the app could not read the standing, and the window says why.
 3. Press {{button:blue|Record a stretch…}}. Pick employee or subcontractor and set the first day.
 4. Say where the fact comes from. Name the paper or the pay run under *Which one*.
 5. Press {{button:blue|Record the stretch}}.
@@ -155,13 +155,17 @@ Two stretches can never share a day. The file refuses days that overlap one alre
 An agent can keep a plan on a person's file and wait for your yes. The plan is not written until you say so.
 
 1. Open **People**, then **HR**.
-2. Look for *Waiting on you* at the top. It shows only when a plan is waiting.
+2. Look for *Waiting on you* at the top. The list shows when a plan is waiting, or when one stopped matching this week.
 
 Each row names the person and what the plan is about. It shows how long the plan has waited and who kept it. The grey box says in words what the plan would write.
 
 To say yes, tell the agent in a session to apply it. The agent checks the plan against the file again first. A plan that no longer fits is not written.
 
 A row marked *no longer matches* was not written. The file changed after the plan was made. The agent plans again.
+
+With a person's file open, the list is that person's alone. A line under the list names each other person a plan waits on. Press a name to open that file.
+
+When the app cannot read the list, a line says so with the reason. Press **Read it again**.
 
 Open a person's file to see only that person's plans.
 

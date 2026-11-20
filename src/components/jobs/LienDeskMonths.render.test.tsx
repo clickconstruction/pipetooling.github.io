@@ -193,15 +193,42 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect(doors.onSavedDay).not.toHaveBeenCalled()
   })
 
-  it('with no earlier paper the lead line is the one sentence, and a reader with no doors sees none', () => {
+  it('with no earlier paper the lead line is the one sentence, said only where a tick can be made, and a reader with no doors sees none', () => {
     const grid: LienMonthGrid = { papers: [thisPaper('A', ['2026-09'])], rows: [row('2026-09', { cells: { this: 'named' }, thisNotice: { on: true, locked: false, info: false, late: false } })], earliestOpen: '2026-12-15', lateUntil: null }
-    const { card } = mount(grid, { onNoteMissed: undefined, onRecordByHand: undefined, claimTail: undefined, claimNode: undefined, bills: undefined, lastWork: undefined })
+    const bare = { onNoteMissed: undefined, onRecordByHand: undefined, claimTail: undefined, claimNode: undefined, bills: undefined, lastWork: undefined }
+    const { card } = mount(grid, bare)
     expect((card.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('Tick a month to put it on this notice.')
+    // The table says whether this notice has a column, for the phone's row (it keeps no empty tick column).
+    expect((card.querySelector('table') as HTMLElement).getAttribute('data-this')).toBe('yes')
     expect(card.querySelector('[data-lien-months-missed]')).toBeNull()
     expect(card.querySelector('[data-lien-desk-by-hand]')).toBeNull()
     expect(card.querySelectorAll(':scope > .lienLedgerQuiet')).toHaveLength(0)
     // The plain figure draws the same total line.
     expect((card.querySelector('.lienLedgerClaim') as HTMLElement).textContent).toBe('Claim amount on the notice$1,000Still unpaid on this jobThis notice names Sep · 1 month')
+
+    // Every tick locked (a notice past editing, or every month closed): nothing asks for a tick, and with no earlier
+    // paper the line has no sentence, so it is not drawn (v2.8064).
+    const lockAll = (g: LienMonthGrid): LienMonthGrid => ({ ...g, rows: g.rows.map((r) => ({ ...r, thisNotice: { ...r.thisNotice, locked: true } })) })
+    cleanup()
+    const locked = mount(lockAll(grid), bare).card
+    expect(locked.querySelector('[data-lien-ledger-lead]')).toBeNull()
+    expect(locked.textContent).not.toContain('Tick a month')
+    expect((locked.querySelector('table') as HTMLElement).getAttribute('data-this')).toBe('yes')
+    // Locked with an earlier paper on the job: the second sentence alone, with no space before it.
+    cleanup()
+    const lockedWithPaper = mount(lockAll(fullGrid())).card
+    expect((lockedWithPaper.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('A check is a paper that already names the month.')
+    // One row open is enough to ask.
+    cleanup()
+    const oneOpen = lockAll(fullGrid())
+    oneOpen.rows[3] = { ...oneOpen.rows[3]!, thisNotice: { ...oneOpen.rows[3]!.thisNotice, locked: false } }
+    expect((mount(oneOpen).card.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('Tick a month to put it on this notice. A check is a paper that already names the month.')
+    // A notice that already went is among the papers: no column of its own, and the table says so.
+    cleanup()
+    const sent = mount({ ...fullGrid(), papers: [paperA] }).card
+    expect(sent.querySelector('[data-lien-grid-paper="this"]')).toBeNull()
+    expect((sent.querySelector('table') as HTMLElement).getAttribute('data-this')).toBe('no')
+    expect((sent.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('A check is a paper that already names the month.')
   })
 
   it('a job with no months says so through EmptyState, with no grid and no lead line', () => {
