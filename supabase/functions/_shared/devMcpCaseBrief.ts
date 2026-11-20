@@ -17,6 +17,11 @@
 // which call opens it; `manifest` does, one line a part with its whole count, and `reading` carries the rules an agent
 // follows on an HR file. The Timeline's sources are counted by get_person_file's own kernel (its `tally` and
 // `counts`), so a number here is the number that verb answers. No fit step touches either block.
+//
+// v2.7976 (server 0.118.0, punch list #315, upgrade 2): the brief reads the rows the system numbers. An evidence
+// record carries exhibit_no, the number the file gave it. open_items lists the case's open items whole, by number,
+// with the newest closed ones, and log counts the case log and carries its newest lines (devMcpCase.ts over the
+// tab's own kernel, personCase.ts). Both were prose in the file's Agent notes; plan_case → apply_case writes them.
 import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
 import type { RowFilter } from './devMcpDoor.ts'
 import { PERSON_FILE_LINE_CHARS_MIN, getPersonFile, resolvePerson } from './devMcpPersonFile.ts'
@@ -25,6 +30,7 @@ import type { PersonTimelineSource } from './personTimeline.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 import { counselOnlyStillHeld } from './devMcpCounselOnly.ts'
 import { AMENDMENTS_NOTE, amendmentCounts, amendmentDays, newestAmendments, readPersonAmendments, seatAmendmentBits } from './devMcpAmendments.ts'
+import { BRIEF_CASE_LOG_LINES, CASE_ITEMS_WHOLE, CASE_ITEM_SELECT, CASE_LOG_SELECT, briefCaseLog, briefOpenItems, exhibitBits, exhibitNoOf, type CaseItemRead, type CaseItemsDial, type CaseLogRead } from './devMcpCase.ts'
 
 export type CaseBriefAsk = { person: string }
 export type CaseBriefReader = { role: string; todayYmd: string }
@@ -44,10 +50,13 @@ const BRIEF_EVIDENCE_STEPS = [100, 50, 25] as const
 const BRIEF_DOCUMENT_STEPS = [60, 30, 15] as const
 const BRIEF_MATTER_ROWS = 40
 const BRIEF_SUMMARY_CHARS = 6000
+/** v2.7976: the open items a long brief keeps, by number, and the log lines it keeps. */
+const BRIEF_CASE_ITEM_STEPS = [40, 15] as const
+const BRIEF_CASE_LOG_SHORT = 3
 
 type Heading = { n: number | null; level: number; heading: string; line: number }
 type EntryRow = { id: string; entry_date: string; source: string; created_at?: string | null; gmail_message_id?: string | null }
-type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null; drive_folder_id?: string | null }
+type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null; drive_folder_id?: string | null; exhibit_no?: number | null }
 type FileIndexRow = { kind: string; chars: number; sections: number; headings: Heading[] | null; updated_at: string; covered_through: string | null; author_label: string | null }
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null; evidence_id?: string | null }
 type MatterRow = { id: string; stage: string | null; narrative_md: string | null; narrative_updated_at: string | null; closed_at: string | null }
@@ -131,7 +140,6 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   }
   const manifestReads = Promise.all([
     counted<{ text_source: string | null; text_why: string | null }>('file_index', 'drive_file_id,text_source,text_why', eq('person_id', personId), 'drive_file_id'),
-    counted<{ state: string; closed_at: string | null }>('person_case_items', 'id,state,closed_at', eq('person_id', personId)),
     counted<{ id: string }>('person_case_log', 'id', eq('person_id', personId)),
     counted<{ withdrawn_at: string | null }>('person_engagements', 'id,withdrawn_at', eq('person_id', personId)),
     counted<{ state: string }>('dev_seat_kept_plans', 'id,state', eq('person_id', personId)),
@@ -144,13 +152,13 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // The entries without their words — the count is exact, and `entries.at_cap` is true only past readAllRows' own stop.
   let entriesCapped = false
-  const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes] = await Promise.all([
+  const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes, caseItems, caseLogNewest] = await Promise.all([
     read<EntryRow>('entries', async () => {
       const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,source,created_at,gmail_message_id', filters: eq('person_id', personId) })
       entriesCapped = all.capped
       return all.rows
     }),
-    read<EvidenceRow>('evidence', every('evidence', 'person_file_evidence', 'id,dated_on,title,counsel_only,drive_folder_id', eq('person_id', personId), 'dated_on')),
+    read<EvidenceRow>('evidence', every('evidence', 'person_file_evidence', 'id,dated_on,title,counsel_only,drive_folder_id,exhibit_no', eq('person_id', personId), 'dated_on')),
     read<FileIndexRow>('summary and narrative', () => reader.rows('person_file_index', { select: 'kind,chars,sections,headings,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 4 })),
     // v2.6713 (punch list #287): evidence_id, the record a document transcribes; read without it when the catalog does not know the column yet.
     read<DocIndexRow>('documents', async () => {
@@ -164,6 +172,10 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     // One read asked for 1,000 marks and the door answered 200: paged, a theme's count is whole.
     read<MarkRow>('themes', every('themes', 'legal_theme_marks', 'id,theme_id,proposed,kept_at,removed_at', eq('person_id', personId))),
     read<ThemeRow>('themes', every('themes', 'legal_themes', 'id,name', [{ column: 'retired_at', op: 'is', value: null }])),
+    // v2.7976 (punch list #315): the case's items, every one (a file holds tens), and the newest lines of its log in
+    // one read; the log's whole count is the manifest's own read below.
+    read<CaseItemRead>('case items', every('case items', 'person_case_items', CASE_ITEM_SELECT, eq('person_id', personId))),
+    read<CaseLogRead>('case log', () => reader.rows('person_case_log', { select: CASE_LOG_SELECT, filters: eq('person_id', personId), order: [{ column: 'logged_at', ascending: false }], limit: BRIEF_CASE_LOG_LINES })),
   ])
 
   // Newest first, as the Timeline orders them: the day, then when it was written. The newest ten's words are one more read.
@@ -243,13 +255,6 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     .map((t) => ({ id: t.id, name: t.name, marked: liveMarks.filter((m) => m.theme_id === t.id && !waits(m)).length, proposed: liveMarks.filter((m) => m.theme_id === t.id && waits(m)).length }))
     .filter((t) => t.marked + t.proposed > 0)
     .sort((a, b) => b.marked + b.proposed - (a.marked + a.proposed))
-  const seen = new Set<string>()
-  const heldOnce = held.filter((h) => {
-    const k = `${h.source}:${h.reason}`
-    if (seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
   const summaryText = summaryRows[0]?.content ?? null
   // v2.6713: the pair from either side — a document names the record it transcribes, a record names its transcript.
   const transcriptByRecord = new Map<string, string>()
@@ -260,7 +265,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const documentsAt = (sectionMax: number | null, newest: number | null) =>
     (newest == null ? listed : listed.slice(0, newest)).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, section_count: count(d.headings), sections: sections(d.headings, sectionMax), evidence_id: d.evidence_id ?? null }))
   const evidenceAt = (newest: number | null) =>
-    (newest == null ? evidence : evidence.slice(0, newest)).map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null, ...amendBits('hr_evidence', r.id) }))
+    (newest == null ? evidence : evidence.slice(0, newest)).map((r) => ({ id: r.id, ...exhibitBits(r), dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null, ...amendBits('hr_evidence', r.id) }))
   const matterHeadings = headingsOf(matter?.narrative_md ?? '')
   const matterSteps = matterEntries
     .filter((e) => e.kind === 'plan' && !e.voided_at)
@@ -272,7 +277,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // v2.7651: the manifest. A part the brief reads takes its count from the rows above, or `held` when its source is
   // named in the brief's `held`; the rest comes from the manifest's own reads and from get_person_file's tally.
-  const [fileIndexRows, caseItemRows, caseLogRows, engagementRows, keptPlanRows, mailRows, fileRead] = await manifestReads
+  const [fileIndexRows, caseLogRows, engagementRows, keptPlanRows, mailRows, fileRead] = await manifestReads
   const whyHeld = (source: string): ManifestHeld | null => {
     const h = held.find((x) => x.source === source)
     return h ? { held: h.reason } : null
@@ -299,14 +304,14 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       counsel_only_chars: listed.filter((d) => d.counsel_only).reduce((n, d) => n + (d.chars ?? 0), 0),
     },
     entries: whyHeld('entries') ?? { count: entries.length, first: entryDates[0] ?? null, last: entryDates[entryDates.length - 1] ?? null, from_mail: entries.filter((e) => e.gmail_message_id).length },
-    evidence: whyHeld('evidence') ?? { count: evidence.length, counsel_only: evidence.filter((r) => r.counsel_only).length, in_drive_folders: recordFolders.length, a_record_folder: recordFolders[0]?.drive_folder_id ?? null },
+    evidence: whyHeld('evidence') ?? { count: evidence.length, numbered: evidence.filter((r) => exhibitNoOf(r) !== null).length, counsel_only: evidence.filter((r) => r.counsel_only).length, in_drive_folders: recordFolders.length, a_record_folder: recordFolders[0]?.drive_folder_id ?? null },
     files: fileOk ? (heldSources.file ? { held: heldSources.file } : fileOk.tally.files) : fileHeld,
     fileWords: isHeldRead(fileIndexRows) ? fileIndexRows : { indexed: fileIndexRows.length, with_words: fileIndexRows.filter((f) => f.text_source).length, without_words: withoutWords },
     timelineLines: fileOk ? fileOk.counts.bySource : fileHeld,
     heldSources,
     rows: fileOk ? fileOk.tally.rows : fileHeld,
     correctionLinks: !isDev ? { held: 'dev only' } : amendRead && !amendRead.heldWhy ? amendmentCounts(amendRead).live : { held: amendRead?.heldWhy ?? 'not read' },
-    caseItems: isHeldRead(caseItemRows) ? caseItemRows : { count: caseItemRows.length, open: caseItemRows.filter((i) => !i.closed_at).length },
+    caseItems: whyHeld('case items') ?? { count: caseItems.length, open: caseItems.filter((i) => !i.closed_at).length },
     caseLog: isHeldRead(caseLogRows) ? caseLogRows : caseLogRows.length,
     standing: isHeldRead(engagementRows) ? engagementRows : engagementRows.filter((e) => !e.withdrawn_at).length,
     keptPlans: isHeldRead(keptPlanRows) ? keptPlanRows : { count: keptPlanRows.length, waiting: keptPlanRows.filter((k) => k.state === 'waiting').length },
@@ -331,6 +336,21 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     developments: { count: developments.length, jobs: developments.reduce((n, d) => n + d.jobs.length, 0), other_jobs: jobs.filter((j) => !j.development_id).length },
     login: Boolean(userId),
   }
+
+  // v2.7976: the case's items and log as the brief carries them, the items behind the dial a fit step turns.
+  const caseItemsHeld = whyHeld('case items') !== null
+  const caseLogHeld = whyHeld('case log') !== null
+  const openItemsAt = (dial: CaseItemsDial) => (caseItemsHeld ? null : briefOpenItems(caseItems, dial))
+  const caseLogAt = (max: number) => (caseLogHeld ? null : briefCaseLog(caseLogNewest, isHeldRead(caseLogRows) ? null : caseLogRows.length, max))
+  const openCount = caseItems.filter((i) => !i.closed_at).length
+
+  const seen = new Set<string>()
+  const heldOnce = held.filter((h) => {
+    const k = `${h.source}:${h.reason}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 
   // The small blocks first, the long lists last: what a cut would take is the part another verb reads anyway.
   const whole = {
@@ -362,6 +382,10 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     // Punch list #315 (0.81.0): the correction links, counted, and the newest ten with both ends by row and day. An entry
     // or record above that a link touches carries standing, amended_by, amends and latest_word; null when not read.
     amendments: amendRead && !amendRead.heldWhy ? { ...amendmentCounts(amendRead), newest: newestAmendments(amendRead, (k) => amendDayOf.get(k) ?? null, NEWEST_AMENDMENTS), note: AMENDMENTS_NOTE } : null,
+    // v2.7976 (punch list #315, upgrade 2): the case's open items by the number the file gave each, and its log's
+    // newest lines. Null when the source could not be read, and `held` says why.
+    open_items: openItemsAt(CASE_ITEMS_WHOLE),
+    log: caseLogAt(BRIEF_CASE_LOG_LINES),
     matter: matter
       ? {
           id: matter.id,
@@ -454,15 +478,44 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       note: { block: 'developments.headlines', kept: 'the newest line of each development\'s History', read_whole: 'get_history { development_id }' },
     }
   }
+  // v2.7976: the case's blocks. An item's detail is one read away, so it goes early; the open items themselves are the
+  // working list and are cut last, after everything another verb answers whole.
+  let caseDial: CaseItemsDial = CASE_ITEMS_WHOLE
+  const caseDetailStep: FitStep<Brief> = (r) => {
+    if (!r.open_items || !r.open_items.items.some((i) => 'detail' in i)) return null
+    caseDial = { ...caseDial, detailChars: 0 }
+    return {
+      reply: { ...r, open_items: openItemsAt(caseDial) },
+      note: { block: 'open_items.detail', kept: 'each open item without its detail; detail_more counts its characters', read_whole: 'read_rows on person_case_items (select item_no,detail), person_id eq' },
+    }
+  }
+  const caseItemsStep = (max: number): FitStep<Brief> => (r) => {
+    if (!r.open_items || openCount <= max) return null
+    caseDial = { ...caseDial, openMax: max }
+    return {
+      reply: { ...r, open_items: openItemsAt(caseDial) },
+      note: { block: 'open_items.items', kept: `the first ${max} of ${openCount} open items by number; counts is the whole case`, read_whole: 'read_rows on person_case_items, person_id eq and state eq open, order item_no' },
+    }
+  }
+  const caseLogStep: FitStep<Brief> = (r) => {
+    if (!r.log || r.log.newest.length <= BRIEF_CASE_LOG_SHORT) return null
+    return {
+      reply: { ...r, log: caseLogAt(BRIEF_CASE_LOG_SHORT) },
+      note: { block: 'log.newest', kept: `the newest ${BRIEF_CASE_LOG_SHORT} lines; count is the whole log`, read_whole: 'read_rows on person_case_log, person_id eq, order logged_at descending' },
+    }
+  }
   return fitReply(whole, [
     ...BRIEF_DOC_SECTION_STEPS.map(docSectionStep),
     ...BRIEF_OUTLINE_STEPS.map(narrativeStep),
     ...BRIEF_OUTLINE_STEPS.map(matterNarrativeStep),
+    caseDetailStep,
     ...BRIEF_EVIDENCE_STEPS.map(evidenceStep),
     docSectionStep(0),
     ...BRIEF_DOCUMENT_STEPS.map(documentStep),
     summaryStep,
     matterRowsStep,
     headlinesStep,
+    caseLogStep,
+    ...BRIEF_CASE_ITEM_STEPS.map(caseItemsStep),
   ])
 }

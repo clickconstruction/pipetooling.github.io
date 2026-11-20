@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeFormHead, lienServeLandingFocus, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
+import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeCodeLanding, lienServeFormHead, lienServeLandingFocus, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
 
 const filing = (id: string, sends: unknown[] = []) => ({ id, sends })
 
@@ -73,6 +73,11 @@ describe('where a filed lien’s copies stand', () => {
     expect(lienServeLandingSelector({ part: 'numbers' })).toBe('[data-lien-serve-numbers-part] > h3')
     expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1', recipient: 'original_contractor' })).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="original_contractor"]')
     expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1' })).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="owner"]')
+    // A printed code lands on one envelope's number box with the cursor in it, the owner's when it names none, or on the numbers' heading (v2.7964).
+    expect(lienServeCodeLanding({ jobId: 'j1', recipient: 'original_contractor' })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'original_contractor', cursor: true, fromCode: true })
+    expect(lienServeCodeLanding({ jobId: 'j1', recipient: null })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'owner', cursor: true, fromCode: true })
+    expect(lienServeCodeLanding({ jobId: null, recipient: null })).toEqual({ part: 'numbers', fromCode: true })
+    expect(lienServeLandingSelector(lienServeCodeLanding({ jobId: 'j1', recipient: 'original_contractor' }))).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="original_contractor"]')
     // The mailed day lands on the lien's whole row, the cursor on its Mailed box (v2.7883).
     expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1', tick: true })).toBe('[data-lien-serve-job="j1"]')
     expect([lienServeLandingFocus({ part: 'numbers', jobId: 'j1', tick: true }), lienServeLandingFocus({ part: 'numbers', jobId: 'j1', cursor: true }), lienServeLandingFocus({ part: 'numbers' }), lienServeLandingFocus({ part: 'print' })]).toEqual(['input[type="checkbox"]', 'input[type="text"]', null, null])

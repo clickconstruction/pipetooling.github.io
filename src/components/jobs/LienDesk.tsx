@@ -91,7 +91,7 @@ import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
 import { lienServeProofMissing } from '../../lib/jobs/lienServeNumbers'
 import { lienDocKnownFromFilings } from '../../lib/jobs/lienDocNumber'
-import { lienServeStage, lienServeStageCounts, lienServeStageDoorWords, type LienServeLanding } from '../../lib/jobs/lienServeStage'
+import { lienServeCodeLanding, lienServeStage, lienServeStageCounts, lienServeStageDoorWords, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
 import { EmptyState } from '../EmptyState'
@@ -277,6 +277,8 @@ export type LienDeskProps = {
   openProperty?: { addressId: string; key: number } | null
   /** Add the stamped scans, opened over the desk by its address (punch list #366): `?scans=1`; `key` re-opens it. */
   openScans?: { key: number } | null
+  /** The host's door to Filed liens: copies to mail on its mail numbers (v2.7964): a lien, one of its envelopes, or the list. The window opens each time the host hands a new one. */
+  openCopies?: { key: number; jobId: string | null; recipient: 'owner' | 'original_contractor' | null } | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
   /**
@@ -348,6 +350,7 @@ export default function LienDesk({
   openRun,
   openProperty: openPropertyDoor,
   openScans: openScansDoor,
+  openCopies: openCopiesDoor,
   onPutGcOnNotice,
   onOpenCompanySettings,
   onOpenCustomerRecord,
@@ -905,6 +908,14 @@ export default function LienDesk({
   const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'owner_address' | 'legal' | 'homestead_answer' } | null>(null)
   // The copy a stop window's card opened the copies window on (`lienMailProofDoor.ts`); forgotten when that window closes.
   const [serveLand, setServeLand] = useState<LienServeLanding | null>(null)
+  // A printed code's door (a divider's, the mail sheet's): the copies window on that envelope's number box, or on the
+  // list. The office alone, as every door to the window is.
+  useEffect(() => {
+    if (!openCopiesDoor || !office) return
+    setServeLand(lienServeCodeLanding(openCopiesDoor))
+    setServeOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCopiesDoor, office])
   /** The copies window from the bin's press or the folded row: opened on the half its name says. */
   const openFilings = () => windows.setFilingsOpen(true)
   const openServeAll = () => {

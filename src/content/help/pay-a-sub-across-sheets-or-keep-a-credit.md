@@ -18,7 +18,7 @@ Anything the check carries past their sheets is kept as the sub's credit. The ne
 5. Pick how it was sent, and type the check number.
 6. Press {{button:green|Record payment}}.
 
-A small window follows. It says what was recorded and that the sub has been given no paper. Press {{button:blue|Payment record…}} to open [the paper for this payment](/help/make-a-statement-of-account-for-a-sub). Press **Done** to skip it.
+A small window follows. The window says what was recorded and that the sub has been sent no paper. Press {{button:blue|Send the payment record…}} to [email the paper for this payment](/help/make-a-statement-of-account-for-a-sub#send-it-by-email). Press **Done** to skip it.
 
 :::example What the window lists for a $2,000.00 check
 - $1,000.00 on this sheet, paid in full

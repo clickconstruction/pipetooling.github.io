@@ -5,6 +5,12 @@
  * Email carries the PDFs. A text carries a link to the same papers on the sub's page, never a file. A sub with no
  * email on the roster gets a line that says so and a door to add one: the press is dead, never silent.
  *
+ * Email is the one way built (`send-sub-paper-email`). The texted link and the copied link keep their words here
+ * for the day they are, and a window offers only the ways it is handed.
+ *
+ * One email carries `SUB_PAPER_SEND_MAX` papers, the function's own limit. `subPaperSendSet` says which ride and
+ * which are held, so the press sends what fits and names the rest: a send is never refused whole for one too many.
+ *
  * Pure: no React, no Supabase.
  */
 import { paperMoney, type PaymentRecord, type StatementOfAccount, type WorkStatement } from '../../../supabase/functions/_shared/subPapers'
@@ -27,6 +33,26 @@ export const SUB_PAPER_SENT_KIND: Record<SubPaper['kind'], string> = {
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** One email carries this many papers at most. `send-sub-paper-email` refuses more (its `MAX_PAPERS`). */
+export const SUB_PAPER_SEND_MAX = 12
+
+/**
+ * What one email carries: the paper the window is on, then what rides along, in the order given, up to the limit.
+ * What does not fit is held, and the window names it: nothing is left off without a word.
+ */
+export function subPaperSendSet(attached: readonly SubPaper[], max: number = SUB_PAPER_SEND_MAX): { attached: SubPaper[]; held: SubPaper[] } {
+  const room = Math.max(0, max - 1)
+  return { attached: attached.slice(0, room), held: attached.slice(room) }
+}
+
+/** What a paper is called in a line of words: its number, else what it is. */
+function paperName(p: SubPaper): string {
+  if (p.number) return p.number
+  if (p.kind === 'statement_of_account') return 'the statement of account'
+  if (p.kind === 'payment_record') return `the payment record of ${p.sentOn}`
+  return `the work statement for ${p.job.label}`
+}
 
 /** `WS-2041-1.pdf`, `PR-0231 Payment record.pdf`; a paper with no number yet is named for what it is. */
 export function subPaperAttachmentName(p: SubPaper): string {
@@ -54,13 +80,17 @@ export type SubPaperSendPlan = {
   /** The press, with its count. Null when it cannot go, and `blocked` says why. */
   confirmLabel: string | null
   blocked: string | null
+  /** What a dead press waits on, for the window to draw its door: an address on the roster. Null when it can go. */
+  needs: 'email' | null
+  /** The papers that do not fit in this email, in one line. Null when everything rides. */
+  held: string | null
 }
 
 /**
  * The plan for one send. `lead` is the paper the window was opened on; `attached` ride along. `portalUrl` is the
- * sub's own page, when they have one.
+ * sub's own page, when they have one. `emailUnread` is a roster the window could not read just now.
  */
-export function subPaperSendPlan(i: { company: string; subName: string; lead: SubPaper; attached: readonly SubPaper[]; by: SubPaperSendBy; email: string | null; phone: string | null; portalUrl: string | null; lastPayment: { amount: number; day: string } | null }): SubPaperSendPlan {
+export function subPaperSendPlan(i: { company: string; subName: string; lead: SubPaper; attached: readonly SubPaper[]; held?: readonly SubPaper[]; by: SubPaperSendBy; email: string | null; emailUnread?: boolean; phone: string | null; portalUrl: string | null; lastPayment: { amount: number; day: string } | null }): SubPaperSendPlan {
   const papers = [i.lead, ...i.attached]
   const files = papers.map(subPaperAttachmentName)
   const page = i.portalUrl ? ` The same papers are on your page: ${i.portalUrl}` : ''
@@ -68,7 +98,9 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
   let lines: string[]
   if (i.lead.kind === 'statement_of_account') {
     subject = `Your statement of account from ${i.company}`
-    lines = [`Here is your statement for ${i.lead.period}.`, `We still have ${paperMoney(i.lead.stillOpen)} open with you.`, i.lastPayment ? `Our last payment was ${paperMoney(i.lastPayment.amount)} on ${i.lastPayment.day}.` : '']
+    // `To date, Nov 19, 2026` and `To Nov 13, 2026` follow the word straight: *your statement to date, Nov 19, 2026*.
+    const period = /^To /.test(i.lead.period) ? ` t${i.lead.period.slice(1)}` : ` for ${i.lead.period}`
+    lines = [`Here is your statement${period}.`, `We still have ${paperMoney(i.lead.stillOpen)} open with you.`, i.lastPayment ? `Our last payment was ${paperMoney(i.lastPayment.amount)} on ${i.lastPayment.day}.` : '']
   } else if (i.lead.kind === 'payment_record') {
     subject = `Payment record${i.lead.number ? ` ${i.lead.number}` : ''} from ${i.company}`
     lines = [`We sent you ${paperMoney(i.lead.amountSent)} on ${i.lead.sentOn}${i.lead.how && i.lead.how !== 'Not recorded' ? ` by ${i.lead.how}` : ''}.`, `The record shows how much went to each statement.`, i.lead.stillOpenAfter > 0 ? `${paperMoney(i.lead.stillOpenAfter)} is still open with you after it.` : 'Nothing is still open with you after it.']
@@ -80,13 +112,48 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
   const text = `${i.company}: ${subject.replace(` from ${i.company}`, '')}. ${lines.filter(Boolean)[1] ?? ''} ${i.portalUrl ?? ''}`.trim()
   const count = plural(papers.length, 'paper', 'papers')
   if (i.by === 'email') {
-    const blocked = i.email ? null : `${i.subName} has no email on the roster. Add one on People → Subs, or text a link.`
-    return { subject, body, text, files, steps: [`The ${papers.length === 1 ? 'PDF is' : 'PDFs are'} made${papers.some((p) => !p.number) ? ' and numbered' : ''}.`, `The email goes to ${i.email ?? 'their address'} with ${plural(files.length, 'file', 'files')}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Send ${count} by email`, blocked }
+    // An address the window could not read is not a missing one: the function reads the roster itself, so the press stays live.
+    const blocked = i.email || i.emailUnread ? null : `${i.subName} has no email on the roster, so there is nowhere to send ${papers.length === 1 ? 'it' : 'them'}.`
+    const left = i.held ?? []
+    // The held papers are the email's alone: a link opens the sub's whole page, so nothing is left off one.
+    const held = left.length === 0 ? null : `${plural(left.length, 'more paper does', 'more papers do')} not fit, since one email carries ${SUB_PAPER_SEND_MAX}. Send ${left.length === 1 ? 'it' : 'them'} next: ${left.map(paperName).join(', ')}.`
+    return { subject, body, text, files, steps: [`The ${papers.length === 1 ? 'PDF is' : 'PDFs are'} made${papers.some((p) => !p.number) ? ' and numbered' : ''}.`, `The email goes to ${i.email ?? (i.emailUnread ? 'the address on their roster row' : 'their address')} with ${plural(files.length, 'file', 'files')}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Send ${count} by email`, blocked, needs: blocked ? 'email' : null, held }
   }
   if (i.by === 'text') {
     const blocked = !i.portalUrl ? `${i.subName} has no page to link to yet. Open their portal link on People → Subs first.` : i.phone ? null : `${i.subName} has no phone on the roster. Add one on People → Subs, or send by email.`
-    return { subject, body, text, files: [], steps: [`The ${papers.length === 1 ? 'paper is' : 'papers are'} put on their page.`, `A text with the link goes to ${i.phone ?? 'their phone'}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Text a link to ${count}`, blocked }
+    return { subject, body, text, files: [], steps: [`The ${papers.length === 1 ? 'paper is' : 'papers are'} put on their page.`, `A text with the link goes to ${i.phone ?? 'their phone'}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Text a link to ${count}`, blocked, needs: null, held: null }
   }
   const blocked = i.portalUrl ? null : `${i.subName} has no page to link to yet. Open their portal link on People → Subs first.`
-  return { subject, body, text, files: [], steps: ['The link is copied. Nothing is sent, and nothing is filed.'], confirmLabel: blocked ? null : 'Copy the link', blocked }
+  return { subject, body, text, files: [], steps: ['The link is copied. Nothing is sent, and nothing is filed.'], confirmLabel: blocked ? null : 'Copy the link', blocked, needs: null, held: null }
+}
+
+/**
+ * The door for a sub with no email on the roster, in the window's words. The function sends to the roster's own
+ * address and nowhere else, so the press waits on that row. The paper itself does not: Print and Download work.
+ */
+export function subPaperEmailDoor(): { words: string } {
+  return { words: 'Print or download the paper for now. A dev can add an email to their roster row.' }
+}
+
+/** What the window says once the email went: how many, to whom and where, and where the copies are. */
+export function subPaperSentWords(i: { count: number; subName: string; to: string | null }): string {
+  return `Sent ${plural(i.count, 'paper', 'papers')} to ${i.subName}${i.to ? ` at ${i.to}` : ''}. ${i.count === 1 ? 'A copy is' : 'The copies are'} under Documents → Sent copies.`
+}
+
+/**
+ * What the window says when no answer came back: the request left and the function may have mailed the papers
+ * before the line dropped. It claims neither, and says where to look before a second send.
+ */
+export function subPaperSendUnknownWords(): string {
+  return 'No answer came back, so it is not known whether the email went. Look under Documents → Sent copies before you send again.'
+}
+
+/**
+ * What the window says when the email did not go. A statement of account takes a new number every time it is
+ * made, so one that was numbered for this send is named: the office knows that number went nowhere.
+ */
+export function subPaperNotSentWords(i: { reason: string; numbered: readonly SubPaper[] }): string {
+  const spent = i.numbered.filter((p) => p.kind === 'statement_of_account' && p.number).map((p) => p.number)
+  const reason = i.reason.trim().replace(/[.\s]+$/, '')
+  return `Nothing was sent: ${reason || 'no reason was given'}.${spent.length > 0 ? ` ${spent.join(' and ')} took ${spent.length === 1 ? 'its number' : 'their numbers'} and did not go. The next send takes a new one.` : ''}`
 }

@@ -10,9 +10,13 @@
  *  - A payment record's number is its sending's own, so the mint only records that the paper was made.
  *  - A statement of account is a new paper every time.
  *
+ * Papers that go out together are registered as one set (`registerSubPaperSet`): every work statement first, so
+ * the statement of account and the payment records in the same email name each sheet by the number on the file
+ * beside them.
+ *
  * Pure: no React, no Supabase. The window makes the calls.
  */
-import { buildStatementOfAccount, buildWorkStatement, type PaperContext, type PaperSheet, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
+import { buildPaymentRecord, buildStatementOfAccount, buildWorkStatement, paperSendings, type PaperContext, type PaperSheet, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
 import type { SubPaper } from './subPaperSend'
 import type { PaperRegisterRow } from './subPapersInputs'
 import { subPaperFingerprint } from '../../../supabase/functions/_shared/subPaperMarks'
@@ -77,12 +81,68 @@ export function numberedSubPaper(p: SubPaper, minted: MintedSubPaper, sheets: re
   if (p.kind === 'work_statement') {
     const sheet = sheets.find((s) => s.id === p.sheetId)
     if (!sheet) return p
-    const before = register.bySheet.get(p.sheetId)
-    const replaces = !minted.reused && minted.revision > 1 && before && before.revision < minted.revision ? before.issuedOn : ''
-    return buildWorkStatement({ ...sheet, number: minted.number, revision: minted.revision, replacesCopyOf: replaces || (minted.reused ? sheet.replacesCopyOf : '') }, ctx)
+    return buildWorkStatement(numberedSheet(sheet, minted, register), ctx)
   }
   if (p.kind === 'statement_of_account') return buildStatementOfAccount(sheets, range, ctx, { number: minted.number })
   return p
+}
+
+/**
+ * A sheet as it reads once the register has answered for its work statement: the number, the revision and, on a
+ * new revision, the day of the copy it replaces. Every paper that names the sheet is built over this.
+ */
+export function numberedSheet(sheet: PaperSheet, minted: MintedSubPaper, register: SubPaperRegister): PaperSheet {
+  const before = register.bySheet.get(sheet.id)
+  const replaces = !minted.reused && minted.revision > 1 && before && before.revision < minted.revision ? before.issuedOn : ''
+  return { ...sheet, number: minted.number, revision: minted.revision, replacesCopyOf: replaces || (minted.reused ? sheet.replacesCopyOf : '') }
+}
+
+/**
+ * One paper, or several that go out together, registered and drawn again as one set.
+ *
+ * Every work statement is registered first. A payment record and a statement of account name a sheet by its work
+ * statement's number, so each is built again over the sheets as numbered and only then registered: the statement
+ * a sub opens names `WS-2057-1`, the file beside it. The statement of account is last. It takes a new number every
+ * time, so a refusal ahead of it spends none.
+ *
+ * `mint` registers one paper and answers what the register said. It answers null where the register is not on the
+ * database yet, and the paper then goes as it is. It throws the register's reason when the register refuses, and
+ * then nothing comes back. The papers come back in the order they were given.
+ */
+export async function registerSubPaperSet(
+  papers: readonly SubPaper[],
+  io: { mint: (p: SubPaper) => Promise<MintedSubPaper | null>; sheets: readonly PaperSheet[]; ctx: PaperContext; range: StatementRange; register: SubPaperRegister },
+): Promise<SubPaper[]> {
+  let sheets = io.sheets
+  const made = new Map<number, SubPaper>()
+  for (const [i, p] of papers.entries()) {
+    if (p.kind !== 'work_statement') continue
+    const minted = await io.mint(p)
+    const sheet = sheets.find((s) => s.id === p.sheetId)
+    if (!minted || !sheet) {
+      made.set(i, p)
+      continue
+    }
+    const numbered = numberedSheet(sheet, minted, io.register)
+    sheets = sheets.map((s) => (s.id === numbered.id ? numbered : s))
+    made.set(i, buildWorkStatement(numbered, io.ctx))
+  }
+  const sendings = paperSendings(sheets)
+  for (const [i, p] of papers.entries()) {
+    if (p.kind !== 'payment_record') continue
+    const sending = sendings.find((s) => s.key === p.key)
+    // Its number is its sending's own, so the register only records that the paper was made.
+    const fresh = sending ? buildPaymentRecord(sending, sheets, io.ctx) : p
+    await io.mint(fresh)
+    made.set(i, fresh)
+  }
+  for (const [i, p] of papers.entries()) {
+    if (p.kind !== 'statement_of_account') continue
+    const fresh = buildStatementOfAccount(sheets, io.range, io.ctx)
+    const minted = await io.mint(fresh)
+    made.set(i, minted ? buildStatementOfAccount(sheets, io.range, io.ctx, { number: minted.number }) : fresh)
+  }
+  return papers.map((p, i) => made.get(i) ?? p)
 }
 
 /** A refusal from the register, as the window says it. `missing` is a database the migration has not reached. */

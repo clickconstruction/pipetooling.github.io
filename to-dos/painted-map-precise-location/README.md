@@ -2,7 +2,7 @@
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
 group: ready
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`) · PR 1, the kernel, is v2.7984
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -11,7 +11,7 @@ summary: >
   signal, or a reading so rough that the switch looks off. When it looks off, the line sets the
   phone's two numbers side by side and lists the steps to the switch for this phone alone. The map
   pulls back to the whole circle, and the dot stays where it was.
-next: PR 2, the walk — the line on the walk panel in every state, the canvas's `frameMargin`, the guide and the Glossary.
+next: The first walk on an iPhone with Precise Location switched off, now that the walk's line is built, and PR 3 (Put the dot where I am).
 size: M as a train of four (S · M · S · S), then call 8 as its own follow-up (S)
 blocker: None. Every call was taken at the pick on 2026-11-19. No real phone has been read with the switch off, so the first walk on one is the proof.
 opinion: build — four small PRs, and it answers the first question a person on site has
@@ -174,7 +174,11 @@ New:
   `PRECISE_ALREADY_ON_WORDS`, `USUAL_MARGIN_WORDS`, and the constants `PRECISE_PROVEN_METERS = 100`
   and `PRECISE_ROUGH_HOLD_MS = 4000`. It has no clock: a screen counts the 4 s and hands the answer
   in as `roughHeld`, and a screen that asks once, on a press, hands in `true`.
-- `src/components/paintedMap/PreciseLocationLine.tsx`: the line, the steps and the tick.
+- `src/components/paintedMap/PreciseLocationLine.tsx`, since v2.7994: the line, the steps and the tick. It takes
+  the margin, the phone's kind and `roughHeld`, and each screen's own note.
+- `src/hooks/usePreciseLocation.ts`, since v2.7994: `usePhoneKind`, and `useRoughHeld`, the 4 s wait.
+- `src/lib/paintedMap/marginFrame.ts`, since v2.7994: how a map frames an area and the first spot after it
+  (`marginFrameStep`), for the Leaflet canvas and any other.
 
 Read the prototype with
 `git show origin/claude/precise-location-proto:src/lib/paintedMap/preciseLocation.ts`, and the
@@ -223,6 +227,10 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
   `/src/lib/paintedMap/paintedMapDoor.ts` in the page and calling `startPaintedMap` with a job id
   that matches nothing, a made-up label and a centre. Feed 4.5 m, then 35 m, then 3,200 m and wait
   5 s. `/way/sample` reads no table, so the shared map walks the same way.
+  Three things the first walk met: the host answers `startPaintedMap` only once the Layout is up, so
+  ask until it says true. The map is its own chunk, so wait for its first tile before reading the
+  map. With no `themeOverride` in the phone's storage the app is dark from 20:00, so set it to
+  `light` or `dark` for each pass.
 - **The real test, once PR 2 is live:** on an iPhone, turn Precise Location off under Settings →
   Privacy & Security → Location Services → Safari Websites. Start painting on a ZZ Test job. The
   line should say *looks off* with the steps. Write the margin it shows on this card. Turn the
@@ -246,6 +254,14 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
   `frameMargin` brings the map in on the first sure reading.
 - Leaving for Settings pauses the walk (`walkHidden`). The walker presses **Keep painting** on the
   way back, and the steps end with *Come back to this screen.*
+- The walk keeps its last reading across a pause (`walkResume`). Since v2.7994 the wait starts over
+  on **Keep painting**, so the line reads *Finding you…*. If the old reading was rough and no new
+  one comes for 4 s, the line says *looks off* once more until one does. Clearing the last reading
+  on a resume would end that, and would also take the person's dot off the map until the next
+  reading. Not done: it changes the walk, and no phone has shown the need.
+- The two older pills over the map, for placing and for drawing, sit 26 px up and touch the map's
+  credit line on a phone, where the credit runs to two rows. The new pill sits 42 px up. Not part
+  of this card.
 
 ## Neighbours
 
@@ -264,5 +280,11 @@ Building, on Grace's word of 2026-11-19.
   differs from the prototype's kernel in three places, each a reading of the picks: a page inside
   another app's own window on an iPhone is another browser, a desk is not called a phone, and nothing
   is set beside a reading that is not rough. That version's fragment has them.
-- **Next is PR 2, the walk.** What a screen does about a weak or a rough reading is its own
-  sentence, kept with the screen: the walk's two go in `paintedWalkWords.ts`.
+- **PR 2, the walk, is v2.7994.** The line is on the walk panel in every state, and the map pulls
+  back to the whole circle once the readings have stayed rough for 4 s. The window counts the wait
+  once, for the line and for the map. The headless walk ran as Safari on an iPhone in light and
+  dark, as Chrome on Android and as a desk, and that version's fragment has what it showed.
+- **A second canvas** (#387's Google map) does what that fragment lists under *What a second canvas
+  must do*: it takes `me.area`, draws the dashed circle with no dot, and asks `marginFrameStep`.
+- **Next is the walk on a real iPhone**, then PR 3. What a screen does about a weak or a rough
+  reading is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`.

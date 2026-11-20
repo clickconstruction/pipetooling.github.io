@@ -171,6 +171,7 @@
     "test:pg:primary-test-papers": "bash scripts/pgtest-primary-test-papers.sh",
     "test:pg:job-papers-lock": "bash scripts/pgtest-job-papers-lock.sh",
     "test:pg:job-papers-lists": "bash scripts/pgtest-job-papers-lists.sh",
+    "test:pg:schedule-reads-gate": "bash scripts/pgtest-schedule-reads-gate.sh",
     "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
     "test:pg:bed-apply": "bash scripts/pgtest-bed-apply.sh",
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",

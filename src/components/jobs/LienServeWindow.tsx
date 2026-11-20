@@ -546,6 +546,11 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
             </label>
           </span>
         </div>
+        {land?.part === 'numbers' && land.fromCode && land.jobId === r.job.jobId && !d.mailed && servedOn ? (
+          <div data-lien-serve-code-day role="note" style={{ fontSize: '0.78rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 6, padding: '0.35rem 0.6rem', margin: '0.2rem 0' }}>
+            {LIEN_SERVE_NUMBERS_WORDS.codeDay(formatYmdMonthDay(servedOn))}
+          </div>
+        ) : null}
         {numberLine(r.job)}
         {envelopes.map((e) => numberInput(r.job, e.recipient, e.name, e.recipient === 'owner' ? d.owner : (d.contractor ?? { tracking: '', receiptUrl: '' })))}
         {!d.mailed && holdsProof ? (

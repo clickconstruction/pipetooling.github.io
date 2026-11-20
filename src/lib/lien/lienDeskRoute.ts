@@ -7,7 +7,9 @@
  * `&job=<id>` is the notice the Notices list opens on, `&pile=<pile>` the pile it is narrowed to, and a
  * link that names a job or a pile with no tab lands on Notices, as the old door did. `&records=<job id>`
  * (or `records=1`) opens Records for an owner over the desk, a door the page consumes once. `&scans=1`
- * opens Add the stamped scans the same way (punch list #366).
+ * opens Add the stamped scans the same way (punch list #366). `&copies=<job id>` opens Filed liens: copies to mail on
+ * that lien's mail numbers, `&to=owner` or `&to=contractor` on one envelope's number box, and `&copies=1` on the list:
+ * the codes the copies' dividers and mail sheet print (v2.7964), consumed once the same way.
  *
  * The links in the wild keep working: `/jobs?tab=stages&liendesk=1` with `&kind=`, `&liendeskJob=` and
  * `&liendeskPile=` (the Dashboard's cards, the forecast, the guides, the Materials lines, bookmarks)
@@ -57,7 +59,14 @@ export type LienDeskAddress = {
   property: string | null
   /** Add the stamped scans, opened over the desk (punch list #366): `&scans=1`, the door from a job's Record filing; a door the page consumes once. */
   scans: boolean
+  /** Filed liens: copies to mail, opened over the desk on its mail numbers (v2.7964): `&copies=<job id>&to=owner|contractor` from a divider's code, `&copies=1` from the mail sheet's; a door the page consumes once. */
+  copies: { jobId: string | null; recipient: LienCopiesReader | null } | null
 }
+
+/** Whose envelope a copies link names, as the filing's sends name it. */
+export type LienCopiesReader = 'owner' | 'original_contractor'
+const READER_BY_WORD: Record<string, LienCopiesReader> = { owner: 'owner', contractor: 'original_contractor' }
+const WORD_BY_READER: Record<LienCopiesReader, string> = { owner: 'owner', original_contractor: 'contractor' }
 
 /** The view an address word names, or null for a word the desk does not know. */
 export function lienDeskKindFromWord(word: string | null | undefined): LienDeskKind | null {
@@ -74,7 +83,7 @@ function pileFromWord(word: string | null | undefined): LienDeskPile | null {
 }
 
 /** The address of a view, a notice and a pile: `/lien-desk?tab=notices&job=…&pile=…`; the default view is never written. */
-export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null; property?: string | null; scans?: boolean } = {}): string {
+export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null; property?: string | null; scans?: boolean; copies?: { jobId: string | null; recipient?: LienCopiesReader | null } | null } = {}): string {
   const q = new URLSearchParams()
   if (parts.kind && parts.kind !== LIEN_DESK_DEFAULT_KIND) q.set('tab', WORD_BY_KIND[parts.kind])
   if (parts.job) q.set('job', parts.job)
@@ -86,6 +95,10 @@ export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string |
   }
   if (parts.property) q.set('property', parts.property)
   if (parts.scans) q.set('scans', '1')
+  if (parts.copies) {
+    q.set('copies', parts.copies.jobId ?? '1')
+    if (parts.copies.jobId && parts.copies.recipient) q.set('to', WORD_BY_READER[parts.copies.recipient])
+  }
   const s = q.toString()
   return s ? `${LIEN_DESK_PATH}?${s}` : LIEN_DESK_PATH
 }
@@ -99,6 +112,8 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
   const records = search.get('records')
   const run = (search.get('run') ?? '').trim()
   const mail = search.get('mail')
+  const copies = (search.get('copies') ?? '').trim()
+  const copiesJob = copies === '1' || copies === 'true' ? null : copies
   return {
     kind,
     job,
@@ -107,6 +122,7 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
     run: run ? { itemId: run, mail: mail === '1' || mail === 'true' } : null,
     property: (search.get('property') ?? '').trim() || null,
     scans: search.get('scans') === '1' || search.get('scans') === 'true',
+    copies: copies ? { jobId: copiesJob, recipient: copiesJob ? (READER_BY_WORD[search.get('to') ?? ''] ?? null) : null } : null,
   }
 }
 

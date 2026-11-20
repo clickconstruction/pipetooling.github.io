@@ -91,6 +91,8 @@ export function lienServeProofMissing(job: Pick<LienServeJob, 'isSub' | 'filing'
 export const LIEN_SERVE_NUMBERS_WORDS = {
   day: 'Mailed on',
   dayHint: 'A tick writes this day.',
+  /** On the lien a printed code opened (v2.7964): the day its first number records, said before a number is typed. */
+  codeDay: (day: string) => `The first number marks this lien mailed on ${day}. Mailed another day? Change Mailed on at the top first.`,
   mailed: 'Mailed',
   hint: 'Scan or type each number. Enter moves to the next envelope. A number ticks Mailed on its lien. Mailed with no number yet? Tick it by hand.',
   none: 'Nothing waiting on its copies. Every filed lien is served.',

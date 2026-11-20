@@ -245,7 +245,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and forty-seven verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and forty-seven since v2.7974, whose seat pair is `ct-bridge` and `tt-bridge` called as the dev, each a devs-only door, and the Digital twins panel's own update of `counttooling_user_id` on a twin's `users` row under the table's dev update policy, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and forty-nine verbs, fifty-five of them POSTing one of twenty-three named RPCs as the dev, twenty-two of them dev-gated and one the app's own `trip_save` (one hundred and forty-nine since v2.7976, whose case pair POSTs `dev_case_write`, the door the Case view on People → HR writes a case's items and log through, which takes a dev alone, with no new role and no new policy;
+one hundred and forty-seven since v2.7974, whose seat pair is `ct-bridge` and `tt-bridge` called as the dev, each a devs-only door, and the Digital twins panel's own update of `counttooling_user_id` on a twin's `users` row under the table's dev update policy, with no new role and no new policy;
 one hundred and forty-five since v2.7970, whose archive pair is the Digital twins panel's own update of `revoked_at` on a twin's live `twin_credentials` rows under the table's dev-only RLS and then `archive-user` or `restore-user` called as the dev, each keeping its own role check, and whose rounds pair is the Rounds card's own `robot_rounds_stop`, which takes a dev or the master, with no new role and no new policy;
 one hundred and forty-one since v2.7958, whose price matrix pair is the Price it with the robot window's own insert on `bid_price_matrix_requests` and its Take it back, under that table's pricing-sharers RLS, with no new role and no new policy;
 one hundred and thirty-nine since v2.7909, whose receipt take-off is the receipt press's own update of `sends` on the filed affidavit's `job_lien_filings` row under the table's own update policy, never the day served, with the file then sent to Drive's trash through `drive-link`'s own trash door, no new role and no new policy;
@@ -1462,6 +1463,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
   Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.
   It writes three columns and nothing else, and the table stays read only by grant.
+  Since v2.7983 the papers window sends a paper by email: its **Send to** press shows for the same office roles (`isOfficeRole`) and not for an account in training, so a superintendent gets none.
+  `send-sub-paper-email` holds the gate itself (the office roles, no training account, no archived account) and sends only to the roster's own address for the person, read under the caller's policies.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;
@@ -2241,8 +2244,9 @@ A training-mode account cannot sign, since starting a paper is a write.
   The list (`team_leader_assignments`) and every RLS / RPC branch that read it were dropped in v2.5088 (migration `20261010022000`).
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - **Dashboard → Clock strip — Email schedule** (`ScheduleDayEmailModal`): **dev** may queue a dispatch-schedule email for **any non-archived user** (`schedule_day_email_requests`;
-  RLS **`schedule_day_email_requests_insert_dev_any_recipient`**);
+  RLS **`schedule_day_email_requests_insert_dev_any_recipient`**), and so may the rest of the office since v2.6758 (**`schedule_day_email_requests_insert_office_any_recipient`**);
   other staff may queue **only for self**.
+  The window's preview reads under the same rule (**Job schedule blocks** below, *The schedule emails' reads*).
   See **`RECENT_FEATURES.md`** (e.g. v2.523).
 - **People page tab groups** (v2.2811): six top-level tabs — People, Pay, Paperwork, Fleet & Housing, Review (the owner or a dev since v2.6757, punch list #188 row 2;
   the header's Review icon the same;
@@ -3481,6 +3485,14 @@ each leg remains a normal row for RLS (assignee still scopes read where applicab
 
 **Calendar / Preview**: Assignees see their blocks;
 **`list_assigned_jobs_for_dashboard`** includes **`project_id`** for mapping workflow context to team jobs on the Preview modal.
+
+**The schedule emails' reads** (v2.7925, `20261119070000_schedule_reads_ask_who_calls.sql`): `list_schedule_blocks_for_share` and `list_job_schedule_blocks_for_schedule_email` run as their definer and answer the SELECT rule above about a named person, so each asks `schedule_read_gate` who is calling before it reads.
+The service role with no login reads both for anyone, which is how `schedule-share-dispatch` and `schedule-day-email-dispatch` read.
+A signed-in caller reads both for himself.
+The office (`is_office_staff()`) also reads the day's email for anyone, the roles that may send it to another user.
+Anyone else is refused with `42501`, and the public key holds neither function.
+Each read answers for the named person whoever asks it: the office leg names the roles of `is_office_staff()` and asks them of that person, so the office's preview lists what the person's email will hold.
+A primary named as the viewer or the recipient reads the blocks assigned to him and the blocks of the jobs he is the account manager of, the table's rule for him written inline (punch list #400, family 7).
 
 ### Master-Assistant Adoption
 

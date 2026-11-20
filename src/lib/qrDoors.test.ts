@@ -38,6 +38,7 @@ const QR_DRAWERS: Readonly<Record<string, { opens: string; door: Door }>> = {
   'src/lib/billing/payQr.ts': { opens: 'the address its caller hands it', door: 'helper' },
   'src/lib/customerSampleEmails.ts': { opens: "a customer's portal, in a sample of the email", door: 'public' },
   'src/lib/jobs/lienHelpGuideCode.ts': { opens: "a job's Lien window, the Lien desk, or a guide's share page", door: 'sign-in, kept by the gate' },
+  'src/lib/jobs/lienServePdf.ts': { opens: "the Lien desk's Filed liens: copies to mail, at one envelope's number box from a divider or the list from the mail sheet", door: 'sign-in, kept by the gate' },
   'src/lib/jobs/lienNoticePayPageAssets.ts': { opens: "a bill's pay page", door: 'public' },
   'src/lib/jobsDocuments/gcStatementEmail.ts': { opens: "a GC's portal", door: 'public' },
   'src/lib/mail/runDocsmitIo.ts': { opens: "a bill's pay page, on a mailed letter", door: 'public' },
@@ -93,6 +94,7 @@ describe('every code the app draws says what it opens', () => {
       'src/components/materials/PrintLabelsWindow.tsx',
       'src/components/materials/PrintStickersModal.tsx',
       'src/lib/jobs/lienHelpGuideCode.ts',
+      'src/lib/jobs/lienServePdf.ts',
     ])
   })
 })
