@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · nothing of the builder is shipped
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · steps 3 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
+next: Step 3, settings on the job, the ground, which no call holds. Beside it, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*. They hold step 4.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -231,16 +231,18 @@ Read in the code on 2026-11-17, and again on 2026-11-19 with prod read through t
   Every change goes through `edit_clause` and bumps the entry's `revision`.
   `contract_paper_clauses(p_paper_id, p_trades, p_lang)` is the database's assembly, and `assemblePaper`
   is its TypeScript twin, used only by the Book's preview (`ClausePreviewWindow.tsx`). Clauses are
-  edited in Settings (`src/components/settings/SettingsContractsTab.tsx`).
+  edited in Settings (`src/components/settings/SettingsClausesTab.tsx` and `src/components/contracts/`).
 - **No clause paper has run on prod.** On 2026-11-19 `contract_clauses` held no row, all 18 Book entries
   read `revision = 0`, and no signed copy carried a `paper_revision`. Step 1 is the engine's first real use.
-- **A clause is kept or dropped by trade only.** There is no slot, no condition and no blank in clause
-  text. Nothing picks one wording out of several.
+- **A clause was kept or dropped by trade only.** There was no slot, no condition and no blank in clause
+  text, and nothing picked one wording out of several. Step 1 added all three (v2.8014): a clause has a
+  place (`slot`), an *Only when* (`when_opts`) and a `{key}` blank.
 - **Signing.** `accept-contract` re-reads the paper, refuses with `paper_changed` when the revision
   moved, and writes `paper_revision` and `clause_versions` (the whole paper as JSON) on the copy. A
   trigger blocks any later change. No hash is kept, and a clause paper makes no PDF.
 - **A trap.** `clausePaperFor` answers null for a paper that is not built from clauses, and the accept
   then signs the body. A settings paper asked for with no settings must never fall through that door.
+  Step 1 shut it: such a paper is refused with `SETTINGS_PAPER_BARE` (`_shared/clausePaper.ts`).
 - **The gate, papers before a job opens.** All seven of its steps are on `main` and live (v2.7641 to
   v2.7726): the ground (`job_required_papers`, `job_papers_require`, `job_paper_start`), the office's
   section (`src/components/jobs/JobDocumentsRequiredPapers.tsx`), the prompt, the lock in the database,
@@ -253,8 +255,10 @@ Read in the code on 2026-11-17, and again on 2026-11-19 with prod read through t
   outsider has a login, and no outsider sets anything.
 - **A naming trap.** GC mode, `gc_companies` and a GC company paper are about the company's trade
   partners when it is the GC. A GC who hires the company is a `customers` row.
-- **A sub's business is not a record.** `people` has no business column and the signature has no
-  business line. Listing each sub business needs one new line on the signature, *Signing for*.
+- **A sub's business is not a record.** `people` has no business column. Listing each sub business
+  needs one line on the signature, *Signing for*. Card #403 has since put that line on a paper
+  (`person_contract_documents.signing_for`, v2.7977 and v2.7986), kept at the send. Filling it from
+  a sub's own company is #403's step 5, not built.
 - **PDFs.** Edge functions already draw PDFs with pdf-lib (`accept-contract`, `sign-job-contract`). The
   client prints through `src/lib/printRoot.ts`.
 
@@ -297,17 +301,19 @@ paper until an entry has a settings list, and the first one is a test entry.
 0. **The clause table, no code.** The secrecy draft cut into its sections, each marked fixed, picked by
    a setting, or filled with a blank. It lives beside the draft, outside the repo. It is the brief to the
    attorney and the script for entering test clauses.
-1. **The Book takes settings (M).** The migration (the settings list, the read mark, `slot` and
+1. **The Book takes settings (M). Built, v2.8014 and v2.8019.** The migration (the settings list, the read mark, `slot` and
    `when_opts`, the two functions with their new parameters). The kernel `paperSettings.ts` with tests.
    `assemble.ts` and `clausePaper.ts`, with the refusal for a settings paper asked for bare. The clause
    window's *Only when* line, the clauses listed by what puts them in the paper, a *Settings list*
-   window, the preview with its settings, and a clause's own line breaks kept (`ClausePaper.tsx` has no
-   `white-space: pre-line` today). Waits on nothing.
-2. **The summary, the level and the sample (S).** The kernel `paperSummary.ts`. *Summary* beside *Paper*
+   window, the preview with its settings, and a clause's own line breaks kept (`ClausePaper.tsx` had no
+   `white-space: pre-line` before it). It waited on nothing.
+2. **The summary, the level and the sample (S). Built, v2.8020.** The kernel `paperSummary.ts`. *Summary* beside *Paper*
    in the preview, and *Print the sample* through `printRoot.ts`.
 3. **Settings on the job, the ground (M).** The columns on `job_required_papers`, `job_papers_require`
    accepting a clause-built entry with settings, a function that sets them and locks at the first
    signature, the read-revision rule, the freeze with the hash, and the signature's *Signing for* line.
+   Card #403 built that line's column and keeps it at the send (v2.7977, v2.7986). Its step 5, not
+   built, fills it from a sub's own company.
 4. **The office's settings page (M).** The step-by-step flow lands here, reused from the Document
    builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
    `JobDocumentsRequiredPapers`. This is the first screen the open look decides.
@@ -318,7 +324,8 @@ paper until an entry has a settings list, and the first one is a test entry.
 8. **A second kind of paper (M).** The company's own secrecy paper to a vendor, partner or customer. It
    is one-way or mutual, tied to a relationship and not a job, and needs its own approved clause set.
 
-Steps 1 and 2 touch only the Contract Book and can start before the look is settled. Step 4 cannot.
+Steps 1 and 2 touched only the Contract Book and are built. Step 3 is the ground under a job and can
+start before the look is settled. Step 4 cannot.
 
 ## Points for an attorney
 
@@ -384,16 +391,17 @@ Asked 2026-11-19, in the owner's words:
 > documents).
 
 A read of the code and of prod through the dev seat, the same day. Nothing was built. Each line says
-where it comes from: **code**, **live** or **card**.
+where it comes from: **code**, **live** or **card**. It is the picture of 2026-11-19. Where a release
+since then changed a line, the line says so, as of 2026-11-20.
 
 ### The short answer
 
 | Direction | State |
 |---|---|
-| An NDA builder a GC takes part in | **Drawn only.** No builder code exists (code). The clause engine under it has never run on prod (live). |
+| An NDA builder a GC takes part in | **Drawn only** on that day. Since then the flow, typing on it and **Publish** are built in the Document builder tab, for a dev, apart from any job (#404, v2.7980 to v2.8024), and the Book takes settings (v2.8014 to v2.8020). No GC sees any of it, and the only settings paper is a ZZ test entry. |
 | A job requires a paper before a person gets in | **Built and live, not yet used.** All seven steps are merged and deployed (code). No job on prod requires a paper (live). |
-| Managing contracts from Documents | **The list is built and live. The managing is not started.** Agreements finds and opens a paper. It cannot send, remind, void or add one (code). |
-| Outside vendors and subs signing | **Half there.** Anyone with a link signs with no login (code). A vendor or a GC has no record to hold the paper, gets no copy and no reminder (code). |
+| Managing contracts from Documents | **The list is built and live, and the managing has begun** (#376). A waiting line has **Send again** and **Copy the signing link** (v2.7932). **Send a paper** (v2.7937) and **Contract library** (v2.7938) are on the tab. On that day it could only find and open a paper (code). |
+| Outside vendors and subs signing | **Half there.** Anyone with a link signs with no login (code). On that day a vendor or a GC had no record to hold the paper (code). Since then a paper names a contact as its party and goes to a customer, a supply house or a typed name (#403, v2.7977 to v2.7998). The signer still gets no copy and no reminder. |
 
 ### How the pieces fit
 
@@ -433,11 +441,13 @@ waits only on an attorney's read of the words. A test entry is in the Book for i
 
 Read in the code (`src/lib/documents/agreementsLedger.ts`, `DocumentsAgreementsTab.tsx`).
 
-- **On Documents → Agreements:** find, filter by kind and by state, and open. A signed job contract opens
+- **On Documents → Agreements:** find, filter by kind and by state, and open. Since v2.7932 to
+  v2.7938 also **Send again** and **Copy the signing link** on a waiting line, **Send a paper** and
+  the **Contract library**. A signed job contract opens
   its Contract window, with Share, Download, Print and its Drive line. A signed staff or sub paper opens
   its record. A work order opens its window. A GC mode line opens the GC page, not its project.
-- **Only on People → Contracts:** the Contract library, Form Studio, sending and sending again, entering
-  a paper form, and the office's half of a two-party form.
+- **Only on People → Contracts:** entering a paper form, and the office's half of a two-party form.
+  On that day the Contract library, Form Studio, sending and sending again were here alone too.
 - **Only on the job's Contract window:** writing, sending, reminding, **Void & redo** and filing a signed
   copy.
 - **Only in GC mode:** its three papers, dev only.
@@ -450,15 +460,15 @@ Read in the code (`src/lib/documents/agreementsLedger.ts`, `DocumentsAgreementsT
 | A sub, with or without a login | Yes | No reminder by email |
 | A sub's signer, a different person | Yes, the email is typed by hand | The paper is filed under the roster name, not the business or the signer |
 | A customer | Yes, with a co-signer | The company never countersigns |
-| A GC | Only an estimate or a bid | No flow sends a GC the company's paper |
-| A supply house or a vendor | No | No record to send it to. The whole flow. |
+| A GC | Only an estimate or a bid, on that day | Since v2.7995 **Send a paper** finds a customer and the people on file there, and a GC who hires the company is a customer |
+| A supply house or a vendor | Yes, since v2.7995 | On that day there was no record to send it to |
 
 Three gaps apply to every outsider (code, `accept-contract`): the signer gets no copy by email, a plain
 paper makes no PDF, and the only reminder is a Dashboard prompt an outsider never sees.
 
 ### Two faults found on the way
 
-Both were handed to a session of their own on 2026-11-19.
+Both were handed to a session of their own on 2026-11-19, and both are fixed in v2.7924.
 
 - A waiting staff or sub paper's line on Agreements opens *This document is not in signed status.*
   #376 says it opens People → Contracts on that paper. Two lines did this on prod.
@@ -475,14 +485,14 @@ Sizes for this card's own steps are the train's above.
 
 | # | What | Size | Waits on |
 |---|---|---|---|
-| 1 | The two faults above | S | In its own session |
+| 1 | The two faults above | S | **Done**, v2.7924 |
 | 2 | The owner's look at #376, #377 and #173, to retire them | XS | The owner |
 | 3 | A fixed secrecy paper's words read, then the gate's first real job | no code | Counsel |
-| 4 | Agreements lines get presses: **Send again**, **Copy link**, **Remind**, **Void** | M | Nothing |
-| 5 | Send a paper and open the Contract library from Documents | S to M | Wider call 5 |
-| 6 | Step 1 here, the Book takes settings | M | Nothing |
-| 7 | Step 2 here, the summary and the sample | S | Nothing |
-| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Wider call 3, on card #403 |
+| 4 | Agreements lines get presses: **Send again**, **Copy link**, **Remind**, **Void** | M | **Send again** and **Copy the signing link** are done, v2.7932. The other two are #376's to say. |
+| 5 | Send a paper and open the Contract library from Documents | S to M | **Done**, v2.7937 and v2.7938 |
+| 6 | Step 1 here, the Book takes settings | M | **Done**, v2.8014 and v2.8019 |
+| 7 | Step 2 here, the summary and the sample | S | **Done**, v2.8020 |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Its first four PRs are done, v2.7977 to v2.7998. Its steps 4 to 6 are left, and step 5 fills *signing for* from a sub's company. |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
 | 11 | Steps 3 to 7 here | M · M · M · M · S | The look for step 4. Counsel before a real job. |
@@ -497,7 +507,8 @@ Sizes for this card's own steps are the train's above.
    before the builder exists.
 3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
    holds a paper today. Card #403 lays out the options, a pick and a mock-up
-   (`to-dos/outside-signer-record/README.md`), and the call is made there.
+   (`to-dos/outside-signer-record/README.md`). Settled there on 2026-11-19: the paper names a contact
+   the app already keeps.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
 5. **Documents or both.** Settled 2026-11-19 on card #403, its call 5: both. People sends to a person on
@@ -511,15 +522,17 @@ Sizes for this card's own steps are the train's above.
 ## Where it stands
 
 **Steps 1 and 2 are built.** Step 2 (v2.8020) put **Summary** beside **Paper** in the Book's preview, with
-the level in words and **Print the sample**. Step 3, settings on the job, is next and needs card #403's
-*Signing for* line. Step 1 (v2.8014, the migration and the kernel; v2.8019, the screens): A Book entry takes a
+the level in words and **Print the sample**. Step 3, settings on the job, is next. The *Signing for*
+line it needs is on a paper since card #403's first two PRs (v2.7977, v2.7986), and #403's step 5,
+not built, fills it from a sub's own company. Step 1 (v2.8014, the migration and the kernel; v2.8019, the screens): A Book entry takes a
 settings list, a clause takes an *Only when* and a place, the preview puts the paper together for any
 mix, a revision can be marked as read by an attorney, and a paper built from settings is refused
 everywhere a copy could be made or signed until a job carries its settings. The clause screens are
 `SettingsClausesTab.tsx` and `src/components/contracts/`, not `SettingsContractsTab.tsx` as *What exists
 today* says. No clause wording was written, and the only settings paper is a ZZ test entry.
 
-Nothing of the builder is shipped. The owner settled four calls on 2026-11-17 and liked the idea. He
+Nothing of the builder had shipped when the look was reviewed. The owner settled four calls on
+2026-11-17 and liked the idea. He
 liked sliders and did not love either drawing of them, so the look was the first thing to review. That
 review began on 2026-11-19 and settled the four levels, their names, their places and how a place is
 said. He then asked for the step-by-step flow, saw it drawn, and said "I think this is coming together
@@ -530,8 +543,12 @@ is on the branch `spike/document-builder`.
 The same day he decided where the builder lives for now: a **Document builder** tab on Documents, for
 a dev only, apart from any job. That is its own card, [#404](../document-builder/README.md), with the
 flow as he shaped it in the spike, a second builder for a job's insurance requirements, and a train of
-ten steps. **#404 is built first.** This card's own train, which ends with a job requiring the paper
-its settings make, comes after it and is untouched by it. Where this card's mock-up and the spike differ
+ten steps. **#404 is built first**, and six of its ten steps are on `main` since 2026-11-20: the tab,
+the flow in it, typing on the flow and **Publish**, for a dev. Its link, its send to a GC and a GC's
+picks are not built. This card's own train, which ends with a job requiring the paper
+its settings make, comes after it and is untouched by it. **Nothing joins the two yet.** The tab's
+builder keeps its levels and topics in `document_builders`. The Book keeps a settings list on its
+entry (`settings_def`). No file of either names the other, and step 4 is where they meet. Where this card's mock-up and the spike differ
 on the flow, the spike is newer.
 
 The grid of seven topics by four levels is drawn in this card's mock-up. Every line in it is one
