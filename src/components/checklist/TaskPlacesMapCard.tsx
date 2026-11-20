@@ -12,12 +12,12 @@ import {
   taskPlaceDotGroups,
   taskPlaceDots,
   taskPlaceNoFixWords,
-  taskPlaceWhereIAmPress,
   taskPlacesCountWords,
   taskPlacesDefaultLayer,
   tasksWithoutPlaceWords,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
+import { taskPlaceWhereIAmPress } from '../../lib/tasks/taskPlaceMapPress'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
 import { HOW_FAR_ROUGH_NOTE_WORDS } from '../../lib/tasks/taskPlaceReading'

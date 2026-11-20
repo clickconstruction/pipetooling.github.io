@@ -261,20 +261,6 @@ export function taskPlaceNoFixWords(why: TaskPlaceNoFix): string {
   return 'Could not find you. Try again in the open, or use Directions.'
 }
 
-/** The three states of the map's Show where I am press. */
-export type TaskPlaceWhereIAmState = 'idle' | 'asking' | 'found'
-
-/**
- * The map's Show where I am press (v2.8032). It is an icon, so its words are its name: what a screen
- * reader says and what a held press or a pointer shows. Asking wins over found, since a second press
- * is asking again.
- */
-export function taskPlaceWhereIAmPress(input: { asking: boolean; found: boolean }): { state: TaskPlaceWhereIAmState; label: string } {
-  if (input.asking) return { state: 'asking', label: 'Finding you…' }
-  if (input.found) return { state: 'found', label: 'Find me again' }
-  return { state: 'idle', label: 'Show where I am' }
-}
-
 /**
  * What the doer reads when adding a place from where they stand gets no reading (PR 8). There is no
  * map here to fall back on, so the words say only what would make the press work.
