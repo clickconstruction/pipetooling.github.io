@@ -4,8 +4,8 @@
  * signed with, frozen on it, with the version line, and folds the paper's body under *The full agreement*. A copy that
  * kept no clauses draws its body as before.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 
 const db = vi.hoisted(() => ({ kept: null as unknown }))
 
@@ -28,7 +28,7 @@ vi.mock('../../lib/supabase', () => {
   const chain = (columns: string) => ({
     eq: () => ({ maybeSingle: () => Promise.resolve(columns === 'clause_versions' ? { data: { clause_versions: db.kept }, error: null } : { data: row, error: null }) }),
   })
-  return { supabase: { from: () => ({ select: (columns: string) => chain(columns) }), storage: { from: () => ({ createSignedUrl: () => Promise.resolve({ data: null, error: null }) }) } } }
+  return { supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 'jwt' } } }) }, from: () => ({ select: (columns: string) => chain(columns) }), storage: { from: () => ({ createSignedUrl: () => Promise.resolve({ data: null, error: null }) }) } } }
 })
 
 import { PersonContractSignedRecordModal } from './PersonContractSignedRecordModal'
@@ -48,6 +48,11 @@ const KEPT = {
 beforeEach(() => {
   db.kept = null
 })
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 describe('PersonContractSignedRecordModal · clauses', () => {
   it('draws the clauses the copy was signed with, and its version line', async () => {
@@ -64,5 +69,33 @@ describe('PersonContractSignedRecordModal · clauses', () => {
     await waitFor(() => expect(screen.getByText('The standard terms.')).toBeTruthy())
     expect(screen.queryByText('The full agreement')).toBeNull()
     expect(document.querySelector('[data-signed-clauses]')).toBeNull()
+  })
+
+  // Punch list #376: a paper of plain words or clauses had no PDF. Its record now opens one through its own door.
+  it('a signed paper of plain words carries Open the PDF, which asks the door for this paper and opens the link', async () => {
+    const calls: Array<{ url: string; body: unknown }> = []
+    vi.stubGlobal('fetch', async (url: string, init: { body: string }) => {
+      calls.push({ url, body: JSON.parse(init.body) })
+      return { ok: true, json: async () => ({ ok: true, url: 'https://files.example/signed-paper.pdf' }) }
+    })
+    const opened = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-1" onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByText('The standard terms.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Open the PDF' }))
+    await waitFor(() => expect(opened).toHaveBeenCalledWith('https://files.example/signed-paper.pdf', '_blank', 'noopener'))
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toMatch(/\/functions\/v1\/person-paper-pdf$/)
+    expect(calls[0]?.body).toEqual({ person_contract_document_id: 'pcd-1' })
+  })
+
+  it('says why when the door refuses, and opens nothing', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, json: async () => ({ error: 'Only the office opens a signed paper’s PDF.' }) }))
+    const opened = vi.spyOn(window, 'open').mockImplementation(() => null)
+    db.kept = KEPT
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-1" onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Utilities: a locate before any dig.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Open the PDF' }))
+    expect(await screen.findByText('Only the office opens a signed paper’s PDF.')).toBeTruthy()
+    expect(opened).not.toHaveBeenCalled()
   })
 })

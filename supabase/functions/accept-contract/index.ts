@@ -10,6 +10,8 @@ import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { clauseFreeze, clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 import { statedByWords, statedDaysFromFormValues } from '../_shared/hoursStatementForm.ts'
+import { sendSignerCopy, SIGNED_PAPER_COLUMNS, type SignedPaperRow } from '../_shared/personPaperSignedCopy.ts'
+import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 // Contract Forms (v2.2797): the uploaded template lives here…
@@ -395,6 +397,22 @@ serve(async (req) => {
       ip: ipRaw,
       userAgent: ua,
     })
+
+    // The signer's copy (punch list #376): a plain or clause paper gets its PDF made and kept, and the signer is emailed
+    // their copy at the address the send kept. Best effort after the signature has committed: a signature never fails,
+    // and never waits long, because its copy could not be made or sent. A statement of hours is never emailed.
+    if (!statementId) {
+      try {
+        const { data: signedRow } = await admin.from('person_contract_documents').select(SIGNED_PAPER_COLUMNS).eq('id', doc.id).maybeSingle()
+        if (signedRow) {
+          const copy = sendSignerCopy(admin, pdfLib as unknown as PdfLibLike, signedRow as unknown as SignedPaperRow, Deno.env.get('RESEND_API_KEY'))
+          const outcome = await Promise.race([copy, new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))])
+          if (outcome && !outcome.sent && outcome.reason === 'failed') console.error('signer copy', doc.id, outcome.detail)
+        }
+      } catch (e) {
+        console.error('signer copy', doc.id, e)
+      }
+    }
 
     // Two-party forms (PR 8): the thank-you page offers the office step to a signed-in staff member on the same device.
     return new Response(JSON.stringify({ ok: true, documentId: doc.id, officeSectionPending: officeSectionPending }), {

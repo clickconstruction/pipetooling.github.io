@@ -8,7 +8,10 @@ import { buildSignedAgreementEmail } from './signedAgreementEmail'
 import { bidRoomActivityStaffEmail } from '../../supabase/functions/_shared/bidRoomActivityStaffEmail'
 import { portalRequestStaffEmail } from '../../supabase/functions/_shared/portalRequestStaffEmail'
 import { wordAskEmail } from '../../supabase/functions/_shared/gcWordAsk'
-import { SAMPLE_GC, SAMPLE_HOMEOWNER } from './customerSample'
+import { SAMPLE_CONTRACT, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from './customerSample'
+import { CONTRACT_SIGNING_EMAIL_COMPANY, formatYmdForContractEmail } from './contractSigningEmail'
+import { buildSignedCopyEmail } from '../../supabase/functions/_shared/personPaperSignedCopyEmail'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { buildSampleContractEmail, buildSampleContractReminderEmail, type SampleEmailContext } from './customerSampleEmails'
 import { escapeEmailHtml, renderEmailWording } from './emailWording'
 import type { TeamSampleEmailId } from './teamEmails'
@@ -697,6 +700,14 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
       const m = buildSampleContractReminderEmail(ctx)
       return { subject: m.subject, html: m.html, text: m.text }
     }
+    case 'contract_signed_copy':
+      return buildSignedCopyEmail({
+        documentName: SAMPLE_CONTRACT.documentName,
+        signerName: SAMPLE_SUB.contact,
+        signedLabel: formatYmdForContractEmail(ctx.todayYmd) ?? '',
+        company: CONTRACT_SIGNING_EMAIL_COMPANY,
+        officePhone: PORTAL_COMPANY.phone || null,
+      })
     case 'invitation':
       return renderTemplateEmail(templateFor(ctx, 'invitation'), {
         name: ctx.recipient.name,

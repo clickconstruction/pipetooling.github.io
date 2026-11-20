@@ -199,6 +199,23 @@ Press the name on a line.
 
 Press the green job name to open the job.
 
+## Get a PDF of a signed paper
+
+1. Press the name of a signed staff, sub or partner agreement.
+2. Press **Open the PDF** on its signed record.
+
+The PDF holds the words as they were signed and the signature. A paper signed before this was added gets its PDF the first time you open it.
+
+A form opens its own PDF from the same record.
+
+## The signer gets a copy
+
+A person who signs an agreement you emailed gets their signed copy by email. The copy is a PDF.
+
+The copy goes to the address the paper was sent to. A paper signed in person, with no address, emails nobody.
+
+An hours statement, a W-9 and a certificate are never emailed.
+
 ## One paper over several jobs
 
 A signed paper filed for several jobs is one line. It names the first job and says how many more it covers.
