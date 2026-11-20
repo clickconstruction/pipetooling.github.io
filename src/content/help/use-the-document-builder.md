@@ -2,14 +2,14 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, builder, builders, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.
 
 Only a dev sees the tab for now. The first builder is the Sub NDA. That paper is a job's secrecy paper for the people you bring onto the job.
 
-Every word in the builder is a placeholder. No attorney has read any of it. The Sub NDA runs on a made-up job, and nothing you press is saved.
+Every word in the builder is a placeholder. No attorney has read any of it. The Sub NDA is written for a made-up job.
 
 ## Open a builder
 
@@ -19,6 +19,23 @@ Every word in the builder is a placeholder. No attorney has read any of it. The 
 4. Press {{button:blue|Open}}.
 
 The builder takes the whole tab. Press {{button:outline-blue|‹ Document builder}} to go back to the list.
+
+## Load a builder's first draft
+
+A builder's words are kept in the database. A builder with no words yet reads {{chip:gray|Not loaded yet}}.
+
+1. Press {{button:blue|Load the first draft}} on its row.
+2. Wait for the row to read {{chip:gray|Draft, not published}}.
+3. Press {{button:blue|Open}}.
+
+The first draft is placeholder words, for you to change. Nobody outside sees a draft.
+
+## Read where a builder stands
+
+- {{chip:gray|Draft, not published}} means nobody outside has seen it.
+- {{chip:green|Published, revision 2}} names the copy everyone outside sees.
+- {{chip:yellow|Changes not published}} means the draft has moved on from that copy.
+- {{chip:yellow|Not read by an attorney}} means nobody has marked this revision as read. A new revision is unread again.
 
 ## Walk the Sub NDA
 
@@ -57,4 +74,4 @@ The last step lists every topic with a small track. A dot marks the topic's leve
 
 *What this site must have* lists what the paper asks of the site as it now stands. Hold that list against the real site.
 
-The button on the review requires nothing of anyone yet.
+The button on the review requires nothing of anyone yet. What you pick on the sliders is not saved.
