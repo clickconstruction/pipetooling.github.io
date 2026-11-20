@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: ready
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010) and PR 7, Go or hold (v2.8012)
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015) and PR 9, the GC's page (v2.8018) · PR 10 and PR 11 are drafts, parked for Grace's word on 2026-11-20 when the build moved to Opus 5.5
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,9 +11,9 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 10, on arrival in Job Mode. Then PR 11, the line of time and the dev seat's verbs.
+next: Grace's word on PR 10, on arrival, and PR 11, the line of time. Both are drafts on local branches, parked by the Opus rule.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
-blocker: None. The owner approved the design. The calls left each have a default.
+blocker: PR 10 and PR 11 wait for Grace's word, under the Opus rule. The owner approved the design, and the calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
 ---
 
@@ -389,5 +389,19 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
   beside the sharing switch, and then each bullet's eye. Their page lists what is still needed, takes a tick, a
   photo or a day, and reads **Crew confirmed** after our Go with nothing open. The page has no person's name, so
   a yes from it carries the customer's.
-- **Next:** PR 10, on arrival.
+- **PR 10, on arrival: a draft, parked** (2026-11-20). It is on the local branch `claude/382-on-arrival`, on top of
+  PR 9. It holds a migration with two definer functions, `start_check_arrival_state` and `start_check_arrive`. It
+  adds the crew's card **Is it as told?** in Job Mode, a No sent to Dispatch as a stage check, and a No offered to
+  the company's list. Its render tests pass, and a stub scenario of 24 checks passed. Still to write: its docs, the
+  migration's doc, and the bed wiring. Its migration number must be taken again from main's latest when it lands.
+  Two things to settle first:
+  - Job Mode does not know which stage a person is on, so the draft asks about the one stage whose days hold today.
+  - A No reaches Dispatch with no checklist question behind it. The inbox then draws no **Open the check**, and the
+    self-close does not apply. Either `stageCheckPayloadFrom` reads the draft's `not_as_told`, or a No gets a door
+    of its own.
+- **PR 11, the line of time: a draft, parked.** The Schedule look's line of time and the printed sheet of the days
+  they gave are on the local branch `claude/382-line-of-time`, with their tests and no docs. The dev seat's verb is
+  not built. It goes after #8996 and card 315's seat PRs, with about 20 KB of room under the dev-mcp ceiling, and its
+  version note goes in `docs/dev-mcp/SERVER_NOTES.md`.
+- **Next:** Grace's word on PR 10 and PR 11.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
