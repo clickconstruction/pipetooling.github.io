@@ -27,6 +27,7 @@ import {
   standingWords,
   trendKnown,
   trendOf,
+  trendWindows,
   valuesReliable,
   type CallAnswerRow,
   type CallStanding,
@@ -150,10 +151,18 @@ describe('trendOf', () => {
     expect(trendOf(0, 2)).toBeNull()
   })
 
+  it('cuts two equal halves: today and the 89 days before it, then the 90 days ahead of those', () => {
+    expect(trendWindows(TODAY)).toEqual({ lastFrom: '2026-08-22', priorFrom: '2026-05-24' })
+    const one = builder('ridgewaybuilders', 'Ridgeway Builders')
+    const count = (days: string[]) => callRows({ builders: [one], permits: days.flatMap((d) => issued('ridgewaybuilders', d)), rows: [], standings: NONE, recordsStartYmd: RECORDS, todayYmd: TODAY })[0]
+    // The first day of each half is in it, and the day before is in the half before.
+    expect(count(['2026-11-19', '2026-08-22', '2026-08-21', '2026-05-24', '2026-05-23'])).toMatchObject({ permits: 5, last90: 2, prior90: 2 })
+  })
+
   it('is known only where the records reach back two ninety-day halves', () => {
     expect(trendKnown('2025-01-01', TODAY)).toBe(true)
-    expect(trendKnown('2026-05-23', TODAY)).toBe(true)
-    expect(trendKnown('2026-05-24', TODAY)).toBe(false)
+    expect(trendKnown('2026-05-24', TODAY)).toBe(true)
+    expect(trendKnown('2026-05-25', TODAY)).toBe(false)
     expect(trendKnown('2026-08-27', TODAY)).toBe(false)
     expect(trendKnown(null, TODAY)).toBe(false)
   })

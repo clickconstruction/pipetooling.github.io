@@ -118,9 +118,17 @@ export function trendOf(last: number, prior: number): CallTrend | null {
   return null
 }
 
+/**
+ * The first day of each half of the trend. The last ninety days are today and the eighty-nine
+ * before it, and the ninety before are the ninety days ahead of those, so the halves are equal.
+ */
+export function trendWindows(todayYmd: string): { lastFrom: string; priorFrom: string } {
+  return { lastFrom: ymdPlusDays(todayYmd, -(CALL_TREND_DAYS - 1)), priorFrom: ymdPlusDays(todayYmd, -(2 * CALL_TREND_DAYS - 1)) }
+}
+
 /** Whether a city's records reach far enough back to compare two ninety-day halves. */
 export function trendKnown(recordsStartYmd: string | null, todayYmd: string): boolean {
-  return recordsStartYmd != null && recordsStartYmd <= ymdPlusDays(todayYmd, -2 * CALL_TREND_DAYS)
+  return recordsStartYmd != null && recordsStartYmd <= trendWindows(todayYmd).priorFrom
 }
 
 /** A job applied for with no plumbing permit tied to it and no answer that closes it. */
@@ -211,8 +219,7 @@ export function callRows(input: {
   todayYmd: string
 }): CallRow[] {
   const since = marketPermitsSince(input.todayYmd)
-  const lastFrom = ymdPlusDays(input.todayYmd, -CALL_TREND_DAYS)
-  const priorFrom = ymdPlusDays(input.todayYmd, -2 * CALL_TREND_DAYS)
+  const { lastFrom, priorFrom } = trendWindows(input.todayYmd)
   const known = trendKnown(input.recordsStartYmd, input.todayYmd)
   const reliable = valuesReliable(input.permits)
   type Tally = { permits: number; last90: number; prior90: number; values: number[]; work: Map<string, number>; issued: number }

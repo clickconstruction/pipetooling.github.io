@@ -70,9 +70,17 @@ export async function loadMarketPermits(city: string, sinceYmd: string): Promise
   const first = await page(0, true)
   if (first.error) throw databaseErrorFromResult(first.error, MARKET_PERMITS_DOING, first.status)
   const rows = [...((first.data ?? []) as MarketPermit[])]
-  const total = first.count ?? rows.length
+  if (first.count == null) {
+    // No count came back: read on a page at a time until a short one, so a full first page is never taken for the whole.
+    for (let lo = SUPABASE_PAGE_SIZE; rows.length === lo; lo += SUPABASE_PAGE_SIZE) {
+      const res = await page(lo, false)
+      if (res.error) throw databaseErrorFromResult(res.error, MARKET_PERMITS_DOING, res.status)
+      rows.push(...((res.data ?? []) as MarketPermit[]))
+    }
+    return rows
+  }
   const starts: number[] = []
-  for (let lo = SUPABASE_PAGE_SIZE; lo < total; lo += SUPABASE_PAGE_SIZE) starts.push(lo)
+  for (let lo = SUPABASE_PAGE_SIZE; lo < first.count; lo += SUPABASE_PAGE_SIZE) starts.push(lo)
   const rest = await Promise.all(starts.map((lo) => page(lo, false)))
   for (const res of rest) {
     if (res.error) throw databaseErrorFromResult(res.error, MARKET_PERMITS_DOING, res.status)
