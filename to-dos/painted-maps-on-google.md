@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -11,7 +11,7 @@ summary: >
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
-next: Step 2 (#8984) merges on the count read 2026-11-20, then is walked on the live app on a made-up map on no job and thrown away after. Before step 3, the owner's word on call 6. Steps 4 and 5 are not started.
+next: Before step 3, the owner's word on call 6. Steps 4 and 5 are not started, and the count is looked at again before step 4, since every outside reader's open counts. Google's own place labels over the photograph are the owner's call (below).
 size: L as a train of five (S · M · L · S · S)
 blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
 opinion: build — the count read 2026-11-20 leaves room under the free 10,000, and the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
@@ -108,6 +108,10 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
   feet apart. A line drawn by hand over Google's photograph may sit a little off on a picture or a
   print still made from Esri's. Not measured.
 - **Sharper is not promised.** Which photograph is newer or sharper varies by place.
+- **Google's own labels.** Seen on the live walk of step 2: Google's photograph with street names also carries Google's own place labels, such as rooms, shops and an ATM.
+  At the zoom a site is read at there can be a dozen of them around a line.
+  They cannot be pressed, and the road map carries them too.
+  Google's map can be told to hide them, and whether it should is the owner's call.
 - **Cost.** #345 read Google's free count as 10,000 opens of the basic map a month since March 2025,
   billed past it. Read again on Google's pricing page on 2026-11-19: 10,000 free a month for Dynamic Maps,
   then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
