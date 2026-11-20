@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 3, the standing sheet and a job's sheet. Then the sheet's link and the send (steps 4 and 5). Steps 1 and 2 are built (v2.7980, v2.7988, v2.8005), and the tables for steps 3 to 5 are in the database.
+next: Step 4, the sheet's link, then the send to a job's trades (step 5). Steps 1 to 3 are built (v2.7980, v2.7988, v2.8005, v2.8007), and the tables for steps 4 and 5 are in the database.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -536,7 +536,8 @@ of it. The same day he said to build it.
 |---|---|
 | 1 · The tab, with the spike in it | **Built**, v2.7980. A dev opens Documents → Document builder → Sub NDA and walks the flow on the made-up job. The spike's files came across by path, renamed. The branch `spike/document-builder` is not merged and stays as it is. |
 | 2 · A builder's contents move into the database | **Built**, v2.7988 (the tables) and v2.8005 (the tab). The tab reads `document_builders`, a builder with no row offers **Load the first draft**, and the Sub NDA's flow runs on the row's draft. v2.7988 also laid the tables steps 3 to 5 need, in a second migration: `document_builder_sheets`, `document_builder_links`, `document_builder_sends`. |
-| 3 to 10 | Not built. |
+| 3 · The standing sheet and a job's sheet | **Built**, v2.8007. A second builder, **Insurance requirements for subs**: the usual sheet and one sheet a job, typed on in place, a job holding only what differs, and a publish of the usual that goes to each job that is ready and names the ones it held. Every amount is the placeholder *An amount*. Nothing leaves the building yet. |
+| 4 to 10 | Not built. |
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from

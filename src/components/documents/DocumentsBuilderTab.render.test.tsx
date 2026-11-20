@@ -80,6 +80,8 @@ describe('DocumentsBuilderTab', () => {
     expect(screen.getByText('Draft, not published')).toBeTruthy()
     expect(screen.getByText('Not read by an attorney')).toBeTruthy()
     expect(screen.queryByText('Step 1 of 11')).toBeNull()
+    expect(screen.getByText('Insurance requirements for subs')).toBeTruthy()
+    expect(screen.getByText('What each sub must carry on a job you run as the GC. One sheet a job.')).toBeTruthy()
   })
 
   it('says a published builder’s revision and who read it', async () => {
@@ -93,8 +95,9 @@ describe('DocumentsBuilderTab', () => {
   it('offers Load the first draft for a builder with no row, and Open once it has landed', async () => {
     const load: Load = vi.fn(async (key) => ({ ok: true as const, value: subNda({ key }) }))
     open({ read: holding(), load })
-    expect(await screen.findByText('Not loaded yet')).toBeTruthy()
+    expect(await screen.findAllByText('Not loaded yet')).toHaveLength(2)
     expect(screen.queryByRole('button', { name: 'Open Sub NDA' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Load the first draft of Insurance requirements for subs' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Load the first draft of Sub NDA' }))
     expect(await screen.findByRole('button', { name: 'Open Sub NDA' })).toBeTruthy()
     expect(load).toHaveBeenCalledTimes(1)

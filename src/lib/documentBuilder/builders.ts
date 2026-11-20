@@ -20,8 +20,17 @@ export type DocumentBuilderEntry = {
   name: string
   /** One line under the name: what the builder makes. */
   says: string
-  /** Who reads a revision before it goes out, in the words of the chip: an attorney for one, an insurance agent for another. */
-  reader: { unread: string; readBy: string }
+  /** Who reads a revision before it goes out: an attorney for one builder, an insurance agent for another. */
+  reader: BuilderReader
+}
+
+/** The words of the read mark: its chip while unread and once read, the press beside it, and the form's label and press. */
+export type BuilderReader = {
+  unread: string
+  readBy: string
+  markIt: string
+  who: string
+  markPress: (revision: number) => string
 }
 
 export const DOCUMENT_BUILDERS: readonly DocumentBuilderEntry[] = [
@@ -30,7 +39,20 @@ export const DOCUMENT_BUILDERS: readonly DocumentBuilderEntry[] = [
     kind: 'walked',
     name: 'Sub NDA',
     says: "A job's secrecy paper for the people you bring onto it. Four levels, seven topics.",
-    reader: { unread: 'Not read by an attorney', readBy: 'Read by' },
+    reader: { unread: 'Not read by an attorney', readBy: 'Read by', markIt: 'Mark it read', who: 'The attorney who read it', markPress: (revision) => `Mark revision ${revision} as read` },
+  },
+  {
+    id: 'insurance',
+    kind: 'filled',
+    name: 'Insurance requirements for subs',
+    says: 'What each sub must carry on a job you run as the GC. One sheet a job.',
+    reader: {
+      unread: 'Not checked by your insurance agent',
+      readBy: 'Checked by',
+      markIt: 'Mark it checked',
+      who: 'The agent who checked your usual sheet',
+      markPress: (revision) => `Mark your usual, revision ${revision}, as checked`,
+    },
   },
 ]
 

@@ -9,6 +9,8 @@ The Document builder is a tab on Documents that holds builders. A builder makes 
 
 Only a dev sees the tab for now. The first builder is the Sub NDA. That paper is a job's secrecy paper for the people you bring onto the job.
 
+The second builder is the insurance sheet for a job's subs. See [set the insurance a job's subs must carry](/help/set-the-insurance-a-jobs-subs-must-carry).
+
 Every word in the builder is a placeholder. No attorney has read any of it. The Sub NDA is written for a made-up job.
 
 ## Open a builder

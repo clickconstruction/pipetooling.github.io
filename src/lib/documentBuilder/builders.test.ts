@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { DOCUMENT_BUILDER_TEAM, canUseDocumentBuilder } from './access'
-import { BUILDER_PARAM, DOCUMENT_BUILDERS, DOCUMENT_BUILDER_WORDS, documentBuilderById, openBuilderFromSearch } from './builders'
+import { BUILDER_PARAM, DOCUMENT_BUILDERS, DOCUMENT_BUILDER_WORDS, documentBuilderById, openBuilderFromSearch, type DocumentBuilderEntry } from './builders'
 import { firstDraftOf } from './firstDrafts'
 import { readPaperDef } from './definition'
+import { parseSheetDef } from './sheet'
 
 describe('who opens the Document builder', () => {
   it('is a dev and nobody else', () => {
@@ -16,8 +17,11 @@ describe('who opens the Document builder', () => {
 })
 
 describe('the registry', () => {
-  it('lists the Sub NDA, a builder someone walks', () => {
-    expect(DOCUMENT_BUILDERS.map((b) => [b.id, b.kind, b.name])).toEqual([['sub-nda', 'walked', 'Sub NDA']])
+  it('lists the Sub NDA, a builder someone walks, and the insurance sheet, a builder each job fills', () => {
+    expect(DOCUMENT_BUILDERS.map((b) => [b.id, b.kind, b.name])).toEqual([
+      ['sub-nda', 'walked', 'Sub NDA'],
+      ['insurance', 'filled', 'Insurance requirements for subs'],
+    ])
   })
 
   it('gives every builder its own name in the address', () => {
@@ -43,11 +47,10 @@ describe('the registry', () => {
   })
 
   it('names who reads each builder before it goes out', () => {
-    expect(documentBuilderById('sub-nda')?.reader).toEqual({ unread: 'Not read by an attorney', readBy: 'Read by' })
-    for (const b of DOCUMENT_BUILDERS) {
-      expect(b.reader.unread.trim()).not.toBe('')
-      expect(b.reader.readBy.trim()).not.toBe('')
-    }
+    expect(documentBuilderById('sub-nda')?.reader).toMatchObject({ unread: 'Not read by an attorney', readBy: 'Read by', markIt: 'Mark it read', who: 'The attorney who read it' })
+    expect(documentBuilderById('sub-nda')?.reader.markPress(2)).toBe('Mark revision 2 as read')
+    expect(documentBuilderById('insurance')?.reader).toMatchObject({ unread: 'Not checked by your insurance agent', readBy: 'Checked by', markIt: 'Mark it checked' })
+    expect(documentBuilderById('insurance')?.reader.markPress(1)).toBe('Mark your usual, revision 1, as checked')
   })
 
   it('has a first draft for every builder, and a walked builder’s reads as a paper that keeps every rule', () => {
@@ -55,13 +58,14 @@ describe('the registry', () => {
       const draft = firstDraftOf(b)
       expect(draft, b.id).not.toBeNull()
       if (b.kind === 'walked') expect(readPaperDef(JSON.parse(JSON.stringify(draft))), b.id).toMatchObject({ ok: true })
+      if (b.kind === 'filled') expect(parseSheetDef(JSON.parse(JSON.stringify(draft))), b.id).toMatchObject({ ok: true })
     }
-    expect(firstDraftOf({ id: 'nope', kind: 'filled', name: 'Nope', says: '', reader: { unread: '', readBy: '' } })).toBeNull()
+    expect(firstDraftOf({ ...DOCUMENT_BUILDERS[0], id: 'nope' } as DocumentBuilderEntry)).toBeNull()
   })
 
   it('reads in plain words', () => {
     const texts: string[] = [...Object.values(DOCUMENT_BUILDER_WORDS)]
-    for (const b of DOCUMENT_BUILDERS) texts.push(b.name, b.says, b.reader.unread, b.reader.readBy)
+    for (const b of DOCUMENT_BUILDERS) texts.push(b.name, b.says, b.reader.unread, b.reader.readBy, b.reader.markIt, b.reader.who, b.reader.markPress(3))
     expect(texts.flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 })

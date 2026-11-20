@@ -7611,3 +7611,36 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
 /* Send a paper → Who is it with? (punch list #403): a row lights under the pointer and the keyboard. An inline background would win over these, so the row's rest state lives here too. */
 .paper-party-row { background: transparent; }
 .paper-party-row:hover:not(:disabled), .paper-party-row:focus-visible { background: var(--bg-blue-tint); outline: none; }
+
+/* A field of the document builder (punch list #404, step 3): words a person presses and types over, where they are
+   read. Its mark says where the words come from: the usual, the job's own, or a blank filled from the job. The page
+   a field sits on is pinned light, so these tokens read their light values. Hover and focus need a class: an inline
+   style cannot say either. */
+.documentBuilderField {
+  border-radius: 4px;
+  padding: 0 4px;
+  cursor: text;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.documentBuilderField[data-mark='usual'] {
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+}
+.documentBuilderField[data-mark='usual']:hover {
+  background: var(--bg-muted);
+}
+.documentBuilderField[data-mark='blank'] {
+  background: var(--bg-blue-tint);
+  color: var(--text-blue-700);
+}
+.documentBuilderField[data-mark='own'] {
+  background: var(--bg-amber-tint);
+  color: var(--text-amber-800);
+  box-shadow: inset 0 -2px 0 var(--text-amber-700);
+}
+.documentBuilderField:focus {
+  box-shadow: 0 0 0 2px var(--text-link);
+  background: var(--surface);
+  color: var(--text-base);
+}

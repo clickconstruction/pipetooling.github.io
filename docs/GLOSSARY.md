@@ -6582,6 +6582,12 @@ Since v2.8005 a builder's contents are kept in the database (`document_builders`
 A published copy changes only with a new revision, so a revision number names one set of words.
 A builder is **read** while its read mark, a typed name and a day, names the published revision, so a new revision is unread again.
 **Load the first draft** writes a builder's first words, placeholders, into the database ([`standing.ts`](../src/lib/documentBuilder/standing.ts), [`definition.ts`](../src/lib/documentBuilder/definition.ts)).
+A **walked** builder is a flow of steps over levels and topics, the Sub NDA, and a **filled** builder is a paper with fields a person types on, the insurance sheet (v2.8007).
+The **standing sheet**, or **your usual**, is the filled builder's own contents: the words and amounts every job starts on.
+A **job's sheet** (`document_builder_sheets`, one a job the company runs as the GC) holds only what is the job's own, laid over the usual to make the sheet a sub reads ([`sheet.ts`](../src/lib/documentBuilder/sheet.ts), `layOver`).
+A job's sheet is **behind** when the usual was published again since it went out, and publishing the usual brings up each job that is ready and **holds** a job with no sheet yet or with changes of its own waiting.
+The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
+Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 
 ### Agreements tab
