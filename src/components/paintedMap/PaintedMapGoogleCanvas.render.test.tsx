@@ -21,6 +21,10 @@ const lib = vi.hoisted(() => ({
   camera: { center: { lat: 29.55, lng: -98.3 }, zoom: 17 },
   /** The map's box as the page has it now. A case shrinks it, as when the panel beside the map grows. */
   box: { width: 600, height: 400 },
+  /** Whether Google's script is in when the canvas comes up. A case holds it back, as a weak signal does. */
+  loads: true,
+  /** The script arrives now, for a case that held it back. */
+  load: () => {},
 }))
 const fakeMap = {
   moveCamera: (to: { center?: { lat: number; lng: number }; zoom?: number }) => {
@@ -41,7 +45,8 @@ vi.mock('@vis.gl/react-google-maps', async () => {
     APIProvider: (p: { onLoad?: () => void; children?: ReactNode }) => {
       const { onLoad } = p
       useEffect(() => {
-        onLoad?.()
+        lib.load = () => onLoad?.()
+        if (lib.loads) onLoad?.()
         // once, as the library's own loader calls it
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [])
@@ -137,6 +142,8 @@ function mount(over: Partial<PaintedMapGoogleCanvasProps> = {}) {
 
 beforeEach(() => {
   lib.mapProps = null
+  lib.loads = true
+  lib.load = () => {}
   lib.moves.length = 0
   lib.listeners = {}
   lib.removed.length = 0
@@ -444,6 +451,25 @@ describe('saying where it looks', () => {
     const { view } = mount({ onView: () => {} })
     view.unmount()
     expect(lib.removed).toContain('idle')
+  })
+})
+
+describe('while Google’s script is on its way', () => {
+  const words = () => document.querySelector('[data-painted-google-loading]')
+
+  it('the frame says it is loading, and stops saying so when the script is in', () => {
+    // Seen on a slow script (2026-11-20): a blank white box for the ten seconds before the other map came up.
+    lib.loads = false
+    mount({ lines: [DRAWN], framed: DRAWN.points })
+    expect(words()?.textContent).toBe('Loading the map…')
+    expect(words()?.getAttribute('role')).toBe('status')
+    act(() => lib.load())
+    expect(words()).toBeNull()
+  })
+
+  it('a script that is already in says nothing', () => {
+    mount()
+    expect(words()).toBeNull()
   })
 })
 
