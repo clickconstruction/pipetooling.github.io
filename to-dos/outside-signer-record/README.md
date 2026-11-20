@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · Add to a list is built (v2.7998) · all four on main and on prod by 2026-11-20, each walked there with ZZ test records · the walks found one gap, noted under Where it stands · 2026-11-20 the owner settled call 8, an estimator finds an outside company's paper on its own page and on the Agreements tab, and the mock-up draws that tab, and call 9, the estimator reads every kind of an outside company's paper, tax forms among them, which the built policy does not do yet · one call is left, 10, which the build of PR 1 raised
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · Add to a list is built (v2.7998) · all four on main and on prod by 2026-11-20, each walked there with ZZ test records · the walks found one gap, noted under Where it stands · 2026-11-20 the owner settled call 8, an estimator finds an outside company's paper on its own page and on the Agreements tab, and the mock-up draws that tab, and call 9, the estimator reads every kind of an outside company's paper, tax forms among them, which the built policy does not do yet, and call 10, an estimator opens an outside company's signed form, which the built gate does not do yet · one call is left, 11, which call 10 raised
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. An estimator finds an outside company's paper on its own page and on the Agreements tab. The estimator reads every kind of an outside company's paper. PR 1, the ground, is built, and one call is left at the foot.
-next: Step 4, which no call holds now: the estimator's read widened for call 9, the party's own page, then the Agreements tab for an estimator. Call 10 is the owner's: whether an estimator opens a signed form's PDF.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. An estimator finds an outside company's paper on its own page and on the Agreements tab. The estimator reads every kind of an outside company's paper. An estimator opens an outside company's signed form. PR 1, the ground, is built, and one call is left at the foot.
+next: Step 4, which no call holds now: the estimator's read widened for call 9, the party's own page, then the Agreements tab for an estimator. Call 11 is the owner's: whether that reaches a signed W-9, whose PDF holds the whole tax number.
 size: L as a train of nine (M · S · M · S · S · S · S · M · M); left: steps 4 to 6 (S · S · S · M · M)
-blocker: None for step 4. Call 10 widens one gate of what PR 1 built, if he turns it.
+blocker: Call 11 before the PDF gate is widened. Nothing else in step 4 waits on it.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -275,7 +275,9 @@ Each step is one PR with its release note and fragment. The word to build came o
    line, so an estimator reads every kind of paper that is with a customer, a supply house or a trade
    company, a W-9 and a certificate among them. A paper filed under a person and a party on no list
    stay closed. The beds change with it, and so does the note of the Board's call of 2026-10-10, which
-   kept a trade company's W-9 and certificate for the office. A supply house's window
+   kept a trade company's W-9 and certificate for the office. The same PR, or one beside it, opens the
+   PDF gate for call 10: `open-contract-form-pdf` lets an estimator open a signed form that is with an
+   outside company, as far as call 11 allows, and logs the open as it does every other. A supply house's window
    lists its papers. The Customer page's **Agreements** card lists them beside the job contracts it has
    today. Then the Agreements tab opens to an estimator (call 8): `canSeeAgreements` takes the role,
    and the list shows what the database answers them, which is outside companies' agreements and work
@@ -435,10 +437,17 @@ Each is one question. The session's pick is first.
    four, the answers' PDF and the signer's details. Call 4's reason for closing a person's paper was the
    same, and a person's paper stays closed.
 10. **May an estimator open a signed form's PDF?** New on 2026-11-19, from building PR 1.
-    **No, as today, and PR 1 is built so.** The file opens for a dev, the controller and a pay-approved
-    master. An assistant reads the row and is refused the file. This card expected the estimator's rule
-    to be copied there, which would let an estimator open a file an assistant cannot. Or the estimator
-    opens an outside company's signed form, which is one gate in `open-contract-form-pdf`.
+    **Settled 2026-11-20: yes, an outside company's.** He answered "Yes, outside companies'". The
+    build's pick was no, as today, and PR 1 is built that way. The file opens today for a dev, the
+    controller and a pay-approved master. An assistant reads the row and is refused the file, and stays
+    refused: he was told an estimator could then open a file an assistant cannot. A person's signed
+    form and a signed hours statement stay as they are.
+11. **Does that reach a signed W-9?** New on 2026-11-20, from call 10. The session told him a W-9's row
+    carries the last four of a tax number. It had not told him that the signed PDF is the one place the
+    whole number is, which is why the gate is held so tight (`open-contract-form-pdf`). So he is asked
+    once more, with that said. **No: the estimator opens an outside company's signed agreement and
+    certificate, and not a tax form.** Or yes, every signed form of an outside company, the W-9 among
+    them.
 
 ## Where it stands
 
@@ -451,7 +460,7 @@ own, which was not the session's pick, and which added call 7. Call 4: the four 
 read an outside party's paper, which was not the session's pick either, and which added call 8. Call 7:
 a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8, settled 2026-11-20: an estimator finds an outside company's paper on its own page and on the
 Agreements tab, which was not the session's pick. Call 9, settled 2026-11-20: the estimator reads every kind of an outside company's paper, which the built
-policy does not do yet. Call 10 is open, which the build of PR 1 raised. PR 2, the send keeps the signer, is built (v2.7986). Grace's word to build came on 2026-11-19.
+policy does not do yet. Call 10, settled 2026-11-20: an estimator opens an outside company's signed form, which the built gate does not do yet. Call 11 is open: whether that reaches a signed W-9. PR 2, the send keeps the signer, is built (v2.7986). Grace's word to build came on 2026-11-19.
 
 Steps 1 to 3 are on main and live since 2026-11-20: PR 1 (#8977, its migration pushed), PR 2 (#8992), **Who is it with?** (#9004) and **Add to a list** (#9010), with their edge functions deployed. Each was walked on prod as the dev with ZZ test records and the mail service's test addresses. The send kept the signer's name, title and address. Papers went to a ZZ test customer, a made-up supply house and a typed name, and their lines read Customer, Supply house and Not on a list. One was signed through its link with no login, and its e-sign record says `outside`. An address the app already keeps was named before the send. **Add to a list** then put the typed name at the ZZ test customer, and their paper came with them. The Customer page showing the paper is step 4's, not built.
 
