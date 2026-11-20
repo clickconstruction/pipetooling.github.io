@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { JobEstimateAuthor } from '../lib/jobs/jobPeople'
 import { JobPeopleNames } from './jobs/JobPeopleNames'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
-import { activityPillStyle } from '../lib/phonePress'
+import { activityPillStyle, activityPillsOnOneRow, ONE_ROW_PILLS } from '../lib/phonePress'
+import { ScrollableTabStrip } from './ScrollableTabStrip'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -369,7 +370,116 @@ export function JobThreadNotesPanel({
 
   // The pills at 32 px on a phone (punch list #189, PR 3), the office's small chip at a desk.
   const narrowForPills = useNarrowViewport640()
-  const pillStyle = activityPillStyle(narrowForPills)
+  const pillsOnOneRow = activityPillsOnOneRow({ narrow: narrowForPills, withCustomer })
+  const pillStyle = pillsOnOneRow
+    ? { ...activityPillStyle(narrowForPills), padding: ONE_ROW_PILLS.pill, flexShrink: 0 }
+    : activityPillStyle(narrowForPills)
+
+  // The pills, drawn once for either row below.
+  const pillRow: ReactNode = filterEnabled ? (
+    <>
+      {everyFilter.map((f) => {
+        const drawn = filters.some((v) => v.value === f.value)
+        // A chip this viewer is not drawn leaves no gap. The ＋ Report door keeps the Reports pill's place for a
+        // hand who leaves reports and reads only their own.
+        if (!drawn && !(f.value === 'reports' && onLeaveReport)) return null
+        const active = activityFilter === f.value
+        const count = f.value === 'all' ? null : (activityCounts?.[f.value] ?? 0)
+        // Empty buckets demote to quiet non-clickable text (the v2.1475
+        // Reports-pill pattern): present so the vocabulary stays fixed,
+        // silent so rows with real activity pop. All is always clickable.
+        const empty = f.value !== 'all' && count === 0
+        // The door after the word (v2.5688): the ＋ Report chip, in the pills' own height and
+        // radius with blue words, right after the Reports pill — the filter, then the act.
+        const withChip = (pill: ReactNode): ReactNode =>
+          f.value === 'reports' && onLeaveReport
+            ? [
+                drawn ? pill : null,
+                <button
+                  key="leave-report"
+                  type="button"
+                  onClick={onLeaveReport}
+                  aria-label="Leave Report"
+                  title="Leave Report"
+                  style={{
+                    ...pillStyle,
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-blue)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-link)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ＋ Report
+                </button>,
+              ]
+            : pill
+        if (empty) {
+          return withChip(
+            <button
+              key={f.value}
+              data-tabkey={f.value}
+              type="button"
+              role="tab"
+              aria-selected={false}
+              aria-disabled
+              title={`No ${f.label.toLowerCase()} yet`}
+              style={{
+                ...pillStyle,
+                cursor: 'default',
+                border: '1px solid transparent',
+                background: 'transparent',
+                color: 'var(--text-faint)',
+                ...(pillsOnOneRow ? { padding: ONE_ROW_PILLS.word } : null),
+              }}
+            >
+              {f.label}
+            </button>
+          )
+        }
+        return withChip(
+          <button
+            key={f.value}
+            data-tabkey={f.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setActivityFilter(f.value)}
+            style={{
+              ...pillStyle,
+              cursor: 'pointer',
+              border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
+              background: active ? '#2563eb' : 'var(--surface)',
+              color: active ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            {f.label}
+            {count != null ? (
+              <span
+                style={{
+                  marginLeft: pillsOnOneRow ? ONE_ROW_PILLS.countGap : '0.3rem',
+                  fontWeight: 700,
+                  color: active ? '#fff' : 'var(--text-link)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {count}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+      {pctComplete != null ? (
+        <span
+          title="Pipeline % complete for this job"
+          style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}
+        >
+          {pctComplete}% complete
+          {activityProp ? <PercentProvenanceChip source={pctProvenance.source} reportedOn={pctProvenance.reportedOn} /> : null}
+        </span>
+      ) : null}
+    </>
+  ) : null
 
   return (
     <div
@@ -395,109 +505,31 @@ export function JobThreadNotesPanel({
         </div>
       ) : null}
       {filterEnabled ? (
-        <div
-          role="tablist"
-          aria-label="Filter activity"
-          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}
-        >
-          {everyFilter.map((f) => {
-            const drawn = filters.some((v) => v.value === f.value)
-            // A chip this viewer is not drawn leaves no gap. The ＋ Report door keeps the Reports pill's place for a
-            // hand who leaves reports and reads only their own.
-            if (!drawn && !(f.value === 'reports' && onLeaveReport)) return null
-            const active = activityFilter === f.value
-            const count = f.value === 'all' ? null : (activityCounts?.[f.value] ?? 0)
-            // Empty buckets demote to quiet non-clickable text (the v2.1475
-            // Reports-pill pattern): present so the vocabulary stays fixed,
-            // silent so rows with real activity pop. All is always clickable.
-            const empty = f.value !== 'all' && count === 0
-            // The door after the word (v2.5688): the ＋ Report chip, in the pills' own height and
-            // radius with blue words, right after the Reports pill — the filter, then the act.
-            const withChip = (pill: ReactNode): ReactNode =>
-              f.value === 'reports' && onLeaveReport
-                ? [
-                    drawn ? pill : null,
-                    <button
-                      key="leave-report"
-                      type="button"
-                      onClick={onLeaveReport}
-                      aria-label="Leave Report"
-                      title="Leave Report"
-                      style={{
-                        ...pillStyle,
-                        cursor: 'pointer',
-                        border: '1px solid var(--border-blue)',
-                        background: 'var(--surface)',
-                        color: 'var(--text-link)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      ＋ Report
-                    </button>,
-                  ]
-                : pill
-            if (empty) {
-              return withChip(
-                <button
-                  key={f.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={false}
-                  aria-disabled
-                  title={`No ${f.label.toLowerCase()} yet`}
-                  style={{
-                    ...pillStyle,
-                    cursor: 'default',
-                    border: '1px solid transparent',
-                    background: 'transparent',
-                    color: 'var(--text-faint)',
-                  }}
-                >
-                  {f.label}
-                </button>
-              )
-            }
-            return withChip(
-              <button
-                key={f.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActivityFilter(f.value)}
-                style={{
-                  ...pillStyle,
-                  cursor: 'pointer',
-                  border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
-                  background: active ? '#2563eb' : 'var(--surface)',
-                  color: active ? '#fff' : 'var(--text-muted)',
-                }}
-              >
-                {f.label}
-                {count != null ? (
-                  <span
-                    style={{
-                      marginLeft: '0.3rem',
-                      fontWeight: 700,
-                      color: active ? '#fff' : 'var(--text-link)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {count}
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
-          {pctComplete != null ? (
-            <span
-              title="Pipeline % complete for this job"
-              style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}
+        pillsOnOneRow ? (
+          // One row (2026-11-20): a tech's four pills and Customer ran 55 px past a phone's card, so Customer sat
+          // alone on a second row. Trimmed to stand whole at 390 px, and sliding when the row is longer still.
+          <div style={{ marginBottom: '0.5rem' }}>
+            <ScrollableTabStrip
+              role="tablist"
+              ariaLabel="Filter activity"
+              align="start"
+              fadeColor="var(--surface)"
+              gap={ONE_ROW_PILLS.gap}
+              fadeSlack={ONE_ROW_PILLS.fadeSlack}
+              activeKey={activityFilter}
             >
-              {pctComplete}% complete
-              {activityProp ? <PercentProvenanceChip source={pctProvenance.source} reportedOn={pctProvenance.reportedOn} /> : null}
-            </span>
-          ) : null}
-        </div>
+              {pillRow}
+            </ScrollableTabStrip>
+          </div>
+        ) : (
+          <div
+            role="tablist"
+            aria-label="Filter activity"
+            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}
+          >
+            {pillRow}
+          </div>
+        )
       ) : null}
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
