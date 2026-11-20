@@ -242,6 +242,7 @@ migrations are on prod, checked there read-only after each push, and `job-photos
 | #8898 | v2.7926 | Family 6. Test papers. |
 | #8905 | v2.7931 | Family 3, in part. The bank payments desk, returned checks and disputes, the pay speed lines, the GC review week. |
 | #8895 | v2.7925 | Family 7, by the session that fixes who may call the schedule share reads. |
+| #9121 | v2.8109 | Family 3, the rest of the bank payments desk. Its two paying verbs, apply a deposit and add a tip, and the policies of three of its tables. |
 
 Four things came out differently from the tables above.
 
