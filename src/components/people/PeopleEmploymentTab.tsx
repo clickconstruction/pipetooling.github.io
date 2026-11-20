@@ -26,6 +26,9 @@ import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
 import { EmptyState } from '../EmptyState'
 import { employmentRosterEmptyWords, TIME_OFF_EMPTY } from '../../lib/people/peopleEmptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { salariedCreditSentence } from '../../lib/people/salariedWeekLine'
+import { salariedWeekOf } from '../../lib/salariedEffectiveHours'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 type EmploymentPersonRow = {
   id: string
@@ -845,8 +848,9 @@ export default function PeopleEmploymentTab({
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.75rem', marginTop: '0.75rem' }}>
                     <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>Pay setup</div>
                     <p style={{ margin: '0 0 0.6rem 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                      Changes save automatically after a moment. Salaried people are paid a flat 8 hours per weekday at
-                      the hourly wage — clock time never changes their pay.
+                      Changes save automatically after a moment. A salaried person is paid their set week at the hourly
+                      wage, and clock time never changes their pay. A week that is not 8 hours on weekdays is set on
+                      their desk, under Edit pay setup.
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.6rem' }}>
                       <label>
@@ -896,8 +900,8 @@ export default function PeopleEmploymentTab({
                         else onUpsertPayConfig(selected.name, { is_salary: true })
                       })}
                       <span>
-                        <strong>Salaried</strong> — credited 8 hours on weekdays, 0 on weekends, on all pay and cost
-                        screens. Turning this on also starts today&rsquo;s scheduled sessions once a workday template exists.
+                        <strong>Salaried</strong> — <ValueSentence text={salariedCreditSentence(salariedWeekOf(cfg))} />{' '}
+                        Turning this on also starts today&rsquo;s scheduled sessions once a workday template exists.
                         {!cfg.is_salary && salaryTemplateByPersonName[selected.name] ? (
                           <span style={{ display: 'block', color: 'var(--text-amber-800)', marginTop: '0.2rem' }}>
                             A salaried workday template still exists for this person — schedule-driven sessions may
