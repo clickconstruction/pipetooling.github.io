@@ -1,0 +1,169 @@
+// @vitest-environment jsdom
+/**
+ * Add to a list: the window reads who the paper's party is and which papers come with them, offers what they can
+ * become, and writes nothing until the last press. A new supply house is made with them as a rep; a company the app
+ * already keeps takes them as a person on file; a new customer is made in the app's own form. Every name is made up.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { PaperPartyAddToList } from './PaperPartyAddToList'
+
+const io = vi.hoisted(() => ({
+  person: { contactId: 'k1', name: 'Noor Haddad', email: 'noor@haddadeng.example', company: 'Haddad Engineering' },
+  papers: ['Mutual secrecy agreement'],
+  did: [] as string[],
+  failName: null as null | Error,
+  failRead: null as null | Error,
+}))
+vi.mock('../../hooks/useAuth', () => {
+  const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
+  return { useAuth: auth, useOptionalAuth: auth }
+})
+vi.mock('../../lib/documents/paperPartyIo', () => ({
+  readListPerson: async () => {
+    if (io.failRead) throw io.failRead
+    return io.person
+  },
+  readPartyPaperNames: async () => io.papers,
+  readPartyShortLists: async () => ({ customerPeople: [], supplyHouses: [{ id: 'h1', name: 'Tallgrass Supply Co.' }], reps: [] }),
+  searchPartyCustomers: async (typed: string) => (typed.toLowerCase().includes('ridge') ? [{ id: 'c1', name: 'Ridgeway Builders' }] : []),
+  addSupplyHouse: async (name: string) => {
+    io.did.push(`house ${name}`)
+    return 'h-new'
+  },
+  keepSignerWithBusiness: async (business: { table: string; id: string }, signer: { name: string; email: string }) => {
+    io.did.push(`kept ${signer.name} with ${business.table}:${business.id}`)
+    return { table: business.table === 'customers' ? 'customer_contact_persons' : 'supply_house_contacts', id: 'p-new' }
+  },
+  namePartyContact: async (contactId: string, record: { table: string; id: string }, kind: string, name?: string) => {
+    if (io.failName) throw io.failName
+    io.did.push(`named ${contactId} as ${kind} ${record.table}:${record.id}${name ? ` (${name})` : ''}`)
+    return contactId
+  },
+}))
+// The app's own New customer form is its own file's to test: here it says what it opened on and makes a customer.
+vi.mock('../NewCustomerForm', () => ({
+  default: (p: { initialValues?: { name?: string; email?: string }; onCreated?: (c: { id: string; name: string }) => void; onCancel?: () => void }) => (
+    <div data-testid="new-customer-form">
+      {`${p.initialValues?.name}|${p.initialValues?.email ?? ''}`}
+      <button type="button" onClick={() => p.onCreated?.({ id: 'c-new', name: p.initialValues?.name ?? '' })}>
+        fake save customer
+      </button>
+      <button type="button" onClick={() => p.onCancel?.()}>
+        fake cancel customer
+      </button>
+    </div>
+  ),
+}))
+
+beforeEach(() => {
+  io.person = { contactId: 'k1', name: 'Noor Haddad', email: 'noor@haddadeng.example', company: 'Haddad Engineering' }
+  io.papers = ['Mutual secrecy agreement']
+  io.did = []
+  io.failName = null
+  io.failRead = null
+})
+afterEach(() => cleanup())
+
+const open = async (onAdded = vi.fn(), onClose = vi.fn()) => {
+  renderWithProviders(<PaperPartyAddToList documentId="d1" onClose={onClose} onAdded={onAdded} />)
+  await screen.findByRole('dialog', { name: 'Add Noor Haddad to a list' })
+  return { onAdded, onClose }
+}
+
+describe('PaperPartyAddToList', () => {
+  it('names the person, offers what they can become, and says which paper comes with them', async () => {
+    await open()
+    expect(screen.getAllByRole('radio').map((r) => (r as HTMLInputElement).checked)).toEqual([true, false, false])
+    expect(screen.getByRole('radiogroup').textContent).toBe(
+      'A new customerHaddad Engineering, with Noor Haddad as a person thereA new supply house or vendorHaddad Engineering, with Noor Haddad as a repSomeone at a company we already haveSearch customers and supply houses',
+    )
+    expect(screen.getByTestId('paper-party-list-papers').textContent).toBe('1 paper comes with them: Mutual secrecy agreement.')
+    expect(screen.getByRole('button', { name: 'Add as a customer' })).toBeTruthy()
+    expect(io.did).toEqual([])
+  })
+
+  it('a new supply house is made, they are kept as its rep, and their contact is named', async () => {
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Haddad Engineering now. Their paper came with them.'))
+    expect(io.did).toEqual(['house Haddad Engineering', 'kept Noor Haddad with supply_houses:h-new', 'named k1 as supply_house supply_house_contacts:p-new'])
+  })
+
+  it('a supply house needs a name before anything is written', async () => {
+    io.person = { ...io.person, company: '' }
+    await open()
+    fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Type the supply house’s or the vendor’s name.')
+    expect(io.did).toEqual([])
+  })
+
+  it('a company the app already keeps: found by name, picked, and they are kept there', async () => {
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to a company' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Pick the company they are at.')
+    fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'ridge' } })
+    fireEvent.click(await screen.findByRole('button', { name: /^Ridgeway Builders/ }, { timeout: 3000 }))
+    expect(screen.getByTestId('paper-party-list-picked').textContent).toBe('They are at Ridgeway Builders.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Ridgeway Builders' }))
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Ridgeway Builders now. Their paper came with them.'))
+    expect(io.did).toEqual(['kept Noor Haddad with customers:c1', 'named k1 as customer customer_contact_persons:p-new'])
+  })
+
+  it('a supply house is found in the short list the window holds', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+    fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'tall' } })
+    expect(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ })).toBeTruthy()
+  })
+
+  it('a new customer is made in the app’s own form, on the company’s name, then they are kept there', async () => {
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a customer' }))
+    expect((await screen.findByTestId('new-customer-form')).textContent).toContain('Haddad Engineering|')
+    expect(io.did).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'fake save customer' }))
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Haddad Engineering now. Their paper came with them.'))
+    expect(io.did).toEqual(['kept Noor Haddad with customers:c-new', 'named k1 as customer customer_contact_persons:p-new'])
+  })
+
+  it('someone with no company is the customer themselves: the form opens on their own name and address', async () => {
+    io.person = { ...io.person, company: '' }
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a customer' }))
+    expect((await screen.findByTestId('new-customer-form')).textContent).toContain('Noor Haddad|noor@haddadeng.example')
+    fireEvent.click(screen.getByRole('button', { name: 'fake save customer' }))
+    await waitFor(() => expect(onAdded).toHaveBeenCalled())
+    expect(io.did).toEqual(['named k1 as customer customers:c-new'])
+  })
+
+  it('cancelling the customer form writes nothing and comes back to the window', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a customer' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'fake cancel customer' }))
+    expect(await screen.findByRole('dialog', { name: 'Add Noor Haddad to a list' })).toBeTruthy()
+    expect(io.did).toEqual([])
+  })
+
+  it('says why when they could not be added, and stays open', async () => {
+    io.failName = new Error('Someone has already said who they are. Close this and read the list again.')
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Someone has already said who they are. Close this and read the list again.')
+    expect(onAdded).not.toHaveBeenCalled()
+  })
+
+  it('a rep with no address on the paper is named on the supply house’s own row', async () => {
+    io.person = { ...io.person, email: '' }
+    const { onAdded } = await open()
+    fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+    await waitFor(() => expect(onAdded).toHaveBeenCalled())
+    expect(io.did).toEqual(['house Haddad Engineering', 'named k1 as supply_house supply_houses:h-new (Noor Haddad)'])
+  })
+})

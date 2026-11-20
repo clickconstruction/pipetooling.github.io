@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · three calls are left: 8, which shapes step 4, and 9 and 10, which the build of PR 1 raised
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · PR 2, the send keeps the signer, is built (v2.7986) · Who is it with? is built (v2.7995) · Add to a list is built (v2.7998) · three calls are left: 8, which shapes step 4, and 9 and 10, which the build of PR 1 raised
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -12,9 +12,9 @@ summary: >
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
   People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. PR 1, the ground, is built, and three calls are left at the foot.
-next: Add to a list, the second PR of step 3. The owner's calls that are left: 8, which shapes step 4, and 9 and 10, two narrower readings PR 1 was built with.
+next: The owner's call 8, which shapes step 4. Calls 9 and 10 are his too. The owner's calls that are left: 8, which shapes step 4, and 9 and 10, two narrower readings PR 1 was built with.
 size: L as a train of seven (M · S · M · S · S · M · M)
-blocker: None for step 3. Call 8 before step 4.
+blocker: Call 8 before step 4.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -267,6 +267,9 @@ Each step is one PR with its release note and fragment. The word to build came o
    **Who is it with? built 2026-11-19 as v2.7995**, with the chip, the line's signer and the guide. The
    signing page and the signed record say who signs and for whom. A person's paper still goes out by
    their roster name, and someone who signed a paper is not offered a second copy, as People's picker has it.
+   **Add to a list built 2026-11-19 as v2.7998.** It offers a new customer, a new supply house or vendor,
+   and someone at a customer or a supply house the app has. A trade company is not offered yet: the office
+   has no page for one until step 6, and the second look kept a party off no page of the app.
 4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
    **Agreements** card lists them beside the job contracts it has today. This is where an estimator
    reads them, since the Agreements tab is the four roles' today (call 8).
