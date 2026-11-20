@@ -379,6 +379,6 @@ describe('the server and the docs carry the fit (v2.6935) and the paged sources 
     // v2.6939: both rows say every source is paged, and what at_cap and held name now.
     expect(row('get_person_file')).toContain('`at_cap` names a source only past 5,000 rows')
     expect(row('get_case_brief')).toContain('a list past 5,000 rows named in `held`')
-    expect(SERVER).toContain('readRowsByIds')
+    expect(readFileSync('docs/dev-mcp/SERVER_NOTES.md', 'utf8')).toContain('readRowsByIds')
   })
 })
