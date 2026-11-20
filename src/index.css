@@ -4406,7 +4406,7 @@ body.my-time-boundary-dragging {
    window's chips, its noted line and its press share a row. What a missed window costs is said once under the grid. The
    Windows view's "it was open" words trail the row and give way first, cut with an ellipsis; a press that does not fit
    drops under instead of leaving the card. */
-.lienMonthOne > div { display: inline; }
+.lienMonthOne > div { display: inline-block; vertical-align: baseline; }
 .lienMonthOne .lienMonthName { margin-right: 8px; white-space: nowrap; }
 .lienMonthOne .lienMonthWorked { white-space: nowrap; }
 .lienMonthClosed { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
