@@ -55,6 +55,7 @@ import { PermitSkimDeck, type AnsweredPatch, type Researcher } from './PermitSki
 import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
+import { PermitMarket } from './PermitMarket'
 import { PermitCountStrip } from './PermitCountStrip'
 import { usePermitCityQuiet } from '../../hooks/usePermitCityQuiet'
 import { cityPickerTitle, cityPickerWords, isQuiet } from '../../lib/research/permitQuiet'
@@ -120,11 +121,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   // Skim is step one and where the tab opens; Kept, Pursuing and Closed are where an answered permit sits;
   // the ledger and the map are the wide view of a window of the same rows.
   // Builders rides the address (punch list #307): the Needs you line *names on permits look like a customer* opens on it.
+  // Market rides it too (punch list #405), so a reload and a link come back to it.
   const [searchParams, setSearchParams] = useSearchParams()
   const [door] = useState(() => readPermitsLink(searchParams))
-  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'find' | 'builders' | 'ledger' | 'map'>(door.builders ? 'builders' : 'skim')
+  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'find' | 'builders' | 'market' | 'ledger' | 'map'>(door.builders ? 'builders' : door.market ? 'market' : 'skim')
   useEffect(() => {
-    const next = permitsLinkForView(searchParams, view === 'builders')
+    const next = permitsLinkForView(searchParams, view === 'builders' || view === 'market' ? view : null)
     if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
   }, [view, searchParams, setSearchParams])
   const wide = view === 'ledger' || view === 'map'
@@ -481,6 +483,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             { v: 'pursuing', words: 'Pursuing', n: strip.pursuing },
             { v: 'closed', words: 'Closed', n: strip.closed },
             { v: 'builders', words: 'Builders', n: null },
+            { v: 'market', words: 'Market', n: null },
             { v: 'ledger', words: 'Ledger', n: null },
             { v: 'map', words: 'Map', n: null },
           ] as const
@@ -569,6 +572,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
+
+      {view === 'market' && <PermitMarket city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} rowsLoading={allLoading} onChanged={() => void loadAll()} />}
 
       {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
       {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} isMobile={isMobile} />}

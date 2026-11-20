@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · the owner asked for it to be built by someone else and shown to him the next day · the mock-up, the plan and every step are on this card · the owner makes the calls · nothing built
+status: Go 2026-11-19 · step one built, v2.7978 (the bid table and the clock) · step two next (the call list) · step three waits on the owner's word · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -11,9 +11,8 @@ summary: >
   the day the city first shows a job), who holds the work where a city names the plumber, and how
   much is being built. Each row gives its reasons as tags and there is no score.
 next: >
-  Build step one (the bid table and the clock, San Antonio first, no research) and step two (the
-  call list), then show the owner on live data. Bring him the one question step three waits on:
-  may an agent look up the top names of a city once.
+  Build step two (the call list), then show the owner on live data. Bring him the one question
+  step three waits on: may an agent look up the top names of a city once.
 size: L as a train of three (M · M · L)
 blocker: None for steps one and two. Step three waits on the owner's word on the one-time lookups.
 opinion: build — start with step one, which needs no research and is the table that says where estimating hours go
@@ -69,6 +68,8 @@ Four tiles sit above them: builders to call this week, their jobs applied for wi
 One change a PR, as [CLAUDE.md](../../CLAUDE.md) has it. Kernels first, each with its tests. Every PR carries its release note, its fragment and the guide's lines.
 
 ### Step one: the bid table and the clock
+
+**Built, v2.7978** ([fragment](../../docs/recent-features/v2.7978.md), which says where the build differs from this plan and why). No migration.
 
 Needs no research. San Antonio first; the other cities follow the same code.
 

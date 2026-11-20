@@ -381,14 +381,14 @@ describe('the server and the docs', () => {
   })
 
   it('is listed, logged and documented', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.117.0'")
     expect(SERVER).toContain("name: 'plan_lien_receipt_off',")
     expect(SERVER).toContain("name: 'apply_lien_receipt_off',")
     expect(SERVER).toContain("if (name === 'apply_lien_receipt_off') return { receipt: args.receipt ?? null, plan_hash:")
     expect(SERVER).toContain('plan_lien_receipt_off → apply_lien_receipt_off (a wrong mail receipt taken off a filed affidavit')
-    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else:')
+    expect(SERVER).toContain('Writes are one hundred and forty-seven verbs and nothing else:')
     expect(README).toContain('`plan_lien_receipt_off(receipt \\| receipts)` · `apply_lien_receipt_off(receipt, plan_hash)`')
-    expect(README).toContain('one hundred and forty-five `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and forty-seven `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain('**v2.7909 (server 0.113.0)')
   })
 })

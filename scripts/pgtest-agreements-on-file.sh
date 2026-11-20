@@ -10,7 +10,8 @@
 # that rolls back: the office reads every agreement in the order the page draws them, with its state, name, party, job
 # and day; one paper filed over three jobs is one line; drafts, unsent papers and papers that are not agreements are
 # absent; the facts carry each kind's own columns and no amount; and each role reads only what its tables allow (an
-# estimator work orders alone, a primary and a superintendent nothing, a sub their own work order, nobody signed out).
+# estimator work orders and a trade company's agreement, a primary and a superintendent nothing, a sub their own work
+# order, nobody signed out).
 # It raises on its first failed assertion and ends with "agreements_on_file PASSED". PGTEST_KEEP=1 leaves the container
 # up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never
 # touches prod.
@@ -20,8 +21,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55814}"
 NAME="pgtest-agreements-on-file"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The newest definition of the view: re-applying an older one would put the older view back.
-WRITES="$(ls supabase/migrations/*_agreements_job_papers.sql)"
+# The newest definition of the view: re-applying an older one would put the older view back. Since punch list #403 that
+# is the ground of where an outside signer lives, which restates the view with a party's paper.
+WRITES="$(ls supabase/migrations/*_paper_party.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
