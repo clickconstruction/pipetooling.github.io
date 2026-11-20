@@ -13,8 +13,10 @@
  * GC project that is not an invitation. An email on a bid that carries a file also offers **Keep its files on the
  * bid…** (punch list #368), which files them in the bid's Drive folder under Plans and adds a set to the bid; the
  * press itself reads the files and turns into a *kept* mark once they are in a set (`BidMailSetDoor`). An email on a
- * Pipeline job that carries a file offers **Keep this mail as a paper** (`MailPaperDoor`), which until now drew only in
- * My email, on a mail in the reader's own box: a mail someone else tagged had no such press for anyone. Copy, Print and
+ * Pipeline job that carries a file, or since v2.7973 a link to a file on a file host, offers **Keep this mail as a
+ * paper** (`MailPaperDoor`, `mailHasPaper`), which until v2.7540 drew only in My email, on a mail in the reader's own
+ * box: a mail someone else tagged had no such press for anyone. Most papers are a Drive link and no file, so the link
+ * alone earns the press and fills the form's Link box. Copy, Print and
  * Share are the window's own and stay on every line. Pure: the
  * hook (`useEmailViewerThreadSlots`) and cut 4b's hook both ask here, so one place decides the row.
  */
@@ -24,6 +26,7 @@ import { whoMayDraft } from '../changeOrders/fromMessage'
 import { KIND_WORDS, type InvitationKind } from '../emailIn/invitation'
 import { KEEP_ON_BID_LABEL, KEEP_ON_BID_TIP } from '../bids/bidMailSet'
 import { canOpenMessages } from '../gc/access'
+import { mailHasPaper } from '../papers/mailPaperLinks'
 import { jobRefOf } from './jobKeys'
 import type { MessageChannel, MessageDirection } from './thread'
 
@@ -40,6 +43,8 @@ export interface ViewerFacts {
   role: UserRole | null | undefined
   /** How many files the line carries, a link not counted. Absent reads as none. */
   files?: number
+  /** How many links to a file on a file host the line carries, each once. Only a job's paper reads it. Absent reads as none. */
+  links?: number
 }
 
 /** The presses the row offers for a line, in order. Empty for someone off the office team, and on a note or an event. */
@@ -50,8 +55,8 @@ export function viewerPresses(f: ViewerFacts): ViewerPress[] {
   if (ref?.kind === 'bid') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['open_bid', 'keep_on_bid'] : ['open_bid']
   const emailIn = f.channel === 'email' && f.direction === 'in'
   if (emailIn && (f.invitation || ref === null)) return ['start_bid', 'put_on_bid']
-  // An email on a Pipeline job that carries a file can be kept as a paper beside the job's plans (punch list #368, PR 4).
-  if (ref?.kind === 'pipeline') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['keep_paper'] : []
+  // An email on a Pipeline job that carries a file or a file link can be kept as a paper beside the job's plans (punch list #368, PR 4; the link v2.7973).
+  if (ref?.kind === 'pipeline') return f.channel === 'email' && mailHasPaper({ files: f.files ?? 0, links: f.links ?? 0 }) ? ['keep_paper'] : []
   // A line on a GC project takes a change order (cut 4b); a line on a Pipeline job goes on its estimate (R8 · 8).
   if (ref?.kind === 'project' && !f.invitation && whoMayDraft(f.role)) return ['change_order']
   return []
@@ -64,7 +69,7 @@ export const VIEWER_PRESS_WORDS: Readonly<Record<ViewerPress, { label: string; t
   put_on_bid: { label: 'Put it on a bid…', tip: 'Ties this email to a bid you already have and writes it on the bid’s history, so the bid says it came in from here too.' },
   open_bid: { label: 'Open the bid', tip: 'Opens the bid this email is tied to.' },
   keep_on_bid: { label: KEEP_ON_BID_LABEL, tip: KEEP_ON_BID_TIP },
-  keep_paper: { label: 'Keep this mail as a paper', tip: 'Keeps this email as a paper beside the job’s plans, with its files in the job’s Plans folder in Drive.' },
+  keep_paper: { label: 'Keep this mail as a paper', tip: 'Keeps this email as a paper beside the job’s plans. Its files go in the job’s Plans folder in Drive. A link in it fills the paper’s Link box.' },
 }
 
 /** The bid's name as the Start a bid field starts: what the reader read from the subject, else the subject itself. */

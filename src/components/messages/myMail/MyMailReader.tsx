@@ -10,7 +10,7 @@
  * foot: *Reply in Gmail ↗* and *Nothing here replies, archives or marks read.* The presses are the tab's (`MyMailTab`):
  * this window only says what to do.
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MyMailJobChip, MyMailRefusal, MyMailRow } from '../../../lib/myMail/contract'
 import { chipWords, doneWords, MY_MAIL_LIST_WORDS } from '../../../lib/myMail/list'
 import type { MyMailIo } from '../../../lib/myMail/myMailIo'
@@ -25,6 +25,7 @@ import { chipStyle, mutedSmall } from './myMailStyles'
 import { BidMailSetDoor } from '../../bids/BidMailSetDoor'
 import { MailPaperDoor } from '../../papers/MailPaperDoor'
 import { realFileCount } from '../../../lib/plans/planSetFiles'
+import { fileLinksInWords, mailHasPaper } from '../../../lib/papers/mailPaperLinks'
 
 const W = MY_MAIL_READER_WORDS
 
@@ -227,6 +228,9 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
   const subject = mail?.subject ?? row.subject
   const lineId = mail?.tagged?.messageId ?? mail?.inMessages?.messageId ?? null
   const contactId = done?.ok.contactId ?? (lineId ? lineContact(lineId) : null)
+  // What the mail carries that a paper can hold: its real files, and the file links in its words.
+  const paperFiles = realFileCount(mail?.fileList ?? [])
+  const paperLinks = useMemo(() => fileLinksInWords({ bodyText: mail?.bodyText, bodyHtml: mail?.bodyHtml }), [mail?.bodyText, mail?.bodyHtml])
 
   return (
     <PhoneSheet label={subject} title={subject} width={720} dataAttrs={{ 'data-my-mail-reader': row.gmailId }} onClose={onClose}>
@@ -254,7 +258,10 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
         </div>
       ) : null}
       <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-        {row.tagged && row.tagged.kind === 'pipeline' ? <MailPaperDoor jobId={row.tagged.id} jobLabel={row.tagged.num} subject={subject} senderAddress={row.who.address} at={row.at} messageId={lineId ?? row.tagged.messageId} mailFileCount={realFileCount(mail?.fileList ?? [])} /> : null}
+        {/* A job's mail with a real file or a file link can be a paper; one with neither has no press, as in Messages (v2.7973). */}
+        {row.tagged && row.tagged.kind === 'pipeline' && mail && mailHasPaper({ files: paperFiles, links: paperLinks.length }) ? (
+          <MailPaperDoor jobId={row.tagged.id} jobLabel={row.tagged.num} subject={subject} senderAddress={row.who.address} at={row.at} messageId={lineId ?? row.tagged.messageId} mailFileCount={paperFiles} mailLinks={paperLinks} />
+        ) : null}
         {/* A mail on a bid keeps its files as a set of plans (punch list #368); the door reads the line's files itself. */}
         {row.tagged && row.tagged.kind === 'bid' && (lineId ?? row.tagged.messageId) ? (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }} data-my-mail-bid-set>
