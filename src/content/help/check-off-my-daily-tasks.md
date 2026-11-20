@@ -202,6 +202,8 @@ Either answer keeps the record right, and History shows a skipped day as **Skipp
 
 ## Choose what to do first
 
+**⋯ More** on a task opens a short list of choices. Each choice has a picture beside its name and one line on what the choice does.
+
 The **Next** card is the first open task in the order the office set. Want to start on another one? Press **⋯ More** on that task, then **Do first**. The task moves into **Next**, and a line under the label reads *You picked this to do first.*
 
 Your pick is kept on this phone or computer. Nobody else sees it. To go back to the list's own order, press **⋯ More** on the Next card, then **Stop doing it first**.

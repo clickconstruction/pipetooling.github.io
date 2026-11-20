@@ -1,12 +1,14 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { Circle, X } from 'lucide-react'
 import type { TaskChoice } from '../../lib/tasks/taskDoerActs'
+import { TaskChoiceRows } from './TaskChoiceRows'
 
 /**
- * A short list of choices for a task (punch list #369): a title, the task's own words, and rows that each say what
- * they do. The map's three ways in use it, and so does the card's More. On the finishing sheet's frame, so it docks to
- * the bottom of a phone and centres at a desk.
+ * A short list of choices for a task (punch list #369): a centred title, the task on one line in a quiet pill, and
+ * rows that each show and say what they do (`TaskChoiceRows`, v2.8034). The map's three ways in use it, and so does
+ * the card's More. On the finishing sheet's frame, so it docks to the bottom of a phone and centres at a desk.
  */
 export function TaskChoiceSheet<K extends string>({
   open,
@@ -20,7 +22,7 @@ export function TaskChoiceSheet<K extends string>({
 }: {
   open: boolean
   title: string
-  /** The task this is about, under the title. */
+  /** The task this is about, on one line under the title. A long one is cut with an ellipsis. */
   taskTitle: string
   choices: ReadonlyArray<TaskChoice<K>>
   onPick: (key: K) => void
@@ -48,29 +50,27 @@ export function TaskChoiceSheet<K extends string>({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby={labelId} onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id={labelId} style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 36px', alignItems: 'center' }}>
+          <span aria-hidden="true" />
+          <h2 id={labelId} style={{ margin: 0, fontSize: '1.125rem', textAlign: 'center' }}>
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
-            ×
+          <button type="button" onClick={onClose} aria-label="Close" style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: 'none', borderRadius: 18, background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
+            <X size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
-        <p style={{ margin: '4px 0 12px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{taskTitle}</p>
-        <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          {choices.map((c, i) => (
-            <button
-              key={c.key}
-              type="button"
-              data-task-choice={c.key}
-              onClick={() => onPick(c.key)}
-              style={{ display: 'grid', gap: 1, width: '100%', minHeight: 52, padding: '8px 12px', textAlign: 'left', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', border: 'none', borderTop: i === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
-            >
-              <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{c.label}</span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.words}</span>
-            </button>
-          ))}
-        </div>
+        {/* The task this is about: its tick's ring and its words on one line, so it reads as the thing acted on. */}
+        {taskTitle ? (
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 14px' }}>
+            <span data-choice-task title={taskTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', padding: '5px 12px', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-strong)', fontSize: '0.8125rem', lineHeight: 1.3 }}>
+              <Circle size={13} strokeWidth={2.25} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{taskTitle}</span>
+            </span>
+          </div>
+        ) : (
+          <div style={{ height: 12 }} />
+        )}
+        <TaskChoiceRows choices={choices} onPick={onPick} />
         {foot ? <div style={{ marginTop: 10 }}>{foot}</div> : null}
       </div>
     </div>,
