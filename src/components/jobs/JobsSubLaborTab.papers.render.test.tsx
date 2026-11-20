@@ -2,7 +2,8 @@
 /**
  * The papers' presses on the Pay view (punch list #350): Statement of account… on a person's group, Work statement…
  * in Print's place on the ⋯ menu of a sheet that is one person's, and Payment record… beside a payment in the opened
- * row. A sheet two subs share keeps Print and offers no paper.
+ * row. A sheet two subs share keeps Print and offers no paper. The presses are the office's: a superintendent who
+ * reaches the Pay view gets none, and keeps Print.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -14,9 +15,14 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// Who is signed in: the office, unless a test signs a superintendent in.
+const who = vi.hoisted(() => ({ superintendent: false }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock({ role: 'assistant' })
+  const office = useAuthModuleMock({ role: 'assistant' })
+  const superintendent = useAuthModuleMock({ role: 'superintendent' })
+  const signedIn = () => (who.superintendent ? superintendent : office)
+  return { ...office, useAuth: () => signedIn().useAuth(), useOptionalAuth: () => signedIn().useOptionalAuth() }
 })
 vi.mock('../dispatchMode/DispatchModeFooter', () => ({ DISPATCH_MODE_FOOTER_HEIGHT_PX: 56 }))
 // Made-up people: two roster subs.
@@ -41,7 +47,10 @@ vi.mock('./SubPapersWindowConnected', () => ({
 }))
 
 beforeAll(installDomShims)
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  who.superintendent = false
+})
 
 const mine = makeLaborJob({ id: 'sheet-1', assigned_to_name: 'Sam Sub', job_number: 'S-212' })
 const shared = makeLaborJob({ id: 'sheet-2', assigned_to_name: 'Sam Sub | Ora Sub', job_number: 'S-213' })
@@ -139,5 +148,24 @@ describe('JobsSubLaborTab · the papers (#350)', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Payment record…' })[1]!)
     keys.push(screen.getByRole('dialog', { name: 'Papers for Sam Sub' }).getAttribute('data-sending'))
     expect(keys.sort()).toEqual(['row:pay-b', 'snd-7'])
+  })
+
+  it('a superintendent who reaches the Pay view gets no paper press, and a sheet keeps Print', async () => {
+    who.superintendent = true
+    // Their read hides the payments, but the press must not hang on that: a row with a payment offers none either.
+    const paid = makeLaborJob({ id: 'sheet-1', assigned_to_name: 'Sam Sub', job_number: 'S-212', payments: [{ id: 'pay-a', amount: 20, memo: null, created_at: '2026-11-02T10:00:00Z', method: 'check', sending_id: 'snd-7', sending_no: 7 }] })
+    const { onPrintJobSubSheet } = mount([paid])
+    await settle()
+    expect(screen.queryByTestId('sublabor-statement-sam')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Statement of account…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    const items = screen.getAllByRole('menuitem').map((x) => x.textContent)
+    expect(items).not.toContain('Work statement…')
+    expect(items).toContain('Print')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Print' }))
+    expect(onPrintJobSubSheet).toHaveBeenCalledWith(expect.objectContaining({ id: 'sheet-1' }))
+    fireEvent.click([...document.querySelectorAll('tr')].find((tr) => tr.firstElementChild?.textContent === '▶') as HTMLElement)
+    expect(screen.queryByRole('button', { name: 'Payment record…' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Papers for Sam Sub' })).toBeNull()
   })
 })

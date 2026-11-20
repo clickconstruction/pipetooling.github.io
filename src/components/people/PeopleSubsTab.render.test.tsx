@@ -11,10 +11,15 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import PeopleSubsTab from './PeopleSubsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
-// The sub portal globe (sub-portal train) reads the office role via useAuth.
+// The sub portal globe (sub-portal train) reads the office role via useAuth, and so do the papers' presses (#350).
+// A dev is signed in, unless a test signs a superintendent in.
+const who = vi.hoisted(() => ({ superintendent: false }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock()
+  const office = useAuthModuleMock()
+  const superintendent = useAuthModuleMock({ role: 'superintendent' })
+  const signedIn = () => (who.superintendent ? superintendent : office)
+  return { ...office, useAuth: () => signedIn().useAuth(), useOptionalAuth: () => signedIn().useOptionalAuth() }
 })
 
 const TABLE_ROWS: Record<string, unknown[]> = {
@@ -141,7 +146,17 @@ describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
       expect(screen.getAllByTestId('ride-along-row')).toHaveLength(1)
       expect(screen.getByRole('button', { name: 'Take teammates off 1 sheet' })).toBeTruthy()
       expect(screen.getByTestId('ride-along-effect').textContent).toContain('$2,150.00 is open on it before, and $2,150.00 after.')
+      // The papers are the office's (#350): the block offers them to a dev, and to a superintendent it offers none.
+      expect(within(screen.getByTestId('sub-owed-block')).getByRole('button', { name: 'Statement of account…' })).toBeTruthy()
+      cleanup()
+      who.superintendent = true
+      renderWithProviders(<PeopleSubsTab />)
+      const theirRow = (await screen.findByText('Ridgeline Coring LLC')).closest('tr')
+      fireEvent.click(within(theirRow as HTMLElement).getByRole('button', { expanded: false }))
+      const block = await screen.findByTestId('sub-owed-block')
+      expect(within(block).queryByRole('button', { name: 'Statement of account…' })).toBeNull()
     } finally {
+      who.superintendent = false
       for (const k of Object.keys(TABLE_ROWS)) delete TABLE_ROWS[k]
       Object.assign(TABLE_ROWS, saved)
     }
