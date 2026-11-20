@@ -60,6 +60,7 @@ messages-email
 drive-links
 flow-draws
 contract-clauses
+paper-settings
 gc-clause-papers
 flow-papers
 portal-customer-page
@@ -152,4 +153,3 @@ salaried-week
 primary-scope-reports
 primary-scope-job-photos
 paper-party
-paper-settings
