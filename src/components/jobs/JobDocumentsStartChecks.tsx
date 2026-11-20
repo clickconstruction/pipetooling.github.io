@@ -66,7 +66,8 @@ export function JobDocumentsStartChecks({ job, io, onRequestTab, todayYmd }: { j
   if (read.onDesk !== true) return null
 
   const office = isOfficeRole(role)
-  const can = { window: WINDOW_ROLES.has(role ?? ''), notice: read.notice.home === 'job' || office, company: office }
+  // Go and Hold are the office's and the job's superintendent's (the owner's call 3, on its default). The database decides.
+  const can = { window: WINDOW_ROLES.has(role ?? ''), notice: read.notice.home === 'job' || office, company: office, decide: office || role === 'superintendent' }
   const noticeKey = job.development_id ? { developmentId: job.development_id } : { jobId: job.id }
 
   return (
