@@ -6,6 +6,7 @@
  * a hand count can check it. No React, no Supabase.
  */
 import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { plumbingOnFile, shortDay, shortMoney, ymdPlusDays, type ResearchPermitRow } from './permitResearch'
 import { BUILDER_KIND_WORDS, builderName, isBuilderKind, placeOf, type BuilderKind, type BuilderRow } from './permitBuilders'
 import { marketPermitsSince, type MarketPermit } from './permitMarket'
@@ -60,6 +61,11 @@ export function foldCallAnswers(rows: readonly CallAnswerRow[], todayYmd: string
     out.set(key, { answer: row.answer, row, off: row.look_again_on == null || row.look_again_on > todayYmd })
   }
   return out
+}
+
+/** The day an answer was given, on the app's calendar: an evening answer is today's, not tomorrow's by the world clock. */
+export function answeredDay(row: Pick<CallAnswerRow, 'answered_at'>): string {
+  return calendarYmdInAppTzFromIso(row.answered_at) || row.answered_at.slice(0, 10)
 }
 
 /** The one-tap reasons Not for us offers. The words are kept, since nothing counts them yet. */
@@ -332,7 +338,7 @@ export function callTags(row: CallRow, todayYmd: string): CallTag[] {
   if (row.kind) tags.push({ words: BUILDER_KIND_WORDS[row.kind], tone: 'grey' })
   else if (row.reads === 'files') tags.push({ words: 'May file for others', tone: 'grey' })
   else if (row.reads === 'person') tags.push({ words: 'Could be a person', tone: 'grey' })
-  if (row.earlier) tags.push({ words: `${row.earlier.answer === 'pursue' ? 'Pursued' : 'Passed'} ${shortDay(row.earlier.row.answered_at.slice(0, 10), todayYmd)}`, tone: 'grey' })
+  if (row.earlier) tags.push({ words: `${row.earlier.answer === 'pursue' ? 'Pursued' : 'Passed'} ${shortDay(answeredDay(row.earlier.row), todayYmd)}`, tone: 'grey' })
   return tags
 }
 
@@ -403,7 +409,7 @@ export function standingWords(standing: CallStanding, nameOf: (userId: string) =
   const said = standing.answer === 'pursue' ? 'Pursuing' : 'Not for us'
   const why = standing.row.reason.trim() ? `, ${standing.row.reason.trim()}` : ''
   const until = standing.row.look_again_on ? `Off the list until ${shortDay(standing.row.look_again_on, todayYmd)}.` : 'Off the list.'
-  return `${said}${why}. ${who}, ${shortDay(standing.row.answered_at.slice(0, 10), todayYmd)}. ${until}`
+  return `${said}${why}. ${who}, ${shortDay(answeredDay(standing.row), todayYmd)}. ${until}`
 }
 
 // ---------- pursue ----------

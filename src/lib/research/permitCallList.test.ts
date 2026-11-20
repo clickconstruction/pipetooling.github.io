@@ -4,6 +4,7 @@ import type { MarketPermit } from './permitMarket'
 import type { ResearchPermitRow } from './permitResearch'
 import {
   CALL_WEEK,
+  answeredDay,
   answeredWords,
   callChipCounts,
   callChips,
@@ -100,6 +101,13 @@ describe('foldCallAnswers', () => {
   it('reads two answers saved in one instant by their ids', () => {
     const same = [answer({ id: 'a2', answer: 'back' }), answer({ id: 'a1' })]
     expect(foldCallAnswers(same, TODAY).size).toBe(0)
+  })
+
+  it('dates an answer on the app’s calendar, so an evening answer is not tomorrow’s', () => {
+    expect(answeredDay({ answered_at: '2026-11-20T03:30:00Z' })).toBe('2026-11-19')
+    expect(answeredDay({ answered_at: '2026-11-19T15:00:00Z' })).toBe('2026-11-19')
+    const late = foldCallAnswers([answer({ answered_at: '2026-11-20T03:30:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
+    expect(standingWords(late, () => 'Eve', TODAY)).toBe('Not for us. Eve, Nov 19. Off the list until Nov 19, 2027.')
   })
 
   it('sets the day to look again: a quarter after a pursue, a year after a pass', () => {
