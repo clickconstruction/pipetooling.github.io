@@ -220,7 +220,7 @@ export function customerJourneys(): Journey[] {
           label: 'A painted map',
           sublabel: 'the link from Share on a painted map · no sign-in',
           when: 'Before a visit or a delivery, when the address is not enough.',
-          customerCan: 'See the way in drawn on a map, read what each numbered place is, open Directions to the start, and show their own dot to follow the line. They give their name first, and the page says what is kept: the name, the phone or computer and the time. Pressing Show where I am tells them the company will see where they are.',
+          customerCan: 'See the way in drawn on a map, read what each numbered place is, open Directions to the start, and show their own dot to follow the line. They give their name first, and the page says what is kept: the name, the phone or computer and the time. Pressing Show where I am tells them the company will see where they are. When their phone gives only a rough area, the page says so and shows the steps to turn on Precise Location.',
           guide: 'paint-a-map',
           reflects: ['Our company name', 'Nothing about the job: no customer, no price, and nobody’s name'],
           render: { kind: 'page', path: PAINTED_WAY_SAMPLE_PATH },

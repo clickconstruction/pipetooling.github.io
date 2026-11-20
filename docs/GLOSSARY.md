@@ -3216,6 +3216,8 @@ On the map a rough reading that has stayed rough is an area and not a spot: its 
 What a screen does about a weak or a rough reading is its own sentence, kept with the screen (`WALK_WEAK_NOTE_WORDS`, `WALK_ROUGH_NOTE_WORDS`).
 **Put the dot where I am** draws the same line under its press since v2.8001, from the one reading the press takes, called rough at once since a press has no better reading to wait for.
 A rough reading leaves the dot and the map where they were and says *The dot was not moved.*, a weak one moves the dot and asks for a drag (`readingMovesDot` and the notes in `paintedPlaceDot.ts`), and a saved place's own margin says nothing of the phone, so a place opened to change shows no line.
+The shared page `/way` tells a spot from an area since v2.8004 (`wayReading` in `paintedWay.ts`): a sure reading keeps its words and gains the tick, a weak one reads *The signal is weak here.* and names no switch, and an area draws no dot and gets no word about where the reader stands.
+That page names the switch only for an area, after the same 4 second wait, with *Your phone is only giving the area you are in.* and the steps for the reader's phone (`wayRoughWords`, `wayWeakWords`), and its map pulls back to the circle when the area's edge is within `WAY_FRAME_METERS` of the map.
 Guide `paint-a-map`, *When Precise Location looks off*.
 
 ### Your people
