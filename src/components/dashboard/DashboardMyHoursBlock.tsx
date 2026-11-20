@@ -5,6 +5,7 @@
  * Utilization. Salaried people read their own set week from pay and have no press.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useSessionChanges } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { defaultAvailabilityIo, type AvailabilityIo } from '../../lib/people/availabilityIo'
 import { fetchMyUtilization } from '../../lib/people/fetchUtilizationBoard'
 import { hoursOfWords, UTILIZATION_ASSUMED_HOURS, UTILIZATION_LONG_DAY_HOURS, type CanWork, type PersonUtilization } from '../../lib/people/utilization'
@@ -53,6 +54,10 @@ export function DashboardMyHoursBlock({
   useEffect(() => {
     void load()
   }, [load])
+  // A punch changes this week's hours. Without this read the line, and Job Mode's This week square with it,
+  // kept the hours from when the page was opened: a day's work short after clocking out on the same page.
+  const subscribeSessionChanges = useSessionChanges()
+  useEffect(() => subscribeSessionChanges(() => void load()), [subscribeSessionChanges, load])
   useEffect(() => {
     if (row === undefined) return
     onWeek?.(row ? (row.weeks[row.weeks.length - 1]?.workedHours ?? 0) : null)
