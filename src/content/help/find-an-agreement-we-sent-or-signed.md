@@ -125,6 +125,21 @@ The app tells you when it already keeps an address you type. The paper then goes
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
+## Add someone to a list
+
+A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
+
+1. Press **Add to a list**.
+2. Pick what they are. They can be a new customer, a new supply house or vendor, or someone at a company you already have.
+3. Check the company's name, or find the company they are at.
+4. Press the blue button. It names what it will do.
+
+Their paper comes with them. Nothing is copied.
+
+A new customer opens the same form you use to add any customer. Save it and they are added.
+
+The line then reads **Customer** or **Supply house**. A signed paper's record carries the same press.
+
 A job's contract is not sent here. Send it from its job.
 
 ## Write or change a paper

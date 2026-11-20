@@ -18,6 +18,7 @@ import {
   agreementJobTitle,
   agreementMonthGroups,
   agreementName,
+  agreementNeedsAList,
   agreementSignerWords,
   agreementStateChip,
   agreementTag,
@@ -40,6 +41,7 @@ import {
   signingLinkCopiedWords,
 } from '../../lib/documents/agreementsActs'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
+import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -76,6 +78,7 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  */
 
 const WorkOrderAssemblerModal = lazy(() => import('../jobs/WorkOrderAssemblerModal').then((m) => ({ default: m.WorkOrderAssemblerModal })))
+const PaperPartyAddToList = lazy(() => import('./PaperPartyAddToList').then((m) => ({ default: m.PaperPartyAddToList })))
 const PersonContractSignedRecordModal = lazy(() => import('../contracts/PersonContractSignedRecordModal').then((m) => ({ default: m.PersonContractSignedRecordModal })))
 const ContractSendWindow = lazy(() => import('../contracts/ContractSendWindow').then((m) => ({ default: m.ContractSendWindow })))
 
@@ -114,6 +117,8 @@ const quiet: CSSProperties = { margin: 0, color: 'var(--text-muted)', fontSize: 
 const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600 }
 const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
 const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
+/** Add to a list: the one press on a line that makes a record, so it reads as the main press. */
+const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb', border: '1px solid #2563eb', color: 'white', fontWeight: 600 }
 
 function pickChipStyle(pressed: boolean): CSSProperties {
   const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
@@ -142,6 +147,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
   /** Send again: the waiting paper whose Send window is open, with what the window needs to know about it. */
   const [sendAgain, setSendAgain] = useState<{ documentId: string; facts: PersonPaperSendFacts } | null>(null)
+  /** The paper whose party is being added to a list (punch list #403). */
+  const [addToList, setAddToList] = useState<string | null>(null)
+  const [signedNeedsAList, setSignedNeedsAList] = useState(false)
   /** The Contract library, opened in place; and the paper its Send to… named, which starts Send a paper at the person. */
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [sendStart, setSendStart] = useState<{ documentName: string } | null>(null)
@@ -226,6 +234,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     const door = agreementDoor(row)
     if (door.kind === 'person-signed') {
       setSignedDocId(door.documentId)
+      // A signed paper whose party is on no list carries Add to a list on its record too.
+      setSignedNeedsAList(agreementNeedsAList(row))
       return
     }
     if (door.kind === 'contract' && !agreementOpensContractWindow(row)) {
@@ -427,6 +437,11 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                           <div style={lineRight}>
                             <span style={{ ...stateChip, background: chipColors.background, color: chipColors.color }}>{chip.words}</span>
                             {dayWords ? <span style={day}>{dayWords}</span> : null}
+                            {agreementNeedsAList(row) ? (
+                              <button type="button" style={addPress} disabled={busyAct != null} onClick={() => setAddToList(row.source_id)}>
+                                {ADD_TO_A_LIST_LABEL}
+                              </button>
+                            ) : null}
                             {acts ? (
                               <>
                                 <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSendAgain(row)}>
@@ -477,7 +492,32 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       />
       {signedDocId != null ? (
         <Suspense fallback={null}>
-          <PersonContractSignedRecordModal open onClose={() => setSignedDocId(null)} documentId={signedDocId} />
+          <PersonContractSignedRecordModal
+            open
+            onClose={() => setSignedDocId(null)}
+            documentId={signedDocId}
+            {...(signedNeedsAList
+              ? {
+                  onAddToList: () => {
+                    setAddToList(signedDocId)
+                    setSignedDocId(null)
+                  },
+                }
+              : {})}
+          />
+        </Suspense>
+      ) : null}
+      {addToList != null ? (
+        <Suspense fallback={null}>
+          <PaperPartyAddToList
+            documentId={addToList}
+            onClose={() => setAddToList(null)}
+            onAdded={(words) => {
+              setAddToList(null)
+              showToast(words, 'success')
+              retry()
+            }}
+          />
         </Suspense>
       ) : null}
       {!embedded ? <AgreementsContractLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} onQuickSend={(documentName) => setSendStart({ documentName })} onChanged={retry} /> : null}

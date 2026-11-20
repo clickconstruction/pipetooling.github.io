@@ -55,12 +55,18 @@ type PersonContractSignedRecordModalProps = {
   open: boolean
   onClose: () => void
   documentId: string | null
+  /**
+   * The paper's party is on no list (punch list #403): the record carries **Add to a list** under who it is for. The
+   * caller knows it from the list's row, and opens the window.
+   */
+  onAddToList?: () => void
 }
 
 export function PersonContractSignedRecordModal({
   open,
   onClose,
   documentId,
+  onAddToList,
 }: PersonContractSignedRecordModalProps) {
   const [row, setRow] = useState<PersonContractDocumentRow | null>(null)
   const [loading, setLoading] = useState(false)
@@ -330,6 +336,14 @@ export function PersonContractSignedRecordModal({
               {signedBySays ? (
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginTop: '-0.6rem', marginBottom: '1rem' }} data-testid="signed-record-says">
                   {signedBySays}
+                </p>
+              ) : null}
+              {onAddToList ? (
+                <p style={{ fontSize: '0.875rem', marginTop: '-0.4rem', marginBottom: '1rem' }}>
+                  They are on no list yet.{' '}
+                  <button type="button" onClick={onAddToList} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--text-link)', fontWeight: 600 }}>
+                    Add to a list
+                  </button>
                 </p>
               ) : null}
 

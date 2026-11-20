@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { PaperPartyKind } from '../contracts/paperParty'
 import type { PartyBusiness, PartyCustomer, PartyCustomerPerson, PartyRecordTable, PartyRep, PartySupplyHouse } from './paperPartyPick'
 
@@ -148,4 +148,62 @@ export async function keepSignerWithBusiness(business: PartyBusiness, signer: { 
     'keep them with the supply house',
   )
   return { table: 'supply_house_contacts', id: (row as unknown as { id: string }).id }
+}
+
+// ── Add to a list (punch list #403, step 3, the second PR) ────────────────────────────────────────────────────────────
+
+/** Who a paper's party is, for Add to a list: the signer the paper kept, the company typed for them, and their contact. */
+export type ListPersonRead = { contactId: string; name: string; email: string; company: string }
+
+type ListPaperRow = { party_contact_id: string | null; party_name: string | null; signer_name: string | null; signer_email: string | null; signing_for: string | null }
+
+/** Read who one paper's party is. Throws with the reason, and when the paper is no party's. */
+export async function readListPerson(documentId: string): Promise<ListPersonRead> {
+  const row = (await withSupabaseRetry(
+    async () => supabase.from('person_contract_documents').select('party_contact_id, party_name, signer_name, signer_email, signing_for').eq('id', documentId).single(),
+    'read the paper',
+  )) as unknown as ListPaperRow
+  if (!row.party_contact_id) throw new Error('This paper is filed under a person, so there is nobody to add.')
+  const name = (row.signer_name ?? '').trim()
+  const party = (row.party_name ?? '').trim()
+  // The company is the business they sign for. A paper that kept none names the party, unless the party is the signer.
+  const company = (row.signing_for ?? '').trim() || (party && party.toLowerCase() !== name.toLowerCase() ? party : '')
+  return { contactId: row.party_contact_id, name: name || party, email: (row.signer_email ?? '').trim(), company }
+}
+
+/** The names of the papers a party holds, which come with them onto a list. Throws with the reason. */
+export async function readPartyPaperNames(contactId: string): Promise<string[]> {
+  const rows = await withSupabaseRetry(
+    async () => supabase.from('person_contract_documents').select('document_name, status').eq('party_contact_id', contactId).in('status', ['sent', 'signed']).order('created_at', { ascending: false }),
+    'read their papers',
+  )
+  return ((rows ?? []) as unknown as Array<{ document_name: string | null }>).map((r) => (r.document_name ?? '').trim()).filter(Boolean)
+}
+
+/** A new supply house or vendor, by its name alone. Its kind and its details are set on Materials. Returns its id. */
+export async function addSupplyHouse(name: string): Promise<string> {
+  const row = await withSupabaseRetry(async () => supabase.from('supply_houses').insert({ name: name.trim() }).select('id').single(), 'add the supply house')
+  return (row as unknown as { id: string }).id
+}
+
+/**
+ * Say what a contact with no record is: Messages' *Who is this?* (`name_contact`). The contact then points at the
+ * record, or folds into the contact that already is that record, and its papers follow either way. Returns the contact
+ * that holds the papers now. Throws with words the office can act on.
+ */
+export async function namePartyContact(contactId: string, record: { table: PartyRecordTable; id: string }, kind: 'customer' | 'supply_house', name?: string): Promise<string> {
+  try {
+    // On a company's own row a name says which person there this is: someone the row has no person record for.
+    const named = (name ?? '').trim()
+    const id = await withSupabaseRetry(
+      async () => supabase.rpc('name_contact', { p_contact_id: contactId, p_record_table: record.table, p_record_id: record.id, p_kind: kind, ...(named ? { p_name: named } : {}) }),
+      'add them to the list',
+    )
+    return typeof id === 'string' && id ? id : contactId
+  } catch (e) {
+    const words = formatErrorMessage(e, '')
+    if (words.includes('namedAlready')) throw new Error('Someone has already said who they are. Close this and read the list again.')
+    if (words.includes('notFound')) throw new Error('Their record is gone. Close this and read the list again.')
+    throw e
+  }
 }
