@@ -75,8 +75,8 @@ import { canAccessBanking } from '../lib/bankingAccess'
 import { doorsOnlyHeaderSearchEligible, fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
 import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
-import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
-import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
+import { usePageMode } from '../hooks/usePageMode'
+import { dispatchModeEligibleForRole } from '../lib/pageMode'
 import { TASK_MODE_EXIT_CONTROL, taskModeBounceTarget, taskModeToggleTip } from '../lib/taskModeToggle'
 import { TaskModeChip } from './TaskModeChip'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
@@ -90,7 +90,6 @@ import {
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
-import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
@@ -173,27 +172,29 @@ export default function Layout() {
     void startDismissalSync(authUser.id)
     return () => stopDismissalSync()
   }, [authUser?.id])
-  // Role-aware (v2.2877): absent key ⇒ ON for sub-like roles, OFF otherwise; a stored value wins.
-  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
+  // One page mode at a time (`pageMode.ts`): Task Mode, Job Mode or Dispatch Mode, or none. The three
+  // `…Enabled` values are what the menu ticks, so each is on only when the page is drawn in that mode,
+  // and each setter switches to that mode or, off, back to the one stored under it.
+  const pageMode = usePageMode(authUser?.id ?? null, role)
+  const { job: jobModeEnabled, task: taskModeEnabled, dispatch: dispatchModeEnabled } = pageMode.ticks
+  const setPageMode = pageMode.set
+  const setJobModeEnabled = useCallback((next: boolean, source: 'gear' | 'card' = 'gear') => setPageMode('job', next, source), [setPageMode])
+  const setTaskModeEnabled = useCallback((next: boolean) => setPageMode('task', next), [setPageMode])
+  const setDispatchModeEnabled = useCallback((next: boolean) => setPageMode('dispatch', next), [setPageMode])
+  // Job Mode's own toggle is role-aware (v2.2877): with nothing stored it is on for sub-like roles.
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
-  // Task Mode: checklist-only lens, any role. Wins over the Dispatch/Job Mode
-  // shells while on; their toggles keep their stored state for when it's off.
-  const [taskModeEnabled, setTaskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
-  const taskModeActive = taskModeEnabled && !!authUser?.id
+  // Task Mode: checklist-only lens, any role.
+  const taskModeActive = taskModeEnabled
   // Pin Mode (v2.1972): whether the page-bottom pin footer renders. Existing
   // pins (Dashboard quick bar, Settings management) work regardless.
   const [pinModeEnabled, setPinModeEnabled] = usePinModeEnabled(authUser?.id ?? null)
   // Fix Mode (punch list #380): whether the wrench shows. On until this person switches it off here.
   const [fixModeEnabled, setFixModeEnabled] = useFixMode(authUser?.id ?? null)
   // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
-  const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(
-    authUser?.id ?? null,
-    isAssistantLike(role) || role === 'master_technician',
-  )
   // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
   // them the toggle rendered a footer of dead tabs (they keep /schedule-dispatch editing itself).
-  const dispatchModeMenuEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !taskModeActive
+  const dispatchModeMenuEligible = dispatchModeEligibleForRole(role)
+  const dispatchModeActive = dispatchModeEnabled
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) and
   // city→county extras (property legal panels) — hydrate once per session.
@@ -207,8 +208,7 @@ export default function Layout() {
   // (`assistantDispatchLanding.ts`): 5 minutes in Dispatch Mode, 1 hour on a phone otherwise,
   // and only from `/` or `/dashboard`, so a deep link is never bounced.
   useAssistantDispatchLanding(dispatchModeActive)
-  const jobModeFooterActive =
-    jobModeEnabled && jobModeMenuEligible && !dispatchModeActive && !taskModeActive
+  const jobModeFooterActive = jobModeEnabled
   // Job Mode header "Contact:" row — the dispatch line phone plus the three task
   // buttons spelled out; falls back to the icon buttons (with the phone kept on
   // the left) when the viewport is too narrow to fit the labels.
