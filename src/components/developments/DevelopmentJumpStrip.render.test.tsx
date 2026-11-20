@@ -70,6 +70,31 @@ describe('DevelopmentJumpStrip', () => {
     expect(screen.getAllByTestId('development-jump').map((c) => c.querySelector('.developmentPhoneLookName')?.textContent)).toEqual(['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips'])
   })
 
+  it('draws Schedule after the looks a site has, and the cap’s tell names every look from the list (punch list #382)', () => {
+    screenState.phone = false
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, schedule: { n: 4, count: '4 stages', need: '3 answers owed' } }} />)
+    const cap = screen.getByTestId('review-cap')
+    expect(cap.textContent).toBe('Seven looks')
+    expect(cap.getAttribute('title')).toBe('Seven looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos, the schedule. The filled number is where you are.')
+    const cells = screen.getAllByTestId('development-jump')
+    expect(cells[6]!.textContent).toContain('Schedule')
+    expect(cells[6]!.textContent).toContain('4 stages · 3 answers owed')
+    cleanup()
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, trips: { n: 3, count: '3 trips', need: null }, schedule: { n: 4, count: '4 stages', need: null } }} />)
+    expect(screen.getByTestId('review-cap').textContent).toBe('Eight looks')
+    expect(screen.getByTestId('review-cap').getAttribute('title')).toContain('the photos, the trips, the schedule.')
+    expect(screen.getAllByTestId('development-jump').map((c) => c.querySelector('.stagesStageSegName')?.textContent)).toEqual(['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips', 'Schedule'])
+  })
+
+  it('the tell of six and of seven with Trips reads as it did', () => {
+    screenState.phone = false
+    renderWithProviders(<DevelopmentJumpStrip looks={looks} />)
+    expect(screen.getByTestId('review-cap').getAttribute('title')).toBe('Six looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos. The filled number is where you are.')
+    cleanup()
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, trips: { n: 1, count: '1 trip', need: null } }} />)
+    expect(screen.getByTestId('review-cap').getAttribute('title')).toBe('Seven looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos, the trips. The filled number is where you are.')
+  })
+
   it('on a desk the cap and the nav carry the same counted name', () => {
     screenState.phone = false
     renderWithProviders(<DevelopmentJumpStrip looks={looks} />)

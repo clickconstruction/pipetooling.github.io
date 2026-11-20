@@ -49,6 +49,8 @@ A strip under the counts names six looks: History, Jobs & bids, Money, Plans, Qu
 
 A site far from the shop, or a site with a trip, has a seventh look named Trips. The guide [keep a trip to a site away from home](/help/keep-a-trip-to-a-far-site) covers it.
 
+A site with a stage ahead has a look named Schedule at the end of the strip. It says where each stage stands. The guide [say what must be true before a stage starts](/help/say-what-must-be-true-before-a-stage#see-every-stage-on-a-site) covers it.
+
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 

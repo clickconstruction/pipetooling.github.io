@@ -14,6 +14,8 @@ export type MemoryStart = {
   templates: StartTemplateRow[]
   gcContact: string | null
   onDesk: boolean
+  /** When set, the desk covers these jobs alone. */
+  deskJobs?: string[]
   /** Every write, by name, in the order it was made. */
   calls: string[]
   /** The next write fails with this reason, once. */
@@ -41,9 +43,12 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
     db.rows = { ...db.rows, ...rows }
   }
   return {
-    onDesk: async () => db.onDesk,
-    readLines: async () => db.lines.map((l) => ({ ...l })),
-    readRows: async () => ({ ...db.rows }),
+    onDesk: async (jobId) => db.onDesk && (!db.deskJobs || db.deskJobs.includes(jobId)),
+    readLines: async (jobId) => db.lines.filter((l) => l.jobId === jobId).map((l) => ({ ...l })),
+    readRows: async (jobIds) => {
+      const mine = <T extends { job_id: string }>(list: T[]) => list.filter((r) => jobIds.includes(r.job_id))
+      return { bullets: mine(db.rows.bullets), marks: mine(db.rows.marks), asks: mine(db.rows.asks), theirDays: mine(db.rows.theirDays), decisions: mine(db.rows.decisions), arrivals: mine(db.rows.arrivals) }
+    },
     readSettings: async () => ({ site: db.site, job: db.job }),
     readTemplates: async () => db.templates.filter((t) => !t.retired_at),
     readGcContact: async () => db.gcContact,

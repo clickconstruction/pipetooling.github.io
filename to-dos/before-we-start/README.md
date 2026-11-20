@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: ready
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997) and PR 4, the list on a stage (v2.8003)
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003) and PR 5, the Schedule look (v2.8006)
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 5, the Schedule look on the Development page. Then PR 6, Ask them, and PR 7, Go or hold.
+next: PR 6, Ask them, with every ask kept and the Dashboard's line. Then PR 7, Go or hold.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: None. The owner approved the design. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -372,5 +372,7 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
 - **PR 4, the list on a stage: built** (v2.8003). The job window's Documents tab has **Before we start**, and
   Jobs → Subs has a door to it. Three things wait for their own PRs: **Ask them** (6), **Go or hold** (7) and the
   eye (9). A bullet of ours is ticked by hand until PR 8 reads the order log, the trip and the permit.
-- **Next:** PR 5, the Schedule look.
+- **PR 5, the Schedule look: built** (v2.8006). The Development page's last look: the banner, one card a stage
+  ahead sorted by trouble, the ready bar with its list, and the stage's sentence. The banner's ask press is PR 6.
+- **Next:** PR 6, Ask them.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
