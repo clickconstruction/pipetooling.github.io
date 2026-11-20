@@ -288,6 +288,18 @@ describe('JobDocumentsStartChecks', () => {
     expect(document.querySelector('[data-start-check-gc-page]')).toBeNull()
   })
 
+  it('a No on arrival reads on its row with who said it, and the office is offered it for the company’s list', async () => {
+    const db = seeded()
+    db.rows = { ...db.rows, arrivals: [{ id: 'a1', job_id: JOB.id, fixture_id: 'f1', arrived_on: '2026-11-16', not_as_told: ['inspection'], by_name: 'Luis', created_at: '2026-11-16T15:00:00Z' }] }
+    await mount(db)
+    await openStage('Top Out')
+    expect(row('inspection').textContent).toContain('Luis said No on site, Nov 16. It was not as told.')
+    fireEvent.click(within(row('inspection')).getByRole('button', { name: 'Add to the company’s list for Top Out' }))
+    await waitFor(() => expect(db.templates.map((t) => `${t.stage_kind}: ${t.words}`)).toEqual(['top_out: The framing inspection has passed.']))
+    // Once it is on the list it is not offered again.
+    await waitFor(() => expect(within(row('inspection')).queryByRole('button', { name: 'Add to the company’s list for Top Out' })).toBeNull())
+  })
+
   it('the row’s more press asks for a photo, takes a bullet off, and keeps the day they promised', async () => {
     const db = seeded()
     await mount(db)

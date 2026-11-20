@@ -513,5 +513,18 @@ export function settledWords(b: ThemBullet): string {
 /** What the crew looks at on arrival: the bullets on them that nobody of ours has seen. */
 export const toLookAt = (s: Stage): ThemBullet[] => s.bullets.filter((b): b is ThemBullet => b.on === 'them' && !(b.yes && b.yes.know === 'saw'))
 
+/** The words of the crew's card on arrival. The crew is clocked in whatever it answers, and is never stopped. */
+export const ARRIVAL_WORDS = {
+  heading: 'Is it as told?',
+  lead: (stage: string) => `Before ${stage}, the customer said these were ready. Look, then answer.`,
+  asTold: 'As told',
+  no: 'No',
+  allYes: 'Yes, all as told',
+  send: (n: number) => (n === 1 ? 'Send: 1 is not as told' : `Send: ${n} are not as told`),
+  noGoes: 'A No tells Dispatch. Keep working either way.',
+  kept: 'Kept. Thank you.',
+  keptNo: 'Kept. Dispatch has it.',
+} as const
+
 /** The sentence a place that cannot draw a value apart prints: a tooltip, a text, a row's name. */
 export const standingInWords = (s: Stage, site: Site, today: string): string => plainSentence(stageStanding(s, site, today).sentence)

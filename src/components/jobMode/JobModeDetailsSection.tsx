@@ -19,6 +19,7 @@ import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
+import { JobModeArrivalCheck } from './JobModeArrivalCheck'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
 import { JobFirstLookStrip } from '../firstLook/JobFirstLookStrip'
@@ -291,6 +292,8 @@ export default function JobModeDetailsSection({
       <JobFirstLookStrip jobId={jobId} />
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet.
           Nothing while no stage has a question to answer (punch list #384): the job window keeps the empty rows. */}
+      {/* Is it as told? (punch list #382, PR 10): on arrival, what the customer said was ready. Nothing when there is nothing to ask. */}
+      <JobModeArrivalCheck jobId={jobId} />
       <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} hideWhileEmpty />
       {/* Equipment pre-use check (punch list #270): a line per machine on the job, under the stage checklists */}
       <JobModeMachinesLine jobId={jobId} jobWords={[hcpNumber, jobName].filter(Boolean).join(' · ')} />

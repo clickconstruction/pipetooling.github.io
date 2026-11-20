@@ -4,7 +4,7 @@
  * yes taken back stays as a row, and a day they gave is added and never changed. Nothing here talks to a database.
  */
 import { NO_START_ROWS, type StageLine, type StartCheckRows, type StartSettingsRow, type StartTemplateRow } from '../lib/startChecks/startCheckRows'
-import type { StartChecksIo } from '../lib/startChecks/startChecksIo'
+import type { ArrivalAsk, StartChecksIo } from '../lib/startChecks/startChecksIo'
 
 export type MemoryStart = {
   lines: StageLine[]
@@ -14,6 +14,9 @@ export type MemoryStart = {
   templates: StartTemplateRow[]
   gcContact: string | null
   onDesk: boolean
+  /** What the crew is asked on arrival, and what it answered. */
+  arrival?: ArrivalAsk | null
+  arrived?: { fixtureId: string; notAsTold: string[] }
   /** When set, the desk covers these jobs alone. */
   deskJobs?: string[]
   /** Every write, by name, in the order it was made. */
@@ -118,6 +121,13 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       write('setNotice')
       if ('developmentId' in home) db.site = { id: db.site?.id ?? id('s'), development_id: home.developmentId, job_id: null, notice_days: days, shows_on_gc_page: false }
       else db.job = { id: db.job?.id ?? id('s'), development_id: null, job_id: home.jobId, notice_days: days, shows_on_gc_page: db.job?.shows_on_gc_page ?? false }
+    },
+    readArrival: async () => db.arrival ?? null,
+    arrive: async (fixtureId, notAsTold) => {
+      write('arrive')
+      db.arrived = { fixtureId, notAsTold: [...notAsTold] }
+      db.arrival = null
+      return { dispatchRequestId: notAsTold.length ? 'dr-1' : null }
     },
     setShowsOnGcPage: async (jobId, on) => {
       write('setShowsOnGcPage')
