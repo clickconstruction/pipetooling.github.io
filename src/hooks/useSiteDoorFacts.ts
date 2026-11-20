@@ -1,34 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
-import { SITE_BOX_COUNT_KEY, keepSiteBoxCount, keptSiteBoxCount, siteBoxCountIsStale } from '../lib/materials/siteBoxCount'
-import { fetchSiteBoxCount } from '../lib/materials/siteBoxCountIo'
+import { SITE_BOX_COUNT_KEY, keepSiteDoorFacts, keptSiteDoorFacts, siteBoxCountIsStale, type SiteDoorFacts } from '../lib/materials/siteBoxCount'
+import { fetchSiteDoorFacts } from '../lib/materials/siteBoxCountIo'
 
-function readKept(jobId: string): { n: number; at: number } | null {
+function readKept(jobId: string): { facts: SiteDoorFacts; at: number } | null {
   try {
-    return keptSiteBoxCount(window.localStorage.getItem(SITE_BOX_COUNT_KEY), jobId)
+    return keptSiteDoorFacts(window.localStorage.getItem(SITE_BOX_COUNT_KEY), jobId)
   } catch {
     return null
   }
 }
 
-function writeKept(jobId: string, n: number, at: number): void {
+function writeKept(jobId: string, facts: SiteDoorFacts, at: number): void {
   try {
-    window.localStorage.setItem(SITE_BOX_COUNT_KEY, keepSiteBoxCount(window.localStorage.getItem(SITE_BOX_COUNT_KEY), jobId, n, at))
+    window.localStorage.setItem(SITE_BOX_COUNT_KEY, keepSiteDoorFacts(window.localStorage.getItem(SITE_BOX_COUNT_KEY), jobId, facts, at))
   } catch {
-    // A phone that keeps nothing still reads the count each time.
+    // A phone that keeps nothing still reads the facts each time.
   }
 }
 
 /**
- * How many live cages and boxes stand on a job's site, for the Job Mode card's Materials on site press. The count the
- * phone kept draws at once, so the press carries its number with no signal. One read when the card names the job, and
- * another when the page comes back to the front with a count five minutes old. A read that fails keeps the last count
- * and says nothing: the press works the same without its number. Null until a count is known.
+ * What stands on a job's site, for the Job Mode card's Materials on site press: the live cages and boxes, the ones due
+ * a count and the printed stickers waiting for a box. The facts the phone kept draw at once, so the press carries its
+ * number with no signal. One read when the card names the job, and another when the page comes back to the front with
+ * facts five minutes old. A read that fails keeps the last facts and says nothing: the press works the same without
+ * them. Null until facts are known.
  */
-export function useSiteBoxCount(jobId: string | null | undefined, read: (jobId: string) => Promise<number> = fetchSiteBoxCount): number | null {
+export function useSiteDoorFacts(jobId: string | null | undefined, read: (jobId: string) => Promise<SiteDoorFacts> = fetchSiteDoorFacts): SiteDoorFacts | null {
   const id = jobId || null
-  // The kept count is read while drawing, so a job's number is on its first frame.
+  // The kept facts are read while drawing, so a job's number is on its first frame.
   const kept = useMemo(() => (id ? readKept(id) : null), [id])
-  const [fresh, setFresh] = useState<{ forJob: string; n: number } | null>(null)
+  const [fresh, setFresh] = useState<{ forJob: string; facts: SiteDoorFacts } | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -39,10 +40,10 @@ export function useSiteBoxCount(jobId: string | null | undefined, read: (jobId: 
       if (reading) return
       reading = true
       read(id)
-        .then((n) => {
+        .then((facts) => {
           lastAt = Date.now()
-          writeKept(id, n, lastAt)
-          if (live) setFresh({ forJob: id, n })
+          writeKept(id, facts, lastAt)
+          if (live) setFresh({ forJob: id, facts })
         })
         .catch(() => {})
         .finally(() => {
@@ -61,5 +62,5 @@ export function useSiteBoxCount(jobId: string | null | undefined, read: (jobId: 
   }, [id, read])
 
   if (!id) return null
-  return fresh?.forJob === id ? fresh.n : (kept?.n ?? null)
+  return fresh?.forJob === id ? fresh.facts : (kept?.facts ?? null)
 }

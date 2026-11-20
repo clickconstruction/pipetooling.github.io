@@ -2,7 +2,7 @@
 name: "Materials on site: a better door on the Job Mode card"
 number: 407
 group: close
-status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · the three doors that turned people away are fixed, v2.8060 · both walked on the dev server on 2026-11-20 · not yet looked at on a crew's phone
+status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · the three doors that turned people away are fixed, v2.8060 · the card says boxes due a count and stickers waiting, v2.8103 · each walked on the dev server on 2026-11-20 · not yet looked at on a crew's phone
 summary: >
   On the Job Mode card a small underlined link, Materials on site, sat alone between the day's stops
   and the pace card, on every job. Almost no job has material left on site. The owner asked for a whole
@@ -12,7 +12,7 @@ summary: >
 next: Look at the press on a crew's phone on the one site that holds boxes.
 size: S (one client-only PR)
 blocker: None.
-ver: v2.8050, v2.8060
+ver: v2.8050, v2.8060, v2.8103
 opinion: build — built; the press costs no line on the card and now says when a site holds something
 ---
 
@@ -92,7 +92,6 @@ a card that names no job. The detail is in [`docs/recent-features/v2.8050.md`](.
 ## Left
 
 - **A look on a crew's phone.** The walk was on the dev server with a made-up stop on the ZZ test job.
-- **Which boxes are due a count** is not on the press. A head count cannot say it.
 - **A real estimator's read.** The walk of v2.8060 kept the dev's sign-in, so every job was readable.
 
 ## The three doors (v2.8060)
@@ -102,3 +101,18 @@ role, the fault was real. The search's box rows, the Procure step's link and the
 materials page* all opened Jobs → Materials, which sent a primary and a superintendent to Reports and an
 estimator to the Bid Board. Each now opens the Tally's On site tab on the job for everyone but the office.
 The detail is in [`docs/recent-features/v2.8060.md`](../../docs/recent-features/v2.8060.md).
+
+## Due a count and the stickers waiting (v2.8103)
+
+The owner, 2026-11-20, asked for the last three things left on this card: the Procure link walked on a live
+bid, *"Due a count" on the press, which needs a small database function*, and *the stickers-waiting line,
+which belonged to Way A*.
+
+- The Procure link was walked on the ZZ test bid as the office and as an estimator. Both landed where
+  v2.8060 says.
+- The card has one line under its two presses, only where the site has news: how many boxes are due a
+  count, and how many printed stickers are ready for a box. It is a line and not a second number on the
+  press, since two numbers pushed the pair of presses onto two rows on a phone.
+- One database function answers the site's boxes, the ones due and the stickers.
+
+The detail is in [`docs/recent-features/v2.8103.md`](../../docs/recent-features/v2.8103.md).
