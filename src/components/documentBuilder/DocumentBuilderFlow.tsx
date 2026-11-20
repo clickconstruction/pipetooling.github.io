@@ -334,6 +334,7 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
               type="checkbox"
               checked={flow.ackAt != null}
               onChange={(e) => change({ flow: withAck(flow, e.target.checked, new Date().toISOString()) })}
+              aria-label={edit ? def.notice.tick : undefined}
               style={{ width: 20, height: 20, margin: 0, accentColor: '#2563eb' }}
             />
             {edit ? null : <span>{def.notice.tick}</span>}
