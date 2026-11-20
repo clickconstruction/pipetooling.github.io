@@ -40,6 +40,22 @@ export function sendWindowSender(currentUserId: string | null | undefined, users
   return me?.email ? { name: (me.name ?? '').trim(), email: me.email.trim() } : null
 }
 
+/** Why a signer cannot be kept on the paper, in the window's words; null when they can. The paper keeps who signs. */
+export function signerNameRefusal(name: string): string | null {
+  return name.trim() ? null : 'Enter the name of the person who signs.'
+}
+
+/**
+ * What the window's Signer name opens on: the name the paper kept from its last send, else the person the paper is
+ * filed under. A paper filed under a stored name (a trade company's, a party's) opens the box empty.
+ */
+export function initialSignerName(kept: string | null | undefined, filedName: string | null | undefined): string {
+  const name = (kept ?? '').trim()
+  if (name) return name
+  const filed = (filedName ?? '').trim()
+  return /^(gc-company|party):/.test(filed) ? '' : filed
+}
+
 /** Why an address cannot be sent to, in the window's words; null when it can. */
 export function signerEmailRefusal(email: string): string | null {
   const typed = email.trim()

@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_DEFAULT_INTRO, contractSigningEmailDefaultSubject } from '../../lib/contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from '../../lib/portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { quickSendPlanWrites, type QuickSendPlan } from '../../lib/contractsQuickSend'
-import { PERSON_PAPER_LINK_DAYS, sentToastWords, signerEmailRefusal } from '../../lib/contracts/personPaperSend'
-import { materializeQuickSendRow, readPortalSlugIfLive, sendPersonPaperForSignature } from '../../lib/contracts/personPaperSendIo'
+import { PERSON_PAPER_LINK_DAYS, initialSignerName as signerNameToOpenOn, sentToastWords, signerEmailRefusal, signerNameRefusal } from '../../lib/contracts/personPaperSend'
+import { PAPER_WORD_MAX } from '../../lib/contracts/paperParty'
+import { materializeQuickSendRow, readKeptSigner, readPortalSlugIfLive, sendPersonPaperForSignature } from '../../lib/contracts/personPaperSendIo'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /**
  * Send for signature: the one window that emails a person's paper to sign. People → Contracts opens it from a paper's
  * Send or Resend and from a quick-send pick; Documents → Agreements opens it from a waiting line's Send again. It shows
- * the email as the send function will build it, takes the signer's address and the office's own subject and opening
- * words, and sends through `send-contract-for-signature`.
+ * the email as the send function will build it, takes who signs (their name, their title and their address) and the
+ * office's own subject and opening words, and sends through `send-contract-for-signature`. The function keeps the signer
+ * on the paper's own row (punch list #403), which is what a reminder and the signer's copy are sent to.
  *
  * A quick-send pick writes nothing until Send email is pressed: its row is filled or made right before the send, and
  * `onRowWritten` hands the id up at once, so a send that then fails tries again on the same row.
@@ -24,6 +26,8 @@ export function ContractSendWindow({
   docId,
   quickSendPlan = null,
   initialEmail,
+  initialSignerName,
+  initialSignerTitle,
   sender,
   personId,
   again = false,
@@ -39,6 +43,12 @@ export function ContractSendWindow({
   quickSendPlan?: QuickSendPlan | null
   /** The address the window opens on. */
   initialEmail: string
+  /**
+   * Who signed for the paper last time, when the caller read them with the paper. Left out, the window reads them itself
+   * for a saved paper. With nobody kept it opens on the person the paper is filed under.
+   */
+  initialSignerName?: string
+  initialSignerTitle?: string
   /** The staff member sending, for the preview's Reply-To and reach line. */
   sender: { name: string; email: string } | null
   /** The one roster person the name finds, for the preview's portal band; null shows none. */
@@ -51,6 +61,10 @@ export function ContractSendWindow({
 }) {
   const { showToast } = useToastContext()
   const [email, setEmail] = useState(initialEmail)
+  const [signerName, setSignerName] = useState(() => signerNameToOpenOn(initialSignerName, target?.personName))
+  const [signerTitle, setSignerTitle] = useState(initialSignerTitle ?? '')
+  /** The boxes the office has typed in: what the paper kept never lands over their words. */
+  const typed = useRef({ name: false, title: false, email: false })
   const [subject, setSubject] = useState('')
   const [intro, setIntro] = useState('')
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
@@ -75,6 +89,26 @@ export function ContractSendWindow({
     }
   }, [personId])
 
+  // A saved paper keeps who signed for it last time. A caller that did not read them leaves it to the window: the name
+  // and the title fill their boxes, and the address fills an empty one. The roster's address stays when there is one.
+  useEffect(() => {
+    if (!docId || initialSignerName !== undefined) return
+    let cancelled = false
+    readKeptSigner(docId).then(
+      (kept) => {
+        if (cancelled) return
+        if (kept.name && !typed.current.name) setSignerName(kept.name)
+        if (kept.title && !typed.current.title) setSignerTitle(kept.title)
+        if (kept.email && !typed.current.email) setEmail((now) => (now.trim() ? now : kept.email))
+      },
+      // The boxes keep what they opened on: the read is a help, never a gate.
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [docId, initialSignerName])
+
   const preview = useMemo(() => {
     if (!target) return { kind: 'missing' as const }
     const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : 'https://pipetooling.github.io'
@@ -97,7 +131,7 @@ export function ContractSendWindow({
   }, [target, subject, intro, sender, portalUrl])
 
   async function send() {
-    const refusal = signerEmailRefusal(email)
+    const refusal = signerNameRefusal(signerName) ?? signerEmailRefusal(email)
     if (refusal) {
       setError(refusal)
       return
@@ -118,7 +152,7 @@ export function ContractSendWindow({
         setError('Could not prepare the document to send')
         return
       }
-      const result = await sendPersonPaperForSignature({ documentId: id, mode: 'email', signerEmail: email, subject, intro })
+      const result = await sendPersonPaperForSignature({ documentId: id, mode: 'email', signerEmail: email, signerName, signerTitle, subject, intro })
       const toast = sentToastWords(result)
       showToast(toast.words, toast.tone)
       onSent({ docId: id, emailed: result.emailed, planKind })
@@ -146,9 +180,51 @@ export function ContractSendWindow({
           </p>
         ) : null}
         <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
-          <span style={{ fontWeight: 600 }}>Signer email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" style={field} />
+          <span style={{ fontWeight: 600 }}>Signer name</span>
+          <input
+            type="text"
+            value={signerName}
+            onChange={(e) => {
+              typed.current.name = true
+              setSignerName(e.target.value)
+            }}
+            placeholder="Who signs it"
+            maxLength={PAPER_WORD_MAX}
+            autoComplete="off"
+            style={field}
+          />
         </label>
+        <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+          <span style={{ fontWeight: 600 }}>Title (optional)</span>
+          <input
+            type="text"
+            value={signerTitle}
+            onChange={(e) => {
+              typed.current.title = true
+              setSignerTitle(e.target.value)
+            }}
+            placeholder="Owner, Branch manager"
+            maxLength={PAPER_WORD_MAX}
+            autoComplete="off"
+            style={field}
+          />
+        </label>
+        <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+          <span style={{ fontWeight: 600 }}>Signer email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              typed.current.email = true
+              setEmail(e.target.value)
+            }}
+            placeholder="name@example.com"
+            style={field}
+          />
+        </label>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }} data-testid="contract-send-signer-kept">
+          The name and the address are kept on the paper.
+        </p>
         <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600 }}>Email subject (optional)</span>
           <input

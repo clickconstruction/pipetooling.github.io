@@ -8,6 +8,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
 import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
+import { signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
 import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import {
@@ -255,7 +256,7 @@ serve(async (req) => {
       })
     }
 
-    const body = (await req.json()) as SigningRequestBody & { trade_email?: unknown; mode?: unknown }
+    const body = (await req.json()) as SigningRequestBody & SignerRequestBody & { trade_email?: unknown; mode?: unknown }
     // A trade partner company's paper takes its own path (sendCompanyPaper, above); the person path below is pinned
     // against main and never sees one.
     if (body.trade_email !== undefined) return await sendCompanyPaper(body, { userId: user.id, supabaseUrl, serviceKey })
@@ -285,7 +286,7 @@ serve(async (req) => {
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
-      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id')
+      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name')
       .eq('id', person_contract_document_id)
       .single()
 
@@ -305,6 +306,7 @@ serve(async (req) => {
       canonical_document_url: string | null
       url: string | null
       form_template_id: string | null
+      signer_name: string | null
     }
 
     // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
@@ -329,6 +331,8 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey)
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
+    // The send keeps the signer on the paper's own row (punch list #403): the name, the title and, when the link is
+    // emailed, the address it went to. It rides the write that activates the link, so a send either keeps both or neither.
     const { data: updatedRows, error: upErr } = await admin
       .from('person_contract_documents')
       .update({
@@ -336,6 +340,7 @@ serve(async (req) => {
         sent_at: new Date().toISOString(),
         public_token_hash: tokenHash,
         public_token_expires_at: expiresAt,
+        ...signerRowPatch({ mode, body, signerEmail, row: doc }),
       })
       .eq('id', doc.id)
       .in('status', ['unsent', 'sent'])

@@ -35,6 +35,15 @@ Best when you are thinking person-first. For example, "get Darren set up."
 
 Need something unusual? **Customize text or applied date** under the document list opens the full editors. The **Custom or already-signed** path is the complete form. It covers blank documents, uploads of already-signed copies, everything as before.
 
+## Say who signs
+
+The **Send for signature** window has two boxes above the email address.
+
+- **Signer name** opens on the person the paper is filed under. Change it when someone else signs for them.
+- ***Title (optional)*** is the signer's title, such as Owner. Leave it empty when it does not matter.
+
+The paper keeps the name, the title and the address it went to. Sending again opens on the same name and title.
+
 ## What the email looks like
 
 The **Send for signature** dialog shows the real email before you send it. It is built by the same code that sends it.
