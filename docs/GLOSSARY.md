@@ -151,7 +151,8 @@ since v2.5646 (punch list #129) the customer's word on paying and the money of a
 Materials and job reports specialist with access to Materials (full), Jobs (the **Reports** tab only, `Jobs.tsx` `primaryTabs`), Bids (the Bid Board, RFI, Change Order and Lien Release, `PRIMARY_BIDS_TABS` in [`bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts)), and Dashboard with Recent Reports, My Bids and Send task, each held to their own work (`ACCESS_CONTROL.md` → primary).
 Cannot access Customers, Projects, People, or Prospects.
 
-**Capabilities**: Full Materials system, Jobs Reports tab (since v2.7906 the reports of the jobs they account-manage or are listed superintendent on, and the ones they wrote; they can file a report on any job), their own bids and the bid document tabs, Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send");
+**Capabilities**: Full Materials system, Jobs Reports tab (since v2.7906 the reports of the jobs they account-manage or are listed superintendent on, and the ones they wrote;
+they can file a report on any job), their own bids and the bid document tabs, Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send");
 since v2.5655 the paid verbs, and since v2.7921 and v2.7929 the other money verbs and money reads, on the jobs they account-manage or sold only (`is_job_people`);
 since v2.7926 the test papers of the jobs that name them account manager (`primary_can_access_job`), since v2.7936 the photos of the jobs whose reports they read or whose crew they are on, and since v2.7931 none of the money desks
 
@@ -5630,7 +5631,8 @@ Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job /
 
 ### Stages line "man-hours applied" (Pipeline tab) — **v2.592**
 Read-only clock-icon line on each Stages-board card, directly under **`b:`**, showing **total man-hours applied** to the job as a compact `8h 15m` / `45m` label (via **`formatDecimalWorkHoursToHhMm`**, which returns **`—`** for non-positive values), with a **per-person breakdown on hover** (`title` tooltip, descending).
-Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **each day's hours in the person's week** (`salaried_week_hours`, 8 h Mon–Fri by default; the RPC since v2.7840, the kernel since v2.7865), hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs.
+Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **each day's hours in the person's week** (`salaried_week_hours`, 8 h Mon–Fri by default;
+the RPC since v2.7840, the kernel since v2.7865), hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs.
 Loaded **once per Stages visit** in **[`Jobs.tsx`](../src/pages/Jobs.tsx)** (`loadStagesManHours`, load-once `useRef`, retry on error);
 shows **`…`** while loading and **`—`** when the job has no allocated hours or the caller's role has no RLS read access to the labor tables.
 See **`RECENT_FEATURES.md`** → v2.592.
@@ -6063,7 +6065,8 @@ Since v2.7447 the last day of work may be set to any past day, also one earlier 
 the confirm window names the months that leave the lien clock and asks a second look, **Set the day anyway**, for a day far from the hours.
 Since v2.7516 the § 53.056 tab says when the Lien desk already holds the job's approved or printed notice, with **Open it on the Lien desk ›** (`lienWindowPrintNote.ts`), since a print from the tab is a new copy with no signature.
 Since v2.7558 that tab prints a set per envelope, each behind the run's divider (*Print 2 envelopes*, with *Reprint envelope 2 ›* under it, `lienNoticeOneOff.ts`), and since v2.7557 its **Save & record sends…** takes a photo of each paper copy's certified receipt and reads the mail number off it (`LienReceiptPhotoPress`).
-A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Enter mail numbers…* prints the cover letter and, behind it, the clerk's stamped copy (the filing's saved copy, every page) for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`; the stamped copy in place of the redrawn COPY page since v2.7916, `lienStampedCopy.ts`);
+A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Enter mail numbers…* prints the cover letter and, behind it, the clerk's stamped copy (the filing's saved copy, every page) for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`;
+the stamped copy in place of the redrawn COPY page since v2.7916, `lienStampedCopy.ts`);
 every filed lien at once is the Lien desk's *Filed liens: copies to mail* window (see **The Board**).
 
 ### Lien desk
@@ -7915,7 +7918,9 @@ The money budget is the Burn's: a baseline counts only with a labor and a materi
 Since **v2.6352** the leader and a dev also read it on the Dashboard as the **Projects** line under Money in (`DashboardProjectsStrip`): closed, the counts and the worst project;
 open, the same cards.
 Since **v2.7885** (punch list #397 PR 5) a superintendent reads the same line on his Dashboard, above Recent reports, and sets nothing on it.
-The pace card's rail carries each stage's checklist as a press, and its foot a door, **All projects**, to the board. Since **v2.7811** a project's card also reads what the crew says about the finish, *✎ Sam says Mon, Nov 23: waiting on the inspector*: each person's newest **My finish date** on the job, two on the small card and six on the large one (`latestFinishCallsByPerson`, `boardSaysWords` in `lib/jobMode/finishCall.ts`), read once for all cards by `useFinishCallsForJobs`, on the board and on the Dashboard's Projects strip. A failed read draws nothing.
+The pace card's rail carries each stage's checklist as a press, and its foot a door, **All projects**, to the board.
+Since **v2.7811** a project's card also reads what the crew says about the finish, *✎ Sam says Mon, Nov 23: waiting on the inspector*: each person's newest **My finish date** on the job, two on the small card and six on the large one (`latestFinishCallsByPerson`, `boardSaysWords` in `lib/jobMode/finishCall.ts`), read once for all cards by `useFinishCallsForJobs`, on the board and on the Dashboard's Projects strip.
+A failed read draws nothing.
 The strip's stage count is a press that lists the stages, since a phone cannot hover.
 Guide *see where every project stands and set its expected hours*.
 Since **v2.6665** (punch list #234 PR 2) a project leaves award with a **planned finish** frozen beside its hours on `job_budgets` (`planned_start` · `planned_finish` · `planned_source` rough · assumed · typed · `planned_detail`;
