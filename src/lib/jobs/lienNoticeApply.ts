@@ -318,6 +318,18 @@ export function fieldsWithoutSetAside(fields: unknown): Record<string, unknown> 
 }
 
 /**
+ * The months the step offers to tick (v2.8027, Grace's yes of 2026-11-20): the notice's own, and on a missed notice
+ * with no month still due the closed months the desk calls missed too, so a paper already on record can stand for one.
+ * The notice's own months were empty there, which left the step's Apply with nothing to tick. Elsewhere a closed month
+ * is not offered, so a draft opens the step with its own months ticked and no closed month beside them. The checks
+ * (`lienApplyChecks`) still rule on every month ticked, and a warning still asks for the reason.
+ */
+export function lienApplyMonthsOffered(input: { pile: string; months: ReadonlyArray<string>; dueMonths: ReadonlyArray<string>; missedMonths: ReadonlyArray<string> }): string[] {
+  if (input.pile !== 'missed' || input.dueMonths.length > 0) return [...input.months]
+  return [...new Set([...input.months, ...input.missedMonths])].sort()
+}
+
+/**
  * Whether the notice waiting on the desk is set aside with the record: only when every month it names has a notice
  * afterwards. A waiting notice that names another month too stays where it is, so that month is not lost.
  */

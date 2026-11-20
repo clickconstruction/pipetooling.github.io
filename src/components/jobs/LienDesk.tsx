@@ -135,6 +135,7 @@ import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
+import { lienApplyMonthsOffered } from '../../lib/jobs/lienNoticeApply'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -2656,7 +2657,8 @@ export default function LienDesk({
         apply={{
           gcCustomerId: job?.gc_customer_id ?? null,
           jobNumber: effectiveJobLedgerNumber(job?.hcp_number, job?.click_number) || selected.jobId.slice(0, 8),
-          months: monthsList,
+          // A missed notice with nothing due offers its closed months to tick too (v2.8027), so a paper already on record can stand for one.
+          months: lienApplyMonthsOffered({ pile: selected.pile, months: monthsList, dueMonths: selected.dueMonths, missedMonths: selected.missedMonths }),
           propertyKind: selected.propertyKind ?? '',
           lastWorkYmd: job?.lien_last_work_on ?? null,
           userName: authName,
