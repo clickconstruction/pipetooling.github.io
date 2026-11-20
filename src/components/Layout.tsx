@@ -36,9 +36,9 @@ import ChecklistAddModal from './ChecklistAddModal'
 import { PaintedMapHost } from './paintedMap/PaintedMapHost'
 import DispatchTaskModal from './DispatchTaskModal'
 import EstimatorTaskModal from './EstimatorTaskModal'
-import UserReviewModal from './UserReviewModal'
+import { UserReviewModalOnDemand } from './UserReviewModalOnDemand'
 import { UserReviewDeepLinkHandler } from './userReview/UserReviewDeepLinkHandler'
-import { PersonDeskDrawer } from './personDesk/PersonDeskDrawer'
+import { PersonDeskDrawerOnDemand } from './personDesk/PersonDeskDrawerOnDemand'
 import { PersonDeskDeepLinkHandler } from './personDesk/PersonDeskDeepLinkHandler'
 import { PersonQuickSheet } from './personDesk/PersonQuickSheet'
 import NewCustomerModal from './NewCustomerModal'
@@ -2431,9 +2431,9 @@ export default function Layout() {
       <PaintedMapHost />
       <DispatchTaskModal />
       <EstimatorTaskModal />
-      <UserReviewModal />
+      <UserReviewModalOnDemand />
       <UserReviewDeepLinkHandler />
-      <PersonDeskDrawer />
+      <PersonDeskDrawerOnDemand />
       <PersonDeskDeepLinkHandler />
       <PersonQuickSheet />
       <NewCustomerModal />

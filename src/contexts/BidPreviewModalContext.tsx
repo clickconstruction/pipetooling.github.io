@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, Suspense, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BidPreviewModal, type BidPreviewTabUrl } from '../components/bids/BidPreviewModal'
+import type { BidPreviewTabUrl } from '../components/bids/BidPreviewModal'
+import { WindowOpening } from '../components/WindowOpening'
+import { lazyWindow } from '../lib/lazyWindow'
 import { fetchBidForPreview } from '../lib/fetchBidForPreview'
 import { isSubmissionBidStaleForThreshold } from '../lib/submissionFollowupStale'
 import type { Database } from '../types/database'
@@ -34,6 +36,10 @@ type OpenState =
     }
 
 const BidPreviewModalContext = createContext<BidPreviewModalContextValue | null>(null)
+
+// The window is a chunk of its own (`lazyWindow`): this provider is mounted for everyone signed in.
+const BidPreviewModal = lazyWindow(() => import('../components/bids/BidPreviewModal').then((m) => ({ default: m.BidPreviewModal })))
+const BID_OPENING = <WindowOpening words="Opening the bid…" />
 
 let bidPreviewModalInstanceSeed = 0
 
@@ -152,6 +158,7 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
     <BidPreviewModalContext.Provider value={value}>
       {children}
       {openState.kind === 'open' ? (
+        <Suspense fallback={BID_OPENING}>
         <BidPreviewModal
           key={instanceKey}
           bid={openState.bid}
@@ -164,6 +171,7 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
           onNotesMutatedCustomer={refreshPreviewBidFromNotes}
           staleNoUpdateHighlight={staleNoUpdateHighlight}
         />
+        </Suspense>
       ) : null}
     </BidPreviewModalContext.Provider>
   )

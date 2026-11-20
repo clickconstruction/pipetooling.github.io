@@ -4,7 +4,7 @@
  * offers back a walk that was kept on the phone and never saved. A kept walk is never left there
  * unseen: it is offered, or it is thrown away.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render as renderBare, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
@@ -39,7 +39,13 @@ vi.mock('./PaintedMapWindow', () => ({
 }))
 
 import { openPaintedMap, paintPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
-import { PaintedMapHost } from './PaintedMapHost'
+import { PAINTED_MAP_WINDOWS, PaintedMapHost } from './PaintedMapHost'
+
+// The host loads its two windows on demand (`lazyWindow`). Loaded here, each is drawn the moment it is asked for,
+// as it is in the app once its code is on the device.
+beforeAll(async () => {
+  await Promise.all(PAINTED_MAP_WINDOWS.map((w) => w.preload()))
+})
 
 const walked = (): WalkState => {
   let s = startWalk(0)

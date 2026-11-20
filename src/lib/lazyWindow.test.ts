@@ -34,13 +34,28 @@ function handClock(withIdle: boolean) {
 }
 
 describe('lazyWindow', () => {
-  it('keeps the loader beside the lazy component, so a provider can warm it', async () => {
+  it('keeps the loader beside the window and loads once, however often it is warmed', async () => {
     const Window = () => null
     const load = vi.fn(async () => ({ default: Window }))
     const lazyOne = lazyWindow(load)
     expect(load).not.toHaveBeenCalled()
     await lazyOne.preload()
+    await lazyOne.preload()
     expect(load).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks again after a load that failed', async () => {
+    const Window = () => null
+    let calls = 0
+    const load = vi.fn(async () => {
+      calls += 1
+      if (calls === 1) throw new Error('Failed to fetch dynamically imported module')
+      return { default: Window }
+    })
+    const lazyOne = lazyWindow(load)
+    await expect(lazyOne.preload()).rejects.toThrow('Failed to fetch')
+    await expect(lazyOne.preload()).resolves.toBeTruthy()
+    expect(load).toHaveBeenCalledTimes(2)
   })
 })
 
