@@ -246,9 +246,17 @@ last_updated: 2026-11-19
 > **The rule: a grid a paper is drawn in never has an `auto` column.**
 > An `auto` column is as wide as its widest item's min-content, and a bar's one line of words (a page label, a head's fact, the approved chip) is min-content however much `min-width: 0` and `overflow: hidden` its children carry;
 > the pay codes page's bar held the notice pane to 707 px in a 656 px pane.
-> What cannot narrow slides inside its own frame: the months grid, and each paper frame (`overflow-x: auto`).
-> What can, gives way by its own width and not the window's, since the pane is the window less the 320 px list: the page bar's muted words then its name (`.lienPageLabelMore`, `.lienPageLabelName`), a head's fact with its whole words in a `title` (`lienPaneHeadFactWords`), the supply houses card's table to stacked rows under 600 px of card (`lienSuppliersStacked`, read with a `ResizeObserver` as the timeline reads its own), the months body's claim over its notes under 520 px (`.lienMonthsBody`'s columns live in the CSS;
-> inline they beat the container rule).
+> What cannot narrow slides inside its own frame: the months grid in a card wider than 560 px, and each paper frame (`overflow-x: auto`).
+> What can, gives way by its own width and not the window's, since the pane is the window less the 320 px list: the page bar's muted words then its name (`.lienPageLabelMore`, `.lienPageLabelName`), a head's fact with its whole words in a `title` (`lienPaneHeadFactWords`), the supply houses card's table to stacked rows under 600 px of card (`lienSuppliersStacked`, read with a `ResizeObserver` as the timeline reads its own), the months grid to stacked rows under 560 px of card (`.lienLedgerGrid`, whose layout lives in the CSS;
+> inline it would beat the container rule).
+> **v2.7989 (Months on this job is one card, the ledger, punch list #361):** [`LienDeskMonths.tsx`](../src/components/jobs/LienDeskMonths.tsx) draws one card on one rhythm, every part a row on the card's hairline (`.lienLedger*` in `index.css`): the last day of work as its first row (`LienLastWorkDayLine` `flat`, no box of its own), one lead line (`data-lien-ledger-lead`) where the paragraph was, the grid, the missed line, the money (`data-lien-ledger-money`), then the quiet rows.
+> The grid is still a table, so every row shares the head's column widths, and only the head of this notice's column and its ticked cells are tinted.
+> A missed month is `data-missed` on its row: the red tint and a red bar at its left edge.
+> The money is one block: `LienClaimBox`'s read view is the total line (`.lienLedgerClaim`, the figure at the card's right edge), `LienDeskMonths` hands it the foot of the column through `claimNode(foot)` (`data-lien-grid-foot`, the months the notice names and their count), and `LienClaimBills` draws the bills under it on the same edge.
+> The `tfoot` of v2.7430 and its second total (`data-lien-grid-total`) are gone, so the figure is said once.
+> Under 560 px of card a row is its own grid: the month over its window, an earlier paper as a mark with its letter (`.lienLedgerMarkLetter`), and the tick in a 6.5rem column at the right edge.
+> The empty card goes through `EmptyState`.
+> `LienDeskMonths.render.test.tsx` holds the order, the words, the hooks and the doors.
 > A width observer fires only when a frame is drawn, so a measurement in a hidden browser pane reloads at each width.
 
 > **v2.7386 (every signature line on the desk is its footer's box, Taunya's go of 2026-11-15):** v2.7382's `frame` now goes to the other four places `LienDesk.tsx` draws a line on a computer.
@@ -581,7 +589,8 @@ last_updated: 2026-11-19
 > The notice pane's in-body *Back to the list* is gone.
 > `LienPaneHead` takes `phone`: `lienPaneHeadOffsets`, `lienPaneSectionScrollTop` and `litLienPaneSection` in [`lienPaneSections.ts`](../src/lib/jobs/lienPaneSections.ts) pin one 40 px head under the strip in place of the stack.
 > The pane is `data-lien-pane-phone` with its column `minmax(0, 1fr)`;
-> the stylesheet holds each section body to that width and lets a page of the paper and the months grid slide inside their own frames.
+> the stylesheet holds each section body to that width and lets a page of the paper slide inside its own frame.
+> The months grid stacks instead since v2.7989.
 > A bar over the footer (`data-lien-desk-foot-fold`, `lienPhoneFootFold`) folds it with a sibling rule, so the footer stays mounted and keeps what was typed;
 > the leader's one-screen approval has no bar.
 
@@ -886,7 +895,7 @@ last_updated: 2026-11-19
 > the four lien readers take its month (`month_source = 'hand'`: it replaces the creation fallback and extends the sessions' months), and since v2.4830 so does the Pipeline's runway (`buildLienPayRunway` `handLastWorkYmd` → `datedByHand`, fed by `lienRunwayFor` from the board's `jobs_ledger.lien_last_work_on`), which the By date view, the Billed row and the lien watch nudge draw from — before it, a day set by hand left this view on the creation month.
 > Since v2.4970 the runway's balance is `lienBilledOpen(job, invoices, payments)` (`lib/jobs/lienBilledOpen.ts`, the client twin of `lien_billed_open()`), as are `useLienWatchNudge`'s and the GC run's rows (`gcNoticeRowsWithBilledOpen`);
 > a billed job whose sent bills are paid off leaves the By date list while the desk keeps it under *Nothing billed*.
-> `LienLastWorkDayLine` (kernel `lib/jobs/lienLastWorkDay.ts`: where the day comes from, the words, what a typed day may be — never before the last approved session — and the patch) sits above the Months card (`LienDeskMonths` `lastWork`) and in Edit Job's lien row;
+> `LienLastWorkDayLine` (kernel `lib/jobs/lienLastWorkDay.ts`: where the day comes from, the words, what a typed day may be — never before the last approved session — and the patch) is the first row of the Months card (`LienDeskMonths` `lastWork`, `flat` since v2.7989, a box above the card until then) and sits in Edit Job's lien row;
 > the timeline's LAST WORK node reads *last day set by hand* (`lastMonthByHand`).
 > The desk's clock-column read falls back to the four old columns until the migration lands.
 > **v2.4717 (what moves first):** before a typed day is saved, `LienLastWorkDayLine` opens `LienLastWorkDayConfirm` — how far the day moves from the clock hours, the dates the law hangs on it (the months the notice names, the § 53.056 window of the last month, the § 53.052 affidavit, the § 53.158 suit) with today beside the new day and the changed rows lit, the reason asked there;
@@ -1519,7 +1528,7 @@ The line is where the desk mounts or calls each one.
 | `useLienSentFooterForms` / `useLienDeskWindows` | 24 / 24 | 569 / 831 | through `LienDeskSentFooter` and `LienDeskWindows`' tests |
 | hooks `useLienDeskData` / `useLienJobSuppliers` / `useNoticeReleases` / `useLienDeskSignatureInks` | 686 / 146 / 42 / 39 | the page / 624 / 629 / 627 | 19 across its test files / none / none / none |
 
-Drawn inside `LienDeskNoticePane`, not by the desk: `LienTimelineStrip` (793), `LienStopPaperWindow` (366), `LienDeskMonths` (273, no test of its own), `LienDeskOwnerPane` (255), `LienClaimBox` (175, no test of its own), `LienDeskGates`, `LienEnvelopeCard`, `LienJobSuppliersCard`, `LienLastWorkDayLine`, `LienLastWorkDayWindow` (68, the last day set from under the strip's LAST WORK stop, v2.7684), `LienClaimBills`, `LienJobHeading`, `LienStepRow`, `PropertyKindSwitch`.
+Drawn inside `LienDeskNoticePane`, not by the desk: `LienTimelineStrip` (793), `LienStopPaperWindow` (366), `LienDeskMonths` (336, `LienDeskMonths.render.test.tsx` 6), `LienDeskOwnerPane` (255), `LienClaimBox` (181, its read view in that test), `LienDeskGates`, `LienEnvelopeCard`, `LienJobSuppliersCard`, `LienLastWorkDayLine`, `LienLastWorkDayWindow` (68, the last day set from under the strip's LAST WORK stop, v2.7684), `LienClaimBills`, `LienJobHeading`, `LienStepRow`, `PropertyKindSwitch`.
 
 **Large sibling Lien surfaces** (candidates for their own maps):
 

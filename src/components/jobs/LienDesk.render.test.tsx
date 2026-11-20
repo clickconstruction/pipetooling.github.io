@@ -3556,10 +3556,11 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     } as unknown as LienDeskItemRow
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [skippedMay], true)} />)
     const box = document.querySelector('[data-lien-desk-month-grid]') as HTMLElement
-    // The title is the pane's stacked head now (v2.4733); the helper sentence stays on the card.
+    // The title is the pane's stacked head now (v2.4733). One lead line stands where the paragraph was (punch list #361);
+    // with no earlier paper on the job it says nothing about a check.
     expect(document.querySelector('[data-lien-pane-head="months"]')?.textContent).toContain('Months on this job')
     expect(box.textContent).not.toContain('Months on this job')
-    expect(box.textContent).toContain('Every month worked, oldest first.')
+    expect((box.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('Tick a month to put it on this notice.')
     expect(box.textContent).toContain('Claim amount on the notice$33,500')
     // Every month is a row; July's window column spells the deadline out.
     const jul = box.querySelector('[data-lien-grid-row="2026-07"]') as HTMLElement
@@ -3577,11 +3578,13 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
     // This notice is the last column, lettered after the papers (none here). Its head is the name alone.
     expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('AThis notice')
-    // The total sits at the foot of that column (Taunya's ask of 2026-11-15), under the ticks, beside the months it names.
+    // The total sits at the foot of that column (Taunya's ask of 2026-11-15): since punch list #361 it is the claim's own
+    // line, the figure said once, with the months this notice names under it.
     const foot = box.querySelector('[data-lien-grid-foot]') as HTMLElement
-    expect(foot.closest('tfoot')).toBeTruthy()
-    expect(foot.textContent).toBe('This notice names Jun, Jul, Aug$33,5003 months')
-    expect((foot.querySelector('[data-lien-grid-total]') as HTMLElement).textContent).toBe('$33,5003 months')
+    expect(foot.closest('[data-lien-claim-box]')).toBeTruthy()
+    expect(foot.textContent).toBe('This notice names Jun, Jul, Aug · 3 months')
+    expect(box.querySelector('tfoot')).toBeNull()
+    expect(box.textContent?.match(/\$33,500/g)).toHaveLength(1)
     // A skip is not a miss: no line under the grid says a lien right is gone.
     expect(box.querySelector('[data-lien-months-missed]')).toBeNull()
     // A closed month's cells are the one-line kind; an open month keeps its two lines.

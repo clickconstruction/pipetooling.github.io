@@ -6030,6 +6030,7 @@ since **v2.5073** **Preview the email ›** beside the tick opens it in a new ta
 every filing can carry a **saved copy** — a Drive link and a note (`document_url` / `document_note`, **v2.3763**), typed with the record or added to the row later.
 The pane's months card is a **grid** (**v2.3782**, punch list #38): months down, one column per § 53.056 paper that went out (lettered A, B…), this notice as the last column;
 a closed month is a row with *Note it as missed*, not a strip.
+Since **v2.7989** (punch list #361) the card is one ledger read top to bottom: the last day of work as its first row, the grid, the claim as the total line with the bills behind it as its lines, then the quiet notes.
 A notice printed here and mailed by hand is recorded after the fact from the pane's *Already mailed?
 Record it…* or the Lien window's *Already sent — record it…* (**v2.3770**): one filing per job the paper covered, on one `packet_id`, `by_hand`, the paper's `printed_claim` beside the job's amount.
 The run can print the jobs at one property as **one notice** on purpose (*Combine the jobs at one property into one notice*, **v2.3777**, off by default): the claims summed and the months joined on the form, still one filing per job on one `packet_id`, each with its share and the paper's `printed_claim`.

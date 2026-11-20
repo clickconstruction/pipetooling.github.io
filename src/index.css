@@ -4336,16 +4336,72 @@ body.my-time-boundary-dragging {
   .lienOwnerRollBody { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Lien desk → Months (v2.3661): open months as tickable cards beside the claim; settled months
-   (sent / skipped / missed) as a row of dots that open the record. Its own container, so the claim
-   drops under the cards in a narrow pane. Dot and chip fills are literal status colors. */
-.lienMonths { container: lien-months / inline-size; display: grid; gap: 0.55rem; border: 1px solid var(--border); border-radius: 9px; padding: 0.6rem 0.75rem 0.7rem; background: var(--surface); }
-.lienMonthsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; }
+/* Lien desk → Months, the ledger (punch list #361; the grid is #38, the cards and dots were v2.3661). One card on one
+   rhythm: every part is a row on the card's hairline, inset 0.5rem, so the last day of work, the grid, the money and the
+   quiet notes share a left edge and a right edge. Its own container, so a narrow card stacks by its own width. The layout
+   lives here and never inline: an inline style beats the container rule that stacks it (v2.7446). Chip and bar fills are
+   literal status colors. */
+.lienMonths { container: lien-months / inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 9px; padding: 0.15rem 0.25rem 0.25rem; background: var(--surface); font-size: 0.8125rem; }
+.lienMonthsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; padding: 0.45rem 0.5rem 0.1rem; }
 .lienMonthsHead strong { font-size: 0.875rem; }
-.lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
-/* The claim at the left, the notes beside it. The columns live here and not inline (v2.7446): an inline template beat the
-   520px rule below, so in a narrow card the claim kept its column and the notes ran out of the card. */
-.lienMonthsBody { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem 1.1rem; align-items: stretch; }
+.lienLedgerRow { min-width: 0; padding: 0.5rem; border-top: 1px solid var(--border); }
+.lienMonths > :first-child, .lienMonthsHead + * { border-top: none; }
+.lienLedgerFaint, .lienLedgerQuiet, .lienLedgerLead { font-size: 0.75rem; color: var(--text-muted); }
+.lienLedgerQuiet { padding-top: 0.4rem; padding-bottom: 0.4rem; line-height: 1.5; }
+.lienLedgerLead { margin: 0; padding: 0.5rem 0.5rem 0.3rem; border-top: 1px solid var(--border); }
+/* The grid: a table, so every row shares the head's column widths. Each paper and this notice keep to their words, and
+   the month and its window share the rest. Where the card has room for a closed month on one line (the three container
+   rules under it, by how many papers stand between), the month keeps to its words too and the window takes the room. What cannot
+   narrow slides inside the frame; a narrow card stacks instead (below). */
+.lienLedgerGridFrame { min-width: 0; overflow-x: auto; }
+.lienLedgerGrid { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lienLedgerGrid th { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: bottom; white-space: nowrap; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lienLedgerGrid th[data-col='paper'], .lienLedgerGrid th[data-col='this'] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-700); }
+.lienLedgerGrid th[data-col='paper'] { width: 1%; min-width: 9.5rem; }
+.lienLedgerGrid th[data-col='this'] { width: 1%; }
+/* This notice stays quiet: its head is tinted under a blue edge, and a cell is tinted only when it is ticked. */
+.lienLedgerGrid th[data-col='this'] { background: var(--bg-blue-tint); border-top: 2px solid var(--text-blue-700); border-radius: 6px 6px 0 0; }
+.lienLedgerGrid td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.lienLedgerGrid tbody tr:last-child > td { border-bottom: none; }
+.lienLedgerGrid td[data-col='this'] { white-space: nowrap; }
+.lienMonthWorked { white-space: nowrap; }
+@container lien-months (min-width: 720px) {
+  .lienLedgerGrid[data-papers='0'] th[data-col='window'] { width: 100%; }
+  .lienLedgerGrid[data-papers='0'] td[data-col='month'] { white-space: nowrap; }
+}
+@container lien-months (min-width: 910px) {
+  .lienLedgerGrid[data-papers='1'] th[data-col='window'] { width: 100%; }
+  .lienLedgerGrid[data-papers='1'] td[data-col='month'] { white-space: nowrap; }
+}
+@container lien-months (min-width: 1100px) {
+  .lienLedgerGrid[data-papers='2'] th[data-col='window'] { width: 100%; }
+  .lienLedgerGrid[data-papers='2'] td[data-col='month'] { white-space: nowrap; }
+}
+.lienLedgerGrid tr[data-lines='one'] > td { padding-top: 0.24rem; padding-bottom: 0.24rem; vertical-align: middle; }
+.lienLedgerGrid tr[data-window='none'] { color: var(--text-muted); }
+/* Red means late and nothing else: a missed window keeps its tint and gains a bar at its left edge. */
+.lienLedgerGrid tr[data-missed='yes'] > td { background: var(--bg-red-tint); }
+.lienLedgerGrid tr[data-missed='yes'] > td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+.lienLedgerGrid tr[data-on='yes'] > td[data-col='this'] { background: var(--bg-blue-tint); }
+.lienMonthName { font-weight: 700; }
+.lienLedgerWindow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.lienLedgerLetter { display: inline-block; width: 18px; height: 18px; margin-right: 5px; border-radius: 4px; text-align: center; line-height: 18px; font-size: 0.68rem; font-weight: 800; }
+.lienLedgerLetter[data-tone='paper'] { background: var(--bg-green-tint); color: var(--text-green-800); }
+.lienLedgerLetter[data-tone='this'] { background: var(--surface); color: var(--text-blue-700); }
+.lienLedgerMarkLetter { display: none; }
+/* A paper's head keeps its name on one line; the words under it wrap, so a long one does not widen the column. */
+.lienLedgerPaperWords { display: block; white-space: normal; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+.lienLedgerTick { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.lienLedgerNoteMissed { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font-family: inherit; font-size: 0.7rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.lienLedgerNoteMissed:hover, .lienLedgerNoteMissed:focus-visible { border-color: var(--text-700); }
+/* The money, one block under the grid. The claim is the total line: its caption and words at the left, the figure at the
+   card's right edge under the ticks that make it, the months the notice names beneath the figure. The bills are the lines
+   that add up to it, their OWED on the same edge (`.lienClaimBill`, below). */
+.lienLedgerMoney { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; border-top: 1px solid var(--border); }
+.lienLedgerClaim { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.05rem 1rem; padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.lienLedgerClaim > * { grid-column: 1; min-width: 0; }
+.lienLedgerClaim > strong { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; white-space: nowrap; font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
+.lienLedgerClaim > .lienLedgerClaimFoot { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; }
 /* A closed month is one line where the card has room (Taunya's ask of 2026-11-15): the hours sit beside the month, and the
    window's chips, its noted line and its press share a row. What a missed window costs is said once under the grid. The
    Windows view's "it was open" words trail the row and give way first, cut with an ellipsis; a press that does not fit
@@ -4361,8 +4417,33 @@ body.my-time-boundary-dragging {
   /* A phone: no room for one line, so the month stacks as an open month does and the words wrap whole. */
   .lienMonthOne > div { display: block; }
   .lienMonthOne .lienMonthName { margin-right: 0; }
-  .lienMonthOne .lienMonthWorked { white-space: normal; }
+  .lienMonthOne .lienMonthWorked, .lienMonthWorked { white-space: normal; }
   .lienMonthClosed > .lienMonthClosedTail { flex-basis: 100%; display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow-wrap: normal; }
+  /* The grid stacks (punch list #361): a row is the month over its window in one column, an earlier paper is a mark
+     like "A ✓" under them, and the tick keeps a column of its own at the right edge. Each row is its own grid, so the
+     tick's column is a fixed width: it lines up down the card without the table. Nothing slides. */
+  .lienLedgerGridFrame { overflow-x: visible; }
+  .lienLedgerGrid, .lienLedgerGrid thead, .lienLedgerGrid tbody { display: block; width: auto; }
+  .lienLedgerGrid tr { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; column-gap: 0.5rem; padding: 0.45rem 0 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
+  .lienLedgerGrid thead tr { padding-top: 0; padding-bottom: 0; }
+  .lienLedgerGrid tbody tr:last-child { border-bottom: none; }
+  .lienLedgerGrid th, .lienLedgerGrid td, .lienLedgerGrid tr[data-lines='one'] > td { display: block; grid-column: 1; width: auto; min-width: 0; padding: 0; border-bottom: none; white-space: normal; }
+  .lienLedgerGrid th[data-col='month'], .lienLedgerGrid th[data-col='window'] { display: none; }
+  .lienLedgerGrid th[data-col='paper'] { width: auto; padding: 0.3rem 0; }
+  .lienLedgerGrid td[data-col='window'], .lienLedgerGrid td[data-col='paper'] { padding-top: 0.25rem; }
+  .lienLedgerGrid td[data-col='paper'][data-cell='blank'] { display: none; }
+  .lienLedgerMarkLetter { display: inline-block; }
+  .lienLedgerGrid th[data-col='this'], .lienLedgerGrid td[data-col='this'], .lienLedgerGrid tr[data-lines='one'] > td[data-col='this'] { grid-column: 2; grid-row: 1 / span 12; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .lienLedgerGrid th[data-col='this'] { align-self: end; width: auto; padding: 0.3rem 0.25rem; white-space: nowrap; }
+  .lienLedgerGrid td[data-col='this'], .lienLedgerGrid tr[data-lines='one'] > td[data-col='this'] { margin: -0.45rem 0; padding: 0.2rem 0.25rem; }
+  .lienLedgerGrid tr[data-missed='yes'] { background: var(--bg-red-tint); box-shadow: inset 3px 0 0 #dc2626; }
+  .lienLedgerGrid tr[data-missed='yes'] > td, .lienLedgerGrid tr[data-missed='yes'] > td:first-child { background: none; box-shadow: none; }
+  .lienLedgerGrid tr[data-on='yes'] > td[data-col='this'] { background: var(--bg-blue-tint); }
+  /* A thumb's target: the tick with its word under it. */
+  .lienLedgerTick { flex-direction: column; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; }
+  .lienLedgerNoteMissed { padding: 5px 10px; }
+  /* The total line keeps its two columns; the months it names drop under the claim's own words when they are long. */
+  .lienLedgerClaim > .lienLedgerClaimFoot { grid-column: 1 / -1; grid-row: auto; }
 }
 .lienMonthsCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.4rem; min-width: 0; }
 .lienMonthCard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 0.55rem; align-items: start; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); cursor: pointer; }
@@ -4375,8 +4456,6 @@ body.my-time-boundary-dragging {
 .lienMonthCardHours { font-size: 0.75rem; color: var(--text-muted); }
 .lienMonthCardDue { font-size: 0.78rem; color: var(--text-700); }
 .lienMonthCard[data-urgent='yes'] .lienMonthCardDue { color: var(--text-red-700); font-weight: 600; }
-.lienMonthsClaim { display: grid; align-content: center; gap: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); min-width: 9.5rem; font-size: 0.72rem; color: var(--text-muted); }
-.lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
 /* One column held to the slot's width (v2.7446): an `auto` column is as wide as the chip's one line of words, which pushed the row out of a narrow pane. */
 .lienDeskFooterSlot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
@@ -4565,20 +4644,23 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienCalAxis { container: lien-cal-axis / inline-size; }
 .lienCalDateShort { display: none; }
 @container lien-cal-axis (max-width: 420px) { .lienCalDateFull, .lienCalDateCount { display: none; } .lienCalDateShort { display: inline; } }
-.lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
-.lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
-.lienClaimBills { display: grid; gap: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
-.lienClaimBillsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; padding-bottom: 0.3rem; }
-.lienClaimBillsHead strong { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-.lienClaimBillsHead span, .lienClaimBillsEmpty { font-size: 0.72rem; color: var(--text-muted); }
-.lienClaimBill { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 0.1rem 1rem; align-items: baseline; padding: 0.3rem 0; border-top: 1px dashed var(--border); }
+/* The bills behind the claim (v2.4969), the ledger's lines since punch list #361: each on the card's hairline, the three
+   money columns one width so every figure shares a right edge with the total above. BILLED, PAID and OWED are said over
+   the first bill and kept for a screen reader on the rest. */
+.lienClaimBills { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; font-variant-numeric: tabular-nums; }
+.lienClaimBillsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; padding: 0.45rem 0.5rem 0.35rem; border-top: 1px solid var(--border); }
+.lienClaimBillsHead strong { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lienClaimBillsHead span, .lienClaimBillsEmpty { font-size: 0.75rem; color: var(--text-muted); }
+.lienClaimBillsEmpty { padding: 0 0.5rem 0.5rem; }
+.lienClaimBill { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem 6.5rem 6.5rem; gap: 0.1rem 0.75rem; align-items: end; padding: 0.4rem 0.5rem; border-top: 1px solid var(--border); }
 .lienClaimBill[data-tone='amber'] { color: var(--text-amber-800); }
 .lienClaimBillName { min-width: 0; display: grid; }
 .lienClaimBillName strong { font-weight: 600; color: var(--text-strong); overflow-wrap: anywhere; }
 .lienClaimBill[data-tone='amber'] .lienClaimBillName strong { color: var(--text-amber-800); }
-.lienClaimBillName small { font-size: 0.7rem; color: var(--text-muted); }
-.lienClaimBillNum { display: grid; justify-items: end; white-space: nowrap; font-weight: 600; color: var(--text-strong); min-width: 4.5rem; }
-.lienClaimBillNum small { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienClaimBillName small { font-size: 0.75rem; color: var(--text-muted); }
+.lienClaimBillNum { position: relative; display: grid; justify-items: end; white-space: nowrap; font-weight: 600; color: var(--text-strong); }
+.lienClaimBillNum small { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lienClaimBill ~ .lienClaimBill .lienClaimBillNum small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .lienClaimBill[data-owed='no'] .lienClaimBillNum[data-col='owed'] { color: var(--text-muted); font-weight: 500; }
 .lienClaimBillNum[data-col='door'] { grid-column: 2 / -1; }
 .lienClaimBillNum button { border: none; background: none; color: var(--text-link); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
@@ -4614,10 +4696,6 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienMonthDialogReason { font-style: italic; }
 .lienMonthDialogMeaning { margin: 0.75rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-700); }
 .lienMonthDialogMeaning[data-outcome='missed'] { color: var(--text-red-700); }
-@container lien-months (max-width: 520px) {
-  .lienMonthsBody { grid-template-columns: minmax(0, 1fr); }
-  .lienMonthsClaim { padding: 0.5rem 0 0; border-left: none; border-top: 1px solid var(--border); }
-}
 
 /* Lien desk → In the envelope as one card (v2.7427; a line above the paper since v2.3776): who it goes to at the left, what rides
    with the notice at the right, the key to the paper along the foot. The halves sit side by side from a card 620 px wide and
