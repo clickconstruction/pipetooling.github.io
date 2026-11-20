@@ -178,7 +178,7 @@ Leaving for the settings pauses the painting, as any other app does. Press {{but
 
 Is the switch on already? Then your phone may only be hearing a cell tower. Step into the open and wait a moment.
 
-You can press {{button:blue|Draw it by hand instead}} at any time.
+You can press {{button:blue|Draw it by hand instead}} at any time. The map then goes back to the job.
 
 ## Look it over, then save
 
@@ -283,6 +283,8 @@ A line under the press says how that reading did.
 - *Precise Location looks off.* means the dot was not moved. Your phone gave only an area, and its middle can be miles away.
 
 When the dot was not moved, drag it onto the spot by hand. Or turn the switch on and press again. [When Precise Location looks off](#when-precise-location-looks-off) has the steps.
+
+Sometimes your phone gives no reading at all. An amber box under the press then says why, and the dot was not moved. Drag the dot onto the spot, or press again.
 
 Never type a gate code or a lock code on a place. Anyone the map is shared with would read it.
 

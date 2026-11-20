@@ -391,11 +391,11 @@ function OursRow({ b, line, rows, me, kind, canCompany, busy, act, press }: RowP
   const [more, setMore] = useState(false)
   const yes = bulletIsYes(b)
   return rowShell(
-    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
       <button type="button" className="scBox" aria-label={b.words} aria-pressed={yes} disabled>
         {yes ? '✓' : ''}
       </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
         <div style={{ color: 'var(--text-strong)' }}>{b.words}</div>
         <div style={{ ...rowLine, ...muted }}>
           {b.fact}{' '}
@@ -411,13 +411,16 @@ function OursRow({ b, line, rows, me, kind, canCompany, busy, act, press }: RowP
           ) : null}
         </div>
       </div>
-      {/* Whose it is, and where it is read from: a value a person can change, in place. */}
-      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>
-        ours, <ChangeableValue text={readsLabel(b.reads)} label="where this is read from" type="choice" value={b.reads} choices={READS_CHOICES} hint="where this is read from" onKeep={(v) => press((w) => w.changeBullet(b.id, { reads: v as UsReads }))} />
-      </span>
-      <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
-        ⋯
-      </button>
+      {/* Whose it is and its ⋯ stay together: on a phone the pair drops under the words as one, at the right. */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 'none', marginLeft: 'auto' }}>
+        {/* Whose it is, and where it is read from: a value a person can change, in place. */}
+        <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>
+          ours, <ChangeableValue text={readsLabel(b.reads)} label="where this is read from" type="choice" value={b.reads} choices={READS_CHOICES} hint="where this is read from" onKeep={(v) => press((w) => w.changeBullet(b.id, { reads: v as UsReads }))} />
+        </span>
+        <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
+          ⋯
+        </button>
+      </div>
     </div>,
     more ? (
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0 0 34px', alignItems: 'center' }}>
@@ -483,7 +486,7 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
       >
         {yes ? '✓' : ''}
       </button>
-      <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+      <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
         <div style={{ color: 'var(--text-strong)' }}>{b.words}</div>
         {no ? (
           <div style={{ ...rowLine, color: 'var(--text-red-700)', fontWeight: 600 }}>
@@ -542,10 +545,13 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
           </div>
         ) : null}
       </div>
-      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>{whoseTag(b, site.contact)}</span>
-      <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
-        ⋯
-      </button>
+      {/* Whose it is and its ⋯ stay together, so the ⋯ never drops to a line of its own. */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 'none', marginLeft: 'auto' }}>
+        <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>{whoseTag(b, site.contact)}</span>
+        <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
+          ⋯
+        </button>
+      </div>
       <input ref={file} type="file" accept="image/*" hidden aria-label={`Their photo for: ${b.words}`} onChange={(e) => void pickPhoto(e.target.files?.[0])} />
     </div>,
     more ? (

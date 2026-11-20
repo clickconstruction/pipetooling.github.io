@@ -35,5 +35,6 @@ export function useStartCheckReads(args: { io: StartReadersIo | null; jobs: read
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [io, key])
 
-  return useMemo(() => (io ? readerFor(lines, read.key === key ? read.reads : NO_READS) : undefined), [io, lines, read, key])
+  // Today goes to the reader too: a line whose day to land has gone by is open, however far ahead of day one it reads.
+  return useMemo(() => (io ? readerFor(lines, read.key === key ? read.reads : NO_READS, todayYmd) : undefined), [io, lines, read, key, todayYmd])
 }

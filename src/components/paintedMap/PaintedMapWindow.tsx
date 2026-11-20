@@ -19,7 +19,7 @@ import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { isOfficeRole } from '../../lib/doorRoles'
 import { jobBoxOffered } from '../../lib/messages/jobBox'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
-import { requestMyLocation } from '../../lib/materials/myLocation'
+import { requestMyFix, requestMyLocation, type MyFixFailure } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
   addCorner,
@@ -204,7 +204,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [placeReturn, setPlaceReturn] = useState<'view' | 'walk' | 'review'>('view')
   // This window has had a walk of its own: only then is what the phone keeps this window's to write or clear.
   const ownsWalk = useRef(walkFirst)
-  // Bumped when a walk ends: the map followed the walker, and Look it over frames the whole of it.
+  // Bumped when a walk ends: the map followed the walker, and Look it over frames the whole of it. Bumped too when a
+  // walk on a map pulled back to a rough area is left to draw by hand.
   const [refit, setRefit] = useState(0)
   const began = useRef(false)
   const [placing, setPlacing] = useState<Placing | null>(() => (placeFirst && givenCenter ? { place: null, point: givenCenter, fix: null } : null))
@@ -227,6 +228,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [finding, setFinding] = useState(false)
   // The last Put the dot where I am got an area and not a spot (#402): its margin, for the panel's words. The dot was not moved.
   const [roughFix, setRoughFix] = useState<number | null>(null)
+  // The last Put the dot where I am got no reading at all: why, for the panel's words under the press. The dot was not moved.
+  const [noFix, setNoFix] = useState<MyFixFailure | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -564,14 +567,17 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setPlaceReturn('view')
     setPlacing(null)
     setRoughFix(null)
+    setNoFix(null)
     setGlass(null)
   }
   const putDotWhereIAm = () => {
     setFinding(true)
     setError(null)
-    requestMyLocation(
+    // The panel owns the words for no reading: on this screen the dot is dragged, and dragging the map places nothing.
+    requestMyFix(
       (p) => {
         setFinding(false)
+        setNoFix(null)
         // A rough reading is an area. The dot stays where the painter had it, the map stays put, and the panel says why.
         if (!readingMovesDot(p.accuracyM)) {
           setRoughFix(p.accuracyM)
@@ -581,10 +587,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         setPlacing((pl) => (pl ? { ...pl, point: { lat: p.lat, lng: p.lng }, fix: p, live: true } : pl))
         setFly({ lat: p.lat, lng: p.lng })
       },
-      (words) => {
+      (why) => {
         setFinding(false)
+        // The reason is drawn under the press, where the painter is looking, and stands in for the line there.
         setRoughFix(null)
-        setError(words)
+        setNoFix(why)
       },
     )
   }
@@ -960,6 +967,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                     if (walk.state && walkHasLine(walk.state)) setPending((p) => [...p, ...walkStrokes(walk.state!)])
                     walk.clear()
                     startDrawing()
+                    // The map pulled back to the whole circle, miles across, and a line cannot be drawn on that. It goes
+                    // back to its own ground: what is on it when there is anything, else the place it opened on.
+                    if (walkMe?.area) {
+                      if (canvasLines.length > 0 || canvasPlaces.length > 0) setRefit((n) => n + 1)
+                      else if (center) setFly({ lat: center.lat, lng: center.lng })
+                    }
                   }}
                 />
               ) : mode === 'review' ? (
@@ -971,6 +984,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   photoUrl={placing.place?.photoPath ? (photoUrls.get(placing.place.photoPath) ?? null) : null}
                   accuracyM={placing.live ? placingAccuracy : null}
                   roughAccuracyM={roughFix}
+                  noFix={noFix}
                   movedOffReading={!!placing.fix && !placingOnReading}
                   finding={finding}
                   busy={busy}

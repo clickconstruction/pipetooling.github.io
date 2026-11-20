@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Suspense, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense, Fragment, type CSSProperties } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
@@ -108,6 +108,8 @@ import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen, Wrench } from 'lucide-react'
 import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
+import { GEAR_SECTION_LABELS, gearPagesInOrder } from '../lib/gearMenuSections'
+import { GearSectionLabel } from './layout/GearSectionLabel'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
 import { GearAnswerDot, NavRowLinkMenuRows, PeopleNavIcon, TellTheDevMenuRow } from './layout/NavRowMenuRows'
 import { useFixMode } from '../hooks/useFixMode'
@@ -136,6 +138,9 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 })
 
 const IMPERSONATION_KEY = 'impersonation_original'
+/** One of the header's presses as a row of the gear menu's Pages group, each in its own place in the order. */
+const GEAR_CUSTOMERS_ROW = ['customers'] as const
+const GEAR_PEOPLE_ROW = ['people'] as const
 /** A gear row's name with its icon: the two show-or-hide switches under the modes. */
 // `nowrap`: the menu is as wide as its longest row, so a name with an icon widens it and never folds under its tick.
 const SWITCH_ROW_NAME: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }
@@ -595,6 +600,29 @@ export default function Layout() {
       isAssistantLike(role) ||
       role === 'estimator') &&
     !taskModeActive
+  // The gear menu's Pages group: who gets which page is here, and the order is the kernel's (`gearMenuSections.ts`).
+  // Customers and People are rows only where the phone's header had no room for them (`navRow.inMenu`); Materials,
+  // Checklist and Map only on a phone, where the header carries no link to them.
+  const gearPages = gearPagesInOrder({
+    checklist: isMobile && canShowChecklistNav,
+    calendar: !taskModeActive,
+    materials: isMobile && canShowMaterialsNav,
+    map: isMobile && canShowMapNav,
+    customers: navRow.inMenu.includes('customers'),
+    people: navRow.inMenu.includes('people'),
+    documents:
+      (role === 'estimator' ||
+        role === 'primary' ||
+        role === 'superintendent' ||
+        role === null ||
+        role === 'dev' ||
+        role === 'master_technician' ||
+        isAssistantLike(role)) &&
+      !taskModeActive,
+    banking: canAccessBanking(role) && !taskModeActive,
+    roadmap: canShowRoadmapNav,
+    partnerships: role === 'dev' && !taskModeActive,
+  })
 
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -1426,9 +1454,13 @@ export default function Layout() {
                   boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                   minWidth: 168,
                   zIndex: 50,
+                  // A label's grey strip may be the first row: keep it inside the rounded corners.
+                  overflow: 'hidden',
                 }}
               >
                 <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
+                {/* The menu reads in groups, each under its label (`gearMenuSections.ts`). Modes change the page. */}
+                {authUser?.id && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
                 {jobModeMenuEligible && authUser?.id && (
                   <button
                     type="button"
@@ -1627,10 +1659,8 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
-                {/* The modes end here. The rows under the band change no page: each shows or hides one thing. */}
-                {authUser?.id && (
-                  <div aria-hidden="true" data-testid="gear-switches-band" style={{ height: 7, background: 'var(--bg-muted)', borderBottom: '1px solid var(--chrome-border)' }} />
-                )}
+                {/* The modes end here. The rows under Show change no page: each shows or hides one thing. */}
+                <GearSectionLabel label={GEAR_SECTION_LABELS.show} />
                 {authUser?.id && (
                   <button
                     type="button"
@@ -1801,7 +1831,10 @@ export default function Layout() {
                     Auto (dark 8pm–4am)
                   </button>
                 )}
-                {canShowRoadmapNav && (
+                {gearPages.length > 0 && <GearSectionLabel label={GEAR_SECTION_LABELS.pages} />}
+                {/* One block per page, drawn in the kernel's order: the gates are in `gearPages` above. */}
+                {gearPages.map((page) => (<Fragment key={page}>
+                {page === 'roadmap' && (
                   <NavLink
                     to="/roadmap"
                     onClick={() => setGearOpen(false)}
@@ -1823,7 +1856,7 @@ export default function Layout() {
                     Roadmap
                   </NavLink>
                 )}
-                {role === 'dev' && !taskModeActive && (
+                {page === 'partnerships' && (
                   <NavLink
                     to="/partnerships"
                     onClick={() => setGearOpen(false)}
@@ -1845,14 +1878,7 @@ export default function Layout() {
                     Partnerships
                   </NavLink>
                 )}
-                {(role === 'estimator' ||
-                  role === 'primary' ||
-                  role === 'superintendent' ||
-                  role === null ||
-                  role === 'dev' ||
-                  role === 'master_technician' ||
-                  isAssistantLike(role)) &&
-                  !taskModeActive && (
+                {page === 'documents' && (
                   <NavLink
                     to="/documents"
                     onClick={() => setGearOpen(false)}
@@ -1874,8 +1900,9 @@ export default function Layout() {
                     Documents
                   </NavLink>
                 )}
-                <NavRowLinkMenuRows inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
-                {isMobile && canShowMaterialsNav && (
+                {page === 'customers' && <NavRowLinkMenuRows inMenu={GEAR_CUSTOMERS_ROW} onClose={() => setGearOpen(false)} />}
+                {page === 'people' && <NavRowLinkMenuRows inMenu={GEAR_PEOPLE_ROW} onClose={() => setGearOpen(false)} />}
+                {page === 'materials' && (
                   <NavLink
                     to="/materials"
                     onClick={() => setGearOpen(false)}
@@ -1897,7 +1924,7 @@ export default function Layout() {
                     Materials
                   </NavLink>
                 )}
-                {isMobile && canShowChecklistNav && (
+                {page === 'checklist' && (
                   <NavLink
                     to="/checklist"
                     onClick={() => setGearOpen(false)}
@@ -1919,7 +1946,7 @@ export default function Layout() {
                     <span style={{ position: 'relative', display: 'inline-block' }}>Checklist<ChecklistTagsBadge /></span>
                   </NavLink>
                 )}
-                {isMobile && canShowMapNav && (
+                {page === 'map' && (
                   <NavLink
                     to="/map"
                     onClick={() => setGearOpen(false)}
@@ -1941,7 +1968,7 @@ export default function Layout() {
                     Map
                   </NavLink>
                 )}
-                {canAccessBanking(role) && !taskModeActive && (
+                {page === 'banking' && (
                   <NavLink
                     to="/banking"
                     onClick={() => setGearOpen(false)}
@@ -1963,7 +1990,7 @@ export default function Layout() {
                     Banking
                   </NavLink>
                 )}
-                {!taskModeActive && (
+                {page === 'calendar' && (
                 <NavLink
                   to="/calendar"
                   onClick={() => setGearOpen(false)}
@@ -1985,6 +2012,8 @@ export default function Layout() {
                   Calendar
                 </NavLink>
                 )}
+                </Fragment>))}
+                {!taskModeActive && <GearSectionLabel label={GEAR_SECTION_LABELS.help} />}
                 {!taskModeActive && ownLogbookShown && (
                 <NavLink
                   to="/my-logbook"
@@ -2045,6 +2074,8 @@ export default function Layout() {
                   Settings
                 </NavLink>
                 )}
+                {/* Leaving and reloading sit last, under a band and no label. */}
+                <div aria-hidden="true" data-testid="gear-leave-band" style={{ height: 7, background: 'var(--bg-muted)', borderBottom: '1px solid var(--chrome-border)' }} />
                 <button
                   type="button"
                   onClick={async () => {

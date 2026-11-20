@@ -62,6 +62,8 @@ describe('PreciseLocationLine', () => {
     expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
     const cells = [...alert.querySelectorAll('[data-precise-compare] dt, [data-precise-compare] dd')].map((c) => c.textContent)
     expect(cells).toEqual(['Your phone now', 'within 2 miles', 'With Precise Location on', 'within 20 ft'])
+    // On a narrow phone the label gives way and the value stays whole (v2.8080): `within 2` / `miles` broke in two at 320 px.
+    expect((alert.querySelector('[data-precise-compare]') as HTMLElement).style.gridTemplateColumns).toBe('fit-content(100%) minmax(min-content, max-content)')
     // The number a phone is usually sure of is green: it is where the switch gets you.
     expect((alert.querySelectorAll('[data-precise-compare] dd')[1] as HTMLElement).style.color).toBe('var(--text-green-700)')
     expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('A line cannot be painted from a reading that wide.')
@@ -112,6 +114,8 @@ describe('the steps behind one press', () => {
     const fold = alert.querySelector('details[data-precise-steps-fold]') as HTMLDetailsElement
     expect(fold.open).toBe(false)
     expect(fold.querySelector('summary')?.textContent).toBe('Show the steps')
+    // The fold is a press, so it is a thumb tall (v2.8080): it was 32 px.
+    expect((fold.querySelector('summary') as HTMLElement).style.minHeight).toBe('44px')
     // The lead, the two numbers and the screen's note stay in the open.
     expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
     expect(alert.querySelector('[data-precise-compare]')?.parentElement).toBe(alert)

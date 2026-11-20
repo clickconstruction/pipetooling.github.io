@@ -449,6 +449,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   useEffect(() => {
     setStandingOpen(false)
+    // A pick names an entry of the person it was made on: it never follows the panel to another person's file (v2.8082).
+    setDraftTargets([])
   }, [personId])
 
   const reloadDocuments = useCallback(async () => {
@@ -630,6 +632,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         setDraftTargets([])
         void reloadAmendments()
       } else {
+        // The entry is written, so its picks are spent: left set, they rode into the next entry a person added (v2.8082).
+        setDraftTargets([])
         showToast(`The entry is on the line, but it was not linked: ${lk.why}`, 'error')
       }
     }

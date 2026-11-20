@@ -27,6 +27,8 @@ Your usual sheet is the standing sheet. Every job starts on its words and amount
 2. Press any words on the sheet and type over them.
 3. Wait for the bar to read *Draft saved*.
 
+The bar reads *Draft not saved* when a save fails. Type again to send the draft again.
+
 - **Add an opening line** adds a line at the top of the sheet.
 - **Add a coverage line** adds a kind of insurance and its amount.
 - The small **×** beside a line removes that line.

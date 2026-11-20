@@ -14,9 +14,30 @@ import type { PhoneKind } from '../paintedMap/preciseLocation'
 /** Use where I am, and the box map's Use my location: the map moved, and is about right. */
 export const WHERE_I_AM_WEAK_NOTE_WORDS = 'Drag the map until the ring is on the spot.'
 
-/** The same two presses on a rough reading: the map did not move. A desk has no switch to turn on, so it is offered the drag alone. */
+/** The same two presses on a rough reading: the map did not move. With nowhere to open it opens wide, and says `whereIAmRoughWideNoteWords`. A desk has no switch to turn on, so it is offered the drag alone. */
 export function whereIAmRoughNoteWords(kind: PhoneKind): string {
   return kind === 'other' ? 'The map was not moved. Drag it until the ring is on the spot.' : 'The map was not moved. Drag it until the ring is on the spot, or turn the switch on and press again.'
+}
+
+/** A map with nowhere to open, opened wide to be dragged after the press got no spot: nothing was left as it was, so it does not say so. */
+export const WHERE_I_AM_WIDE_WORDS = 'The map opened wide. Zoom in and drag it until the ring is on the spot.'
+
+/** The same two presses on a rough reading when the map had nowhere to open: it has just opened wide, so *was not moved* would not be true. */
+export function whereIAmRoughWideNoteWords(kind: PhoneKind): string {
+  return kind === 'other' ? WHERE_I_AM_WIDE_WORDS : 'The map opened wide. Zoom in and drag it until the ring is on the spot, or turn the switch on and press again.'
+}
+
+/** The Tally's Site map has no ring: Use my location only moves the view. On a rough reading the view stays. */
+export function siteMapRoughNoteWords(kind: PhoneKind): string {
+  return kind === 'other' ? 'The map was not moved.' : 'The map was not moved. Turn the switch on and press again.'
+}
+
+/** The Site map with nowhere to open, opened wide after the press got no spot. */
+export const SITE_MAP_WIDE_WORDS = 'The map opened wide. Zoom in and drag it to the site.'
+
+/** The Site map's press on a rough reading when the map had nowhere to open. */
+export function siteMapRoughWideNoteWords(kind: PhoneKind): string {
+  return kind === 'other' ? SITE_MAP_WIDE_WORDS : 'The map opened wide. Zoom in and drag it to the site, or turn the switch on and press again.'
 }
 
 /** Standing at this task? A reading the phone knows, but too wide to keep with no look at a map: the open sky is the cure. */

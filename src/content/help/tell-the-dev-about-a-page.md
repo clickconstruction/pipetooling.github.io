@@ -77,10 +77,10 @@ Your phone keeps a press made with no signal. It sends the press when the signal
 The gear menu has a switch named **Tell the dev**. The switch shows or hides the wrench. The wrench starts on.
 
 1. Press the gear at the top right.
-2. Press **Tell the dev**, the row with the tick box. That row sits under the grey band.
+2. Press **Tell the dev**, the row with the tick box. That row sits under **Show**.
 
-Press it again to bring the wrench back. The choice is kept on this device. On a phone with the dock, press **More** and find **Tell the dev** under **Show**.
+Press it again to bring the wrench back. The choice is kept on this device. On a phone with the dock, press **More** and find **Tell the dev** under **Show** there too.
 
-On a small phone the gear menu has two rows named Tell the dev. The first row opens the box. The row with the tick box hides the wrench.
+On a small phone the gear menu has two rows named Tell the dev. The first row opens the box. The row under **Show** hides the wrench.
 
 The switch was called Fix Mode before. Your choice is kept.

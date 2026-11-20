@@ -16,6 +16,7 @@ import { Circle, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMa
 import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
 import { PaintedMapsLayer } from '../paintedMap/PaintedMapsLayer'
 import type { LatLng } from '../../lib/materials/myLocation'
+import { onSiteMapStart } from '../../lib/materials/boxMapStart'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useMapTime } from '../../hooks/useMapTime'
 import type { MapLayerChoice } from '../../lib/map/googleMapType'
@@ -138,11 +139,10 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
   const isMobile = useIsMobile()
   const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const tilesSeen = useRef({ loaded: false, told: false })
-  const focus = pins.find((p) => p.id === focusId) ?? null
-  const first = focus ?? pins[0] ?? null
-  // With no pin and no address on the map, a painted line still says where the job is.
-  const paintedStart = painted?.[0]?.lines[0]?.points[0] ?? painted?.[0]?.places[0] ?? null
-  const start = first ? { lat: first.lat, lng: first.lng } : (center ?? flyTo ?? (paintedStart ? { lat: paintedStart.lat, lng: paintedStart.lng } : null))
+  // A pin, the job's address, where it was flown, or a painted line (`boxMapStart.ts`). A sheet asks the same rule
+  // whether the map has anywhere to open, so it can open it wide when Use my location got no spot (#402).
+  const opening = onSiteMapStart({ pins, focusId, center, flyTo, painted })
+  const start = opening?.at ?? null
   // Time looks at the site: the pin the map opened on, or else where the map opened. Only a map that is being looked at has it.
   const canTime = !still && !placing
   const spotLat = canTime ? (start?.lat ?? null) : null
@@ -172,7 +172,7 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
   return (
     <div data-on-site-map style={{ borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', ...(fills ? { height, display: 'flex', flexDirection: 'column' } : {}) }}>
     <div data-map-provider={inTime ? 'archive' : 'osm'} className={shownLayer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', ...(fills ? { flex: '1 1 0', minHeight: 0 } : { height }) }}>
-      <MapContainer center={[start.lat, start.lng]} zoom={first ? 19 : (startZoom ?? 18)} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still} touchZoom={!still} boxZoom={!still} keyboard={!still}>
+      <MapContainer center={[start.lat, start.lng]} zoom={opening?.onPin ? 19 : (startZoom ?? 18)} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still} touchZoom={!still} boxZoom={!still} keyboard={!still}>
         <TileLayer
           // Keyed by its address: a new date is a new layer, and the old tiles do not linger under it.
           key={tiles.url}

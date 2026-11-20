@@ -13,6 +13,11 @@ import { PRECISE_ALREADY_ON_WORDS, PRECISE_STEPS_FOLD_WORDS, preciseSteps, preci
 
 const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
 const row: CSSProperties = { margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }
+/**
+ * The two numbers side by side: the label gives way before the value does. On a 320 px phone the label wraps onto a
+ * second line and `within 2 miles` stays whole. On a wider screen the value sits right after the longest label.
+ */
+const COMPARE_COLUMNS = 'fit-content(100%) minmax(min-content, max-content)'
 
 /** A tick in a disc: the phone is set. A status colour, the same in both themes. */
 export function PreciseTick() {
@@ -44,8 +49,9 @@ export function PreciseSteps({ kind, fold = false }: { kind: PhoneKind; /** Keep
   )
   if (!fold) return body
   return (
-    <details data-precise-steps-fold style={{ marginTop: '0.35rem' }}>
-      <summary style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, padding: '0.35rem 0' }}>{PRECISE_STEPS_FOLD_WORDS}</summary>
+    <details data-precise-steps-fold>
+      {/* A press: a thumb's height (44 px), on a line of its own. */}
+      <summary data-precise-steps-press style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, minHeight: 44, lineHeight: '44px' }}>{PRECISE_STEPS_FOLD_WORDS}</summary>
       {body}
     </details>
   )
@@ -115,7 +121,7 @@ export function PreciseLocationLine({ accuracyM, kind, roughHeld, weakNote, roug
     <div role="alert" data-precise="rough" style={amberBox}>
       <b>{words.lead}</b>
       {compare ? (
-        <dl data-precise-compare style={{ margin: '0.4rem 0', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.15rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.4rem 0.6rem', color: 'var(--text-strong)' }}>
+        <dl data-precise-compare style={{ margin: '0.4rem 0', display: 'grid', gridTemplateColumns: COMPARE_COLUMNS, gap: '0.15rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.4rem 0.6rem', color: 'var(--text-strong)' }}>
           <dt>{compare.nowLabel}</dt>
           <dd style={{ margin: 0, fontWeight: 700 }}>{compare.now}</dd>
           <dt>{compare.onLabel}</dt>

@@ -219,7 +219,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { done: stagesDone } = useStagesDone(stagesDoneEnabled)
   // What customers owe us before a stage starts (punch list #382, PR 6).
   const startAnswersOwedEnabled = on('startAnswersOwed')
-  const { owed: startAnswersOwed } = useStartAnswersOwed(startAnswersOwedEnabled)
+  const { owed: startAnswersOwed } = useStartAnswersOwed(startAnswersOwedEnabled, undefined, hideZzTestJobs)
   // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2).
   const receiptChasesEnabled = on('receiptChases')
   const { chases: receiptChaseCountsNow } = useReceiptChases(receiptChasesEnabled)

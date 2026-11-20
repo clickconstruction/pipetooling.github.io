@@ -186,7 +186,9 @@ describe('TaskPlaceRow', () => {
     fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
     await screen.findByTestId('map-stub')
     fireEvent.click(screen.getByRole('button', { name: 'Use where I am' }))
-    await screen.findByRole('alert')
+    const alert = await screen.findByRole('alert')
+    // The map has just opened, so the sheet does not say it was not moved.
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map opened wide. Zoom in and drag it until the ring is on the spot, or turn the switch on and press again.')
     await waitFor(() => expect(screen.getByTestId('map-stub').getAttribute('data-at')).not.toBe('nowhere'))
     expect(screen.getByTestId('map-stub').getAttribute('data-at')).not.toBe('29.9,-98.9')
     expect((screen.getByRole('button', { name: 'Use this place' }) as HTMLButtonElement).disabled).toBe(true)

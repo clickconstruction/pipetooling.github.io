@@ -52,6 +52,15 @@ The header stays on one line. On a small phone, **Tell the dev**, **People** and
 {{icon:gear}} **Gear menu** — Job Mode toggle, Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
 
+The gear menu reads in groups. Each group has a small label.
+
+- **Modes** change the page. Job Mode, Dispatch Mode and Task Mode are here.
+- **Show** holds the switches that show or hide one thing. Pin bar, Tell the dev and Dark Mode are here.
+- **Pages** lists the pages the menu opens. The Checklist and the Calendar come first.
+- **Help and settings** holds Help and Settings.
+
+Sign out and Hard Reload sit last, under a grey band.
+
 - **Dashboard**: your day at a glance. Assigned jobs, clock, inboxes, and billing queues for office roles.
 - **Jobs**: the job ledger and its Pipeline board. Jobs open in two modals that link to each other. **Job Detail** is the read-only view with the activity history. It has an Edit affordance. **Edit Job** is the form. Its {{button:outline-blue|Job Detail}} button at the top closes the form and opens the detail view. Edit Job has no Save button. Changes save automatically as you make them. See the "know when Edit Job saves my changes" guide.
 - **Schedule**: who is on which job, each day.
