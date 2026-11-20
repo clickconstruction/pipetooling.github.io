@@ -530,6 +530,27 @@ button:focus-visible {
   --app-nav-safe-top: 0px;
 }
 
+/* The lines above the header (v2.8053): the digital twin line, training mode, Customer Waiting and the
+   Add Task offer, each drawn by `AppTopBanner` before the nav chrome. On a Home Screen iPhone the page
+   starts at the top of the glass, so the first line showing pays the status bar on top of its own
+   padding, and its colour runs up under the clock as the View-as strip's does. A line under another
+   line keeps its own padding alone, the View-as strip under a line pays none, and the chrome under any
+   of them is told there is none left to take. The rules read the siblings, so every line is a direct
+   child of the Layout's root. 0px in a browser tab and on Android, where nothing moves. */
+.appTopBanner {
+  padding: var(--app-top-banner-pad-y, 0.4rem) var(--app-top-banner-pad-x, 1rem);
+  padding-top: calc(var(--app-top-banner-pad-y, 0.4rem) + env(safe-area-inset-top, 0px));
+}
+.appTopBanner ~ .appTopBanner {
+  padding-top: var(--app-top-banner-pad-y, 0.4rem);
+}
+.appTopBanner ~ .appViewAsStrip {
+  padding-top: 0;
+}
+.appTopBanner ~ .appNavChrome {
+  --app-nav-safe-top: 0px;
+}
+
 /* The app-health strip (#183 PR 1, v2.6009): the first row of the nav chrome, in flow, so it
    pushes the nav down one line instead of covering it. While it shows it takes the status-bar
    padding on itself and the nav row keeps its plain padding, so on a Home Screen phone the strip

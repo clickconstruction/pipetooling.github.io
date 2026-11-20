@@ -90,6 +90,7 @@ import {
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
+import { AppTopBanner } from './layout/AppTopBanner'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
@@ -906,36 +907,36 @@ export default function Layout() {
         }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
+      {/* The lines above the header (v2.8053): each is an `AppTopBanner`, a direct child here. The first one showing
+          pays the phone's status bar, and the lines, the View-as strip and the header under it pay none. */}
       <AddTaskShortcutBanner role={role} />
       {isDigitalTwin && (
-        <div
+        <AppTopBanner
           role="status"
           style={{
             background: 'var(--bg-violet-100)',
             borderBottom: '1px solid var(--border-violet)',
             color: 'var(--text-violet-800)',
-            padding: '0.4rem 1rem',
             fontSize: '0.8125rem',
             textAlign: 'center',
           }}
         >
           🤖 <strong>DIGITAL TWIN — {(profileName ?? authUser?.email ?? 'unnamed').toString()}.</strong> Agent-operated account; its activity is tracked separately from people.
-        </div>
+        </AppTopBanner>
       )}
       {readOnly && (
-        <div
+        <AppTopBanner
           role="status"
           style={{
             background: 'var(--bg-amber-100)',
             borderBottom: '1px solid #f59e0b',
             color: 'var(--text-amber-800)',
-            padding: '0.4rem 1rem',
             fontSize: '0.8125rem',
             textAlign: 'center',
           }}
         >
           <strong>Training mode — read-only.</strong> Explore anything; clock in/out still works, but no other change will save until a dev, a controller or a pay-approved leader turns this off.
-        </div>
+        </AppTopBanner>
       )}
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
       <CustomerWaitingBanner />

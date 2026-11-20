@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CallPhoneButton } from './CallPhoneButton'
+import { AppTopBanner } from './layout/AppTopBanner'
 import { useCustomerWaitingOptional } from '../contexts/CustomerWaitingContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -64,7 +65,9 @@ function useHiddenForMe(viewerId: string | null, rows: ReadonlyArray<CustomerWai
  * The strip that follows the team (Customer Waiting, v2.3248). Sits in the
  * Layout banner slot above the top nav — the same slot as training mode and
  * the digital-twin notice — on every authenticated page, for members of the
- * inbox the request is in, until the request is lowered or closed.
+ * inbox the request is in, until the request is lowered or closed. Each state
+ * draws in `AppTopBanner`, which pays the phone's status bar when the strip is
+ * the first line showing.
  *
  * Three states (kernel `buildCustomerWaitingBanner`): waiting (red, the wait
  * ticks, Call + Open), called (amber, who and when, Open), and on the inbox
@@ -106,7 +109,7 @@ export function CustomerWaitingBanner() {
 
   if (isInboxRoute(location.pathname)) {
     return (
-      <div role="status" data-testid="customer-waiting-banner-collapsed" style={{ ...palette, padding: '0.25rem 1rem', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}>
+      <AppTopBanner role="status" data-testid="customer-waiting-banner-collapsed" padY="0.25rem" style={{ ...palette, fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}>
         {waiting ? (
           <>
             <Pulse /> {b.waitingCount === 1 ? '1 customer waiting' : `${b.waitingCount} customers waiting`}
@@ -115,7 +118,7 @@ export function CustomerWaitingBanner() {
         ) : (
           <>📞 {b.calledLine}</>
         )}
-      </div>
+      </AppTopBanner>
     )
   }
 
@@ -123,11 +126,11 @@ export function CustomerWaitingBanner() {
   const sub = waiting ? b.snippet ?? b.leadKind : `${b.leadKind}${b.snippet ? ` · ${b.snippet}` : ''} · still open`
 
   return (
-    <div
+    <AppTopBanner
       role="status"
       aria-live="polite"
       data-testid="customer-waiting-banner"
-      style={{ ...palette, padding: '0.4rem 1rem', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}
+      style={{ ...palette, fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}
     >
       {waiting ? <Pulse /> : <span aria-hidden style={{ fontSize: '1rem' }}>📞</span>}
       <div style={{ flex: 1, minWidth: 160, lineHeight: 1.25 }}>
@@ -155,7 +158,7 @@ export function CustomerWaitingBanner() {
           Hide for me
         </button>
       ) : null}
-    </div>
+    </AppTopBanner>
   )
 }
 
