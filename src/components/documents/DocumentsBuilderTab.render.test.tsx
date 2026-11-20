@@ -2,12 +2,17 @@
 /**
  * The Documents page's Document builder tab (punch list #404): the list of builders with where each stands, the press
  * that loads a first draft, the open builder on the address it names, the way back, and what the tab says when the
- * read fails or a builder's contents do not read as a paper. The flow's own wiring is held by
+ * read fails or a builder's contents are not shaped like a paper. A draft that breaks a rule of the paper still opens
+ * in the editor. The flow's own wiring is held by
  * `DocumentBuilderFlow.render.test.tsx`. Every name here is made up.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useLocation } from 'react-router-dom'
+
+/** The editor's save of a draft, so a smoke can let one land. Every other write is the real one over the stub. */
+const { saveBuilderDraft } = vi.hoisted(() => ({ saveBuilderDraft: vi.fn() }))
+vi.mock('../../lib/documentBuilder/sheetsIo', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../lib/documentBuilder/sheetsIo')>()), saveBuilderDraft }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -25,7 +30,11 @@ import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fi
 import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import DocumentsBuilderTab from './DocumentsBuilderTab'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+  saveBuilderDraft.mockReset()
+})
 
 /** The address the tab is on, drawn beside it so a press can be read off the page. */
 function Where() {
@@ -150,14 +159,72 @@ describe('DocumentsBuilderTab', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('The basis')
   })
 
-  it('never half draws a builder whose contents do not read as a paper: it lists what is wrong', async () => {
+  it('never half draws a builder whose contents are not shaped like a paper: it lists what is wrong', async () => {
+    const draft = JSON.parse(JSON.stringify(SECRECY_PAPER_FIXTURE)) as { notice?: unknown }
+    delete draft.notice
+    open({ route: '/documents?tab=builder&builder=sub-nda', read: holding(subNda({ draft })) })
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sub NDA cannot be shown' })).toBeTruthy()
+    expect(screen.getByText('The paper has no notice.')).toBeTruthy()
+    expect(screen.queryByText('Step 1 of 11')).toBeNull()
+    expect(screen.getByRole('button', { name: '‹ Document builder' })).toBeTruthy()
+    cleanup()
+    open({ route: '/documents?tab=builder&builder=sub-nda', read: holding(subNda({ draft: {} })) })
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sub NDA cannot be shown' })).toBeTruthy()
+    expect(screen.getByText('The paper has no words.')).toBeTruthy()
+    expect(screen.queryByText('Step 1 of 11')).toBeNull()
+  })
+
+  it('opens a draft that breaks a rule of the paper in the editor, with the rule under the Publish press', async () => {
+    const draft = JSON.parse(JSON.stringify(SECRECY_PAPER_FIXTURE)) as typeof SECRECY_PAPER_FIXTURE
+    draft.notice.lines[0] = 'Use it (with care).'
+    const std = draft.topics[0]?.levels.std
+    if (!std) throw new Error('The made-up paper has no Standard level on its first topic.')
+    std.says = ''
+    std.breach = []
+    open({ route: '/documents?tab=builder&builder=sub-nda', read: holding(subNda({ draft })) })
+    expect(await screen.findByText('Step 1 of 11')).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Sub NDA cannot be shown' })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Publish revision 1' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('heading', { level: 3, name: 'Before this can be published' })).toBeTruthy()
+    expect(screen.getByText('The disclaimer: glued (a dash, semicolon, parenthesis or · inside a sentence): Use it (with care).')).toBeTruthy()
+    expect(screen.getByText('Photos and video at Standard does not say what it means.')).toBeTruthy()
+    expect(screen.getByText('Photos and video at Standard has no breach line.')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'the disclaimer, line 1' }).textContent).toBe('Use it (with care).')
+    // The page with no meaning and no breach line draws too, so the words can be typed back.
+    fireEvent.click(screen.getByRole('button', { name: 'Photos and video, Standard' }))
+    expect(screen.getByText('Step 4 of 11')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'What Photos and video at Standard means' }).textContent).toBe('')
+    expect(screen.getByRole('button', { name: 'Add a breach line to Photos and video at Standard' })).toBeTruthy()
+  })
+
+  it('opens a draft whose topic has no row for a level, and names the level under the Publish press', async () => {
     const draft = JSON.parse(JSON.stringify(SECRECY_PAPER_FIXTURE)) as { topics: Array<{ levels: Record<string, unknown> }> }
     delete draft.topics[0]?.levels.mid
     open({ route: '/documents?tab=builder&builder=sub-nda', read: holding(subNda({ draft })) })
-    expect(await screen.findByRole('heading', { level: 2, name: 'Sub NDA cannot be shown' })).toBeTruthy()
+    expect(await screen.findByText('Step 1 of 11')).toBeTruthy()
     expect(screen.getByText('Photos and video has no Aggressive level.')).toBeTruthy()
-    expect(screen.queryByText('Step 1 of 11')).toBeNull()
-    expect(screen.getByRole('button', { name: '‹ Document builder' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Publish revision 1' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Photos and video, Aggressive' }))
+    expect(screen.getByText('Step 4 of 11')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'What Photos and video at Aggressive means' }).textContent).toBe('')
+  })
+
+  it('keeps the editor open when a saved draft breaks a rule: a parenthesis typed into a line', async () => {
+    saveBuilderDraft.mockImplementation(async (key: string, draft: unknown) => ({ ok: true as const, value: subNda({ key, draft }) }))
+    open({ route: '/documents?tab=builder&builder=sub-nda' })
+    const line = await screen.findByRole('textbox', { name: 'the disclaimer, line 1' })
+    vi.useFakeTimers()
+    line.textContent = 'Use it (with care).'
+    fireEvent.input(line)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800)
+    })
+    expect(saveBuilderDraft).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Draft saved')).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Sub NDA cannot be shown' })).toBeNull()
+    expect(screen.getByText('Step 1 of 11')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'the disclaimer, line 1' }).textContent).toBe('Use it (with care).')
+    expect(screen.getByText('The disclaimer: glued (a dash, semicolon, parenthesis or · inside a sentence): Use it (with care).')).toBeTruthy()
   })
 
   it('says why the builders did not read, and reads again on Retry', async () => {
