@@ -62,9 +62,9 @@ describe('the verbs', () => {
       expect(SERVER).toContain(`name: '${v}',`)
     }
     expect(isNoticeNumbersVerb('plan_lien_service')).toBe(false)
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(150)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.119.0'")
-    expect(SERVER).toContain('Writes are one hundred and fifty verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(152)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.120.0'")
+    expect(SERVER).toContain('Writes are one hundred and fifty-two verbs and nothing else:')
     expect(README).toContain('`plan_notice_numbers(notice \\| notices)` · `apply_notice_numbers(notice, plan_hash)`')
     expect(EDGE).toContain('**v2.7687 (server 0.99.0)')
   })

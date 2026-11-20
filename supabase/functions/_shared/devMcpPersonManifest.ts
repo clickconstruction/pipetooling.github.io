@@ -159,7 +159,7 @@ export function buildPersonManifest(m: PersonManifestInput): { note: string; par
   const itemsOpen = CASE_BLOCKS_OPEN
   if (isHeld(m.caseItems)) parts.push(held('case_items', m.caseItems.held, itemsOpen))
   else parts.push({ part: 'case_items', count: m.caseItems.count, open_items: m.caseItems.open, log_lines: isHeld(m.caseLog) ? null : m.caseLog, open: itemsOpen })
-  const standingOpen = 'read_rows on person_engagements, person_id eq: each stretch as employee or subcontractor, with where the fact comes from'
+  const standingOpen = 'engagements here: each stretch that stands, employee or subcontractor, with where the fact comes from; plan_engagement → apply_engagement records, changes, ends or takes one off'
   parts.push(isHeld(m.standing) ? held('standing', m.standing.held, standingOpen) : { part: 'standing', count: m.standing, open: standingOpen })
   const plansOpen = 'list_kept_plans { person }: the plans an agent kept for the owner\'s yes, with their words; one whole with id. Apply a waiting one only on his yes for that plan'
   parts.push(isHeld(m.keptPlans) ? held('kept_plans', m.keptPlans.held, plansOpen) : { part: 'kept_plans', count: m.keptPlans.count, waiting: m.keptPlans.waiting, open: plansOpen })
