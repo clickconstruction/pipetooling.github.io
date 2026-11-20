@@ -43,6 +43,8 @@ const sheetRow = (over: Partial<SheetRecord> = {}): SheetRecord => ({ id: 'sheet
 
 type Mocks = { [K in keyof FilledBuilderIo]: ReturnType<typeof vi.fn> }
 
+/** The send list has no trade in these tests: it has its own. */
+const SENDS = { readParties: vi.fn(async () => []), send: vi.fn(), takeOff: vi.fn(), turnPageOn: vi.fn() }
 /** The link card reads no link in these tests: it has its own. */
 const LINK = { read: vi.fn(async () => ({ ok: true as const, value: { on: false as const } })), make: vi.fn(), end: vi.fn(), copy: vi.fn(async () => true) }
 
@@ -59,6 +61,7 @@ function open(opts: { rec?: BuilderRecord; sheets?: SheetRecord[]; jobs?: GcJob[
     publishSheet: vi.fn(async (id: string, from: number, own: JobSheet, page: unknown, usualRevision: number) => ({ ok: true as const, value: sheetRow({ id, projectId: id.replace('sheet-', ''), draft: own, published: own, publishedSheet: page, revision: from + 1, usualRevision }) })),
     print: vi.fn(() => true),
     link: LINK as unknown as ReturnType<typeof vi.fn>,
+    sends: SENDS as unknown as ReturnType<typeof vi.fn>,
     ...(opts.io as Partial<Mocks>),
   }
   const onBack = vi.fn()

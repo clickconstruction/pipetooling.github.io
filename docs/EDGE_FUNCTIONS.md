@@ -276,6 +276,7 @@ when_to_read:
    - [import-manual-transactions](#import-manual-transactions)
    - [manage-manual-account](#manage-manual-account)
    - [document-builder-link](#document-builder-link)
+   - [document-builder-send](#document-builder-send)
 4. [Email Wording Overrides](#email-wording-overrides)
 5. [Error Handling](#error-handling)
 6. [Deployment](#deployment)
@@ -6877,6 +6878,28 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 **Implementation**: [`supabase/functions/document-builder-link/index.ts`](../supabase/functions/document-builder-link/index.ts); the pure part in [`_shared/documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts), re-exported by [`src/lib/documentBuilder/link.ts`](../src/lib/documentBuilder/link.ts) and tested from `src/lib/documentBuilder/link.test.ts`. The tables are `docs/migrations/20261120034225_document_builder_sheets.md`. **Deploy**: `supabase functions deploy document-builder-link`.
 
 **Used by**: [`BuilderLink.tsx`](../src/pages/BuilderLink.tsx) and [`BuilderLinkCard.tsx`](../src/components/documentBuilder/BuilderLinkCard.tsx), through [`linkIo.ts`](../src/lib/documentBuilder/linkIo.ts).
+
+---
+
+### document-builder-send
+
+**Purpose** (punch list #404, step 5, **v2.8009**): the Document builder's send. A job's published insurance sheet goes to one person at a trade partner on that job, as an email with one press to the page the trade already opens, and the office then sees the day it went and the day it was opened. `verify_jwt = false`: the open comes from a trade's own page, which has no session, and the send checks its caller here.
+
+**Endpoint**: `POST /functions/v1/document-builder-send`
+
+**A dev's ask** (signed in; the caller's role is `dev`, and an archived account, an account in training and a digital twin are refused, **403**):
+- `{ action: "send", builderKey, sheetId, companyId, contactEmail, note, why, anyway?, test? }` → `{ ok, send: { id, contactName, sentAt, sentRevision, timesSent, openedAt, openedRevision }, page: "on" }`. `why` is `first`, `again` or `changed`, and words the subject. With `test: true` the same email goes to the caller's own address under the trade email's test type and nothing is written: `{ ok, test: true, email }`.
+
+**The order it checks in**, each refusal `{ error: <key>, words }` with the key's status: the sheet is published (`notPublished`, 409). The builder's revision is marked as read, or `anyway` is true (`unread`, 409). The company is on a trade of this job (`notOnJob`, 409). The person is on the company's record with that email (`noSuchContact`, 409). The company's page: a page that is on is used, a company that never had one gets one, and a page that was turned off stays off (`pageOff`, 409), since a send never turns a page back on. Then the sheet's own link, made when the sheet never had one. Then the email (`noEmail` 409, `sendFailed` 502). Only after it went: the row in `document_builder_sends`, a line on the company's thread (`gc_trade_messages`, kind `coi`) and the sent copy (`insurance_sheet_email`).
+
+**A trade page's ask** (no sign-in, the page's own token):
+- `{ action: "opened", token, sheetId }` → `{ ok }`: the day and the revision they opened, kept on their live send. A signed-in teammate's look and a preview are not counted (`publicViewDecision`). A token that is off answers **404** `linkOff`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`, and `DOCUMENT_BUILDER_LINK_SECRET` when set.
+
+**Implementation**: [`supabase/functions/document-builder-send/index.ts`](../supabase/functions/document-builder-send/index.ts); the refusals, the ask and the email's words in [`_shared/documentBuilderSend.ts`](../supabase/functions/_shared/documentBuilderSend.ts), the caller check in [`_shared/documentBuilderCaller.ts`](../supabase/functions/_shared/documentBuilderCaller.ts) and the link's code in [`_shared/documentBuilderLinkCode.ts`](../supabase/functions/_shared/documentBuilderLinkCode.ts), both shared with `document-builder-link`. The email's frame is `gc-trade-email`'s own (`buildGcTradeEmail`). **Deploy**: `supabase functions deploy document-builder-send`, with `gc-trade-portal` and `document-builder-link`.
+
+**Used by**: [`SheetSendCard.tsx`](../src/components/documentBuilder/SheetSendCard.tsx) through [`sendIo.ts`](../src/lib/documentBuilder/sendIo.ts), and the trade's page [`GcTradePortal.tsx`](../src/pages/GcTradePortal.tsx) for `opened`.
 
 ---
 
