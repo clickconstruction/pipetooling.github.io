@@ -1,0 +1,333 @@
+/**
+ * Before we start (punch list #382, PR 4): the tables' rows, read into what the rules read. The tables are
+ * `20261120033820_start_checks.sql`. A stage line with its window, its bullets, their live yeses, the asks, the days
+ * they gave, the newest decision that stands and the newest arrival become one `Stage` of `startChecks.ts`. The days
+ * of notice come from the site's row, or the job's own when it is on no site, or the default. The starter list a
+ * stage with no list is offered is here too. Pure: the reads and writes are `startChecksIo.ts`.
+ */
+import { monthDay, type Arrival, type Bullet, type Decision, type Know, type Stage, type TheirDay, type UsReads } from './startChecks'
+
+// ---------- The rows ----------
+
+export type StartBulletRow = {
+  id: string
+  job_id: string
+  fixture_id: string
+  sort_order: number
+  words: string
+  waits_on: 'them' | 'us'
+  wants_photo: boolean
+  shown_to_gc: boolean
+  by_day: string | null
+  reads: UsReads | null
+  hand_ok: boolean
+  hand_ok_at: string | null
+  hand_ok_by_name: string
+  template_id: string | null
+  removed_at: string | null
+  created_at: string
+}
+
+export type StartMarkRow = {
+  id: string
+  bullet_id: string
+  job_id: string
+  know: Know
+  who_name: string
+  how: string
+  said_on: string
+  source: 'office' | 'portal' | 'crew'
+  photo_storage_path: string | null
+  photo_file_name: string | null
+  taken_back_at: string | null
+  created_at: string
+}
+
+export type StartAskRow = {
+  id: string
+  batch_id: string
+  job_id: string
+  fixture_id: string
+  bullet_id: string | null
+  kind: 'ask' | 'hold_note'
+  how: string
+  to_name: string
+  asked_on: string
+  created_at: string
+}
+
+export type StartTheirDayRow = {
+  id: string
+  job_id: string
+  fixture_id: string
+  ready_day: string
+  said_on: string
+  who_name: string
+  how: string
+  source: 'office' | 'portal'
+  removed_at: string | null
+  created_at: string
+}
+
+export type StartDecisionRow = {
+  id: string
+  job_id: string
+  fixture_id: string
+  kind: 'go' | 'hold'
+  decided_on: string
+  open_then: string[]
+  start_then: string | null
+  hold_until: string | null
+  by_name: string
+  taken_back_at: string | null
+  created_at: string
+}
+
+export type StartArrivalRow = {
+  id: string
+  job_id: string
+  fixture_id: string
+  arrived_on: string
+  not_as_told: string[]
+  by_name: string
+  created_at: string
+}
+
+export type StartSettingsRow = {
+  id: string
+  development_id: string | null
+  job_id: string | null
+  notice_days: number | null
+  shows_on_gc_page: boolean
+}
+
+export type StartTemplateRow = {
+  id: string
+  stage_kind: StartStageKind
+  sort_order: number
+  words: string
+  waits_on: 'them' | 'us'
+  wants_photo: boolean
+  reads: UsReads | null
+  retired_at: string | null
+}
+
+/** A job's rows, as one read hands them over. */
+export type StartCheckRows = {
+  bullets: StartBulletRow[]
+  marks: StartMarkRow[]
+  asks: StartAskRow[]
+  theirDays: StartTheirDayRow[]
+  decisions: StartDecisionRow[]
+  arrivals: StartArrivalRow[]
+}
+
+export const NO_START_ROWS: StartCheckRows = { bullets: [], marks: [], asks: [], theirDays: [], decisions: [], arrivals: [] }
+
+/** A stage line as the app reads it: the line, whether its work is done, and our window when the office has planned one. */
+export type StageLine = { fixtureId: string; jobId: string; name: string; order: number; finished: boolean; window: [string, string] | null }
+
+// ---------- A bullet of ours ----------
+
+/** What the app read for a bullet of ours: ready or not, the fact in a few words, and the press that fixes it. */
+export type UsReading = { ok: boolean; fact: string; door: string }
+
+/** A bullet of ours that a person ticks: nobody has, or who did and when. */
+export function handReading(row: Pick<StartBulletRow, 'hand_ok' | 'hand_ok_at' | 'hand_ok_by_name'>, dayOf: (iso: string) => string): UsReading {
+  if (!row.hand_ok) return { ok: false, fact: 'Not marked done yet.', door: 'Mark it done' }
+  const who = row.hand_ok_by_name.trim()
+  const when = row.hand_ok_at ? monthDay(dayOf(row.hand_ok_at)) : ''
+  return { ok: true, fact: `Marked done${who ? ` by ${who}` : ''}${when ? `, ${when}` : ''}.`, door: 'Mark it not done' }
+}
+
+/** A bullet of ours whose reader is not built yet reads open, and says so. */
+export const UNREAD: UsReading = { ok: false, fact: 'The app does not read this yet.', door: '' }
+
+// ---------- Rows into a stage ----------
+
+const byMade = <T extends { created_at: string; id: string }>(a: T, b: T) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
+
+export type StageContext = {
+  /** The job as the app prints it: its number. */
+  jobLabel: string
+  /** The part of the site the job is on. '' when the site is one part. */
+  part: string
+  /** The trip planned for the stage, when the site is far. */
+  trip?: [string, string] | null
+  /** A stored instant's calendar day in the company's zone. */
+  dayOf: (iso: string) => string
+  /** Reads a bullet of ours from the app. Absent, or null for a kind it does not read, the bullet reads `UNREAD`. */
+  readUs?: (row: StartBulletRow) => UsReading | null
+}
+
+/** One stage line and its rows as the rules read them. Rows of another line are left out. */
+export function stageFromRows(line: StageLine, rows: StartCheckRows, ctx: StageContext): Stage {
+  const mine = <T extends { fixture_id: string }>(list: readonly T[]) => list.filter((r) => r.fixture_id === line.fixtureId)
+  const liveMark = new Map<string, StartMarkRow>()
+  for (const m of [...rows.marks].sort(byMade)) if (!m.taken_back_at) liveMark.set(m.bullet_id, m)
+  const asksOf = new Map<string, StartAskRow[]>()
+  for (const a of [...rows.asks].sort(byMade)) {
+    if (a.kind !== 'ask' || !a.bullet_id) continue
+    asksOf.set(a.bullet_id, [...(asksOf.get(a.bullet_id) ?? []), a])
+  }
+  const bullets: Bullet[] = mine(rows.bullets)
+    .filter((b) => !b.removed_at)
+    .sort((a, b) => a.sort_order - b.sort_order || byMade(a, b))
+    .map((b): Bullet => {
+      if (b.waits_on === 'us') {
+        const reading = (b.reads === 'hand' ? handReading(b, ctx.dayOf) : ctx.readUs?.(b)) ?? UNREAD
+        return { id: b.id, on: 'us', words: b.words, reads: b.reads ?? 'hand', ok: reading.ok, fact: reading.fact, door: reading.door }
+      }
+      const mark = liveMark.get(b.id)
+      return {
+        id: b.id,
+        on: 'them',
+        words: b.words,
+        wantsPhoto: b.wants_photo,
+        eye: b.shown_to_gc,
+        yes: mark ? { know: mark.know, who: mark.who_name, how: mark.how, day: mark.said_on } : null,
+        asks: (asksOf.get(b.id) ?? []).map((a) => ({ day: a.asked_on, how: a.how })),
+        byDay: b.by_day,
+      }
+    })
+  const theirDays: TheirDay[] = mine(rows.theirDays)
+    .filter((d) => !d.removed_at)
+    .sort(byMade)
+    .map((d) => ({ day: d.ready_day, said: d.said_on, who: d.who_name, how: d.how }))
+  const standing = mine(rows.decisions)
+    .filter((d) => !d.taken_back_at)
+    .sort(byMade)
+  const newest = standing[standing.length - 1]
+  const decision: Decision | null = newest ? { kind: newest.kind, by: newest.by_name, day: newest.decided_on, openThen: newest.open_then } : null
+  const arrivals = mine(rows.arrivals).sort(byMade)
+  const last = arrivals[arrivals.length - 1]
+  const arrival: Arrival | null = last ? { day: last.arrived_on, by: last.by_name, notAsTold: last.not_as_told } : null
+  return { id: line.fixtureId, part: ctx.part, job: ctx.jobLabel, name: line.name, window: line.window, trip: ctx.trip ?? null, finished: line.finished, theirDays, bullets, decision, arrival }
+}
+
+/** The live yes on a bullet, for a row that shows its photo or takes it back. */
+export function liveMarkOf(rows: StartCheckRows, bulletId: string): StartMarkRow | null {
+  const live = rows.marks.filter((m) => m.bullet_id === bulletId && !m.taken_back_at).sort(byMade)
+  return live[live.length - 1] ?? null
+}
+
+/** The decision that stands on a stage line, for the press that takes it back. */
+export function standingDecisionOf(rows: StartCheckRows, fixtureId: string): StartDecisionRow | null {
+  const live = rows.decisions.filter((d) => d.fixture_id === fixtureId && !d.taken_back_at).sort(byMade)
+  return live[live.length - 1] ?? null
+}
+
+/** Where the next bullet on a stage line sorts: after every bullet it has had. */
+export const nextBulletOrder = (rows: StartCheckRows, fixtureId: string): number => rows.bullets.filter((b) => b.fixture_id === fixtureId).reduce((n, b) => Math.max(n, b.sort_order), 0) + 1
+
+// ---------- The days of notice ----------
+
+/** The owner's call 2, on its default: ten days of notice for a far site and two for a near one. */
+export const NOTICE_DAYS_FAR = 10
+export const NOTICE_DAYS_NEAR = 2
+export const NOTICE_DAYS_MAX = 60
+
+export type Notice = {
+  days: number
+  /** The number was set here. False reads the default. */
+  own: boolean
+  /** The default it would read. */
+  defaultDays: number
+  /** Whose row holds it: the site's, or the job's own when the job is on no site. */
+  home: 'site' | 'job'
+}
+
+/** The days of notice a stage reads: the site's own, or the job's when it is on no site, or the default by distance. */
+export function noticeFor(args: { onSite: boolean; site: StartSettingsRow | null; job: StartSettingsRow | null; far: boolean }): Notice {
+  const home = args.onSite ? 'site' : 'job'
+  const set = (args.onSite ? args.site : args.job)?.notice_days ?? null
+  const defaultDays = args.far ? NOTICE_DAYS_FAR : NOTICE_DAYS_NEAR
+  return { days: set ?? defaultDays, own: set != null, defaultDays, home }
+}
+
+// ---------- Who we ask ----------
+
+/**
+ * Who we ask, as a sentence names them: the first name of the GC's contact on the bid, or the GC, or the customer.
+ * With none of the three it is the customer, in those words.
+ */
+export function contactName(args: { gcContact?: string | null; gc?: string | null; customer?: string | null }): string {
+  const person = (args.gcContact ?? '').trim()
+  if (person) return person.split(/\s+/)[0] ?? person
+  return (args.gc ?? '').trim() || (args.customer ?? '').trim() || 'the customer'
+}
+
+// ---------- The starter ----------
+
+/** The stage kinds the company keeps a list for (the owner's call 9, on its default). */
+export type StartStageKind = 'rough_in' | 'top_out' | 'trim_set'
+export const START_STAGE_KIND_WORDS: Record<StartStageKind, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
+
+/** A bullet a starter would add. A bullet of ours is ticked by hand until the app reads its kind. */
+export type StarterBullet = { words: string; on: 'them' | 'us'; wantsPhoto: boolean; reads: UsReads | null; templateId: string | null }
+
+/** The four common bullets, offered to a stage whose kind has no company list. Never added without a press. */
+export const STARTER: readonly StarterBullet[] = [
+  { words: 'The rooms we work in are finished and clear.', on: 'them', wantsPhoto: true, reads: null, templateId: null },
+  { words: 'The other trades are out of our way.', on: 'them', wantsPhoto: false, reads: null, templateId: null },
+  { words: 'Power and water are on.', on: 'them', wantsPhoto: false, reads: null, templateId: null },
+  { words: 'Our material lands before day one.', on: 'us', wantsPhoto: false, reads: 'hand', templateId: null },
+]
+
+/** The company's list for a stage kind, in its order, with the retired rows left out. */
+export const companyListFor = (templates: readonly StartTemplateRow[], kind: StartStageKind | null): StartTemplateRow[] =>
+  kind ? templates.filter((t) => t.stage_kind === kind && !t.retired_at).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)) : []
+
+/** What a stage with no list is offered: its kind's company list when there is one, else the four. */
+export function starterFor(templates: readonly StartTemplateRow[], kind: StartStageKind | null): { bullets: StarterBullet[]; fromCompany: boolean } {
+  const list = companyListFor(templates, kind)
+  if (!list.length) return { bullets: [...STARTER], fromCompany: false }
+  return { bullets: list.map((t) => ({ words: t.words, on: t.waits_on, wantsPhoto: t.wants_photo, reads: t.waits_on === 'us' ? (t.reads ?? 'hand') : null, templateId: t.id })), fromCompany: true }
+}
+
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+const countWord = (n: number): string => NUMBER_WORDS[n] ?? String(n)
+
+/** The words a stage with no list shows, and its two presses. */
+export function starterWords(stageName: string, starter: { bullets: readonly StarterBullet[]; fromCompany: boolean }, kind: StartStageKind | null): { lead: string; use: string; own: string } {
+  const n = starter.bullets.length
+  return {
+    lead: starter.fromCompany && kind ? `No list yet for ${stageName}. Start from the company’s list for ${START_STAGE_KIND_WORDS[kind]}, then change it.` : `No list yet for ${stageName}. Start from ${countWord(n)} common bullets, then change them.`,
+    use: starter.fromCompany ? `Use the company’s ${countWord(n)}` : `Use the ${countWord(n)}`,
+    own: 'Write my own',
+  }
+}
+
+// ---------- The words on the list ----------
+
+export const START_CHECK_WORDS = {
+  heading: 'Before we start',
+  lead: 'What must be true before the crew goes to a stage.',
+  stillOpen: (n: number) => `Still open · ${n}`,
+  nothingOpen: 'Nothing is open',
+  hasAYes: (n: number) => `Has a yes · ${n}`,
+  addPlaceholder: 'Add a bullet, in plain words',
+  fromThem: 'from them',
+  ours: 'ours',
+  add: 'Add',
+  howDoWeKnow: 'How do we know?',
+  askForPhoto: 'Ask for a photo',
+  asksForPhoto: '✓ Asks for a photo',
+  takeOff: 'Take off the list',
+  toCompany: (kind: StartStageKind) => `Add to the company’s list for ${START_STAGE_KIND_WORDS[kind]}`,
+  theySentAPhoto: 'They sent a photo',
+  weSawIt: 'We saw it',
+  seeThePhoto: 'See the photo',
+  officeOnly: { tag: 'office only', why: 'Only the office can change our days.' },
+  noDay: 'no day yet',
+  workedOut: 'Bold',
+} as const
+
+/** The small tag on a bullet's row that says whose it is. */
+export function whoseTag(b: Bullet, contact: string): string {
+  if (b.on === 'them') return `from ${contact}`
+  return b.reads === 'hand' ? 'ours, ticked by hand' : 'ours, read from the app'
+}
+
+/** The press under the four lines when their day is after ours: our start moves to three days after theirs. */
+export const MOVE_AFTER_THEIRS_DAYS = 3
