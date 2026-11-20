@@ -21,6 +21,8 @@ afterEach(cleanup)
 const WORDS = { title: "This sheet's link", notPublished: "Publish this job's sheet first. A link then opens it.", on: 'Anyone with the link can read and print this one sheet.', off: 'The link is off.' }
 const ON = (code = 'abcdefgh23456789', opened = 0): DocumentBuilderLinkState => ({ on: true, code, madeAt: '2026-11-20T15:00:00Z', opened, lastOpenedAt: opened ? '2026-11-21T15:00:00Z' : null })
 const landed = (value: DocumentBuilderLinkState) => ({ ok: true as const, value })
+/** The confirm window's own press, drawn after the card's. */
+const last = (all: HTMLElement[]) => all[all.length - 1] as HTMLElement
 
 function open(over: Partial<BuilderLinkCardIo> = {}, published = true) {
   const io = {
@@ -63,7 +65,7 @@ describe('BuilderLinkCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep this link' }))
     expect(io.make).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }))
-    const confirm = (await screen.findAllByRole('button', { name: 'Make a new link' })).at(-1) as HTMLElement
+    const confirm = last(await screen.findAllByRole('button', { name: 'Make a new link' }))
     fireEvent.click(confirm)
     await waitFor(() => expect(screen.getByTestId('builder-link-url').textContent).toBe(`${window.location.origin}/d/zyxwvuts98765432`))
     expect(io.make).toHaveBeenCalledWith('insurance', 'sheet-cedar')
@@ -72,7 +74,7 @@ describe('BuilderLinkCard', () => {
   it('switches the link off, after asking, and on again', async () => {
     const io = open()
     fireEvent.click(await screen.findByRole('button', { name: 'Switch the link off' }))
-    const confirm = (await screen.findAllByRole('button', { name: 'Switch the link off' })).at(-1) as HTMLElement
+    const confirm = last(await screen.findAllByRole('button', { name: 'Switch the link off' }))
     fireEvent.click(confirm)
     expect(await screen.findByText('The link is off.')).toBeTruthy()
     expect(io.end).toHaveBeenCalledWith('insurance', 'sheet-cedar')
