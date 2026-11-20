@@ -18,6 +18,7 @@ import {
   agreementJobTitle,
   agreementMonthGroups,
   agreementName,
+  agreementSignerWords,
   agreementStateChip,
   agreementTag,
   agreementsEmptyWords,
@@ -377,7 +378,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                   <div>
                     {g.rows.map((row) => {
                       const t = agreementTag(row)
-                      const colors = AGREEMENT_GROUP_COLORS[t.group]
+                      // A party on no list belongs to no group yet: its tag is an outline.
+                      const colors = t.plain ? { background: 'transparent', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' } : AGREEMENT_GROUP_COLORS[t.group]
+                      const signerWords = agreementSignerWords(row)
                       const name = agreementName(row)
                       const door = agreementDoor(row)
                       const chip = agreementStateChip(row, today)
@@ -391,7 +394,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       return (
                         <div key={row.id} style={line} data-testid="documents-agreements-row">
                           <div style={lineLeft}>
-                            <span style={{ ...tag, background: colors.background, color: colors.color }}>{t.words}</span>
+                            <span style={{ ...tag, ...colors }}>{t.words}</span>
                             {door.kind === 'people-contracts' || door.kind === 'gc' ? (
                               <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline' }}>
                                 {name}
@@ -405,6 +408,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                             )}
                             <span style={subLine}>
                               With <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{row.with_name || 'no name on file'}</strong>
+                              {signerWords ? ` · ${signerWords}` : null}
                               {jobTitle ? (
                                 <>
                                   {' · '}
@@ -486,6 +490,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
             initialEmail={sendAgain.facts.initialEmail}
             initialSignerName={sendAgain.facts.signerName}
             initialSignerTitle={sendAgain.facts.signerTitle}
+            party={sendAgain.facts.party ?? null}
             sender={sendAgain.facts.sender}
             personId={sendAgain.facts.personId}
             onClose={() => setSendAgain(null)}

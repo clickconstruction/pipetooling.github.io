@@ -7,6 +7,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { quickSendPlanWrites, type QuickSendPlan } from '../../lib/contractsQuickSend'
 import { PERSON_PAPER_LINK_DAYS, initialSignerName as signerNameToOpenOn, sentToastWords, signerEmailRefusal, signerNameRefusal } from '../../lib/contracts/personPaperSend'
 import { PAPER_WORD_MAX } from '../../lib/contracts/paperParty'
+import { keepSignerWords, knownAddressRefusal, knownAddressWords, partySaysLine, partySigningFor, sendPartyHint, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
+import { readContactForAddress, type KnownAddress } from '../../lib/documents/paperPartyIo'
 import { materializeQuickSendRow, readKeptSigner, readPortalSlugIfLive, sendPersonPaperForSignature } from '../../lib/contracts/personPaperSendIo'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
@@ -20,6 +22,11 @@ import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
  *
  * A quick-send pick writes nothing until Send email is pressed: its row is filled or made right before the send, and
  * `onRowWritten` hands the id up at once, so a send that then fails tries again on the same row.
+ *
+ * A party's paper (punch list #403, step 3) opens the same window with `party`: an outside company, or someone on no
+ * list. The window then says who the paper is with and what it will say, asks someone on no list for their company,
+ * names an address the app already keeps, and offers to keep a typed signer with their company. Its paper is written
+ * through `preparePartyPaper`, right before the email goes, like a quick-send pick's.
  */
 export function ContractSendWindow({
   target,
@@ -31,6 +38,8 @@ export function ContractSendWindow({
   sender,
   personId,
   again = false,
+  party = null,
+  preparePartyPaper,
   onClose,
   onRowWritten,
   onSent,
@@ -55,6 +64,13 @@ export function ContractSendWindow({
   personId: string | null
   /** The paper is already out: the window says it is sent again and that the earlier link stops working. */
   again?: boolean
+  /** Who an outside party's paper is with. Left out for a person's own paper. */
+  party?: SendWindowParty | null
+  /**
+   * Writes what a party's first send needs, at Send email and not before: the party's contact, a person kept with the
+   * company, and the paper's row. Answers the row to send. Left out when the paper is already written.
+   */
+  preparePartyPaper?: (input: PartySendInput) => Promise<string>
   onClose: () => void
   onRowWritten?: (docId: string) => void
   onSent: (sent: { docId: string; emailed: boolean; planKind: QuickSendPlan['kind'] | null }) => void
@@ -65,6 +81,12 @@ export function ContractSendWindow({
   const [signerTitle, setSignerTitle] = useState(initialSignerTitle ?? '')
   /** The boxes the office has typed in: what the paper kept never lands over their words. */
   const typed = useRef({ name: false, title: false, email: false })
+  /** Someone on no list: the company they sign for, when the office types one. */
+  const [company, setCompany] = useState('')
+  /** A typed signer is kept with their company unless the office unticks it. */
+  const [keep, setKeep] = useState(true)
+  /** Whose the typed address already is, for someone on no list. */
+  const [known, setKnown] = useState<KnownAddress | null>(null)
   const [subject, setSubject] = useState('')
   const [intro, setIntro] = useState('')
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
@@ -109,6 +131,27 @@ export function ContractSendWindow({
     }
   }, [docId, initialSignerName])
 
+  // Someone on no list is found by their address. One the app already keeps is named before the send, so nobody is
+  // added twice. Asked once the typing rests; a look-up that fails names nobody, and the send finds them itself.
+  const lookUpAddress = party?.unlisted === true && !docId
+  useEffect(() => {
+    if (!lookUpAddress || signerEmailRefusal(email)) {
+      setKnown(null)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      readContactForAddress(email).then(
+        (found) => !cancelled && setKnown(found),
+        () => !cancelled && setKnown(null),
+      )
+    }, 350)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [lookUpAddress, email])
+
   const preview = useMemo(() => {
     if (!target) return { kind: 'missing' as const }
     const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : 'https://pipetooling.github.io'
@@ -117,7 +160,8 @@ export function ContractSendWindow({
       kind: 'ok' as const,
       ...buildContractSigningEmail({
         documentName: target.documentName,
-        personName: target.personName,
+        // A party's paper is filed under a stored name: the email is for the person who signs.
+        personName: party ? signerName.trim() || party.name : target.personName,
         acceptUrl: `${origin}/contract/accept?t=…`,
         expiresYmd: ymdAddDays(sentYmd, PERSON_PAPER_LINK_DAYS),
         sentYmd,
@@ -128,10 +172,10 @@ export function ContractSendWindow({
         officePhone: PORTAL_COMPANY.phone || null,
       }),
     }
-  }, [target, subject, intro, sender, portalUrl])
+  }, [target, subject, intro, sender, portalUrl, party, signerName])
 
   async function send() {
-    const refusal = signerNameRefusal(signerName) ?? signerEmailRefusal(email)
+    const refusal = signerNameRefusal(signerName) ?? signerEmailRefusal(email) ?? (lookUpAddress ? knownAddressRefusal(known) : null)
     if (refusal) {
       setError(refusal)
       return
@@ -143,7 +187,12 @@ export function ContractSendWindow({
       // send retries against the same row instead of minting a second one.
       let id = writtenDocId ?? docId
       const planKind = quickSendPlan?.kind ?? null
-      if (!writtenDocId && target && quickSendPlan && quickSendPlanWrites(quickSendPlan)) {
+      if (!writtenDocId && party && preparePartyPaper) {
+        // A party's first send: its contact, a person kept with the company and the paper's row are written here.
+        id = await preparePartyPaper({ signerName, signerEmail: email, typedCompany: company, keep: party.keepWith != null && keep })
+        setWrittenDocId(id)
+        onRowWritten?.(id)
+      } else if (!writtenDocId && target && quickSendPlan && quickSendPlanWrites(quickSendPlan)) {
         id = await materializeQuickSendRow({ personName: target.personName, documentName: target.documentName, plan: quickSendPlan })
         setWrittenDocId(id)
         onRowWritten?.(id)
@@ -152,7 +201,17 @@ export function ContractSendWindow({
         setError('Could not prepare the document to send')
         return
       }
-      const result = await sendPersonPaperForSignature({ documentId: id, mode: 'email', signerEmail: email, signerName, signerTitle, subject, intro })
+      const result = await sendPersonPaperForSignature({
+        documentId: id,
+        mode: 'email',
+        signerEmail: email,
+        signerName,
+        signerTitle,
+        // The business a party's signer signs for is kept with them. A person's own paper sends none, and keeps its own.
+        ...(party ? { signingFor: partySigningFor(party, company, signerName) ?? '' } : {}),
+        subject,
+        intro,
+      })
       const toast = sentToastWords(result)
       showToast(toast.words, toast.tone)
       onSent({ docId: id, emailed: result.emailed, planKind })
@@ -169,9 +228,14 @@ export function ContractSendWindow({
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-label={again ? 'Send again' : 'Send for signature'} style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxSizing: 'border-box' }}>
         <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>{again ? 'Send again' : 'Send for signature'}</h3>
+        {party && target ? (
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }} data-testid="contract-send-party">
+            {sendPartyHint(target.documentName, party)}
+          </p>
+        ) : null}
         {again && target ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }} data-testid="contract-send-again-note">
-            {target.documentName} goes to {target.personName} again, with a new signing link. The link sent before stops working.
+            {target.documentName} goes to {party ? signerName.trim() || party.name || 'them' : target.personName} again, with a new signing link. The link sent before stops working.
           </p>
         ) : null}
         {error ? (
@@ -209,6 +273,12 @@ export function ContractSendWindow({
             style={field}
           />
         </label>
+        {party?.unlisted ? (
+          <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+            <span style={{ fontWeight: 600 }}>Company (optional)</span>
+            <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="The business they sign for" maxLength={PAPER_WORD_MAX} autoComplete="off" style={field} />
+          </label>
+        ) : null}
         <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600 }}>Signer email</span>
           <input
@@ -225,6 +295,31 @@ export function ContractSendWindow({
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }} data-testid="contract-send-signer-kept">
           The name and the address are kept on the paper.
         </p>
+        {lookUpAddress && knownAddressWords(known) ? (
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-700)', margin: '0.5rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint)' }} data-testid="contract-send-known-address">
+            {knownAddressWords(known)}
+          </p>
+        ) : null}
+        {lookUpAddress && knownAddressRefusal(known) ? (
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0.5rem 0 0' }} data-testid="contract-send-known-roster">
+            {knownAddressRefusal(known)}
+          </p>
+        ) : null}
+        {party?.keepWith && !docId && keepSignerWords(signerName, party.keepWith) ? (
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: '0.6rem', fontSize: '0.8125rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} style={{ marginTop: '0.15rem' }} />
+            <span>
+              <span style={{ fontWeight: 600, display: 'block' }}>{keepSignerWords(signerName, party.keepWith)}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>The next paper offers them by name.</span>
+            </span>
+          </label>
+        ) : null}
+        {party && partySaysLine(party, company, signerName, signerTitle) ? (
+          <p style={{ fontSize: '0.8125rem', margin: '0.6rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)' }} data-testid="contract-send-says">
+            {/* A business whose name ends in a full stop is not given a second one. */}
+            The paper will say: <strong>{partySaysLine(party, company, signerName, signerTitle).replace(/\.$/, '')}.</strong>
+          </p>
+        ) : null}
         <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600 }}>Email subject (optional)</span>
           <input

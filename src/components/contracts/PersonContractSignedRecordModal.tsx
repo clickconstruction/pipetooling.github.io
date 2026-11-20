@@ -11,6 +11,7 @@ import { missingRequired } from '../../lib/forms/formPaperEntry'
 import { hasOfficeBoxes } from '../../lib/forms/formSchema'
 import { ContractFormOfficeModal } from './formFill/ContractFormOfficeModal'
 import { paperForName } from '../../../supabase/functions/_shared/companyPaper'
+import { isPartyPaperName, paperSaysLine } from '../../lib/contracts/paperParty'
 import { signedClauseView, type ClausePaperView } from '../../lib/contracts/clauseSign'
 import { ClausePaper } from './ClausePaper'
 
@@ -31,6 +32,11 @@ type PersonContractDocumentRow = Pick<
   | 'signer_printed_name'
   | 'signer_consented_at'
   | 'signer_signature_storage_path'
+  // Who the paper is with and who signed for whom (punch list #403); null on a person's own paper sent before it was kept.
+  | 'party_name'
+  | 'signer_name'
+  | 'signer_title'
+  | 'signing_for'
 > & {
   /** Contract Forms (v2.2798): set when the signer filled a form instead of reading a body. */
   form_template_id?: string | null
@@ -99,7 +105,7 @@ export function PersonContractSignedRecordModal({
             await supabase
               .from('person_contract_documents')
               .select(
-                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id, office_completed_at, office_signer_printed_name, office_attested_at',
+                'id, document_name, person_name, party_name, signer_name, signer_title, signing_for, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id, office_completed_at, office_signer_printed_name, office_attested_at',
               )
               .eq('id', id)
               .maybeSingle(),
@@ -203,6 +209,8 @@ export function PersonContractSignedRecordModal({
     row?.status === 'signed' &&
     contractBodyHasRenderableDisplay(row.signing_body_html, row.signing_body_format)
   const canonical = row?.canonical_document_url?.trim()
+  // What the paper says about its signer, when it kept more than the name beside the signature: a title, or a business.
+  const signedBySays = row && (row.signer_title?.trim() || row.signing_for?.trim()) ? paperSaysLine({ name: row.signer_printed_name || row.signer_name, title: row.signer_title, signingFor: row.signing_for }) : ''
   const refUrl = row?.url?.trim()
 
   return (
@@ -316,8 +324,14 @@ export function PersonContractSignedRecordModal({
                   marginBottom: '1rem',
                 }}
               >
-                <strong>For:</strong> {paperForName(row.person_name)}
+                {/* An outside party's paper is filed under a stored name, never shown: it is for the party it names. */}
+                <strong>For:</strong> {isPartyPaperName(row.person_name) ? (row.party_name ?? '').trim() || 'an outside party' : paperForName(row.person_name)}
               </p>
+              {signedBySays ? (
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginTop: '-0.6rem', marginBottom: '1rem' }} data-testid="signed-record-says">
+                  {signedBySays}
+                </p>
+              ) : null}
 
               {canonical ? (
                 <p style={{ marginBottom: '1rem' }}>

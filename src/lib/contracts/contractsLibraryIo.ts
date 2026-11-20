@@ -7,6 +7,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
+import { isPartyPaperName } from './paperParty'
 import type { ContractBookTemplate, ContractBookTemplateDocument } from '../../components/contracts/ContractBookModal'
 import type { QuickSendPersonRow } from '../contractsQuickSend'
 
@@ -36,7 +37,8 @@ export async function readContractsLibrary(): Promise<ContractsLibrary> {
     templates: (templates ?? []) as unknown as ContractBookTemplate[],
     templateDocuments: (templateDocuments ?? []) as unknown as ContractBookTemplateDocument[],
     assignments: (assignments ?? []) as unknown as ContractsLibrary['assignments'],
-    // A trade partner company's papers share the table and are no person's: never listed, never counted.
-    personDocuments: ((personDocuments ?? []) as unknown as ContractsLibrary['personDocuments']).filter((d) => !isCompanyPaperName(d.person_name)),
+    // A trade partner company's papers and an outside party's (punch list #403) share the table and are no person's:
+    // never listed, never counted.
+    personDocuments: ((personDocuments ?? []) as unknown as ContractsLibrary['personDocuments']).filter((d) => !isCompanyPaperName(d.person_name) && !isPartyPaperName(d.person_name)),
   }
 }

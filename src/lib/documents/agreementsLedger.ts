@@ -21,9 +21,24 @@ import { jobContractChips } from '../jobs/jobContractLifecycle'
 import { theirPaperFromRow, theirPaperLine } from '../jobs/theirPaper'
 import { buildJobWorkOrderCoverage, workOrderChipLabel } from '../subWorkOrders/workOrderCoverage'
 import { weekdayDate } from '../gc/words'
+import { isPartyAgreementKind, paperPartyKind, paperSignerFromFacts, paperSignerLine, partyAgreementTag, partyNeedsAList } from '../contracts/paperParty'
 
 /** The kinds the view answers. A kind the kernel does not know still draws, as a plain agreement. */
-export type AgreementKind = 'job_contract' | 'job_warranty' | 'their_paper' | 'person_agreement' | 'partner_agreement' | 'work_order' | 'owner_contract' | 'sow' | 'company_agreement'
+export type AgreementKind =
+  | 'job_contract'
+  | 'job_warranty'
+  | 'their_paper'
+  | 'person_agreement'
+  | 'partner_agreement'
+  | 'work_order'
+  | 'owner_contract'
+  | 'sow'
+  | 'company_agreement'
+  // An outside party's paper (punch list #403), by what the party's contact points at.
+  | 'customer_agreement'
+  | 'supply_house_agreement'
+  | 'trade_agreement'
+  | 'outside_agreement'
 
 /** Where an agreement stands, the same three for every kind: out to be signed, signed, or over. */
 export type AgreementState = 'waiting' | 'signed' | 'ended'
@@ -70,7 +85,7 @@ export function canSeeAgreements(role: string | null | undefined): boolean {
 
 // ── The chips ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type AgreementGroup = 'jobs' | 'warranty' | 'people' | 'partners' | 'orders' | 'gc'
+export type AgreementGroup = 'jobs' | 'warranty' | 'people' | 'outside' | 'partners' | 'orders' | 'gc'
 export type KindPick = 'all' | AgreementGroup
 export type StatePick = 'live' | AgreementState
 /** What a read asks for: a state chip's pick, or `any` under the Search tab, where a voided paper must be findable too. */
@@ -80,7 +95,9 @@ export type StateAsk = StatePick | 'any'
 export const AGREEMENT_GROUP_KINDS: Readonly<Record<AgreementGroup, ReadonlyArray<AgreementKind>>> = {
   jobs: ['job_contract', 'their_paper'],
   warranty: ['job_warranty'],
-  people: ['person_agreement'],
+  // A trade company that is a party sits with the subs, where the office looks for one (punch list #403).
+  people: ['person_agreement', 'trade_agreement'],
+  outside: ['customer_agreement', 'supply_house_agreement', 'outside_agreement'],
   partners: ['partner_agreement'],
   orders: ['work_order'],
   gc: ['owner_contract', 'sow', 'company_agreement'],
@@ -91,6 +108,8 @@ export const AGREEMENT_KIND_CHIPS: ReadonlyArray<{ key: KindPick; label: string 
   { key: 'jobs', label: 'Job contracts' },
   { key: 'warranty', label: 'Warranties' },
   { key: 'people', label: 'Staff and subs' },
+  // A customer, a supply house or someone on no list (punch list #403). The tag on each line says which.
+  { key: 'outside', label: 'Outside companies' },
   { key: 'partners', label: 'Partners' },
   { key: 'orders', label: 'Work orders' },
   // GC mode's papers. The chip shows to everyone with the tab; the rows are each table's own to open, so an assistant
@@ -130,6 +149,7 @@ export const AGREEMENT_GROUP_COLORS: Readonly<Record<AgreementGroup, { backgroun
   jobs: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
   warranty: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
   people: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
+  outside: { background: 'var(--bg-teal-tint)', color: 'var(--text-teal-700)' },
   partners: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
   orders: { background: 'var(--bg-muted)', color: 'var(--text-muted)' },
   gc: { background: 'var(--bg-subtle)', color: 'var(--text-700)' },
@@ -208,9 +228,17 @@ function stateOf(row: Pick<AgreementRow, 'state'>): AgreementState {
   return row.state === 'waiting' || row.state === 'signed' ? row.state : 'ended'
 }
 
-/** The tag on a line: the exact kind in a word or two, in its group's colours. */
-export function agreementTag(row: Pick<AgreementRow, 'kind' | 'person_kind'>): { words: string; group: AgreementGroup } {
+/**
+ * The tag on a line: the exact kind in a word or two, in its group's colours. A party on no list is `plain`: its tag is
+ * an outline, since it belongs to no group yet.
+ */
+export function agreementTag(row: Pick<AgreementRow, 'kind' | 'person_kind'> & Partial<Pick<AgreementRow, 'facts'>>): { words: string; group: AgreementGroup; plain?: boolean } {
   const group = agreementGroup(row.kind)
+  if (isPartyAgreementKind(row.kind)) {
+    const partyKind = row.facts ? fact(row as Pick<AgreementRow, 'facts'>, 'party_kind') : undefined
+    const words = partyAgreementTag(row.kind, partyKind)
+    return row.kind === 'outside_agreement' ? { words, group, plain: true } : { words, group }
+  }
   switch (row.kind) {
     case 'job_contract':
       return { words: 'Contract', group }
@@ -270,6 +298,28 @@ export function agreementName(row: Pick<AgreementRow, 'kind' | 'paper_name' | 'f
   }
 }
 
+/**
+ * Who signs, after the party on a line: *Lena Park signs, Branch manager*, then *signed by Dana Ruiz, Project manager*.
+ * '' when the paper kept no signer, and when the signer is the party named beside it with no title to add: a person's
+ * own paper does not say their name twice. '' for every kind but a person's, a trade company's and a party's paper.
+ */
+export function agreementSignerWords(row: Pick<AgreementRow, 'kind' | 'state' | 'with_name' | 'facts'>): string {
+  // A person's paper, a trade company's and an outside party's keep a signer. A job's contract, a work order and GC
+  // mode's papers say who signed in their own windows, and their lines are left as they were.
+  if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement' && row.kind !== 'company_agreement' && !isPartyAgreementKind(row.kind)) return ''
+  const signer = paperSignerFromFacts(row.facts)
+  const signed = str(fact(row, 'status')) === 'signed'
+  const name = (signed ? (signer.printedName ?? signer.name) : signer.name) ?? ''
+  if (!name) return ''
+  if (!signer.title && name.toLowerCase() === str(row.with_name).toLowerCase()) return ''
+  return paperSignerLine(signer, signed)
+}
+
+/** Whether a line carries **Add to a list**: an outside party's paper whose party has no record yet, signed or not. */
+export function agreementNeedsAList(row: Pick<AgreementRow, 'kind' | 'facts'>): boolean {
+  return isPartyAgreementKind(row.kind) && partyNeedsAList(paperPartyKind(fact(row, 'party_kind')))
+}
+
 /** The job a line names: *J2418 · Pierce kitchen repipe*, the number alone, the name alone, or null with no job. */
 export function agreementJobTitle(row: Pick<AgreementRow, 'job_id' | 'job_hcp_number' | 'job_click_number' | 'job_name'>): string | null {
   const num = effectiveJobLedgerNumber(row.job_hcp_number, row.job_click_number)
@@ -311,7 +361,7 @@ export function agreementStateChip(row: Pick<AgreementRow, 'kind' | 'state' | 'f
     })[0]
     return { words: chip?.label ?? status, tone }
   }
-  if (row.kind === 'person_agreement' || row.kind === 'partner_agreement' || row.kind === 'company_agreement') {
+  if (row.kind === 'person_agreement' || row.kind === 'partner_agreement' || row.kind === 'company_agreement' || isPartyAgreementKind(row.kind)) {
     if (fact(row, 'replaced') === true) return { words: 'replaced by a newer one', tone }
     if (tone === 'signed') return { words: 'signed ✓', tone }
     return { words: fact(row, 'signer_last_viewed_at') != null ? 'viewed, not signed' : 'never opened', tone }
@@ -438,6 +488,9 @@ export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'st
     return row.job_id ? { kind: 'work-order', jobId: row.job_id, commitmentId: row.source_id } : { kind: 'none' }
   }
   if (row.kind === 'company_agreement' && str(fact(row, 'status')) === 'signed') return { kind: 'person-signed', documentId: row.source_id }
+  // An outside party's paper has no page of its own yet: signed, it opens the signed record; waiting, its acts sit on
+  // its line (`agreementsActs.ts`).
+  if (isPartyAgreementKind(row.kind)) return str(fact(row, 'status')) === 'signed' ? { kind: 'person-signed', documentId: row.source_id } : { kind: 'none' }
   if (row.kind === 'owner_contract' || row.kind === 'sow' || row.kind === 'company_agreement') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
   return { kind: 'none' }
 }

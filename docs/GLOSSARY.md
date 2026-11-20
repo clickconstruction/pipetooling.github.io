@@ -6541,11 +6541,14 @@ A job contract that waits opens its Contract window from the line ([`agreementsA
 Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Contract Book and a person and opens the same email window: People → Contracts' quick send on this page ([`AgreementsSendPaper.tsx`](../src/components/documents/AgreementsSendPaper.tsx)).
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
+Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
+A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 
 ### Party and signer (of a paper)
 
 v2.7977 (punch list #403), the ground.
 Since v2.7986 the **Send for signature** window takes the signer and every send keeps them on the paper.
+Since v2.7995 **Who is it with?** makes the first party's paper.
 The **party** is who a paper is with, and it is a record: a customer, a supply house, a trade company, or someone on no list yet.
 The paper points at the party's contact (`person_contract_documents.party_contact_id`, a `contacts` row) and is filed under `party:<contact id>`, a name no person can have, so a company named like a teammate never lands on the teammate.
 The **signer** is the human who signs: a name, a title and an address kept on the paper as it was sent (`signer_name`, `signer_title`, `signer_email`), with the business they sign for in words (`signing_for`).

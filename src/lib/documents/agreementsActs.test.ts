@@ -10,6 +10,12 @@ describe('agreementCanBeSentAgain', () => {
     expect(agreementCanBeSentAgain({ kind: 'person_agreement', state: 'waiting', facts: { status: 'sent' } })).toBe(true)
     expect(agreementCanBeSentAgain({ kind: 'partner_agreement', state: 'waiting', facts: { status: 'sent', signer_last_viewed_at: '2026-11-10T15:00:00Z' } })).toBe(true)
   })
+  it('is an outside party’s paper that is out and not signed too', () => {
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'outside_agreement']) {
+      expect(agreementCanBeSentAgain({ kind, state: 'waiting', facts: { status: 'sent', party_kind: 'none' } }), kind).toBe(true)
+      expect(agreementCanBeSentAgain({ kind, state: 'signed', facts: { status: 'signed' } }), kind).toBe(false)
+    }
+  })
   it('is never a signed one, a replaced one, or one whose facts did not come', () => {
     expect(agreementCanBeSentAgain({ kind: 'person_agreement', state: 'signed', facts: { status: 'signed' } })).toBe(false)
     expect(agreementCanBeSentAgain({ kind: 'person_agreement', state: 'ended', facts: { status: 'signed', replaced: true } })).toBe(false)
