@@ -63,6 +63,33 @@ describe('PortalStartChecks', () => {
     expect(screen.getByRole('img', { name: '25% ready' })).toBeTruthy()
   })
 
+  it('every press on the card is a full thumb: 44 px for the tick box, the words presses, the day and both sends', () => {
+    mount()
+    const boxes = screen.getAllByRole('checkbox')
+    expect(boxes).toHaveLength(2)
+    for (const c of boxes) {
+      expect(c.tagName).toBe('BUTTON')
+      expect(parseFloat(c.style.width)).toBeGreaterThanOrEqual(44)
+      expect(parseFloat(c.style.height)).toBeGreaterThanOrEqual(44)
+      // The box is still drawn 30 px, inside its press.
+      const drawn = c.querySelector('[data-start-box]') as HTMLElement
+      expect([drawn.style.width, drawn.style.height]).toEqual(['30px', '30px'])
+    }
+    const wordsPresses = [screen.getByRole('button', { name: 'All of these are ready' }), ...screen.getAllByRole('button', { name: 'I am adding a photo' })]
+    expect(wordsPresses).toHaveLength(4)
+    for (const p of wordsPresses) {
+      expect(p.style.minHeight).toBe('44px')
+      expect(p.style.display).toBe('inline-flex')
+    }
+    expect((screen.getByLabelText('Not ready yet? It will be ready') as HTMLElement).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'Send the day' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'Tick what is ready' }).style.minHeight).toBe('44px')
+    // The press ticks as the box did, and the tick is drawn in the box.
+    fireEvent.click(boxes[0] as HTMLElement)
+    expect(screen.getAllByRole('checkbox')[0]?.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getAllByRole('checkbox')[0]?.querySelector('[data-start-box]')?.textContent).toBe('✓')
+  })
+
   it('one link ticks them all, the press names its count, and one send carries them', async () => {
     mount()
     fireEvent.click(screen.getByRole('button', { name: 'All of these are ready' }))

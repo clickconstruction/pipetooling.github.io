@@ -105,8 +105,11 @@ export function PortalStartChecks({ jobId, jobLabel, jobAddress, stage, token, t
     onSent?.()
   }
 
-  const box = (on: boolean) => ({ width: 30, height: 30, flex: 'none', borderRadius: 7, border: `2px solid ${on ? PAPER_GREEN : MUTED}`, background: on ? PAPER_GREEN : 'var(--surface)', color: '#fff', fontSize: 20, fontWeight: 800, lineHeight: 1, cursor: busy ? 'wait' : 'pointer', padding: 0 }) as const
-  const linkPress = { background: 'none', border: 'none', color: '#1d4e89', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'inherit' } as const
+  // A thumb gets 44 px on every press here. The tick box is drawn 30 px and a words press is one line tall, so each
+  // press is 44 px with a margin that takes the extra back: the target grows and nothing on the card moves.
+  const box = (on: boolean) => ({ width: 30, height: 30, boxSizing: 'border-box', flex: 'none', borderRadius: 7, border: `2px solid ${on ? PAPER_GREEN : MUTED}`, background: on ? PAPER_GREEN : 'var(--surface)', color: '#fff', fontSize: 20, fontWeight: 800, lineHeight: 1, cursor: busy ? 'wait' : 'pointer', padding: 0 }) as const
+  const boxPress = { width: 44, height: 44, flex: 'none', margin: -7, padding: 0, border: 'none', background: 'none', display: 'grid', placeItems: 'center', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' } as const
+  const linkPress = { background: 'none', border: 'none', color: '#1d4e89', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, margin: '-14px 0', minHeight: 44, display: 'inline-flex', alignItems: 'center', textDecoration: 'underline', fontFamily: 'inherit' } as const
 
   return (
     <section data-testid="portal-start-checks" data-start-stage={stage.fixtureId} style={{ background: CARD, border: `1px solid ${HAIR}`, borderRadius: 10, padding: '0.9rem 1rem', color: INK }}>
@@ -146,8 +149,10 @@ export function PortalStartChecks({ jobId, jobLabel, jobAddress, stage, token, t
                   {b.waitsOnPhoto ? (
                     <span aria-hidden style={{ ...box(!!photo), cursor: 'default', display: 'grid', placeItems: 'center' }}>{photo ? '✓' : ''}</span>
                   ) : (
-                    <button type="button" role="checkbox" aria-checked={on} aria-label={b.words} disabled={busy} style={box(on)} onClick={() => setTicked((t) => ({ ...t, [b.id]: !on }))}>
-                      {on ? '✓' : ''}
+                    <button type="button" role="checkbox" aria-checked={on} aria-label={b.words} disabled={busy} style={boxPress} onClick={() => setTicked((t) => ({ ...t, [b.id]: !on }))}>
+                      <span aria-hidden data-start-box style={{ ...box(on), display: 'grid', placeItems: 'center' }}>
+                        {on ? '✓' : ''}
+                      </span>
                     </button>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -202,8 +207,8 @@ export function PortalStartChecks({ jobId, jobLabel, jobAddress, stage, token, t
             <label htmlFor={`start-day-${stage.fixtureId}`} style={{ fontWeight: 600 }}>
               {W.notReady}
             </label>
-            <input id={`start-day-${stage.fixtureId}`} type="date" min={todayYmd} value={day} disabled={busy} onChange={(e) => setDay(e.target.value)} style={{ minHeight: 40, padding: '0 0.5rem', borderRadius: 7, border: `1px solid ${HAIR}`, fontFamily: 'inherit', fontSize: 14, color: INK, background: 'var(--surface)' }} />
-            <button type="button" disabled={busy || !day || day < todayYmd} onClick={() => void send({ ready: [], photos: [], readyDay: day }, W.daySent(day))} style={{ minHeight: 40, padding: '0 0.9rem', borderRadius: 7, border: `1px solid ${INK}`, background: 'var(--surface)', color: INK, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit', opacity: !day || day < todayYmd ? 0.5 : 1 }}>
+            <input id={`start-day-${stage.fixtureId}`} type="date" min={todayYmd} value={day} disabled={busy} onChange={(e) => setDay(e.target.value)} style={{ minHeight: 44, padding: '0 0.5rem', borderRadius: 7, border: `1px solid ${HAIR}`, fontFamily: 'inherit', fontSize: 14, color: INK, background: 'var(--surface)' }} />
+            <button type="button" disabled={busy || !day || day < todayYmd} onClick={() => void send({ ready: [], photos: [], readyDay: day }, W.daySent(day))} style={{ minHeight: 44, padding: '0 0.9rem', borderRadius: 7, border: `1px solid ${INK}`, background: 'var(--surface)', color: INK, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit', opacity: !day || day < todayYmd ? 0.5 : 1 }}>
               {W.sendDay}
             </button>
           </div>
