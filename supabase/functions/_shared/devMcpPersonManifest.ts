@@ -7,6 +7,7 @@
 // The rules live here and nowhere else: one constant, returned with the manifest, changed in the PR that changes an HR
 // verb. A part's count is a whole number, or null with `held` when its source could not be read.
 // Pure: no env, no network. Tests: src/lib/devMcp/devMcpPersonManifest.test.ts.
+import { CASE_BLOCKS_OPEN } from './devMcpCase.ts'
 import type { PersonTimelineSource } from './personTimeline.ts'
 
 /** What an agent is told when it opens an HR file, in the order it needs them. General: nothing here names a person. */
@@ -50,7 +51,8 @@ export type PersonManifestInput = {
   /** The named documents, the notes left out. */
   documents: { count: number; chars: number; counsel_only: number; counsel_only_chars: number } | ManifestHeld
   entries: { count: number; first: string | null; last: string | null; from_mail: number } | ManifestHeld
-  evidence: { count: number; counsel_only: number; in_drive_folders: number; a_record_folder: string | null } | ManifestHeld
+  /** `numbered` (v2.7976): how many records the file has given an exhibit number; the rest carry no exhibit_no. */
+  evidence: { count: number; numbered?: number; counsel_only: number; in_drive_folders: number; a_record_folder: string | null } | ManifestHeld
   /** get_person_file's own tally of the files on the file (person_file_attachments). */
   files: { count: number; staged: number; linked: number; before_records: number; bytes: number } | ManifestHeld
   /** The file index's rows for the person: whose words the seat can search and read. */
@@ -115,9 +117,9 @@ export function buildPersonManifest(m: PersonManifestInput): { note: string; par
   if (isHeld(m.entries)) parts.push(held('entries', m.entries.held, entriesOpen))
   else parts.push({ part: 'entries', count: m.entries.count, first: m.entries.first, last: m.entries.last, from_mail: m.entries.from_mail, ...lineBits('file'), open: entriesOpen })
 
-  const evidenceOpen = 'listed in evidence here; one whole: read_rows on person_file_evidence, id eq, and on person_file_attachments, evidence_id eq, for its files. A record tied to an entry draws on that entry\'s Timeline line, so the lines are fewer than the records'
+  const evidenceOpen = 'listed in evidence here, each with exhibit_no (cite it as Ev #N) once the file has numbered it, which numbered counts; one whole: read_rows on person_file_evidence, id eq, and on person_file_attachments, evidence_id eq, for its files. A record tied to an entry draws on that entry\'s Timeline line, so the lines are fewer than the records'
   if (isHeld(m.evidence)) parts.push(held('evidence', m.evidence.held, evidenceOpen))
-  else parts.push({ part: 'evidence', count: m.evidence.count, counsel_only: m.evidence.counsel_only, ...lineBits('evidence'), open: evidenceOpen })
+  else parts.push({ part: 'evidence', count: m.evidence.count, ...(m.evidence.numbered === undefined ? {} : { numbered: m.evidence.numbered }), counsel_only: m.evidence.counsel_only, ...lineBits('evidence'), open: evidenceOpen })
 
   const filesOpen = 'no verb reads a file\'s bytes. Its words, where the index read them: search_case { in: "files" } finds them, read_rows on file_index (select name,text; source_id eq the attachment\'s id) reads them. without_words counts why not: scan (a picture or a scanned PDF), kind (audio, video, a kind the reader does not read), big'
   if (isHeld(m.files)) parts.push(held('files', m.files.held, filesOpen))
@@ -154,7 +156,7 @@ export function buildPersonManifest(m: PersonManifestInput): { note: string; par
   // The links and lists kept beside the record.
   const linksOpen = 'amendments here counts them and lists the newest; a corrected line says standing and latest_word wherever it is read'
   parts.push(isHeld(m.correctionLinks) ? held('correction_links', m.correctionLinks.held, linksOpen) : { part: 'correction_links', count: m.correctionLinks, open: linksOpen })
-  const itemsOpen = 'read_rows on person_case_items, person_id eq (the open items by number), and on person_case_log for the log'
+  const itemsOpen = CASE_BLOCKS_OPEN
   if (isHeld(m.caseItems)) parts.push(held('case_items', m.caseItems.held, itemsOpen))
   else parts.push({ part: 'case_items', count: m.caseItems.count, open_items: m.caseItems.open, log_lines: isHeld(m.caseLog) ? null : m.caseLog, open: itemsOpen })
   const standingOpen = 'read_rows on person_engagements, person_id eq: each stretch as employee or subcontractor, with where the fact comes from'

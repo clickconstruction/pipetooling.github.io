@@ -167,14 +167,19 @@ describe('get_case_brief opens with the manifest and the rules, whole on a file 
     expect(part('employment').count).toBe(file.counts.bySource.employment)
   })
 
-  it('a count the manifest alone reads is held on its own part, and the brief\'s held is as it was', async () => {
+  it('a count the manifest alone reads is held on its own part, and the brief\'s held names only what the brief itself draws', async () => {
     // The manifest's own tables refuse the read: each of those parts is null with its reason, nothing is guessed.
     const base = pagingReader({ rows: rows(), rpc: RPC })
     const refusing = ['file_index', 'person_case_items', 'person_case_log', 'person_engagements', 'dev_seat_kept_plans', 'email_tag_threads']
     const r = { ...base, rows: async (table: string, q: Parameters<typeof base.rows>[1]) => (refusing.includes(table) ? Promise.reject(new Error(`permission denied for table ${table}`)) : base.rows(table, q)) }
     const out = await getCaseBrief(r, { person: BIG_PERSON }, DEV)
     if ('refused' in out) throw new Error(out.refused)
-    expect(out.held).toEqual([])
+    // Since 0.118.0 the brief draws the case's items and log (open_items, log), so those two are named in its held;
+    // the four the manifest alone reads are held on their own parts.
+    expect(out.held).toHaveLength(2)
+    expect(out.held).toEqual(expect.arrayContaining([{ source: 'case items', reason: 'permission denied for table person_case_items' }, { source: 'case log', reason: 'permission denied for table person_case_log' }]))
+    expect(out.open_items).toBeNull()
+    expect(out.log).toBeNull()
     const part = (name: string) => out.manifest.parts.find((p) => p.part === name)!
     expect(part('case_items')).toMatchObject({ count: null, held: 'permission denied for table person_case_items' })
     for (const name of ['standing', 'kept_plans', 'mail']) expect(part(name), name).toMatchObject({ count: null })
@@ -207,7 +212,7 @@ describe('find_person tries each word when the whole name matches no one (v2.765
 
 describe('the server and the docs carry the manifest (v2.7651 / 0.97.0)', () => {
   it('the instructions send an HR read to get_case_brief before their first three hundred words end, and no longer say whole', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.117.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.118.0'")
     const at = SERVER.indexOf('const INSTRUCTIONS =')
     const opening = SERVER.slice(at, at + 700)
     expect(opening).toContain("For a person's HR file call get_case_brief first")
