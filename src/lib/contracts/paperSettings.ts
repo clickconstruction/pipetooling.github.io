@@ -344,3 +344,46 @@ export function newSlotKey(settingKey: string, taken: ReadonlyArray<string>): st
     if (!taken.includes(key)) return key
   }
 }
+
+/**
+ * A key made from a name, for a setting, a choice, a blank or a level: *Photos and video* is `photos_and_video`. A
+ * name with no letter in it takes `fallback`. `_2`, `_3` while the key is taken.
+ */
+export function keyFromLabel(label: string, taken: ReadonlyArray<string>, fallback = 'item'): string {
+  const base =
+    label
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^[^a-z]+/, '')
+      .replace(/_+$/, '')
+      .slice(0, 36) || fallback
+  if (!taken.includes(base)) return base
+  for (let n = 2; ; n++) if (!taken.includes(`${base}_${n}`)) return `${base}_${n}`
+}
+
+/** An empty list, for a paper that has none yet. */
+export const EMPTY_SETTINGS_DEF: SettingsDef = { settings: [], fields: [], levels: [] }
+
+/** A new choice, by name. */
+export function newChoice(label: string, taken: ReadonlyArray<string>): SettingChoice {
+  return { key: keyFromLabel(label, taken, 'choice'), label: label.trim(), labelEs: '', says: '', saysEs: '', out: false, fills: {}, fillsEs: {} }
+}
+
+/** A list with one setting's choice moved one place looser or stricter. The order is the strictness. */
+export function moveChoice(def: SettingsDef, settingKey: string, choiceKey: string, by: -1 | 1): SettingsDef {
+  return {
+    ...def,
+    settings: def.settings.map((s) => {
+      if (s.key !== settingKey) return s
+      const at = s.choices.findIndex((c) => c.key === choiceKey)
+      const to = at + by
+      if (at < 0 || to < 0 || to >= s.choices.length) return s
+      const choices = [...s.choices]
+      const [moved] = choices.splice(at, 1)
+      if (moved) choices.splice(to, 0, moved)
+      return { ...s, choices }
+    }),
+  }
+}

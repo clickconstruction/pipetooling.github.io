@@ -15,6 +15,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { canApproveClause } from '../gc/access'
 import type { ClauseBook, ClauseProposal } from './approval'
 import { clauseTrades, tradeKey, type Clause, type ClauseScope, type ContractPaper } from './assemble'
+import { parseSettingsDef, whenFromRow } from './paperSettings'
 
 /** A Contract library document, as the loader selects it. */
 export interface PaperRow {
@@ -25,6 +26,11 @@ export interface PaperRow {
   sequence_order: number
   revision: number
   published_at: string | null
+  /** The settings list of a paper built from settings (#389), as the column holds it. */
+  settings_def?: unknown
+  read_revision?: number | null
+  read_by_name?: string | null
+  read_on?: string | null
 }
 
 /** A packet of the Contract library. */
@@ -47,6 +53,8 @@ export interface ClauseRow {
   published_at: string
   retired_at: string | null
   retired_by_name: string | null
+  slot?: string | null
+  when_opts?: unknown
 }
 
 /** A row of `contract_clause_proposals`. */
@@ -59,6 +67,8 @@ export interface ProposalRow {
   text_en: string
   text_es: string
   scope: string[]
+  slot?: string | null
+  when_opts?: unknown
   by_user_id: string | null
   by_name: string
   why: string
@@ -85,7 +95,7 @@ export function scopeToRow(scope: ClauseScope): string[] {
 }
 
 export function clauseFromRow(r: ClauseRow): Clause {
-  return { id: r.id, order: r.sequence_order, en: r.text_en, es: r.text_es, scope: scopeFromRow(r.scope), v: r.version, retiredAt: r.retired_at, retiredBy: r.retired_by_name }
+  return { id: r.id, order: r.sequence_order, en: r.text_en, es: r.text_es, scope: scopeFromRow(r.scope), v: r.version, retiredAt: r.retired_at, retiredBy: r.retired_by_name, slot: r.slot ?? null, when: whenFromRow(r.when_opts) }
 }
 
 export function proposalFromRow(r: ProposalRow): ClauseProposal {
@@ -98,6 +108,8 @@ export function proposalFromRow(r: ProposalRow): ClauseProposal {
     en: r.text_en,
     es: r.text_es,
     scope: scopeFromRow(r.scope),
+    slot: r.slot ?? null,
+    when: whenFromRow(r.when_opts),
     byUserId: r.by_user_id ?? '',
     by: r.by_name,
     at: r.created_at,
@@ -118,7 +130,29 @@ export function changeFromRow(r: ProposalRow): ClauseChangeRecord {
 
 /** A library document as a clause paper. */
 export function paperFromRow(r: PaperRow): ContractPaper {
-  return { id: r.id, title: r.document_name, name: `the ${r.document_name}`, between: CLAUSE_PAPER_BETWEEN, revision: r.revision, publishedAt: r.published_at }
+  return { id: r.id, title: r.document_name, name: `the ${r.document_name}`, between: CLAUSE_PAPER_BETWEEN, revision: r.revision, publishedAt: r.published_at, settingsDef: r.settings_def == null ? null : parseSettingsDef(r.settings_def) }
+}
+
+/** A paper's read mark: the revision an attorney read, by name, on a day. */
+export interface PaperRead {
+  revision: number
+  byName: string
+  on: string
+}
+
+export function paperReadFromRow(r: Pick<PaperRow, 'read_revision' | 'read_by_name' | 'read_on'>): PaperRead | null {
+  return r.read_revision != null && r.read_by_name && r.read_on ? { revision: r.read_revision, byName: r.read_by_name, on: r.read_on } : null
+}
+
+/** True while the mark names the paper's revision. A later publish leaves the paper unread again. */
+export function isPaperRead(paper: Pick<ContractPaper, 'revision'>, read: PaperRead | null): boolean {
+  return read != null && paper.revision >= 1 && read.revision === paper.revision
+}
+
+/** The chip beside a paper built from settings: its revision and whether an attorney read it. */
+export function paperReadWords(paper: Pick<ContractPaper, 'revision'>, read: PaperRead | null, day: (ymd: string) => string): { read: boolean; words: string } {
+  if (paper.revision < 1) return { read: false, words: 'Not published yet' }
+  return isPaperRead(paper, read) && read ? { read: true, words: `Revision ${paper.revision}, read by ${read.byName}, ${day(read.on)}` } : { read: false, words: `Revision ${paper.revision}, not read by an attorney` }
 }
 
 /** A paper's card in Settings: its book, its packet's name, and the changes waiting on it, oldest first. */
@@ -128,6 +162,8 @@ export interface ClausePaperCard {
   waiting: ClauseProposal[]
   /** Every change ever made to its clauses, for the clauses' history. */
   changes: ClauseChangeRecord[]
+  /** The read mark, on a paper that has one. */
+  read: PaperRead | null
 }
 
 /** Everything Settings → Contracts and clauses reads, as the loader hands it over. */
@@ -148,13 +184,13 @@ const packetOrder = (templates: readonly TemplateRow[]) => {
 }
 
 /**
- * One card per library document that has clauses or a change waiting on it, in the library's order: by packet, then by
- * the document's place in it. A paper whose every clause is retired still shows, with its history.
+ * One card per library document that has clauses, a change waiting on it or a settings list, in the library's order: by
+ * packet, then by the document's place in it. A paper whose every clause is retired still shows, with its history.
  */
 export function clausePaperCards(rows: ClauseLibraryRows): ClausePaperCard[] {
   const names = new Map(rows.templates.map((t) => [t.id, t.name] as const))
   const proposals = rows.proposals.map(changeFromRow)
-  const has = new Set([...rows.clauses.map((c) => c.paper_id), ...rows.proposals.map((p) => p.paper_id)])
+  const has = new Set([...rows.clauses.map((c) => c.paper_id), ...rows.proposals.map((p) => p.paper_id), ...rows.papers.filter((p) => p.settings_def != null).map((p) => p.id)])
   return rows.papers
     .filter((p) => has.has(p.id))
     .sort(packetOrder(rows.templates))
@@ -165,6 +201,7 @@ export function clausePaperCards(rows: ClauseLibraryRows): ClausePaperCard[] {
         packet: names.get(p.template_id) ?? '',
         waiting: mine.filter((x) => x.state === 'proposed'),
         changes: mine,
+        read: paperReadFromRow(p),
       }
     })
 }
@@ -179,7 +216,7 @@ export interface BuildablePaper {
 /** The library documents *Build a paper from clauses* offers, in the library's order. */
 export function buildablePapers(rows: ClauseLibraryRows): BuildablePaper[] {
   const names = new Map(rows.templates.map((t) => [t.id, t.name] as const))
-  const has = new Set([...rows.clauses.map((c) => c.paper_id), ...rows.proposals.map((p) => p.paper_id)])
+  const has = new Set([...rows.clauses.map((c) => c.paper_id), ...rows.proposals.map((p) => p.paper_id), ...rows.papers.filter((p) => p.settings_def != null).map((p) => p.id)])
   return rows.papers
     .filter((p) => !p.form_template_id && !has.has(p.id))
     .sort(packetOrder(rows.templates))
@@ -205,7 +242,7 @@ export function paperChoices(rows: Pick<ClauseLibraryRows, 'papers' | 'templates
   const names = new Map(rows.templates.map((t) => [t.id, t.name] as const))
   const live = new Set(rows.clauses.filter((c) => c.retired_at == null).map((c) => c.paper_id))
   return rows.papers
-    .filter((p) => !p.form_template_id && p.revision >= 1 && live.has(p.id))
+    .filter((p) => !p.form_template_id && p.revision >= 1 && live.has(p.id) && p.settings_def == null)
     .sort(packetOrder(rows.templates))
     .map((p) => ({
       id: p.id,

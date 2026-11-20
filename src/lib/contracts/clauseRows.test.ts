@@ -30,9 +30,9 @@ describe('the rows in the kernels’ types', () => {
 
   it('maps a clause row, a change row and a library document', () => {
     const rows = clauseLibraryRows()
-    expect(clauseFromRow(rows.clauses[5]!)).toEqual({ id: 'msa-6', order: 6, en: MSA_CLAUSES[5]!.en, es: '', scope: ['Sitework'], v: 1, retiredAt: null, retiredBy: null })
+    expect(clauseFromRow(rows.clauses[5]!)).toEqual({ id: 'msa-6', order: 6, en: MSA_CLAUSES[5]!.en, es: '', scope: ['Sitework'], v: 1, retiredAt: null, retiredBy: null, slot: null, when: null })
     expect(changeFromRow(rows.proposals[1]!)).toMatchObject({ id: 'p-approved', kind: 'edit', clauseId: 'msa-3', baseV: 1, by: 'Rosa', decidedBy: 'Maria', state: 'approved', resultV: 2, paperRevision: 2 })
-    expect(paperFromRow(rows.papers[0]!)).toEqual({ id: 'doc-msa', title: 'Master services agreement', name: 'the Master services agreement', between: 'Click Construction and {company}', revision: 2, publishedAt: '2026-10-12T15:00:00Z' })
+    expect(paperFromRow(rows.papers[0]!)).toEqual({ id: 'doc-msa', title: 'Master services agreement', name: 'the Master services agreement', between: 'Click Construction and {company}', revision: 2, publishedAt: '2026-10-12T15:00:00Z', settingsDef: null })
   })
 })
 

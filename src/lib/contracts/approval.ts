@@ -18,6 +18,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { canApproveClause, canEditClause } from '../gc/access'
 import { CLAUSE_APPROVAL_AGE, describeAge, type AgeDescription } from '../ageState'
 import { andList, clauseLabel, scopeWords, tradeKey, type Clause, type ClauseScope, type ContractPaper } from './assemble'
+import { whenProblem, type ClauseWhen } from './paperSettings'
 
 /** A paper and its clauses: what a change is made to. */
 export interface ClauseBook {
@@ -27,8 +28,8 @@ export interface ClauseBook {
 
 /** What someone asks to change on a paper. */
 export type ClauseChange =
-  | { kind: 'new'; en: string; es: string; scope: ClauseScope }
-  | { kind: 'edit'; clauseId: string; en: string; es: string; scope: ClauseScope }
+  | { kind: 'new'; en: string; es: string; scope: ClauseScope; slot?: string | null; when?: ClauseWhen }
+  | { kind: 'edit'; clauseId: string; en: string; es: string; scope: ClauseScope; slot?: string | null; when?: ClauseWhen }
   | { kind: 'retire'; clauseId: string }
 
 /** Who is making or deciding a change. */
@@ -51,6 +52,9 @@ export interface ClauseProposal {
   en: string
   es: string
   scope: ClauseScope
+  /** The place it asks to be a wording of, and the choice that puts it in the paper (#389). Absent on an older row. */
+  slot?: string | null
+  when?: ClauseWhen
   byUserId: string
   by: string
   at: string
@@ -106,12 +110,20 @@ const sameScope = (a: ClauseScope, b: ClauseScope): boolean => {
 
 const findClause = (book: ClauseBook, id: string): Clause | undefined => book.clauses.find((c) => c.id === id)
 
+/** Two Only whens that tie a clause the same way. */
+const sameWhen = (a: ClauseWhen | undefined, b: ClauseWhen | undefined): boolean => {
+  const flat = (w: ClauseWhen | undefined) => JSON.stringify(Object.entries(w ?? {}).sort(([x], [y]) => x.localeCompare(y)))
+  return flat(a) === flat(b)
+}
+
 /** Why this change cannot be made to this paper, in words for the editor. Null when it can. */
 export function changeProblem(book: ClauseBook, change: ClauseChange): string | null {
   if (change.kind !== 'retire') {
     if (change.en.trim() === '') return 'Write the clause.'
     const scope = cleanScope(change.scope)
     if (scope !== 'all' && scope.length === 0) return 'Pick who it applies to.'
+    const tied = whenProblem(book.paper.settingsDef ?? null, change.when ?? null, change.slot ?? null)
+    if (tied) return tied
   }
   if (change.kind === 'new') return null
   const clause = findClause(book, change.clauseId)
@@ -121,7 +133,9 @@ export function changeProblem(book: ClauseBook, change: ClauseChange): string | 
     change.kind === 'edit' &&
     clause.en.trim() === change.en.trim() &&
     clause.es.trim() === change.es.trim() &&
-    sameScope(clause.scope, cleanScope(change.scope))
+    sameScope(clause.scope, cleanScope(change.scope)) &&
+    (clause.slot ?? null) === (change.slot ?? null) &&
+    sameWhen(clause.when, change.when)
   ) {
     return 'Nothing changed.'
   }
@@ -144,12 +158,12 @@ export function publishChange(book: ClauseBook, change: ClauseChange, who: { nam
     clauseId = who.newId()
     v = 1
     const order = Math.max(0, ...book.clauses.map((c) => c.order)) + 1
-    clauses = [...book.clauses, { id: clauseId, order, en: change.en.trim(), es: change.es.trim(), scope: cleanScope(change.scope), v, retiredAt: null, retiredBy: null }]
+    clauses = [...book.clauses, { id: clauseId, order, en: change.en.trim(), es: change.es.trim(), scope: cleanScope(change.scope), v, retiredAt: null, retiredBy: null, slot: change.slot ?? null, when: change.when ?? null }]
   } else if (change.kind === 'edit') {
     clauseId = change.clauseId
     const old = findClause(book, clauseId)
     v = (old?.v ?? 0) + 1
-    clauses = book.clauses.map((c) => (c.id === clauseId ? { ...c, en: change.en.trim(), es: change.es.trim(), scope: cleanScope(change.scope), v } : c))
+    clauses = book.clauses.map((c) => (c.id === clauseId ? { ...c, en: change.en.trim(), es: change.es.trim(), scope: cleanScope(change.scope), v, slot: change.slot ?? null, when: change.when ?? null } : c))
   } else {
     clauseId = change.clauseId
     v = findClause(book, clauseId)?.v ?? 0
@@ -254,8 +268,8 @@ export function editClause(
 
 /** The change a proposal asks for. */
 export function proposalChange(p: ClauseProposal): ClauseChange {
-  if (p.kind === 'new') return { kind: 'new', en: p.en, es: p.es, scope: p.scope }
-  if (p.kind === 'edit') return { kind: 'edit', clauseId: p.clauseId ?? '', en: p.en, es: p.es, scope: p.scope }
+  if (p.kind === 'new') return { kind: 'new', en: p.en, es: p.es, scope: p.scope, slot: p.slot ?? null, when: p.when ?? null }
+  if (p.kind === 'edit') return { kind: 'edit', clauseId: p.clauseId ?? '', en: p.en, es: p.es, scope: p.scope, slot: p.slot ?? null, when: p.when ?? null }
   return { kind: 'retire', clauseId: p.clauseId ?? '' }
 }
 
