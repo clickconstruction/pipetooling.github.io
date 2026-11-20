@@ -8,7 +8,7 @@
  * Send again and Copy the signing link, both through the one sender, and the list reads again after.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { AgreementRow, AgreementsQuery } from '../../lib/documents/agreementsLedger'
 import { DocumentsAgreementsTab } from './DocumentsAgreementsTab'
@@ -53,6 +53,17 @@ vi.mock('../../lib/contracts/personPaperSendIo', () => ({
   },
 }))
 // The Send window is its own file's to test: here it says what it was opened on, and its button says it sent.
+// Add to a list is its own file's to test: here it says which paper it was opened on, and its button says it added them.
+vi.mock('./PaperPartyAddToList', () => ({
+  PaperPartyAddToList: (p: { documentId: string; onAdded: (words: string) => void }) => (
+    <div data-testid="add-to-list-window">
+      {p.documentId}
+      <button type="button" onClick={() => p.onAdded('Noor Haddad is with Ridgeway Builders now.')}>
+        fake add
+      </button>
+    </div>
+  ),
+}))
 vi.mock('../contracts/ContractSendWindow', () => ({
   ContractSendWindow: (p: { again?: boolean; docId: string | null; target: { personName: string; documentName: string } | null; initialEmail: string; onSent: (s: { docId: string; emailed: boolean; planKind: null }) => void }) => (
     <div data-testid="send-window">
@@ -273,7 +284,7 @@ describe('DocumentsAgreementsTab', () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     const rows = await lines()
     expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringMatching(/^Not on a listMutual secrecy agreementWith Haddad Engineering · Noor Haddad signs, Structural engineernever openedSent Nov 19Send againCopy the signing link/),
+      expect.stringMatching(/^Not on a listMutual secrecy agreementWith Haddad Engineering · Noor Haddad signs, Structural engineernever openedSent Nov 19Add to a listSend againCopy the signing link$/),
       expect.stringMatching(/^Supply houseMutual secrecy agreementWith Tallgrass Supply Co\. · Lena Park signs, Branch managernever openedSent Nov 18Send againCopy the signing link$/),
       expect.stringMatching(/^CustomerSite secrecy agreementWith Ridgeway Builders · signed by Dana M\. Ruiz, Project managersigned ✓Signed Nov 17$/),
     ])
@@ -283,6 +294,28 @@ describe('DocumentsAgreementsTab', () => {
     // The chip that asks for them.
     fireEvent.click(screen.getByRole('button', { name: 'Outside companies' }))
     await waitFor(() => expect(io.asks[io.asks.length - 1]).toMatchObject({ kind: 'outside' }))
+  })
+
+  it('a paper whose party is on no list carries Add to a list, signed or not, and nobody else does', async () => {
+    const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
+    io.rows = [
+      row({ id: 'outside_agreement:p4', kind: 'outside_agreement', source_id: 'p4', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Haddad Engineering', ...off, facts: { status: 'sent', party_kind: 'none', signer_name: 'Noor Haddad' } }),
+      row({ id: 'outside_agreement:p5', kind: 'outside_agreement', source_id: 'p5', state: 'signed', paper_name: 'Credit terms letter', with_name: 'Haddad Engineering', ...off, facts: { status: 'signed', party_kind: 'none', signer_name: 'Noor Haddad' } }),
+      row({ id: 'supply_house_agreement:p1', kind: 'supply_house_agreement', source_id: 'p1', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Tallgrass Supply Co.', ...off, facts: { status: 'sent', party_kind: 'supply_house', signer_name: 'Lena Park' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Add to a list', 'Send again', 'Copy the signing link'])
+    expect(Array.from(rows[1]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Credit terms letter', 'Add to a list'])
+    expect(Array.from(rows[2]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link'])
+    // The press opens the window on that paper, and once they are on a list the list reads again.
+    const asksBefore = io.asks.length
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Add to a list' }))
+    expect((await screen.findByTestId('add-to-list-window')).textContent).toContain('p4')
+    fireEvent.click(screen.getByRole('button', { name: 'fake add' }))
+    expect(await screen.findByText('Noor Haddad is with Ridgeway Builders now.')).toBeTruthy()
+    await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
+    expect(screen.queryByTestId('add-to-list-window')).toBeNull()
   })
 
   it('only a paper that waits carries Send again and Copy the signing link', async () => {

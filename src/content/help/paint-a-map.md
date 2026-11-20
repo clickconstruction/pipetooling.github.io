@@ -522,6 +522,16 @@ The line under the press says we will see where they are while it is on. We keep
 
 A reader who does not press it shares no place. The map still works for them.
 
+The page also says how sure the reader's phone is.
+
+- A sure phone gets a green tick, with words such as *Your phone is sure within 15 ft.*
+- A weak signal reads *The signal is weak here.* The dot is still drawn.
+- A phone that gives only an area gets no dot. The page reads *Your phone is only giving the area you are in.*
+
+When a phone gives only an area, the page lists the steps to turn on **Precise Location**. The page names the switch nowhere else.
+
+The map pulls back to a dashed circle when that area is near the map. The reader is somewhere in the circle.
+
 ### See who opened it
 
 Open **Share** on the map again. Under the presses, **Who opened it** lists each reader.

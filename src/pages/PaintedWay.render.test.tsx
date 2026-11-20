@@ -5,6 +5,10 @@
  * and the page says what the company keeps before it asks. The reader's own position is read only
  * after their press, whose words say the company will see it. A dead link reads the same whatever
  * killed it. The sample sends nothing.
+ *
+ * How sure the reader's phone is (punch list #402, call 6): a sure reading keeps its words with a
+ * tick, a weak one says the signal is weak, and one that is only an area draws no dot, says nothing
+ * of where the reader stands, and names Precise Location there alone, after the same 4 second wait.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -13,10 +17,13 @@ import type { PaintedWayAsk, PaintedWayIo, PaintedWayView } from '../lib/painted
 import type { SharedPaintedMap } from '../lib/paintedMap/paintedMapLink'
 
 vi.mock('../components/paintedMap/PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number; kind?: string | null }>; me?: { lat: number } | null; frameMe?: boolean }) {
-    return <div data-testid="canvas" data-kinds={props.places.map((p) => p.kind ?? 'plain').join(',')}>lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'}</div>
+  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number; kind?: string | null }>; me?: { lat: number; area?: boolean } | null; frameMe?: boolean; frameMargin?: boolean; time?: unknown }) {
+    return <div data-testid="canvas" data-kinds={props.places.map((p) => p.kind ?? 'plain').join(',')}>lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'} area:{props.me?.area ? 'yes' : 'no'} circle:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'}</div>
   },
 }))
+/** Which phone the page takes itself to be on. The wait is the real one. */
+const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+vi.mock('../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../hooks/usePreciseLocation')>()), usePhoneKind: () => browser.kind }))
 
 import PaintedWay from './PaintedWay'
 
@@ -82,9 +89,17 @@ function phone() {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
+  browser.kind = 'iphone-safari'
   window.localStorage.clear()
   delete (navigator as unknown as { geolocation?: unknown }).geolocation
 })
+
+const whereBox = () => document.querySelector('[data-way-where]')
+const canvasText = () => screen.getByTestId('canvas').textContent ?? ''
+/** A reading as the phone hands it over. */
+const at = (latitude: number, longitude: number, accuracy: number) => ({ coords: { latitude, longitude, accuracy } })
+const wait = (ms: number) => act(() => { vi.advanceTimersByTime(ms) })
 
 describe('PaintedWay', () => {
   it('shows the map, its places and its line, and who sent it', async () => {
@@ -94,7 +109,7 @@ describe('PaintedWay', () => {
     expect(io.reads).toEqual(['q7m2kd4x9p'])
     expect(screen.getByText('Start at the truck gate.')).toBeTruthy()
     expect(screen.getByText('Made Up Plumbing')).toBeTruthy()
-    expect(await screen.findByTestId('canvas')).toHaveProperty('textContent', 'lines:1 dots:1,2 me:no frame:no')
+    expect(await screen.findByTestId('canvas')).toHaveProperty('textContent', 'lines:1 dots:1,2 me:no frame:no area:no circle:no time:no')
     const places = [...document.querySelectorAll('[data-way-place]')].map((e) => e.textContent)
     expect(places[0]).toContain('1Truck gateClose it behind you.')
     expect(places[1]).toContain('2Meter')
@@ -245,6 +260,157 @@ describe('PaintedWay', () => {
     act(() => p.ok!({ coords: { latitude: 29.5, longitude: -98.2012, accuracy: 6 } }))
     expect(document.querySelector('[data-way-where]')?.textContent).toContain('Where you are stays on your phone. We never see it.')
     expect(io.points).toEqual([])
+  })
+})
+
+describe('PaintedWay, how sure the reader’s phone is (#402)', () => {
+  /** The map open with Show where I am pressed, and the clock stood in for from there. */
+  const shown = async (io = fakeIo([OPEN]), path?: string) => {
+    const p = phone()
+    open(io, path)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show where I am' }))
+    vi.useFakeTimers()
+    return { p, io }
+  }
+
+  it('keeps a sure reading’s words and adds a tick, with no word about any switch', async () => {
+    const { p } = await shown()
+    act(() => p.ok!(at(29.50002, -98.199, 4.5)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    expect(whereBox()?.querySelector('b')?.textContent).toBe('You are on the painted line.')
+    expect(document.querySelector('[data-way-sure]')?.textContent).toBe('Your phone is sure within 15 ft.')
+    expect(document.querySelector('[data-way-sure] [data-precise-tick]')).toBeTruthy()
+    expect(whereBox()?.textContent).not.toMatch(/precise/i)
+    expect(canvasText()).toContain('me:yes frame:yes area:no circle:no time:no')
+  })
+
+  it('says a weak signal is weak, with the margin, and still does not name the switch', async () => {
+    const { p } = await shown()
+    // 35 m proves the switch is on. A stranger is not told so: the switch is not the trouble.
+    act(() => p.ok!(at(29.50002, -98.199, 35)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('weak')
+    expect(whereBox()?.querySelector('b')?.textContent).toBe('You are on the painted line.')
+    expect(document.querySelector('[data-way-weak]')?.textContent).toBe('The signal is weak here. Your phone is only sure within 120 ft.')
+    expect(document.querySelector('[data-way-sure]')).toBeNull()
+    expect(whereBox()?.textContent).not.toMatch(/precise/i)
+    expect(canvasText()).toContain('me:yes frame:yes area:no')
+  })
+
+  it('waits 4 seconds on a rough reading, drawing nobody, before it says the phone gives only an area', async () => {
+    const { p } = await shown()
+    // The middle of an area 3,200 m wide, a mile north of the map: the map itself is inside the circle.
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
+    expect(whereBox()?.textContent).toContain('Finding you…')
+    expect(canvasText()).toContain('me:no frame:no area:no circle:no')
+    wait(3999)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
+    expect(canvasText()).toContain('me:no')
+    wait(1)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+    const rough = document.querySelector('[data-way-rough]')!
+    expect(rough.querySelector('b')?.textContent).toBe('Your phone is only giving the area you are in.')
+    expect(rough.textContent).toContain('It is only sure within 2 miles, so the map cannot show where you stand. You are somewhere in this circle, 4 miles across.')
+    expect(rough.textContent).toContain('To see where you stand, turn on Precise Location:')
+    expect([...rough.querySelectorAll('ol[data-precise-steps] li')].map((li) => li.textContent)).toEqual(['Open the Settings app.', 'Tap Privacy & Security, then Location Services.', 'Tap Safari Websites.', 'Turn on Precise Location.', 'Come back to this screen.'])
+    expect(rough.querySelector('[data-precise-already-on]')?.textContent).toMatch(/^Already on\?/)
+    // No direction from the middle of an area, no margin dressed as sure, and never that the switch is off.
+    expect(whereBox()?.textContent).not.toMatch(/The start is|You are on|You are at|Your phone is sure|is off/)
+    // The whole circle and no dot, and the page's own frame for a dot stands down.
+    expect(canvasText()).toContain('me:yes frame:no area:yes circle:yes')
+    // Who sees the reader is still said, under it.
+    expect(whereBox()?.textContent).toContain('Made Up Plumbing sees where you are while this is on.')
+  })
+
+  it('leaves the picture on the map when the area is nowhere near it, and speaks of no circle', async () => {
+    const { p } = await shown()
+    // Sixty miles north: even the edge of the area is far from the map.
+    act(() => p.ok!(at(30.4, -98.2, 3200)))
+    wait(4000)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+    expect(document.querySelector('[data-way-rough]')?.textContent).not.toContain('in this circle')
+    expect(canvasText()).toContain('me:yes frame:no area:yes circle:no')
+  })
+
+  it('never says the phone gives an area when a better reading comes inside the wait', async () => {
+    const { p } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(2500)
+    act(() => p.ok!(at(29.50002, -98.199, 6)))
+    wait(10_000)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    expect(document.querySelector('[data-way-rough]')).toBeNull()
+    expect(canvasText()).toContain('me:yes frame:yes area:no circle:no')
+  })
+
+  it('shows the reader where they stand again on the first sure reading after an area', async () => {
+    const { p } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+    act(() => p.ok!(at(29.50002, -98.199, 5)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    expect(whereBox()?.querySelector('b')?.textContent).toBe('You are on the painted line.')
+    expect(canvasText()).toContain('me:yes frame:yes area:no circle:no')
+  })
+
+  it('starts the wait over when Show where I am is pressed again', async () => {
+    const { p } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide where I am' }))
+    expect(whereBox()).toBeNull()
+    expect(canvasText()).toContain('me:no frame:no area:no circle:no')
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
+    wait(3999)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
+    wait(1)
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+  })
+
+  it('gives an Android reader Android’s name for the switch and its own steps', async () => {
+    browser.kind = 'android'
+    const { p } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    const rough = document.querySelector('[data-way-rough]')!
+    expect(rough.textContent).toContain('To see where you stand, turn on Use precise location:')
+    expect([...rough.querySelectorAll('ol[data-precise-steps] li')].map((li) => li.textContent)).toEqual(['Press and hold the browser’s icon, then tap App info.', 'Tap Permissions, then Location.', 'Turn on Use precise location.', 'Come back to this screen.'])
+  })
+
+  it('speaks of the device where it cannot tell the phone, with one line for each kind', async () => {
+    browser.kind = 'other'
+    const { p } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    const rough = document.querySelector('[data-way-rough]')!
+    expect(rough.querySelector('b')?.textContent).toBe('This device only knows the area it is in.')
+    expect(rough.textContent).toContain('To see where you stand, turn on precise location on your phone:')
+    expect(rough.querySelectorAll('ul[data-precise-steps] li')).toHaveLength(2)
+    act(() => p.ok!(at(29.50002, -98.199, 35)))
+    expect(document.querySelector('[data-way-weak]')?.textContent).toBe('The signal is weak here. This device is only sure within 120 ft.')
+  })
+
+  it('reads the same on the sample, which still sends nothing', async () => {
+    const io = fakeIo([{ kind: 'gone' }])
+    const { p } = await shown(io, '/way/sample')
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    expect(document.querySelector('[data-way-rough] b')?.textContent).toBe('Your phone is only giving the area you are in.')
+    expect(whereBox()?.textContent).toContain('Where you are stays on your phone. We never see it.')
+    expect(io.points).toEqual([])
+  })
+
+  it('keeps a reading with no margin as it was: the words for where the reader stands, and no claim about how sure', async () => {
+    const { p } = await shown()
+    act(() => p.ok!({ coords: { latitude: 29.50002, longitude: -98.199, accuracy: Number.NaN } }))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    expect(whereBox()?.querySelector('b')?.textContent).toBe('You are on the painted line.')
+    expect(document.querySelector('[data-way-sure]')).toBeNull()
+    expect(document.querySelector('[data-way-weak]')).toBeNull()
   })
 })
 

@@ -33,6 +33,7 @@ import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { caseInput, isCaseVerb } from './devMcpCase.ts'
+import { dropKeptPlanInput } from './devMcpKeptPlans.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
 import { isTwinKeyVerb, twinKeyCommitment, twinKeyInput } from './devMcpTwinKey.ts'
@@ -138,6 +139,11 @@ export const WRITE_VERBS = {
   // write and unwinds it, so the plan names the number an item would take. The shape is devMcpCase.ts's.
   plan_case: { rpc: 'dev_case_write', step: 'plan' },
   apply_case: { rpc: 'dev_case_write', step: 'apply' },
+  // v2.7987 / 0.119.0 (punch list #315, upgrade 3a): a plan kept for a yes is taken off with a reason
+  // (dev_kept_plan_decide, migration 20261113120000). One step, like a revert: there is nothing to dry-run, the row
+  // stays with its reason, and a plan already decided is refused by the door. Keeping a plan is not a verb of its own:
+  // keep: true on plan_hr_entry, plan_person_doc or plan_person_report stores it after the dry run (devMcpKeptPlans.ts).
+  drop_kept_plan: { rpc: 'dev_kept_plan_decide', step: 'drop' },
   // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
@@ -1181,6 +1187,11 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const p: Json = { keep, take_off: takeOff }
     const n = keep.length + takeOff.length
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${n} mark${n === 1 ? '' : 's'}`, planHash }
+  }
+  if (verb === 'drop_kept_plan') {
+    const built = dropKeptPlanInput(input)
+    if (!built.ok) return { ok: false, error: built.error }
+    return { ok: true, rpc, step, body: built.body, dryRunBody: null, target: built.target, planHash: null }
   }
   if (isCaseVerb(verb)) {
     // v2.7976: the shape check is devMcpCase's, said in the door's own limits; the payload it builds is the one hashed and written.

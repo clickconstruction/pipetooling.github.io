@@ -154,6 +154,7 @@ export function PaperPartyPicker({
             </button>
           ))}
         </div>
+        <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Someone typed in can be added to a list later, from their line on Agreements.</p>
       </div>
     </div>
   )

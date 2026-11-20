@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below.
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Two older gaps in Record it… are noted under Seen on the live walk, for a small build of their own.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -120,6 +120,38 @@ One PR, client only. The fragment is `docs/recent-features/v2.7989.md`.
   line to change if her answer is the figure.
 - **The phone.** The grid no longer slides. Each month sits over its window, an earlier paper is a
   mark like A ✓, and the tick has a column of its own at the right edge.
+
+## Seen on the live walk (2026-11-20)
+
+v2.7989 went live with the Pages deploy of 2026-11-20 at 06:49 UTC. It was walked read-only the same
+night on clicktooling.com, in headless Chrome, signed in as the dev, with every write refused at the
+network layer.
+
+- **Four notices**, one for each state this card names: several missed windows and an open month, a
+  month dated from the bill on a notice that went by hand, an earlier paper with closed months that
+  still offer Note it as missed, and a draft with open months and work not billed yet. Each was read
+  at 1,440 px and at 375 px, in light and in dark.
+- **All sixteen looks** drew the ledger, with no element past the card's right edge and nothing
+  sliding sideways. On the phone the page was 375 px of 375, the card 324, and the tick a 44 by 44
+  target at the right edge.
+- **The doors.** Change ›, Correct the claim › and Set on the job › opened their editor or window on
+  every notice tried. Bill it from here › opened Bill Customer on a job linked to a customer. On a job
+  with no customer it answered *Link this job to a customer before billing.* Record it… opened the
+  already-mailed step at a desk, and on a phone once the footer was unfolded.
+- **A tick** on the draft, made in the walk's own browser, moved the line under the figure from *This
+  notice names Sep · 1 month* to *Sep, Oct · 2 months*. The section's head and the strip followed. The
+  three saves the desk then tried were refused, so nothing changed on the job.
+
+### Two gaps in Record it…, older than this card
+
+Both live in the footers, not in the months card, and both were there before v2.7989.
+
+1. **On a notice in Sent, or in Missed with no month still due, Record it… does nothing.** The press
+   sets `byHandOpen`, and only the draft, awaiting, ready, printed and held footers draw the step
+   (`byHandPane` in `LienDesk.tsx`). The sent footer and the missed line never draw it. Either the
+   months card leaves the press out there, or those two footers draw the step too.
+2. **On a phone with the footer folded, Record it… shows nothing until the footer is unfolded.** The
+   step draws in the footer's place. Unfolding the footer when `byHandOpen` turns on would show it.
 
 ## How to verify
 

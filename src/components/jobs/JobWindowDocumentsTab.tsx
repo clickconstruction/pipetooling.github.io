@@ -26,6 +26,7 @@ import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
 import { StatementsOfChargesSection } from '../charges/StatementsOfChargesSection'
 import { JobDocumentsChecklists } from './JobDocumentsChecklists'
+import { JobDocumentsStartChecks } from './JobDocumentsStartChecks'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { JobDocumentsIndexFolder } from './JobDocumentsIndexFolder'
@@ -367,6 +368,9 @@ export function JobWindowDocumentsTab({
 
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
       <StatementsOfChargesSection job={job} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
+
+      {/* Before we start (punch list #382, PR 4): what must be true before each stage, beside the checklists at the stage. For the job's desk alone. */}
+      <JobDocumentsStartChecks job={{ id: job.id, hcp_number: job.hcp_number, click_number: job.click_number, job_address: job.job_address, customer_name: job.customer_name, development_id: job.development_id, bid_id: job.bid_id, gcName: job.gcCustomer?.name ?? null }} onRequestTab={onRequestTab} />
 
       {/* Stage checklists as documents (punch list #237, PR 1): each stage's standing and every answer with its stamp; the office adds a check for this job inline. */}
       <JobDocumentsChecklists job={{ id: job.id, job_plans_link: job.job_plans_link, hcp_number: job.hcp_number, click_number: job.click_number, job_name: job.job_name, customer_name: job.customer_name, job_address: job.job_address }} onRequestTab={onRequestTab} />
