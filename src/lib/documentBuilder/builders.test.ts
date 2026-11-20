@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { DOCUMENT_BUILDER_TEAM, canUseDocumentBuilder } from './access'
-import { BUILDER_PARAM, DOCUMENT_BUILDERS, DOCUMENT_BUILDER_WORDS, builderChips, documentBuilderById, openBuilderFromSearch } from './builders'
+import { BUILDER_PARAM, DOCUMENT_BUILDERS, DOCUMENT_BUILDER_WORDS, documentBuilderById, openBuilderFromSearch } from './builders'
+import { firstDraftOf } from './firstDrafts'
+import { readPaperDef } from './definition'
 
 describe('who opens the Document builder', () => {
   it('is a dev and nobody else', () => {
@@ -40,20 +42,26 @@ describe('the registry', () => {
     expect(openBuilderFromSearch('')).toBeNull()
   })
 
-  it('says where the Sub NDA stands: a made-up job, nothing saved, no attorney', () => {
-    const subNda = documentBuilderById('sub-nda')
-    expect(subNda).not.toBeNull()
-    if (!subNda) return
-    expect(builderChips(subNda)).toEqual([
-      { tone: 'wait', words: 'On a made-up job' },
-      { tone: 'wait', words: 'Nothing is saved' },
-      { tone: 'warn', words: 'Not read by an attorney' },
-    ])
+  it('names who reads each builder before it goes out', () => {
+    expect(documentBuilderById('sub-nda')?.reader).toEqual({ unread: 'Not read by an attorney', readBy: 'Read by' })
+    for (const b of DOCUMENT_BUILDERS) {
+      expect(b.reader.unread.trim()).not.toBe('')
+      expect(b.reader.readBy.trim()).not.toBe('')
+    }
+  })
+
+  it('has a first draft for every builder, and a walked builder’s reads as a paper that keeps every rule', () => {
+    for (const b of DOCUMENT_BUILDERS) {
+      const draft = firstDraftOf(b)
+      expect(draft, b.id).not.toBeNull()
+      if (b.kind === 'walked') expect(readPaperDef(JSON.parse(JSON.stringify(draft))), b.id).toMatchObject({ ok: true })
+    }
+    expect(firstDraftOf({ id: 'nope', kind: 'filled', name: 'Nope', says: '', reader: { unread: '', readBy: '' } })).toBeNull()
   })
 
   it('reads in plain words', () => {
     const texts: string[] = [...Object.values(DOCUMENT_BUILDER_WORDS)]
-    for (const b of DOCUMENT_BUILDERS) texts.push(b.name, b.says, ...builderChips(b).map((c) => c.words))
+    for (const b of DOCUMENT_BUILDERS) texts.push(b.name, b.says, b.reader.unread, b.reader.readBy)
     expect(texts.flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 })
