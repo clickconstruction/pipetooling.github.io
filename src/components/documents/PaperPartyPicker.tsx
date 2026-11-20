@@ -44,6 +44,8 @@ export function PaperPartyPicker({
   const [attempt, setAttempt] = useState(0)
   const [customers, setCustomers] = useState<PartyCustomer[]>([])
   const [finding, setFinding] = useState(false)
+  const [customerFailure, setCustomerFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [customerAttempt, setCustomerAttempt] = useState(0)
 
   // The lists the window holds whole, read when it opens. A read that fails says so and offers to read again.
   useEffect(() => {
@@ -58,8 +60,11 @@ export function PaperPartyPicker({
     }
   }, [attempt])
 
-  // Customers are too many to hold: the find box asks for them by name once the typing rests.
+  // Customers are too many to hold: the find box asks for them by name once the typing rests. A search that fails says
+  // so and offers to read again, so a lost signal never reads as a customer the app does not keep.
   useEffect(() => {
+    // A new keystroke, a new chip or a Retry starts over: the old failure goes.
+    setCustomerFailure(null)
     if (!partyFindAsksCustomers(typed, chip)) {
       setCustomers([])
       setFinding(false)
@@ -75,10 +80,11 @@ export function PaperPartyPicker({
           setFinding(false)
         },
         // The roster and the supply houses still list: a customer search that fails leaves them out, never the window.
-        () => {
+        (e: unknown) => {
           if (!live) return
           setCustomers([])
           setFinding(false)
+          setCustomerFailure(recoveryFailureFromError(e, 'The customers did not read.'))
         },
       )
     }, 250)
@@ -86,7 +92,7 @@ export function PaperPartyPicker({
       live = false
       clearTimeout(timer)
     }
-  }, [typed, chip])
+  }, [typed, chip, customerAttempt])
 
   const lists = useMemo<PartyLists>(() => ({ roster, customerPeople: short?.customerPeople ?? [], supplyHouses: short?.supplyHouses ?? [], reps: short?.reps ?? [], customers }), [roster, short, customers])
   const rows = useMemo(() => partyRows(lists, typed, chip), [lists, typed, chip])
@@ -130,6 +136,7 @@ export function PaperPartyPicker({
           ))}
         </div>
         {failure ? <OfflineRetryPanel failure={failure} onRetry={() => setAttempt((n) => n + 1)} surface="paper-party-picker" idempotent /> : null}
+        {customerFailure ? <OfflineRetryPanel failure={customerFailure} onRetry={() => setCustomerAttempt((n) => n + 1)} surface="paper-party-picker-customers" idempotent /> : null}
         {hint || finding ? (
           <p style={{ margin: '0.2rem 0', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="paper-party-hint">
             {finding ? 'Finding customers…' : hint}
