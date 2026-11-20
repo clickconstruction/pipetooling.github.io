@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) · building resumed 2026-11-19 on Grace's word · v2.7976 the seat's reads of the numbers and plan_case (dev-mcp 0.118.0) · not built: the seat's verbs for the kept plans, Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
+status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) · building resumed 2026-11-19 on Grace's word · v2.7976 the seat's reads of the numbers and plan_case (dev-mcp 0.118.0) · v2.7987 the seat keeps, lists and drops a kept plan (dev-mcp 0.119.0) · not built: Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,8 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125, v2.7976
-next: Building resumed 2026-11-19 on Grace's word ("Please build"). In order: the seat's keep and list for the kept plans, the standing on the fact strip and the Timeline, the seat's plan_engagement, then 5b and 5c. Waiting on the owner's calls and not built: Apply and Drop from the tab, the mark on hours, the backfill of old exhibit numbers on any real file.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125, v2.7976, v2.7987
+next: Building resumed 2026-11-19 on Grace's word ("Please build"). In order: the standing on the fact strip and the Timeline, the seat's plan_engagement, then 5b and 5c. Waiting on the owner's calls and not built: Apply and Drop from the tab, the mark on hours, the backfill of old exhibit numbers on any real file.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -130,7 +130,7 @@ right to apply in the session on his word, as today.
 
 - **PR 3a, the database half (v2.7122, built):** migration `20261113120000`, the table, the two doors (`dev_kept_plan_keep`, `dev_kept_plan_decide`), the kernel, the bed. A plan with a file's bytes, a counsel-only plan and a change to a counsel-only document are refused at the door.
 - **PR 3a, the list (v2.7125, built):** *Waiting on you* on People → HR and on a person's file, as words only, with no Apply or Drop press.
-- **PR 3a, the seat (not built):** `keep` on a plan verb, `list_kept_plans` and `drop_kept_plan`, which need the pushed migration in the catalog.
+- **PR 3a, the seat (v2.7987, built, server 0.119.0):** `keep: true` with `words` on `plan_hr_entry`, `plan_person_doc` or `plan_person_report` keeps the plan after its dry run; `list_kept_plans(person?, id?, show?)` reads the plans that wait and one whole by id, with its arguments and hash, so any session applies it on his yes; the apply that lands marks its plan applied, and an apply of the kept arguments whose dry run no longer matches marks it stale; `drop_kept_plan(id, why)` takes one off.
 - **3b:** Apply and Drop from the tab. **3c:** evidence by Drive link and the case-item verbs join.
 - **His calls:** who may press Apply (any dev, or him alone); whether a kept plan expires.
 
