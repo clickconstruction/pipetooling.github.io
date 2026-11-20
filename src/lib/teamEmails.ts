@@ -59,6 +59,7 @@ export type TeamSampleEmailId =
   | 'portal_request_staff'
   | 'contract_for_signature'
   | 'contract_reminder'
+  | 'contract_signed_copy'
   | 'invitation'
   | 'sign_in'
   | 'task_reminder_fallback'
@@ -463,6 +464,16 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     render: { kind: 'sample', sample: 'contract_reminder' },
     manage: { tabId: 'settings-people', label: 'People & teams → Paper reminders by email' },
     reflects: ['whether paper reminders are on'],
+  },
+  {
+    id: 'contract_signed_copy',
+    label: 'Your signed copy',
+    when: { kind: 'once', label: 'When you sign an agreement the office emailed you', order: 42.7 },
+    recipients: { roles: ['subcontractor'], decidedBy: 'event', rule: 'The person who signed, at the address the paper was sent to.' },
+    sampleSubject: () => 'Your signed copy: Subcontractor agreement · Click Plumbing and Electrical',
+    render: { kind: 'sample', sample: 'contract_signed_copy' },
+    manage: { tabId: 'settings-contracts', label: 'Contracts & terms' },
+    reflects: ['the paper as it was signed'],
   },
   {
     id: 'test_email',

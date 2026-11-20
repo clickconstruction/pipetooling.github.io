@@ -6698,6 +6698,8 @@ A paper with an outside company is a line tagged *Customer*, *Supply house* or *
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8013 a waiting staff, sub or partner line says how many **reminders by email** went and when the next one is, and carries **Turn reminders off** or **Turn reminders on**: up to three, three days apart, each with a new signing link that ends the one before it ([`personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts)).
 The reminders are behind one switch that ships off, **Settings → People & teams → Paper reminders by email**, and a paper sent while it is off is never reminded.
+Since v2.8016 a person who signs an agreement the office emailed gets their **signed copy** by email as a PDF, and a paper of plain words or clauses has a PDF, opened with **Open the PDF** on its signed record ([`personPaperPdf.ts`](../supabase/functions/_shared/personPaperPdf.ts)).
+An older signed paper's PDF is made the first time someone opens it, and an hours statement, a W-9 and a certificate are never emailed.
 
 ### Party and signer (of a paper)
 
