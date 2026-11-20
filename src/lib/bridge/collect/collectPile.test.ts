@@ -5,7 +5,7 @@ import { COLLECT_RULES_DEFAULT, buildCollectPile, collectPaceFor, gcPaceHere, ty
 
 // The pile as read on Sunday 2026-10-25, the figures the Monday board drew.
 const TODAY = '2026-10-25'
-const STRUCTURA = 'c-structura'
+const SHEFFIELD = 'c-sheffield'
 const RLC = 'c-rlc'
 const SOUTHERN = 'c-southern'
 const HALDEN = 'c-halden'
@@ -17,7 +17,7 @@ const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
   customers: { [RLC]: { medianDays: 35, samples: 4 }, [HALDEN]: { medianDays: 74, samples: 1 }, [HANDI]: { medianDays: 6, samples: 10 }, [KESTRIN]: { medianDays: 30, samples: 31 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { [STRUCTURA]: 'commercial', [RLC]: 'commercial', [SOUTHERN]: 'commercial', [HALDEN]: 'commercial', [HANDI]: 'commercial', [KESTRIN]: 'commercial', [TOM]: 'residential' },
+  customerTypes: { [SHEFFIELD]: 'commercial', [RLC]: 'commercial', [SOUTHERN]: 'commercial', [HALDEN]: 'commercial', [HANDI]: 'commercial', [KESTRIN]: 'commercial', [TOM]: 'residential' },
   receipts: {},
   quality: null,
 }
@@ -38,18 +38,18 @@ describe('collectPaceFor', () => {
   const gcPace = { medianDays: 35, samples: 36 }
   it('reads the payer’s own median first, then the GC pace for a GC, then the segment, then the company', () => {
     expect(collectPaceFor({ payerId: HALDEN, isGc: true, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 74, source: 'own', samples: 1 })
-    expect(collectPaceFor({ payerId: STRUCTURA, isGc: true, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 35, source: 'gc', samples: 36 })
-    expect(collectPaceFor({ payerId: STRUCTURA, isGc: false, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 12, source: 'segment', samples: 150 })
+    expect(collectPaceFor({ payerId: SHEFFIELD, isGc: true, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 35, source: 'gc', samples: 36 })
+    expect(collectPaceFor({ payerId: SHEFFIELD, isGc: false, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 12, source: 'segment', samples: 150 })
     expect(collectPaceFor({ payerId: 'c-unknown', isGc: false, paySpeeds: speeds, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: 7, source: 'company', samples: 286 })
-    expect(collectPaceFor({ payerId: STRUCTURA, isGc: true, paySpeeds: speeds, gcPace, rules: { ...COLLECT_RULES_DEFAULT, gcPaceForNewGc: false } })).toEqual({ paceDays: 12, source: 'segment', samples: 150 })
-    expect(collectPaceFor({ payerId: STRUCTURA, isGc: true, paySpeeds: null, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: null, source: 'none', samples: 0 })
+    expect(collectPaceFor({ payerId: SHEFFIELD, isGc: true, paySpeeds: speeds, gcPace, rules: { ...COLLECT_RULES_DEFAULT, gcPaceForNewGc: false } })).toEqual({ paceDays: 12, source: 'segment', samples: 150 })
+    expect(collectPaceFor({ payerId: SHEFFIELD, isGc: true, paySpeeds: null, gcPace, rules: COLLECT_RULES_DEFAULT })).toEqual({ paceDays: null, source: 'none', samples: 0 })
   })
 })
 
 describe('buildCollectPile (v2.5848)', () => {
   const bills: CollectBill[] = [
-    // SkyLab: a pay application marked billed by hand Sep 24; Structura is the job's customer, not a GC by record.
-    bill('skylab', STRUCTURA, 'Structura, Inc. – Austin', '2026-09-24', 103_386.4, { sentFromHere: false }),
+    // SkyLab: a pay application marked billed by hand Sep 24; Sheffield is the job's customer, not a GC by record.
+    bill('skylab', SHEFFIELD, 'Sheffield, Inc. – Austin', '2026-09-24', 103_386.4, { sentFromHere: false }),
     // RLC: the oldest from March, a hand-marked one from Sep 21, one at 66 days.
     bill('rlc-273', RLC, 'RLC- Dunmere Mallin', '2026-03-16', 13_420),
     bill('rlc-651', RLC, 'RLC- Dunmere Mallin', '2026-09-21', 8_780, { sentFromHere: false }),
@@ -67,7 +67,7 @@ describe('buildCollectPile (v2.5848)', () => {
     bill('kn-663', KESTRIN, 'Kestrin Contracting', '2026-07-06', 1_829),
     bill('kn-789', KESTRIN, 'Kestrin Contracting', '2026-07-31', 454),
     // A residential customer with no history, two days old.
-    bill('tom', TOM, 'Tom Coyle', '2026-10-23', 215),
+    bill('tom', TOM, 'Toby Cadwell', '2026-10-23', 215),
     // A Collections job, a settled row and a shell with no day.
     bill('coll', 'c-old', 'An old GC', '2026-02-01', 19_522, { inCollections: true }),
     bill('settled', HANDI, 'B & D Construction', null, 0),

@@ -5,6 +5,10 @@
  * calls `send-physical-invoice-email` with `resend: true`: the function skips
  * the Ready-to-Bill gate and records nothing on the row — the bill keeps its
  * first-send evidence, and the send lands in the shared email log.
+ *
+ * It goes to whoever the bill went to (v2.7959, `paperBillResendRecipient`): the typed recipient, the GC's billing
+ * email on a bill to the GC, else the job's customer email. `readPaperBillResendRecipient` is the same answer for
+ * the confirm window, read before the press.
  */
 import { supabase } from './supabase'
 import { fetchJobWithDetailsById } from './fetchJobWithDetailsById'
@@ -13,14 +17,45 @@ import { buildPhysicalInvoicePdfBlob, physicalInvoicePdfFilename, physicalInvoic
 import { buildPhysicalInvoiceEmailBodies, physicalInvoiceEmailSubject } from './physicalInvoiceDocument'
 import { readEdgeFunctionErrorBody } from './readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { effectiveInvoiceParty, type InvoicePartyFields, type JobPartyFields } from './jobs/billToParty'
+import { paperBillNoAddressWords, paperBillResendRecipient, type GcBillingRow, type PaperBillRecipient } from './jobs/paperBillResend'
 
 const MAX_PDF_BASE64_CHARS = 5_500_000
 
 export type ResendPhysicalInvoiceEmailResult = { ok: true; sentTo: string } | { ok: false; message: string }
 
-/** The address the resend targets: the invoice's bill-to override, else the job customer email (the send function accepts either). */
-export function physicalResendRecipient(inv: { bill_to_email: string | null }, job: { customer_email: string | null }): string {
-  return (inv.bill_to_email ?? '').trim() || (job.customer_email ?? '').trim()
+/** The GC's billing address, read only when the bill went to the GC: the job carries the GC's id and name alone. */
+async function recipientFor(job: JobPartyFields & { customer_email?: string | null }, inv: InvoicePartyFields): Promise<PaperBillRecipient> {
+  let gc: GcBillingRow | null = null
+  const gcId = (job.gc_customer_id ?? '').trim()
+  if (gcId && effectiveInvoiceParty(job, inv) === 'gc') {
+    const { data, error } = await supabase.from('customers').select('id, billing_email, contact_info').eq('id', gcId).maybeSingle()
+    if (error) throw error
+    gc = data
+  }
+  return paperBillResendRecipient(job, inv, gc)
+}
+
+export type PaperBillRecipientRead = { ok: true; recipient: PaperBillRecipient } | { ok: false; message: string }
+
+/** Who a paper bill would be emailed again to, for the confirm window. Three small reads, nothing written. */
+export async function readPaperBillResendRecipient(invoiceRef: { id: string; job_id: string }): Promise<PaperBillRecipientRead> {
+  try {
+    const { data: inv, error: invErr } = await supabase.from('jobs_ledger_invoices').select('id, bill_to_email, bill_to_party').eq('id', invoiceRef.id).maybeSingle()
+    if (invErr) throw invErr
+    if (!inv) return { ok: false, message: 'Invoice not found on this job.' }
+    const { data: job, error: jobErr } = await supabase
+      .from('jobs_ledger')
+      .select('id, customer_id, gc_customer_id, bill_to_party, customer_email')
+      .eq('id', invoiceRef.job_id)
+      .maybeSingle()
+    if (jobErr) throw jobErr
+    if (!job) return { ok: false, message: 'Job not found or not visible.' }
+    const recipient = await recipientFor(job, inv)
+    return recipient.email ? { ok: true, recipient } : { ok: false, message: paperBillNoAddressWords(recipient.party) }
+  } catch (e) {
+    return { ok: false, message: formatErrorMessage(e, 'Could not read who this bill went to') }
+  }
 }
 
 export async function resendPhysicalInvoiceEmailForBilledInvoice(invoiceRef: {
@@ -38,8 +73,9 @@ export async function resendPhysicalInvoiceEmailForBilledInvoice(invoiceRef: {
     if (!inv) return { ok: false, message: 'Invoice not found on this job.' }
     if (inv.status !== 'billed') return { ok: false, message: 'Only a billed invoice can be re-emailed.' }
 
-    const recipient = physicalResendRecipient(inv, job)
-    if (!recipient) return { ok: false, message: 'Job has no customer email; add it on Edit Job.' }
+    const target = await recipientFor(job, inv)
+    if (!target.email) return { ok: false, message: paperBillNoAddressWords(target.party) }
+    const recipient = target.email
 
     const doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv)
     if (!doc) return { ok: false, message: 'This bill has no invoice document to render.' }

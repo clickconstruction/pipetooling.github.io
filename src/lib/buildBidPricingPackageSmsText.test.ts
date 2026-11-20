@@ -15,12 +15,12 @@ function row(p: Partial<PackageExternalRow> = {}): PackageExternalRow {
 describe('buildBidPricingPackageSmsText', () => {
   it('puts the Bid heading on the first line', () => {
     const text = buildBidPricingPackageSmsText({
-      bidLabel: 'BP183 SVP LIVPRI Med Gas',
+      bidLabel: 'BP183 SCW LMNZRJ Med Gas',
       plansLink: null,
       externalRows: [row()],
       totalRevenue: 100,
     })
-    expect(text.split('\n')[0]).toBe('Bid: BP183 SVP LIVPRI Med Gas')
+    expect(text.split('\n')[0]).toBe('Bid: BP183 SCW LMNZRJ Med Gas')
   })
 
   it('includes the Job plans line when plansLink is set', () => {

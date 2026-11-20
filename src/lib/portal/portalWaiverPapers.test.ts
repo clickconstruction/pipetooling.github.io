@@ -8,7 +8,7 @@ const row = (over: Partial<PortalWaiverRow>): PortalWaiverRow => ({
   audience: 'payer',
   jobId: 'j',
   jobLabel: '1002 · Cedar Bend',
-  jobAddress: '2530 Hunter Rd, San Marcos, TX 78666',
+  jobAddress: '4455 Hadley Rd, San Marcos, TX 78666',
   invoiceId: 'b2',
   billLabel: 'Bill 2 of 3',
   amount: 18200,

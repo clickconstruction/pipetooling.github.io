@@ -43,8 +43,8 @@ vi.mock('../bids/BidMailSetDoor', () => ({
 
 // The job's paper press reads the job itself (its own render test); here it stands in as what it was handed.
 vi.mock('../papers/MailPaperDoor', () => ({
-  MailPaperDoor: (p: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; messageId: string | null; mailFileCount: number }) => (
-    <span data-paper-door>{`${p.jobLabel}|${p.jobId}|${p.messageId}|${p.subject}|${p.senderAddress}|${p.mailFileCount}`}</span>
+  MailPaperDoor: (p: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; messageId: string | null; mailFileCount: number; mailLinks?: ReadonlyArray<string> }) => (
+    <span data-paper-door data-links={(p.mailLinks ?? []).join(' ')}>{`${p.jobLabel}|${p.jobId}|${p.messageId}|${p.subject}|${p.senderAddress}|${p.mailFileCount}`}</span>
   ),
 }))
 
@@ -72,7 +72,7 @@ const GLENN: Contact = {
 const OAK: JobTile = { key: 'bid:b-oak', kind: 'bid', num: 'B512', name: 'Oak Hill Clinic', day: { words: 'bid due Thu Nov 12 · 8 days', tone: 'soon' } }
 const ELM: JobTile = { key: 'bid:b-elm', kind: 'bid', num: 'B520', name: 'Elm Street Shell', day: { words: 'no due day', tone: '' } }
 
-const SUBJECT = 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid'
+const SUBJECT = 'Northeast Barlow Church Elementary Building @ San Antonio - Invitation to Bid'
 const line = (id: string, over: Partial<ThreadMessage> = {}): ThreadMessage => ({
   id,
   contactId: 'c-glenn',
@@ -232,6 +232,31 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     // The thread has no tile for this job, so the press names it the job; the sender is the thread's own address.
     expect(door.textContent).toBe('the job|j-579|m-job-file|Spec book|glenn@marrexbuilders.example|1')
     expect(document.querySelector('[data-line="m-job-bare"] [data-paper-door]')).toBeNull()
+  })
+
+  it('Gmail’s picture of a Drive link earns a job’s email no paper press; the link itself does, and is handed to the form once (v2.7954, v2.7973)', () => {
+    const pdf = { id: 'f1', name: 'spec-book.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    const preview = { ...pdf, id: 'f2', name: 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png', mime: 'image/png', icon: 'image' as const }
+    const link = { ...pdf, id: 'f3', name: 'Google Drive', kept: 'link' as const, url: 'https://drive.google.com/drive/folders/made-up-folder-for-a-test', icon: 'link' as const }
+    // The same link as the mail's text gave it, with the mark an email program left on its end: one link, not two.
+    const again = { ...link, id: 'f4', url: `${link.url}${String.fromCharCode(0xfffc)}` }
+    draw(fakeIo(), [
+      line('m-job-picture', { jobId: 'pipeline:j-579', invitation: null, subject: 'A picture', files: [preview] }),
+      line('m-job-preview', { jobId: 'pipeline:j-579', invitation: null, subject: 'The folder', files: [preview, link, again] }),
+      line('m-job-both', { jobId: 'pipeline:j-579', invitation: null, subject: 'Spec book', files: [pdf, preview, link] }),
+      line('m-bid-link', { jobId: 'bid:b-oak', invitation: null, subject: 'The folder', files: [preview, link] }),
+    ])
+    expect(document.querySelector('[data-line="m-job-picture"] [data-paper-door]')).toBeNull()
+    const onLink = document.querySelector('[data-line="m-job-preview"] [data-keep-paper] [data-paper-door]')!
+    expect(onLink.getAttribute('data-links')).toBe(link.url)
+    // The picture is still no file: the form is told the mail has none.
+    expect(onLink.textContent).toBe('the job|j-579|m-job-preview|The folder|glenn@marrexbuilders.example|0')
+    // Beside a real file the press shows, with the file counted and the link handed over.
+    const both = document.querySelector('[data-line="m-job-both"] [data-keep-paper] [data-paper-door]')!
+    expect(both.textContent).toBe('the job|j-579|m-job-both|Spec book|glenn@marrexbuilders.example|1')
+    expect(both.getAttribute('data-links')).toBe(link.url)
+    // A bid's press files bytes into a set, so a link alone still earns it none.
+    expect(document.querySelector('[data-line="m-bid-link"] [data-bid-door]')).toBeNull()
   })
 
   it('Open the bid closes the thread and opens the Bid Board on it', () => {

@@ -39,7 +39,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { BidFormModal, type BidFormAutosaveProps, type BidFormModalProps } from './BidFormModal'
 
 const values: BidEditFormValues = {
-  driveLink: '', plansLink: '', countToolingPlansLink: '', bidSubmissionLink: '', itbLinks: [], projectName: 'Emergency Animal Hospital Buda', projectId: '', developmentId: '', bidNumber: '503', address: '',
+  driveLink: '', plansLink: '', countToolingPlansLink: '', bidSubmissionLink: '', itbLinks: [], projectName: 'Edgerton Abbott Halloran Brandt', projectId: '', developmentId: '', bidNumber: '503', address: '',
   gcContactName: '', gcContactPhone: '', gcContactEmail: '', projectContactExpanded: true, estimatorId: '', accountManagerId: '', formServiceTypeId: 'st-1', bidDueDate: '', bidDueTime: '',
   estimatedJobStartDate: '', designDrawingPlanDate: '', schedule: { start: '', end: '', noEnd: false }, submittedTo: '', outcome: 'won', lossReason: '', lossCategory: null, bidValue: '922196.69', agreedValue: '', acceptedAlternateTags: [],
   declinedAlternateTags: [], profit: '', distanceFromOffice: '', robotOptOut: false, lastContact: '', notes: '', gcCustomerId: '', gcCustomerSearch: '',
@@ -54,7 +54,7 @@ function makeForm(): BidEditForm {
   const setters = Object.fromEntries(setterNames.map((n) => [n, vi.fn()])) as unknown as BidEditFormSetters
   return { values, setters, reset: vi.fn(), loadFromBid: vi.fn(), initialValues: values, markSaved: vi.fn(), missingFields: [], canSubmit: true }
 }
-const bid = { id: 'bid-1', project_name: 'Emergency Animal Hospital Buda', bid_number: '503', customer_id: null, gc_builder_id: null, bid_date_sent: '2026-10-06', outcome: 'won', service_type_id: 'st-1', working_board_archived_at: null, customers: null, bids_gc_builders: null, alternate_group_tags: [], accepted_alternate_tags: [], declined_alternate_tags: [] } as unknown as BidWithBuilder
+const bid = { id: 'bid-1', project_name: 'Edgerton Abbott Halloran Brandt', bid_number: '503', customer_id: null, gc_builder_id: null, bid_date_sent: '2026-10-06', outcome: 'won', service_type_id: 'st-1', working_board_archived_at: null, customers: null, bids_gc_builders: null, alternate_group_tags: [], accepted_alternate_tags: [], declined_alternate_tags: [] } as unknown as BidWithBuilder
 const autosave: BidFormAutosaveProps = { status: 'saved', dirty: false, retry: vi.fn(), closeFlushState: 'idle', retryClose: vi.fn(), keepEditing: vi.fn(), closeWithoutSaving: vi.fn() }
 function props(): BidFormModalProps {
   return {

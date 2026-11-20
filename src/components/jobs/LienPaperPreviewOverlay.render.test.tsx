@@ -16,9 +16,9 @@ const facts = { ownerName: '', ownerAddress: '', county: '', legalDescription: '
 const noticeGaps = lienPaperGaps('notice', facts)
 const affGaps = lienPaperGaps('affidavit', facts)
 const entries: LienPaperPreviewEntry[] = [
-  { key: 'a', title: '838 · Bruce Hall', kind: 'affidavit', deadline: 'File by Oct 15 · 10 days left', envelope: null, html: paintGaps(`<p>COUNTY OF ${gapToken(1)}</p><p>Legal: ${gapToken(2)}</p><p>Owner: ${gapToken(3)}</p>`, affGaps), gaps: affGaps, next: 'Draft affidavit', button: 'Fix the property' },
+  { key: 'a', title: '838 · Blake Hendry', kind: 'affidavit', deadline: 'File by Oct 15 · 10 days left', envelope: null, html: paintGaps(`<p>COUNTY OF ${gapToken(1)}</p><p>Legal: ${gapToken(2)}</p><p>Owner: ${gapToken(3)}</p>`, affGaps), gaps: affGaps, next: 'Draft affidavit', button: 'Fix the property' },
   { key: 'n', title: '804 · Selwick GC- Tire Barn', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: paintGaps(gapToken(1), noticeGaps), gcHtml: 'Lowbeck Contracting' }, html: '<p>Notice of Claim</p>', gaps: noticeGaps, next: 'Draft notice', button: 'Find the owner' },
-  { key: 'w', title: '878 · Tune 5- Seguin', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: 'TC/JP SEGUIN 2019 LLC', gcHtml: 'Tune 5' }, html: '<p>Notice of Claim</p>', gaps: [], next: 'Approve', button: null },
+  { key: 'w', title: '878 · Tune 5- Seguin', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: 'TN/JT SEFTON 7852 LLC', gcHtml: 'Tune 5' }, html: '<p>Notice of Claim</p>', gaps: [], next: 'Approve', button: null },
 ]
 
 describe('LienPaperPreviewOverlay', () => {
@@ -26,7 +26,7 @@ describe('LienPaperPreviewOverlay', () => {
     const onAct = vi.fn()
     const onClose = vi.fn()
     render(<LienPaperPreviewOverlay entries={entries} index={0} onIndex={() => {}} onClose={onClose} onAct={onAct} />)
-    expect(screen.getByTestId('lien-paper-preview-title').textContent).toBe('838 · Bruce Hall · Affidavit')
+    expect(screen.getByTestId('lien-paper-preview-title').textContent).toBe('838 · Blake Hendry · Affidavit')
     const banner = screen.getByTestId('lien-paper-preview-banner')
     expect(banner.getAttribute('data-tone')).toBe('red')
     expect(banner.textContent).toContain('3 details missing before this affidavit can be filed.')

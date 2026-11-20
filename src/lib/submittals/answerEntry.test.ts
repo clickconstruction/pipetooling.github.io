@@ -8,7 +8,7 @@ const row = { submitted_label: 'TOTO CT728 kit', submitted_manufacturer: 'TOTO',
 // BP375's WC-1, WC-2 as Wendi had it: five parts the GC sees, the flush valve already rejected by her own entry, and one order-only stop.
 const wc = [
   part('bowl', 'TOTO CT728CUVG#01', 1),
-  part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'structura', decision_source: 'entered' }),
+  part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'sheffield', decision_source: 'entered' }),
   part('seat', 'MAINLINE ML1055SSC000 WHT ELONG', 3),
   part('stop', 'BRASSCRA PLB113XP ANG', 4, { on_submittal: false }),
   part('carrier', 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', 5),
@@ -18,7 +18,7 @@ describe('answerLines', () => {
   it('one line per part the GC sees, in order, starting on the call each part carries', () => {
     const lines = answerLines(row, [wc[4]!, ...wc.slice(0, 4)])
     expect(lines.map((l) => l.key)).toEqual(['bowl', 'valve', 'seat', 'carrier'])
-    expect(lines[1]).toMatchObject({ head: 'TOTO TET2UB31#SS', current: 'rejected', currentNote: 'TET2UA31#SS', currentBy: 'structura', canClear: true })
+    expect(lines[1]).toMatchObject({ head: 'TOTO TET2UB31#SS', current: 'rejected', currentNote: 'TET2UA31#SS', currentBy: 'sheffield', canClear: true })
     expect(lines[2]).toMatchObject({ head: 'MAINLINE ML1055SSC000', words: 'WHT ELONG', current: null, canClear: true })
     expect(initialAnswerDrafts(lines).valve).toEqual({ decision: 'rejected', note: 'TET2UA31#SS' })
   })

@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { lienGateRow } from './lienGateRow'
 
 const doors = { property: true, contractor: true }
-const facts = { isSub: true, ownerName: 'RIZVI SYED ZULFIQAR', county: 'Bexar', legalDescription: 'CB 5791 BLK B LOT 7 FHA 60/0 3080002', gcName: 'RMC- Dudley Mason', gcAddress: '574 Co Rd 660, Devine TX 78016', noticeSentWords: 'sent Sep 22' }
+const facts = { isSub: true, ownerName: 'RIZVI SYED ZULFIQAR', county: 'Bexar', legalDescription: 'CB 9848 BLK B LOT 7 FHA 60/0 3080002', gcName: 'RGJ- Della Mackay', gcAddress: '454 Co Rd 660, Devine TX 78016', noticeSentWords: 'sent Sep 22' }
 
 describe('lienGateRow · every gate row is a press that opens its home (v2.7313)', () => {
   it('a failed gate keeps its named door; a passed one shows its fact and ends in Change ›', () => {
     expect(lienGateRow({ key: 'owner', ok: false }, facts, doors)).toEqual({ fact: 'RIZVI SYED ZULFIQAR', door: 'property_owner', doorWords: 'Fill in the record ›', title: 'Opens the property record at the owner of record' })
     expect(lienGateRow({ key: 'owner', ok: true }, facts, doors).doorWords).toBe('Change ›')
-    expect(lienGateRow({ key: 'legal', ok: true }, facts, doors)).toMatchObject({ fact: 'Bexar · CB 5791 BLK B LOT 7 FHA 60/0 3080002', door: 'property_legal', doorWords: 'Change ›' })
-    expect(lienGateRow({ key: 'contractor', ok: false }, facts, doors)).toMatchObject({ fact: 'RMC- Dudley Mason · 574 Co Rd 660, Devine TX 78016', door: 'contractor', doorWords: 'Add the address ›' })
+    expect(lienGateRow({ key: 'legal', ok: true }, facts, doors)).toMatchObject({ fact: 'Bexar · CB 9848 BLK B LOT 7 FHA 60/0 3080002', door: 'property_legal', doorWords: 'Change ›' })
+    expect(lienGateRow({ key: 'contractor', ok: false }, facts, doors)).toMatchObject({ fact: 'RGJ- Della Mackay · 454 Co Rd 660, Devine TX 78016', door: 'contractor', doorWords: 'Add the address ›' })
     expect(lienGateRow({ key: 'contractor', ok: true }, facts, doors).doorWords).toBe('Change ›')
     expect(lienGateRow({ key: 'homestead_answer', ok: false }, facts, doors)).toMatchObject({ door: 'property_homestead', doorWords: 'Answer it ›' })
     expect(lienGateRow({ key: 'homestead', ok: true }, facts, doors)).toMatchObject({ door: 'property_homestead', doorWords: 'Change ›' })

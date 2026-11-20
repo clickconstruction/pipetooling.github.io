@@ -22,7 +22,7 @@ const parts = [
   part('carrier', 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', 5),
   part('stop', 'BRASSCRA PLB113XP ANG', 6, { on_submittal: false }),
 ]
-const sources = { gcName: 'Structura', contacts: [{ id: 'c1', name: 'Marco Ruiz', email: 'marco@structura.test' }] }
+const sources = { gcName: 'Sheffield', contacts: [{ id: 'c1', name: 'Marco Ruiz', email: 'marco@sheffield.test' }] }
 const dana = [{ id: 'p1', room_id: 'room', name: 'Dana Whitfield', email: 'dana@arch.test', role: 'architect', may_decide: true, token: 't', how: 'named', invited_by: null, first_seen_at: null, last_seen_at: null, open_count: 0, closed_at: null, created_at: '', updated_at: '' }] as unknown as SubmittalPersonRow[]
 const line = (head: string) => screen.getByRole('group', { name: `Their answer on ${head}` })
 const tap = (head: string, answer: string) => fireEvent.click(within(line(head)).getByRole('button', { name: answer }))
@@ -36,7 +36,7 @@ describe('SubmittalAnswerDialog', () => {
     // Nobody is on the room: the picker opens on the bid's GC, and asks for nothing.
     const who = screen.getByLabelText('Who answered') as HTMLSelectElement
     expect(who.value).toBe('gc')
-    expect(Array.from(who.options).map((o) => o.text)).toEqual(['Structura · the GC on this bid', 'Marco Ruiz · at Structura', 'Someone else…'])
+    expect(Array.from(who.options).map((o) => o.text)).toEqual(['Sheffield · the GC on this bid', 'Marco Ruiz · at Sheffield', 'Someone else…'])
     expect(screen.queryByLabelText('Reviewer email')).toBeNull()
     expect(screen.getByTestId('reviewer-no-contact').textContent).toBe('Only for the record. Nobody is emailed or contacted.')
     // The order-only stop has no line; nothing is picked, so there is nothing to save.
@@ -52,7 +52,7 @@ describe('SubmittalAnswerDialog', () => {
     expect(save.textContent).toBe('Record 5 answers')
     fireEvent.click(save)
     const saved = onSave.mock.calls[0]![0]
-    expect(saved.person).toEqual({ name: 'Structura', email: null, role: 'builder' })
+    expect(saved.person).toEqual({ name: 'Sheffield', email: null, role: 'builder' })
     expect('on' in saved).toBe(false)
     expect(saved.writes.sets).toEqual([
       { decision: 'approved', note: '', partIds: ['bowl', 'seat', 'zurn', 'carrier'], row: false },
@@ -85,7 +85,7 @@ describe('SubmittalAnswerDialog', () => {
     const onSave = vi.fn<(a: AnswerSave) => void>()
     const carried = [
       part('bowl', 'TOTO CT728CUVG#01', 1, { review_decision: 'approved', reviewed_by_name: 'Dana Whitfield', decision_source: 'room' }),
-      part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'structura', decision_source: 'entered' }),
+      part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'sheffield', decision_source: 'entered' }),
     ]
     renderWithProviders(<SubmittalAnswerDialog item={item({ review_decision: 'rejected' })} parts={carried} people={dana} sources={sources} revLabel="Rev 2" onSave={onSave} onClose={() => {}} />)
     // Dana is on the room and may decide, so she is the opening pick; the GC is still offered.
@@ -130,7 +130,7 @@ describe('SubmittalAnswerDialog', () => {
     try {
       const carried = [
         part('bowl', 'TOTO CT728CUVG#01', 1),
-        part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'structura', decision_source: 'entered' }),
+        part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'sheffield', decision_source: 'entered' }),
         part('seat', 'MAINLINE ML1055SSC000 WHT ELONG', 3),
       ]
       const { unmount } = renderWithProviders(<SubmittalAnswerDialog item={item()} parts={carried} sources={sources} revLabel="Rev 1" focusPartId="seat" onSave={() => {}} onClose={() => {}} />)

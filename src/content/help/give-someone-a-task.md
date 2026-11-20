@@ -130,7 +130,7 @@ You can change the lines later. Open **Checklist → Manage**, press **⋮** on 
 
 ## Send a job as a task
 
-Tap the purple arrow on a job. It sits on the Jobs pipeline row, on the phone card's **Send as task**, and on the Job Detail header. The arrow opens the same dialog with the job on a bar above the text box. The bar reads {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task. On every task list the job then shows as a chip in front of it. The chip reads {{chip:purple|1016 · Mission faucet ↗}} and opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft. **×** turns it into an ordinary task with no job attached.
+Tap the purple arrow on a job. It sits on the Jobs pipeline row, on the phone card's **Send as task**, and on the Job Detail header. The arrow opens the same dialog with the job on a bar above the text box. The bar reads {{chip:purple|1016 PLUM · Marsden faucet}} with the address and customer under it. Type only the task. On every task list the job then shows as a chip in front of it. The chip reads {{chip:purple|1016 · Marsden faucet ↗}} and opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft. **×** turns it into an ordinary task with no job attached.
 
 ## Send a message thread as a task
 

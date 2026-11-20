@@ -259,11 +259,11 @@ describe('draft from the field report', () => {
     expect(inferTestReportDraft('Montelby Post Test', 'Test passed ,no hydrostatic loss detected')).toMatchObject({ testType: 'post_test', result: 'pass' })
     expect(inferTestReportDraft('Diagnostic (Residential) Hydrostatic Test POST', 'No hydrostatic loss detected. Test passed')).toMatchObject({ testType: 'post_test', result: 'pass' })
     expect(inferTestReportDraft('Diagnostic (Residential) Hydrostatic Test PRE', 'Failed - lost 2 inches of water')).toMatchObject({ testType: 'pre_test', result: 'fail' })
-    expect(inferTestReportDraft('Scarbrough Pretest', 'Hydrostatic- passed')).toMatchObject({ testType: 'pre_test', result: 'pass' })
+    expect(inferTestReportDraft('Vandermeer Pretest', 'Hydrostatic- passed')).toMatchObject({ testType: 'pre_test', result: 'pass' })
   })
 
   it('leaves the verdict open when the wording does not say, and never guesses on ordinary jobs', () => {
-    expect(inferTestReportDraft('Vasquez Pretest', 'Set up the test, waiting on the 60 minutes')).toEqual({ testType: 'pre_test', result: null, reason: 'Pre-Test from the job name' })
+    expect(inferTestReportDraft('Varga Pretest', 'Set up the test, waiting on the 60 minutes')).toEqual({ testType: 'pre_test', result: null, reason: 'Pre-Test from the job name' })
     expect(inferTestReportDraft('Pettlow Pinpoint', 'Break at the second wye')).toMatchObject({ testType: 'pinpoint', result: null })
     expect(inferTestReportDraft('Salinas Gas Test', 'Held at 8 oz')).toMatchObject({ testType: 'gas', result: null })
     expect(inferTestReportDraft('Tune 5 Seguin', 'Rough-in complete, passed inspection')).toBeNull()
@@ -271,7 +271,7 @@ describe('draft from the field report', () => {
   })
 
   it('does not mistake "no leaks" for a failure', () => {
-    expect(inferTestReportDraft('Malik Pretest', 'No leaks detected, did not lose any water')).toMatchObject({ result: 'pass' })
-    expect(inferTestReportDraft('Malik Pretest', 'Leaks detected under the slab')).toMatchObject({ result: 'fail' })
+    expect(inferTestReportDraft('Mavis Pretest', 'No leaks detected, did not lose any water')).toMatchObject({ result: 'pass' })
+    expect(inferTestReportDraft('Mavis Pretest', 'Leaks detected under the slab')).toMatchObject({ result: 'fail' })
   })
 })

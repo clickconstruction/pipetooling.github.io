@@ -13,13 +13,13 @@ const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
   customers: { rlc: { medianDays: 35, samples: 4 }, halden: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', tom: 'residential' },
+  customerTypes: { sheffield: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', tom: 'residential' },
   receipts: {},
   quality: null,
 }
 const bill = (key: string, payerId: string, payerName: string, billedYmd: string, usd: number, over: Partial<CollectBill> = {}): CollectBill => ({ key, jobId: `j-${key}`, payerId, payerName, billedYmd, usd, ...over })
 const bills: CollectBill[] = [
-  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  bill('skylab', 'sheffield', 'Sheffield, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
   bill('rlc-a', 'rlc', 'RLC- Dunmere Mallin', '2026-03-16', 13_420),
   bill('rlc-b', 'rlc', 'RLC- Dunmere Mallin', '2026-08-20', 55_151),
   bill('rlc-c', 'rlc', 'RLC- Dunmere Mallin', '2026-09-21', 8_780, { sentFromHere: false }),
@@ -28,7 +28,7 @@ const bills: CollectBill[] = [
   bill('tfh2', 'halden', 'TF Halden', '2026-07-06', 2_918),
   bill('hi', 'handi', 'B & D Construction', '2026-10-23', 14_220),
   bill('hi2', 'handi', 'B & D Construction', '2026-09-03', 350),
-  bill('tom', 'tom', 'Tom Coyle', '2026-10-23', 215),
+  bill('tom', 'tom', 'Toby Cadwell', '2026-10-23', 215),
   bill('coll', 'old', 'An old GC', '2026-02-01', 19_522, { inCollections: true }),
 ]
 const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(['j-skylab']), gcPayerIds: new Set(['rlc', 'halden', 'southern']), todayYmd: TODAY })
@@ -49,7 +49,7 @@ describe('collectBillsFromAr', () => {
 
 describe('collectWords (v2.5853)', () => {
   it('draws the legend in the bar’s order with Collections apart, in plain words', () => {
-    const legend = collectLegend(pile, { largestNotDue: { name: 'Structura', usd: 103_386, dueYmd: '2026-10-29', dueWords: 'Oct 29' } })
+    const legend = collectLegend(pile, { largestNotDue: { name: 'Sheffield', usd: 103_386, dueYmd: '2026-10-29', dueWords: 'Oct 29' } })
     expect(legend.map((l) => l.state)).toEqual(['notdue', 'promised', 'broken', 'late', 'doubtful', 'collections'])
     expect(legend[0]!.label).toBe(`$${Math.round(pile.byState.notdue.usd / 1000)}k not yet due`)
     expect(legend[2]!.words).toContain('promised for Oct 16.')

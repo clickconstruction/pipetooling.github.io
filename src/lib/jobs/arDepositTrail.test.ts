@@ -107,20 +107,20 @@ describe('buildArDepositTrail', () => {
   })
   it('the Elgin cheque: two removals, one of them from a job the archive lost, then the live one', () => {
     const rows = [
-      row({ payment_id: 'e1', live: false, job_number: '690', job_name: 'Mission Pet Health', amount: 855, applied_at: '2026-09-01T20:10:00Z', removed_at: '2026-09-02T15:35:00Z', removed_by: 'Taunya' }),
+      row({ payment_id: 'e1', live: false, job_number: '690', job_name: 'Marsden Pet Health', amount: 855, applied_at: '2026-09-01T20:10:00Z', removed_at: '2026-09-02T15:35:00Z', removed_by: 'Taunya' }),
       row({ payment_id: 'e2', live: false, job_number: null, job_name: null, amount: 885, applied_at: '2026-09-02T15:35:00Z', removed_at: '2026-09-02T16:22:00Z', removed_by: 'Robert' }),
-      row({ payment_id: 'e3', live: true, job_number: '', job_name: 'Hamilton Valley Management', amount: 885, applied_at: '2026-09-02T16:22:00Z', applied_by: 'Taunya' }),
+      row({ payment_id: 'e3', live: true, job_number: '', job_name: 'Hartwell Valley Management', amount: 885, applied_at: '2026-09-02T16:22:00Z', applied_by: 'Taunya' }),
     ]
     const t = buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!
     // e2's removal is within the move window of e3's apply → a move; e1's is not → taken off.
     // Each take-off reads right after its own job.
     expect(t.words).toBe(
-      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2',
+      '→ Hartwell Valley Management 9/2 by Taunya · was #690 Marsden Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2',
     )
     // As prod has it: the second removal (Robert's) is not a move, and both land the same day — each still reads after its own job.
     const twoOffs = rows.map((r) => (r.payment_id === 'e2' ? { ...r, removed_at: '2026-09-02T16:00:00Z' } : r))
     expect(buildArDepositTrail({ rows: twoOffs, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
-      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2 · taken off 9/2 by Robert',
+      '→ Hartwell Valley Management 9/2 by Taunya · was #690 Marsden Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2 · taken off 9/2 by Robert',
     )
   })
 })

@@ -76,7 +76,7 @@ export type TwinRungDryRun = { ok: true; reply: Json; twin: TwinRungTwinRow; fro
  */
 export function twinRungDryRun(p: TwinRungPayload, twin: TwinRungTwinRow | null, liveKeys: readonly TwinRungKeyRow[]): TwinRungDryRun {
   if (!twin) return { ok: false, refused: `No twin reads as ${p.twin}. plan_twin lists the fleet with each twin's rung.` }
-  if (twin.archived_at) return { ok: false, refused: `Nothing to plan: ${twin.email} is archived, and an archived twin has no ladder. Restore it at ${TWIN_PANEL_DOOR} first.` }
+  if (twin.archived_at) return { ok: false, refused: `Nothing to plan: ${twin.email} is archived, and an archived twin has no ladder. plan_twin_archive with restore: true brings it back first.` }
   const from = twinRungOf(twin.read_only)
   if (from === p.to) return { ok: false, refused: `Nothing to plan: ${twin.email} already stands on ${TWIN_RUNG_WORDS[from]}.` }
   const n = liveKeys.length

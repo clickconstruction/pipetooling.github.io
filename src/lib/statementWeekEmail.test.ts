@@ -59,7 +59,7 @@ const week = (items: OfficeWeekItem[]): OfficeWeekPayload => ({
 const opts = { dateLabel: 'Sun, Sep 27', roundUrl: 'https://app.test/jobs?tab=stages&round=1', recipientName: 'Taunya Smith', recipientUserId: 'u-taunya', timeZone: APP_CALENDAR_TZ }
 
 const late = item('Kestrin <& Sons>', 26000, 'ready', { expected_pay_by: '2026-09-20', promise_late: true, days_late: 7, last_word: { note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z', action: 'contacted', temperature: 'warm' } })
-const sample = week([late, item('Structura', 98000, 'needs_word'), item('Lowbeck', 22000, 'needs_certify', { owner_user_id: null, owner_name: null }), item('Halden', 30000, 'done', { owner_user_id: 'u-taunya', owner_name: 'Taunya Smith' }), item('Skipped', 12000, 'skipped')])
+const sample = week([late, item('Sheffield', 98000, 'needs_word'), item('Lowbeck', 22000, 'needs_certify', { owner_user_id: null, owner_name: null }), item('Halden', 30000, 'done', { owner_user_id: 'u-taunya', owner_name: 'Taunya Smith' }), item('Skipped', 12000, 'skipped')])
 
 describe('the office week payload', () => {
   it('is told apart from the per-sender round', () => {
@@ -78,7 +78,7 @@ describe('groupOfficeWeek', () => {
     const groups = groupOfficeWeek(sample, 'u-taunya')
     expect(groups.map((g) => [groupTitle(g), g.items.map((i) => i.gc_name), g.total, g.toDo, g.late])).toEqual([
       ['Your accounts', ['Halden'], 30000, 0, 0],
-      ['Call Malachi', ['Kestrin <& Sons>', 'Structura'], 124000, 2, 1],
+      ['Call Malachi', ['Kestrin <& Sons>', 'Sheffield'], 124000, 2, 1],
       ['No account man yet', ['Lowbeck'], 22000, 1, 0],
     ])
   })

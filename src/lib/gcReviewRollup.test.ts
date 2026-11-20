@@ -97,7 +97,7 @@ describe('buildGcReviewRollup', () => {
   })
 
   it('groups by GC with the No-GC bucket last and reconciling grand total', () => {
-    const a = job({ id: 'j1', gcCustomer: KESTRIN, customer_name: 'Rosemary Garza' })
+    const a = job({ id: 'j1', gcCustomer: KESTRIN, customer_name: 'Robin Gilroy' })
     const b = job({ id: 'j2', gcCustomer: LOWBECK })
     const c = job({ id: 'j3' }) // no GC
     const rollup = buildGcReviewRollup(
@@ -112,7 +112,7 @@ describe('buildGcReviewRollup', () => {
     expect(rollup.groups.map((g) => g.key)).toEqual(['gc-kestrin', 'gc-lowbeck', GC_REVIEW_NO_GC_KEY])
     expect(rollup.groups[2]!.gcName).toBe('Not billed to a GC')
     expect(rollup.grandTotal).toBe(1400)
-    expect(rollup.groups[0]!.rows[0]!.customerName).toBe('Rosemary Garza')
+    expect(rollup.groups[0]!.rows[0]!.customerName).toBe('Robin Gilroy')
   })
 
   it("groupBy: 'development' groups by the job's development with its own bucket label (v2.1204)", () => {

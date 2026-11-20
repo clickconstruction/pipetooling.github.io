@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { addGcsButtonLabel, filterPickableGcs, tickedSummary } from './gcRecipientPicker'
 
 const customers = [
-  { id: 'lowbeck', name: 'Lowbeck Contracting', address: '311 E Illinois Ave, Palatine, IL' },
+  { id: 'lowbeck', name: 'Lowbeck Contracting', address: '295 E Ibsen Ave, Palatine, IL' },
   { id: 'turner', name: 'Turner Construction', address: '550 W Adams St, Chicago, IL' },
   { id: 'pepper', name: 'Pepper Construction', address: '643 N Orleans St, Chicago, IL' },
   { id: 'skender', name: 'Skender', address: null },

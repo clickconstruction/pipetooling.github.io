@@ -14,9 +14,9 @@ function cand(overrides: Partial<HygieneCandidate> & { id: string }): HygieneCan
 
 describe('normalizePhone', () => {
   it('keeps digits and drops a leading US 1', () => {
-    expect(normalizePhone('(832) 433-4984')).toBe('8324334984')
-    expect(normalizePhone('1-832-433-4984')).toBe('8324334984')
-    expect(normalizePhone('832 433 4984')).toBe('8324334984')
+    expect(normalizePhone('(832) 555-0126')).toBe('8325550126')
+    expect(normalizePhone('1-832-555-0126')).toBe('8325550126')
+    expect(normalizePhone('832 555 0126')).toBe('8325550126')
   })
 
   it('rejects blanks and too-short fragments', () => {
@@ -37,8 +37,8 @@ describe('normalizeEmail', () => {
 describe('analyzeCandidates', () => {
   it('flags a same-column duplicate, keeping the better rank', () => {
     const rows = [
-      cand({ id: 'joel4', phone_number: '832 433 4984', rank_order: 4 }),
-      cand({ id: 'joel10', phone_number: '832-433-4984', rank_order: 10 }),
+      cand({ id: 'joel4', phone_number: '832 555 0126', rank_order: 4 }),
+      cand({ id: 'joel10', phone_number: '832-555-0126', rank_order: 10 }),
     ]
     const h = analyzeCandidates(rows)
     expect(h.duplicateOf).toEqual({ joel10: 'joel4' })
@@ -46,16 +46,16 @@ describe('analyzeCandidates', () => {
 
   it('matches on email when phones differ', () => {
     const rows = [
-      cand({ id: 'a', email: 'cade@example.com', phone_number: '318 632 1034', rank_order: 1 }),
-      cand({ id: 'b', email: 'CADE@example.com', phone_number: '830-221-7757', rank_order: 2 }),
+      cand({ id: 'a', email: 'cade@example.com', phone_number: '318 555 0151', rank_order: 1 }),
+      cand({ id: 'b', email: 'CADE@example.com', phone_number: '830-555-0143', rank_order: 2 }),
     ]
     expect(analyzeCandidates(rows).duplicateOf).toEqual({ b: 'a' })
   })
 
   it('reports cross-role membership instead of duplicates for different columns', () => {
     const rows = [
-      cand({ id: 'p', role_id: 'plumber', phone_number: '318 632 1034', rank_order: 1 }),
-      cand({ id: 'h', role_id: 'hvac', phone_number: '318 632 1034', rank_order: 9 }),
+      cand({ id: 'p', role_id: 'plumber', phone_number: '318 555 0151', rank_order: 1 }),
+      cand({ id: 'h', role_id: 'hvac', phone_number: '318 555 0151', rank_order: 9 }),
     ]
     const h = analyzeCandidates(rows)
     expect(h.duplicateOf).toEqual({})
@@ -75,8 +75,8 @@ describe('analyzeCandidates', () => {
       cand({ id: 'contacted', rank_order: 1, last_contact: '2026-08-01T00:00:00Z' }),
       cand({ id: 'next', rank_order: 2 }),
       cand({ id: 'later', rank_order: 3 }),
-      cand({ id: 'dup', rank_order: 4, phone_number: '830 992 0236' }),
-      cand({ id: 'dupOf', rank_order: 9, phone_number: '(830) 992-0236' }),
+      cand({ id: 'dup', rank_order: 4, phone_number: '830 555 0115' }),
+      cand({ id: 'dupOf', rank_order: 9, phone_number: '(830) 555-0115' }),
       cand({ id: 'other', role_id: 'plumber', rank_order: 1 }),
     ]
     const h = analyzeCandidates(rows)

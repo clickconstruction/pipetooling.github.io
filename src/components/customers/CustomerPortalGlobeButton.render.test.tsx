@@ -108,9 +108,9 @@ describe('CustomerPortalGlobeButton', () => {
     ]
     slugRowMock.row = null
     rpcMock.mockClear()
-    renderWithProviders(<CustomerPortalGlobeButton customerId="c9" customerName="Diamondback" />)
+    renderWithProviders(<CustomerPortalGlobeButton customerId="c9" customerName="Davenport" />)
     await settle()
-    fireEvent.click(screen.getByLabelText("Open Diamondback's customer portal link"))
+    fireEvent.click(screen.getByLabelText("Open Davenport's customer portal link"))
     await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
     expect(screen.getByText('Turn portal back on')).toBeTruthy()
     expect(rpcMock).not.toHaveBeenCalled()

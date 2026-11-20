@@ -34,10 +34,10 @@ const envelope: LegalEnvelope = {
 }
 
 const job = {
-  jobId: 'j891', label: '891', name: 'Tune 5- Liberty Hill', address: '11730 TX-29, Liberty Hill, TX 78642', balance: 27_199, agingDays: 54, collectionsNote: null, collectionsBy: null, collectionsYmd: null,
+  jobId: 'j891', label: '891', name: 'Tune 5- Liberty Hill', address: '60305 TX-29, Liberty Hill, TX 78642', balance: 27_199, agingDays: 54, collectionsNote: null, collectionsBy: null, collectionsYmd: null,
   contract: { kind: 'signed', contractId: 'c1', revision: 1, signedAt: '2026-03-03T15:00:00Z', signerName: 'Crystal Brund', sentAt: '2026-03-01T15:00:00Z' },
   swornMissing: [], record: { bill: 'sent', field: 'gps', dispute: false, awaitingApproval: 0 }, primaryInvoiceId: null, primaryInvoiceOpen: 0,
-  property: { key: 'p1', address: '11730 TX-29, Liberty Hill, TX 78642', county: 'Williamson', precinct: '2', precinctNote: '', owner: 'JBI LIBERTY HILL LLC', legalDescription: 'Lot 1, Block A', parcelId: '', propertyKind: 'non_residential', homestead: false },
+  property: { key: 'p1', address: '60305 TX-29, Liberty Hill, TX 78642', county: 'Williamson', precinct: '2', precinctNote: '', owner: 'JCF LORIMER HILL LLC', legalDescription: 'Lot 1, Block A', parcelId: '', propertyKind: 'non_residential', homestead: false },
 } as unknown as LegalJobLine
 
 const packet = { account: { jobs: [job] }, paper: { envelopes: [envelope] }, todayYmd: '2026-10-07' } as unknown as Pick<LegalPacket, 'account' | 'paper' | 'todayYmd'>
@@ -56,7 +56,7 @@ describe('lienStopEvidence', () => {
       ['Went out', 'September 22, 2026 · certified mail, return receipt'],
       ['To', 'owner of record · original contractor'],
       ['Covers', 'July 2026, August 2026'],
-      ['Property', '11730 TX-29, Liberty Hill, TX 78642 · Williamson County · commercial'],
+      ['Property', '60305 TX-29, Liberty Hill, TX 78642 · Williamson County · commercial'],
       ['Document', 'held by the office'],
     ])
     expect(c.href).toBeNull()
@@ -92,7 +92,7 @@ describe('lienStopEvidence', () => {
     ])
     expect(v.checklist![0]!.detail).toBe('July 2026, August 2026 · mailed September 22, 2026, certified mail, return receipt')
     expect(v.checklist![1]!.detail).toContain('not filed yet · the office’s day is Dec 15')
-    expect(v.checklist![5]!.detail).toBe('owner of record JBI LIBERTY HILL LLC · legal description on file · Williamson County')
+    expect(v.checklist![5]!.detail).toBe('owner of record JCF LORIMER HILL LLC · legal description on file · Williamson County')
     expect(v.checklistNote).toBe('2 of 6 are not on file yet. The list is the one the packet prints as exhibits.')
     expect(v.venue).toBe('A lien foreclosure goes to district court in Williamson County — a justice court cannot foreclose a lien on land (Gov’t Code § 27.031(b)). The money claim alone: Williamson County · Justice Court, Precinct 2.'.replace('Gov’t', "Gov't"))
     expect(v.move).toBe('COUNSEL')

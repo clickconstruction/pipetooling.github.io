@@ -172,7 +172,7 @@ describe('resolveRoughQtyOnClose', () => {
 
 describe('saveAsAssemblyDefaultName', () => {
   it('joins the count name and the project name with " - "', () => {
-    expect(saveAsAssemblyDefaultName('I-6', 'MPH LIVSTE')).toBe('I-6 - MPH LIVSTE')
+    expect(saveAsAssemblyDefaultName('I-6', 'MCK LGLBPH')).toBe('I-6 - MCK LGLBPH')
   })
   it('trims and collapses whitespace on both halves', () => {
     expect(saveAsAssemblyDefaultName('  SS-8 ', ' Medina  Valley ISD ')).toBe('SS-8 - Medina Valley ISD')

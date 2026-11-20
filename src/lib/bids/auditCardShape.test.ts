@@ -7,7 +7,7 @@ const missed = (label: string, count: number, ext: number): DiffEntry => ({ key:
 const added = (label: string, count: number, ext: number): DiffEntry => ({ key: `a:${label}`, label, robotCount: count, ourCount: 0, robotExt: ext, ourExt: 0, impact: ext })
 const gap = (label: string, robot: number, ours: number, robotExt: number, ourExt: number): DiffEntry => ({ key: `g:${label}`, label, robotCount: robot, ourCount: ours, robotExt, ourExt, impact: robotExt - ourExt })
 
-// b476 MPH Casa Linda as it read on 2026-09-29: four of the eight missed rows were added rows under another name.
+// b476 MCK Colby Lachance as it read on 2026-09-29: four of the eight missed rows were added rows under another name.
 const diff: TakeoffDiff = {
   missed: [missed('ft of 2IN WASTE', 471.8, 62311), missed('ft of 1 1/2IN WASTE', 270.1, 33946), missed('SS', 4, 21183), missed('RENTALS/TRAVEL', 1, 20000), missed('EEW', 2, 1900), missed('OM-1', 1, 4200), missed('S-3', 1, 1650)],
   added: [added('ft of 2" Vent', 393, 55820), added('Travel & Rentals (per mile)', 249, 19920), added('Med Gas Outlet (O2/SC)', 21, 19950), added('Emergency Eyewash', 2, 1880), added('Oxygen Manifold', 1, 4300), added('Service/Mop Basin', 1, 1700)],

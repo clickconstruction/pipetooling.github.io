@@ -45,7 +45,7 @@ describe('buildEmailPreviewHtml', () => {
       'Release of lien — {{project}}',
       'Attached is the release ({{form_label}}, {{amount}}) for {{project}}.',
     )
-    expect(html).toContain('Release of lien — Kent — 414 Candelaria, Helotes, TX')
+    expect(html).toContain('Release of lien — Kent — 274 Chilton, Helotes, TX')
     expect(html).toContain('(Conditional · progress, $1,250.00)')
   })
 

@@ -64,7 +64,7 @@ const byBid = new Map<string, BidJobAccountRow[]>([
 ])
 const bids = [
   bid({}),
-  bid({ id: 'b375', bid_number: '375', project_name: 'SkyLab BA-02N', estimated_job_start_date: '2026-10-07', bids_gc_builders: { name: 'Structura' } as BidWithBuilder['bids_gc_builders'] }),
+  bid({ id: 'b375', bid_number: '375', project_name: 'SkyLab BA-02N', estimated_job_start_date: '2026-10-07', bids_gc_builders: { name: 'Sheffield' } as BidWithBuilder['bids_gc_builders'] }),
   bid({ id: 'b412', bid_number: '412', project_name: 'Vaughn residence', estimated_job_start_date: '2026-09-24', estimator_id: 'u-bill', estimator: { id: 'u-bill', name: 'Bill', email: 'b@x.test' } }),
   bid({ id: 'b402', bid_number: '402', project_name: 'Tune 5 · Buda', outcome: 'won', estimated_job_start_date: null, outcome_at: '2026-09-13', estimator_id: 'u-wendi', estimator: { id: 'u-wendi', name: 'Wendi', email: 'w@x.test' } }),
 ]

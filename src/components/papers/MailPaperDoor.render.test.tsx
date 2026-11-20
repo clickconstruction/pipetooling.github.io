@@ -59,6 +59,52 @@ describe('MailPaperDoor', () => {
     expect(await screen.findByText(/Kept on Bunker: Task list items from the owner\./)).toBeTruthy()
   })
 
+  describe('the mail’s links (v2.7973)', () => {
+    const DOC = 'https://docs.google.com/document/d/1MadeUpDocKeyForATest_0123456789abcdefghij/edit?usp=sharing'
+    const FOLDER = 'https://drive.google.com/drive/folders/1MadeUpFolderKeyForATest0123456789'
+    const open = async (io: JobPlansIo, mailLinks?: string[]) => {
+      renderWithProviders(<MailPaperDoor io={io} jobId="j1" jobLabel="JP991" subject="Spec book" senderAddress="sam@reece.example" at="2025-07-07T15:00:00Z" mailLinks={mailLinks} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Keep this mail as a paper on JP991' }))
+      return screen.findByTestId('mail-paper-form')
+    }
+    const linkBox = (form: HTMLElement) => form.querySelector('input[placeholder^="A Drive link"]') as HTMLInputElement
+
+    it('one link fills the Link box, says where it came from, and is kept on the paper', async () => {
+      const io = fakeIo()
+      const form = await open(io, [DOC])
+      expect(linkBox(form).value).toBe(DOC)
+      expect(screen.getByTestId('mail-paper-link-filled').textContent).toContain('Filled from the mail. Change it if the paper lives somewhere else.')
+      expect(screen.getByRole('link', { name: /Open it/ }).getAttribute('href')).toBe(DOC)
+      expect(screen.queryByTestId('mail-paper-link-pick')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
+      await waitFor(() => expect(io.keepPaper).toHaveBeenCalled())
+      expect((io.keepPaper as ReturnType<typeof vi.fn>).mock.calls[0]![0].draft.link).toBe(DOC)
+    })
+
+    it('two links offer a pick, the first filled; a link typed over them is kept as typed', async () => {
+      const io = fakeIo()
+      const form = await open(io, [DOC, FOLDER])
+      const pick = screen.getByTestId('mail-paper-link-pick') as HTMLSelectElement
+      expect(Array.from(pick.options).map((o) => o.textContent)).toEqual(['1. Google Doc', '2. Drive folder'])
+      expect(pick.value).toBe(DOC)
+      fireEvent.change(pick, { target: { value: FOLDER } })
+      expect(linkBox(form).value).toBe(FOLDER)
+      fireEvent.change(linkBox(form), { target: { value: 'https://drive.google.com/drive/folders/1AnotherMadeUpKey' } })
+      expect(screen.queryByTestId('mail-paper-link-filled')).toBeNull()
+      expect(Array.from((screen.getByTestId('mail-paper-link-pick') as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(['another link', '1. Google Doc', '2. Drive folder'])
+      fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
+      await waitFor(() => expect(io.keepPaper).toHaveBeenCalled())
+      expect((io.keepPaper as ReturnType<typeof vi.fn>).mock.calls[0]![0].draft.link).toBe('https://drive.google.com/drive/folders/1AnotherMadeUpKey')
+    })
+
+    it('a mail with no link leaves the Link box empty, as before', async () => {
+      const form = await open(fakeIo())
+      expect(linkBox(form).value).toBe('')
+      expect(screen.queryByTestId('mail-paper-link-filled')).toBeNull()
+      expect(screen.queryByTestId('mail-paper-link-pick')).toBeNull()
+    })
+  })
+
   it('names the part on a job that has none, from the site’s parts', async () => {
     const io = fakeIo({ read: vi.fn(async () => ({ job: { id: 'j1', plan_part_id: null, development_id: 'd1', development_name: 'Quail Ridge', job_plans_link: null }, part: null, sets: [], developmentParts: [], names: {} })) })
     renderWithProviders(<MailPaperDoor io={io} jobId="j1" jobLabel="JP991" subject="Spec book" senderAddress="sam@reece.example" at="2025-07-07T15:00:00Z" />)
@@ -109,6 +155,28 @@ describe('MailPaperDoor', () => {
     const keepIt = () => fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
     /** The color on the screen, since *did not land* once drew in green. */
     const colorOf = (kept: HTMLElement) => kept.querySelector('p')!.getAttribute('style') ?? ''
+
+    it('a signature’s logo and a Drive link’s preview stay out of the paper’s folder, and the line says so (v2.7969)', async () => {
+      const filesIo = filesIoOf({
+        attachmentsOf: vi.fn(async () => [file('p1', 'image001.png'), file('a1', 'spec-book.pdf'), file('p2', 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png')]),
+      })
+      await openForm(keptPaper(), filesIo)
+      keepIt()
+      const kept = await screen.findByTestId('mail-paper-kept')
+      await waitFor(() => expect(kept.textContent).toContain('The mail’s file is in the paper’s folder. 2 pictures inside the mail’s words were left out, logos or link previews.'))
+      expect((filesIo.saveAttachment as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1])).toEqual(['a1'])
+      expect(kept.getAttribute('data-tone')).toBe('success')
+      expect(screen.queryByRole('button', { name: /again/ })).toBeNull()
+    })
+
+    it('a mail with only such a picture keeps the paper and sends nothing', async () => {
+      const filesIo = filesIoOf({ attachmentsOf: vi.fn(async () => [file('p1', 'image001.png')]) })
+      await openForm(keptPaper(), filesIo)
+      keepIt()
+      const kept = await screen.findByTestId('mail-paper-kept')
+      await waitFor(() => expect(kept.textContent).toContain('The mail had no file to keep. One picture inside the mail’s words was left out, a logo or a link’s preview.'))
+      expect(filesIo.saveAttachment).not.toHaveBeenCalled()
+    })
 
     it('all landed reads green', async () => {
       await openForm(keptPaper(), filesIoOf({ attachmentsOf: vi.fn(async () => [file('a1', 'spec-book.pdf')]) }))

@@ -14,7 +14,7 @@ Those cards are Ready to Bill, Assigned Jobs, and Superintendent Jobs. You tap t
 A blue phone means the job has a customer number on file. Tap it to call. The mis-tap guard and **Log call** notes are there too. A **red phone** means there's no number yet. Tap it and a note goes straight to the Dispatch inbox:
 
 :::example What Dispatch receives
-Add a customer phone number for HCP 846 - David and Diana Uhl
+Add a customer phone number for HCP 846 - Doris and Derek Underhill
 :::
 
 You'll see a confirmation toast. If someone already asked, tapping again just tells you the note is already in. There are no duplicates. Need the number urgently? Call Dispatch instead.
@@ -36,7 +36,7 @@ That happens when your screen is showing a stale copy of the job. Nothing is sen
 You don't have to call to find out. When Dispatch adds the number or the folder, your request closes on its own. You get a push:
 
 :::example What you'll see
-{{chip:green|Dispatch answered}} Handled: Add a customer phone number for HCP 846 - David and Diana Uhl — Customer phone number added
+{{chip:green|Dispatch answered}} Handled: Add a customer phone number for HCP 846 - Doris and Derek Underhill — Customer phone number added
 :::
 
 The same push arrives when Dispatch closes any request of yours by hand. It carries the note they wrote you. Every request you've sent, waiting or answered, is listed under **My requests** on the Job Mode **Inbox** tab. The answers also appear under Settings → Notifications.

@@ -50393,6 +50393,56 @@ export type Database = {
           zip: string
         }[]
       }
+      research_permits_v3: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          builder_key: string
+          builder_kind: string
+          builder_mark: string
+          builder_mark_at: string
+          builder_mark_by_name: string
+          builder_mark_reason: string
+          builder_name: string
+          builder_open: number
+          builder_permits: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_permit_on: string
+          plumbing_nearby: number
+          plumbing_nearby_by: string
+          plumbing_nearby_on: string
+          plumbing_nearby_what: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_for_name: string
+          verdict_for_user: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_pursue_for: string
+          verdict_reason: string
+          verdict_reason_code: string
+          work_type: string
+          zip: string
+        }[]
+      }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
@@ -50798,6 +50848,7 @@ export type Database = {
           has_template: boolean
           is_salary: boolean
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
         }[]
       }
       self_schedule_add_block: {
@@ -51532,6 +51583,15 @@ export type Database = {
       trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
       trip_deleted_list: { Args: { p_development_id: string }; Returns: Json }
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
+      trip_join: {
+        Args: { p_dry_run?: boolean; p_next_trip_id: string; p_trip_id: string }
+        Returns: Json
+      }
+      trip_join_line: {
+        Args: { p_move?: boolean; p_next_trip_id: string; p_trip_id: string }
+        Returns: string
+      }
+      trip_next_id: { Args: { p_trip_id: string }; Returns: string }
       trip_phone: { Args: { p: Json }; Returns: Json }
       trip_phone_state: { Args: { p_job_id: string }; Returns: Json }
       trip_put_on_job_line: {

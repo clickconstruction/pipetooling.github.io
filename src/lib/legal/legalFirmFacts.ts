@@ -39,7 +39,7 @@ export function legalFirmFactsWords(f: LegalFirmFacts): string[] {
   return words
 }
 
-/** The folded details line in the firm's window (punch list #222, PR 1): `Snell Law Firm, PLLC · no handling person yet · (512) 477-5291 · 33% · $350 filing`. */
+/** The folded details line in the firm's window (punch list #222, PR 1): `Snell Law Firm, PLLC · no handling person yet · (512) 555-0117 · 33% · $350 filing`. */
 export function legalFirmDetailsLine(f: { name: string; handling_name: string | null; phone: string | null; contingency_pct: number; filing_cost: number }): string {
   return [f.name, f.handling_name?.trim() || 'no handling person yet', f.phone?.trim() || 'no phone', `${f.contingency_pct}%`, `$${f.filing_cost} filing`].join(' · ')
 }

@@ -106,7 +106,7 @@ SELECT pmv.same('Pat cannot take a Stripe payment off J3''s bill', pmv.ask($$pub
 SELECT pmv.same('Pat cannot move J3''s payment', pmv.ask($$public.move_jobs_ledger_payment('00000000-0000-0000-0000-0000000fad03', '00000000-0000-0000-0000-0000000faf01', 'wrong job')$$), 'refused: Not authorized to update one of these jobs');
 SELECT pmv.same('Pat cannot send J6 back to billed', pmv.ask($$public.update_job_status('00000000-0000-0000-0000-0000000faf06', 'billed')$$), 'refused: Not authorized to update job status');
 SELECT pmv.same('Pat cannot apply Mo''s estimate to a job', pmv.ask($$public.apply_estimate_to_job('00000000-0000-0000-0000-0000000fa103', '00000000-0000-0000-0000-0000000faf03')$$), 'raised: not authorized to apply this estimate');
-SELECT pmv.same('Pat cannot make a job from Mo''s estimate', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa103', p_hcp_number => '4190', p_job_name => 'Salzstein filter', p_fixtures => '[]'::jsonb)$$), 'raised: not authorized to create job for this estimate');
+SELECT pmv.same('Pat cannot make a job from Mo''s estimate', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa103', p_hcp_number => '4190', p_job_name => 'Thornbury filter', p_fixtures => '[]'::jsonb)$$), 'raised: not authorized to create job for this estimate');
 SELECT pmv.same('Pat cannot apply Luis''s estimate either', pmv.ask($$public.apply_estimate_to_job('00000000-0000-0000-0000-0000000fa101', '00000000-0000-0000-0000-0000000faf03')$$), 'raised: not authorized to apply this estimate');
 SELECT pmv.same('J3''s bills stand', pmv.bill('00000000-0000-0000-0000-0000000fae31') || ' · ' || pmv.bill('00000000-0000-0000-0000-0000000fae32') || ' · ' || pmv.bill('00000000-0000-0000-0000-0000000fae33') || ' · ' || pmv.bill('00000000-0000-0000-0000-0000000fae34'), 'billed 500.00 · billed 200.00 · ready_to_bill 100.00 · paid 50.00');
 SELECT pmv.same('J3''s payment stays on J3', pmv.payment_job('00000000-0000-0000-0000-0000000fad03'), '03');
@@ -119,7 +119,7 @@ SELECT pmv.same('Luis cannot delete J3''s billed bill', pmv.ask($$public.delete_
 SELECT pmv.same('Luis cannot pull J3''s payment onto his job', pmv.ask($$public.move_jobs_ledger_payment('00000000-0000-0000-0000-0000000fad03', '00000000-0000-0000-0000-0000000faf01', 'wrong job')$$), 'refused: Not authorized to update one of these jobs');
 SELECT pmv.same('Luis cannot push his payment onto J3', pmv.ask($$public.move_jobs_ledger_payment('00000000-0000-0000-0000-0000000fad01', '00000000-0000-0000-0000-0000000faf03', 'wrong job')$$), 'refused: Not authorized to update one of these jobs');
 SELECT pmv.same('Luis cannot send J6 back to billed', pmv.ask($$public.update_job_status('00000000-0000-0000-0000-0000000faf06', 'billed')$$), 'refused: Not authorized to update job status');
-SELECT pmv.same('Luis cannot make a job from Mo''s estimate', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa103', p_hcp_number => '4190', p_job_name => 'Salzstein filter', p_fixtures => '[]'::jsonb)$$), 'raised: not authorized to create job for this estimate');
+SELECT pmv.same('Luis cannot make a job from Mo''s estimate', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa103', p_hcp_number => '4190', p_job_name => 'Thornbury filter', p_fixtures => '[]'::jsonb)$$), 'raised: not authorized to create job for this estimate');
 
 -- 3 · Luis on his own jobs.
 SELECT pmv.same('Luis writes down J1''s bill', pmv.ask($$public.apply_agreed_write_down_to_billed_invoice('00000000-0000-0000-0000-0000000fae11', 450, 'agreed on the phone')$$), 'ok');
@@ -132,7 +132,7 @@ SELECT pmv.same('Luis moves his payment between his two jobs', pmv.ask($$public.
 SELECT pmv.same('the payment is on J5', pmv.payment_job('00000000-0000-0000-0000-0000000fad01'), '05');
 SELECT pmv.same('Luis sends J5 back to billed', pmv.ask($$public.update_job_status('00000000-0000-0000-0000-0000000faf05', 'billed')$$), 'ok');
 SELECT pmv.same('J5 is billed', pmv.job_status('00000000-0000-0000-0000-0000000faf05'), 'billed');
-SELECT pmv.same('Luis makes a job from the estimate he wrote', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa101', p_hcp_number => '4191', p_job_name => 'Tison plans repipe', p_fixtures => '[]'::jsonb)$$), 'ok');
+SELECT pmv.same('Luis makes a job from the estimate he wrote', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa101', p_hcp_number => '4191', p_job_name => 'Trask plans repipe', p_fixtures => '[]'::jsonb)$$), 'ok');
 SELECT pmv.same('his estimate is on the new job', pmv.estimate_job('00000000-0000-0000-0000-0000000fa101'), '4191');
 
 -- 4 · The office is untouched.

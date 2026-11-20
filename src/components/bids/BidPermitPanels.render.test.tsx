@@ -95,7 +95,7 @@ describe('BidSitePermits', () => {
   })
 
   it('says a town is not read, and asks the table for nothing', async () => {
-    renderWithProviders(<BidSitePermits address="3798 Kyle Crossing Kyle, TX 78640" projectName="Cedar Bend Clinic" bidValue="" />)
+    renderWithProviders(<BidSitePermits address="8030 Kyle Crossing Kyle, TX 78640" projectName="Cedar Bend Clinic" bidValue="" />)
     expect(await screen.findByText('No permit records for Kyle.')).toBeTruthy()
     expect(screen.getByText('Permits are read for San Antonio, Austin, New Braunfels, San Marcos and Seguin only.')).toBeTruthy()
     expect(io.loadPermitsByHouseNumber).not.toHaveBeenCalled()
@@ -127,7 +127,7 @@ describe('BidGcPermits', () => {
   const bids = [
     bid(),
     bid({ id: 'b2', bid_number: '501', project_name: 'Pecan Grove Pharmacy', address: '88 Harbor St, San Antonio, TX 78205', bid_date_sent: '2026-10-14' }),
-    bid({ id: 'b5', bid_number: '455', project_name: 'Cedar Bend Clinic', address: '3798 Kyle Crossing Kyle, TX 78640', outcome: 'won', bid_date_sent: '2026-07-01' }),
+    bid({ id: 'b5', bid_number: '455', project_name: 'Cedar Bend Clinic', address: '8030 Kyle Crossing Kyle, TX 78640', outcome: 'won', bid_date_sent: '2026-07-01' }),
   ]
 
   it('lists the jobs we priced for the GC with what the city shows on each, and what the count is out of', async () => {

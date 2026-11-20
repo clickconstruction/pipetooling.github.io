@@ -38,10 +38,10 @@ const JOBS: LienStatusJob[] = [
   job('866', 'Oran Karrow- Linmoor', RLC, 3500, ['2026-08'], 'draft'),
   job('883', 'TF Halden- Mission Flats Drains', 'TF Halden', 2918, ['2026-07'], 'draft'),
   job('915', 'Relwyn Health', KESTRIN, 2712, ['2026-07'], 'draft'),
-  job('868', 'Service Visit, 1875 Co Rd 777', RLC, 2650, ['2026-08'], 'draft'),
+  job('868', 'Service Visit, 1948 Co Rd 777', RLC, 2650, ['2026-08'], 'draft'),
   job('789', 'Kestrin Contracting- Relwyn Health', KESTRIN, 2245, ['2026-07', '2026-08'], 'draft'),
   job('867', 'Service Visit, 628 Tarrow Rd', RLC, 1710, ['2026-08'], 'draft'),
-  job('800', 'Service Visit, 233 Palomino Trail', RLC, 1600, ['2026-08'], 'draft'),
+  job('800', 'Service Visit, 524 Pickford Trail', RLC, 1600, ['2026-08'], 'draft'),
   job('880', 'Relwyn Health- HVAC', KESTRIN, 1380, ['2026-07'], 'draft'),
   job('863', 'Service Visit, 628 Tarrow Rd', RLC, 1049, ['2026-08'], 'draft'),
   job('853', 'Service Visit, 628 Tarrow Rd', RLC, 595, ['2026-08'], 'draft'),
@@ -58,7 +58,7 @@ const OCT1: LienStatusPayload = {
   jobs: JOBS,
   liens: [
     { number: '881', name: 'Dunmere Mallin', gc: RLC, owed: 1050, byYmd: OCT, needs: ['notice'] },
-    { number: '838', name: 'Bruce Hall', gc: '', owed: 350, byYmd: OCT, needs: ['owner', 'legal'] },
+    { number: '838', name: 'Blake Hendry', gc: '', owed: 350, byYmd: OCT, needs: ['owner', 'legal'] },
     { number: '890', name: 'Dunmere Mallin', gc: RLC, owed: 285, byYmd: OCT, needs: ['notice'] },
   ],
   kindsUnset: 6,
@@ -235,7 +235,7 @@ describe('the team email', () => {
     expect(text).toContain('• 878 Tune 5- Seguin, Southern Pine Construction, Jul, Aug and Sep, $38,625, since Sep 24')
     expect(text).toContain('RLC- Dunmere Mallin, 9 jobs, $46,391, first by Oct 15')
     expect(text).toContain('  • 853 Service Visit, 628 Tarrow Rd, Aug, $595, to draft')
-    expect(text).toContain('• 838 Bruce Hall, $350. We contracted with the owner. It needs the owner of record and the legal description.')
+    expect(text).toContain('• 838 Blake Hendry, $350. We contracted with the owner. It needs the owner of record and the legal description.')
     expect(text).toContain('Open the Lien desk: https://clicktooling.com/lien-desk')
   })
 })

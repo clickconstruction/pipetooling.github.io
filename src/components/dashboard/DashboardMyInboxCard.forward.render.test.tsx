@@ -3,7 +3,8 @@
  * My Inbox's Forward (v2.7563): the card's own wiring. A press on a task's Forward opens the one Forward window,
  * and the window's press hands on the same task through `task_hand_on`. The card writes nothing itself: until
  * v2.7563 it made a copy for the other person and deleted the first day row, which lost the thread, the place, the
- * lines and the photos. A refusal stays in the window in the database's words.
+ * lines and the photos. A refusal stays in the window in the database's words. Forward is office work on both
+ * lists: Overdue's press was drawn for every role until v2.7965.
  *
  * The card draws in four places (the Dashboard, Job Mode, Dispatch Mode and Quickfill). All four mount this one
  * component, so one test of the card covers them.
@@ -13,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
+import type { UserRole } from '../../hooks/useAuth'
 
 installDomShims()
 
@@ -126,12 +128,12 @@ const dayRow = (): Record<string, unknown> => ({
 const noop = () => {}
 
 /** The card as the Dashboard mounts it: the parent holds today's rows and hands the card their setter. */
-function Inbox() {
+function Inbox({ role = 'assistant' }: { role?: UserRole }) {
   const [today, setToday] = useState<ChecklistInstance[]>(H.today as unknown as ChecklistInstance[])
   return (
     <DashboardMyInboxCard
       authUserId={SMOKE_AUTH_USER_ID}
-      role="assistant"
+      role={role}
       isMobile={false}
       todayChecklist={today}
       setTodayChecklist={setToday}
@@ -215,5 +217,19 @@ describe('My Inbox’s Forward', () => {
     expect(H.rpcs).toHaveLength(1)
     expect(H.writes).toEqual([])
     expect(H.pushes).toEqual([])
+  })
+
+  it('is office work on both lists: a helper sees their tasks with no Forward on either', async () => {
+    const late = 'Return the borrowed press tool'
+    H.today = [dayRow()]
+    H.overdue = [{ ...dayRow(), id: 'inst-b', checklist_item_id: 'item-b', scheduled_date: '2026-11-12', checklist_items: { title: late, links: null, repeat_type: 'once', created_by_user_id: 'u-abe' } }]
+    renderWithProviders(<Inbox role="helpers" />)
+    await screen.findByText(TASK)
+    const card = within(document.getElementById('dash-my-inbox') as HTMLElement)
+    // Overdue's row is read by the card itself, so it is the later of the two to draw.
+    await card.findByText(late)
+    expect(card.queryByRole('button', { name: 'fwd' })).toBeNull()
+    expect(card.queryByRole('button', { name: 'Forward' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Forward task' })).toBeNull()
   })
 })

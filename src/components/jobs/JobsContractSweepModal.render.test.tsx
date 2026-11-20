@@ -88,7 +88,7 @@ function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): J
   return {
     click_number: '',
     job_name: 'Mission Flats',
-    job_address: '2100 Independence Dr, New Braunfels, TX',
+    job_address: '9345 Iverson Dr, New Braunfels, TX',
     customer_name: 'TF Halden',
     customer_email: 'kc@tfhalden.example',
     customer_phone: null,
@@ -139,7 +139,7 @@ describe('JobsContractSweepModal', () => {
     expect(rows[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(within(rows[0]!).getByText('Ready')).toBeTruthy()
     const frame = screen.getByTitle('The agreement as the customer will see it') as HTMLIFrameElement
-    expect(frame.getAttribute('srcdoc')).toContain('Service agreement for 2100 Independence Dr')
+    expect(frame.getAttribute('srcdoc')).toContain('Service agreement for 9345 Iverson Dr')
     expect(frame.getAttribute('srcdoc')).toContain('14 × Water closet')
     expect(frame.getAttribute('srcdoc')).toContain('$123,600.00')
     // PR 5: a homeowner row leads with the PDF to sign by hand; the footer says so and the buttons follow.
@@ -375,9 +375,9 @@ describe('JobsContractSweepModal', () => {
   })
 
   it('a "check" find is shown but never filled in for you — found live: a proposal in a folder many jobs matched', async () => {
-    // Several fixture jobs share 2100 Independence Dr, so a folder named by the street alone is a tie → "check".
+    // Several fixture jobs share 9345 Iverson Dr, so a folder named by the street alone is a tie → "check".
     driveScan.files = [
-      { id: 'f2', name: 'Plumbing Proposal REVISED.pdf', mimeType: 'application/pdf', modifiedTime: '2025-12-15T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/prop999/view', size: 1000, folderId: 'fo2', folderName: '2100 Independence Dr' },
+      { id: 'f2', name: 'Plumbing Proposal REVISED.pdf', mimeType: 'application/pdf', modifiedTime: '2025-12-15T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/prop999/view', size: 1000, folderId: 'fo2', folderName: '9345 Iverson Dr' },
     ]
     try {
       mount()

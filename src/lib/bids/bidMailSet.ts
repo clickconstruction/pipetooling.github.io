@@ -13,6 +13,7 @@ import { nameFromSubject } from '../papers/papers'
 import { fileAgainLabel } from '../plans/planSetFiles'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { sizeWords } from '../messages/lineFiles'
+import { isInlinePicture } from '../messages/inlinePicture'
 import { planSetDateWords, type BidPlanSetRow } from './bidPlanSets'
 
 /** A row of `message_attachments` as the press reads it. The last two columns are optional: a read may leave them out. */
@@ -35,19 +36,12 @@ export function bidMailFiles(rows: ReadonlyArray<BidMailFileRow>): BidMailFile[]
   return rows.filter((r) => r.kind === 'file').map((r) => ({ id: r.id, name: r.name, mime: r.mime, size: r.size_bytes ?? null, copied: Boolean(r.bucket_path), leftWhy: r.left_in_gmail, setId: r.bid_plan_set_id ?? null }))
 }
 
-/**
- * A picture an email program put inside the mail's words, most often the logo in a signature: *image001.png*. It
- * sits on the line as a file like any other, and it is not a set of plans. A mail that carries nothing else offers
- * no press, and beside a real file it starts unticked (v2.7556, found on the first look at real mail: most mail
- * carries one). A person can still tick it.
- */
-export function isInlinePicture(f: { name: string }): boolean {
-  return /^image\d{0,4}\.(png|jpe?g|gif|bmp)$/i.test(f.name.trim())
-}
+// The rule lives beside the mail's other file rules, so the paper's press reads the same one (`planSetFiles.ts`).
+export { isInlinePicture } from '../messages/inlinePicture'
 
 /**
  * What the mail offers.
- *  - `none`: the mail carries no file, or nothing but a signature's picture. It is already on the bid's history, and there is nothing to keep.
+ *  - `none`: the mail carries no file, or nothing but a signature's picture or a Drive link's preview. It is already on the bid's history, and there is nothing to keep.
  *  - `keep`: at least one file we hold is in no set yet. The press shows.
  *  - `kept`: every file we hold is in a set. The mail says so, with the door to the set.
  *  - `left`: the mail has files and we hold a copy of none, so nothing can be filed. It says why.
@@ -104,7 +98,7 @@ const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b
 
 /**
  * The form as the press opens it: the set's name from the subject, its date the mail's own day, a memo that says it
- * came by mail and from whom, every file we hold ticked but a signature's picture. When the bid already has a set of that name the app can
+ * came by mail and from whom, every file we hold ticked but a signature's picture or a Drive link's preview. When the bid already has a set of that name the app can
  * file into, the files go into it, since a later mail of the same conversation carries the same subject.
  */
 export function bidMailDraft(mail: { subject: string | null | undefined; who: string | null | undefined; at: string }, ready: ReadonlyArray<BidMailFile>, sets: ReadonlyArray<Pick<BidPlanSetRow, 'id' | 'name' | 'link'>>): BidMailDraft {
@@ -209,7 +203,7 @@ export type BidMailLineRow = { id: string; at: string; subject: string | null; w
 /** A mail on the bid that carries at least one file, for the list under Plan sets. */
 export type BidMailLine = { id: string; at: string; subject: string; who: string; files: number }
 
-/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link or a signature's picture is left out. */
+/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link, a signature's picture or a Drive link's preview is left out. */
 export function bidMailLines(rows: ReadonlyArray<BidMailLineRow>): BidMailLine[] {
   return rows
     .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file' && !isInlinePicture({ name: a.name ?? '' })).length }))

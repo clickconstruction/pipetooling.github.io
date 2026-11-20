@@ -1,5 +1,6 @@
 import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { lienTradeWords } from './lienTradeWords'
+import { oneClosingPeriod } from './nameClosesSentence'
 import type { CoverLetterKind } from './gcOnNotice'
 
 // The § 53.056 form's nine values filled from the job live in `lienNoticeJobFields.ts` (v2.7229: a kernel small enough
@@ -84,7 +85,7 @@ export function lienRetainageCoverLetter(input: {
   const phone = input.phone.trim()
   const reach = phone ? `${contact} at ${phone}` : contact
   const closer = kind === 'homestead' ? 'We would rather pick up a check than put an affidavit on a homestead.' : kind === 'residential' ? 'We would rather pick up a check than file a lien on a house.' : 'We would rather pick up a check than file a lien on your property.'
-  return [
+  const words = [
     `To the owner of ${input.property.trim() || 'the property'},`,
     `This page is a cover letter. The enclosed Notice of Claim for Unpaid Retainage is given under Texas Property Code § 53.057.${kind === 'homestead' ? ' Because this property appears to be your homestead, the notice also includes the statement required by § 53.254(g).' : ''}`,
     `We are the ${lienTradeWords(input.trade).contractor} on your project, working under ${gc}. Under that subcontract ${gc} holds back ${input.amount} of our pay as retainage. ${ended}, and that retainage has not been paid to us.`,
@@ -98,6 +99,8 @@ export function lienRetainageCoverLetter(input: {
     `A copy of this letter and the notice is going to ${gc}.`,
     `Call ${reach} before you release retainage or make a final payment to ${gc}. ${closer}`,
   ].join('\n\n')
+  // A name that ends in a period closes its own sentence (v2.7957).
+  return oneClosingPeriod(words, [input.gcName, input.claimantName])
 }
 
 export { describeNoticeMonths } from './lienNoticeMonthWords'

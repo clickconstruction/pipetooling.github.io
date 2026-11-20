@@ -11,8 +11,8 @@ const job = (jobId: string, county: string, from: VenueJob['from'], balance: num
 
 describe('cityOfAddress', () => {
   it('reads the city before TX', () => {
-    expect(cityOfAddress('15054 State Hwy 71, Bee Cave, TX 78738')).toBe('Bee Cave')
-    expect(cityOfAddress('11730 TX-29, Liberty Hill, TX 78642')).toBe('Liberty Hill')
+    expect(cityOfAddress('71490 State Hwy 71, Bee Cave, TX 78738')).toBe('Bee Cave')
+    expect(cityOfAddress('60305 TX-29, Liberty Hill, TX 78642')).toBe('Liberty Hill')
     expect(cityOfAddress('100 Oak, Seguin, Texas')).toBe('Seguin')
     expect(cityOfAddress("Zack'S House")).toBe('')
     expect(cityOfAddress(null)).toBe('')

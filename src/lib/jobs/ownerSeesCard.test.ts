@@ -50,7 +50,7 @@ describe('ownerSeesCard', () => {
   it('the fallback name reads as the owner, never as a first name', () => {
     expect(ownerFirstName('The owner')).toBe('the owner')
     expect(ownerFirstName('')).toBe('the owner')
-    expect(ownerFirstName('Billy & Sarah Garcia')).toBe('Billy')
+    expect(ownerFirstName('Brian & Selma Goodwin')).toBe('Brian')
     const c = ownerSeesCard({ ...base, ownerName: 'The owner', gcName: '' })
     expect(c.door).toBe('Show the owner the bills')
     expect(c.why).toContain('the GC')

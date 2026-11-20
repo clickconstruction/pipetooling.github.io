@@ -5,10 +5,10 @@ describe('defaultJobFieldsFromEstimate', () => {
   it('seeds the customer name when the title is still the app default', () => {
     expect(
       defaultJobFieldsFromEstimate(
-        { title: 'Estimate for Kimberly Corl', for_address: ' 9614 Legislation Drive, Converse, TX ' },
+        { title: 'Estimate for Kimberly Corl', for_address: ' 9275 Lindqvist Drive, Converse, TX ' },
         { customerName: ' Kimberly Corl ' },
       ),
-    ).toEqual({ jobName: 'Kimberly Corl', jobAddress: '9614 Legislation Drive, Converse, TX' })
+    ).toEqual({ jobName: 'Kimberly Corl', jobAddress: '9275 Lindqvist Drive, Converse, TX' })
   })
 
   it('keeps a title someone typed for the work', () => {

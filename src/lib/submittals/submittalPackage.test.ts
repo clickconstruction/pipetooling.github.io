@@ -31,11 +31,11 @@ describe('planPackage', () => {
 describe('buildCoverModel', () => {
   it('writes the title, the meta line, the counts, one table row per row with its package page, and the notes', () => {
     const model = buildCoverModel(
-      { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', bidLabel: 'B398 · ZZ Test', projectAddress: '1 Test Ln, Austin', gcName: 'Structura', revNumber: 3, dateLabel: 'September 15, 2026', note: 'Rev 3 replaces Rev 2.' },
+      { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', bidLabel: 'B398 · ZZ Test', projectAddress: '1 Test Ln, Austin', gcName: 'Sheffield', revNumber: 3, dateLabel: 'September 15, 2026', note: 'Rev 3 replaces Rev 2.' },
       planPackage(rows, 1),
     )
     expect(model.title).toBe('SUBMITTAL · Rev 3')
-    expect(model.meta).toEqual(['B398 · ZZ Test', '1 Test Ln, Austin', 'To: Structura', 'September 15, 2026'])
+    expect(model.meta).toEqual(['B398 · ZZ Test', '1 Test Ln, Austin', 'To: Sheffield', 'September 15, 2026'])
     expect(model.countsLine).toBe('5 rows · 1 as specified · 2 alternates · 1 missing · 1 accessory · 3 cut sheets attached')
     expect(model.rows).toEqual([
       ['DWH-1', 'Rheem RH375', 'BW RE2HP50 · NWS', 'Alternate', 'Long lead time · spec 3–4 wk out', '1 wk', 'p. 2'],

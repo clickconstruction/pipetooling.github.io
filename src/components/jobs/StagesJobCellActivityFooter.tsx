@@ -6,6 +6,7 @@ import {
   formatDispatchNoteWeekdayShortTimeChicago,
   getDispatchNoteDisplayMeta,
 } from '../../utils/dispatchNoteDisplay'
+import { stripeBillEmailHint } from '../../lib/jobs/stripeBillEmailHint'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { JobContractChip } from './JobContractChip'
@@ -143,7 +144,9 @@ export function StagesJobCellActivityFooter({
           <StripeInvoiceSendFromStripeButton
             jobsLedgerInvoiceId={line.id}
             stripeInvoiceId={String(line.stripe_invoice_id).trim()}
-            customerEmail={job.customer_email ?? null}
+            // The address the window names is the payer's own, never the customer's on a bill that went to the GC (v2.7972).
+            customerEmail={stripeBillEmailHint(job, line).email}
+            payer={stripeBillEmailHint(job, line).payer}
             stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
             onSent={() => void loadJobs()}
             compact

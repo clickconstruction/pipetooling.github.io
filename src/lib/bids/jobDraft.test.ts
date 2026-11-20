@@ -20,24 +20,24 @@ describe('draftFromBid: what Send to Dispatch opens with', () => {
     expect(d.carry).toBe(40000)
   })
   it('several GCs and no winner: none picked yet, no figure', () => {
-    const d = draftFromBid({ bid, packets: [packet('', 'Southern Pine', 38625), packet('x', 'Achilles', 41000)], options: [opt('', 'Southern Pine', 38625), opt('x', 'Achilles', 41000)] })
+    const d = draftFromBid({ bid, packets: [packet('', 'Southern Pine', 38625), packet('x', 'Ashdown', 41000)], options: [opt('', 'Southern Pine', 38625), opt('x', 'Ashdown', 41000)] })
     expect(d.gcKey).toBeNull()
     expect(d.carry).toBeNull()
   })
   it('several GCs and one recorded winner: the winner', () => {
-    const d = draftFromBid({ bid, packets: [packet('', 'Southern Pine', 38625), packet('x', 'Achilles', 41000, 'won')], options: [opt('', 'Southern Pine', 38625), opt('x', 'Achilles', 41000)] })
-    expect(d).toMatchObject({ gcKey: 'x', gcName: 'Achilles', carry: 41000 })
+    const d = draftFromBid({ bid, packets: [packet('', 'Southern Pine', 38625), packet('x', 'Ashdown', 41000, 'won')], options: [opt('', 'Southern Pine', 38625), opt('x', 'Ashdown', 41000)] })
+    expect(d).toMatchObject({ gcKey: 'x', gcName: 'Ashdown', carry: 41000 })
   })
 })
 
 describe('the draft sheet rules', () => {
   it('a GC choice brings its figure', () => {
-    expect(draftCarryFor(bid, opt('x', 'Achilles', 41000))).toBe(41000)
-    expect(draftCarryFor({ agreed_value: 5000 }, opt('x', 'Achilles', 41000))).toBe(5000)
+    expect(draftCarryFor(bid, opt('x', 'Ashdown', 41000))).toBe(41000)
+    expect(draftCarryFor({ agreed_value: 5000 }, opt('x', 'Ashdown', 41000))).toBe(5000)
     expect(draftCarryFor(bid, null)).toBeNull()
   })
   it('waits on a name, an address and, with several GCs, the GC', () => {
-    const two = [opt('', 'Southern Pine', 1), opt('x', 'Achilles', 2)]
+    const two = [opt('', 'Southern Pine', 1), opt('x', 'Ashdown', 2)]
     expect(draftProblem(draft({ jobName: ' ' }), two)).toBe('Give the job a name.')
     expect(draftProblem(draft({ address: '' }), two)).toBe('Give the job an address.')
     expect(draftProblem(draft({ gcKey: null }), two)).toBe('Pick the GC that won it.')

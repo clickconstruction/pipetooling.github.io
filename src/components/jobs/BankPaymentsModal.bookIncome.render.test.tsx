@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for Book it as Income (v2.4369): a deposit that paid a bill but that a Banking
- * rule labelled as an expense (the City of Seguin's $4,890 for #908, booked as Taxes and
+ * rule labelled as an expense (the City of Sefton's $4,890 for #908, booked as Taxes and
  * Licenses) shows the words, the rule that did it and one button; pressing it calls
  * `ar_book_applied_deposit_income`, and once the label reads Income the box is gone. An
  * untouched deposit keeps the old quiet note. The words come from arBankLabel.ts.
@@ -20,7 +20,7 @@ const DEPOSITS = [
   {
     mercury_transaction_id: 'mtx-seguin',
     amount: 4890,
-    counterparty_name: 'City of Seguin',
+    counterparty_name: 'City of Sefton',
     note: null,
     external_memo: null,
     posted_at: '2026-08-26T15:00:00Z',
@@ -58,7 +58,7 @@ vi.mock('../../lib/supabase', async () => {
           label: { id: 'l-tax', name: scenario.label.name, default_key: scenario.label.default_key, account_type: 'expense' },
           label_by: 'rule',
           label_at: '2026-09-06T15:00:00Z',
-          rule_name: 'City of Seguin - Taxes and Licenses',
+          rule_name: 'City of Sefton - Taxes and Licenses',
           pending: null,
           usual: null,
           last_close_out: null,
@@ -95,7 +95,7 @@ describe('BankPaymentsModal · Book it as Income (render smoke)', () => {
     expect(box.textContent).toContain('Banking books it as Taxes and Licenses. It paid a bill, so it is income.')
     await waitFor(() => {
       expect(screen.getByTestId('ar-applied-income-fix').textContent).toContain(
-        'Your rule City of Seguin labelled it. In Banking, that rule can be limited to money going out.',
+        'Your rule City of Sefton labelled it. In Banking, that rule can be limited to money going out.',
       )
     })
     expect(screen.queryByTestId('ar-bank-label-note')).toBeNull()

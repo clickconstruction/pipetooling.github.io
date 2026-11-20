@@ -3,11 +3,11 @@ import { PROPERTY_KIND_BADGE_FILLS, propertyKindBadge, propertyKindQuestion } fr
 
 describe('propertyKindBadge (v2.4160)', () => {
   it('a commercial property is an orange C, a residential one a blue R', () => {
-    expect(propertyKindBadge({ customerAddressId: 'a1', kind: 'non_residential' }, '11730 TX-29')).toMatchObject({
+    expect(propertyKindBadge({ customerAddressId: 'a1', kind: 'non_residential' }, '60305 TX-29')).toMatchObject({
       kind: 'non_residential',
       letter: 'C',
       fill: PROPERTY_KIND_BADGE_FILLS.commercial,
-      label: 'Commercial property at 11730 TX-29 — change the kind',
+      label: 'Commercial property at 60305 TX-29 — change the kind',
     })
     expect(propertyKindBadge({ customerAddressId: 'a1', kind: 'residential' })).toMatchObject({ kind: 'residential', letter: 'R', fill: PROPERTY_KIND_BADGE_FILLS.residential })
   })
@@ -21,10 +21,10 @@ describe('propertyKindBadge (v2.4160)', () => {
   })
 
   it('v2.4212 · a job with no linked property but a customer is a ? that will save the address as a property; no customer, no badge', () => {
-    const b = propertyKindBadge({ customerAddressId: null, kind: undefined, customerId: 'c1' }, '1780 FM 1343')
+    const b = propertyKindBadge({ customerAddressId: null, kind: undefined, customerId: 'c1' }, '4815 FM 1343')
     expect(b).toMatchObject({ kind: '', letter: '?', fill: PROPERTY_KIND_BADGE_FILLS.unknown, unlinked: true })
     expect(b?.title).toContain('saved as a property')
-    expect(b?.label).toContain('1780 FM 1343')
+    expect(b?.label).toContain('4815 FM 1343')
     // whatever kind the board thinks it read, an unlinked job has no property to have read it from
     expect(propertyKindBadge({ customerAddressId: '', kind: 'residential', customerId: 'c1' })?.letter).toBe('?')
     expect(propertyKindBadge({ customerAddressId: null, kind: 'residential' })).toBeNull()

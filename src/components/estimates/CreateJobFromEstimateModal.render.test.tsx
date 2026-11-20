@@ -92,7 +92,7 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9275 Lindqvist Drive' }}
         estimate={estimateRow({ title: 'Estimate for Kimberly Corl' })}
       />,
     )
@@ -104,7 +104,7 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9275 Lindqvist Drive' }}
         estimate={estimateRow({
           title: 'Estimate for Kimberly Corl',
           line_items_snapshot: [{ line_item: 'Pretest', description: '', quantity: 1, unit_price_cents: 25000, amount_cents: 25000 }],
@@ -119,7 +119,7 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9275 Lindqvist Drive' }}
         estimate={estimateRow({ title: 'Second-floor rough-in' })}
       />,
     )

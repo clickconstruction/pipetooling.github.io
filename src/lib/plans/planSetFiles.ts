@@ -4,10 +4,12 @@
  * job's folder, made by `plan-set-files` as needed; a set with no link takes the folder's link, so the register
  * mirrors Drive. A batch of photos acts on what is clean and names what it held (`batchWords`), and after the
  * filing says what took and what did not (`batchOutcomeWords`). A mail's files follow its paper the same way, and a
- * file that stayed in Gmail is named instead of sent. Pure.
+ * file that stayed in Gmail is named instead of sent; a picture from inside the mail's words, a signature's logo or
+ * a Drive link's preview, is no file of the paper's and stays out, counted (v2.7969). Pure.
  */
 import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome, type BatchWords } from '../batchWords'
 import { addFileSizeWords } from '../jobs/jobFolderAddFile'
+import { isInlinePicture } from '../messages/inlinePicture'
 
 /** The function's cap: a file from the phone or this computer comes in as base64, up to 10 MB. */
 export const PLAN_SET_FILE_MAX_BYTES = 10 * 1024 * 1024
@@ -146,9 +148,20 @@ export const PLAN_SET_FILES_WORDS = {
 /** A file on a mail's line in Messages: our copy of it, or why it stayed in Gmail. */
 export type MailFile = { id: string; name: string; mime: string | null; copied: boolean; leftWhy: string | null }
 
-/** The files we hold a copy of go; the others stay in Gmail and are named. */
-export function splitMailFiles(files: ReadonlyArray<MailFile>): { ready: MailFile[]; left: MailFile[] } {
-  return { ready: files.filter((f) => f.copied), left: files.filter((f) => !f.copied) }
+/**
+ * The files we hold a copy of go; the others stay in Gmail and are named. A picture from inside the mail's words
+ * (`isInlinePicture`: a signature's logo, a Drive link's preview) is neither: it is left out of the paper's folder and
+ * counted, so the line under the mail can say so (v2.7969). The press takes every file with no form to tick, so a
+ * picture left out is said, never dropped in silence.
+ */
+export function splitMailFiles(files: ReadonlyArray<MailFile>): { ready: MailFile[]; left: MailFile[]; pictures: MailFile[] } {
+  const real = files.filter((f) => !isInlinePicture(f))
+  return { ready: real.filter((f) => f.copied), left: real.filter((f) => !f.copied), pictures: files.filter((f) => isInlinePicture(f)) }
+}
+
+/** How many of a mail's files are real ones, a picture from inside its words not counted. */
+export function realFileCount(files: ReadonlyArray<{ name: string }>): number {
+  return files.filter((f) => !isInlinePicture(f)).length
 }
 
 export type MailFilesResult = {
@@ -161,6 +174,13 @@ export type MailFilesResult = {
   linkTyped: boolean
   /** The mail shows this many files, and no line on the job holds it, so none of them could follow. */
   noLineFiles: number
+  /** Pictures from inside the mail's words, a logo or a link's preview, left out of the paper's folder. Absent reads as none. */
+  pictures?: number
+}
+
+/** *One picture inside the mail’s words was left out, a logo or a link’s preview.* */
+export function picturesLeftOutWords(n: number): string {
+  return n === 1 ? 'One picture inside the mail’s words was left out, a logo or a link’s preview.' : `${n} pictures inside the mail’s words were left out, logos or link previews.`
 }
 
 const sentence = (s: string): string => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
@@ -173,6 +193,7 @@ export function mailFilesWords(r: MailFilesResult): { words: string; tone: 'succ
   if (r.landed > 0) bits.push(PLAN_SET_FILES_WORDS.mailFiled(r.landed))
   for (const f of r.left) bits.push(`${f.name} stays in Gmail, ${f.leftWhy === 'too_big' ? 'too big for us to keep' : 'never copied here'}.`)
   if (r.failed.length > 0) bits.push(`${r.failed.length === 1 ? 'One file did not land' : `${r.failed.length} files did not land`}: ${r.failed.map((f) => sentence(`${f.name}: ${f.why}`)).join(' ')}`)
-  if (bits.length === 0) return { words: r.linkTyped ? 'The mail had no file to keep. The paper holds its link.' : 'The mail had no file to keep.', tone: 'success' }
-  return { words: bits.join(' '), tone: r.failed.length > 0 || r.left.length > 0 ? 'warning' : 'success' }
+  const out = (r.pictures ?? 0) > 0 ? ` ${picturesLeftOutWords(r.pictures ?? 0)}` : ''
+  if (bits.length === 0) return { words: `${r.linkTyped ? 'The mail had no file to keep. The paper holds its link.' : 'The mail had no file to keep.'}${out}`, tone: 'success' }
+  return { words: `${bits.join(' ')}${out}`, tone: r.failed.length > 0 || r.left.length > 0 ? 'warning' : 'success' }
 }

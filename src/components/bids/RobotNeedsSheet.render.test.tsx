@@ -15,7 +15,7 @@ vi.mock('../../lib/supabase', () => ({ supabase: { functions: { invoke: () => Pr
 const bid = {
   id: 'bid-378',
   bid_number: '378',
-  project_name: 'SPACE X LEVEL 1 INTERIOR FIT OUT',
+  project_name: 'SAWYER X LELAND 1 INGRAM FALLON ORRIN',
   plans_link: 'https://drive.example/space-x',
   plans_robot_readable: true,
   plans_robot_probe_note: null,

@@ -68,7 +68,7 @@ describe('the sample portals’ sections, through the portal’s own kernels (#1
     const a = answer('gc')
     expect(a.propertyNotices).toEqual([])
     expect(a.requestableProperties).toEqual([
-      { jobId: 'sample-job-open', street: '2530 Hunter Rd', city: 'San Marcos' },
+      { jobId: 'sample-job-open', street: '4455 Hadley Rd', city: 'San Marcos' },
       { jobId: 'sample-job-paid', street: '1900 Hunter Rd', city: 'San Marcos' },
     ])
     expect(a.promise).toBeNull()

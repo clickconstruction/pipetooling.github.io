@@ -11,7 +11,7 @@ summary: >
   days, each day one of three kinds, what it was for, who asked for it and how it went. The hours, card
   charges, photos and History inside its days read as the trip's by themselves, and a trip never changes a
   clock row, a bill or a cost.
-next: Nothing is owed. The three parts left over shipped on 2026-11-19: the trip's number in the dev seat's read (v2.7886), a setting for the 150 miles (v2.7888) and Split in two (v2.7891). The combine carries a trip's job link (v2.7861) and a trip a job holds by itself (v2.7884). Not built: Join with the next, the mock-up's other press, which would also be the undo of a split. The card waits for the owner's word to close. Put on a bill left this train for its own card, #391.
+next: Nothing is owed. The three parts left over shipped on 2026-11-19: the trip's number in the dev seat's read (v2.7886), a setting for the 150 miles (v2.7888) and Split in two (v2.7891). The combine carries a trip's job link (v2.7861) and a trip a job holds by itself (v2.7884). Join with the next, the mock-up's other press and the way a split is taken back, is built (the ground v2.7960 and the press v2.7963, 2026-11-19), on eight rules the owner said yes to. The card waits for the owner's word to close. Put on a bill left this train for its own card, #391.
 size: L as a train of nine (S · S · M · S · S · S · M · S · S), eight built and the ninth moved to #391; left: the three owed parts, not sized yet
 blocker: None. The six calls each have a default.
 opinion: build — the clock already stamps a place on a punch and the drive to a job, and the Development page already rolls a site's hours by person, so a trip is a reading laid over rows that exist
@@ -155,6 +155,7 @@ Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
   server 0.106.0), a setting for the 150 miles on Settings → Jobs, bills and liens → Trips (v2.7888, set by a dev,
   25 to 1,000 miles) and Split in two on an open trip (v2.7891, `trip_split`). Each was read live on the ZZ Test
   development.
-- **Not built:** Join with the next, the mock-up's other press. A split has no undo until it is.
+- **Join with the next, built 2026-11-19 (the ground v2.7960, `trip_join`, and the press v2.7963):** the mock-up's other press, on eight rules the
+  owner said yes to. It is how a split is taken back, and a join is taken back with Split in two.
 - **Built after the train (v2.7861, v2.7884):** the combine carries a trip's job link to the job that is kept, and
   a trip the deleted job held by itself.

@@ -116,14 +116,14 @@ describe('rollUpOutcome · a same-letter GC rides the bid (BP391, 2026-11-02)', 
   const s = { sentOn: '2026-09-01', value: null, isAlternate: false }
   const packets = groupVersionsByGc(
     [
-      v('structura', null, 0, { outcome: 'lost', loss_category: 'gc_lost', created_at: '2026-08-27T20:25:19Z' }),
+      v('sheffield', null, 0, { outcome: 'lost', loss_category: 'gc_lost', created_at: '2026-08-27T20:25:19Z' }),
       v('planhub', 'c-planhub', 1, { outcome: 'lost', loss_category: 'price', created_at: '2026-08-27T20:25:19Z' }),
       v('wrenman-v', 'c-planhub', 2, { outcome: 'lost', loss_category: 'price', created_at: '2026-09-01T14:49:16Z' }),
     ],
     {
-      bidGcName: 'Structura, Inc. – San Antonio',
+      bidGcName: 'Sheffield, Inc. – San Antonio',
       gcNames: { 'c-planhub': 'PlanHub - Subcontractor Prime Opportunity' },
-      latestSends: { structura: s, planhub: s, 'wrenman-v': s },
+      latestSends: { sheffield: s, planhub: s, 'wrenman-v': s },
       bidDateSent: '2026-09-01',
       recipients: [
         { customerId: 'c-planhub', name: 'PlanHub - Subcontractor Prime Opportunity' },
@@ -134,7 +134,7 @@ describe('rollUpOutcome · a same-letter GC rides the bid (BP391, 2026-11-02)', 
 
   it("the bid's shape: two real packets lost, one shared-letter GC with the bid's sent date and no outcome", () => {
     expect(packets.map((p) => [p.name, p.outcome, p.sentOn, p.sharedLetter ?? false])).toEqual([
-      ['Structura, Inc. – San Antonio', 'lost', '2026-09-01', false],
+      ['Sheffield, Inc. – San Antonio', 'lost', '2026-09-01', false],
       ['PlanHub - Subcontractor Prime Opportunity', 'lost', '2026-09-01', false],
       ['Wrenman Commercial', null, '2026-09-01', true],
     ])

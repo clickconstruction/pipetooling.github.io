@@ -27,4 +27,8 @@ The salaried-week bed (`npm run test:pg:salaried-week`) applies the migration tw
 
 ## Applied
 
-Not yet.
+2026-11-19 (21:13 UTC), two minutes after the merge, by `scripts/db-push.sh` from a clean checkout at main's tip (`8b9a2e8a0c`, which carries the merge), after the drift check listed this file alone as pending. The drift check after it read every file applied. The Pages deploy of that tip began its build at 21:14 UTC, after the push.
+
+## Verified on prod
+
+As the dev, through the dev seat's `call_read`: `self_salary_clock_state()` returned its four columns, the last one `salaried_week_hours` at `{0,8,8,8,8,8,0}`. The dev is not salaried, so that is the default week.

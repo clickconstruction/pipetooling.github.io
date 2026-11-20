@@ -15,7 +15,7 @@ function customer(overrides: Partial<CustomerRow>): CustomerRow {
   return {
     id: 'c1',
     name: 'Todd Crayle',
-    address: '6414 Maverick Oak Dr San Antonio, TX 78240',
+    address: '7032 Merriman Oak Dr San Antonio, TX 78240',
     master_user_id: 'master-1',
     contact_info: null,
     customer_type: null,
@@ -77,7 +77,7 @@ describe('customerRowSummary', () => {
     expect(summary).toEqual({
       name: 'Todd Crayle',
       linked: true,
-      address: '6414 Maverick Oak Dr San Antonio, TX 78240',
+      address: '7032 Merriman Oak Dr San Antonio, TX 78240',
       notInCustomers: false,
     })
   })

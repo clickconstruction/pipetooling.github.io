@@ -70,7 +70,7 @@ describe('JobBudgetCard · Frame A', () => {
 
 describe('JobBudgetCard · Frame B', () => {
   it('names the assumption, lists the ranked candidates with Link, and takes a typed budget', async () => {
-    const s = state({ candidates: [{ bid_id: 'b375', bid_number: '375', project_name: 'SKYLAB BA-02N Architectural', bid_value: 249_715.66, agreed_value: null, outcome: 'won', customer_name: 'Structura, Inc.', rank: 1, reason: "matches the job's price to the dollar", has_estimate: true, estimate_hours: 0, linked_jobs: 0 }] })
+    const s = state({ candidates: [{ bid_id: 'b375', bid_number: '375', project_name: 'SKYLAB BA-02N Architectural', bid_value: 249_715.66, agreed_value: null, outcome: 'won', customer_name: 'Sheffield, Inc.', rank: 1, reason: "matches the job's price to the dollar", has_estimate: true, estimate_hours: 0, linked_jobs: 0 }] })
     renderCard(s)
     await settle()
     const banner = screen.getByTestId('job-budget-banner')

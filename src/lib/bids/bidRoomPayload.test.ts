@@ -14,9 +14,9 @@ const section = (name: string, revenueSum: number, isAlternate = false, fixtureR
 })
 
 const baseInput = {
-  projectName: 'Game Show Battle Rooms',
+  projectName: 'Glover Salter Babcock Reeve',
   projectAddress: '123 Main St, San Antonio',
-  gcName: 'NORTHSTAR CONSTRUCTION SERVICES',
+  gcName: 'NESBITT CONSTRUCTION SERVICES',
   serviceTypeName: 'Plumbing',
   inclusions: 'All plumbing per plans.',
   exclusions: 'Fixtures by others.',

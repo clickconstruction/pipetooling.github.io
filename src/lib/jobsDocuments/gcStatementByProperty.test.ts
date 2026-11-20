@@ -43,15 +43,15 @@ describe('buildStatementModel — what counts as one property', () => {
   it('comma and ZIP variants of one address merge — the portal’s cleaned-address rule', () => {
     const m = buildStatementModel(
       [
-        bill({ key: '1008', jobAddress: '1875 Co Rd 777, Devine, TX' }),
-        bill({ key: '868', jobAddress: '1875 Co Rd 777, Devine, TX 78016' }),
+        bill({ key: '1008', jobAddress: '1948 Co Rd 777, Devine, TX' }),
+        bill({ key: '868', jobAddress: '1948 Co Rd 777, Devine, TX 78016' }),
         bill({ key: '881', jobAddress: '9703 Linmor Hl San Antonio, TX' }),
         bill({ key: '858', jobAddress: '9703 Linmor Hl, San Antonio, TX' }),
       ],
       OPTS,
     )
     expect(m.properties.map((p) => [p.street, p.city, p.bills.length])).toEqual([
-      ['1875 Co Rd 777', 'Devine', 2],
+      ['1948 Co Rd 777', 'Devine', 2],
       // The heading is the spelling that names a city, not the one that runs street and city together.
       ['9703 Linmor Hl', 'San Antonio', 2],
     ])
@@ -91,12 +91,12 @@ describe('buildStatementModel — what counts as one property', () => {
     const m = buildStatementModel(
       [
         bill({ key: '948', jobAddress: '', jobName: 'Water Heater', owed: 1200, billed: 1200 }),
-        bill({ key: '186', jobAddress: '574 Co Rd 660, Devine TX 78016' }),
-        bill({ key: '372', jobAddress: '1780 FM 1343, Castroville, TX 78009' }),
+        bill({ key: '186', jobAddress: '454 Co Rd 660, Devine TX 78016' }),
+        bill({ key: '372', jobAddress: '4815 FM 1343, Castroville, TX 78009' }),
       ],
       OPTS,
     )
-    expect(m.properties.map((p) => p.street)).toEqual(['1780 FM 1343', '574 Co Rd 660', 'Water Heater'])
+    expect(m.properties.map((p) => p.street)).toEqual(['454 Co Rd 660', '4815 FM 1343', 'Water Heater'])
     const last = m.properties[2]!
     expect(last.hasAddress).toBe(false)
     // The name is the heading; the line under it does not print it again.
@@ -154,7 +154,7 @@ describe('the line under a bill — paid and owed always add up to the bill', ()
   })
 
   it('a bill with nothing paid has no line, and the summary says only how many', () => {
-    const m = buildStatementModel([bill({ key: 'a' }), bill({ key: 'b', jobAddress: '574 Co Rd 660, Devine, TX' })], OPTS)
+    const m = buildStatementModel([bill({ key: 'a' }), bill({ key: 'b', jobAddress: '454 Co Rd 660, Devine, TX' })], OPTS)
     expect(m.properties.flatMap((p) => p.bills).every((b) => b.paidWords === '')).toBe(true)
     expect(m.summary).toBe('2 open bills at 2 properties.')
     expect(m).toMatchObject({ billed: 2000, paid: 0, owed: 2000 })
@@ -186,7 +186,7 @@ describe('renderStatementByProperty', () => {
   const bills = [
     bill({ key: '890', sentYmd: '2026-07-15', billed: 285, owed: 285, jobName: 'Dunmere Mallin' }),
     bill({ key: '867', billed: 1710, owed: 1710, jobName: 'Service Visit — 628 Tarrow Rd (HCP 867)' }),
-    bill({ key: '372', jobAddress: '1780 FM 1343, Castroville, TX 78009', sentYmd: '2026-09-14', billed: 35200, owed: 17600, payments: [{ invoice_id: '372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '#4402', sequence_order: 1 }] }),
+    bill({ key: '372', jobAddress: '4815 FM 1343, Castroville, TX 78009', sentYmd: '2026-09-14', billed: 35200, owed: 17600, payments: [{ invoice_id: '372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '#4402', sequence_order: 1 }] }),
   ]
   const input = { payerName: 'RLC- Dunmere Mallin', dateStr: 'Sep 30, 2026', bills }
 
@@ -197,13 +197,13 @@ describe('renderStatementByProperty', () => {
     expect(html).toContain('3 open bills at 2 properties. $37,195.00 billed, $17,600.00 paid so far.')
     expect(html.split('628 Tarrow Rd').length - 1).toBe(1)
     expect(html).toContain('<strong>628 Tarrow Rd</strong> <span style="font-size:12.5px;color:#5b6676">San Antonio · 2 open bills</span>')
-    expect(html).toContain('<strong>1780 FM 1343</strong> <span style="font-size:12.5px;color:#5b6676">Castroville · 1 open bill</span>')
+    expect(html).toContain('<strong>4815 FM 1343</strong> <span style="font-size:12.5px;color:#5b6676">Castroville · 1 open bill</span>')
     expect(html).toContain('Job 867<span style="color:#5b6676"> · Service Visit</span>')
     expect(html).toContain('$17,600.00 paid by #4402 on Sep 22, of $35,200.00 billed')
     expect(html).not.toContain('Dunmere Mallin</span>')
     expect(html).not.toContain('nothing applied yet')
-    expect(html.indexOf('Owed now')).toBeLessThan(html.indexOf('1780 FM 1343'))
-    expect(html.indexOf('1780 FM 1343')).toBeLessThan(html.indexOf('628 Tarrow Rd'))
+    expect(html.indexOf('Owed now')).toBeLessThan(html.indexOf('4815 FM 1343'))
+    expect(html.indexOf('4815 FM 1343')).toBeLessThan(html.indexOf('628 Tarrow Rd'))
     // The total is the rows' own sum.
     expect(html.split('$19,595.00').length - 1).toBe(2)
     // GC-facing: no internal pressure language.
@@ -253,7 +253,7 @@ describe('renderStatementByProperty', () => {
         'Owed now: $19,595.00',
         '3 open bills at 2 properties. $37,195.00 billed, $17,600.00 paid so far.',
         '',
-        '1780 FM 1343, Castroville — $17,600.00',
+        '4815 FM 1343, Castroville — $17,600.00',
         '- Job 372 — sent Sep 14 — $17,600.00 ($17,600.00 paid by #4402 on Sep 22, of $35,200.00 billed)',
         '',
         '628 Tarrow Rd, San Antonio — $1,995.00',
@@ -280,13 +280,13 @@ describe('renderStatementByProperty', () => {
 describe('Payments we have received (v2.4260)', () => {
   const jobs = [
     {
-      id: 'j372', hcp_number: '372', click_number: null, job_name: 'Dunmere Mallin', job_address: '1780 FM 1343, Castroville, TX 78009', customer_id: 'owner-1', gc_customer_id: 'gc', bill_to_party: 'gc',
+      id: 'j372', hcp_number: '372', click_number: null, job_name: 'Dunmere Mallin', job_address: '4815 FM 1343, Castroville, TX 78009', customer_id: 'owner-1', gc_customer_id: 'gc', bill_to_party: 'gc',
       invoices: [{ id: 'i372', job_id: 'j372', sequence_order: 1, amount: 35200, status: 'billed', billed_at: '2026-09-14' }],
       payments: [{ id: 'p1', job_id: 'j372', invoice_id: 'i372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '4402', sequence_order: 1 }],
     },
     {
       // A job paid off in the window: the statement's own rows cannot see it, the block can.
-      id: 'j868', hcp_number: '868', click_number: null, job_name: 'Service Visit', job_address: '1875 Co Rd 777, Devine, TX 78016', customer_id: 'owner-2', gc_customer_id: 'gc', bill_to_party: 'gc',
+      id: 'j868', hcp_number: '868', click_number: null, job_name: 'Service Visit', job_address: '1948 Co Rd 777, Devine, TX 78016', customer_id: 'owner-2', gc_customer_id: 'gc', bill_to_party: 'gc',
       invoices: [{ id: 'i868', job_id: 'j868', sequence_order: 1, amount: 1200, status: 'paid', billed_at: '2026-08-18' }],
       payments: [{ id: 'p2', job_id: 'j868', invoice_id: null, amount: 1200, paid_on: '2026-09-02', payment_type: 'check', reference_number: '4390', sequence_order: 1 }],
     },
@@ -303,8 +303,8 @@ describe('Payments we have received (v2.4260)', () => {
 
   it('lists every check the GC sent in the window, newest first, with where it landed', () => {
     expect(received).toEqual([
-      { key: expect.any(String), onYmd: '2026-09-22', label: 'Check #4402', amount: 17600, where: ['1780 FM 1343 · Job 372'] },
-      { key: expect.any(String), onYmd: '2026-09-02', label: 'Check #4390', amount: 1200, where: ['1875 Co Rd 777 · Job 868, now paid in full'] },
+      { key: expect.any(String), onYmd: '2026-09-22', label: 'Check #4402', amount: 17600, where: ['4815 FM 1343 · Job 372'] },
+      { key: expect.any(String), onYmd: '2026-09-02', label: 'Check #4390', amount: 1200, where: ['1948 Co Rd 777 · Job 868, now paid in full'] },
     ])
   })
 
@@ -321,8 +321,8 @@ describe('Payments we have received (v2.4260)', () => {
     const html = renderStatementByPropertyHtml({ ...input, received, receivedSinceYmd: '2026-08-31', portalUrl: 'https://my.clickplumbing.com/rlc' })
     expect(html).toContain('Payments we have received')
     expect(html).toContain('2 payments since Aug 31, 2026, newest first.')
-    expect(html).toContain('Check #4402<span style="color:#5b6676"> to 1780 FM 1343 · Job 372</span>')
-    expect(html).toContain('Check #4390<span style="color:#5b6676"> to 1875 Co Rd 777 · Job 868, now paid in full</span>')
+    expect(html).toContain('Check #4402<span style="color:#5b6676"> to 4815 FM 1343 · Job 372</span>')
+    expect(html).toContain('Check #4390<span style="color:#5b6676"> to 1948 Co Rd 777 · Job 868, now paid in full</span>')
     expect(html.indexOf('Total owed')).toBeLessThan(html.indexOf('Payments we have received'))
     expect(html.indexOf('Payments we have received')).toBeLessThan(html.indexOf('Your account, any time'))
     expect(renderStatementByPropertyHtml(input)).not.toContain('Payments we have received')
@@ -334,7 +334,7 @@ describe('Payments we have received (v2.4260)', () => {
   it('text: the same block', () => {
     const text = renderStatementByPropertyText({ ...input, received, receivedSinceYmd: '2026-08-31' })
     expect(text).toContain(
-      ['Total owed: $17,600.00', '', 'Payments we have received', '2 payments since Aug 31, 2026, newest first. If one you sent is missing, reply and we will find it.', '- Sep 22 — Check #4402 to 1780 FM 1343 · Job 372 — $17,600.00', '- Sep 2 — Check #4390 to 1875 Co Rd 777 · Job 868, now paid in full — $1,200.00', ''].join('\n'),
+      ['Total owed: $17,600.00', '', 'Payments we have received', '2 payments since Aug 31, 2026, newest first. If one you sent is missing, reply and we will find it.', '- Sep 22 — Check #4402 to 4815 FM 1343 · Job 372 — $17,600.00', '- Sep 2 — Check #4390 to 1948 Co Rd 777 · Job 868, now paid in full — $1,200.00', ''].join('\n'),
     )
     expect(renderStatementByPropertyText(input)).not.toContain('Payments we have received')
   })

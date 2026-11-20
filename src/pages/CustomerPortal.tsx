@@ -1056,7 +1056,7 @@ function PropertyRow({
   )
 }
 
-/** "(617) 939-6295" for a US number on file; anything else as stored. */
+/** "(617) 555-0194" for a US number on file; anything else as stored. */
 function displayPhone(raw: string): string {
   return phoneContact(raw)?.display ?? raw
 }

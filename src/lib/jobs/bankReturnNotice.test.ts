@@ -142,23 +142,23 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
   })
 
   it('never on a job but recorded by hand (Peter Garlen): says where it reads paid', () => {
-    const garza: BankReturnNoticeInput = {
+    const gilroy: BankReturnNoticeInput = {
       ...tune5,
       counterparty: 'Peter Garlen',
       amount: 2700,
       postedYmd: null,
       jobs: [],
       situation: 'never_on_job',
-      recorded: { jobId: 'job-120', jobLabel: 'J120 Pete Garza', amount: 2700, paidYmd: '2025-07-07' },
+      recorded: { jobId: 'job-120', jobLabel: 'J120 Perry Gilroy', amount: 2700, paidYmd: '2025-07-07' },
     }
-    expect(bankReturnNoticeSentences(garza)).toEqual([
+    expect(bankReturnNoticeSentences(gilroy)).toEqual([
       'The reason is Insufficient funds.',
       'No deposit was ever linked to a job.',
-      'J120 Pete Garza still reads paid.',
+      'J120 Perry Gilroy still reads paid.',
       '$2,700 was recorded there on Jul 7 with no deposit.',
       'Ask Peter Garlen for a new check.',
     ])
-    expect(bankReturnNoticeSentences({ ...garza, recorded: null }).slice(1)).toEqual(['It was never on a job.', 'Ask Peter Garlen for a new check, or close it in Accounts Receivable.'])
+    expect(bankReturnNoticeSentences({ ...gilroy, recorded: null }).slice(1)).toEqual(['It was never on a job.', 'Ask Peter Garlen for a new check, or close it in Accounts Receivable.'])
   })
 
   it('subject, text and html carry the deep link that lands on ③ Payments received', () => {
@@ -176,9 +176,9 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
   })
 
   it('escapes the customer name in html', () => {
-    const mail = buildBankReturnNoticeEmail({ ...tune5, counterparty: 'M&M <Roofing>' })
-    expect(mail.html).toContain('M&amp;M &lt;Roofing&gt;')
-    expect(mail.text).toContain("M&M <Roofing>'s $13,680 check")
+    const mail = buildBankReturnNoticeEmail({ ...tune5, counterparty: 'M&M <Rutledge>' })
+    expect(mail.html).toContain('M&amp;M &lt;Rutledge&gt;')
+    expect(mail.text).toContain("M&M <Rutledge>'s $13,680 check")
   })
 
   it('the push is short, opens the biggest job and folds by transaction', () => {

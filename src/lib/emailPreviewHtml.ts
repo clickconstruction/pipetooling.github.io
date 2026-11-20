@@ -16,7 +16,7 @@ export const EMAIL_PREVIEW_SAMPLE_VARS: Record<string, string> = {
   email: 'jordan@example.com',
   role: 'estimator',
   link: 'https://example.com/sample-link',
-  project_name: 'Kent — 414 Candelaria, Helotes, TX',
+  project_name: 'Kent — 274 Chilton, Helotes, TX',
   stage_name: 'Rough-in',
   assigned_to_name: 'Malachi Douglas',
   workflow_link: 'https://example.com/sample-workflow',
@@ -27,7 +27,7 @@ export const EMAIL_PREVIEW_SAMPLE_VARS: Record<string, string> = {
   amount: '$1,250.00',
   window: 'Thu 8–10 AM',
   reason: 'Schedule conflict',
-  project: 'Kent — 414 Candelaria, Helotes, TX',
+  project: 'Kent — 274 Chilton, Helotes, TX',
   form_label: 'Conditional · progress',
   signer: 'Malachi Douglas',
   job_number: '1003',
@@ -56,8 +56,8 @@ const DIGEST_PREVIEW_TYPES = new Set([
 
 /** Sample built-in subject per digest type — what {{default_subject}} resolves to. */
 const SAMPLE_DEFAULT_SUBJECTS: Record<string, string> = {
-  paid_job: 'Payment received — Kent — 414 Candelaria (job 1003)',
-  ready_to_bill: 'Ready to bill — Kent — 414 Candelaria (job 1003)',
+  paid_job: 'Payment received — Kent — 274 Chilton (job 1003)',
+  ready_to_bill: 'Ready to bill — Kent — 274 Chilton (job 1003)',
   money_waiting: 'Money waiting — Tue, Sep 2',
   billed_awaiting: 'Billed awaiting payment — Tue, Sep 2',
   payment_forecast: 'Payment forecast — Tue, Sep 2',
@@ -90,7 +90,7 @@ const SAMPLE_TABLE_HTML = `<div style="margin-top:16px;border:1px dashed #d1d5db
 <div style="background:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:6px 12px;">SAMPLE DATA — the real send builds this section from live jobs; only the subject and intro above are editable.</div>
 <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;">
 <tr style="background:#f9fafb;"><th style="text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb;">Job</th><th style="text-align:right;padding:8px 12px;border-bottom:1px solid #e5e7eb;">Amount</th></tr>
-<tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">Kent — 414 Candelaria, Helotes, TX (job 1003)</td><td style="text-align:right;padding:8px 12px;border-bottom:1px solid #f3f4f6;">$1,250.00</td></tr>
+<tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">Kent — 274 Chilton, Helotes, TX (job 1003)</td><td style="text-align:right;padding:8px 12px;border-bottom:1px solid #f3f4f6;">$1,250.00</td></tr>
 <tr><td style="padding:8px 12px;">Alvarez — 98 Ledgestone Pass, Boerne, TX (job 1004)</td><td style="text-align:right;padding:8px 12px;">$3,480.00</td></tr>
 </table>
 </div>`

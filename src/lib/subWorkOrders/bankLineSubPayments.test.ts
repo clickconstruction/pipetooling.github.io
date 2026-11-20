@@ -11,7 +11,7 @@ const row = (id: string, amount: number, ymd: string, payee = '', over: Partial<
 // A lone payment, a sending across two sheets with a credit kept, a back-charge, a line paid from credit, and
 // another sub paid the same amount as the lone payment a day later.
 const one = sheet({ id: 'one', agreed: 900, payments: [pay('p1', 400, '2026-11-05'), pay('bc', -50, null), pay('cr', 25, '2026-11-09', { method: 'credit' })] })
-const two = sheet({ id: 'two', job: '1048 Tison', agreed: 2000, payments: [pay('s1', 1000, '2026-11-12', { sending_no: 12, credit_kept: 200 })] })
+const two = sheet({ id: 'two', job: '1048 Trask', agreed: 2000, payments: [pay('s1', 1000, '2026-11-12', { sending_no: 12, credit_kept: 200 })] })
 const three = sheet({ id: 'three', job: '2210 Alder', agreed: 300, payments: [pay('s2', 300, '2026-11-12', { sending_no: 12 })] })
 const other = sheet({ id: 'other', paidTo: 'Harlow Drywall', paidToKey: 'id:harlow', job: '77 Birch', agreed: 400, payments: [pay('h1', 400, '2026-11-06'), pay('undated', 75, null, { created_at: '' })] })
 const lines = buildLedgerLines([one, two, three, other])
@@ -80,7 +80,7 @@ describe('bankSideSheets', () => {
 describe('bankSideUnits', () => {
   it('names a sending by its number and every job its lines sit on', () => {
     const units = bankSideUnits(lines)
-    expect(units.find((u) => u.paymentId === 's1')).toEqual({ paymentId: 's1', lineIds: ['s1', 's2'], amount: 1500, ymd: '2026-11-12', paidTo: 'Calloway Tile', sendingNo: 12, jobs: ['1048 Tison', '2210 Alder'] })
+    expect(units.find((u) => u.paymentId === 's1')).toEqual({ paymentId: 's1', lineIds: ['s1', 's2'], amount: 1500, ymd: '2026-11-12', paidTo: 'Calloway Tile', sendingNo: 12, jobs: ['1048 Trask', '2210 Alder'] })
     expect(units.find((u) => u.paymentId === 'p1')).toMatchObject({ sendingNo: null, jobs: ['2104 Larkspur'] })
     // A back-charge and a line paid from credit moved no money.
     expect(units.map((u) => u.paymentId).sort()).toEqual(['h1', 'p1', 's1', 'undated'])

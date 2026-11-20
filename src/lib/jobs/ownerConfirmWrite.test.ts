@@ -13,7 +13,7 @@ const proposal = (over: Partial<ProposedPropertyRecord> = {}): ProposedPropertyR
   ownerName: '',
   ownerCompany: 'SAMPLE STATION LTD',
   ownerMode: 'building_owner',
-  ownerMailingAddress: '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209',
+  ownerMailingAddress: '3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209',
   homestead: 'unlikely',
   provenance: { source: 'Guadalupe Appraisal District', taxYear: '2025', propId: '12345' },
   ...over,
@@ -60,7 +60,7 @@ describe('mergeForExistingRow', () => {
     expect(next.owner_name).toBe('Typed Person')
     expect(next.county).toBe('Bexar')
     expect(next.owner_company).toBe('SAMPLE STATION LTD')
-    expect(next.owner_mailing_address).toBe('4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')
+    expect(next.owner_mailing_address).toBe('3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209')
     expect(next.parcel_source).toBe('Guadalupe Appraisal District')
     expect(next.parcel_id).toBe('12345')
   })

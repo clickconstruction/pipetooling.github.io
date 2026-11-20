@@ -123,12 +123,12 @@ describe('design drawing plan date formatters', () => {
 
 describe('bidTriagePillLabel', () => {
   it('leads with the project name, ellipsized', () => {
-    expect(bidTriagePillLabel({ project: 'Tune 5 Dickinson', address: '484 w fm 646 rd Dickinson, TX', label: 'BP251' })).toBe('Tune 5 Dickinson')
-    expect(bidTriagePillLabel({ project: 'Bastrop County Community Development Services Building', address: null, label: 'BP1' })).toBe('Bastrop County Community D…')
+    expect(bidTriagePillLabel({ project: 'Tune 5 Dickinson', address: '336 w fm 646 rd Dickinson, TX', label: 'BP251' })).toBe('Tune 5 Dickinson')
+    expect(bidTriagePillLabel({ project: 'Burnham County Community Development Services Building', address: null, label: 'BP1' })).toBe('Burnham County Community D…')
   })
 
   it('falls back to the street for unnamed bids, then the ledger label', () => {
-    expect(bidTriagePillLabel({ project: '—', address: '400 S SAGINAW BLVD, SAGINAW, TX', label: 'BP342' })).toBe('S SAGINAW BLVD')
+    expect(bidTriagePillLabel({ project: '—', address: '821 S SHELBY BLVD, SHELBY, TX', label: 'BP342' })).toBe('S SHELBY BLVD')
     expect(bidTriagePillLabel({ project: '', address: null, label: 'BP342' })).toBe('BP342')
   })
 })

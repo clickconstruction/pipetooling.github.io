@@ -9,7 +9,7 @@ When a fixture needs an assembly that does not exist yet, you can create one wit
 
 There are two ways in:
 
-- **Save as Assembly** sits under any fixture that already has part lines. The new assembly starts pre-loaded with those parts. Its name is filled in as the count name, a dash, and the project name. An example is **I-6 - MPH LIVSTE**. Edit it before saving if you want something else.
+- **Save as Assembly** sits under any fixture that already has part lines. The new assembly starts pre-loaded with those parts. Its name is filled in as the count name, a dash, and the project name. An example is **I-6 - MCK LGLBPH**. Edit it before saving if you want something else.
 - **Add assembly** is in a fixture's assembly picker when nothing matches your search.
 
 Both open the same **Add Assembly** form. It also maintains the shared catalog, so anything you create here appears in Materials → Assembly Book too.

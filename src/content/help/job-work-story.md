@@ -21,7 +21,7 @@ You see every clock session on the job, grouped by day, oldest first. Each sessi
 You turn on **Overlay schedule** in the header. The dispatch calendar's blocks for this job then appear inside each day. They are tinted blue with a 📅. So you see what was planned next to what was worked. You edit schedule descriptions the same way.
 
 :::example Answering the customer
-Mrs. Tison calls asking what the crew did last week. Open her job's work story: "Fri, Aug 15 — Michael A: Gas line pressure test — passed · Bryan: Water heater install + strapping." Read it to her, or send it.
+Mrs. Trask calls asking what the crew did last week. Open her job's work story: "Fri, Aug 15 — Michael A: Gas line pressure test — passed · Bryan: Water heater install + strapping." Read it to her, or send it.
 :::
 
 ## Move a session to another job

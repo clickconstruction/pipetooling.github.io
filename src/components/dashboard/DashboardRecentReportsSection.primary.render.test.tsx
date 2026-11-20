@@ -85,7 +85,7 @@ describe('DashboardRecentReportsSection — no report yet (punch list #184, swee
 })
 
 describe('DashboardRecentReportsSection — a primary reads their own jobs\' reports (2026-11-19)', () => {
-  const second = { ...report, id: 'r2', job_ledger_id: 'j2', job_display_name: 'Laurel Field Bathroom Rough', created_by_name: 'Abraham' }
+  const second = { ...report, id: 'r2', job_ledger_id: 'j2', job_display_name: 'Lloyd Field Bathroom Rough', created_by_name: 'Abraham' }
 
   it('the counts are the list the database answered, and no more', async () => {
     listed.rows = [report, second]
@@ -94,7 +94,7 @@ describe('DashboardRecentReportsSection — a primary reads their own jobs\' rep
       renderWithProviders(<DashboardRecentReportsSection authUserId="me" role="primary" onCounts={(c) => counts.push(c)} />)
       await waitFor(() => expect(counts[counts.length - 1]).toEqual({ listed: 2, fresh: 2 }))
       fireEvent.click(screen.getByText('Recent Reports'))
-      await waitFor(() => expect(screen.getByText(/Laurel Field Bathroom Rough/)).toBeTruthy())
+      await waitFor(() => expect(screen.getByText(/Lloyd Field Bathroom Rough/)).toBeTruthy())
       expect(screen.getByLabelText('2 new reports')).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Mark 2 opened' })).toBeTruthy()
       expect(document.querySelectorAll('li').length).toBe(2)

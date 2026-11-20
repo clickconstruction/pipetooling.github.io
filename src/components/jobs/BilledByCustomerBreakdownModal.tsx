@@ -240,8 +240,11 @@ function BillCard({
   const canStripeResend = b.invoiceId != null && b.stripeInvoiceId != null && !b.stripePaid
   const isPhysical = b.stripeInvoiceId == null && b.externalSendChannel === 'physical'
   const isHcp = b.stripeInvoiceId == null && b.externalSendChannel === 'housecallpro'
-  const physicalRecipient = b.billToEmail ?? b.customerEmail
-  const canPhysicalResend = b.invoiceId != null && isPhysical && physicalRecipient != null
+  // A bill that went to the GC is emailed again to the GC's billing address (v2.7959). The row does not carry it, so
+  // the button reads it when its window opens. It was the job's customer email, which the send refused.
+  const billedToGc = b.billedTo === 'gc'
+  const physicalRecipient = billedToGc ? null : (b.billToEmail ?? b.customerEmail)
+  const canPhysicalResend = b.invoiceId != null && isPhysical && (billedToGc || physicalRecipient != null)
   const sentLabel = b.sentAtIso ? `✉ Email sent ${formatDenverCalendarDayShort(new Date(b.sentAtIso).getTime())}` : null
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.625rem 0.75rem' }}>
@@ -309,7 +312,9 @@ function BillCard({
           <StripeInvoiceSendFromStripeButton
             jobsLedgerInvoiceId={b.invoiceId}
             stripeInvoiceId={b.stripeInvoiceId}
-            customerEmail={b.customerEmail}
+            // The payer's own address, never the job's customer's on a bill that went to the GC (v2.7972).
+            customerEmail={b.billedTo === 'gc' ? null : (b.billToEmail ?? b.customerEmail)}
+            payer={b.billedTo}
             stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
             onSent={() => {
               // The send succeeded; the chase touch is best-effort bookkeeping
@@ -329,6 +334,7 @@ function BillCard({
           <PhysicalInvoiceResendButton
             invoice={{ id: b.invoiceId, job_id: b.jobId }}
             recipientEmail={physicalRecipient}
+            readRecipient={billedToGc}
             onSent={() => {
               // Same best-effort chase-touch pairing as the Stripe resend.
               if (b.customerId) {

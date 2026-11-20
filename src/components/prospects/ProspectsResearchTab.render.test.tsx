@@ -889,6 +889,18 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     const daysBack: Record<string, number> = { 'San Antonio': 5, Austin: 2, 'New Braunfels': 15, 'San Marcos': 1, Seguin: 1 }
     const newestOf = (city: string) => ymdPlusDays(today, -(daysBack[city] ?? 0))
 
+    it('a caught-up skim in a quiet city says what stopped, and promises nothing for tomorrow', async () => {
+      io.loadNewestPermitDay.mockImplementation(async (city: string) => newestOf(city))
+      io.loadResearchPermits.mockResolvedValue([])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
+      // A moving city keeps the promise.
+      await waitFor(() => expect(screen.getByText(/The next pull is tomorrow at 5:30 AM\.$/)).toBeTruthy())
+      fireEvent.change(picker, { target: { value: 'New Braunfels' } })
+      await waitFor(() => expect(screen.getByText(`Every permit the feed brought has an answer. New Braunfels has published nothing since ${shortDay(newestOf('New Braunfels'), today)}. Our pull still runs every morning at 5:30 AM.`)).toBeTruthy())
+      expect(screen.queryByText(/The next pull is tomorrow/)).toBeNull()
+    })
+
     it('names the quiet city and the day it stopped, and each moving city with its newest day', async () => {
       io.loadNewestPermitDay.mockImplementation(async (city: string) => newestOf(city))
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)

@@ -20,7 +20,7 @@ const row = (id: string, hcp: string, over: Omit<Partial<Row>, 'job'> & { job?: 
 // A 90-day window ending 2026-10-22. j931 finished (paid in full) and worked inside it; j891 in
 // progress inside it; j827 finished but last worked in March, outside it.
 const rows: Row[] = [
-  row('j931', '931', { totalBill: 48_700, job: { invoices: [{ status: 'paid', amount: 48_700 }], job_name: 'Lavender Springs', job_address: '501 Ranch Rd, Wimberley', last_work_date: '2026-10-01' } }),
+  row('j931', '931', { totalBill: 48_700, job: { invoices: [{ status: 'paid', amount: 48_700 }], job_name: 'Langford Springs', job_address: '501 Ranch Rd, Wimberley', last_work_date: '2026-10-01' } }),
   row('j891', '891', { totalBill: 10_000, teamLaborCost: 2_000, job: { pct_complete: 40, job_name: 'Oak Hill repipe', last_work_date: '2026-10-20' } }),
   row('j827', '827', { totalBill: 5_983, job: { pct_complete: 100, last_work_date: '2026-03-02' } }),
 ]

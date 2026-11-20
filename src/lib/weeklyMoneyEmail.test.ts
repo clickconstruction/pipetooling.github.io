@@ -19,7 +19,7 @@ describe('weeklyMoneyEmail (the report’s renderer, lifted v2.4170)', () => {
     const lines = t.split('\n')
     expect(lines[1]).toBe('Out $18,955.00 | In $30,380.00 | Net cash +$11,425.00 | Value created $18,225.00 | Earned net −$730.00')
     expect(t).toContain('Made money this week:\n  1041 · Cedar Bend Apartments — rough-in — 40% → 55%; out $9,600.00; in $26,000.00; net +$3,300.00')
-    expect(t).toContain('  1039 · Structura — pretest — no report; out $380.00; in —; net ?')
+    expect(t).toContain('  1039 · Sheffield — pretest — no report; out $380.00; in —; net ?')
     expect(lines[lines.length - 1]).toBe('Not on jobs: office+bid labor $2,015.00; office job charges $210.00')
   })
   it('html has both tables, the sign on every net, and who scheduled it', () => {

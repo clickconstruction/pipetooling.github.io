@@ -15,6 +15,9 @@ import {
   isSubLaborVerb,
   laborLineWords,
   laborPersonFacts,
+  SHEET_TEAM_KINDS,
+  SHEET_TEAM_ROLES,
+  teammateWords,
   payeeReadsLike,
   readLaborPerson,
   readSubLaborPaymentWorld,
@@ -148,10 +151,10 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.112.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
-    expect(README).toContain('one hundred and thirty-seven `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and forty-five `plan_` / `apply_` / `revert_` verbs')
   })
   it('go through writeRpcBody with the app’s day, and an apply needs the plan’s hash', () => {
     const planned = writeRpcBody('plan_sub_labor', { labor: FLAT })
@@ -220,23 +223,64 @@ describe('devMcpSubLabor — who a sheet is for', () => {
       expect(f).toMatchObject({ ok: true, person: { name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', role: 'subcontractor', pay_ledger: 'sub', sample: false, people_ids: [SUB_ROW], names: ['ZZ Sample Sub'] } })
     }
   })
-  it('refuses a teammate who is not a sub, an archived sub, a sub on the bench, a twin, nobody and two people of one name', async () => {
+  it('refuses a helper, an archived sub, a sub on the bench, a twin, nobody and two people of one name', async () => {
     const say = async (asked: string, data?: Data) => {
       const f = await facts(asked, data)
       if (f.ok) throw new Error('expected a refusal')
       return f.refused
     }
-    expect(await say(MASTER_USER)).toContain('ZZ Sample Master is not a subcontractor or a primary (a master technician)')
-    expect(await say(MASTER_USER)).toContain('paid through payroll from their hours')
+    // A helper is on neither of the form's lists: by account, and by a roster row with no account.
+    const helper = standingWorld({ users: [masterUser({ role: 'helpers' })], people: [masterRow({ kind: 'helper' })] })
+    expect(await say(MASTER_USER, helper)).toContain("ZZ Sample Master is not someone the form's Paid to step offers (a helper)")
+    expect(await say(MASTER_USER, helper)).toContain('A helper is paid through payroll from their hours')
+    expect(await say(MASTER_ROW, standingWorld({ users: [], people: [masterRow({ kind: 'helper', account_user_id: null })] }))).toContain('(on the roster as helper)')
+    expect(FORM).toContain("const kindsExceptSub: PersonKind[] = [\n      'master_technician',\n      'assistant',\n      'estimator',\n      'primary',\n      'superintendent',\n    ]")
     expect(await say(GONE_ROW)).toContain('ZZ Gone Sub is archived')
     expect(await say(BENCH_ROW)).toContain('on the bench since 2026-08-01')
     expect(await say(TWIN_USER)).toContain('is a digital twin')
     expect(await say('ZZ Nobody')).toContain('No person "ZZ Nobody" is visible to you')
     const two = standingWorld({ people: [subRow(), subRow({ id: BENCH_ROW, account_user_id: null, end_date: null })] })
     expect(await say('ZZ Sample Sub', two)).toContain('matches 2 people')
-    // A roster row of kind sub whose account is an office role is not on the form's list: the account's role decides.
-    const office = standingWorld({ users: [subUser({ role: 'assistant' })] })
-    expect(await say(SUB_ROW, office)).toContain('on the roster as a sub with a assistant account')
+    // A teammate who has left, by account and by a roster row with no account.
+    expect(await say(MASTER_USER, standingWorld({ users: [masterUser({ archived_at: '2026-07-01T12:00:00+00:00' })] }))).toContain('ZZ Sample Master is archived')
+    expect(await say(MASTER_ROW, standingWorld({ users: [], people: [masterRow({ account_user_id: null, archived_at: '2026-07-01T12:00:00+00:00' })] }))).toContain('ZZ Sample Master is archived')
+  })
+  it('a teammate the form’s Office Team offers is taken, and the plan says the sheet is their own, on top of their wages', async () => {
+    for (const asked of ['zz sample master', MASTER_ROW, MASTER_USER]) {
+      expect(await facts(asked)).toMatchObject({ ok: true, person: { name: 'ZZ Sample Master', people_id: MASTER_ROW, user_id: MASTER_USER, kind: 'master_technician', role: 'master_technician', pay_ledger: 'crew', offered_as: 'office_team' } })
+    }
+    const r = await reply({ ...FLAT, person: MASTER_USER })
+    expect(r.person).toEqual({ name: 'ZZ Sample Master', people_id: MASTER_ROW, user_id: MASTER_USER, kind: 'master_technician', account_role: 'master_technician', offered_by: "the form's Office Team group", pay_ledger: 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them' })
+    expect(r.sheet).toMatchObject({ assigned_to_name: 'ZZ Sample Master' })
+    const warned = (r.warnings as string[]).join(' ')
+    expect(warned).toContain("ZZ Sample Master is a master technician, not a roster sub. The form's Office Team group offers them.")
+    expect(warned).toContain('It is money on top of their wages, and no payroll screen reads a sheet.')
+    expect(warned).toContain('still counts on JP9102 as sub labor')
+    expect(r.does_not as string[]).toContain("It writes a sheet for one person the form's Paid to step offers: a subcontractor, a primary or one of the Office Team. A sheet for several people, or for a helper, is the form's own.")
+    // Every role the group reads an account by, and the form's own words for each.
+    for (const role of SHEET_TEAM_ROLES) expect(await facts(MASTER_USER, standingWorld({ users: [masterUser({ role })] }))).toMatchObject({ ok: true, person: { role, offered_as: 'office_team', pay_ledger: 'crew' } })
+    expect(FORM).toContain("(k === 'assistant' ? isAssistantLike(u.role) : u.role === userRole)")
+    expect(FORM).toContain(".filter((u) => u.role === 'dev')")
+    // A roster row with no account is offered by its kind.
+    for (const kind of SHEET_TEAM_KINDS) expect(await facts(MASTER_ROW, standingWorld({ users: [], people: [masterRow({ kind, account_user_id: null })] }))).toMatchObject({ ok: true, person: { user_id: null, people_id: MASTER_ROW, kind, role: null, offered_as: 'office_team', pay_ledger: 'crew' } })
+  })
+  it('a superintendent whose roster row is kind sub is a teammate: the account’s role decides, and the bench is a sub’s', async () => {
+    // The case that asked for this: a roster row of kind sub behind a login that is not a subcontractor's.
+    const world = standingWorld({ users: [subUser({ role: 'superintendent' })] })
+    for (const asked of ['ZZ Sample Sub', SUB_ROW, SUB_USER]) {
+      expect(await facts(asked, world)).toMatchObject({ ok: true, person: { name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', role: 'superintendent', pay_ledger: 'crew', offered_as: 'office_team' } })
+    }
+    const r = await reply(FLAT, world)
+    expect(r.person).toEqual({ name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', account_role: 'superintendent', offered_by: "the form's Office Team group", pay_ledger: 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them' })
+    expect((r.warnings as string[]).join(' ')).toContain('ZZ Sample Sub is a superintendent, on the roster as a sub, not a roster sub.')
+    expect(teammateWords({ kind: 'sub', role: 'assistant' })).toBe('an assistant, on the roster as a sub')
+    expect(teammateWords({ kind: 'estimator', role: null })).toBe('an estimator on the roster with no account')
+    // The form benches a sub by its roster row; a teammate's account is still offered under Office Team.
+    expect(await facts(SUB_USER, standingWorld({ users: [subUser({ role: 'superintendent' })], people: [subRow({ end_date: '2026-08-01' })] }))).toMatchObject({ ok: true, person: { offered_as: 'office_team' } })
+    // A roster row that no longer stands ties nothing: the name trigger reads no archived row.
+    const gone = await reply({ ...FLAT, person: SUB_USER }, standingWorld({ users: [subUser({ role: 'superintendent' })], people: [subRow({ archived_at: '2026-07-01T12:00:00+00:00' })] }))
+    expect(gone.person).toMatchObject({ people_id: null, kind: 'superintendent', pay_ledger: 'no roster row: the Pay ledger reads the name as an outside sub until People gives them one' })
+    expect((gone.warnings as string[]).join(' ')).toContain('would not read as Team · sub labor until they have a roster row')
   })
   it('a primary is taken as the form’s Subcontractors list offers one, and the plan says the sheet is their own, owed to them', async () => {
     for (const asked of ['ZZ Sample Primary', PRIMARY_ROW, PRIMARY_USER]) {

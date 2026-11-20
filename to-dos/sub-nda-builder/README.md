@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day he started a spike of the flow in the app, in its own session · nothing of the builder is shipped
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · nothing of the builder is shipped
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The spike of the flow, steered by the owner in its own session. Beside it, a grid of what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
+next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -174,7 +174,11 @@ yet accepted:
     have* where the level asks something of the site, and the topic's slider at the bottom. The page
     changes while the handle is dragged. A page moved off the basis says so and offers *Back to* it.
   - Step 11 is *Review*, with *Change* on each topic and the office's confirm.
-- Under it, the settled levels on the whole-job slider, with each level's place under it.
+- Under the flow, **the grid**: seven topics by four levels on one page, each box with its rule, what
+  puts a person in breach and what the site must have, all placeholders for him to correct. A list under
+  it names what is the same in every paper today, with the session's suggestion of what could move with
+  the level: what counts as secret, and what happens after a breach.
+- Under the grid, the settled levels on the whole-job slider, with each level's place under it.
 - On the office's page, *Set it step by step* opens the flow.
 
 **Why the places are these.** A place is strict in two ways: how hard it is to get on site, and how much
@@ -304,8 +308,9 @@ paper until an entry has a settings list, and the first one is a test entry.
 3. **Settings on the job, the ground (M).** The columns on `job_required_papers`, `job_papers_require`
    accepting a clause-built entry with settings, a function that sets them and locks at the first
    signature, the read-revision rule, the freeze with the hash, and the signature's *Signing for* line.
-4. **The office's settings page (M).** The step-by-step flow lands here. Inside `JobDocumentsRequiredPapers`. This is the first screen the
-   open look decides.
+4. **The office's settings page (M).** The step-by-step flow lands here, reused from the Document
+   builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
+   `JobDocumentsRequiredPapers`. This is the first screen the open look decides.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -477,7 +482,7 @@ Sizes for this card's own steps are the train's above.
 | 5 | Send a paper and open the Contract library from Documents | S to M | Wider call 5 |
 | 6 | Step 1 here, the Book takes settings | M | Nothing |
 | 7 | Step 2 here, the summary and the sample | S | Nothing |
-| 8 | An outside party as a record, with the *Signing for* line of step 3 | M | Wider call 3 |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Wider call 3, on card #403 |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
 | 11 | Steps 3 to 7 here | M · M · M · M · S | The look for step 4. Counsel before a real job. |
@@ -491,10 +496,12 @@ Sizes for this card's own steps are the train's above.
 2. **Counsel.** Who reads the wording, and whether a fixed secrecy paper goes first so the gate is used
    before the builder exists.
 3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
-   holds a paper today.
+   holds a paper today. Card #403 lays out the options, a pick and a mock-up
+   (`to-dos/outside-signer-record/README.md`), and the call is made there.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
-5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.
+5. **Documents or both.** Settled 2026-11-19 on card #403, its call 5: both. People sends to a person on
+   the roster, and Documents sends to anyone.
 6. **The GC and the gate.** Whether a GC ever signs a job's paper, and what *one signature per GC* should
    mean. `docs/recent-features/v2.7726.md` names it as the owner's call 4 and its wording is not in the
    repo.
@@ -508,10 +515,24 @@ liked sliders and did not love either drawing of them, so the look was the first
 review began on 2026-11-19 and settled the four levels, their names, their places and how a place is
 said. He then asked for the step-by-step flow, saw it drawn, and said "I think this is coming together
 to the point we can build it as a spike and then refine from there". A spike of the flow in the app
-began the same day in its own session: real code on made-up data, dev-only, shipped nowhere.
+was built the same day in its own session: real code on made-up data, dev-only, shipped nowhere. It
+is on the branch `spike/document-builder`.
+
+The same day he decided where the builder lives for now: a **Document builder** tab on Documents, for
+a dev only, apart from any job. That is its own card, [#404](../document-builder/README.md), with the
+flow as he shaped it in the spike, a second builder for a job's insurance requirements, and a train of
+ten steps. **#404 is built first.** This card's own train, which ends with a job requiring the paper
+its settings make, comes after it and is untouched by it. Where this card's mock-up and the spike differ
+on the flow, the spike is newer.
+
+The grid of seven topics by four levels is drawn in this card's mock-up. Every line in it is one
+session's placeholder, and the owner has not yet read it box by box. That read comes before any wording
+goes to an attorney. Where the grid and the spike's own contents differ, the spike is newer.
 
 He also asked whether this should become a contract builder long term. The session's answer: yes as a
-direction, since a paper's settings are data, and a call to make once a second paper works.
+direction, since a paper's settings are data, and a call to make once a second paper works. #404's
+second builder has since shown one limit: a job's insurance requirements did not fit levels and topics,
+so that tab holds two kinds of builder.
 
 The calls in *Open: the look* are what is left of the review. After that come the picks the build stands
 on, then step 1. The gate under it is live and unused, and *The wider look* orders what is left around

@@ -21,7 +21,7 @@ The Share button is the icon of a square with an arrow.
 
 :::example the message your teammate gets
 Job #951 — Shellan Pinpoint
-717 Trinity St, Lockhart, TX
+972 Tarleton St, Lockhart, TX
 …plus a link that opens this exact job.
 :::
 

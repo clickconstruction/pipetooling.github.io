@@ -2299,7 +2299,7 @@ describe('LienDesk reads the roll (v2.3450)', () => {
   }
 
   it('an ownerless item shows the roll’s answer with its chips and Use, keeps the door, and Use writes the property and re-reads', async () => {
-    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')))
+    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209')))
     const onChanged = vi.fn()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} onChanged={onChanged} />)
     await waitFor(() => expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('found'))

@@ -112,7 +112,7 @@ describe('resolveSubScheduleJobMeta', () => {
     job_pictures_link: 'https://drive.google.com/drive/folders/pics',
     hcp_number: '000',
     click_number: null,
-    job_address: '12921 FM 20 Kingsbury TX',
+    job_address: '62552 FM 20 Kingsbury TX',
   }
 
   it('falls back to the map when the job is absent from the assigned lists', () => {

@@ -6,13 +6,18 @@ import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { forgetBillEmailSent, rememberBillEmailSent, sendStripeBillEmail, stripeEmailSentSessionKey } from '../../lib/billing/sendStripeBillEmail'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
+import { stripeBillAddressWords } from '../../lib/jobs/stripeBillEmailHint'
+import type { EffectiveBillParty } from '../../lib/jobs/billToParty'
 
 const CONFIRM_MODAL_Z = 120000
 
 export type StripeInvoiceSendFromStripeButtonProps = {
   jobsLedgerInvoiceId: string
   stripeInvoiceId: string
+  /** The address the window names. Null when the host does not hold the payer's own (`stripeBillEmailHint`): the send reads Stripe's. */
   customerEmail: string | null
+  /** Who the bill went to (v2.7972), for the words that stand in when there is no address to name. */
+  payer?: EffectiveBillParty
   stripeModeForBilling: BillingStripeModePref
   /** After the bill email went out (e.g. refetch invoice details). */
   onSent?: () => void
@@ -44,6 +49,7 @@ export function StripeInvoiceSendFromStripeButton({
   jobsLedgerInvoiceId,
   stripeInvoiceId,
   customerEmail,
+  payer,
   stripeModeForBilling,
   onSent,
   compact = false,
@@ -72,9 +78,7 @@ export function StripeInvoiceSendFromStripeButton({
 
   const emailHint = (customerEmail ?? '').trim()
   const canTry = jobsLedgerInvoiceId.trim() && stripeInvoiceId.trim()
-  const emailLine = emailHint
-    ? emailHint
-    : 'the customer (no email on file in the app preview)'
+  const emailLine = emailHint ? emailHint : stripeBillAddressWords(payer)
 
   useEffect(() => {
     if (!confirmOpen) return

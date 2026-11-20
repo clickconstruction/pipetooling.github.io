@@ -9,12 +9,12 @@ const row = (o: Partial<PursuitRow> & { outcome: PursuitRow['outcome']; dateYmd:
   bidId: `b${++n}`, label: `B${n}`, projectName: `P${n}`, bidNumber: String(n), estimatorName: null, gcName: null, robot: false, sentYmd: o.dateYmd, outcomeAtYmd: null,
   hours: 0, laborUsd: 0, cardUsd: 0, materialsUsd: 0, totalUsd: 0, bidValue: null, usdPerThousandBid: null, people: [], ...o,
 })
-// December 2025 in miniature: 2 won, 4 lost (Malachi 2, nobody 2; Summit 2, Structura 1), nothing open; January: 1 stale open.
+// December 2025 in miniature: 2 won, 4 lost (Malachi 2, nobody 2; Summit 2, Sheffield 1), nothing open; January: 1 stale open.
 const rows = forecastRows([
   row({ outcome: 'won', dateYmd: '2025-12-05', bidValue: 100_000, estimatorName: 'Malachi', gcName: 'Kestrin' }),
   row({ outcome: 'won', dateYmd: '2025-12-06', bidValue: 46_000 }),
   row({ outcome: 'lost', dateYmd: '2025-12-09', bidValue: 303_200, gcName: 'R.C. Page' }),
-  row({ outcome: 'lost', dateYmd: '2025-12-03', bidValue: 187_300, estimatorName: 'Malachi', gcName: 'Structura' }),
+  row({ outcome: 'lost', dateYmd: '2025-12-03', bidValue: 187_300, estimatorName: 'Malachi', gcName: 'Sheffield' }),
   row({ outcome: 'lost', dateYmd: '2025-12-22', bidValue: 41_500, gcName: 'Summit' }),
   row({ outcome: 'lost', dateYmd: '2025-12-15', bidValue: 144_900, estimatorName: 'Malachi', gcName: 'Summit' }),
   row({ outcome: 'open', dateYmd: '2026-01-10', bidValue: 4_000 }),
@@ -38,7 +38,7 @@ describe('cohortDrill', () => {
   it('rolls the slice up by estimator and by GC, most first', () => {
     const d = cohortDrill(cohorts, dec, 'lost')!
     expect(d.byEstimator.map((r) => `${r.label} ${r.n}`)).toEqual(['No estimator 2', 'Malachi 2']) // tie on count → larger value first ($344.7k vs $332.2k)
-    expect(d.byGc.map((r) => `${r.label} ${r.n}`)).toEqual(['Summit 2', 'R.C. Page 1', 'Structura 1'])
+    expect(d.byGc.map((r) => `${r.label} ${r.n}`)).toEqual(['Summit 2', 'R.C. Page 1', 'Sheffield 1'])
     expect(rollupByEstimator(d.rows).find((r) => r.label === 'Malachi')!.usd).toBe(187_300 + 144_900)
     expect(rollupByGc([])).toEqual([])
   })

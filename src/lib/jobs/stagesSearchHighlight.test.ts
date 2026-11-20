@@ -3,10 +3,10 @@ import { splitTextByMatch, textHasMatch } from './stagesSearchHighlight'
 
 describe('splitTextByMatch', () => {
   it('marks a case-insensitive hit mid-string', () => {
-    expect(splitTextByMatch('1132 Miraloma Lane', 'mira')).toEqual([
-      { text: '1132 ', match: false },
-      { text: 'Mira', match: true },
-      { text: 'loma Lane', match: false },
+    expect(splitTextByMatch('6652 Montrose Lane', 'mont')).toEqual([
+      { text: '6652 ', match: false },
+      { text: 'Mont', match: true },
+      { text: 'rose Lane', match: false },
     ])
   })
 

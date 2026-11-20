@@ -21,8 +21,8 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   people: [{ id: 'p-jesse', name: 'Jesse Ramos', kind: 'sub', archived_at: null, account_user_id: null }],
   users: [],
   people_labor_jobs: [
-    { id: 's1', assigned_to_name: 'J Ramos', address: '582 Curvatura', job_number: '892', labor_rate: 0 },
-    { id: 's2', assigned_to_name: 'J Ramos', address: '582 Curvatura', job_number: '892', labor_rate: 0 },
+    { id: 's1', assigned_to_name: 'J Ramos', address: '999 Calder', job_number: '892', labor_rate: 0 },
+    { id: 's2', assigned_to_name: 'J Ramos', address: '999 Calder', job_number: '892', labor_rate: 0 },
   ],
   people_labor_job_assignees: [],
   people_labor_job_items: [
@@ -63,7 +63,7 @@ describe('PeopleSubsTab unattributed panel', () => {
 
     // Group row: job chip, dedupe count, assigned name as plain words, reason badge, summed balance.
     expect(screen.getByText('#892')).toBeTruthy()
-    expect(screen.getByText('582 Curvatura')).toBeTruthy()
+    expect(screen.getByText('999 Calder')).toBeTruthy()
     expect(screen.getByText(/· 2 sheets/)).toBeTruthy()
     expect(screen.getByText('J Ramos')).toBeTruthy()
     expect(screen.getByText('No roster match')).toBeTruthy()

@@ -17,7 +17,7 @@ describe('splitAddress', () => {
       street: '150 E Sonmere Blvd 200B San Antonio',
       city: null,
     })
-    expect(splitAddress('4110 N Main St, Taylor, TX 76574')).toEqual({ street: '4110 N Main St', city: 'Taylor' })
+    expect(splitAddress('3852 N Main St, Taylor, TX 76574')).toEqual({ street: '3852 N Main St', city: 'Taylor' })
     expect(splitAddress('88 Canyon Lake Dr, Canyon Lake')).toEqual({ street: '88 Canyon Lake Dr', city: 'Canyon Lake' })
   })
 

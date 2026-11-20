@@ -4,25 +4,25 @@ import { adoptEvery, adoptOutcomeWords, adoptPreviewLine, sortAdoptCandidates, s
 describe('sortAdoptCandidates', () => {
   it('puts the target customer first, newest bid number first within each group', () => {
     const rows = [
-      { bid_number: '253', customer_id: 'jakes' },
+      { bid_number: '253', customer_id: 'jarvis' },
       { bid_number: '999', customer_id: 'other' },
-      { bid_number: '345', customer_id: 'jakes' },
+      { bid_number: '345', customer_id: 'jarvis' },
       { bid_number: null, customer_id: null },
     ]
-    expect(sortAdoptCandidates(rows, 'jakes').map((r) => r.bid_number)).toEqual(['345', '253', '999', null])
+    expect(sortAdoptCandidates(rows, 'jarvis').map((r) => r.bid_number)).toEqual(['345', '253', '999', null])
     expect(sortAdoptCandidates(rows, null).map((r) => r.bid_number)).toEqual(['999', '345', '253', null])
   })
 })
 
 describe('suggestVersionName', () => {
   it('drops the words shared with the package name', () => {
-    expect(suggestVersionName('Jakes Burgers Revised', 'Jakes', '345')).toBe('Burgers Revised')
-    expect(suggestVersionName('JAKES BURGERS', 'Jakes', '238')).toBe('BURGERS')
-    expect(suggestVersionName('Jakes Split Rail - Revised VE', 'JAKES BURGERS', '348')).toBe('Split Rail - Revised VE')
+    expect(suggestVersionName('Jarvis Burgers Revised', 'Jarvis', '345')).toBe('Burgers Revised')
+    expect(suggestVersionName('JARVIS BURGERS', 'Jarvis', '238')).toBe('BURGERS')
+    expect(suggestVersionName('Jarvis Sable Ridley - Revised VE', 'JARVIS BURGERS', '348')).toBe('Sable Ridley - Revised VE')
   })
   it('never returns empty — falls back to the full name or the bid number', () => {
-    expect(suggestVersionName('Jakes', 'Jakes', '238')).toBe('Jakes')
-    expect(suggestVersionName('', 'Jakes', '238')).toBe('B238')
+    expect(suggestVersionName('Jarvis', 'Jarvis', '238')).toBe('Jarvis')
+    expect(suggestVersionName('', 'Jarvis', '238')).toBe('B238')
     expect(suggestVersionName(null, null, null)).toBe('Adopted bid')
   })
 })

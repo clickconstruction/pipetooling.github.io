@@ -5,8 +5,8 @@ import { runEnvelopes } from './runEnvelopes'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import { plainWordsFailures } from '../plainWords'
 
-const owner = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'TC/JP SEGUIN 2019 LLC', address: '9993 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230', email: '', method: 'certified_mail', tracking: '', ...over })
-const gc = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Southern Pine Construction', address: '2209 N. 23rd St., McAllen, TX 78501', email: 'ap@southernpine.test', method: 'certified_mail', tracking: '', ...over })
+const owner = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'TN/JT SEFTON 7852 LLC', address: '1130 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230', email: '', method: 'certified_mail', tracking: '', ...over })
+const gc = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Southern Pine Construction', address: '6020 N. 23rd St., McAllen, TX 78501', email: 'ap@southernpine.test', method: 'certified_mail', tracking: '', ...over })
 const notice = (over: Partial<RunNotice> = {}): RunNotice => ({
   itemId: 'it878', jobId: 'j878', kind: 'notice_53_056', label: '878 · Tune 5- Seguin', jobNumber: '878', months: ['2026-09'], amount: 38625,
   fields: { noticeDate: '2026-09-24', projectDescription: 'Tune 5', claimantName: 'Click', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Southern Pine Construction', contractedWithIfDifferent: '', claimAmount: '38625.00', contactPerson: 'M', claimantAddress: '5501 Balcones Dr' },
@@ -22,8 +22,8 @@ describe('the run’s addresses for the label service (v2.4977)', () => {
   })
 
   it('an address typed with no comma before the city takes the city from the line before (Lowbeck on the live run)', () => {
-    const [env] = runEnvelopes([notice({ recipients: [gc({ name: 'Lowbeck Contracting', address: '311 E Illinois Ave. Palatine, Il 60067' })] })])
-    expect(runLabelRows(runMailing([env!]))[0]).toMatchObject({ line1: '311 E Illinois Ave.', line2: '', city: 'Palatine', state: 'IL', zip: '60067' })
+    const [env] = runEnvelopes([notice({ recipients: [gc({ name: 'Lowbeck Contracting', address: '295 E Ibsen Ave. Palatine, Il 60067' })] })])
+    expect(runLabelRows(runMailing([env!]))[0]).toMatchObject({ line1: '295 E Ibsen Ave.', line2: '', city: 'Palatine', state: 'IL', zip: '60067' })
   })
 
   it('one row per envelope that goes out on paper, numbered as the sheet is, with the jobs inside as the reference; held, email and hand envelopes are left out', () => {
@@ -35,8 +35,8 @@ describe('the run’s addresses for the label service (v2.4977)', () => {
     ])
     const rows = runLabelRows(runMailing(envs))
     expect(rows).toEqual([
-      { envelope: 1, name: 'TC/JP SEGUIN 2019 LLC', line1: '9993 IH 10 WEST SUITE 102', line2: '', city: 'SAN ANTONIO', state: 'TX', zip: '78230', reference: 'Envelope 1 · 878' },
-      { envelope: 2, name: 'Southern Pine Construction', line1: '2209 N. 23rd St.', line2: '', city: 'McAllen', state: 'TX', zip: '78501', reference: 'Envelope 2 · 878, 898' },
+      { envelope: 1, name: 'TN/JT SEFTON 7852 LLC', line1: '1130 IH 10 WEST SUITE 102', line2: '', city: 'SAN ANTONIO', state: 'TX', zip: '78230', reference: 'Envelope 1 · 878' },
+      { envelope: 2, name: 'Southern Pine Construction', line1: '6020 N. 23rd St.', line2: '', city: 'McAllen', state: 'TX', zip: '78501', reference: 'Envelope 2 · 878, 898' },
       { envelope: 3, name: 'SABLOW TEXAS HOLDINGS LP', line1: '% SABLOW HEALTH CARE REIT INC', line2: '18500 VON KARMAN AVE STE 550', city: 'IRVINE', state: 'CA', zip: '92612', reference: 'Envelope 3 · 898' },
     ])
   })

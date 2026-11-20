@@ -4,7 +4,7 @@ import { lienStripChips, type LienStripChipsInput } from './lienStripChips'
 import { plainWordsFailures } from '../plainWords'
 
 const clear: LienDeskGatesInput = {
-  ownerName: 'Dudley Mason LLC',
+  ownerName: 'Della Mackay LLC',
   ownerMailingAddress: '4 Example Way, Schertz, TX',
   gcName: 'Lowbeck Contracting',
   gcAddress: '2904 Corporate Cr, Flower Mound, TX',

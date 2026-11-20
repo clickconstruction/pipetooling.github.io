@@ -63,12 +63,12 @@ describe('buildCallQueue', () => {
       bid({ outcome: 'lost', value: 300_000 }), // needs reason + tab gettable
       bid({ outcome: 'lost', lossCategory: 'price', hasTab: true }),
       bid({ outcome: 'won' }),
-      // Structura: everything handled
-      bid({ builderKey: 'gc-str', builderName: 'Structura', outcome: 'lost', lossCategory: 'gc_lost', hasTab: true }),
-      bid({ builderKey: 'gc-str', builderName: 'Structura', outcome: 'pending', sentIso: '2026-08-20', lastContactIso: '2026-08-21T10:00:00Z' }),
+      // Sheffield: everything handled
+      bid({ builderKey: 'gc-str', builderName: 'Sheffield', outcome: 'lost', lossCategory: 'gc_lost', hasTab: true }),
+      bid({ builderKey: 'gc-str', builderName: 'Sheffield', outcome: 'pending', sentIso: '2026-08-20', lastContactIso: '2026-08-21T10:00:00Z' }),
     ]
     const { builders, totals } = buildCallQueue(rows, NOW)
-    expect(builders.map((b) => b.builderName)).toEqual(['Kestrin', 'Structura']) // work first
+    expect(builders.map((b) => b.builderName)).toEqual(['Kestrin', 'Sheffield']) // work first
     const kestrin = builders[0]!
     expect(kestrin.hasWork).toBe(true)
     expect(kestrin.stats).toEqual({ won: 1, lost: 2, pending: 2, hitRatePct: 33, pendingValue: 350_000 })
@@ -80,8 +80,8 @@ describe('buildCallQueue', () => {
     expect(kestrin.reasons.recordedCount).toBe(1)
     expect(kestrin.tabs.todo.map((b) => b.value).sort()).toEqual([250_000, 300_000])
     expect(kestrin.tabs.recordedCount).toBe(1)
-    const structura = builders[1]!
-    expect(structura.hasWork).toBe(false)
+    const sheffield = builders[1]!
+    expect(sheffield.hasWork).toBe(false)
     expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, chasePacketRows: 1, reasonsCount: 1, reasonsPacketRows: 1, reasonsDollars: 300_000, tabsCount: 2, dueCount: 0, overdueCount: 0, noDateCount: 1, laterCount: 0, laterValue: 0 })
   })
 

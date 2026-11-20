@@ -295,9 +295,9 @@ const JOB_PRESET = {
   job: {
     id: 'job-1',
     number: '1016',
-    name: 'Mission faucet',
+    name: 'Marsden faucet',
     trade: { tag: 'PLUM', color: '#e17235' },
-    address: '15638 Mission Crest, San Antonio, TX',
+    address: '13553 Marsden Crest, San Antonio, TX',
     customer: 'Johnny Inglow',
     path: '/jobs?jobDetail=job-1',
     url: JOB_URL,
@@ -336,8 +336,8 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     expect(title.value).toBe('')
     const bar = screen.getByTestId('checklist-add-job-bar')
     expect(bar.textContent).toContain('1016 PLUM')
-    expect(bar.textContent).toContain('Mission faucet')
-    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Inglow')
+    expect(bar.textContent).toContain('Marsden faucet')
+    expect(bar.textContent).toContain('13553 Marsden Crest, San Antonio, TX · Johnny Inglow')
     // The raw grammar never reaches the box; Send waits for typed text.
     expect(screen.queryByDisplayValue(/\{\{1:/)).toBeNull()
     expect(sendPress().disabled).toBe(true)
@@ -346,7 +346,7 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as { title: string; links: string[] }
-    expect(row.title).toBe('{{1:1016 · Mission faucet}} — Pick up the Moen cartridge')
+    expect(row.title).toBe('{{1:1016 · Marsden faucet}} — Pick up the Moen cartridge')
     expect(row.links).toEqual([JOB_URL])
     // The save chain closes the dialog; wait for it so nothing runs past cleanup.
     await vi.waitFor(() => expect(screen.queryByTestId('checklist-add-job-bar')).toBeNull())

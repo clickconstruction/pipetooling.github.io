@@ -1103,20 +1103,20 @@ describe('statement round (v2.2771; the office week since punch list #49)', () =
     const items = buildNeedsYouItems(
       inputs({
         statementRoundEnabled: true,
-        statementRound: { count: 3, total: 146000, gcNames: ['Kestrin Contracting', 'Structura', 'TF Halden'], late: 1 },
+        statementRound: { count: 3, total: 146000, gcNames: ['Kestrin Contracting', 'Sheffield', 'TF Halden'], late: 1 },
       }),
     )
     const sr = items.find((i) => i.key === 'statement-round')
     expect(sr?.kicker).toBe('GC statements')
     expect(sr?.title).toBe('3 GC statements are ready to send')
-    expect(sr?.detail).toBe('Kestrin Contracting, Structura, TF Halden · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
+    expect(sr?.detail).toBe('Kestrin Contracting, Sheffield, TF Halden · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
     expect(sr?.figure).toBe('3')
     expect(sr?.actionLabel).toBe('Open the list')
     const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Kestrin'], late: 0 } })).find((i) => i.key === 'statement-round')
     expect(one?.title).toBe('One GC statement is ready to send')
     expect(one?.detail).toBe('Kestrin · $26,000 checked and ready — grouped by the account man to ask.')
-    const four = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 4, total: 96257.27, gcNames: ['RLC- Dunmere Mallin', 'Kestrin Contracting', 'Structura', 'TF Halden'] } })).find((i) => i.key === 'statement-round')
-    expect(four?.detail).toBe('RLC- Dunmere Mallin, Kestrin Contracting, Structura +1 more · $96,257 checked and ready — grouped by the account man to ask.')
+    const four = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 4, total: 96257.27, gcNames: ['RLC- Dunmere Mallin', 'Kestrin Contracting', 'Sheffield', 'TF Halden'] } })).find((i) => i.key === 'statement-round')
+    expect(four?.detail).toBe('RLC- Dunmere Mallin, Kestrin Contracting, Sheffield +1 more · $96,257 checked and ready — grouped by the account man to ask.')
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
   })
@@ -1328,11 +1328,11 @@ describe('robot-backlog (v2.3287, dev only)', () => {
 })
 
 describe('legal-review (Legal portal PR 2)', () => {
-  const review = { underReview: 3, withFirm: 1, requested: [{ key: 'c:sam', name: 'Sam Coyle', by: 'Taunya', note: 'Ready for your eyes.', days: 2 }], oldestDays: 69, firstKey: 'c:sam', balanceUnderReview: 22375 }
+  const review = { underReview: 3, withFirm: 1, requested: [{ key: 'c:sam', name: 'Seth Cadwell', by: 'Taunya', note: 'Ready for your eyes.', days: 2 }], oldestDays: 69, firstKey: 'c:sam', balanceUnderReview: 22375 }
   it('devs get one card that names who asked and how long the oldest has sat', () => {
     const it1 = buildNeedsYouItems(inputs({ legalReviewEnabled: true, legalReview: review })).find((i) => i.key === 'legal-review')!
     expect(it1.title).toBe('3 Collections accounts await your review before an attorney sees them')
-    expect(it1.detail).toContain('1 asked for your eyes: Sam Coyle — Taunya “Ready for your eyes.”')
+    expect(it1.detail).toContain('1 asked for your eyes: Seth Cadwell — Taunya “Ready for your eyes.”')
     expect(it1.detail).toContain('Oldest has sat 69 days')
     expect(it1.detail).toContain('1 already with the firm')
     expect(it1.severity).toBe('amber')

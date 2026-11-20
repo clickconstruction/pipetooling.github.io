@@ -40,8 +40,8 @@ describe('buildBidLossLearnStats', () => {
       row({ value: 236_900, tab: { low: 230_000, high: null, rankFromLow: 2, bidderCount: null } }), // 3.0%
       row({ value: 241_500, tab: { low: 230_000, high: null, rankFromLow: 2, bidderCount: null } }), // 5.0%
       row({
-        builderKey: 'gc-structura',
-        builderName: 'Structura',
+        builderKey: 'gc-sheffield',
+        builderName: 'Sheffield',
         value: 295_000,
         tab: { low: 250_000, high: null, rankFromLow: 5, bidderCount: 6 },
       }), // 18%

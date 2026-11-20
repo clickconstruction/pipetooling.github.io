@@ -32,7 +32,7 @@ const timeline = buildLienTimeline({
 
 const paperFor = (step: { kind: string }): LienStopPaper =>
   step.kind === 'notice'
-    ? { pages: [{ key: 'notice', label: 'Page 1 of 1 · the notice', html: '<p>NOTICE OF CLAIM</p>' }], envelope: 'To JBI LIBERTY HILL LLC and Brund & Assoc. by certified mail', before: [{ key: 'owner', words: 'Owner of record: missing' }], record: null, act: { label: 'Go to the paper on the desk ▾', onPress: vi.fn() }, noticeMonths: ['2026-07', '2026-08'] }
+    ? { pages: [{ key: 'notice', label: 'Page 1 of 1 · the notice', html: '<p>NOTICE OF CLAIM</p>' }], envelope: 'To JCF LORIMER HILL LLC and Brund & Assoc. by certified mail', before: [{ key: 'owner', words: 'Owner of record: missing' }], record: null, act: { label: 'Go to the paper on the desk ▾', onPress: vi.fn() }, noticeMonths: ['2026-07', '2026-08'] }
     : { pages: [], envelope: null, before: [], record: null, act: null }
 
 describe('LienStopPaperWindow', () => {

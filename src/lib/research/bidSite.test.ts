@@ -50,8 +50,8 @@ describe('readBidAddress: a street address in a city we read', () => {
   })
 
   it('takes the city from the end of the line, so a street named for a town is still a street', () => {
-    expect(site('123 AUSTIN HWY SAN ANTONIO TX 78209').canon).toEqual({ number: '123', words: ['austin', 'hwy'], type: null })
-    expect(site('1515 N New Braunfels Ave, San Antonio, TX 78208').canon).toEqual({ number: '1515', words: ['braunfels', 'n', 'new'], type: 'ave' })
+    expect(site('989 AUSTIN HWY SAN ANTONIO TX 78209').canon).toEqual({ number: '989', words: ['austin', 'hwy'], type: null })
+    expect(site('6058 N New Braunfels Ave, San Antonio, TX 78208').canon).toEqual({ number: '6058', words: ['braunfels', 'n', 'new'], type: 'ave' })
     expect(readBidAddress('123 San Antonio St, Kyle, TX 78640', READ)).toEqual({ kind: 'not_read', town: 'Kyle' })
   })
 
@@ -79,7 +79,7 @@ describe('sameSite: both sides read into one shape', () => {
   })
 
   it('reads a highway by its number, wherever the direction sits', () => {
-    expect(same('1515 N Loop 1604 E, Suite 400 San Antonio, TX 78232', '1515 N 1604 E')).toBe(true)
+    expect(same('6058 N Loop 1604 E, Suite 400 San Antonio, TX 78232', '6058 N 1604 E')).toBe(true)
     expect(same('13730 US Hwy 281 N, San Antonio, TX', '13730 N US HWY 281')).toBe(true)
     expect(same('13730 US 281 North, San Antonio, TX', '13730 N US HWY 281')).toBe(true)
     expect(same('8751 State Hwy 151, San Antonio, TX 78245', '8751 STATE HWY 151')).toBe(true)
@@ -89,7 +89,7 @@ describe('sameSite: both sides read into one shape', () => {
     expect(same('6142 FM 78, San Antonio, TX', '6142 HWY 78')).toBe(false)
     expect(same('6142 FM78 San Antonio, TX 78244', '6142 FM 78')).toBe(true)
     expect(same('1432 Farm to Market 471 W, San Antonio, TX', '1432 FM 471 W')).toBe(true)
-    expect(same('923 Texas 211, San Antonio, TX 78253', '923 STATE HWY 211')).toBe(true)
+    expect(same('354 Texas 211, San Antonio, TX 78253', '354 STATE HWY 211')).toBe(true)
   })
 
   it('reads an interstate in any of its spellings, with or without the frontage road', () => {
@@ -128,12 +128,12 @@ describe('sameSite: both sides read into one shape', () => {
 
 describe('readBidAddress: a town we do not read', () => {
   it('names the town when it can pick it out', () => {
-    expect(readBidAddress('3798 Kyle Crossing Kyle, TX 78640', READ)).toEqual({ kind: 'not_read', town: 'Kyle' })
-    expect(readBidAddress('709 Laurel St, Bastrop TX 78602', READ)).toEqual({ kind: 'not_read', town: 'Bastrop' })
-    expect(readBidAddress('1750 E COMMON ST NEW BRAUNFELS TX 78130', READ)).toEqual({ kind: 'not_read', town: 'NEW BRAUNFELS' })
-    expect(readBidAddress('2050 FM 1102 New Braunfels, TX 78130', READ)).toEqual({ kind: 'not_read', town: 'New Braunfels' })
-    expect(readBidAddress('1450 N Business IH 35 NEW BRAUNFELS 78130', READ)).toEqual({ kind: 'not_read', town: 'NEW BRAUNFELS' })
-    expect(readBidAddress('20285 State Hwy 46 W., Bulverde, Tx 78163', READ)).toEqual({ kind: 'not_read', town: 'Bulverde' })
+    expect(readBidAddress('8030 Kyle Crossing Kyle, TX 78640', READ)).toEqual({ kind: 'not_read', town: 'Kyle' })
+    expect(readBidAddress('981 Lloyd St, Bastrop TX 78602', READ)).toEqual({ kind: 'not_read', town: 'Bastrop' })
+    expect(readBidAddress('2591 E COMMON ST NEW BRAUNFELS TX 78130', READ)).toEqual({ kind: 'not_read', town: 'NEW BRAUNFELS' })
+    expect(readBidAddress('9426 FM 1102 New Braunfels, TX 78130', READ)).toEqual({ kind: 'not_read', town: 'New Braunfels' })
+    expect(readBidAddress('5233 N Business IH 35 NEW BRAUNFELS 78130', READ)).toEqual({ kind: 'not_read', town: 'NEW BRAUNFELS' })
+    expect(readBidAddress('81975 State Hwy 46 W., Bulverde, Tx 78163', READ)).toEqual({ kind: 'not_read', town: 'Bulverde' })
     expect(readBidAddress('5303 Wurzbach Rd Leon Valley, TX 78238', READ)).toEqual({ kind: 'not_read', town: 'Leon Valley' })
   })
 
@@ -142,11 +142,11 @@ describe('readBidAddress: a town we do not read', () => {
   })
 
   it('says so without a name when the town cannot be picked out', () => {
-    expect(readBidAddress('9325 N LAMAR AUSTIN TX 78753', READ)).toEqual({ kind: 'not_read', town: null })
+    expect(readBidAddress('3348 N LANDRY AUSTIN TX 78753', READ)).toEqual({ kind: 'not_read', town: null })
   })
 
   it('reads the same line as a site once that city is read', () => {
-    expect(readBidAddress('9325 N LAMAR AUSTIN TX 78753', ['San Antonio', 'Austin'])).toMatchObject({ kind: 'site', city: 'Austin', number: '9325' })
+    expect(readBidAddress('3348 N LANDRY AUSTIN TX 78753', ['San Antonio', 'Austin'])).toMatchObject({ kind: 'site', city: 'Austin', number: '3348' })
   })
 })
 
@@ -165,7 +165,7 @@ describe('readBidAddress: not a street address', () => {
     expect(why('1558 pams')).toBe('no_city')
     expect(why('2401 MISSION FLAT PARK RA#2401')).toBe('no_city')
     expect(why('4120 San Antonio, TX')).toBe('no_street')
-    expect(why('281 and Gerald Drive, San Antonio, TX')).toBe('crossing')
+    expect(why('433 and Grace Drive, San Antonio, TX')).toBe('crossing')
     expect(why('100 Sample St & Main, San Antonio, TX')).toBe('crossing')
   })
 
@@ -317,7 +317,7 @@ describe('the four honest states and their words', () => {
   it('names the state', () => {
     expect(bidSiteState(mill, 2)).toBe('found')
     expect(bidSiteState(mill, 0)).toBe('none_seen')
-    expect(bidSiteState(readBidAddress('3798 Kyle Crossing Kyle, TX 78640', READ), 0)).toBe('not_read')
+    expect(bidSiteState(readBidAddress('8030 Kyle Crossing Kyle, TX 78640', READ), 0)).toBe('not_read')
     expect(bidSiteState(readBidAddress('BLANCO', READ), 0)).toBe('unreadable')
   })
 
@@ -365,14 +365,14 @@ describe('the four honest states and their words', () => {
   })
 
   it('says a town is not read, and which cities are', () => {
-    expect(bidSiteWords(readBidAddress('3798 Kyle Crossing Kyle, TX 78640', READ), 'Cedar Bend Clinic', [], CTX)).toEqual({ state: 'not_read', main: 'No permit records for Kyle.', detail: 'Permits are read for San Antonio only.' })
-    expect(bidSiteWords(readBidAddress('9325 N LAMAR AUSTIN TX 78753', READ), null, [], { ...CTX, readCities: ['San Antonio', 'Leander'] })).toEqual({ state: 'not_read', main: 'No permit records for this town.', detail: 'Permits are read for San Antonio and Leander only.' })
+    expect(bidSiteWords(readBidAddress('8030 Kyle Crossing Kyle, TX 78640', READ), 'Cedar Bend Clinic', [], CTX)).toEqual({ state: 'not_read', main: 'No permit records for Kyle.', detail: 'Permits are read for San Antonio only.' })
+    expect(bidSiteWords(readBidAddress('3348 N LANDRY AUSTIN TX 78753', READ), null, [], { ...CTX, readCities: ['San Antonio', 'Leander'] })).toEqual({ state: 'not_read', main: 'No permit records for this town.', detail: 'Permits are read for San Antonio and Leander only.' })
   })
 
   it('says why an address cannot be looked up, and shows it as typed', () => {
     expect(bidSiteWords(readBidAddress('Loop 1604 at Oak Hollow', READ), null, [], CTX)).toEqual({ state: 'unreadable', main: 'This bid’s address has no street number, so permits cannot be looked up.', detail: 'It reads: Loop 1604 at Oak Hollow.' })
     expect(bidSiteWords(readBidAddress(null, READ), null, [], CTX)).toEqual({ state: 'unreadable', main: 'This bid has no address, so permits cannot be looked up.', detail: null })
-    expect(bidSiteWords(readBidAddress('281 and Gerald Drive, San Antonio, TX', READ), null, [], CTX).main).toBe('This bid’s address is a crossing, not a street number, so permits cannot be looked up.')
+    expect(bidSiteWords(readBidAddress('433 and Grace Drive, San Antonio, TX', READ), null, [], CTX).main).toBe('This bid’s address is a crossing, not a street number, so permits cannot be looked up.')
     expect(bidSiteWords(readBidAddress('1558 pams', READ), null, [], CTX).main).toBe('This bid’s address names no city, so permits cannot be looked up.')
     expect(bidSiteWords(readBidAddress('4120 San Antonio, TX', READ), null, [], CTX).main).toBe('This bid’s address has no street name, so permits cannot be looked up.')
   })

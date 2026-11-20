@@ -15,7 +15,7 @@ const payload = {
   customerName: 'Michael Hadwin',
   audience: 'customer',
   bills: [
-    { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
+    { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '9771 Sutter Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
     { jobLabel: 'Service call · Job 655', jobNumber: '655', jobName: 'Service call', jobAddress: null, amount: 250, billedOn: '2026-08-18', payUrl: null, checkRef: '655' },
   ],
   totalDue: 1700,
@@ -46,7 +46,7 @@ describe('CustomerPortal render smoke', () => {
     // Trade-first job line (v2.2041): TRADE tag + number + street; city on the quiet line.
     expect(screen.getByText('PLUM')).toBeTruthy()
     expect(screen.getByText('612')).toBeTruthy()
-    expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
+    expect(screen.getByText('9771 Sutter Ridge Dr')).toBeTruthy()
     expect(screen.getByText('San Antonio, TX 78258')).toBeTruthy()
     // No-address bill falls back to its bare name; no trade tag renders for it.
     expect(screen.getByText('Service call')).toBeTruthy()
@@ -62,8 +62,8 @@ describe('CustomerPortal render smoke', () => {
     const grouped = {
       ...payload,
       bills: [
-        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612', totalPaid: 550, payments: [{ date: '2026-07-20', method: 'other', amount: 550 }] },
-        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 300, billedOn: '2026-07-01', payUrl: null, checkRef: '612', totalPaid: 200, payments: [{ date: '2026-06-15', method: 'check · 1042', amount: 200 }] },
+        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '9771 Sutter Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612', totalPaid: 550, payments: [{ date: '2026-07-20', method: 'other', amount: 550 }] },
+        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '9771 Sutter Ridge Dr, San Antonio, TX 78258', amount: 300, billedOn: '2026-07-01', payUrl: null, checkRef: '612', totalPaid: 200, payments: [{ date: '2026-06-15', method: 'check · 1042', amount: 200 }] },
       ],
       totalDue: 1750,
     }
@@ -72,7 +72,7 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     // One band for the job, not one line per bill.
     expect(screen.getAllByText('612')).toHaveLength(1)
-    expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
+    expect(screen.getByText('9771 Sutter Ridge Dr')).toBeTruthy()
     // Bill row shows what was originally billed when money has landed.
     expect(screen.getByText('$2,000.00')).toBeTruthy()
     // The recap box is the payment ledger (v2.2320): each payment by date, no
@@ -187,7 +187,7 @@ describe('CustomerPortal render smoke', () => {
   })
 
   it('an owner whose builder owes on the property: no "all paid up", the recorded notice in its own card (v2.3825)', async () => {
-    const notice = { key: 'f1', address: '9703 Lenox Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
+    const notice = { key: 'f1', address: '3507 Lister Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, bills: [], totalDue: 0, propertyNotices: [notice] }), { status: 200 })))
     const { container } = mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText(/Nothing is billed to you directly/)).toBeTruthy())
@@ -322,7 +322,7 @@ describe('CustomerPortal render smoke', () => {
         if (answer === 'refused') return new Response(JSON.stringify({ error: 'Bad request' }), { status: 400 })
         return new Response(JSON.stringify({ ok: true }), { status: 200 })
       }
-      return new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, customerPhone: '6179396295' }), { status: 200 })
+      return new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, customerPhone: '6175550194' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     mountAt('/portal?t=abcdef1234567890abcdef')
@@ -344,7 +344,7 @@ describe('CustomerPortal render smoke', () => {
   it('a plans link that the office would refuse is caught here, with the words to fix it (v2.5965)', async () => {
     const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).includes('submit-portal-request')) return new Response(JSON.stringify({ ok: true }), { status: 200 })
-      return new Response(JSON.stringify({ ...payload, customerPhone: '6179396295' }), { status: 200 })
+      return new Response(JSON.stringify({ ...payload, customerPhone: '6175550194' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     mountAt('/portal?t=abcdef1234567890abcdef')
@@ -356,24 +356,24 @@ describe('CustomerPortal render smoke', () => {
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('submit-portal-request'))).toBe(false)
   })
 
-  it('a number on file is stated, not asked for (v2.3249): "We\'ll call you at (617) 939-6295", use a different number reveals the field, the prefilled number is what gets sent', async () => {
+  it('a number on file is stated, not asked for (v2.3249): "We\'ll call you at (617) 555-0194", use a different number reveals the field, the prefilled number is what gets sent', async () => {
     const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
       if (String(url).includes('submit-portal-request')) return new Response(JSON.stringify({ ok: true }), { status: 200 })
-      return new Response(JSON.stringify({ ...payload, customerPhone: '6179396295' }), { status: 200 })
+      return new Response(JSON.stringify({ ...payload, customerPhone: '6175550194' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText('Request a visit')).toBeTruthy())
-    expect(screen.getAllByText('(617) 939-6295').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('(617) 555-0194').length).toBeGreaterThan(0)
     const { fireEvent } = await import('@testing-library/react')
     fireEvent.click(screen.getAllByRole('button', { name: 'use a different number' })[0]!)
-    expect(screen.getAllByRole('button', { name: 'Use (617) 939-6295 instead' }).length).toBe(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Use (617) 939-6295 instead' }))
+    expect(screen.getAllByRole('button', { name: 'Use (617) 555-0194 instead' }).length).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Use (617) 555-0194 instead' }))
     fireEvent.change(screen.getByLabelText(/What's going on/), { target: { value: 'Slow drain in the hall bath' } })
     fireEvent.click(screen.getByText('Send request'))
     await waitFor(() => expect(screen.getByText(/Got it, Michael — thank you/)).toBeTruthy())
     const submitCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('submit-portal-request'))!
-    expect(JSON.parse((submitCall[1] as RequestInit).body as string).phone).toBe('6179396295')
+    expect(JSON.parse((submitCall[1] as RequestInit).body as string).phone).toBe('6175550194')
   })
 
   it('receipt landing (?paid=1, v2.2878): the fetch says return=stripe and a bill that vanished since the last look shows the Payment received banner', async () => {
@@ -538,9 +538,9 @@ describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', (
     const withWaivers = {
       ...payload,
       bills: [{ ...payload.bills[0], invoiceId: 'inv-612' }, { ...payload.bills[1], invoiceId: 'inv-655' }],
-      agreements: [{ jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr', status: 'signed', templateName: 'Residential service agreement', amountCents: 145000, signedAt: '2026-08-01T00:00:00Z', signerName: 'Michael Hadwin', sentAt: null, signUrl: null }],
+      agreements: [{ jobLabel: 'Water heater replacement · Job 612', jobAddress: '9771 Sutter Ridge Dr', status: 'signed', templateName: 'Residential service agreement', amountCents: 145000, signedAt: '2026-08-01T00:00:00Z', signerName: 'Michael Hadwin', sentAt: null, signUrl: null }],
       waivers: [
-        { audience: 'payer', jobId: 'j612', jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', invoiceId: 'inv-612', billLabel: 'Bill', amount: 1450, billedYmd: '2026-08-04', paid: false, final: true, conditional: signedHalf('conditional_final', '2026-08-05', 'https://files.test/c.pdf'), unconditional: none },
+        { audience: 'payer', jobId: 'j612', jobLabel: 'Water heater replacement · Job 612', jobAddress: '9771 Sutter Ridge Dr, San Antonio, TX 78258', invoiceId: 'inv-612', billLabel: 'Bill', amount: 1450, billedYmd: '2026-08-04', paid: false, final: true, conditional: signedHalf('conditional_final', '2026-08-05', 'https://files.test/c.pdf'), unconditional: none },
         // A function from before v2.4304 may still send a "signing" half: it never shows.
         { audience: 'payer', jobId: 'j655', jobLabel: 'Service call · Job 655', jobAddress: null, invoiceId: 'inv-655', billLabel: 'Bill', amount: 250, billedYmd: '2026-08-18', paid: false, final: true, conditional: { ...none, state: 'signing' }, unconditional: none },
       ],
@@ -569,10 +569,10 @@ describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', (
       ...payload,
       bills: [],
       totalDue: 0,
-      sharedBills: [{ invoiceId: 'inv-b2', jobLabel: 'Cedar Bend · Job 1002', jobNumber: '1002', jobName: 'Cedar Bend', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', amount: 18200, billedAmount: 18200, totalPaid: 0, billedOn: '2026-09-28', billedTo: 'Sample Contracting', viewerRole: 'customer' }],
+      sharedBills: [{ invoiceId: 'inv-b2', jobLabel: 'Cedar Bend · Job 1002', jobNumber: '1002', jobName: 'Cedar Bend', jobAddress: '4455 Hadley Rd, San Marcos, TX 78666', amount: 18200, billedAmount: 18200, totalPaid: 0, billedOn: '2026-09-28', billedTo: 'Sample Contracting', viewerRole: 'customer' }],
       waivers: [
-        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', invoiceId: 'inv-b2', billLabel: 'Bill 2 of 3', amount: 18200, billedYmd: '2026-09-28', paid: false, final: false, conditional: signedHalf('conditional_progress', '2026-09-29', null), unconditional: none },
-        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', invoiceId: 'inv-b1', billLabel: 'Bill 1 of 3', amount: 14050, billedYmd: '2026-09-01', paid: true, final: false, conditional: none, unconditional: signedHalf('unconditional_progress', '2026-09-18', null, 'sent') },
+        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '4455 Hadley Rd, San Marcos, TX 78666', invoiceId: 'inv-b2', billLabel: 'Bill 2 of 3', amount: 18200, billedYmd: '2026-09-28', paid: false, final: false, conditional: signedHalf('conditional_progress', '2026-09-29', null), unconditional: none },
+        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '4455 Hadley Rd, San Marcos, TX 78666', invoiceId: 'inv-b1', billLabel: 'Bill 1 of 3', amount: 14050, billedYmd: '2026-09-01', paid: true, final: false, conditional: none, unconditional: signedHalf('unconditional_progress', '2026-09-18', null, 'sent') },
       ],
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ownerView), { status: 200 })))

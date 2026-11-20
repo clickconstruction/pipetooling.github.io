@@ -29,7 +29,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
         jobId: 'j1',
         hcp: '916',
         jobName: 'SVP Manor',
-        jobAddress: '11915 Ring Dr, Manor TX',
+        jobAddress: '52832 Redmond Dr, Manor TX',
         customerName: 'Kestrin Contracting',
         referenceDateDisplay: 'Jul 21, 2026',
         referenceYmd: '2026-07-21',
@@ -55,7 +55,7 @@ describe('gcStatementEmail', () => {
     expect(html).toContain('Statement for Kestrin Contracting · Jul 31, 2026')
     expect(html).toContain('Owed now')
     expect(html).toContain('1 open bill at 1 property.')
-    expect(html).toContain('<strong>11915 Ring Dr</strong>')
+    expect(html).toContain('<strong>52832 Redmond Dr</strong>')
     expect(html).toContain('Manor · 1 open bill')
     expect(html).toContain('Job 916<span style="color:#5b6676"> · SVP Manor</span>')
     expect(html).toContain('Jul 21')
@@ -83,7 +83,7 @@ describe('gcStatementEmail', () => {
   it('plain-text variant carries the same facts', () => {
     const text = buildGcStatementEmailText(group(), { dateStr: 'Jul 31, 2026' })
     expect(text).toContain('Statement for Kestrin Contracting · Jul 31, 2026')
-    expect(text).toContain('11915 Ring Dr, Manor — $450.00')
+    expect(text).toContain('52832 Redmond Dr, Manor — $450.00')
     expect(text).toContain('- Job 916 · SVP Manor — sent Jul 21 — $450.00')
     expect(text).toContain('Total owed: $450.00')
   })
@@ -133,7 +133,7 @@ describe('gcReviewShareAllEmail', () => {
         jobId: 'j2',
         hcp: '948',
         jobName: 'Connect sink',
-        jobAddress: '12803 El Dorado, Universal City TX',
+        jobAddress: '51964 El Dalton, Universal City TX',
         remaining: 1200,
       },
     ],
@@ -155,8 +155,8 @@ describe('gcReviewShareAllEmail', () => {
     expect(html).toContain('Open balances by GC · Aug 6, 2026')
     expect(html).toContain('Kestrin Contracting')
     expect(html).toContain('B &amp; D Construction')
-    expect(html).toContain('11915 Ring Dr, Manor TX')
-    expect(html).toContain('12803 El Dorado, Universal City TX')
+    expect(html).toContain('52832 Redmond Dr, Manor TX')
+    expect(html).toContain('51964 El Dalton, Universal City TX')
     expect(html).toContain('$450.00')
     expect(html).toContain('$1,200.00')
     expect(html).toContain('Total owed')
@@ -261,7 +261,7 @@ describe('gcStatementReceived — the payments block from the rows Find a check 
     const inputs = {
       jobs: [
         {
-          id: 'j1', hcp_number: '916', click_number: null, job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_id: 'o1', gc_customer_id: 'gc-1', bill_to_party: 'gc',
+          id: 'j1', hcp_number: '916', click_number: null, job_name: 'SVP Manor', job_address: '52832 Redmond Dr, Manor TX', customer_id: 'o1', gc_customer_id: 'gc-1', bill_to_party: 'gc',
           invoices: [{ id: 'i1', job_id: 'j1', sequence_order: 1, amount: 1450, status: 'billed', billed_at: '2026-07-21' }],
           payments: [
             { id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 1000, paid_on: '2026-08-15', payment_type: 'check', reference_number: '4821', sequence_order: 1 },
@@ -274,7 +274,7 @@ describe('gcStatementReceived — the payments block from the rows Find a check 
     }
     const out = gcStatementReceived(inputs, 'gc-1', '2026-09-05')
     expect(out.receivedSinceYmd).toBe('2026-08-06')
-    expect(out.received).toEqual([{ key: expect.any(String), onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['11915 Ring Dr · Job 916'] }])
+    expect(out.received).toEqual([{ key: expect.any(String), onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['52832 Redmond Dr · Job 916'] }])
     expect(buildGcStatementEmailHtml(group(), { dateStr: 'Sep 5, 2026', ...out })).toContain('One payment since Aug 6, 2026, newest first.')
   })
 })

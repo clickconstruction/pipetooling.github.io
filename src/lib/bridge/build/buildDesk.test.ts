@@ -14,11 +14,11 @@ const block = (jobId: string, workDate: string, assigneeUserId: string) => ({ jo
 const openJobs: BuildJob[] = [
   job('977', 'Stonewick', 71_000, 45),
   job('1017', 'Tarrow', null, null),
-  job('1086', 'Big Easy sink drain', null, null),
+  job('1086', 'Blythe Emery sink drain', null, null),
   job('878', 'Tune 5- Seguin', 124_000, 62),
   job('912', 'Linwick Renovations', 44_000, 30),
   job('1007', 'SKYLAB BA-02N Architectural', 170_000, 60),
-  job('1081', 'Adams Pretest', 32_000, 100),
+  job('1081', 'Atwater Pretest', 32_000, 100),
 ]
 const points: PctPoint[] = [pt('977', '2026-09-28', 45), pt('878', '2026-09-01', 62), pt('912', '2026-08-20', 30), pt('1007', '2026-09-30', 48), pt('1007', '2026-10-20', 60, 'report'), pt('1081', '2026-10-01', 90), pt('1081', '2026-10-22', 100, 'report')]
 const sessions: VectorSession[] = [

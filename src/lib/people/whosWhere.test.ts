@@ -26,7 +26,7 @@ const MIKE: WwPerson = { id: 'u-mike', name: 'Mike Ramos', role: 'master_technic
 const BRYAN: WwPerson = { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers', needsSupervision: true }
 const DEVON: WwPerson = { id: 'u-devon', name: 'Devon Pruitt', role: 'helpers', needsSupervision: true }
 const JAKE: WwPerson = { id: 'u-jake', name: 'Jake Cole', role: 'subcontractor', needsSupervision: true }
-const AUSTIN: WwPerson = { id: 'u-austin', name: 'Austin McCarty', role: 'helpers', needsSupervision: true }
+const AUSTIN: WwPerson = { id: 'u-austin', name: 'Austin Murdock', role: 'helpers', needsSupervision: true }
 const GRACE: WwPerson = { id: 'u-grace', name: 'Grace Hall', role: 'assistant', needsSupervision: false }
 const WILL: WwPerson = { id: 'u-will', name: 'Will Moss', role: 'helpers', needsSupervision: true }
 
@@ -135,7 +135,7 @@ describe('islandsAt — the moment', () => {
     // Everyone had a session or block that day, so nobody is "not in" even at 6 am.
     expect(early.notIn).toEqual([])
     const otherDay = islandsAt(data(), '2026-09-17', 10 * 60)
-    expect(otherDay.notIn.map((p) => p.name)).toEqual(['Austin McCarty', 'Bryan Ortiz', 'Devon Pruitt', 'Grace Hall', 'Jake Cole', 'Mike Ramos', 'Will Moss'])
+    expect(otherDay.notIn.map((p) => p.name)).toEqual(['Austin Murdock', 'Bryan Ortiz', 'Devon Pruitt', 'Grace Hall', 'Jake Cole', 'Mike Ramos', 'Will Moss'])
   })
   it('marks coverage for the day on each island: a master listed covers it, helpers alone do not', () => {
     const m = islandsAt(data(), DAY, 10 * 60 + 40)
@@ -170,7 +170,7 @@ describe('dayLanes — the day', () => {
     expect(byName['Bryan Ortiz']).toMatchObject({ kind: 'in', startMin: 422, endMin: 920, note: null })
     expect(byName['Mike Ramos']).toMatchObject({ kind: 'listed', note: 'never clocked' })
     expect(byName['Devon Pruitt']).toMatchObject({ kind: 'listed', note: 'never clocked' })
-    expect(byName['Austin McCarty']).toMatchObject({ kind: 'listed', note: 'clocked at J291 · Elm Ct' })
+    expect(byName['Austin Murdock']).toMatchObject({ kind: 'listed', note: 'clocked at J291 · Elm Ct' })
     const elm = lanes.find((l) => l.target.key === ELM)!
     expect(elm.bars[0]).toMatchObject({ kind: 'in', endMin: null, note: 'listed at J258 · Oak St' })
   })

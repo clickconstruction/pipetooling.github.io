@@ -42,7 +42,7 @@ vi.mock('../../lib/supabase', async () => {
 const SITE = {
   id: 'site-891',
   customer_id: 'gc-brund',
-  address: '11730 TX-29, Liberty Hill, TX 78642',
+  address: '60305 TX-29, Liberty Hill, TX 78642',
   sequence_order: 0,
   property_kind: 'non_residential',
   homestead: false,
@@ -61,7 +61,7 @@ function job891(over: Record<string, unknown> = {}) {
     id: 'job-891',
     hcp_number: '891',
     job_name: 'Tune 5- Liberty Hill',
-    job_address: '11730 TX-29, Liberty Hill, TX 78642',
+    job_address: '60305 TX-29, Liberty Hill, TX 78642',
     status: 'billed',
     customer_id: null,
     customer_name: null,
@@ -101,7 +101,7 @@ describe('LienReleaseModal · the property record is the job’s own', () => {
     await screen.findByTestId('lien-waiver-form')
     await settle()
     const step = await propertyStep()
-    await waitFor(() => expect(step.textContent).toContain('Property record: 11730 TX-29, Liberty Hill, TX 78642'))
+    await waitFor(() => expect(step.textContent).toContain('Property record: 60305 TX-29, Liberty Hill, TX 78642'))
     expect(within(step).queryByRole('combobox', { name: 'Link a property record' })).toBeNull()
     await waitFor(() => expect(document.body.textContent).toContain('Sample Holdings LLC'))
   })

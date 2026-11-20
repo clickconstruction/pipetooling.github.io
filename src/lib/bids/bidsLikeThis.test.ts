@@ -193,8 +193,8 @@ describe('bidsLikeThisView — the margin', () => {
   it('a bid with no price and no margin yet has no block: the scale alone is not a fact about it', () => {
     const rows = [atMargin('won', 40), atMargin('won', 30), atMargin('lost', 50)]
     expect(view(rows, { margin: null, price: null })).toBeNull()
-    // … and a GC with no decided bid does not bring it back (B82, City of Seguin, 2026-10-02)
-    expect(view(rows, { margin: null, price: 0, gc: 'gc1', gcName: 'City of Seguin' })).toBeNull()
+    // … and a GC with no decided bid does not bring it back (B82, City of Sefton, 2026-10-02)
+    expect(view(rows, { margin: null, price: 0, gc: 'gc1', gcName: 'City of Sefton' })).toBeNull()
     // a GC with a record still does
     const withGc = view([...rows, bid('won', 5_000, { customer_id: 'gc1' })], { margin: null, price: null, gc: 'gc1' })
     expect(withGc?.gc?.chip.text).toBe('This GC · 1 won of 1')

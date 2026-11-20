@@ -13,7 +13,7 @@ describe('scheduleBlockTitle', () => {
     // kind, hcp, jobTitle, click, expected
     ['job with HCP number', { kind: 'job' as const, hcpNumber: '983', jobTitle: 'Kestrin Stonewick Vet' }, 'J983 · Kestrin Stonewick Vet'],
     ['click-number-only job prints the click number (J18-F5)', { kind: 'job' as const, hcpNumber: null, jobTitle: 'Water Heater removal', clickNumber: '1042' }, 'J1042 · Water Heater removal'],
-    ['HCP wins over click number when both exist', { kind: 'job' as const, hcpNumber: '927', jobTitle: 'Malik Pretest', clickNumber: '1042' }, 'J927 · Malik Pretest'],
+    ['HCP wins over click number when both exist', { kind: 'job' as const, hcpNumber: '927', jobTitle: 'Mavis Pretest', clickNumber: '1042' }, 'J927 · Mavis Pretest'],
     ['blank HCP falls to click number', { kind: 'job' as const, hcpNumber: '   ', jobTitle: 'Rough-in', clickNumber: ' 55 ' }, 'J55 · Rough-in'],
     ['job with no number and no name is the placeholder', { kind: 'job' as const, hcpNumber: null, jobTitle: null }, '— · Job'],
     ['job with a number but no name says Job', { kind: 'job' as const, hcpNumber: '12', jobTitle: '  ' }, 'J12 · Job'],

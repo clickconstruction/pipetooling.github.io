@@ -32,7 +32,7 @@ describe('JobFormAddressNudge', () => {
   })
 
   it('ignore dismisses the chip but keeps the preview', () => {
-    render(<JobFormAddressNudge address="4110 N Main St Taylor, TX 76574" onApply={() => {}} />)
+    render(<JobFormAddressNudge address="3852 N Main St Taylor, TX 76574" onApply={() => {}} />)
     fireEvent.click(screen.getByText('ignore'))
     expect(screen.queryByText('Add comma')).toBeNull()
     expect(screen.getByText('city is stuck in the street')).toBeTruthy()
@@ -40,10 +40,10 @@ describe('JobFormAddressNudge', () => {
 
   it('previews and applies in Title Case (v2.2328)', () => {
     const onApply = vi.fn()
-    render(<JobFormAddressNudge address="11704 fm 1117 seguin, tx 78155" onApply={onApply} />)
-    expect(screen.getByText('11704 FM 1117 Seguin')).toBeTruthy()
+    render(<JobFormAddressNudge address="29007 fm 1117 seguin, tx 78155" onApply={onApply} />)
+    expect(screen.getByText('29007 FM 1117 Seguin')).toBeTruthy()
     fireEvent.click(screen.getByText('Add comma'))
-    expect(onApply).toHaveBeenCalledWith('11704 FM 1117, Seguin, TX 78155')
+    expect(onApply).toHaveBeenCalledWith('29007 FM 1117, Seguin, TX 78155')
   })
 
   it('no recognizable city: neutral note, no warning', () => {

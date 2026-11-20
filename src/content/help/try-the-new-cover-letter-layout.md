@@ -35,7 +35,7 @@ Alternates:
 :::
 
 - **Rename things right in step 1**. Every bid name and price name in the checklist has a ✎. The letter prints exactly these names. Your team sees the same names everywhere too. An offered price you **never renamed** prints as a bare *"— or: Deduct $…"* line. Internal names like *Default* never reach the customer.
-- **The automatic name is customer-facing**. A packet named after its GC prints under the **project's** name instead. The letter reads *ALSATIAN value engineered*, not *MERIT GENERAL CONTRACTORS value engineered*.
+- **The automatic name is customer-facing**. A packet named after its GC prints under the **project's** name instead. The letter reads *ALSATIAN value engineered*, not *MADDOX GENERAL CONTRACTORS value engineered*.
 - **Fine-tune wording** by clicking the dashed text right on the preview. The dashed text is the alternate's name, its optional note line, or the *Alternates:* heading. You type and press Enter, and you're done. {{button:outline|Reset to auto}} brings the automatic text back.
 - **Drop an alternate from the preview**. The same editor has {{button:outline|Take off this letter}} on every alternate. Press it and the letter stops offering that alternate. Its checkbox in step 1 unticks, so one tick brings it back.
 - **The difference is computed**, so it can never disagree with the Pricing tab. The line reads like *Deduct $5,287* or *Add $4,100* against the proposed amount, or *no change* when they match.

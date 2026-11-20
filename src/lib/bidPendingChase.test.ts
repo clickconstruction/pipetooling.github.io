@@ -17,7 +17,7 @@ const NOW = '2026-08-21T18:00:00.000Z'
 function bid(over: Partial<PendingChaseBid> & Pick<PendingChaseBid, 'id'>): PendingChaseBid {
   return {
     builderKey: 'gc-1',
-    builderName: 'Structura',
+    builderName: 'Sheffield',
     value: 100_000,
     sentIso: '2026-08-10',
     lastContactIso: null,
@@ -65,14 +65,14 @@ describe('groupPendingChaseByBuilder', () => {
       [
         bid({ id: 'a', value: 50_000 }),
         bid({ id: 'b', value: 25_000, lastContactIso: '2026-08-20T12:00:00Z' }),
-        bid({ id: 'c', builderKey: 'gc-2', builderName: 'Joeris', value: 10_000 }),
+        bid({ id: 'c', builderKey: 'gc-2', builderName: 'Jessup', value: 10_000 }),
       ],
       NOW,
     )
     expect(groups).toHaveLength(2)
-    const structura = groups.find((g) => g.builderKey === 'gc-1')!
-    expect(structura.needsCount).toBe(1)
-    expect(structura.needsValue).toBe(50_000)
+    const sheffield = groups.find((g) => g.builderKey === 'gc-1')!
+    expect(sheffield.needsCount).toBe(1)
+    expect(sheffield.needsValue).toBe(50_000)
   })
 
   it('ranks builders with chases first, most recently sent first', () => {

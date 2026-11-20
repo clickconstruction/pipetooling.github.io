@@ -10,7 +10,7 @@ describe('billedReportEmail (the report’s renderer, lifted v2.4167)', () => {
     expect(p.totals).toEqual({ row_count: 5, grand_total: 56944, count30_90: 3, sum30_90: 43020, count90: 0, sum90: 0 })
   })
   it('groups customers A→Z, oldest bill first, every job linked at the given origin', () => {
-    expect(groupBilledRows(p.rows).map((g) => g.displayName)).toEqual(['Hunter Homes', 'Sam Sample', 'Sample Contracting', 'Structura'])
+    expect(groupBilledRows(p.rows).map((g) => g.displayName)).toEqual(['Hunter Homes', 'Sam Sample', 'Sample Contracting', 'Sheffield'])
     const t = billedReportEmailText(p, 'https://clicktooling.com')
     expect(t.split('\n')[1]).toBe('5 open billing lines · $56,944.00 due')
     expect(t).toContain('  1041 · Cedar Bend Apartments — rough-in · 41d · $26,000.00 · https://clicktooling.com/jobs?jobDetail=job-1')

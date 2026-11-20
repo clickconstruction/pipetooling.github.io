@@ -12,6 +12,7 @@ key comes from `.env.local`.
 | `probe_plans.py [--force] [--bid bNNN]` | "Plans readable by robots" sweep or single check (plan-fetch probe) | twin |
 | `set_plans.py bNNN <url> [--apply]` | Repoint a **ZZ robot shell's** plans link, then probe it | twin |
 | `redeem_setup_code.py <code> [--rounds]` | Turn a twin setup code (the dev seat's `mint_twin_setup_code`, or Set up on this Mac) into this Mac's key file; prints nothing secret | — |
+| `install-rounds.ts` (`npx vite-node scripts/twin/install-rounds.ts`) | Put the Robot rounds agent on this Mac from the key and the round text `redeem_setup_code.py --rounds` left: the connector file, the round text, the wrapper and the LaunchAgent, from the app's own kernel. `--dry-run` says what it would write and run; `--uninstall` takes the rounds off. Checks Claude Code is here and signed in first; never prints the key | — |
 | `twinenv.py` | Shared settings: URL/anon key from `.env.local`, key file, dev secret | — |
 
 ## One-time setup on a machine
@@ -25,6 +26,12 @@ key comes from `.env.local`.
    `mkdir -p ~/pt-twin-digest && pbpaste > ~/pt-twin-digest/twin.token && chmod 600 ~/pt-twin-digest/twin.token`.
    Revoke it by its label in the same Settings card to cut the machine off.
 3. Launch sessions with `bash scripts/twin-session.sh` so the MCP connector is live too.
+   **Or, on a Mac that stays on, make the rounds** with no session at all: mint the code with
+   `rounds: true`, redeem it with `--rounds` (the kickoff it saves is the round text), then
+   `npx vite-node scripts/twin/install-rounds.ts -- --dry-run` to read what it would do and the same
+   without `--dry-run` to do it. It installs what **Set up on this Mac** installs with *This Mac makes
+   the rounds* ticked. Claude Code must be signed in on the Mac first (`claude auth login`, a browser
+   window). A round runs every five minutes and each one is a paid Claude run.
 4. For Claude Code to run these without a prompt each time, add to the **main
    checkout's** `.claude/settings.local.json` (gitignored; only you can edit it):
    ```json

@@ -55,7 +55,7 @@ const summaryRow = (job: JobWithDetails, totalBill: number, teamLaborCost = 0): 
 
 // 891 still in progress, worked this month; 931 finished (paid in full), worked this month.
 const job891 = makeJob({ id: 'j891', hcp_number: '891', job_name: 'Oak Hill repipe', pct_complete: 40, revenue: 10_000, last_work_date: '2026-10-20' })
-const job931 = makeJob({ id: 'j931', hcp_number: '931', job_name: 'Lavender Springs', pct_complete: 100, revenue: 48_700, last_work_date: '2026-10-01', invoices: [makeInvoice({ status: 'paid', amount: 48_700 })] })
+const job931 = makeJob({ id: 'j931', hcp_number: '931', job_name: 'Langford Springs', pct_complete: 100, revenue: 48_700, last_work_date: '2026-10-01', invoices: [makeInvoice({ status: 'paid', amount: 48_700 })] })
 // 432 sits under the HCP # 500 floor: in the ledger list only once a search lifts it.
 const job432 = makeJob({ id: 'j432', hcp_number: '432', job_name: 'Old import', pct_complete: 100, revenue: 900, last_work_date: '2026-10-02' })
 const rows891And931 = [summaryRow(job891, 10_000, 2_000), summaryRow(job931, 48_700)]

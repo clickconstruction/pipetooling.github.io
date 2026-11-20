@@ -379,7 +379,7 @@ describe('LienDeskCalendarTab', () => {
     // The row said "send the notice by Dec 15 · 75 d" and sorted near the bottom while July's notice was due Oct 15.
     const OCT_1 = '2026-10-01'
     const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Tune 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Pine Construction', address: '410 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
-    const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'B & D Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
+    const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'B & D Construction', address: '30539 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
     render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
     expect(within(screen.getByTestId('lien-cal-bucket-this_month')).getByTestId('lien-cal-group-gc:gc-sp').textContent).toContain('send the notice')
     expect(within(barOf('this_month')).getByTestId('lien-cal-band-date').textContent).toBe('by Oct 15 · in 14 days')
@@ -590,7 +590,7 @@ describe('the In the mail mark (v2.5522)', () => {
       // August's notice printed and in the mail (Oct 15), July's on file (Sep 15): one circle of each colour on the row.
       { jobId: 'm', number: '878 PLUM', name: 'Tune 5- Seguin', customer: 'Southern Pine', gcId: 'gc9', gcName: 'Southern Pine Construction', address: '410 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
       // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Enter mail numbers.
-      { jobId: 'o', number: '891 PLUM', name: 'Tune 5- Liberty Hill', customer: 'Brund', gcId: 'gc8', gcName: 'Brund & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
+      { jobId: 'o', number: '891 PLUM', name: 'Tune 5- Liberty Hill', customer: 'Brund', gcId: 'gc8', gcName: 'Brund & Assoc.', address: '60305 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
     ]
     render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')
