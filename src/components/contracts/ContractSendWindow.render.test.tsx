@@ -102,6 +102,21 @@ describe('ContractSendWindow', () => {
     expect(io.sends).toEqual([])
   })
 
+  it('draws a refusal at the foot, after the email preview and right above the Send email press', async () => {
+    renderWithProviders(<ContractSendWindow {...base} onClose={() => {}} onSent={() => {}} />)
+    fireEvent.change(screen.getByLabelText('Signer name'), { target: { value: '' } })
+    const sendButton = screen.getByRole('button', { name: 'Send email' })
+    fireEvent.click(sendButton)
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Enter the name of the person who signs.')
+    // The window scrolls and the press is at its foot: words under the heading are off the screen when it is pressed.
+    const preview = screen.getByTitle('Contract email preview')
+    expect(preview.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(alert.compareDocumentPosition(sendButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // One alert, never a second copy left under the heading.
+    expect(screen.getAllByRole('alert').length).toBe(1)
+  })
+
   it('opens on the signer the caller read with the paper, and reads nothing itself', () => {
     renderWithProviders(<ContractSendWindow {...base} initialSignerName="Luis Ortega" initialSignerTitle="Owner" onClose={() => {}} onSent={() => {}} />)
     expect((screen.getByLabelText('Signer name') as HTMLInputElement).value).toBe('Luis Ortega')

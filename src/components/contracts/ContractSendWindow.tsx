@@ -238,11 +238,6 @@ export function ContractSendWindow({
             {target.documentName} goes to {party ? signerName.trim() || party.name || 'them' : target.personName} again, with a new signing link. The link sent before stops working.
           </p>
         ) : null}
-        {error ? (
-          <p role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
-            {error}
-          </p>
-        ) : null}
         <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600 }}>Signer name</span>
           <input
@@ -374,6 +369,12 @@ export function ContractSendWindow({
             </>
           )}
         </div>
+        {/* The window scrolls and the press is at its foot: a refusal is drawn beside the press, where the eye is. */}
+        {error ? (
+          <p role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0.75rem 0 0' }}>
+            {error}
+          </p>
+        ) : null}
         <div style={{ display: 'flex', marginTop: '1rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           {/* Nothing was written for a quick-send pick, so there is nothing to undo. */}
           <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}>
