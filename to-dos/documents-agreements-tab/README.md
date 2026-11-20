@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · left: the owner’s own look, and his calls on the four things written under What is left
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · reminders by email built v2.8013 on four picks, not armed until the owner answers · left: the owner’s own look, and his calls on the four things written under What is left
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -246,11 +246,11 @@ there is no migration.
 
 ### What is left
 
-None of these is built. Each waits on the owner's call, and each is sized as its own piece of work.
+The first row is built and waits on the owner's calls before it merges. The rest are not built. Each waits on his call, and each is sized as its own piece of work.
 
 | What | Today | What it takes | Size |
 |---|---|---|---|
-| **Reminders by email** for a staff or sub paper | Only a prompt on the person's Dashboard. A job contract already gets three reminders, three days apart (`remind-job-contracts`) | The send does not keep the signer's address, so a migration adds it with a reminder count and a last-reminded day. Then a timed function like the job contract's, an email in the catalog, and an off switch on the line. His calls: how many, how far apart, and who may turn them off | M |
+| **Reminders by email** for a staff or sub paper | **Built, v2.8013, and waiting on his calls.** Not merged, its migration not pushed, no function deployed. Built on four picks he has not answered: three reminders, three days apart, as a job contract gets; the four roles that send a paper turn them off per paper on its line; one Settings switch for all, which ships off. Each reminder carries a new signing link and ends the one before it, since a link is kept only as a hash | His answer on the picks. Then the merge, the push, and the deploy of `send-contract-for-signature` and `remind-person-papers`. The switch stays off until he turns it on in Settings → People & teams | M, built |
 | **A copy to the signer, and a PDF of a plain paper** | Nobody is emailed once a person signs. A form makes a PDF. A paper of plain words or clauses makes none | A PDF of the signed page, kept in storage beside the forms', and an email to the signer with it. It needs the signer's address on the row, the same column as the reminders, so the two ship best together. His calls: whether the office gets a copy too, and whether old signed papers get a PDF | M |
 | **An outside party as a record** | Moved to its own card, #403 | Card #403 weighs the options, picks one and lists the owner's calls | L |
 | **The company's own signature** | Our side signs nowhere, save the office half of a two-party form | Who signs for the company, a signature on file, a countersign step after the other side signs, and both names on the record and the PDF. His calls: who may sign, and whether every paper needs it or only some | M to L |

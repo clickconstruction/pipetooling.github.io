@@ -35,6 +35,7 @@ import {
   COPY_SIGNING_LINK_LABEL,
   SEND_AGAIN_LABEL,
   agreementCanBeSentAgain,
+  agreementMayHaveReminders,
   agreementOpensContractWindow,
   copySigningLinkConfirm,
   signingLinkByHandPrompt,
@@ -42,6 +43,8 @@ import {
 } from '../../lib/documents/agreementsActs'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
+import { NO_PAPER_REMINDERS, readPaperReminders, writePaperReminderSwitch, type PaperReminders } from '../../lib/contracts/personPaperReminderIo'
+import { paperReminderLine, paperReminderWords, reminderSwitchWords, TURN_REMINDERS_OFF_LABEL, TURN_REMINDERS_ON_LABEL } from '../../../supabase/functions/_shared/personPaperReminder'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -49,7 +52,7 @@ import { emptyWordsWithPress } from '../../lib/emptyWords'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { loadJobContractRows } from '../../lib/jobs/jobLienPaperIo'
 import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { AgreementsSendPaper } from './AgreementsSendPaper'
@@ -155,6 +158,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [sendStart, setSendStart] = useState<{ documentName: string } | null>(null)
   /** The one act in flight, `<act>:<line id>`, so a second press waits for the first. */
   const [busyAct, setBusyAct] = useState<string | null>(null)
+  /** Reminders by email (punch list #376): the Settings switch and each waiting paper's own state. */
+  const [reminders, setReminders] = useState<PaperReminders>(NO_PAPER_REMINDERS)
 
   // What was typed is asked for once the typing rests, so each key is not a read. The Search tab hands its own words.
   const words = embedded ? (embedSearch ?? '') : typed
@@ -209,6 +214,27 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       cancelled = true
     }
   }, [kind, tries, embedded])
+
+  // Reminders by email: read for the waiting staff and sub papers on the page. A read that fails leaves the lines as
+  // they were: the words are a help, never a gate on the list.
+  useEffect(() => {
+    const ids = (rows ?? []).filter(agreementMayHaveReminders).map((r) => r.source_id)
+    if (ids.length === 0) {
+      setReminders(NO_PAPER_REMINDERS)
+      return
+    }
+    let cancelled = false
+    void readPaperReminders(ids)
+      .then((read) => {
+        if (!cancelled) setReminders(read)
+      })
+      .catch(() => {
+        if (!cancelled) setReminders(NO_PAPER_REMINDERS)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [rows])
 
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
@@ -271,6 +297,21 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       setSendAgain({ documentId: row.source_id, facts })
     } catch (e) {
       showToast(formatErrorMessage(e, 'The paper did not open to send.'), 'error')
+    } finally {
+      setBusyAct(null)
+    }
+  }
+
+  // The paper's own switch for reminders by email. The list reads again, so the line says what is true now.
+  const switchReminders = async (row: AgreementRow, turnOn: boolean) => {
+    if (busyAct) return
+    setBusyAct(`remind:${row.id}`)
+    try {
+      await writePaperReminderSwitch(row.source_id, turnOn)
+      showToast(reminderSwitchWords(turnOn, row.with_name), 'success')
+      retry()
+    } catch (e) {
+      showToast(formatErrorMessage(e, turnOn ? 'The reminders were not turned on.' : 'The reminders were not turned off.'), 'error')
     } finally {
       setBusyAct(null)
     }
@@ -401,6 +442,11 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const acts = agreementCanBeSentAgain(row)
                       const sending = busyAct === `send:${row.id}`
                       const linking = busyAct === `link:${row.id}`
+                      const kept = agreementMayHaveReminders(row) ? reminders.byId.get(row.source_id) : undefined
+                      const reminder = kept ? paperReminderLine(kept, reminders.switchOn) : ({ kind: 'none' } as const)
+                      const reminderWords = paperReminderWords(reminder, (iso) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso)))
+                      const reminderTurnsOn = reminder.kind === 'off' && reminder.canTurnOn
+                      const reminding = busyAct === `remind:${row.id}`
                       return (
                         <div key={row.id} style={line} data-testid="documents-agreements-row">
                           <div style={lineLeft}>
@@ -440,6 +486,16 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                             {agreementNeedsAList(row) ? (
                               <button type="button" style={addPress} disabled={busyAct != null} onClick={() => setAddToList(row.source_id)}>
                                 {ADD_TO_A_LIST_LABEL}
+                              </button>
+                            ) : null}
+                            {reminderWords ? (
+                              <span style={day} data-testid="documents-agreements-reminders">
+                                {reminderWords}
+                              </span>
+                            ) : null}
+                            {reminder.kind === 'on' || reminderTurnsOn ? (
+                              <button type="button" style={reminding ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void switchReminders(row, reminderTurnsOn)}>
+                                {reminding ? 'Saving…' : reminderTurnsOn ? TURN_REMINDERS_ON_LABEL : TURN_REMINDERS_OFF_LABEL}
                               </button>
                             ) : null}
                             {acts ? (

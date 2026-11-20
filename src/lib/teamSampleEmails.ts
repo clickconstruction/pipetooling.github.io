@@ -9,7 +9,7 @@ import { bidRoomActivityStaffEmail } from '../../supabase/functions/_shared/bidR
 import { portalRequestStaffEmail } from '../../supabase/functions/_shared/portalRequestStaffEmail'
 import { wordAskEmail } from '../../supabase/functions/_shared/gcWordAsk'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from './customerSample'
-import { buildSampleContractEmail, type SampleEmailContext } from './customerSampleEmails'
+import { buildSampleContractEmail, buildSampleContractReminderEmail, type SampleEmailContext } from './customerSampleEmails'
 import { escapeEmailHtml, renderEmailWording } from './emailWording'
 import type { TeamSampleEmailId } from './teamEmails'
 import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmail, type MoneyWaitingEmailPayload } from '../../supabase/functions/_shared/moneyWaitingEmail'
@@ -691,6 +691,10 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
       })
     case 'contract_for_signature': {
       const m = buildSampleContractEmail(ctx)
+      return { subject: m.subject, html: m.html, text: m.text }
+    }
+    case 'contract_reminder': {
+      const m = buildSampleContractReminderEmail(ctx)
       return { subject: m.subject, html: m.html, text: m.text }
     }
     case 'invitation':

@@ -9,6 +9,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
 import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
 import { paperForWords, signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
+import { paperRemindersOn, paperTakesReminders, PERSON_PAPER_REMINDERS_KEY, reminderPatchOnSend } from '../_shared/personPaperReminder.ts'
 import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import {
@@ -286,7 +287,7 @@ serve(async (req) => {
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
-      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name')
+      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name, doc_type, reminders_enabled')
       .eq('id', person_contract_document_id)
       .single()
 
@@ -308,6 +309,8 @@ serve(async (req) => {
       form_template_id: string | null
       signer_name: string | null
       party_name: string | null
+      doc_type: string | null
+      reminders_enabled: boolean | null
     }
 
     // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
@@ -338,6 +341,14 @@ serve(async (req) => {
     // Who the email and its kept copy say the paper is for. A person's paper says the person, as before. A party's is
     // filed under a stored name, so it says who signs.
     const forWords = paperForWords(doc, signerPatch.signer_name)
+    // Reminders by email (punch list #376): an emailed send of a person's agreement starts the count again, and sets
+    // the first reminder only while the Settings switch is on. A link handed over stops them. Any other paper writes none.
+    let remindersOn = false
+    if (mode === 'email' && paperTakesReminders(doc)) {
+      const { data: sw } = await admin.from('app_settings').select('value_text').eq('key', PERSON_PAPER_REMINDERS_KEY).maybeSingle()
+      remindersOn = paperRemindersOn((sw as { value_text?: string | null } | null)?.value_text)
+    }
+    const reminderPatch = reminderPatchOnSend({ mode, switchOn: remindersOn, row: doc, signerEmail, nowMs: Date.now() })
     const { data: updatedRows, error: upErr } = await admin
       .from('person_contract_documents')
       .update({
@@ -346,6 +357,7 @@ serve(async (req) => {
         public_token_hash: tokenHash,
         public_token_expires_at: expiresAt,
         ...signerPatch,
+        ...reminderPatch,
       })
       .eq('id', doc.id)
       .in('status', ['unsent', 'sent'])

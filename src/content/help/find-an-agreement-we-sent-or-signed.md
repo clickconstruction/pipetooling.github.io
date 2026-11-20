@@ -89,6 +89,35 @@ Use this when the person reads texts and not email.
 
 Nothing is emailed. The link works for 14 days.
 
+## Let the app remind them
+
+The app can remind a person who has not signed a staff or sub paper. The owner turns this on in Settings.
+
+1. Open **Settings** and pick **People & teams**.
+2. Find **Paper reminders by email**.
+3. Press **Turn reminders on**, then confirm.
+
+From then on, a paper you send by email is reminded by itself. The person gets up to 3 reminders, 3 days apart. Papers already out are not reminded.
+
+Each reminder carries a new signing link. The link before it stops working. The email tells the person so.
+
+A waiting paper's line shows the count and the next day.
+
+:::example A waiting paper with reminders on
+{{chip:yellow|sent}} 1 of 3 reminders sent · next Nov 23 {{button:outline|Turn reminders off}}
+:::
+
+## Stop the reminders for one paper
+
+1. Find the paper under **Waiting on a signature**.
+2. Press **Turn reminders off** on its line.
+
+The line then reads *Reminders off*. Press **Turn reminders on** to start them again. The next reminder goes 3 days later.
+
+**Copy the signing link** also stops that paper's reminders. You have the link, so the chase is yours.
+
+An outside company's paper is never reminded by the app. A person who left the team is not reminded.
+
 ## Chase a job contract
 
 Press the name of a contract that waits. The Contract window opens.
