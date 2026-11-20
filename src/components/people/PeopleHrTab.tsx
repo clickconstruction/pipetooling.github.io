@@ -326,7 +326,7 @@ export default function PeopleHrTab() {
                 {selectedPerson.archived_at && <span style={chipStyle({ background: 'var(--bg-neutral-100)', color: 'var(--text-muted)' })}>Archived</span>}
                 {!selectedPerson.account_user_id && <span style={chipStyle({ background: 'var(--bg-subtle)', color: 'var(--text-muted)' })}>no login</span>}
               </div>
-              <HrKeptPlansSection personId={selectedPerson.id} nameForPerson={() => selectedPerson.name} onOpenPerson={(id) => openPerson(id, 'timeline')} reloadKey={fileChangeKey} />
+              <HrKeptPlansSection personId={selectedPerson.id} nameForPerson={(id) => people.find((p) => p.id === id)?.name ?? 'this person'} onOpenPerson={(id) => openPerson(id, 'timeline')} reloadKey={fileChangeKey} />
               <PersonFilePanel
                 personId={selectedPerson.id}
                 userId={selectedPerson.account_user_id}
