@@ -173,6 +173,8 @@ describe('the days', () => {
     expect(daySpan('2026-12-01', '2026-12-12')).toBe('Dec 1 to 12')
     expect(daySpan('2026-11-30', '2026-12-13')).toBe('Nov 30 to Dec 13')
     expect(daySpan('2026-12-28', '2027-12-30')).toBe('Dec 28 to Dec 30')
+    // A one-day window reads as its day, never Dec 1 to 1 (the walk, 2026-11-20).
+    expect(daySpan('2026-12-01', '2026-12-01')).toBe('Dec 1')
     expect([inDaysWords(TODAY, TODAY), inDaysWords(TODAY, '2026-11-18'), inDaysWords(TODAY, '2026-11-21'), inDaysWords(TODAY, '2026-11-16'), inDaysWords(TODAY, '2026-11-14')]).toEqual(['today', 'in 1 day', 'in 4 days', '1 day ago', '3 days ago'])
   })
 })
