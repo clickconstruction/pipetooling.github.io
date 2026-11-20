@@ -899,7 +899,10 @@ Pay stubs are never filed here.
 **Document builder** (v2.7980, the Documents page's **Document builder** tab, punch list #404): the tab shows to a dev alone (`canUseDocumentBuilder`, one list, `DOCUMENT_BUILDER_TEAM` in `src/lib/documentBuilder/access.ts`).
 It is the owner's call of 2026-11-19 that the builders are a dev's for now.
 Every other role opens `/documents` without the tab, and a link to `?tab=builder` shows them Estimates.
-The tab reads and writes no table yet: the Sub NDA's flow runs on a made-up paper in the client.
+Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and `20261120034225_document_builder_sheets.sql`): `document_builders`, `document_builder_sheets`, `document_builder_links` and `document_builder_sends` each read by `is_dev()` alone, with no grant to `anon`.
+A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
+`document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
+Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.

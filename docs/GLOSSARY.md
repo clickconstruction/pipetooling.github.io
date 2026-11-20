@@ -6523,7 +6523,11 @@ Its **topics** are seven, each on one level or on *Off*, and three of them are i
 The **basis** is the level the whole paper starts on, and a page moved to another level is *off the basis*.
 The flow is eleven steps in one frame: *Before you start*, *The basis*, *Match the paper to the site*, one page a topic and *Review* ([`DocumentBuilderFlow.tsx`](../src/components/documentBuilder/DocumentBuilderFlow.tsx) over the rules in [`documentBuilder.ts`](../src/lib/documentBuilder/documentBuilder.ts)).
 A topic's page lists *What puts a person in breach*, the lines the level brings above the ones it keeps under *Also applies*, then *What the site must have*, then *The core clause* as grey bars.
-Every word in it is a placeholder that no attorney has read, no clause wording is in the app or the repo, and the flow runs on a made-up job and saves nothing.
+Every word in it is a placeholder that no attorney has read, and no clause wording is in the app or the repo.
+Since v2.8005 a builder's contents are kept in the database (`document_builders`): a **draft** being set up, and a **published** copy everyone outside sees, numbered by its **revision**.
+A published copy changes only with a new revision, so a revision number names one set of words.
+A builder is **read** while its read mark, a typed name and a day, names the published revision, so a new revision is unread again.
+**Load the first draft** writes a builder's first words, placeholders, into the database ([`standing.ts`](../src/lib/documentBuilder/standing.ts), [`definition.ts`](../src/lib/documentBuilder/definition.ts)).
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 
 ### Agreements tab
