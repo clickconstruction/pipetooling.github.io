@@ -151,3 +151,4 @@ salaried-week
 primary-scope-reports
 primary-scope-job-photos
 document-builders
+document-builder-sheets
