@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * The page behind a window (v2.4399 – v2.4403). Two invariants, on a phone:

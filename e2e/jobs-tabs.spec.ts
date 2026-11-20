@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * Every Jobs tab cold-loads and renders its distinctive surface. Assertions

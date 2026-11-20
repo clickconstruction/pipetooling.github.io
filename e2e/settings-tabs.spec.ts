@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * Settings tabs cold-load smoke (added after the v2.853–v2.859 decomposition
