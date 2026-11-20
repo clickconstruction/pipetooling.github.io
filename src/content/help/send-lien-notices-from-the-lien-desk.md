@@ -226,7 +226,7 @@ Each envelope has its own mail number. Certified mail or a courier to both recip
 
 Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
-The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
+The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}. The months card has it too, as **Record it…** under the bills. It opens this step at the foot of the pane on every notice, sent and missed ones too.
 
 ## A notice already on record
 

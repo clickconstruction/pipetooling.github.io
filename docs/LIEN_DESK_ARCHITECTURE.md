@@ -1206,6 +1206,9 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 - **Since v2.7916** a lien that has a saved copy reads **Print the copies to mail** until that print is filed: a receipt or a mail number on the filing no longer moves it on, and a print of the redrawn page made before v2.7916 does not count.
 - A lien with no saved copy cannot print, so its numbers and receipts alone read **Enter mail numbers**.
 - `openServeFor` and `openServeAll` in `LienDesk.tsx` are the two doors: one job's (the To do row, the band, the pane's footer) and the bin's, each setting `serveLand` to the half its name says.
+- **Since v2.8026:** the sent footer and the missed notice's closed-window line give way to `byHandPane` while it is open, as the other five footers do, so the months card's *Record it…* (`onRecordByHand`, handed on every pile) opens the step on every pile.
+- Opening the step unfolds a phone's footer (`setFootFolded(false)`) and on a computer takes the pane to its `sign` section through `goToSection`, one effect on `byHandOpen`.
+- The landing is made again each time the footer's home grows, for four seconds, since the step first reads the property's papers in a short box and a pane cannot scroll past its end.
 - **Next:** the three doors (the courtesy record, the courtesy notice, the attorney's letter) are one component, since a draft footer and the sent footer both draw them.
   With them out, the owner's call, the courtesy window and the call script (2892–2980) can follow the sent footer.
 

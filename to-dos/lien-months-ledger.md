@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Two older gaps in Record it… are noted under Seen on the live walk, for a small build of their own.
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -152,6 +152,12 @@ Both live in the footers, not in the months card, and both were there before v2.
    months card leaves the press out there, or those two footers draw the step too.
 2. **On a phone with the footer folded, Record it… shows nothing until the footer is unfolded.** The
    step draws in the footer's place. Unfolding the footer when `byHandOpen` turns on would show it.
+
+**Built 2026-11-20 as v2.8026.** Grace picked the second answer to gap 1: the sent footer and the
+missed line draw the step too. The fix also covers a third face the walk's photos showed: on a
+computer the step opened in the footer, below the paper's pages, so the press looked dead from the
+months card. Opening the step now unfolds a phone's footer and takes a computer's pane to its last
+section. The fragment is `docs/recent-features/v2.8026.md`.
 
 ## How to verify
 
