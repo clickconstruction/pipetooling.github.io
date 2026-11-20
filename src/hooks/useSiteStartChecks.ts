@@ -87,7 +87,15 @@ export function useSiteStartChecks(args: { developmentId: string; jobs: readonly
   const press = useCallback(
     async (write: (w: StartChecksIo) => Promise<void>) => {
       await write(io)
-      setLoaded(await read())
+      // The write is kept by now, so a read that fails here is a read that failed and never a press that failed: it
+      // is not thrown. The look draws its retry panel in place of cards that are out of date.
+      try {
+        const next = await read()
+        setLoaded(next)
+        setFailure(null)
+      } catch (e) {
+        setFailure(recoveryFailureFromError(e, 'The schedule could not be read.'))
+      }
     },
     [io, read],
   )

@@ -65,7 +65,7 @@ export interface JobStartChecksRead {
   templates: StartTemplateRow[]
   settings: { site: StartSettingsRow | null; job: StartSettingsRow | null }
   reload: () => void
-  /** Run a write, then read again. The write's failure is thrown to the caller. */
+  /** Run a write, then read again. The write's failure is thrown to the caller. A failure of the read after it is not: it lands in `failure`. */
   press: (write: (io: StartChecksIo) => Promise<void>) => Promise<void>
   io: StartChecksIo
 }
@@ -132,8 +132,16 @@ export function useJobStartChecks(job: StartChecksJob, options: { io?: StartChec
   const press = useCallback(
     async (write: (io: StartChecksIo) => Promise<void>) => {
       await write(io)
-      // Read again in place, so the row moves when the write has landed and not before.
-      setLoaded(await read())
+      // Read again in place, so the row moves when the write has landed and not before. The write is kept by now, so
+      // a read that fails here is a read that failed and never a press that failed: it is not thrown. The section
+      // draws its retry panel in place of a list that is out of date, and no caller says the press was lost.
+      try {
+        const next = await read()
+        setLoaded(next)
+        setFailure(null)
+      } catch (e) {
+        setFailure(recoveryFailureFromError(e, 'The list could not be read.'))
+      }
     },
     [io, read],
   )
