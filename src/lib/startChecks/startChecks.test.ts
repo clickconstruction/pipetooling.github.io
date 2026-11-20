@@ -9,6 +9,7 @@ import { plainWordsFailures } from '../plainWords'
 import { plainSentence, sentenceParts } from '../valuesInPlace'
 import {
   CHANGEABLE_VALUES,
+  DECIDE_WORDS,
   KNOW_WORDS,
   answersOwed,
   askText,
@@ -17,13 +18,16 @@ import {
   byTrouble,
   crewConfirmed,
   daySpan,
+  decisionWords,
   goNoGoDay,
+  goWords,
   holdText,
   inDaysWords,
   lastCheckDay,
   movedDays,
   openOnThem,
   openOnUs,
+  openWords,
   readiness,
   readyList,
   readyMarks,
@@ -211,6 +215,18 @@ describe('where a stage stands: every row of the table', () => {
     expect(read(onUs, '2026-11-22')).toEqual({ light: 'amber', sentence: 'Dana pressed Go Nov 21 with 2 things open. Last check Mon Nov 30.', next: 'ours', nextLabel: 'Open the order log' })
   })
 
+  it('a go on a promise comes back on the last check: red, Go or hold', () => {
+    const go = { kind: 'go' as const, by: 'Dana', day: '2026-11-21', openThen: ['The framing inspection has passed.'] }
+    const s = stage({ window: ['2026-12-01', '2026-12-12'], trip: ['2026-11-30', '2026-12-13'], bullets: [them('The framing inspection has passed.')], decision: go })
+    expect(read(s, '2026-11-28')).toMatchObject({ light: 'amber', next: 'ask' })
+    expect(read(s, '2026-11-29')).toEqual({ light: 'red', sentence: 'Dana pressed Go Nov 21 with 1 thing open. The last check is today.', next: 'decide', nextLabel: 'Go or hold' })
+    expect(read(s, '2026-12-01')).toEqual({ light: 'red', sentence: 'Dana pressed Go Nov 21 with 1 thing open. The last check was Sun Nov 29.', next: 'decide', nextLabel: 'Go or hold' })
+    // With every yes in, the same Go is a crew confirmed, whatever the day.
+    const settled = { ...s, bullets: s.bullets.map((b) => (b.on === 'them' ? { ...b, yes: yes('word') } : b)) }
+    expect(read(settled, '2026-11-29').light).toBe('green')
+    for (const day of ['2026-11-29', '2026-12-01']) expect(plainWordsFailures(standingInWords(s, SITE, day))).toEqual([])
+  })
+
   it('their day is after ours: red, Move our start', () => {
     const s = stage({ bullets: [them('Water is on site.')], theirDays: [{ day: '2026-12-01', said: '2026-10-28', who: 'Ray', how: 'phone' }, { day: '2026-12-12', said: '2026-11-16', who: 'Ray', how: 'phone' }] })
     expect(read(s)).toEqual({ light: 'red', sentence: 'Ray says ready Dec 12. We planned to start Tue Dec 8.', next: 'move', nextLabel: 'Move our start' })
@@ -386,6 +402,30 @@ describe('the site', () => {
     expect(holdText(SITE, ours, '2026-12-15')).toBe('Ray, we are holding our start on the Lodge top out. We planned Tue Dec 8.\nOur next opening is Tue Dec 15. Tell us the day it is ready and we will lock it in.')
     for (const line of holdText(SITE, bunk, '2026-12-15').split('\n').filter((l) => !/^\d+\./.test(l))) expect(plainWordsFailures(line)).toEqual([])
     for (const line of askText(SITE, [lodge, bunk], { page: true }).split('\n').filter((l) => l && !/^\d+\./.test(l))) expect(plainWordsFailures(line)).toEqual([])
+  })
+})
+
+describe('Go or hold', () => {
+  it('says what Go does: the crew goes for our first day, and a go on a promise comes back for a last check', () => {
+    const all = stage({ window: ['2026-12-01', '2026-12-12'], bullets: [them('A.', { yes: yes('saw') })] })
+    expect(goWords(all)).toBe('Send the crew for Tue Dec 1. Everything on the list has a yes.')
+    expect(openWords(all)).toBe('Everything on the list has a yes.')
+    const promise = stage({ window: ['2026-12-01', '2026-12-12'], trip: ['2026-11-30', '2026-12-13'], bullets: [them('A.'), them('B.')] })
+    expect(goWords(promise)).toBe('Send the crew for Tue Dec 1. This is a go on their promise. It comes back to you Sun Nov 29, the day before the crew leaves.')
+    expect(openWords(promise)).toBe('2 things are still open.')
+    expect(openWords(stage({ bullets: [them('A.')] }))).toBe('1 thing is still open.')
+    expect(goWords(stage({ window: null, bullets: [them('A.')] }))).toBe('Send the crew. Our days are not planned yet. This is a go on their promise.')
+  })
+
+  it('says the decision that stands with its name and its day, both marked', () => {
+    expect(plainSentence(decisionWords({ kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }))).toBe('Go. Dana, Nov 12.')
+    expect(plainSentence(decisionWords({ kind: 'hold', by: 'Sam', day: '2026-11-16', openThen: [] }))).toBe('On hold. Sam, Nov 16.')
+    expect(kinds(decisionWords({ kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }))).toEqual(['who', 'day'])
+  })
+
+  it('says every word in plain words', () => {
+    const promise = stage({ window: ['2026-12-01', '2026-12-12'], bullets: [them('A.')] })
+    for (const line of [...Object.values(DECIDE_WORDS), goWords(promise), openWords(promise), 'Go. Dana, Nov 12.', 'On hold. Sam, Nov 16.']) expect(plainWordsFailures(line)).toEqual([])
   })
 })
 

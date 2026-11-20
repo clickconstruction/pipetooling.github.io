@@ -136,7 +136,7 @@ Each card has a coloured dot and one sentence. The sentence says where the stage
 
 | Dot | What it means |
 |---|---|
-| Red | Their day is after ours, or the day to decide has come. |
+| Red | Their day is after ours, or the day to decide or the last check has come. |
 | Amber | We are waiting on something, and the day to decide is near. |
 | Green | Nothing is open. |
 | Grey | The stage has no list yet, or its day to decide is far off. |
@@ -168,6 +168,31 @@ Every ask is kept with its day. An open bullet then reads when you asked and how
 On the Schedule look, the banner has one **Ask** press for the whole site. It covers every stage whose day to decide is near.
 
 The office's Dashboard says when a customer owes us answers. Press **Open the list** on that line to go to the site.
+
+## Go or hold
+
+The decision to send the crew is a press, and your name goes on it. The office and the job's superintendent can press it.
+
+1. Open the stage.
+2. Press {{button:outline|Go or hold}} at the bottom.
+3. Read what is still open.
+4. Press {{button:green|Go}} to send the crew for our first day.
+
+With something still open, the press reads **Go, on their promise**. The stage comes back to you the day before the crew leaves.
+
+To hold the stage instead:
+
+1. Pick the day our start moves to.
+2. Read the note for the customer.
+3. Press **Hold until** and the day.
+
+A hold moves our days to the day you picked. Our last day moves with our first.
+
+A hold tells nobody by itself. After the hold, the note is ready to send. Press {{button:blue|Text it}} or {{button:outline|Email it}}, then send it from their box in Messages.
+
+Press **Take the Go back** to undo a Go. Press **Take the hold back** to undo a hold. A hold you take back does not move our days again.
+
+Nothing is blocked. A crew can still be scheduled with no Go.
 
 ## Add a bullet to the company's list
 

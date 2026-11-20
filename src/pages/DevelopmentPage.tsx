@@ -1872,7 +1872,7 @@ export default function DevelopmentPage() {
           read={siteStart}
           todayYmd={todayYmdInAppTz()}
           me={{ userId: authUser?.id ?? null, name: profileName ?? '' }}
-          can={{ window: role != null && ['dev', 'master_technician', 'assistant', 'controller', 'estimator'].includes(role), notice: isOfficeRole(role), company: isOfficeRole(role) }}
+          can={{ window: role != null && ['dev', 'master_technician', 'assistant', 'controller', 'estimator'].includes(role), notice: isOfficeRole(role), company: isOfficeRole(role), decide: isOfficeRole(role) }}
           foldFor={(line) => ({ open: !isFolded(lookFolds, 'schedule', false), onToggle: () => toggleLook('schedule'), line })}
           contactLine={people?.gcContact?.name ? `${people.gcContact.name} is the GC’s contact on the bids.` : null}
           askCustomerId={data.customer?.id ?? null}

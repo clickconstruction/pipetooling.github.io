@@ -247,6 +247,18 @@ export function stageStanding(s: Stage, site: Site, today: string): Standing {
     const still = openBullets(s).length
     const pressed = `${mark('who', s.decision.by)} pressed Go ${mark('day', monthDay(s.decision.day))}`
     if (!still) return { light: 'green', headline: 'Go', sentence: `Crew confirmed for ${start}. ${pressed}.`, next: 'none', nextLabel: null }
+    // A go on their promise comes back to the office the day before the crew leaves: the last check.
+    const lastCheck = lastCheckDay(s) ?? s.window[0]
+    if (daysBetween(today, lastCheck) <= 0) {
+      const open = mark('count', countWords(still, 'thing', 'things'))
+      return {
+        light: 'red',
+        headline: 'Last check',
+        sentence: `${pressed} with ${open} open. The last check ${today === lastCheck ? `is ${mark('check', 'today')}` : `was ${mark('check', weekDay(lastCheck))}`}.`,
+        next: 'decide',
+        nextLabel: 'Go or hold',
+      }
+    }
     return {
       light: 'amber',
       headline: 'Go, on a promise',
@@ -374,7 +386,43 @@ export const ASK_WORDS = {
   called: 'I called',
   boxLead: 'This is their box in Messages, filled with the ask. Nothing is sent until you send it there.',
   noThread: 'This job names no customer to message. Copy the ask and send it your way.',
+  holdLead: 'A hold tells nobody by itself. Change any word, then send the note.',
+  holdBoxLead: 'This is their box in Messages, filled with the note. Nothing is sent until you send it there.',
+  holdNoThread: 'This job names no customer to message. Copy the note and send it your way.',
 } as const
+
+/** The words on Go or hold. Nothing here is blocked: a crew can be scheduled with no Go. */
+export const DECIDE_WORDS = {
+  title: 'Go or hold?',
+  allYes: 'Everything on the list has a yes.',
+  go: 'Go',
+  goOnPromise: 'Go, on their promise',
+  hold: 'Hold',
+  holdLead: 'Keep the crew home, and move our start to this day.',
+  notBlocked: 'Nothing is blocked. A crew can be scheduled with no Go.',
+  takeBack: 'Take the Go back',
+  takeHoldBack: 'Take the hold back',
+  noDays: 'Plan our days for this stage first. A hold moves them.',
+} as const
+
+/** What Go does, under its name: the crew goes for our first day, and a go on a promise comes back for a last check. */
+export function goWords(s: Stage): string {
+  const start = s.window ? `Send the crew for ${weekDay(s.window[0])}.` : 'Send the crew. Our days are not planned yet.'
+  if (!openBullets(s).length) return `${start} ${DECIDE_WORDS.allYes}`
+  const check = lastCheckDay(s)
+  return `${start} This is a go on their promise.${check ? ` It comes back to you ${weekDay(check)}, the day before the crew leaves.` : ''}`
+}
+
+/** What is still open, as the panel says it before the two presses. */
+export function openWords(s: Stage): string {
+  const open = openBullets(s)
+  return open.length ? `${countWords(open.length, 'thing is', 'things are')} still open.` : DECIDE_WORDS.allYes
+}
+
+/** The decision that stands, as the stage's foot says it: Go, Dana, Nov 12. */
+export function decisionWords(d: Decision): string {
+  return d.kind === 'go' ? `Go. ${val('who', d.by)}, ${val('day', monthDay(d.day))}.` : `On hold. ${val('who', d.by)}, ${val('day', monthDay(d.day))}.`
+}
 
 /**
  * The hold note, written for the office to read, change and send. A hold tells nobody by itself. It is plain
