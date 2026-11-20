@@ -40,6 +40,19 @@ body {
   min-height: 100vh;
 }
 
+/* A screen with no header over it (the sign-in gate's "Loading…", "Updating app…", the /task launch's "Opening…"):
+   on a Home Screen iPhone the page starts under the status bar and the camera, so its words pay the top inset
+   here, once, on top of their own 2rem. 0px in a browser tab and on Android. Under the header, inside the Layout's
+   <main>, the nav has paid already and the screen keeps its plain 2rem. */
+.appBareScreen {
+  padding: 2rem;
+  padding-top: calc(2rem + var(--app-top-chrome, 0px));
+  text-align: center;
+}
+.appMain .appBareScreen {
+  padding-top: 2rem;
+}
+
 a {
   color: var(--text-link);
   text-decoration: none;

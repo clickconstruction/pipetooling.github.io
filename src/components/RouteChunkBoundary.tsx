@@ -64,14 +64,14 @@ export class RouteChunkBoundary extends React.Component<Props, State> {
     if (view === 'page') return this.props.children
     if (view === 'updating') {
       return (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div className="appBareScreen" style={{ color: 'var(--text-muted)' }}>
           Updating app…
         </div>
       )
     }
     const chunkError = view === 'lost-chunk'
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <div className="appBareScreen">
         <div style={{ marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
           {chunkError
             ? 'This page could not load — the app may have just been updated.'
