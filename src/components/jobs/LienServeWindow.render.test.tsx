@@ -111,6 +111,8 @@ describe('LienServeWindow', () => {
     const note = document.querySelectorAll('[data-lien-serve-code-day]')
     expect(note).toHaveLength(1)
     expect(note[0]!.closest('[data-lien-serve-job]')?.getAttribute('data-lien-serve-job')).toBe('job-2104')
+    // Beside the box the code named, which the landing centres: a phone shows them together.
+    expect(note[0]!.closest('[data-lien-serve-envelope]')?.getAttribute('data-lien-serve-envelope')).toBe('original_contractor')
     expect(note[0]!.textContent).toBe('The first number marks this lien mailed on Nov 16. Mailed another day? Change Mailed on at the top first.')
   })
 
