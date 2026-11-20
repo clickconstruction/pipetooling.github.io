@@ -749,13 +749,15 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
   }, [])
   const flyToNow = useRef(flyTo ?? null)
   flyToNow.current = flyTo ?? null
-  // What this map opens on when it comes up in place of Google's: read once each time it does. The first time there
-  // is nothing to carry, and it frames what is painted as it always did.
-  const carried = useMemo(
-    () => (provider === 'osm' && camera.current ? { view: clampView(camera.current), fly: flyToNow.current } : null),
-    // Read when the map under the painted map changes, and not while this one is being moved.
-    [provider],
-  )
+  // What this map opens on when it comes up in place of Google's: read once each time the map under the painted map
+  // changes, and never while this one is being moved. The first time there is nothing to carry, and it frames what is
+  // painted as it always did. Held in a ref and not a memo: a memo may be worked out again, and a view that appeared
+  // a moment after the map opened would take its first framing away.
+  const carriedFor = useRef<{ provider: PaintedMapProvider; value: { view: PaintedMapView; fly: PaintedPoint | null } | null } | null>(null)
+  if (carriedFor.current?.provider !== provider) {
+    carriedFor.current = { provider, value: provider === 'osm' && camera.current ? { view: clampView(camera.current), fly: flyToNow.current } : null }
+  }
+  const carried = carriedFor.current.value
   // A height in words fills its parent, so the row takes its room from the map. A height in pixels is the map's own.
   const fills = typeof height !== 'number'
 
