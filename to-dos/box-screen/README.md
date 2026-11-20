@@ -1,8 +1,8 @@
 ---
 name: "A box's own screen: the parts first, four tiles that carry their facts, the rare presses behind More"
 number: 398
-group: gated
-status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · waits for the Take from a box train, which is rewriting the same screen · branch claude/box-page-look-ffeba5
+group: close
+status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · built 2026-11-18 as v2.7873, one PR (#8831), on top of Take from a box (v2.7824, v2.7828), on main
 mockup: to-dos/box-screen/mockup.html
 summary: >
   A crew member at a cage asks two things: is this the box in front of me, and what is in it.
@@ -14,9 +14,10 @@ summary: >
   it?), then photos and takes, with Take from a box's press at the bottom as the only blue one.
   Edit, Say it better, Move box, the three paper presses and Retire go behind one More press.
   Eight presses in place of 22, every one 48 high or more.
-next: Wait for Take from a box's steps 3 and 4 to reach main (#8770 and the step after it). Then cut from fresh main and build the two PRs under The plan.
-size: M as two client-only PRs (S · M)
-blocker: Take from a box (#8764, #8765, #8770 and its step 4) writes TallyOnSiteTab.tsx and PhotoPress.tsx now. Two sessions must not write the same files, so no file of theirs is touched until that train is on main.
+next: The owner sees the screen on a phone. The walks the build could not make go with that look, a crew member's own screen, the camera and a box with several kinds of part. Then retire the card.
+size: M as two client-only PRs (S · M), built as one; left: the owner's look on a phone (XS)
+ver: v2.7873
+blocker: None. The screen is built and live. The owner's look on a phone is all that is left.
 opinion: build — the owner said build it all; the size of each press now follows how often the crews use it
 ---
 
@@ -148,8 +149,8 @@ Presses on the usual box: 22 today, 18 after Take from a box as designed, 11 in 
 
 ## The plan
 
-Client only. No migration, no edge function, no new table. Both PRs wait for Take from a box's
-steps 3 and 4, and each is cut from fresh main.
+Client only. No migration, no edge function, no new table. The two steps below were planned as
+two PRs and shipped as one, v2.7873, once Take from a box's steps 3 and 4 were on main.
 
 1. **The More sheet (S).** The seven rows behind one press. The app's line off the box's screen.
    *1 parts* gone, one name for the box on every press, the empty box's press said once. The
