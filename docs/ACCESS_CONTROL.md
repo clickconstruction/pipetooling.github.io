@@ -909,6 +909,7 @@ A dev writes `document_builders` and `document_builder_sheets` directly, under t
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
+Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.

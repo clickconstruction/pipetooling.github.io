@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: ready
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006) and PR 6, Ask them (v2.8010)
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010) and PR 7, Go or hold (v2.8012)
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 7, Go or hold, with the last check and the hold note. That closes the office's loop.
+next: PR 8, our bullets read the app, the order log, the trip and the permit. Then PR 9, the GC's page, the first thing a GC sees.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: None. The owner approved the design. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -377,5 +377,8 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
 - **PR 6, Ask them: built** (v2.8010). One ask across every stage it covers, opened filled in the customer's box
   in Messages and sent only there, every ask kept, and the office's Needs you line. The message goes to the job's GC
   or customer as Messages holds them, which may not be the person the bid names as the GC's contact.
-- **Next:** PR 7, Go or hold.
+- **PR 7, Go or hold: built** (v2.8012). The decision with a name on it, a go on their promise that comes back for a
+  last check, a Hold that moves our window and writes the note the office sends, and the Go taken back. With it the
+  office has the whole loop, and nothing is shown to the GC.
+- **Next:** PR 8, our bullets read the app.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.

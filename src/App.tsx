@@ -60,6 +60,8 @@ const BoxCode = lazy(() => import('./pages/BoxCode'))
 const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
 const ReceiptLink = lazy(() => import('./pages/ReceiptLink'))
 const PaintedWay = lazy(() => import('./pages/PaintedWay'))
+// A Document builder link (punch list #404): one published sheet for whoever holds the link, with no login.
+const BuilderLink = lazy(() => import('./pages/BuilderLink'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BillsSent = lazy(() => import('./pages/BillsSent'))
 const FirstLookRead = lazy(() => import('./pages/FirstLookRead'))
@@ -309,6 +311,15 @@ function AppContent() {
           element={
             <Suspense fallback={null}>
               <PaintedWay />
+            </Suspense>
+          }
+        />
+        {/* A Document builder link (punch list #404, step 4): a published sheet, read and printed with no login. Its own chunk and its own boundary, outside the app's frame. */}
+        <Route
+          path="/d/:code"
+          element={
+            <Suspense fallback={null}>
+              <BuilderLink />
             </Suspense>
           }
         />

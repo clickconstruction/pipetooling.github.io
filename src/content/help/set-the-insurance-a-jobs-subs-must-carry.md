@@ -2,7 +2,7 @@
 title: set the insurance a job's subs must carry
 category: Office
 roles: dev
-keywords: insurance, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
+keywords: insurance, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
 where: /documents?tab=builder&builder=insurance
 ---
 The insurance builder makes one sheet for each job you run as the GC. The sheet tells a sub what insurance to carry on that job.
@@ -100,4 +100,21 @@ A job that differs from a checked usual says so on the bar. Your agent checked t
 
 It prints the published revision, the one subs see. The copy is kept under [Sent copies](/documents?tab=sent) on Documents.
 
-The builder sends nothing to anyone yet. See [use the document builder](/help/use-the-document-builder) for the tab itself.
+## Give a sheet by its link
+
+A published sheet has a link. The link opens the sheet with no sign-in. It is for someone with no page of their own, such as a sub's insurance agent.
+
+1. Open the job's sheet and publish it.
+2. Find the card **This sheet's link**.
+3. Press {{button:outline-blue|Switch the link on}}.
+4. Press {{button:outline-blue|Copy the link}}.
+5. Paste the link where you want it.
+
+The link always shows the published revision. It never shows a draft.
+
+- **Make a new link** stops the link you have now. Anyone you gave it to needs the new one.
+- **Switch the link off** closes the sheet to links. Switching it on again makes a new link.
+
+The card says how often someone outside opened the link. Your own look is not counted.
+
+The builder sends nothing to anyone yet. A person copies the link. See [use the document builder](/help/use-the-document-builder) for the tab itself.

@@ -90,6 +90,8 @@ export const SHOW_US_SAMPLE_PATH = `/show/${SAMPLE_TOKEN}`
 export const SHOW_US_SAMPLE_DONE_PATH = `/show/${SAMPLE_TOKEN_DONE}`
 /** A painted map, shared (punch list #345): the page at /way/<code> with a made-up map. The sample reads no link. */
 export const PAINTED_WAY_SAMPLE_PATH = `/way/${SAMPLE_TOKEN}`
+/** A Document builder link (punch list #404): the page at /d/<code> with a made-up insurance sheet. The sample reads no link. */
+export const BUILDER_LINK_SAMPLE_PATH = `/d/${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -896,6 +898,16 @@ export function customerJourneys(): Journey[] {
           guide: 'share-a-trade-partner-its-portal',
           reflects: ['The company\'s asks, plans and questions on GC projects', 'Who gets our emails at the company'],
           render: { kind: 'page', path: TRADE_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'insurance-sheet-link',
+          label: 'GC mode: a job\'s insurance requirements, by link',
+          sublabel: 'Documents → Document builder → Insurance requirements for subs → This sheet\'s link (devs only for now)',
+          when: 'Before a trade starts on a job we run as the GC',
+          customerCan: 'Read what the certificate of insurance must show on this job, and print the one page. A sub sends the link on to their insurance agent, who needs no login.',
+          guide: 'use-the-document-builder',
+          reflects: ['The job\'s published sheet: who must be named, the place, and each coverage with its amount', 'Whether the link was switched off or replaced by a new one'],
+          render: { kind: 'page', path: BUILDER_LINK_SAMPLE_PATH },
         },
         {
           id: 'gc-trade-email',

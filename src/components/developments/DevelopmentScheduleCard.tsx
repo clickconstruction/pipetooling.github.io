@@ -22,8 +22,14 @@ const muted: CSSProperties = { color: 'var(--text-muted)' }
 const plainPress: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '7px 12px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const bluePress: CSSProperties = { ...plainPress, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
 
-/** What the one press reads while the card is shut. The ask and the decision have their own presses inside the open stage. */
-const PRESS_WORDS: Record<NextPress, string> = { write: 'Write the list', plan: 'Plan our days', move: 'Move our start', look: 'Open the stage', ask: 'Open', decide: 'Open', go: 'Open', ours: 'Open', none: 'Open' }
+/** What the one press reads while the card is shut: whatever comes next. A person who may not decide is offered the stage itself. */
+function pressWords(next: NextPress, label: string | null, mayDecide: boolean): string {
+  if (next === 'none') return 'Open'
+  if ((next === 'decide' || next === 'go') && !mayDecide) return 'Open'
+  return label ?? 'Open'
+}
+/** Where the open stage starts when the press named the ask or the decision. */
+const startOnFor = (next: NextPress, mayDecide: boolean): 'ask' | 'decide' | null => (next === 'ask' ? 'ask' : (next === 'decide' || next === 'go') && mayDecide ? 'decide' : null)
 
 export function DevelopmentScheduleCard({
   anchorId,
@@ -42,7 +48,7 @@ export function DevelopmentScheduleCard({
   read: SiteStartChecksRead
   todayYmd: string
   me: StartWho
-  can: { window: boolean; notice: boolean; company: boolean }
+  can: { window: boolean; notice: boolean; company: boolean; decide: boolean }
   foldFor: (line: string) => CardFold
   /** Who the contact is, under the banner: "Ray Ortiz, the GC's contact on the bids". */
   contactLine: string | null
@@ -51,6 +57,7 @@ export function DevelopmentScheduleCard({
   jobNameOf: (jobId: string) => string
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [openOn, setOpenOn] = useState<'ask' | 'decide' | null>(null)
   const [asking, setAsking] = useState(false)
   const stages = useMemo(() => read.stages.map((s) => s.stage), [read.stages])
   const lineOf = useMemo(() => new Map(read.stages.map((s) => [s.stage.id, s.line])), [read.stages])
@@ -144,8 +151,17 @@ export function DevelopmentScheduleCard({
                         />
                       </div>
                     </div>
-                    <button type="button" className="scPress" style={open || st.next === 'none' || st.light === 'grey' ? plainPress : bluePress} aria-expanded={open} onClick={() => setOpenId(open ? null : stage.id)}>
-                      {open ? 'Close' : PRESS_WORDS[st.next]}
+                    <button
+                      type="button"
+                      className="scPress"
+                      style={open || st.next === 'none' || st.light === 'grey' ? plainPress : bluePress}
+                      aria-expanded={open}
+                      onClick={() => {
+                        setOpenOn(open ? null : startOnFor(st.next, can.decide))
+                        setOpenId(open ? null : stage.id)
+                      }}
+                    >
+                      {open ? 'Close' : pressWords(st.next, st.nextLabel, can.decide)}
                     </button>
                   </div>
                   {open ? (
@@ -165,6 +181,7 @@ export function DevelopmentScheduleCard({
                         press={read.press}
                         io={read.io}
                         ask={doorFor(line.jobId)}
+                        startOn={openOn}
                       />
                     </div>
                   ) : null}

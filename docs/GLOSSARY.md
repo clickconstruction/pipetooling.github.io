@@ -5983,6 +5983,7 @@ The **notice** is the days we need before our first day, one number a site, ten 
 Every day they give for ready is kept, and first to newest is how far they have **moved** (`movedDays`).
 An **ask** is one message to one person across every stage it covers (`askText`, v2.8010): **Text it** and **Email it** open the customer's box in Messages filled and send nothing in the press, and every ask is kept with its day and how, a row for each bullet (`start_check_asks`).
 The office's Needs You line *Ray owes us 6 answers on 2 stages* (`start-answers-owed`, `needsYou/startAnswersOwed.ts`) is the Schedule look's own count across sites.
+**Go** and **Hold** (v2.8012) are the decision to send the crew, a press with a name on it, for the office and the job's superintendent through `start_check_decide`: a Go with something open is a **go on their promise** that comes back for a **last check** the day before the crew leaves, and a Hold moves our window to the day picked and writes a note the office sends.
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
 The rules are [`startChecks.ts`](../src/lib/startChecks/startChecks.ts), the rows [`startCheckRows.ts`](../src/lib/startChecks/startCheckRows.ts), and nothing in it blocks a schedule, a clock-in or a bill.
@@ -6594,6 +6595,8 @@ A **job's sheet** (`document_builder_sheets`, one a job the company runs as the 
 A job's sheet is **behind** when the usual was published again since it went out, and publishing the usual brings up each job that is ready and **holds** a job with no sheet yet or with changes of its own waiting.
 The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
+A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
+A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 
 ### Agreements tab
