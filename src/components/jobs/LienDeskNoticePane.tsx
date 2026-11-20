@@ -599,13 +599,14 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
         </div>
       ) : null}
 
-      {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
+      {/* Months (#38, the ledger since #361): the last day of work, the grid (months down, papers across, this notice as the last column), the money, the notes. */}
       <LienDeskMonths
         headless
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={lastWorkSaved} {...lastWorkFacts} />}
-        claimNode={
+        lastWork={<LienLastWorkDayLine flat jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={lastWorkSaved} {...lastWorkFacts} />}
+        claimNode={(foot) => (
           <LienClaimBox
+            foot={foot}
             openSignal={claimOpenSignal}
             balance={openBalance}
             correction={correction}
@@ -615,18 +616,18 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
             onSave={(input) => void run('Correct the claim', async () => saveLienClaimCorrection({ jobId: selected.jobId, ...input, userId: authUserId, userName: authName }).then(touchDraft), input.amountOff > 0 ? 'The notice claims the corrected figure.' : input.amountOff < 0 ? 'Set over the balance — the leader decides this one.' : 'The notice claims the job’s figure.')}
             onClear={() => void run('Back to the job’s figure', async () => clearLienClaimCorrection(selected.jobId).then(touchDraft), 'Cleared — the notice claims the job’s figure.')}
           />
-        }
+        )}
         claimTail={
           // Retainage inside the claim (v2.3753, counsel): named on the form so the owner traps it now; the figure lives on the job.
           retainageInsideClaim(claimed.claim, job?.lien_retainage_held) > 0 ? (
             <span data-lien-claim-retainage="yes">
               Includes <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(retainageInsideClaim(claimed.claim, job?.lien_retainage_held))}</strong> unpaid retainage {gc?.name ?? 'the GC'} holds — named on the form.
-              {office ? <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0 0 0 4px' }}>Change ›</button> : null}
+              {office ? <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, padding: '0 0 0 4px' }}>Change ›</button> : null}
             </span>
           ) : job?.lien_retainage_held == null && office ? (
             <span data-lien-claim-retainage="unset">
               Retainage {gc?.name ?? 'the GC'} holds: not recorded.
-              <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0 0 0 4px' }}>Set on the job ›</button>
+              <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, padding: '0 0 0 4px' }}>Set on the job ›</button>
             </span>
           ) : null
         }

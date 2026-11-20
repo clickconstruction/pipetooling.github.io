@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
@@ -11,6 +11,9 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
  * and the affidavit. "Say it per month" is the second path, for a month that genuinely
  * has its own figure. Under the balance is the office's call; over it the figure turns
  * red and the leader decides. The app's balance is never touched.
+ * Since punch list #361 the read view is the ledger's total line (`.lienLedgerClaim` in index.css):
+ * the caption and its words at the left, the figure at the card's right edge, and `foot` under the
+ * figure, which is the months the notice names. The editor is unchanged.
  */
 type Props = {
   balance: number
@@ -23,6 +26,8 @@ type Props = {
   onClear: () => void
   /** Bumped by the desk to open the editor from elsewhere (v2.3697: the paper's claim amount is a door to this box). */
   openSignal?: number
+  /** Drawn under the figure in the read view: the foot of the notice's column on the Months card. */
+  foot?: ReactNode
 }
 
 const money = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
@@ -38,7 +43,7 @@ const quiet: CSSProperties = { ...link, color: 'var(--text-muted)' }
 const input: CSSProperties = { font: 'inherit', padding: '3px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0 }
 const chipStyle = (over: boolean): CSSProperties => ({ display: 'inline-block', fontSize: '0.65rem', fontWeight: 700, borderRadius: 6, padding: '0 6px', verticalAlign: 'middle', background: over ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', color: over ? 'var(--text-red-700)' : 'var(--text-amber-800)' })
 
-export default function LienClaimBox({ balance, correction, months, office, busy, onSave, onClear, openSignal = 0 }: Props) {
+export default function LienClaimBox({ balance, correction, months, office, busy, onSave, onClear, openSignal = 0, foot }: Props) {
   const current = correctedClaim(balance, correction)
   const [editing, setEditing] = useState(false)
   const [figure, setFigure] = useState('')
@@ -63,7 +68,7 @@ export default function LienClaimBox({ balance, correction, months, office, busy
 
   if (!editing) {
     return (
-      <div className="lienMonthsClaim" data-lien-claim-box data-corrected={current.corrected ? 'yes' : 'no'} data-over={current.over ? 'yes' : 'no'}>
+      <div className="lienLedgerClaim" data-lien-claim-box data-corrected={current.corrected ? 'yes' : 'no'} data-over={current.over ? 'yes' : 'no'}>
         <span>Claim amount on the notice</span>
         <strong>
           {formatUsdNoCents(current.claim)} {current.corrected ? <span style={chipStyle(current.over)}>set by hand</span> : null}
@@ -91,6 +96,7 @@ export default function LienClaimBox({ balance, correction, months, office, busy
             ) : null}
           </>
         )}
+        {foot}
       </div>
     )
   }
@@ -106,7 +112,7 @@ export default function LienClaimBox({ balance, correction, months, office, busy
   const canApply = typed != null && reason.trim() !== '' && !busy
   const edge = over ? 'var(--border-red)' : 'var(--border-amber)'
   return (
-    <div data-lien-claim-editor style={{ display: 'grid', gap: '0.4rem', padding: '0.55rem 0.7rem', border: `1px solid ${edge}`, borderRadius: 8, background: over ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', fontSize: '0.78rem' }}>
+    <div data-lien-claim-editor style={{ display: 'grid', gap: '0.4rem', maxWidth: '36rem', margin: '0.5rem', padding: '0.55rem 0.7rem', border: `1px solid ${edge}`, borderRadius: 8, background: over ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', fontSize: '0.78rem' }}>
       <span style={{ color: 'var(--text-muted)' }}>Claim amount on the notice</span>
       <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
         <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>$</span>

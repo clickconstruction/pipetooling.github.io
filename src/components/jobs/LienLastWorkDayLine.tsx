@@ -10,8 +10,8 @@ import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
  * The last day of work, on one line (v2.4676): the day, a chip saying where it came from (clock
  * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
  * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
- * touched, and the line says so. Drawn above the Months card on the Lien desk and in Edit Job's
- * lien row; the caller re-reads after a save. Since v2.7447 (punch list #335) the day may be earlier
+ * touched, and the line says so. Drawn as the first row of the Months card on the Lien desk (`flat`,
+ * no box of its own) and in Edit Job's lien row; the caller re-reads after a save. Since v2.7447 (punch list #335) the day may be earlier
  * than the clock hours, and the window says what that takes off the lien clock. Since v2.4717 *Save the day* opens a window first
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*. Since v2.7684 that window and
@@ -45,6 +45,7 @@ export function LienLastWorkDayLine({
   propertyKind,
   startEditing = false,
   onCancel,
+  flat = false,
 }: {
   jobId: string
   job: LienLastWorkJob | null | undefined
@@ -68,6 +69,8 @@ export function LienLastWorkDayLine({
   startEditing?: boolean
   /** Cancel pressed: the Lien window folds the line away again. */
   onCancel?: () => void
+  /** No box of its own (punch list #361): the line is the first row of the Lien desk's Months card, on the card's hairline. */
+  flat?: boolean
 }) {
   const d = lienLastWorkDay(job)
   const laterHoursDay = lienHoursAfterHandDay(job)
@@ -92,8 +95,8 @@ export function LienLastWorkDayLine({
     })
 
   return (
-    <div data-testid="lien-last-work" data-source={d.source} style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
+    <div data-testid="lien-last-work" data-source={d.source} data-flat={flat ? 'yes' : undefined} style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem', ...(flat ? null : { padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }) }}>
         <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Last day of work</span>
         <strong data-testid="lien-last-work-day">{d.day ? formatYmdMonthDay(d.day) : 'none yet'}</strong>
         <span style={chip(d.source)} data-testid="lien-last-work-source">{lienLastWorkSourceLine(d, setByName)}</span>
