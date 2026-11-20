@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048 · read on the dev server on a real project, read-only · left: the owner's look on a phone, and three calls
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · left: the owner's look on a phone, and three calls
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -12,10 +12,10 @@ summary: >
   last set it is amber and asks Is 40% still right?, with Still 40% to say it again in one press, and
   it is red only on a fresh percent. What is this? explains the card and opens by itself once. The
   office's line says dollars over in place of points.
-next: The owner looks at the card on a phone and answers the three calls below. Then the Job Budget card's sentence, the last place that says points.
-size: M, built as one PR
+next: The owner looks at the card on a phone and answers the three calls below.
+size: M, built as one PR, and an XS for the Job Budget card
 blocker: None in the code.
-ver: v2.8048
+ver: v2.8048 · 8058
 opinion: your call — the card is built on the defaults, and each of the three calls is one small change either way
 ---
 
@@ -93,6 +93,13 @@ The owner, 2026-11-20: "Build B", then "I want B (what we decided) to be live".
 - `PaceRail.tsx` and `paceCard.ts`: the spread by price, and a quiet press with no number.
 - `superintendentLine.ts` and `JobCostsLineBudgets.tsx`: the office's words.
 - Guides: `job-mode-clocking` and `see-where-every-project-stands-and-set-its-expected-hours`.
+
+## The last place that said points (v2.8058)
+
+The Job Budget card's sentence read *labor is 9 points ahead of progress*. It now reads the dollars, *labor is
+$4,233 over for the work done*, from `src/lib/jobs/jobBudgetWhy.ts`. The words live in a client-only file
+because `jobBudget.ts` is copied to the edge functions, and a word changed there would leave every function
+that bundles it reading as behind. The owner, 2026-11-20: "Yes, do it".
 
 ## What each state reads
 
