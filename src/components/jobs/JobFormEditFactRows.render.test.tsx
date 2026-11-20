@@ -7,9 +7,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const seat = vi.hoisted(() => ({ role: 'dev' }))
 vi.mock('../../hooks/useAuth', async () => {
-  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock()
+  const { makeUseAuthValue, useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  const value = () => makeUseAuthValue({ role: seat.role })
+  return { ...useAuthModuleMock(), useAuth: value, useOptionalAuth: value }
 })
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -62,6 +64,7 @@ const OFFICE_PROPERTY: PropertyCandidate = {
 
 afterEach(cleanup)
 beforeEach(() => {
+  seat.role = 'dev'
   // The roll answers "no parcel" unless a case says otherwise — the older GC cases mount the box and must not care.
   lookupMock.mockReset().mockImplementation(async (a: string) => proposalFromLookupPayload(a, { ok: true, county_geocoder: '', parcel: null }))
 })
@@ -281,6 +284,50 @@ describe('JobFormEditFactRows', () => {
     // own Phone/Email rows still have theirs — exactly one each).
     expect(screen.getAllByRole('button', { name: 'Edit Phone' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Edit Email' })).toHaveLength(1)
+  })
+
+  it('the GC/Builder row offers Share stage dates on a saved job, to the roles that manage the portal (v2.8056)', async () => {
+    const gc = {
+      id: 'gc-1',
+      name: 'Dead Level Foundation',
+      address: '99 Slab Way',
+      contact_info: { phone: '(210) 555-1111', email: 'ap@deadlevel.example' },
+      date_met: null,
+      master_user_id: 'master-1',
+      customer_type: 'commercial',
+      archived_at: null,
+    } as unknown as CustomerRow
+    const openGcRow = async () => {
+      fireEvent.click(screen.getByRole('button', { name: /GC\/Builder/ }))
+      await settle()
+    }
+    // The office, on a saved job with a GC: the switch sits under the picker, off until a person turns it on.
+    seat.role = 'assistant'
+    renderWithProviders(<Harness gc={gc} />)
+    await settle()
+    await openGcRow()
+    await waitFor(() => expect(screen.getByTestId('gc-stage-switches')).toBeTruthy())
+    const share = screen.getByRole('checkbox', { name: /Share stage dates with Dead Level Foundation/ }) as HTMLInputElement
+    expect(share.checked).toBe(false)
+    cleanup()
+    // A primary is not offered it: sharing with the GC's portal is the office's call, as the portal's globe is.
+    seat.role = 'primary'
+    renderWithProviders(<Harness gc={gc} />)
+    await settle()
+    await openGcRow()
+    expect(screen.queryByTestId('gc-stage-switches')).toBeNull()
+    cleanup()
+    // No GC, or a job not saved yet: nothing to share.
+    seat.role = 'assistant'
+    renderWithProviders(<Harness />)
+    await settle()
+    await openGcRow()
+    expect(screen.queryByTestId('gc-stage-switches')).toBeNull()
+    cleanup()
+    renderWithProviders(<Harness gc={gc} jobId={null} />)
+    await settle()
+    await openGcRow()
+    expect(screen.queryByTestId('gc-stage-switches')).toBeNull()
   })
 
   it('opening the Project row reveals the shared project picker', async () => {

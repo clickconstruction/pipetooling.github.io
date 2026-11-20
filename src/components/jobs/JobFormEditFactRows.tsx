@@ -6,6 +6,9 @@ import { isJobFormFactRow, type JobFormFocusRow } from '../../lib/jobs/jobFormFo
 import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import type { Dispatch, MutableRefObject, ReactNode, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { JobGcStageSharingSwitches } from './JobGcStageSharingSwitches'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { resolveCreateCustomerName } from '../../lib/jobs/jobFormCreateCustomerName'
 import { parseAccountManRelationship } from '../../lib/jobs/accountMan'
@@ -413,6 +416,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const dateMetValue = dateMetRowValue(dateMet)
   const dateMetAgo = dateMetRowAgo(dateMet)
   const gcCustomer = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) : undefined
+  // Who shares a job's stage dates with its GC: the roles that manage the GC's portal, as the portal's globe in this
+  // form has it (CustomerPortalGlobeButton).
+  const { role: viewerRole } = useAuth()
+  const managesPortal = viewerRole === 'dev' || viewerRole === 'master_technician' || isAssistantLike(viewerRole)
   const gcContact = gcCustomer ? extractContactFromCustomer(gcCustomer) : null
   const gcBillingEmail = gcCustomer ? customerBillingEmail(gcCustomer) : ''
   const gcDistinct = Boolean(gcCustomerId) && gcCustomerId !== customerId
@@ -1175,6 +1182,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           customersLoading={customersLoading}
           showLabel={false}
         />
+        {/* Share stage dates with this GC (v2.2933), under the picker as the guide says. It sat only in the new job's
+            section, where a job has no id yet, so a saved job never showed it (v2.8056). Its gates, words and
+            defaults are its own: off on every job until a person turns it on, saved on the spot. */}
+        {jobId && gcCustomerId && managesPortal ? <JobGcStageSharingSwitches jobId={jobId} gcName={gcCustomer?.name ?? null} /> : null}
         </div>
       </JobFormFactRow>
       {/* The GC's contact facts mirror the Customer block (owner call,
