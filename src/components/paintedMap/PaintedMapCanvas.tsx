@@ -274,6 +274,10 @@ function FrameMargin({ me, points }: { me: PaintedCanvasMe | null; points: Reado
   const area = me?.area === true
   useEffect(() => {
     if (lat == null || lng == null) return
+    // The panel beside the map can change height in the very draw that hands in an area: the way to the switch is a
+    // tall answer, and on a phone the map gives it room. Measure first, or the circle is fitted to the box the map had
+    // and its top and bottom are cut off in the box it has.
+    map.invalidateSize({ animate: false })
     const b = map.getBounds()
     const step = marginFrameStep({
       framed: framed.current,

@@ -3214,6 +3214,8 @@ A desk, or a phone the page cannot tell, gets one line for each kind of phone an
 A margin is worded in feet up to half a mile and in whole miles past it, always rounded up (`marginWords`).
 On the map a rough reading that has stayed rough is an area and not a spot: its whole circle is drawn dashed with no dot, the map pulls back until the circle and the map's own lines show, and the first spot after it brings the map in to the person (`marginFrame.ts`, the canvas's `frameMargin` and `me.area`).
 What a screen does about a weak or a rough reading is its own sentence, kept with the screen (`WALK_WEAK_NOTE_WORDS`, `WALK_ROUGH_NOTE_WORDS`).
+**Put the dot where I am** draws the same line under its press since v2.8001, from the one reading the press takes, called rough at once since a press has no better reading to wait for.
+A rough reading leaves the dot and the map where they were and says *The dot was not moved.*, a weak one moves the dot and asks for a drag (`readingMovesDot` and the notes in `paintedPlaceDot.ts`), and a saved place's own margin says nothing of the phone, so a place opened to change shows no line.
 Guide `paint-a-map`, *When Precise Location looks off*.
 
 ### Your people

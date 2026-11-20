@@ -21,6 +21,8 @@ const world = vi.hoisted(() => ({
   /** Is the person in the middle of the picture? `follow` slides the map only when they are not. */
   inMiddle: true,
   moves: [] as Array<{ fn: 'fitBounds' | 'setView' | 'panTo'; args: unknown[] }>,
+  /** What the map was asked to do, in order: `measure` its box, `fit` a box, or `go` to a point. */
+  order: [] as string[],
 }))
 vi.mock('react-leaflet', () => {
   const map = {
@@ -30,9 +32,9 @@ vi.mock('react-leaflet', () => {
     getSize: () => ({ x: 400, y: 300 }),
     getBounds: () => ({ getSouth: () => world.view.south, getWest: () => world.view.west, getNorth: () => world.view.north, getEast: () => world.view.east, pad: () => ({ contains: () => world.inMiddle }) }),
     latLngToContainerPoint: () => (world.inMiddle ? { x: 200, y: 150 } : { x: 4, y: 4 }),
-    invalidateSize: () => {},
-    fitBounds: (...args: unknown[]) => void world.moves.push({ fn: 'fitBounds', args }),
-    setView: (...args: unknown[]) => void world.moves.push({ fn: 'setView', args }),
+    invalidateSize: () => void world.order.push('measure'),
+    fitBounds: (...args: unknown[]) => { world.moves.push({ fn: 'fitBounds', args }); world.order.push('fit') },
+    setView: (...args: unknown[]) => { world.moves.push({ fn: 'setView', args }); world.order.push('go') },
     panTo: (...args: unknown[]) => void world.moves.push({ fn: 'panTo', args }),
   }
   return {
@@ -67,6 +69,7 @@ beforeEach(() => {
   world.view = { south: 29.4995, west: -98.2005, north: 29.5005, east: -98.1995 }
   world.inMiddle = true
   world.moves = []
+  world.order = []
 })
 afterEach(cleanup)
 
@@ -111,6 +114,17 @@ describe('how the canvas frames by how sure the phone is', () => {
     const box = areaBox(AREA, POINTS)!
     expect(fits()).toEqual([{ fn: 'fitBounds', args: [[[box.south, box.west], [box.north, box.east]], { padding: [28, 28], animate: false }] }])
     expect(zooms()).toEqual([])
+  })
+
+  it('measures its box before it fits an area: the answer beside the map is tall, and the map had given it room', () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={[]} height={300} me={null} frameMargin />)
+    world.order = []
+    view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height={300} me={AREA} frameMargin />)
+    expect(world.order).toEqual(['measure', 'fit'])
+    // And before it brings the map in to a spot.
+    world.order = []
+    view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height={300} me={SPOT} frameMargin />)
+    expect(world.order).toEqual(['measure', 'go'])
   })
 
   it('moves nothing for an area when the caller did not ask for the frame', () => {

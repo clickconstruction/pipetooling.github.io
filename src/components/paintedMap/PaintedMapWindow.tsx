@@ -81,6 +81,7 @@ import { lineLengthMeters } from '../../lib/paintedMap/paintedLine'
 import { haversineMeters } from '../../lib/jobTravelEstimate'
 import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
+import { readingMovesDot } from '../../lib/paintedMap/paintedPlaceDot'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
@@ -150,8 +151,12 @@ const CONFIRM_WORDS: Record<'line' | 'place' | 'map' | 'leave' | 'stop' | 'walk'
 /** A dot dragged further than this from the phone's reading is the painter's own call: about 10 ft. */
 const OFF_READING_METERS = 3
 
-/** A place being added or changed: where its dot is now, and the reading it came from, if one was taken. */
-type Placing = { place: PaintedPlace | null; point: PaintedPoint; fix: (PaintedPoint & { accuracyM: number | null }) | null }
+/**
+ * A place being added or changed: where its dot is now, and the reading it came from, if one was taken. `live` says
+ * the reading was taken on this visit, by the press or by the walk. A saved place's own margin is not: it is kept
+ * with the place, and the panel says nothing of the phone from it.
+ */
+type Placing = { place: PaintedPlace | null; point: PaintedPoint; fix: (PaintedPoint & { accuracyM: number | null }) | null; live?: boolean }
 
 /** `185 ft back, 180 ft on`: the two legs at the corner a finger has, said the way a length is. */
 function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string | null {
@@ -217,6 +222,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [mapFailed, setMapFailed] = useState(false)
   const [fly, setFly] = useState<PaintedPoint | null>(null)
   const [finding, setFinding] = useState(false)
+  // The last Put the dot where I am got an area and not a spot (#402): its margin, for the panel's words. The dot was not moved.
+  const [roughFix, setRoughFix] = useState<number | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -511,12 +518,13 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
   /** A place added during a walk: the dot starts where the phone last was, with how sure it was. The walk keeps painting. */
   const placeOnWalk = () => {
-    const last = walk.state?.last
+    // A rough reading is an area, and its middle can be miles off: the dot then starts in the middle of what the map shows.
+    const last = walk.state?.last && readingMovesDot(walk.state.last.accuracyM) ? walk.state.last : null
     const at = last ? { lat: last.lat, lng: last.lng } : viewCenter.current
     if (!at) return
     setError(null)
     setPlaceReturn('walk')
-    setPlacing({ place: null, point: at, fix: last ? { lat: last.lat, lng: last.lng, accuracyM: last.accuracyM } : null })
+    setPlacing({ place: null, point: at, fix: last ? { lat: last.lat, lng: last.lng, accuracyM: last.accuracyM } : null, live: !!last })
     setMode('place')
   }
   /** A place added from Look it over (#393): the dot starts in the middle of what the map shows, as the map's own ＋ Place does. The walk's lines wait where they are. */
@@ -552,6 +560,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setMode(placeReturn === 'review' && added && pending.length === 0 ? 'view' : placeReturn)
     setPlaceReturn('view')
     setPlacing(null)
+    setRoughFix(null)
     setGlass(null)
   }
   const putDotWhereIAm = () => {
@@ -560,11 +569,18 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     requestMyLocation(
       (p) => {
         setFinding(false)
-        setPlacing((pl) => (pl ? { ...pl, point: { lat: p.lat, lng: p.lng }, fix: p } : pl))
+        // A rough reading is an area. The dot stays where the painter had it, the map stays put, and the panel says why.
+        if (!readingMovesDot(p.accuracyM)) {
+          setRoughFix(p.accuracyM)
+          return
+        }
+        setRoughFix(null)
+        setPlacing((pl) => (pl ? { ...pl, point: { lat: p.lat, lng: p.lng }, fix: p, live: true } : pl))
         setFly({ lat: p.lat, lng: p.lng })
       },
       (words) => {
         setFinding(false)
+        setRoughFix(null)
         setError(words)
       },
     )
@@ -944,7 +960,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   key={placing.place?.id ?? 'new'}
                   place={placing.place}
                   photoUrl={placing.place?.photoPath ? (photoUrls.get(placing.place.photoPath) ?? null) : null}
-                  accuracyM={placingAccuracy}
+                  accuracyM={placing.live ? placingAccuracy : null}
+                  roughAccuracyM={roughFix}
                   movedOffReading={!!placing.fix && !placingOnReading}
                   finding={finding}
                   busy={busy}

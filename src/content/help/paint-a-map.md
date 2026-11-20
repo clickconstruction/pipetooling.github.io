@@ -274,7 +274,15 @@ Press a chip a second time to take the kind off. The dot goes back to its plain 
 
 Type a name and press no chip, and the dot keeps its plain number.
 
-Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you and the window says how sure your phone is. Your phone is read once, on that press. It is not followed.
+Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you. Your phone is read once, on that press, and is not followed.
+
+A line under the press says how that reading did.
+
+- *Precise Location is on.* means the dot is where you stand.
+- An amber line means the signal is weak. The dot is near you. Drag it onto the spot.
+- *Precise Location looks off.* means the dot was not moved. Your phone gave only an area, and its middle can be miles away.
+
+When the dot was not moved, drag it onto the spot by hand. Or turn the switch on and press again. [When Precise Location looks off](#when-precise-location-looks-off) has the steps.
 
 Never type a gate code or a lock code on a place. Anyone the map is shared with would read it.
 

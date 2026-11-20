@@ -27,7 +27,7 @@ vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: null, sh
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: () => {} }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: () => {} }))
 /** Which phone the page takes itself to be on. The wait is the real one. */
-const device = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+const device = vi.hoisted(() => ({ kind: 'iphone-safari' as string, /** Where the map says it is looking, for a test that needs the middle of the view. */ view: null as null | { lat: number; lng: number } }))
 vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => device.kind }))
 
 /** The phone, stood in for: the test hands the walk its state, and the presses run the real rules. */
@@ -87,16 +87,24 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
   removePaintedPlacePhotoFile: async () => {},
 }))
 
-vi.mock('./PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number; accuracyM: number | null; area?: boolean } | null; follow?: boolean; frameMargin?: boolean; time?: unknown; dot?: { point: { lat: number; lng: number } } | null }) {
+vi.mock('./PaintedMapCanvas', async () => {
+  const { useEffect } = await import('react')
+  return {
+  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number; accuracyM: number | null; area?: boolean } | null; follow?: boolean; frameMargin?: boolean; time?: unknown; dot?: { point: { lat: number; lng: number } } | null; onView?: (c: { lat: number; lng: number }) => void }) {
+    const { onView } = props
+    useEffect(() => {
+      if (device.view) onView?.(device.view)
+    }, [onView])
     return (
       <div data-testid="canvas">
         area:{props.me?.area ? `yes ${props.me.accuracyM}` : 'no'} margin:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'} lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'} places:{(props.places ?? []).map((pl) => `${pl.number} ${pl.name}`).join(',')}
         {props.draft ? <button type="button" onClick={() => props.draft!.onMove(0, { lat: 29.5001, lng: -98.2001 })}>move the first corner</button> : null}
+        {props.dot ? <span data-testid="dot-at">{props.dot.point.lat},{props.dot.point.lng}</span> : null}
       </div>
     )
   },
-}))
+  }
+})
 
 import { PaintedMapWindow } from './PaintedMapWindow'
 
@@ -130,6 +138,7 @@ afterEach(() => {
   cleanup()
   vi.useRealTimers()
   device.kind = 'iphone-safari'
+  device.view = null
   delete (navigator as unknown as { geolocation?: unknown }).geolocation
   phone.calls = []
   phone.kept = []
@@ -571,7 +580,8 @@ describe('a walk and the phone it lives on', () => {
     give(walked())
     fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
     expect(screen.getByRole('heading', { name: 'A place on the map' })).toBeTruthy()
-    expect(screen.getByRole('status').textContent).toBe('Found you. Your phone is sure within 20 ft.')
+    // The walk's own last reading, taken on this visit: the line may speak of the phone from it.
+    expect(document.querySelector('[data-painted-place-fix="read"]')?.textContent).toBe('Precise Location is on. Sure within 20 ft.')
     fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
     await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace']))
@@ -580,6 +590,23 @@ describe('a walk and the phone it lives on', () => {
     await waitFor(() => expect(bar()?.getAttribute('data-painted-bar')).toBe('painting'))
     expect(phone.calls).not.toContain('pause')
     expect(phone.calls).not.toContain('clear')
+  })
+
+  it('starts a place’s dot in the middle of the map, not of a rough area, when the walk’s last reading is rough (#402)', async () => {
+    device.view = { lat: 29.55, lng: -98.25 }
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    // A rough reading still being waited on: the panel keeps ＋ Place, and the reading is the middle of an area miles off.
+    give(walkFix(walked(), { lat: 29.9, lng: -98.9, accuracyM: 3200, atMs: 22_000 }, 22_000))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
+    expect(screen.getByRole('heading', { name: 'A place on the map' })).toBeTruthy()
+    expect(screen.getByTestId('dot-at').textContent).toBe('29.55,-98.25')
+    // No reading stands behind the dot, so the panel says nothing of the phone and no margin is saved.
+    expect(document.querySelector('[data-precise]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace']))
+    expect(io.calls[1]!.args[1]).toMatchObject({ lat: 29.55, lng: -98.25, accuracyM: null })
   })
 
   it('walks a new line onto a saved map, and saving adds the line without making the map again', async () => {

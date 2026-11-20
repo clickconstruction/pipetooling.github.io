@@ -24,7 +24,12 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
-vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: (ok: (p: unknown) => void) => ok({ lat: 29.6, lng: -98.3, accuracyM: 5 }) }))
+/** The phone's one reading, stood in for: a test sets what the next Put the dot where I am gets. */
+const here = vi.hoisted(() => ({ fix: { lat: 29.6, lng: -98.3, accuracyM: 5 as number | null } }))
+vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: (ok: (p: unknown) => void) => ok({ ...here.fix }) }))
+/** Which phone the page takes itself to be on, for the Precise Location line's words. */
+const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
+vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => browser.kind }))
 /** The camera, stood in for: a test puts a shot here before the panel opens. */
 const camera = vi.hoisted(() => ({ shot: null as null | { id: string; blob: Blob; previewUrl: string } }))
 vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: camera.shot, shrinking: false, kept: false, error: null, pick: async () => {}, clear: () => {}, markKept: () => {} }) }))
@@ -141,6 +146,8 @@ afterEach(() => {
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
   device.phone = null
+  here.fix = { lat: 29.6, lng: -98.3, accuracyM: 5 }
+  browser.kind = 'iphone-safari'
 })
 
 const names = () => io.calls.map((c) => c.fn)
@@ -545,9 +552,11 @@ describe('places on a map', () => {
     render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
     fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
-    expect((await screen.findByRole('status')).textContent).toBe('Found you. Your phone is sure within 20 ft.')
+    await waitFor(() => expect(document.querySelector('[data-painted-place-fix="read"]')?.textContent).toBe('Precise Location is on. Sure within 20 ft.'))
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3')
     fireEvent.click(screen.getByRole('button', { name: 'drag the dot' }))
     expect(screen.getByRole('status').textContent).toBe('You moved the dot. The place is where the dot is now.')
+    expect(document.querySelector('[data-precise]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
     await waitFor(() => expect(names()).toContain('addPaintedPlace'))
     expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ lat: 29.7, lng: -98.4, accuracyM: null })
@@ -562,6 +571,98 @@ describe('places on a map', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
     await waitFor(() => expect(names()).toContain('addPaintedPlace'))
     expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ lat: 29.6, lng: -98.3, accuracyM: 5 })
+  })
+
+  it('leaves the dot where it is on a rough reading, and shows the way to the switch (#402)', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+    // The phone gives the middle of an area miles off, sure only within 2 miles.
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The dot was not moved. Drag it onto the spot by hand, or turn the switch on and press again.')
+    expect(alert.querySelectorAll('ol[data-precise-steps] li')).toHaveLength(5)
+    expect(alert.textContent).not.toMatch(/is off/)
+    // The press is ready again, and the place can still be added where the dot is: no margin goes with it.
+    expect(screen.getByRole('button', { name: 'Put the dot where I am' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ lat: 29.55, lng: -98.25, accuracyM: null })
+  })
+
+  it('moves the dot once the switch is on and the press is made again', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await screen.findByRole('alert')
+    here.fix = { lat: 29.6, lng: -98.3, accuracyM: 4.5 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3')
+    expect(document.querySelector('[data-painted-place-fix="read"]')?.textContent).toBe('Precise Location is on. Sure within 15 ft.')
+  })
+
+  it('keeps a good reading’s dot and margin when a later press gets a rough one', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3'))
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await screen.findByRole('alert')
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3')
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ lat: 29.6, lng: -98.3, accuracyM: 5 })
+  })
+
+  it('moves the dot on a weak reading and asks for a drag the rest of the way', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    here.fix = { lat: 29.6, lng: -98.3, accuracyM: 35 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3'))
+    expect(document.querySelector('[data-painted-place-fix="read"]')?.textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft. Drag the dot onto the spot.')
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ lat: 29.6, lng: -98.3, accuracyM: 35 })
+  })
+
+  it('names no switch on a desk, where the dot is not moved either', async () => {
+    browser.kind = 'other'
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    const alert = await screen.findByRole('alert')
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+    expect(alert.querySelector('b')?.textContent).toBe('This device only knows the area it is in.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe(' The dot was not moved. Drag it onto the spot by hand.')
+    expect(alert.textContent).not.toMatch(/switch/)
+  })
+
+  it('forgets a rough reading when the place panel closes', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(document.querySelector('[data-precise]')).toBeNull()
   })
 
   it('sends a photo first and saves the place with it', async () => {
@@ -623,6 +724,9 @@ describe('places on a map', () => {
     expect(screen.getByRole('heading', { name: 'Change this place' })).toBeTruthy()
     // Its numbered dot gives way to the blue one while it is being moved.
     expect(screen.getByTestId('canvas').textContent).toContain('dots: dot:29.5,-98.2')
+    // The place was set by a reading days ago. Its margin is kept with it, and says nothing of this phone now (#402).
+    expect(document.querySelector('[data-precise]')).toBeNull()
+    expect(screen.getByText(/Drag the blue dot onto the spot, or press the map to bring it there\./)).toBeTruthy()
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Truck gate')
     fireEvent.click(screen.getByRole('button', { name: 'drag the dot' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save the place' }))
