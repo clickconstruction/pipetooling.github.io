@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
-group: ready
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · the build waits for a session
+group: close
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#PRNUM), from the card's words, because the spike's branch was gone
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,9 +10,10 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: Build B, the ledger, from the spike's prototype: the component and its CSS move from the spike into the four composed components, the flag goes, and the phone claim-block bug is fixed on the way.
-size: M
-blocker: none
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One call rides with that look, the head of the notice's column, under Built below.
+size: M, built as one client-only PR · left, the office's look (XS)
+ver: v2.7989
+blocker: None. The card is built. The office's look is all that is left.
 ---
 
 # Lien desk: MONTHS ON THIS JOB as one card, the ledger (#361)
@@ -22,8 +23,8 @@ blocker: none
 On 2026-11-15 the owner said the MONTHS ON THIS JOB section of the Lien desk's notice pane looks
 wrong and asked for a visual refresh worked out as a spike. The spike lives on
 `claude/lien-months-refresh-spike-ae3202`: the note `docs/spikes/lien-months-refresh.md`, the
-screenshots beside it in `docs/spikes/lien-months-refresh/` (before, A and B, on JP372, JP523 and
-JP650, dark and light, desktop and the 375 phone), and the prototype
+screenshots beside it in `docs/spikes/lien-months-refresh/` (before, A and B, on three live jobs,
+dark and light, desktop and the 375 phone), and the prototype
 `src/components/jobs/LienDeskMonthsSpike.tsx` behind `localStorage.lienMonthsSpike` (`'a'` or `'b'`,
 dev builds only) with its styles in the `.lmSpike` block at the end of `src/index.css`. The owner saw
 the before and after and asked for this card.
@@ -100,10 +101,29 @@ line above, so the rail repeats it and pays with a three-line head row and a fig
 puts the one thing the section adds, the record behind the claim, in one block that reads in order,
 and is the cheaper build.
 
+## Built: v2.7989 (#PRNUM, 2026-11-19)
+
+One PR, client only. The fragment is `docs/recent-features/v2.7989.md`.
+
+- **From the card's words.** The spike's branch, its note, its shots and its prototype were on no
+  branch, worktree or remote when the build started. B was built from the seven points above, so
+  there is no side-by-side with the spike's `ledger-*` shots.
+- **Laid over v2.7430 and v2.7446**, which this card did not know. A closed month is still one line,
+  what a missed window costs is still said once under the grid, and the total is still at the foot of
+  the notice's column. That foot is now the claim's own line, so the figure is said once.
+- **The by-hand line keeps its words** as they were. Point 6 above quotes a reworded line, and the
+  rule under point 7 says no words change beyond the lead line. The rule won.
+- **One call went up.** Point 4 puts the claim figure faint in the head of the notice's column.
+  v2.7430, the office's pick of 2026-11-15, took the figure out of the head. The build keeps the head
+  as the name alone. The choice was sent to the lead session for Grace, and the head is one line to
+  change if the answer is the figure.
+- **The phone.** The grid no longer slides. Each month sits over its window, an earlier paper is a
+  mark like A ✓, and the tick has a column of its own at the right edge.
+
 ## How to verify
 
-Open `/lien-desk?tab=notices` and pick JP523 Mission Hills (four missed windows, Aug + Sep ticked,
-Oct open), JP372 Dudley Mason (one month from the bill) and JP650 ATI Schertz (an earlier paper A, a
-closed July window with Note it as missed). Compare with the spike's `ledger-*` shots, dark and light,
-desktop and the 375 preset. Tick Oct on JP523 and the head's month count follows; press each door and
-its window opens; nothing is saved by looking.
+Open `/lien-desk?tab=notices` and pick three notices: one with several missed windows and an open
+month, one whose month is dated from the bill, and one with an earlier paper A and a closed month
+that still offers Note it as missed. Look in dark and light, at a desk and at 375 wide. Tick an open
+month on a draft and the line under the claim's figure follows. Press each door and its window
+opens. Nothing is saved by looking.
