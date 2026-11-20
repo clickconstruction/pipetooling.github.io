@@ -22,11 +22,15 @@ const muted: CSSProperties = { color: 'var(--text-muted)' }
 const plainPress: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '7px 12px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const bluePress: CSSProperties = { ...plainPress, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
 
-/** What the one press reads while the card is shut: whatever comes next. A person who may not decide is offered the stage itself. */
+/**
+ * What the one press reads while the card is shut: whatever comes next. A person who may not decide is offered the
+ * stage itself, and so is anyone when what comes next has no words: a bullet of ours the app reads has no press of its
+ * own while it is being read, or where the app holds nothing to open for it.
+ */
 function pressWords(next: NextPress, label: string | null, mayDecide: boolean): string {
   if (next === 'none') return 'Open'
   if ((next === 'decide' || next === 'go') && !mayDecide) return 'Open'
-  return label ?? 'Open'
+  return label?.trim() || 'Open'
 }
 /** Where the open stage starts when the press named the ask or the decision. */
 const startOnFor = (next: NextPress, mayDecide: boolean): 'ask' | 'decide' | null => (next === 'ask' ? 'ask' : (next === 'decide' || next === 'go') && mayDecide ? 'decide' : null)

@@ -150,6 +150,17 @@ describe('the Schedule look', () => {
     expect(within(card('rough')).getByRole('button', { name: 'Open' })).toBeTruthy()
   })
 
+  it('the one press has words when what comes next is a bullet of ours with no press of its own', async () => {
+    // Every bullet on them has a yes. The one bullet of ours reads the order log, and the app holds nothing to open for it.
+    const db = seeded()
+    db.rows = { ...db.rows, bullets: [...db.rows.bullets, bullet('o1', 'j1', 'top', { words: 'Our material lands before day one.', waits_on: 'us', shown_to_gc: false, reads: 'order_log' })], marks: [...db.rows.marks, mark('m-t1', 't1', 'j1')] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Ray is done. 1 thing of ours is not ready. We decide by Sat Nov 21, in 4 days.')
+    expect(within(card('top')).getByRole('button', { name: 'Open' }).getAttribute('aria-expanded')).toBe('false')
+    for (const c of cards()) for (const b of within(c).getAllByRole('button')) expect((b.textContent ?? '').trim() || b.getAttribute('aria-label') || '').not.toBe('')
+  })
+
   it('draws the values in a sentence in place: our first day and their day change where they sit, the rest are bold', async () => {
     const db = seeded()
     await mount(db)
