@@ -6,9 +6,12 @@
 --     one, and takes its party back from that name; the two checks hold the shape both ways;
 --   * Documents → Agreements lists a party's paper under one of four new kinds, by the record's own name, with who
 --     signs in its facts, and never shows or searches the stored name;
---   * each role reads what it read before and no more, but the estimator, who now reads an outside company's agreement
---     and still no staff paper, no sub's own, no tax form and nobody on no list; a digital twin and an archived account
---     read none;
+--   * each role reads what it read before and no more, but the estimator, who reads every kind of an outside company's
+--     paper, a W-9 and a certificate among them (migration *_estimator_reads_outside_papers, the owner's call 9), and
+--     still no staff paper, no sub's own, no person's tax form and nobody on no list; a digital twin and an archived
+--     account read none;
+--   * estimator_reads_paper, which the signed form's gate asks, answers yes for exactly the papers an estimator reads,
+--     and no for everyone who is not an estimator;
 --   * the paper follows its contact through Who is this?, a fold run by an estimator who may not write a paper, and a
 --     record deleted by a screen, where the frozen name still says who it was with;
 --   * the fold's helper, called by hand, moves nothing for a twin, a training account, an archived account or a primary;
@@ -136,6 +139,10 @@ $$;
 CREATE FUNCTION pp.rows() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(right(d.id::text, 3), ',' ORDER BY d.id), 'none') FROM public.person_contract_documents d
 $$;
+-- Every paper's id, past every policy: what the gate's question is asked of, one paper at a time.
+CREATE FUNCTION pp.all_papers() RETURNS uuid[] LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT coalesce(array_agg(d.id ORDER BY d.id), '{}') FROM public.person_contract_documents d
+$$;
 CREATE FUNCTION pp.kinds() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(x.kind || ' ' || x.n::text, ', ' ORDER BY x.kind), 'none')
   FROM (SELECT kind, count(*) AS n FROM public.agreements_on_file GROUP BY kind) x
@@ -214,13 +221,18 @@ SELECT pp.same('a named contact with no record is allowed', pp.who(pp.by_email('
 SELECT pp.same('and with no message it is on no lane: its conversation is done and it has no line',
   (SELECT concat_ws('|', c.state, (SELECT count(*) FROM public.messages m WHERE m.contact_id = c.id)::text) FROM public.contacts c WHERE c.id = pp.by_email('noor@haddadeng.example')), 'done|0');
 
--- 3 · The papers. A staff paper, a sub's own, a trade company's agreement and W-9 (company_id, as today), made as
--- postgres. Then a party's papers, written by the assistant under RLS.
+-- 3 · The papers. A staff paper, a sub's own, a trade company's agreement and W-9 (company_id, as today), then a
+-- teammate's own W-9, a sub's own certificate and the trade company's certificate, made as postgres. Then a party's
+-- papers, written by the assistant under RLS.
 INSERT INTO public.person_contract_documents (id, person_name, document_name, contract_lineage_id, lineage_version, status, doc_type, sent_at, signed_at) VALUES
   ('00000000-0000-0000-0000-000004030101', 'Pat Tallman', 'Employee handbook', gen_random_uuid(), 1, 'sent', 'agreement', '2026-11-10T15:00:00Z', NULL),
   ('00000000-0000-0000-0000-000004030102', 'Ortega Mechanical', 'Master subcontract', gen_random_uuid(), 1, 'signed', 'agreement', '2026-11-05T15:00:00Z', '2026-11-06'),
   ('00000000-0000-0000-0000-000004030103', 'gc-company:00000000-0000-0000-0000-0000000403b1', 'Master Services Agreement', gen_random_uuid(), 1, 'signed', 'agreement', '2026-11-07T15:00:00Z', '2026-11-08'),
-  ('00000000-0000-0000-0000-000004030104', 'gc-company:00000000-0000-0000-0000-0000000403b1', 'W-9', gen_random_uuid(), 1, 'signed', 'w9', NULL, '2026-11-08');
+  ('00000000-0000-0000-0000-000004030104', 'gc-company:00000000-0000-0000-0000-0000000403b1', 'W-9', gen_random_uuid(), 1, 'signed', 'w9', NULL, '2026-11-08'),
+  -- A teammate's own W-9, a sub's own certificate, and the trade company's certificate.
+  ('00000000-0000-0000-0000-000004030105', 'Pat Tallman', 'W-9', gen_random_uuid(), 1, 'signed', 'w9', NULL, '2026-11-09'),
+  ('00000000-0000-0000-0000-000004030106', 'Ortega Mechanical', 'Certificate of insurance', gen_random_uuid(), 1, 'signed', 'coi', NULL, '2026-11-09'),
+  ('00000000-0000-0000-0000-000004030107', 'gc-company:00000000-0000-0000-0000-0000000403b1', 'Certificate of insurance', gen_random_uuid(), 1, 'signed', 'coi', NULL, '2026-11-09');
 SELECT pp.same('the staff paper found its roster person', pp.paper('00000000-0000-0000-0000-000004030101'), 'no party|00000000-0000-0000-0000-0000000403e1');
 
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
@@ -234,6 +246,9 @@ SELECT pp.send('00000000-0000-0000-0000-000004030115', pp.by_email('noor@haddade
 SELECT pp.send('00000000-0000-0000-0000-000004030116', public.paper_party_contact('supply_houses', '00000000-0000-0000-0000-0000000403a1'), 'Tallgrass Supply Co.', 'W-9', 'sent', 'Omar Reyes', NULL, 'credit@tallgrass.example', 'Tallgrass Supply Co.', 'w9', '2026-11-15T16:00:00Z');
 SELECT pp.send('00000000-0000-0000-0000-000004030117', pp.by_email('pat@elsewhere.example'), 'Pat Tallman', 'Mutual secrecy agreement', 'sent', 'Pat Tallman', NULL, 'pat@elsewhere.example', NULL, 'agreement', '2026-11-12T15:00:00Z');
 SELECT pp.send('00000000-0000-0000-0000-000004030118', public.paper_party_contact('supply_houses', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Mutual secrecy agreement', 'unsent', NULL, NULL, NULL, NULL);
+-- The customer's certificate, and the W-9 of someone on no list.
+SELECT pp.send('00000000-0000-0000-0000-000004030119', public.paper_party_contact('customers', '00000000-0000-0000-0000-0000000403c1'), 'Ridgeway Builders', 'Certificate of insurance', 'signed', 'Dana Ruiz', NULL, 'dana@ridgeway.example', 'Ridgeway Builders', 'coi', '2026-11-16T16:00:00Z', '2026-11-17');
+SELECT pp.send('00000000-0000-0000-0000-000004030120', pp.by_email('noor@haddadeng.example'), 'Haddad Engineering', 'W-9', 'sent', 'Noor Haddad', NULL, 'noor@haddadeng.example', 'Haddad Engineering', 'w9', '2026-11-19T16:00:00Z');
 UPDATE public.person_contract_documents SET signer_printed_name = 'Dana M. Ruiz' WHERE id = '00000000-0000-0000-0000-000004030111';
 UPDATE public.person_contract_documents SET signer_last_viewed_at = '2026-11-15T18:00:00Z' WHERE id = '00000000-0000-0000-0000-000004030113';
 RESET ROLE;
@@ -297,33 +312,56 @@ SELECT pp.same('a staff paper, a sub''s own and a trade company''s read as befor
 SELECT pp.same('a staff paper''s facts carry the signer kept on it', (SELECT facts->>'signer_name' FROM public.agreements_on_file WHERE source_id = '00000000-0000-0000-0000-000004030101'), 'Pat Tallman');
 RESET ROLE;
 
--- 5 · Who reads what. The four roles read every row, as before. The estimator reads an outside company's agreement.
+-- 5 · Who reads what. The four roles read every row, as before. The estimator reads every kind of an outside company's
+-- paper (the owner's call 9, migration *_estimator_reads_outside_papers).
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the assistant reads every paper', pp.rows(), '101,102,103,104,111,112,113,114,115,116,117,118');
+SELECT pp.same('the assistant reads every paper', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d1');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('a dev reads every paper', pp.rows(), '101,102,103,104,111,112,113,114,115,116,117,118');
+SELECT pp.same('a dev reads every paper', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
 SELECT pp.same('and every kind', pp.kinds(), 'company_agreement 1, customer_agreement 1, outside_agreement 2, person_agreement 2, supply_house_agreement 2, trade_agreement 1');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d2');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the owner reads every paper', pp.rows(), '101,102,103,104,111,112,113,114,115,116,117,118');
+SELECT pp.same('the owner reads every paper', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d4');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the controller reads every paper', pp.rows(), '101,102,103,104,111,112,113,114,115,116,117,118');
+SELECT pp.same('the controller reads every paper', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
+-- The gate's question is the estimator's alone: it says no to someone who reads every paper by another policy.
+SELECT pp.same('the gate''s question says no to the controller for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 RESET ROLE;
 
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
 SET LOCAL ROLE authenticated;
--- 103 the trade company's own agreement; 111 to 114 a customer's, a supply house's two and a trade company's; 118 the
--- insurer's copy nobody sent. Not 101 or 102 (a person's), 104 or 116 (a W-9), 115 or 117 (on no list).
-SELECT pp.same('an estimator reads an outside company''s agreements and nothing else', pp.rows(), '103,111,112,113,114,118');
+-- 103, 104 and 107 the trade company's own agreement, W-9 and certificate; 111 to 114 a customer's, a supply house's two
+-- and a trade company's; 116 the supply house's W-9; 118 the insurer's copy nobody sent; 119 the customer's
+-- certificate. Not 101, 102, 105 or 106 (a person's, a W-9 and a certificate among them), nor 115, 117 or 120 (on no
+-- list, a W-9 among them).
+SELECT pp.same('an estimator reads every kind of an outside company''s paper and nothing else', pp.rows(), '103,104,107,111,112,113,114,116,118,119');
 SELECT pp.same('an estimator''s lines are the outside companies''', pp.kinds(), 'company_agreement 1, customer_agreement 1, supply_house_agreement 2, trade_agreement 1');
 SELECT pp.same('an estimator reads no person''s paper', (SELECT count(*)::text FROM public.person_contract_documents WHERE person_id IS NOT NULL OR (party_contact_id IS NULL AND company_id IS NULL)), '0');
-SELECT pp.same('and no tax form', (SELECT count(*)::text FROM public.person_contract_documents WHERE doc_type <> 'agreement'), '0');
+SELECT pp.same('an estimator reads an outside company''s tax forms and certificates',
+  (SELECT string_agg(right(id::text, 3) || ' ' || doc_type, ',' ORDER BY id) FROM public.person_contract_documents WHERE doc_type <> 'agreement'), '104 w9,107 coi,116 w9,119 coi');
+SELECT pp.same('and no paper of a party on no list', (SELECT count(*)::text FROM public.person_contract_documents WHERE right(id::text, 3) IN ('115', '117', '120')), '0');
+-- What the signed form's gate asks, one paper at a time: yes for exactly the papers the estimator reads.
+SELECT pp.same('estimator_reads_paper says yes for exactly the papers an estimator reads',
+  (SELECT coalesce(string_agg(right(x::text, 3), ',' ORDER BY x), 'none') FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), pp.rows());
+SELECT pp.same('and no for a paper that is not there', public.estimator_reads_paper('00000000-0000-0000-0000-00000403dead')::text, 'false');
+SELECT pp.same('the paper''s side of the rule, asked of the columns: a person''s, a partner''s, a company''s, nobody''s',
+  concat_ws(' ',
+    public.paper_is_outside_company('00000000-0000-0000-0000-0000000403e1', NULL, NULL, NULL)::text,
+    public.paper_is_outside_company(NULL, '00000000-0000-0000-0000-0000000403e1', '00000000-0000-0000-0000-0000000403b1', NULL)::text,
+    public.paper_is_outside_company(NULL, NULL, '00000000-0000-0000-0000-0000000403b1', NULL)::text,
+    public.paper_is_outside_company(NULL, NULL, NULL, NULL)::text),
+  'false false true false');
+SELECT pp.same('and a party''s: a customer''s contact, then one on no list',
+  concat_ws(' ',
+    public.paper_is_outside_company(NULL, NULL, NULL, pp.on('customer_id', '00000000-0000-0000-0000-0000000403c1'))::text,
+    public.paper_is_outside_company(NULL, NULL, NULL, pp.by_email('noor@haddadeng.example'))::text),
+  'true false');
 SELECT pp.same('each line names its party for the estimator', (SELECT bool_and(with_name <> '')::text FROM public.agreements_on_file), 'true');
 SELECT pp.refused('an estimator writes no paper', $q$SELECT pp.send('00000000-0000-0000-0000-000004030131', pp.by_email('noor@haddadeng.example'), 'X', 'D', 'unsent', NULL, NULL, NULL, NULL)$q$, 'row-level security');
 -- An update of a row the estimator reads changes nothing: no write policy opens to them.
@@ -335,14 +373,17 @@ SELECT pp.same('and changes none', (SELECT status FROM public.person_contract_do
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d9');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a digital twin, an estimator by role, reads no paper', pp.rows(), 'none');
+SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403db');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('an archived estimator reads no paper', pp.rows(), 'none');
+SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d6');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a primary reads no paper', pp.rows(), 'none');
+SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 SELECT pp.same('and no line', pp.kinds(), 'none');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d7');
@@ -355,7 +396,7 @@ SELECT pp.same('a sub reads no paper, their own included', pp.rows(), 'none');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403da');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('a training assistant reads what an assistant reads', pp.rows(), '101,102,103,104,111,112,113,114,115,116,117,118');
+SELECT pp.same('a training assistant reads what an assistant reads', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$
@@ -369,7 +410,21 @@ BEGIN
   IF n <> 0 THEN RAISE EXCEPTION 'a caller who is not signed in read % paper(s)', n; END IF;
   RAISE NOTICE 'ok: a caller who is not signed in reads no paper';
 END $$;
+SELECT pp.refused('a caller who is not signed in cannot ask the gate''s question', $q$SELECT public.estimator_reads_paper('00000000-0000-0000-0000-000004030104')$q$, 'permission denied');
+SELECT pp.refused('nor the paper''s side of it', $q$SELECT public.paper_is_outside_company(NULL, NULL, '00000000-0000-0000-0000-0000000403b1', NULL)$q$, 'permission denied');
 RESET ROLE;
+-- The policy holds no kind of paper any more, both functions run as the caller, and neither is open to the public.
+SELECT pp.same('the estimator''s policy names no kind of paper and asks the function',
+  (SELECT (pg_get_expr(polqual, polrelid) NOT LIKE '%doc_type%')::text || ' ' || (pg_get_expr(polqual, polrelid) LIKE '%paper_is_outside_company(person_id, partnership_id, company_id, party_contact_id)%')::text
+   FROM pg_policy WHERE polrelid = 'public.person_contract_documents'::regclass AND polname = 'person_contract_documents_estimator_outside'), 'true true');
+SELECT pp.same('both functions run as the caller, with the search path pinned',
+  (SELECT string_agg(proname || ' ' || prosecdef::text || ' ' || provolatile::text || ' ' || array_to_string(proconfig, ','), ' ; ' ORDER BY proname)
+   FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('paper_is_outside_company', 'estimator_reads_paper')),
+  'estimator_reads_paper false s search_path=public ; paper_is_outside_company false s search_path=public');
+SELECT pp.same('and neither is open to a caller who is not signed in',
+  concat_ws(' ', has_function_privilege('anon', 'public.estimator_reads_paper(uuid)', 'EXECUTE')::text, has_function_privilege('anon', 'public.paper_is_outside_company(uuid, uuid, uuid, uuid)', 'EXECUTE')::text,
+    has_function_privilege('authenticated', 'public.estimator_reads_paper(uuid)', 'EXECUTE')::text, has_function_privilege('authenticated', 'public.paper_is_outside_company(uuid, uuid, uuid, uuid)', 'EXECUTE')::text),
+  'false false true true');
 
 -- 6 · The paper follows its contact. Add to a list is Who is this?: Noor becomes a person at the customer, in place.
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
@@ -383,7 +438,8 @@ RESET ROLE;
 SELECT pp.same('and the paper kept its frozen name', pp.paper('00000000-0000-0000-0000-000004030115'), right(pp.by_email('noor@haddadeng.example')::text, 4) || '|true|Haddad Engineering|no person');
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the estimator reads it once it is a customer''s', pp.rows(), '103,111,112,113,114,115,118');
+SELECT pp.same('the estimator reads her papers once she is at a customer, her W-9 among them', pp.rows(), '103,104,107,111,112,113,114,115,116,118,119,120');
+SELECT pp.same('and the gate''s question follows', public.estimator_reads_paper('00000000-0000-0000-0000-000004030120')::text, 'true');
 -- A fold, run by an estimator who may not write a paper: the other typed-in signer turns out to be the rep. The helper
 -- is a definer, so the paper moves and the folded contact goes.
 SELECT set_config('pp.was', pp.by_email('pat@elsewhere.example')::text, true);
@@ -412,7 +468,8 @@ SELECT pp.same('a supply house deleted leaves its papers on no list, by the name
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('and the estimator no longer reads the ones on no list', pp.rows(), '103,111,114,115,118');
+SELECT pp.same('and the estimator no longer reads the ones on no list, the supply house''s W-9 among them', pp.rows(), '103,104,107,111,114,115,118,119,120');
+SELECT pp.same('nor does the gate''s question open it', public.estimator_reads_paper('00000000-0000-0000-0000-000004030116')::text, 'false');
 RESET ROLE;
 
 -- 7 · The helper called by hand moves nothing for a twin, a training account, an archived account or a primary.

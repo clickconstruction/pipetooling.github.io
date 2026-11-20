@@ -110,7 +110,9 @@ INSERT INTO public.gc_sows (id, package_id, invite_id, company_id, status, price
   ('00000000-0000-0000-0000-00000376a0e1', '00000000-0000-0000-0000-00000376a0b1', '00000000-0000-0000-0000-00000376a0d1', '00000000-0000-0000-0000-00000376a0c1', 'sent', 100, DATE '2026-09-24', NULL),
   ('00000000-0000-0000-0000-00000376a0e2', '00000000-0000-0000-0000-00000376a0b2', '00000000-0000-0000-0000-00000376a0d2', '00000000-0000-0000-0000-00000376a0c2', 'draft', 100, NULL, NULL);
 INSERT INTO public.person_contract_documents (id, person_name, document_name, contract_lineage_id, lineage_version, status, doc_type, signed_at) VALUES
-  ('00000000-0000-0000-0000-00000376a0f1', 'gc-company:00000000-0000-0000-0000-00000376a0c1', 'Master Services Agreement', gen_random_uuid(), 1, 'signed', 'agreement', '2026-09-18');
+  ('00000000-0000-0000-0000-00000376a0f1', 'gc-company:00000000-0000-0000-0000-00000376a0c1', 'Master Services Agreement', gen_random_uuid(), 1, 'signed', 'agreement', '2026-09-18'),
+  -- The same trade company's W-9: a row an estimator reads since the owner's call 9, and no line of this list.
+  ('00000000-0000-0000-0000-00000376a0f2', 'gc-company:00000000-0000-0000-0000-00000376a0c1', 'W-9', gen_random_uuid(), 1, 'signed', 'w9', '2026-09-19');
 INSERT INTO public.gc_owner_contract_sends (id, project_id, customer_id, first, sent_on, sign_by, worth, file_path, file_name, file_sha256, signed_on, signer_printed_name, signer_consented_at, created_at) VALUES
   ('00000000-0000-0000-0000-00000376a071', '00000000-0000-0000-0000-00000376a0a0', '00000000-0000-0000-0000-0000000376c4', true, DATE '2026-09-20', DATE '2026-09-27', '{"gc": 100}'::jsonb, '376/contract-1.pdf', 'contract-1.pdf', repeat('ab', 32), NULL, NULL, NULL, '2026-09-20T15:00:00Z'),
   ('00000000-0000-0000-0000-00000376a072', '00000000-0000-0000-0000-00000376a0a0', '00000000-0000-0000-0000-0000000376c4', false, DATE '2026-09-25', DATE '2026-10-02', '{"gc": 200}'::jsonb, '376/contract-2.pdf', 'contract-2.pdf', repeat('ab', 32), DATE '2026-09-30', 'W. Clinic', '2026-09-30T15:00:00Z', '2026-09-25T15:00:00Z');
@@ -230,6 +232,12 @@ SET LOCAL ROLE authenticated;
 -- Since punch list #403 (migration *_paper_party, the owner's calls 4 and 7) an estimator reads an outside company's
 -- agreement: here the trade company's. No person's paper, staff, sub or partner, and none of the job's own contracts.
 SELECT aof.same('an estimator reads work orders and a trade company''s agreement, and nothing else', aof.kinds(), 'company_agreement 1, work_order 5');
+-- Since migration *_estimator_reads_outside_papers (the owner's call 9) an estimator reads every kind of an outside
+-- company's paper of the table itself: the trade company's W-9 beside its agreement. The list still shows agreements
+-- alone, to every role, so the W-9 is a row they read and no line here.
+SELECT aof.same('of the table itself an estimator reads the trade company''s agreement and its W-9, and no person''s paper',
+  (SELECT string_agg(right(d.id::text, 2) || ' ' || d.doc_type, ',' ORDER BY d.id) FROM public.person_contract_documents d), 'f1 agreement,f2 w9');
+SELECT aof.same('the W-9 is no line of the list', (SELECT count(*)::text FROM public.agreements_on_file a WHERE a.source_id = '00000000-0000-0000-0000-00000376a0f2'), '0');
 RESET ROLE;
 
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d6');

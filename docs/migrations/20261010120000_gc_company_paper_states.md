@@ -24,7 +24,10 @@ paper and every other column stay the pay roles' (a dev, a leader, an assistant,
 **Why a function, not a row policy.** `person_contract_documents`' `SELECT` policy reads for the pay roles only, so an
 estimator's board read every company's master agreement, W-9 and certificate as missing and held its bars as not
 ready. A `FOR SELECT` policy for the office would give it every column of a company's row, the W-9's
-`form_hints` and the signer's details among them (the Board's call, gc 2). `created_at` rides beside the Board's seven
+`form_hints` and the signer's details among them (the Board's call, gc 2). The owner changed that call on 2026-11-20
+(punch list #403, call 9): an estimator now reads every kind of an outside company's paper of the table itself, since
+[`20261120080000`](./20261120080000_estimator_reads_outside_papers.md). This function is unchanged and still answers
+the Board. `created_at` rides beside the Board's seven
 columns because `companyPapers` orders by it and falls back to it for a master agreement's signed day.
 
 **Building's door D1** widens the gate to `gc_on_any_schedule_team()` or the office with one `CREATE OR REPLACE`, once
