@@ -166,6 +166,22 @@ describe('SuperintendentCard', () => {
     expect(card.textContent).not.toMatch(/point/i)
   })
 
+  it('for his next stop the card says whose pace it is, on the face and on the folded row', async () => {
+    const whole = renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} nextStop="PLUM 1044 · The Lodge" />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.getByTestId('pace-for').textContent).toBe('Next stop: PLUM 1044 · The Lodge')
+    whole.unmount()
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} short nextStop="PLUM 1044 · The Lodge" />)
+    const row = await screen.findByTestId('superintendent-line-short')
+    expect(row.textContent).toContain('Next stop: PLUM 1044 · The Lodge. Tap for the pace card.')
+  })
+
+  it('the card for the job he is on carries no Next stop line', async () => {
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.queryByTestId('pace-for')).toBeNull()
+  })
+
   it('What is this? opens by itself the first time, and is folded the next', async () => {
     const first = renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     await screen.findByTestId('superintendent-line')

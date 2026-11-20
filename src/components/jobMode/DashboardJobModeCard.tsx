@@ -63,6 +63,7 @@ import { JobModePressBar } from './JobModePressBar'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import SuperintendentCard from './SuperintendentCard'
+import { paceNextStopJobId } from '../../lib/jobMode/paceNextStop'
 import { useKeptRead } from '../../hooks/useKeptRead'
 import { useSiteBoxCount } from '../../hooks/useSiteBoxCount'
 import { siteBoxDoorHref, siteBoxDoorWords } from '../../lib/materials/siteBoxCount'
@@ -1418,7 +1419,14 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             </div>
           )
         }
-        if (!detailsTarget) return null
+        if (!detailsTarget) {
+          // No job of its own, clocked in with no job linked or onto a bid: Job pace still draws, for the next stop.
+          const nb = picked.nextBlock
+          const nextStopId = paceNextStopJobId({ role, hasOwnJob: false, onAJob: daySession?.jobLedgerId != null, nextJobId: nb?.job_id, closed: nb ? closedJobs.has(nb.job_id) || maskedJobs.has(nb.job_id) : false })
+          if (!nb || !nextStopId) return null
+          const stop = `${jobNumberLabel(nb.service_type_id, nb.hcp_number, nb.click_number)} · ${jobNameWithPlainDates(safeTrim(nb.job_name)) || '—'}`
+          return <SuperintendentCard key={`line-next-${nextStopId}`} jobId={nextStopId} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} onAsked={() => setJobUpdatesRev((n) => n + 1)} nextStop={stop} />
+        }
         // The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board.
         const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} onAsked={() => setJobUpdatesRev((n) => n + 1)} /> : null
         const details = (

@@ -284,6 +284,7 @@ A superintendent on a project sees one more card on Job Mode, above the job's de
 - *Is 40% still right?* shows when the crew has put in hours since the percent was last set. Press {{button:blue|Set the %}} to change the number. Press {{button:outline|Still 40%}} to say the same number again today. That press files a status report.
 - *The work is ahead of the hours.* means the job is under its hours so far.
 - The card never shows money. When the money is ahead of the work, one grey line says the office watches it.
+- When you are clocked in with no job linked, the card shows your next stop. A line reads *Next stop* with the job's number and name.
 - Press **What is this?** to read what the card compares and why. The fold opens by itself the first time you see the card.
 
 Under the bars, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. Work on the bid that is not a stage shows as one row, **Other work**. The last row is the finish day.

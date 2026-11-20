@@ -62,8 +62,10 @@ function PacePair({ bars, tone }: { bars: PaceReadingBars; tone: PaceReadingTone
   )
 }
 
-export function PaceReadingFace({ reading, onSetPct, onStill, stillBusy = false }: {
+export function PaceReadingFace({ reading, onSetPct, onStill, stillBusy = false, forWords }: {
   reading: PaceReading
+  /** Whose pace this is, when the card is not for the job on the Job Mode card: *Next stop: PLUM 1044 · Maple Court*. */
+  forWords?: string
   onSetPct: () => void
   /** **Still 40%**: say the same percent again today. */
   onStill: () => void
@@ -72,6 +74,7 @@ export function PaceReadingFace({ reading, onSetPct, onStill, stillBusy = false 
   return (
     <div data-testid="pace-reading" data-state={reading.state} data-tone={reading.tone} style={{ display: 'grid', gap: 10, minWidth: 0 }}>
       <div style={NAME} data-testid="pace-name">{W.name}</div>
+      {forWords ? <div data-testid="pace-for" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-700)', overflowWrap: 'anywhere' }}>{forWords}</div> : null}
       <div data-testid="pace-headline" style={{ fontSize: '1.1rem', fontWeight: 700, lineHeight: 1.25, color: HEAD_COLOR[reading.tone] }}>{reading.headline}</div>
       {reading.bars ? <PacePair bars={reading.bars} tone={reading.tone} /> : null}
       {reading.lines.map((line, i) => (

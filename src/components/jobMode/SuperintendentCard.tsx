@@ -29,6 +29,7 @@ import { useJobNoteTags } from '../../hooks/useJobNoteTags'
 import { PACE_CARD_WORDS, paceDayWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageCheck, paceStagePrices, paceStageRail } from '../../lib/jobMode/paceCard'
 import { PACE_READING_WORDS, paceReading, type PaceReadingTone } from '../../lib/jobMode/paceReading'
 import { sayPercentStill } from '../../lib/jobMode/paceStillIo'
+import { PACE_NEXT_STOP_WORDS } from '../../lib/jobMode/paceNextStop'
 import { PaceReadingFace, PaceWhatFold } from './PaceReadingFace'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { JobModeShortRow } from './JobModeShortRow'
@@ -62,6 +63,10 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * right?* while hours have gone in since the percent was set, with **Still 40%** to say it again today, and red
  * only on a percent said since. **What is this?** says what the card compares, and opens by itself once.
  *
+ * `nextStop` (the walk as a real superintendent, 2026-11-20): the Job Mode card draws this card for his next
+ * stop when it has no job of its own, clocked in with no job linked or onto a bid, and the face says whose pace
+ * it is, *Next stop: PLUM 1044 · Maple Court* (`lib/jobMode/paceNextStop.ts`).
+ *
  * **Ask a master** (PR 2) opens `AskMasterSheet`: a question to the master on the job, sent as a job note
  * that tags him, with the card's numbers attached. The card then says who the question waits on, and that
  * an answer landed. `onAsked` tells the page a note was posted, so the job's feed reads again.
@@ -77,7 +82,15 @@ const TONE_BORDER: Record<PaceReadingTone, string> = { red: '#dc2626', amber: '#
 
 export type SuperintendentPctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
-export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false, onAsked }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean; onAsked?: () => void }) {
+export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false, onAsked, nextStop }: {
+  jobId: string
+  onSetPct: (job: SuperintendentPctJob) => void
+  rev?: number
+  short?: boolean
+  onAsked?: () => void
+  /** The stop's label when the card is for his next stop, not the job on the Job Mode card (`lib/jobMode/paceNextStop.ts`). */
+  nextStop?: string
+}) {
   const [job, setJob] = useState<ProjectBoardJob | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [busy, setBusy] = useState(false)
@@ -104,10 +117,10 @@ export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false, on
   }, [jobId, rev, tick])
   if (failure && !job) return <OfflineRetryPanel failure={failure} onRetry={retry} surface="superintendent-line" idempotent busy={busy} />
   if (!job || job.id !== jobId || !isWorkingProject(job)) return null
-  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} onAsked={onAsked} />
+  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} onAsked={onAsked} nextStop={nextStop} />
 }
 
-function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean; onAsked?: () => void }) {
+function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked, nextStop }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean; onAsked?: () => void; nextStop?: string }) {
   const [paceOpen, setPaceOpen] = useState(false)
   const [figuredOpen, setFiguredOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
@@ -252,6 +265,8 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
     </div>
   )
   const gapIsReal = reading.state === 'over'
+  // Whose pace this is, when the card is for his next stop and not the job on the Job Mode card.
+  const forWords = nextStop ? PACE_NEXT_STOP_WORDS.stop(nextStop) : undefined
   // The checklist is the other move when the card asks for one: a gap, an old percent, or no percent yet.
   const checklistMove = reading.state === 'over' || reading.state === 'old' || reading.state === 'no-percent'
   // The short page: the headline as a row, with the two thin bars and the finish day. The hooks above still read,
@@ -261,7 +276,7 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
       <JobModeShortRow
         testId="superintendent-line-short"
         title={reading.headline}
-        note={paceRowNote(pace.input.plannedFinishYmd)}
+        note={forWords ? `${forWords}. ${PACE_CARD_WORDS.rowOpen}` : paceRowNote(pace.input.plannedFinishYmd)}
         tone={reading.tone === 'green' ? 'ahead' : reading.tone === 'red' ? 'behind' : undefined}
         expanded={false}
         onPress={() => setPaceOpen(true)}
@@ -278,7 +293,7 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   }
   return (
     <div data-testid="superintendent-line" data-tone={line.tone} data-reading={reading.state} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 10, background: 'var(--surface)', minWidth: 0 }}>
-      <PaceReadingFace reading={reading} onSetPct={setPct} onStill={() => void sayStill()} stillBusy={stillBusy} />
+      <PaceReadingFace reading={reading} onSetPct={setPct} onStill={() => void sayStill()} stillBusy={stillBusy} forWords={forWords} />
       {short ? (
         <button type="button" data-testid="superintendent-line-fold" aria-expanded onClick={() => setPaceOpen(false)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
           {JOB_MODE_SHORT_WORDS.pace.fold}

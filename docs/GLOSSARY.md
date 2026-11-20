@@ -1507,6 +1507,7 @@ My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Cu
 
 **The superintendent's line** (punch list #242, PR 4, **v2.6335**): for a superintendent whose current or next job is a project, the card draws **[`SuperintendentCard`](../src/components/jobMode/SuperintendentCard.tsx)** above the job's details — the headline (ahead or behind at this pace), the pace strip with the job's real days and stages, the office's target when one is set, the money when it leads, the proof and the one move with **Set the %** and **Open the checklist** — from the same read (`list_project_board`) and the same `projectPace` the office's Projects board stands on, so the two never disagree.
 Since **v2.8048** (punch list #406) the card's face has a name, **Job pace**, and reads hours and never money (`lib/jobMode/paceReading.ts`, `PaceReadingFace.tsx`).
+Since **v2.8122** the card also draws for his next stop when the Job Mode card has no job of its own, clocked in with no job linked or onto a bid, with one line, *Next stop: PLUM 1044 · Maple Court* (`lib/jobMode/paceNextStop.ts`).
 It draws **Hours used** and **Work done** as two bars on one scale, with the gap hatched on the hours bar.
 Its headlines are *Hours are ahead of the work.*, *On track.*, *The work is ahead of the hours.* and, when hours went in after the percent was last said, *Is 40% still right?* in amber with **Still 40%**.
 Money that leads is one grey line on the phone, and the word *points* is on no screen that reads the line.
