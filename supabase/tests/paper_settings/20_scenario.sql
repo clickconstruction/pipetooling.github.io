@@ -278,6 +278,15 @@ INSERT INTO public.person_contract_documents (person_name, document_name, contra
   VALUES ('Settings bed Jordan', 'Draft bed paper (test)', gen_random_uuid(), 1, 'unsent', '00000000-0000-0000-0000-0000000389c3');
 SELECT pst.refused('nor is a copy moved onto one', $q$UPDATE public.person_contract_documents SET applied_contract_template_document_id = '00000000-0000-0000-0000-0000000389c1' WHERE person_name = 'Settings bed Jordan'$q$, 'This paper is built from settings. It goes from a job, with its settings.');
 SELECT pst.same('an ordinary paper''s copy is made as before', (SELECT count(*)::text FROM public.person_contract_documents WHERE person_name = 'Settings bed Jordan'), '1');
+-- A paper with a copy out takes no settings list. And were a list ever on a paper with a copy out, the copy is not signed.
+SELECT pst.as_user('00000000-0000-0000-0000-0000000389a3');
+SET LOCAL ROLE authenticated;
+SELECT pst.refused('a paper with a copy waiting takes no first list', $q$SELECT public.set_paper_settings('00000000-0000-0000-0000-0000000389c3', '{"settings":[{"key":"a","label":"Topic A","choices":[{"key":"x","label":"X"},{"key":"y","label":"Y"}]}]}'::jsonb)$q$, 'A copy of this paper is waiting to be signed.');
+RESET ROLE;
+UPDATE public.contract_template_documents SET settings_def = '{"settings":[{"key":"a","label":"Topic A","choices":[{"key":"x","label":"X"},{"key":"y","label":"Y"}]}]}'::jsonb WHERE id = '00000000-0000-0000-0000-0000000389c3';
+SELECT pst.refused('a copy is never signed onto a paper built from settings', $q$UPDATE public.person_contract_documents SET status = 'signed' WHERE person_name = 'Settings bed Jordan'$q$, 'This paper is built from settings. It goes from a job, with its settings.');
+UPDATE public.person_contract_documents SET note = 'Kept.' WHERE person_name = 'Settings bed Jordan';
+SELECT pst.same('the rest of that copy is still its own', (SELECT note || ' ' || status FROM public.person_contract_documents WHERE person_name = 'Settings bed Jordan'), 'Kept. unsent');
 
 -- 8 · What is in place.
 SELECT pst.same('the guard and the bare refusal are on their tables', (

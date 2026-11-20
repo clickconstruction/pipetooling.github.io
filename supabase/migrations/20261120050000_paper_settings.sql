@@ -17,8 +17,10 @@ SET lock_timeout = '3s';
 --   6) contract_paper_clauses takes p_settings and p_fields. The old three-name call gets the defaults. For a paper
 --      built from settings it refuses, in words: no settings, a setting unpicked, a place with no wording or two for
 --      the pick, a blank with no value. The words are the kernel's, and the bed runs one set of cases through both.
---   7) A copy of a paper built from settings is never made bare (person_contract_documents). The gate's own row will
---      carry a job's settings in a later step, which loosens this for that row alone.
+--   7) A copy of a paper built from settings is never made bare, and never signed bare (person_contract_documents).
+--      The sign page signs a copy's body when its clause read fails, so the stop is here, in the database. A paper
+--      with a copy out for signature takes no settings list. The gate's own row will carry a job's settings in a
+--      later step, which loosens this for that row alone.
 --
 -- No clause wording is written here. No new table, so no closing calls. Idempotent, and additive apart from the two
 -- functions replaced. See docs/migrations/20261120050000_paper_settings.md.
@@ -351,6 +353,13 @@ BEGIN
       AND public.contract_clause_when_problem(v_def, c.when_opts, c.slot) IS NOT NULL
   ) THEN
     RAISE EXCEPTION 'A live clause is tied to a setting or a choice this list drops. Change that clause first.' USING ERRCODE = 'P0001';
+  END IF;
+  -- A paper takes its first settings list before it goes to anyone: a copy already out would have nothing to sign.
+  IF v_old IS NULL AND v_def IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.person_contract_documents p
+    WHERE p.applied_contract_template_document_id = p_paper_id AND p.status IN ('unsent', 'sent')
+  ) THEN
+    RAISE EXCEPTION 'A copy of this paper is waiting to be signed. Take it back first. A paper takes its settings list before it goes to anyone.' USING ERRCODE = 'P0001';
   END IF;
   UPDATE public.contract_template_documents SET settings_def = v_def, revision = revision + 1, published_at = clock_timestamp()
     WHERE id = p_paper_id RETURNING revision INTO v_rev;
@@ -709,8 +718,9 @@ REVOKE ALL ON FUNCTION public.contract_paper_clauses(uuid, text[], text, jsonb, 
 COMMENT ON FUNCTION public.contract_paper_clauses(uuid, text[], text, jsonb, jsonb) IS
   'Punch list #389 (was Messages, cut 4c): the paper as one company signs it, the base then the exhibit for its trades, numbered once, in the paper''s language. For a paper built from settings (settings_def) it takes the job''s picks and typed blanks, keeps a clause when when_opts <@ the picks, fills the blanks, and refuses in words when the paper cannot go. assemblePaper in src/lib/contracts/assemble.ts is its twin; supabase/tests/paper_settings runs one set of cases through both.';
 
--- 7) A copy of a paper built from settings is never made bare. Until a job's row carries its settings, such a paper
--- goes to nobody.
+-- 7) A copy of a paper built from settings is never made bare, and a copy is never signed onto one. Until a job's row
+-- carries its settings, such a paper goes to nobody. The sign page signs a copy's body when its clause read fails, so
+-- this is the stop that holds whatever the functions do.
 CREATE OR REPLACE FUNCTION public.contract_copy_refuses_bare_settings()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -719,7 +729,9 @@ SET search_path = public
 AS $$
 BEGIN
   IF NEW.applied_contract_template_document_id IS NOT NULL
-     AND (TG_OP = 'INSERT' OR NEW.applied_contract_template_document_id IS DISTINCT FROM OLD.applied_contract_template_document_id)
+     AND (TG_OP = 'INSERT'
+          OR NEW.applied_contract_template_document_id IS DISTINCT FROM OLD.applied_contract_template_document_id
+          OR (NEW.status = 'signed' AND OLD.status IS DISTINCT FROM 'signed'))
      AND EXISTS (SELECT 1 FROM public.contract_template_documents d WHERE d.id = NEW.applied_contract_template_document_id AND d.settings_def IS NOT NULL) THEN
     RAISE EXCEPTION 'This paper is built from settings. It goes from a job, with its settings.' USING ERRCODE = 'P0001';
   END IF;
@@ -731,5 +743,5 @@ REVOKE ALL ON FUNCTION public.contract_copy_refuses_bare_settings() FROM PUBLIC,
 
 DROP TRIGGER IF EXISTS contract_copy_refuses_bare_settings ON public.person_contract_documents;
 CREATE TRIGGER contract_copy_refuses_bare_settings
-  BEFORE INSERT OR UPDATE OF applied_contract_template_document_id ON public.person_contract_documents
+  BEFORE INSERT OR UPDATE OF applied_contract_template_document_id, status ON public.person_contract_documents
   FOR EACH ROW EXECUTE FUNCTION public.contract_copy_refuses_bare_settings();
