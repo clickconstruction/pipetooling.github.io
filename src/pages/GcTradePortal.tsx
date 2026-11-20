@@ -3,6 +3,8 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { GcTradePortalView } from '../components/gc/GcTradePortalView'
 import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePortalPress'
 import { PortalBillDayContext } from '../components/gc/gcTradePortalBillDay'
+import { TradeSheetsContext, type TradeSheetsValue } from '../components/documentBuilder/TradePageSheets'
+import { tradeSheetsFrom, type TradeSheet } from '../lib/documentBuilder/tradePageSheets'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
 import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, tradeFilesByProject, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
@@ -30,11 +32,14 @@ export default function GcTradePortal() {
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [page, setPage] = useState<PageState>({ kind: 'loading' })
   const [tries, setTries] = useState(0)
+  // Each job's insurance sheet that was sent to this company (punch list #404), read beside the slice.
+  const [sheets, setSheets] = useState<TradeSheet[]>([])
 
   const read = useCallback(async (): Promise<TradePortalAnswer> => {
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
       const body = (await res.json().catch(() => null)) as unknown
+      setSheets(res.ok ? tradeSheetsFrom(body) : [])
       return readTradePortalAnswer(res.ok, body)
     } catch {
       return { kind: 'error', key: 'linkFailed' }
@@ -105,6 +110,21 @@ export default function GcTradePortal() {
     [preview, lang, token, read],
   )
 
+  // Opening a sheet tells the office the day it was opened. A preview tells nobody, and a teammate's look is not counted.
+  const sheetsValue = useMemo<TradeSheetsValue>(
+    () => ({
+      sheets,
+      opened: (sheetId) => {
+        setSheets((was) => was.map((s) => (s.sheetId === sheetId ? { ...s, opened: true, changed: false } : s)))
+        if (preview) return
+        void staffAwarePublicHeaders()
+          .then((headers) => fetch(`${supabaseUrl}/functions/v1/document-builder-send`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'opened', token, sheetId }) }))
+          .catch(() => {})
+      },
+    }),
+    [sheets, preview, token],
+  )
+
   return (
     <main data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: PORTAL_FONT, padding: '16px 16px 32px', boxSizing: 'border-box' }}>
       {page.kind === 'loading' ? (
@@ -119,6 +139,7 @@ export default function GcTradePortal() {
           )}
         </div>
       ) : mapped ? (
+        <TradeSheetsContext.Provider value={sheetsValue}>
         <PortalPressContext.Provider value={press}>
         <PortalBillDayContext.Provider value={mapped.billDayCutoffDays}>
         <GcTradePortalView
@@ -137,6 +158,7 @@ export default function GcTradePortal() {
         />
         </PortalBillDayContext.Provider>
         </PortalPressContext.Provider>
+        </TradeSheetsContext.Provider>
       ) : null}
     </main>
   )

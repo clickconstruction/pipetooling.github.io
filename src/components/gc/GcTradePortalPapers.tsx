@@ -12,6 +12,7 @@ import { usePortalPress, usePress } from './gcTradePortalPress'
 import { escapeHtml, printPortalHtml } from './gcTradePortalPrint'
 import { PortalFilePick } from './GcTradePortalFile'
 import { PortalBlock, PortalNote } from './GcTradePortalUi'
+import { TradePageSheets } from '../documentBuilder/TradePageSheets'
 
 /**
  * GC mode, the trade partner portal's P5b-1 (to-dos/gc-mode/mockups/portal-p5b.md): the company's own papers with us,
@@ -104,6 +105,8 @@ export function GcTradePortalPaperwork({
           )}
         </Line>
         {press && open === 'coi' && !partner.coiReceived && <CoiForm today={today} onDone={() => onOpen(null)} />}
+        {/* What the certificate must show on each job (punch list #404): the job's insurance sheet, when one was sent. */}
+        <TradePageSheets lang={lang} />
 
         <Line label={t('w9')}>
           <Chip tone={partner.w9 ? 'green' : 'red'}>{t(partner.w9 ? 'onFile' : 'noneOnFile')}</Chip>

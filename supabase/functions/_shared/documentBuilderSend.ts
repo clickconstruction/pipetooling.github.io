@@ -93,6 +93,8 @@ export const SHEET_SEND_SENT_KIND = 'insurance_sheet_email'
 export type TradePageSheet = {
   sheetId: string
   projectId: string
+  /** The job's name. */
+  job: string
   revision: number
   /** The page as published. */
   sheet: unknown
