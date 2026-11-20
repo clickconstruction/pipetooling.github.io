@@ -257,6 +257,10 @@ The two trips may say two different billings. The window says so and the press i
 
 Only the next trip may be on a job's lines. That line then moves to the joined trip.
 
+A line keeps its name through a join. The name may still show the old trip's number and days.
+
+Open the job and press **Bill** to change the name.
+
 Both trips may be on a job's lines. The window says so and the press is dead. A trip holds one line.
 
 ### Where the next trip goes

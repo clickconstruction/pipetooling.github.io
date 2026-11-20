@@ -2,7 +2,7 @@
 title: email reports to owners and managers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: email reports, report recipients, digests, every report, one modal, send reports, report email, subscribe reports, forward reports, owner reports, report notifications, send now, every report
+keywords: email reports, report recipients, digests, every report, one modal, send reports, report email, subscribe reports, forward reports, owner reports, report notifications, send now, every report, primary, account manager, left out
 order: 61
 ---
 You can have reports emailed to specific people. That can be every report, or only reports written by certain crew.
@@ -46,6 +46,16 @@ Already-filed reports can be pushed out on demand.
 3. It emails every matching report from the last 14 days that hasn't already been sent to them. Then it tells you how many went out.
 
 Reports are never sent twice to the same person. Auto-send and **Send now** share the same record of what's already gone out. A report on a ZZ test job is never sent by either. **Send now** says how many it left out.
+
+## What a primary is sent
+
+A primary reads only the reports on their own jobs in the app. Their email follows the same rule.
+
+A primary on this list gets a report when its job names them as account manager. They also get it when the job's project lists them as superintendent. They always get a report they wrote. Every other report is left out of their email and of their digest.
+
+A digest also lists the crew's hours, notes and costs under each job. A primary gets those only for the jobs they manage or superintend. A job they only wrote a report on shows that report with no hours.
+
+**Send now** says how many reports it left out for this reason. A report left out is not marked as sent. This is also so when you typed the primary's own address instead of picking them. Everyone else on the list gets what they got before.
 
 ## Turn a person off or remove them
 

@@ -377,6 +377,8 @@ The company's one cold-call deck for companies we want something from, one card 
 the Hiring board is the fourth top tab (next entry) and **Permits** the fifth (v2.6782, punch list #292: the permit ledger, opening since v2.6830 (punch list #302) on a skim of one permit at a time with Investigate or Pass, five cities since v2.6861, open to the office and every estimator, named Research until v2.6787;
 guide *research the permits a city issues and find work to bid*).
 A city on Permits is **quiet** (v2.7880, `permitQuiet.ts`) when its newest permit day is more than 7 days back, 10 for San Antonio, while our own pull ran clean inside two days: the city picker then reads *quiet since* that day, and never when the pull itself stopped.
+**Market** (v2.7978, punch list #405, `permitMarket.ts`) is the Permits view beside Builders that says what the permits mean for us: every **company we bid** in two years beside the commercial permits its names pulled in twelve months, each row reading *Builds, and we win*, *Builds, we never win*, too early to say or *No permit on record*, and **the clock**, the middle wait between two dates on a city's permits.
+A **company we bid** there is a bid's customer or the old builders list's name on it, keyed as permits are, with practice bids and a bid platform's catch-all customer left out.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
 `company_role`, and `customer_id` when they are a customer already) and **Subs** (a company that does a trade we buy out;
@@ -5304,9 +5306,9 @@ The MCP server a **dev's** coding agent reads the app through, at `https://mcp.c
 A **Dev MCP key** (`ptd_…`, Settings → Your account, one per machine) resolves to a person;
 the server reads **as that person**, GET-only, so RLS applies and the database refuses writes;
 secrets are redacted and every call lands in `dev_mcp_calls`.
-Writes are a second path, one hundred and forty-five plan → apply verbs since v2.7970 — fifty-three over twenty-two RPCs (twenty-one dev-gated, and the app's own `trip_save` for a trip to a site away from home, with `read_trips` beside it), four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a robot price book's own entries (a price that stands changed, v2.7939), two over the pricing robot's queue (a bid asked for, or the ask taken back, v2.7958), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
+Writes are a second path, one hundred and forty-seven plan → apply verbs since v2.7974 — fifty-three over twenty-two RPCs (twenty-one dev-gated, and the app's own `trip_save` for a trip to a site away from home, with `read_trips` beside it), four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a robot price book's own entries (a price that stands changed, v2.7939), two over the pricing robot's queue (a bid asked for, or the ask taken back, v2.7958), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
 the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), fourteen over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515, the mail number of each envelope of a recorded notice, v2.7687, a wrong mail receipt taken off a filed affidavit's copy, v2.7909), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792);
-ten over the Digital twins panel's own doors (a twin's account with its seats in the other apps, v2.7879, a twin's key cut off, with `read_twin_keys` beside it, v2.7900, a twin's rung moved between read-only and fenced writes, v2.7918, a person made a calibration standard or no longer one, v2.7934, and a twin archived or restored, v2.7970), two over the Console's Rounds card (the rounds stopped on a twin's key or started again, v2.7970), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794), six over the Checklist's own rows (a task given as the New task window gives it, through the window's own send kernel, v2.7584, a task's place set, moved or taken off as the Edit window writes it, v2.7589, and the giver's photo of the spot put on, replaced or taken off, v2.7592), two over the task card's own close (a one-time task closed as no longer applying, with its reason, through the card's own `task_no_longer_applies`, v2.7823), two over a person's pay setup as their sheet's Pay & schedule saves it (v2.7821) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
+twelve over the Digital twins panel's own doors (a twin's account with its seats in the other apps, v2.7879, a twin's key cut off, with `read_twin_keys` beside it, v2.7900, a twin's rung moved between read-only and fenced writes, v2.7918, a person made a calibration standard or no longer one, v2.7934, a twin archived or restored, v2.7970, and a held seat in CountTooling or TakeoffTooling made again, v2.7974), two over the Console's Rounds card (the rounds stopped on a twin's key or started again, v2.7970), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794), six over the Checklist's own rows (a task given as the New task window gives it, through the window's own send kernel, v2.7584, a task's place set, moved or taken off as the Edit window writes it, v2.7589, and the giver's photo of the spot put on, replaced or taken off, v2.7592), two over the task card's own close (a one-time task closed as no longer applying, with its reason, through the card's own `task_no_longer_applies`, v2.7823), two over a person's pay setup as their sheet's Pay & schedule saves it (v2.7821) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
 Since v2.6565 the seat also searches **the company's own Gmail** (`search_mail` / `read_mail`): every login of the Workspace read as that person under the service account's domain-wide delegation with the read-only scope alone, so the token cannot label, move or delete;
 and since v2.6568 it files what it finds — a file off a mail onto a job's folder, a person's HR file or a matter (`plan_mail_file` / `apply_mail_file`), and a whole conversation onto a job's Activity and notes through gmail-mine's own tag as that login, or since v2.6715 onto a person's HR file as one dated entry a mail, written as the dev (`plan_mail_tag` / `apply_mail_tag`), and since v2.7022 back off its job again when the seat's own tag put it there (`plan_mail_untag` / `apply_mail_untag`), each plan first, then apply quoting the hash.
 Since v2.7154 it also reads **a Drive folder** or one file's facts through the intake service account on a read-only token (`read_drive_folder`, a dev's own key alone, never through View as).
@@ -5914,6 +5916,18 @@ The rule is one kernel, [`dateBoxEntry.ts`](../src/lib/dateBoxEntry.ts) (`isPlau
 A form that autosaves leaves a half-typed date out of the write or waits ([`autosaveDateHold.ts`](../src/lib/autosaveDateHold.ts) — the job contract, the lien waiver, Edit Job, Edit Bid, an estimate draft), and a click that sends, files or mints stops and names the box (`unfinishedDateStopsMessage`, v2.4252).
 A new date input uses the box or the kernel, never a bare `onChange` write.
 
+### Values in place
+The app's one way to draw a value on a screen (punch list #382, v2.7985;
+the owner named it for the whole app, #399): a date, a count, a name or an amount is drawn apart from the words around it, and its look says what it is.
+**Underlined and tinted** is a value a person can change: a press turns it into its own field right there, with **Keep** and **Cancel**, Enter keeps and Escape cancels ([`ChangeableValue`](../src/components/valuesInPlace/ValuesInPlace.tsx)).
+**Plain bold** is a value the app works out, and it updates by itself (`WorkedOutValue`).
+A value that can be changed, but not by this person, is shown with a dashed line and a small tag (`locked`), and a value read from a default this record may override is bold with the small word *default* after it and a press that sets the record's own (`fromDefault`).
+One fact sits on each line, the label on the left and the values in a column (`ValueLines`), and there is no *Change a date* link or edit window for a value already on the screen.
+A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`, the screen draws it with `ValueSentence`, and a text or an email reads it with `plainSentence` ([`valuesInPlace.ts`](../src/lib/valuesInPlace.ts)).
+`keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
+A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+The words to ask for it on any screen are *give this screen values in place*.
+
 ### Users lenses (People → Users)
 People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
 `?lens=` on the URL;
@@ -6495,6 +6509,23 @@ and it reads the record back above the button before the press, *The record will
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
+### Document builder (Documents → Document builder)
+
+v2.7980 (punch list #404).
+The last tab on the Documents page, for a dev only, where builders live.
+A **builder** makes one kind of paper from a few settings.
+A **walked** builder is one someone walks page by page, picking a level.
+A **filled** builder is one page with blanks that each job fills.
+The tab lists the builders one row each, with chips that say where each stands and an **Open** press, and a new kind is added in code ([`builders.ts`](../src/lib/documentBuilder/builders.ts), [`DocumentsBuilderTab.tsx`](../src/components/documents/DocumentsBuilderTab.tsx)).
+The first builder is the **Sub NDA**, the owner's name for a job's secrecy paper for the people the company brings onto the job.
+Its **levels** are *Standard*, *Elevated*, *Aggressive* and *Strict*, loosest first, each beside the kind of place it is *aligned with*.
+Its **topics** are seven, each on one level or on *Off*, and three of them are in every paper and have no *Off*.
+The **basis** is the level the whole paper starts on, and a page moved to another level is *off the basis*.
+The flow is eleven steps in one frame: *Before you start*, *The basis*, *Match the paper to the site*, one page a topic and *Review* ([`DocumentBuilderFlow.tsx`](../src/components/documentBuilder/DocumentBuilderFlow.tsx) over the rules in [`documentBuilder.ts`](../src/lib/documentBuilder/documentBuilder.ts)).
+A topic's page lists *What puts a person in breach*, the lines the level brings above the ones it keeps under *Also applies*, then *What the site must have*, then *The core clause* as grey bars.
+Every word in it is a placeholder that no attorney has read, no clause wording is in the app or the repo, and the flow runs on a made-up job and saves nothing.
+In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
+
 ### Agreements tab
 
 v2.7617 (punch list #376).
@@ -6510,6 +6541,17 @@ A job contract that waits opens its Contract window from the line ([`agreementsA
 Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Contract Book and a person and opens the same email window: People → Contracts' quick send on this page ([`AgreementsSendPaper.tsx`](../src/components/documents/AgreementsSendPaper.tsx)).
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
+
+### Party and signer (of a paper)
+
+v2.7977 (punch list #403), the ground: no screen shows them yet.
+The **party** is who a paper is with, and it is a record: a customer, a supply house, a trade company, or someone on no list yet.
+The paper points at the party's contact (`person_contract_documents.party_contact_id`, a `contacts` row) and is filed under `party:<contact id>`, a name no person can have, so a company named like a teammate never lands on the teammate.
+The **signer** is the human who signs: a name, a title and an address kept on the paper as it was sent (`signer_name`, `signer_title`, `signer_email`), with the business they sign for in words (`signing_for`).
+The two are kept apart because a rep leaves a supply house and the paper must still say who signed.
+`party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
+The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
+*Not on a list* is a party whose contact has no record yet.
 
 ### Sent copies
 

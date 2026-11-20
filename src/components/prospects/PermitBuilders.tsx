@@ -295,8 +295,8 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   )
 }
 
-/** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. */
-function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlumbers, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** False where no builder's permits in the city name a plumber: the sheet says nothing of one. */ namesPlumbers: boolean; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
+/** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. Market opens the same sheet from a company's row (punch list #405). */
+export function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlumbers, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** False where no builder's permits in the city name a plumber: the sheet says nothing of one. */ namesPlumbers: boolean; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToastContext()
   const name = builderName(row)
   const [mark, setMark] = useState<BuilderMarkValue | 'none'>(row.mark ?? 'none')

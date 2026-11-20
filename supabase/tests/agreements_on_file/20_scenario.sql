@@ -6,8 +6,8 @@
 -- in the order the page draws them, with the right state, name, party, job and day; a paper filed over three jobs is one
 -- line that a covered job's number still finds; drafts, unsent papers and papers that are not agreements are absent; the
 -- facts carry each kind's own columns and no amount; and each role reads only what its tables allow, so an estimator
--- reads work orders alone, a primary and a superintendent nothing, a sub their own work order, and a caller who is not
--- signed in nothing. Every name, job and date is made up. The fixture is made as postgres; reads run as each user.
+-- reads work orders and a trade company's agreement, a primary and a superintendent nothing, a sub their own work order,
+-- and a caller who is not signed in nothing. Every name, job and date is made up. The fixture is made as postgres; reads run as each user.
 -- Raises on the first failed assertion; ends with "agreements_on_file PASSED". See scripts/pgtest-agreements-on-file.sh.
 -- Never against prod.
 \set ON_ERROR_STOP 1
@@ -227,7 +227,9 @@ RESET ROLE;
 
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d5');
 SET LOCAL ROLE authenticated;
-SELECT aof.same('an estimator reads work orders and nothing else', aof.kinds(), 'work_order 5');
+-- Since punch list #403 (migration *_paper_party, the owner's calls 4 and 7) an estimator reads an outside company's
+-- agreement: here the trade company's. No person's paper, staff, sub or partner, and none of the job's own contracts.
+SELECT aof.same('an estimator reads work orders and a trade company''s agreement, and nothing else', aof.kinds(), 'company_agreement 1, work_order 5');
 RESET ROLE;
 
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d6');
