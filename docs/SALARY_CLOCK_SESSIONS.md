@@ -5,7 +5,7 @@ file: SALARY_CLOCK_SESSIONS.md
 type: Runbook / Reference
 purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
 audience: Developers, Operators
-last_updated: 2026-11-18
+last_updated: 2026-11-20
 ---
 
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
@@ -33,9 +33,9 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 
 The materialized `salary_schedule` sessions above drive the **calendar/On-Shift display**. They do **not** drive payroll math. The per-person flags live on `people_pay_config`:
 
-- **`is_salary`** — the flag. Payroll/costing uses the flat 8/0 credit (8 h weekdays, 0 weekends).
-- **`salaried_week_hours`** — the paid hours of each day of this person's salaried week (v2.7826, migration `20261118160000`): seven numbers, Sunday first, in quarter hours, 0 for a day off, 8 on the five weekdays by default. Since v2.7829 the payroll tier pays a day its hours in this week in place of the flat 8/0 (`salariedWeekOf` in `salariedEffectiveHours.ts`, carried on the payroll window as `week`), so a Saturday pays when the week says so and a weekday the week leaves out pays nothing. Since v2.7840 (migration `20261118190000`) the five database cost readers (`get_man_hours_by_job`, `keep_job_baseline`, `list_project_board`, `superintendent_scores`, `get_weekly_money_movement_payload`) ask `salaried_hours_on(week, day)` in place of an 8/0 each wrote out for itself, and `list_people_pay_flags` returns the week as its last column. The app's own cost readers and the workday template still carry the 8 until their own PRs, and no screen sets the column until they do.
-- **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the flat 8/0** regardless.
+- **`is_salary`** — the flag. Payroll and costing credit each day its hours in the person's week (`salaried_week_hours` below, 8 h on weekdays and 0 on weekends by default, the old flat 8/0).
+- **`salaried_week_hours`** — the paid hours of each day of this person's salaried week (v2.7826, migration `20261118160000`): seven numbers, Sunday first, in quarter hours, 0 for a day off, 8 on the five weekdays by default. Since v2.7829 the payroll tier pays a day its hours in this week in place of the flat 8/0 (`salariedWeekOf` in `salariedEffectiveHours.ts`, carried on the payroll window as `week`), so a Saturday pays when the week says so and a weekday the week leaves out pays nothing. Since v2.7840 (migration `20261118190000`) the five database cost readers (`get_man_hours_by_job`, `keep_job_baseline`, `list_project_board`, `superintendent_scores`, `get_weekly_money_movement_payload`) ask `salaried_hours_on(week, day)` in place of an 8/0 each wrote out for itself, and `list_people_pay_flags` returns the week as its last column. Since v2.7865 the app's own cost readers ask the same week through `salariedWeekOf` and `salariedFlatDayHours` (`laborDayHours` in `teamLabor.ts`, `crewDayHours` in `siteLabor.ts`, `teamBoard.ts`, the Bridge's `vectorDays.ts`, `peopleHoursUnallocatedRows.ts` and the pay-report year calendar in `PeoplePayStubsTab.tsx`). Only an old pay report with no day rows keeps the flat 8, because it must show what was paid. Since v2.7948 *Your hours* and People → Utilization hold a salaried person to this week too (`self_salary_clock_state` returns it, migration `20261119160000`). Since v2.7864 the person's sheet sets the column: *Pay & schedule* → **Edit pay setup** → *A set week* (`paySetupEdit.ts`, → `PEOPLE_TABS_ARCHITECTURE.md`). The Pay lens, the Hire form and the Employment tab leave it alone. The workday template still draws one 8-hour block (the 480-minute checks on `salary_work_schedule_templates`), so on a shorter week the sessions run 8 hours while pay and cost follow the week.
+- **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the person's week** (the flat 8/0 by default) regardless.
 
 There is **no** stored salary amount: pay = `hourly_wage` × credited hours, and the Pay & schedule card works the weekly figure out from the wage and the week (`salariedWeekLine`).
 
@@ -43,14 +43,15 @@ There is **no** stored salary amount: pay = `hourly_wage` × credited hours, and
 
 1. **Cost/display surfaces** (Hours grid, Due summaries, the Team board,
    `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0
-   (the database readers through the person's `salaried_week_hours` since v2.7840: the same answer while every week is the default).
+   (each day's hours in the person's `salaried_week_hours`: the database readers since v2.7840, the app's readers since v2.7865; the flat 8/0 for the default week).
    The shared kernel [`src/lib/salariedEffectiveHours.ts`](../src/lib/salariedEffectiveHours.ts)
    is on `main` (PR #182, merged 2026-07-13) and is imported by `People.tsx`,
    `HoursUnassignedModal.tsx`, the two approvals modals and the `teamBoard` / `hoursGridCost` /
    `vectorDays` kernels (`CrewJobsBlock.tsx` until v2.2986; `quickfill/HoursSection.tsx` until
    v2.4263 deleted it).
-   Note: `src/utils/teamLabor.ts` and `src/lib/people/derivePersonTeamSummary.ts` still
-   derive the 8/0 rule **inline** rather than via the kernel.
+   Since v2.7865 `src/utils/teamLabor.ts` asks the kernel too (`laborDayHours`, one rule for its
+   three readers, typed `LaborPayConfig`). `src/lib/people/derivePersonTeamSummary.ts` has read
+   clocked hours for salaried people since v2.3370. So neither derives the rule inline any more.
    **Recorded time (v2.3179, migration `20260909022534`)**: the cost tier reads **recorded**
    sessions — not rejected/revoked, approved *or* awaiting approval. `sync_crew_jobs_from_clock` /
    `sync_crew_bids_from_clock` split the day over recorded sessions (an open session counts to

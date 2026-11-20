@@ -21,3 +21,5 @@ Six functions, each its live definition with **one change**.
 ## Verify
 
 Read-only on prod after the push, as the dev: `select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('can_read_job_activity', 'get_invoice_amounts_for_jobs', 'get_invoice_allocation_lines_for_jobs', 'list_tally_parts_with_po', 'get_payment_line_items', 'get_payment_line_items_bulk') and pg_get_functiondef(p.oid) like '%is_job_people(%'` reads 6. The SQL bed `npm run test:pg:primary-money-reads` (`supabase/tests/primary_money_reads/20_scenario.sql`) reads every door as a primary on their own job, a primary on nothing, a primary on the crew, the assistant and a helper. CI runs it from `scripts/sql-beds.txt`.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no new name in `database.ts`, since its functions are replaced under their own names.

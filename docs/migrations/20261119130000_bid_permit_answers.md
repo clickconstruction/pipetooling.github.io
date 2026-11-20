@@ -17,3 +17,5 @@ A lost bid is not written here. It is the bid's own outcome, saved by the window
 ## Release order
 
 Merge, then push. Nothing in the client names the table yet, so the deploy does not wait on the push. The read, the write and the Followup lens that call it ship in v2.7941, after the push: `loadPermitAnswers` reads a missing table as no answers all the same.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); types regenerated in #8921.

@@ -14,3 +14,5 @@ The Document builder's builders, punch list #404 step 2. Database only: the tab 
 Checked before the push: `supabase/tests/document_builders/20_scenario.sql`, the bed `document-builders` in `scripts/sql-beds.txt`.
 
 Apply: `supabase db push` after the merge. No client calls any of it yet.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); types regenerated in #9012.

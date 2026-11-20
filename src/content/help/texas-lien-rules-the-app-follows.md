@@ -172,7 +172,7 @@ The affidavit needs six things.
 - A property that is not a homestead.
 - A yes or a no to the homestead question, on a house. An unanswered question is not a no.
 
-**Counsel has not read this.** The app prints the served copy from its own record of the affidavit. That page shows no signature, seal or clerk's stamp. Counsel has not said it counts as the copy. Counsel has not read the cover letter that goes with it.
+**Counsel has not read this.** The served copy is the clerk's stamped lien saved on the filing. Every page prints as it was scanned. Counsel has not read the cover letter that goes with it.
 
 **What you do.** Open the job's Lien window on the Lien affidavit tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline-blue|Print the copies to mail}} for the letter and the clerk's stamped copy each envelope takes. Press {{button:outline|Enter mail numbers…}} to record the mailing. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
 

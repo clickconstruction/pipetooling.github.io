@@ -57,3 +57,5 @@ Five functions, each with `service_role` and neither `anon` nor `authenticated`.
 1. [v2.7906](../recent-features/v2.7906.md) is merged and `20261119040000` is on prod.
 2. Merge this change and push `20261119060000` with `bash scripts/db-push.sh`. Three later stamps were applied first (`20261119100000`, `20261119103000`, `20261119120000`), so the push is out of order and the script retries with `--include-all`. None of the three touches these functions.
 3. From `main`: `supabase functions deploy send-report-email`, `send-report-notification`, `recurring-job-report-dispatch`, `recurring-job-report-preview`, `recurring-job-report-test-send`. Any order among the five.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); the named-user predicates and the three `reports_open_to_*` reads reached `database.ts` in #8991.
