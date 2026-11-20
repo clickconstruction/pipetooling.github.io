@@ -290,6 +290,13 @@ export function clockSpread(days: readonly number[]): ClockSpread | null {
 export type ClockPermit = { stage: string; submitted_on: string | null; issued_on: string | null }
 
 /**
+ * One commercial building permit of a city's last twelve months, as the Market view reads it off
+ * `permits`. The rows read back as history are among them: the skim's read leaves those out, and
+ * most of a year is history. The call list, the clock and the charts all count these.
+ */
+export type MarketPermit = ClockPermit & { builder_key: string | null; work_type: string | null; declared_value: number | null }
+
+/**
  * Application to permit: the applications submitted in twelve months that carry an issued day,
  * and the days between the two. An application still waiting has no second day and is left out,
  * so the newest months read a little short.

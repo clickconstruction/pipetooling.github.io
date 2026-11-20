@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · step one built, v2.7978 (the bid table and the clock) · step two next (the call list) · step three waits on the owner's word · the owner makes the calls
+status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · step three waits on the owner's word · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -11,8 +11,8 @@ summary: >
   the day the city first shows a job), who holds the work where a city names the plumber, and how
   much is being built. Each row gives its reasons as tags and there is no score.
 next: >
-  Build step two (the call list), then show the owner on live data. Bring him the one question
-  step three waits on: may an agent look up the top names of a city once.
+  Show the owner on live data. Bring him the one question step three waits on: may an agent look
+  up the top names of a city once.
 size: L as a train of three (M · M · L)
 blocker: None for steps one and two. Step three waits on the owner's word on the one-time lookups.
 opinion: build — start with step one, which needs no research and is the table that says where estimating hours go
@@ -81,6 +81,8 @@ Needs no research. San Antonio first; the other cities follow the same code.
 - **Done when:** the table lists every company we bid in two years with the three columns and its tag; the three chips filter it; the clock draws for San Antonio and Austin; the numbers match [the definitions](#how-each-number-is-counted) on a hand count of five rows.
 
 ### Step two: the call list
+
+**Built, v2.7982** (the answers table) **and v2.7993** ([fragment](../../docs/recent-features/v2.7993.md), which says where the build differs from this plan and why). The order has one more key than the one proposed below: a name that reads as a builder comes first.
 
 - **The rows.** Builders with three or more commercial permits in twelve months, never a name marked *Avoid* or said to file for others. Each carries its tags, its jobs applied for with no plumber, and our history with it.
 - **The order.** Proposed, and the builder's to refine before the showing: a job open now first, then picking up or new and busy, then never bid, then the most permits in ninety days. Five show. The reasons are the tags; no number is shown as a score.

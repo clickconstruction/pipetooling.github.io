@@ -2576,6 +2576,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.7941 the same roles read the news on **Followup → Permit news** (`?tab=permit-news`), where the red count and the first list are the reader's own bids (`isMyBid`) and **Everyone's** lists the rest.
   A superintendent is turned away from that lens with the other office lenses, and a primary by its own allowlist.
   Since v2.7940 the same people may say whether a permit on a bid's address is that bid's job: `bid_permit_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and a take-back is one more insert.
+  Since v2.7982 the same people may answer a builder Market's call list offers: `builder_call_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and **Put back** is one more insert (the list itself, v2.7993).
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;

@@ -379,6 +379,9 @@ guide *research the permits a city issues and find work to bid*).
 A city on Permits is **quiet** (v2.7880, `permitQuiet.ts`) when its newest permit day is more than 7 days back, 10 for San Antonio, while our own pull ran clean inside two days: the city picker then reads *quiet since* that day, and never when the pull itself stopped.
 **Market** (v2.7978, punch list #405, `permitMarket.ts`) is the Permits view beside Builders that says what the permits mean for us: every **company we bid** in two years beside the commercial permits its names pulled in twelve months, each row reading *Builds, and we win*, *Builds, we never win*, too early to say or *No permit on record*, and **the clock**, the middle wait between two dates on a city's permits.
 A **company we bid** there is a bid's customer or the old builders list's name on it, keyed as permits are, with practice bids and a bid platform's catch-all customer left out.
+The **call list** (v2.7993, `permitCallList.ts`) is Market's first part, **Call this week**: five builders with three or more commercial permits in twelve months, each with its reasons as tags and no score.
+A builder there is **picking up** on two or more permits more in the last 90 days than in the 90 before, **new and busy** on three or more with none before, and has a job **open now** on an application with no plumbing permit and no answer that closes it.
+An answer on the call list, **Pursue** or **Not for us**, is kept in `builder_call_answers` and takes the name off the list for everyone until its day to look again.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
 `company_role`, and `customer_id` when they are a customer already) and **Subs** (a company that does a trade we buy out;

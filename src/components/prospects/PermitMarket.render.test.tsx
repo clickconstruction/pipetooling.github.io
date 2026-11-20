@@ -5,16 +5,17 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { answerBook, type CustomerName } from '../../lib/research/builderAnswers'
 import type { NameAnswerRow } from '../../lib/research/nameAnswers'
 import type { BuilderRow } from '../../lib/research/permitBuilders'
-import type { CityBuilders, ClockPermit, MarketBid } from '../../lib/research/permitMarket'
+import type { CityBuilders, MarketBid, MarketPermit } from '../../lib/research/permitMarket'
 import type { ResearchPermitRow } from '../../lib/research/permitResearch'
 
 /**
- * Permits, Market (punch list #405, step one): the table of companies we bid beside the permits
- * their names pulled, its three chips, the door to a builder's sheet and to Tie a name, and the
- * clock. Every company, person and number here is made up.
+ * Permits, Market (punch list #405): the table of companies we bid beside the permits their
+ * names pulled, its three chips, the door to a builder's sheet and to Tie a name, the clock, the
+ * four tiles, who holds the work and how much is being built. The call list has its own test.
+ * Every company, person and number here is made up.
  */
-const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadApplicationClock: vi.fn() }))
-const research = vi.hoisted(() => ({ loadBuilders: vi.fn(), loadPermitsOfBuilder: vi.fn(), markBuilder: vi.fn(), saveBuilder: vi.fn(), pullPermitsBack: vi.fn(), loadRecordsStart: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn() }))
+const research = vi.hoisted(() => ({ loadBuilders: vi.fn(), loadPermitsOfBuilder: vi.fn(), markBuilder: vi.fn(), saveBuilder: vi.fn(), pullPermitsBack: vi.fn(), loadRecordsStart: vi.fn(), approachFromPermit: vi.fn(), recordVerdict: vi.fn() }))
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), loadPermitsOfName: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(() => () => {}) }))
 const answersIo = vi.hoisted(() => ({ loadBuilderAnswersGround: vi.fn() }))
 vi.mock('../../lib/research/permitMarketIo', () => marketIo)
@@ -55,16 +56,16 @@ const BUILDERS: CityBuilders[] = [
   { city: 'Austin', rows: [builder('harborfitouts', 'Harbor Fitouts', 2, { plumber: 'Copperline Mechanical', plumber_jobs: 2 })] },
   { city: 'New Braunfels', rows: [] },
 ]
-/** Five applications that waited 30, 40, 45, 50 and 80 days. */
-const APPLICATIONS: ClockPermit[] = [
-  { stage: 'applied', submitted_on: '2026-06-01', issued_on: '2026-07-01' },
-  { stage: 'applied', submitted_on: '2026-06-01', issued_on: '2026-07-11' },
-  { stage: 'applied', submitted_on: '2026-06-01', issued_on: '2026-07-16' },
-  { stage: 'applied', submitted_on: '2026-06-01', issued_on: '2026-07-21' },
-  { stage: 'applied', submitted_on: '2026-06-01', issued_on: '2026-08-20' },
+const permit = (over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'harborfitouts', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-10-05', declared_value: null, ...over })
+/** Five applications that waited 30, 40, 45, 50 and 80 days, and three issued permits in October. */
+const PERMITS: MarketPermit[] = [
+  ...['2026-07-01', '2026-07-11', '2026-07-16', '2026-07-21', '2026-08-20'].map((issued) => permit({ builder_key: 'juniperhospitalitygroup', stage: 'applied', work_type: 'Commercial project', submitted_on: '2026-06-01', issued_on: issued })),
+  permit(),
+  permit({ work_type: 'New commercial' }),
+  permit({ work_type: 'New commercial' }),
 ]
 /** Five Austin jobs whose plumber's permit came 1, 3, 5, 7 and 9 days after the building permit. */
-const AUSTIN_ROWS = [1, 3, 5, 7, 9].map((d, i) => ({ id: `p${i}`, filed_on: '2026-09-01', plumber_permit_on: `2026-09-${String(1 + d).padStart(2, '0')}` }) as unknown as ResearchPermitRow)
+const AUSTIN_ROWS = [1, 3, 5, 7, 9].map((d, i) => ({ id: `p${i}`, stage: 'issued', filed_on: '2026-09-01', plumber_permit_on: `2026-09-${String(1 + d).padStart(2, '0')}`, plumber: i < 3 ? 'Copperline Mechanical' : 'Blue Heron Plumbing', builder_key: 'harborfitouts', builder_name: null, contact: 'Harbor Fitouts' }) as unknown as ResearchPermitRow)
 
 const tie = (over: Partial<NameAnswerRow> = {}): NameAnswerRow => ({ id: 'a1', builder_key: 'asterridgecontractingoftexas', customer_id: 'c3', answer: 'works_for', scope: 'all', permit_id: null, name: 'Aster Ridge Contracting of Texas', answered_by: 'u2', answered_at: '2026-11-09T18:00:00Z', ...over })
 function ground(rows: NameAnswerRow[] = []) {
@@ -72,14 +73,16 @@ function ground(rows: NameAnswerRow[] = []) {
 }
 
 function draw(over: { city?: string; isMobile?: boolean; rows?: ResearchPermitRow[]; rowsLoading?: boolean } = {}) {
-  return renderWithProviders(<PermitMarket city={over.city ?? 'San Antonio'} authUserId="u1" todayYmd={TODAY} isMobile={over.isMobile ?? false} rows={over.rows ?? []} rowsLoading={over.rowsLoading ?? false} onChanged={() => {}} />)
+  return renderWithProviders(<PermitMarket city={over.city ?? 'San Antonio'} authUserId="u1" todayYmd={TODAY} isMobile={over.isMobile ?? false} rows={over.rows ?? []} rowsLoading={over.rowsLoading ?? false} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
 }
 const companyRows = () => [...document.querySelectorAll('[data-market-company]')].map((el) => el.getAttribute('data-market-company'))
 
 beforeEach(() => {
   marketIo.loadMarketBids.mockReset().mockResolvedValue(BIDS)
   marketIo.loadBuildersOfCities.mockReset().mockResolvedValue(BUILDERS)
-  marketIo.loadApplicationClock.mockReset().mockResolvedValue(APPLICATIONS)
+  marketIo.loadMarketPermits.mockReset().mockResolvedValue(PERMITS)
+  marketIo.loadCallAnswers.mockReset().mockResolvedValue([])
+  marketIo.recordCallAnswer.mockReset().mockResolvedValue(undefined)
   research.loadBuilders.mockReset().mockResolvedValue([])
   research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
   research.markBuilder.mockReset().mockResolvedValue(undefined)
@@ -195,14 +198,14 @@ describe('Market, the clock', () => {
     const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
     expect(within(clock).getByText('45 days')).toBeTruthy()
     expect(within(clock).getByText(/Half of the applications wait 45 days or more for the permit\./)).toBeTruthy()
-    expect(marketIo.loadApplicationClock).toHaveBeenCalledWith('San Antonio', '2025-11-19')
+    expect(marketIo.loadMarketPermits).toHaveBeenCalledWith('San Antonio', '2025-11-19')
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
     expect(document.querySelector('[data-market-clock="plumber"]')).toBeNull()
     expect(screen.getByText('~6 weeks')).toBeTruthy()
   })
 
   it('draws building permit to the plumber’s permit where the city names plumbers', async () => {
-    marketIo.loadApplicationClock.mockResolvedValue([])
+    marketIo.loadMarketPermits.mockResolvedValue([])
     draw({ city: 'Austin', rows: AUSTIN_ROWS })
     expect(await screen.findByText('Austin · building permit to the plumber’s permit')).toBeTruthy()
     expect(within(document.querySelector('[data-market-clock="plumber"]') as HTMLElement).getByText(/Read Austin for who builds\./)).toBeTruthy()
@@ -211,19 +214,65 @@ describe('Market, the clock', () => {
   })
 
   it('says so when a city’s permits carry too few dates', async () => {
-    marketIo.loadApplicationClock.mockResolvedValue([])
+    marketIo.loadMarketPermits.mockResolvedValue([])
     draw({ city: 'New Braunfels' })
     expect(await screen.findByText('New Braunfels’s permits carry too few pairs of dates to draw a clock yet.')).toBeTruthy()
   })
 
-  it('reads only the clock again when the city changes', async () => {
+  it('reads only the city’s year of permits again when the city changes', async () => {
     const view = draw()
     await screen.findByText('San Antonio · application to permit')
-    marketIo.loadApplicationClock.mockResolvedValue([])
-    view.rerender(<PermitMarket city="Austin" authUserId="u1" todayYmd={TODAY} isMobile={false} rows={AUSTIN_ROWS} rowsLoading={false} onChanged={() => {}} />)
+    marketIo.loadMarketPermits.mockResolvedValue([])
+    view.rerender(<PermitMarket city="Austin" authUserId="u1" todayYmd={TODAY} isMobile={false} rows={AUSTIN_ROWS} rowsLoading={false} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
     expect(await screen.findByText('Austin · building permit to the plumber’s permit')).toBeTruthy()
-    expect(marketIo.loadApplicationClock).toHaveBeenCalledTimes(2)
+    expect(marketIo.loadMarketPermits).toHaveBeenCalledTimes(2)
     expect(marketIo.loadMarketBids).toHaveBeenCalledTimes(1)
     expect(marketIo.loadBuildersOfCities).toHaveBeenCalledTimes(1)
+    expect(marketIo.loadCallAnswers).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Market, the tiles and the two boxes under the clock', () => {
+  it('fills four tiles: the week’s builders, their open jobs, the companies that build, and the clock', async () => {
+    draw()
+    await screen.findByText('San Antonio · application to permit')
+    const tiles = [...document.querySelectorAll('[data-market-tiles] > div')].map((t) => t.textContent)
+    // Juniper has five permits in the year and Harbor three, so two builders are to call. No job of theirs is on the tab's rows.
+    expect(tiles).toEqual(['2builders to call this week', '0of their jobs are applied for, with no plumber yet', '2 of 4companies we bid pulled a permit here', '~6 weeksfrom an application to its permit'])
+  })
+
+  it('draws who holds the work only where the city names plumbers', async () => {
+    draw()
+    await screen.findByText('San Antonio · application to permit')
+    expect(document.querySelector('[data-market-holds]')).toBeNull()
+    cleanup()
+    marketIo.loadMarketPermits.mockResolvedValue([])
+    draw({ city: 'Austin', rows: AUSTIN_ROWS })
+    await screen.findByText('Austin · building permit to the plumber’s permit')
+    const holds = document.querySelector('[data-market-holds]') as HTMLElement
+    expect(within(holds).getByText('Copperline Mechanical')).toBeTruthy()
+    expect(within(holds).getByText('Blue Heron Plumbing')).toBeTruthy()
+    // One builder with five named jobs: three of them with one plumber is a lean.
+    expect(within(holds).getByText('Of 1 builder with 3 or more named jobs: 0 use one plumber nearly every time, 1 leans to one and 0 shop around.')).toBeTruthy()
+  })
+
+  it('draws how much is being built: the months, the kinds and the size', async () => {
+    research.loadRecordsStart.mockResolvedValue('2026-08-27')
+    draw()
+    await screen.findByText('San Antonio · application to permit')
+    const months = document.querySelector('[data-market-months] [role="img"]') as HTMLElement
+    await waitFor(() => expect(months.getAttribute('aria-label')).toBe('Commercial permits a month in San Antonio: Sep 0, Oct 3'))
+    const kinds = document.querySelector('[data-market-kinds]') as HTMLElement
+    expect(within(kinds).getByText('Applications')).toBeTruthy()
+    expect(within(kinds).getByText('New commercial')).toBeTruthy()
+    expect(within(kinds).getByText('San Antonio’s permits carry no declared value, so no size is drawn.')).toBeTruthy()
+  })
+
+  it('draws the table and the clock even when the answers on the call list cannot be read', async () => {
+    marketIo.loadCallAnswers.mockRejectedValue(new Error('Could not read the answers on the call list: the network is down'))
+    draw()
+    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByText(/the network is down/)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'This week 2' })).toBeTruthy()
   })
 })
