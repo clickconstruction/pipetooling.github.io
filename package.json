@@ -136,6 +136,7 @@
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:messages-tech-send": "bash scripts/pgtest-messages-tech-send.sh",
     "test:pg:stage-checklist-items": "bash scripts/pgtest-stage-checklist-items.sh",
+    "test:pg:start-checks": "bash scripts/pgtest-start-checks.sh",
     "test:pg:combine-rows": "bash scripts/pgtest-combine-rows.sh",
     "test:pg:on-site-move": "bash scripts/pgtest-on-site-move.sh",
     "test:pg:on-site-guards": "bash scripts/pgtest-on-site-guards.sh",

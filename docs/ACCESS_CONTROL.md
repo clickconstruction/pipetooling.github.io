@@ -1224,6 +1224,27 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The Map page's **Painted maps** chip and Materials on site's map (v2.7228), and the *Painted maps* group in the header's search (v2.7227), read every map the caller can open under this same gate, and a read it refuses is an empty layer or list.
   The **Painted maps** section of a job's Documents tab (v2.7393) and the Documents page's **Painted maps** tab (v2.7409, drawn for everyone who opens the page) have no role check of their own either: row security decides the rows.
 
+### Before we start — what must be true before a stage (v2.7997, `20261120033820_start_checks.sql`, punch list #382)
+
+- **`start_check_bullets`**, **`start_check_marks`**, **`start_check_asks`**, **`start_check_their_days`**, **`start_check_decisions`**, **`start_check_arrivals`** and **`start_check_settings`**, with the company's lists in **`start_check_templates`** (`docs/migrations/20261120033820_start_checks.md`): a stage line's list of what must be true before the crew goes, each yes with how we know it, every ask, every day they gave for ready, Go and Hold, and what the crew found on arrival.
+  The desk is **`start_checks_desk(job)`**: dev, master_technician, assistant and controller on every job, an estimator or a primary on a job they have a claim on (`is_job_people`), and a superintendent on their own job.
+  The desk **reads and writes** a job's bullets, yeses, asks and days, and reads its decisions and arrivals.
+  A primary reads no job's list beyond `is_job_people`.
+  The crew is **`start_checks_crew(job)`**: on the job's team, clocked in on it, or a sub who reads it, and never a primary.
+  The crew **reads** the bullets on them that are still on the list and their live yeses, and writes nothing.
+  A helper on no job, a superintendent on no job, and an estimator or a primary with no claim read nothing.
+  A job shut by its papers is shut here too (`job_shut_to_me` in each gate).
+- **`start_check_decide(fixture, kind, open_then, hold_until)`** and **`start_check_take_back(decision)`** are the one door for Go and Hold, SECURITY DEFINER, for **`start_checks_may_decide(job)`**: the office and the job's superintendent.
+  The name on a decision is read from the caller's own row.
+  A Hold moves the stage's window in `job_stage_windows` with its length kept, which a superintendent could not write by hand.
+  Both refuse a training account, a digital twin and an archived caller themselves.
+- **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
+  It answers only for a job whose desk the caller is on, and nothing for an archived caller.
+- The company's lists are read by everyone signed in and written by the office (`is_office_staff`).
+  A site's settings row is read by whoever reads the site and written by the office, and a job's row follows the job's desk.
+- `anon` holds no grant, and a signed-in person holds only the grants that have a policy.
+  The read-only blocks, the twin fence and the archived seal stand on all eight tables.
+
 ### Trips — a trip to a site away from home (v2.7655, `20261117234500_trips.sql`, punch list #379)
 
 - **`trips`**, **`trip_people`**, **`trip_jobs`** and **`trip_dismissals`** (`docs/migrations/20261117234500_trips.md`): a trip on a development, or on a job with no development, its people with their days, the jobs its work goes on, and the days somebody said were *Not a trip*.
