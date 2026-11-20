@@ -12,6 +12,7 @@ import { lookAlikesHref } from './research/permitsLink'
 import { materialsNeedsHref } from './needsYou/materialsOnSite'
 import { RECEIPT_CHASE_TEAM_HREF } from './needsYou/fillInReceipts'
 import { stagesDoneHref } from './needsYou/stagesDone'
+import { startOwedHref } from './needsYou/startAnswersOwed'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
@@ -77,6 +78,8 @@ export type NeedsYouDoorData = {
   inKindCreditFirst?: { customerId: string | null; arrangementId: string; month: string } | null
   /** The job that holds the first stage at 100% with no bill (punch list #397, PR 7). */
   stagesDoneFirstJobId?: string | null
+  /** The first site that owes us answers before a stage (punch list #382, PR 6): its site, or its job when it is on none. */
+  startOwedFirst?: { developmentId: string | null; jobId: string } | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -131,6 +134,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<Need
       return href('/jobs?tab=stages&kind=unset')
     case 'projects-no-baseline':
       return href('/jobs?tab=stages&kind=project')
+    case 'start-answers-owed':
+      // The first site's Schedule look, or the job's window for a job on no site (punch list #382, PR 6). It asks nobody.
+      return href(startOwedHref(d.startOwedFirst))
     case 'stages-done-not-billed':
       // The job that holds the first finished stage, its window open (punch list #397, PR 7). It bills nothing.
       return href(stagesDoneHref(d.stagesDoneFirstJobId))

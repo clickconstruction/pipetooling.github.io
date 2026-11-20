@@ -19,6 +19,16 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// Messages' box has its own tests. Here it says what it was handed, and its send is a press.
+vi.mock('../jobs/JobCustomerBox', () => ({
+  JobCustomerBox: ({ kind, jobId, jobName, customerId, onSent }: { kind: string; jobId: string; jobName: string; customerId: string; onSent: () => void }) => (
+    <div data-testid="messages-box" data-kind={kind} data-job={jobId} data-job-name={jobName} data-customer={customerId}>
+      <button type="button" onClick={onSent}>
+        send from Messages
+      </button>
+    </div>
+  ),
+}))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock({ role: 'assistant', profileName: 'Dana' })
@@ -74,7 +84,7 @@ function Harness({ db, far = true }: { db: MemoryStart; far?: boolean }) {
   return (
     <>
       <span data-testid="shows">{String(read.shows)}</span>
-      <DevelopmentScheduleCard anchorId="development-schedule" developmentId="dev-1" read={read} todayYmd={TODAY} me={{ userId: 'u-dana', name: 'Dana' }} can={{ window: true, notice: true, company: true }} foldFor={(l) => ({ open: true, onToggle: () => {}, line: l })} contactLine="Ray Ortiz is the GC’s contact on the bids." />
+      <DevelopmentScheduleCard anchorId="development-schedule" developmentId="dev-1" read={read} todayYmd={TODAY} me={{ userId: 'u-dana', name: 'Dana' }} can={{ window: true, notice: true, company: true }} foldFor={(l) => ({ open: true, onToggle: () => {}, line: l })} contactLine="Ray Ortiz is the GC’s contact on the bids." askCustomerId="cust-1" jobNameOf={(id) => (id === 'j1' ? 'Lodge plumbing' : 'Bunkhouse plumbing')} />
     </>
   )
 }
@@ -108,7 +118,7 @@ describe('the Schedule look', () => {
     await mount(seeded())
     await waitFor(() => expect(cards().length).toBe(4))
     const banner = document.querySelector('[data-schedule-banner]') as HTMLElement
-    expect(banner.textContent).toBe('Ray owes us 3 answers on 2 stages.Ray Ortiz is the GC’s contact on the bids. They have moved 11 days on this site so far.')
+    expect(banner.textContent).toBe('Ray owes us 3 answers on 2 stages.Ray Ortiz is the GC’s contact on the bids. They have moved 11 days on this site so far.Ask Ray about all 3')
     expect(within(banner).getByText('3 answers').dataset.value).toBe('worked-out')
   })
 
@@ -187,6 +197,40 @@ describe('the Schedule look', () => {
     fireEvent.change(screen.getByLabelText('days of notice'), { target: { value: '5' } })
     fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
     await waitFor(() => expect(db.site).toMatchObject({ development_id: 'dev-1', notice_days: 5 }))
+  })
+
+  it('the banner’s press asks about every stage whose day to decide is near, in one message kept on each bullet', async () => {
+    const db = seeded()
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(document.querySelector('[data-schedule-banner]') as HTMLElement).getByRole('button', { name: 'Ask Ray about all 3' }))
+    const panel = document.querySelector('[data-start-check-ask]') as HTMLElement
+    expect(panel.textContent).toContain('Ask Ray about 3 things')
+    expect((within(panel).getByLabelText('The ask') as HTMLTextAreaElement).value).toContain('Bunkhouse underground, we plan Tue Dec 8 and decide by Sat Nov 28:')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Text it' }))
+    // Messages ties the one message to the first stage's job, in the site's customer's thread.
+    expect(screen.getByTestId('messages-box').dataset).toMatchObject({ kind: 'text', job: 'j1', jobName: 'Lodge plumbing', customer: 'cust-1' })
+    expect(db.rows.asks).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'send from Messages' }))
+    await waitFor(() => expect(db.rows.asks).toHaveLength(3))
+    expect(db.rows.asks.map((a) => `${a.fixture_id} ${a.bullet_id} ${a.how}`).sort()).toEqual(['top t1 text', 'under u1 text', 'under u2 text'])
+    await waitFor(() => expect(document.querySelector('[data-start-check-ask]')).toBeNull())
+    // Every open bullet was asked today, so a stage that waits on them no longer offers the ask as what comes next.
+    expect((document.querySelector('[data-schedule-banner]') as HTMLElement).textContent).toContain('Ray owes us 3 answers on 2 stages.')
+  })
+
+  it('an open stage asks about its own open bullets', async () => {
+    const db = seeded()
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Open' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray about 1' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'I called' }))
+    await waitFor(() => expect(db.rows.asks.map((a) => `${a.bullet_id} ${a.how}`)).toEqual(['t1 phone']))
+    await waitFor(() => expect(card('top').textContent).toContain('by phone. No answer yet.'))
+    // A stage with nothing open on them offers no ask.
+    fireEvent.click(within(card('trim')).getByRole('button', { name: 'Write the list' }))
+    expect(within(card('trim')).queryByRole('button', { name: /^Ask Ray/ })).toBeNull()
   })
 
   it('a near site reads two days of notice by default', async () => {

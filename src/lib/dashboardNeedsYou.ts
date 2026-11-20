@@ -56,6 +56,7 @@ import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
 import { STAGES_DONE_ACTION, stagesDoneDetail, stagesDoneTitle, type StagesDone } from './needsYou/stagesDone'
+import { START_OWED_ACTION, startOwedDetail, startOwedTitle, type StartAnswersOwed } from './needsYou/startAnswersOwed'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -154,6 +155,7 @@ export type NeedsYouItem = {
     | 'in-kind-credit-due'
     | 'projects-no-baseline'
     | 'stages-done-not-billed'
+    | 'start-answers-owed'
     | 'receipts-to-chase'
     | 'line-budgets-review'
     | 'materials-count-due'
@@ -294,6 +296,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'projects-no-baseline': 60,
   // Billing tier: a stage the crew put at 100% that sits on no bill (punch list #397, PR 7). Money earned and not asked for.
   'stages-done-not-billed': 40,
+  // Scheduling: a customer owes us answers before a stage whose day to decide is near (punch list #382, PR 6). A crew goes on these.
+  'start-answers-owed': 40,
   // Billing accuracy, a step under the charges themselves: a charge with no paper that no text can ask for (punch list #299).
   'receipts-to-chase': 40,
   // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
@@ -520,6 +524,9 @@ export type NeedsYouInputs = {
   /** Stages the crew put at 100% that sit on no bill, the most money first (punch list #397, PR 7). */
   stagesDoneEnabled?: boolean
   stagesDone?: Pick<StagesDone, 'rows' | 'usd'> | null
+  /** What customers owe us before a stage starts, site by site (punch list #382, PR 6). */
+  startAnswersOwedEnabled?: boolean
+  startAnswersOwed?: StartAnswersOwed | null
   /** Card charges waiting on a receipt the text cannot get, with why (punch list #299, the step after PR 2). */
   receiptChasesEnabled?: boolean
   receiptChases?: { count: number; detail: string } | null
@@ -1180,6 +1187,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: "Made before baselines were written at award. Take the bid's estimate or freeze the book's hours, so the Costs tab, the Projects board and the superintendent's line have a number to read against.",
       figure: String(n),
       actionLabel: n === 1 ? 'See it' : 'See them',
+    })
+  }
+
+  // Before we start (punch list #382, PR 6): the answers customers owe us on stages whose day to decide is near. The press
+  // opens the list. It asks nobody.
+  if (inputs.startAnswersOwedEnabled && (inputs.startAnswersOwed?.answers ?? 0) > 0) {
+    const d = inputs.startAnswersOwed!
+    items.push({
+      key: 'start-answers-owed',
+      severity: 'amber',
+      kicker: 'Before we start',
+      title: startOwedTitle(d),
+      detail: startOwedDetail(d),
+      figure: String(d.answers),
+      actionLabel: START_OWED_ACTION,
     })
   }
 
