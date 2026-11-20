@@ -233,3 +233,49 @@ describe('My Inbox’s Forward', () => {
     expect(screen.queryByRole('dialog', { name: 'Forward task' })).toBeNull()
   })
 })
+
+/** The header (v2.8040): the title's row holds the title and the card's one door, and every section names itself. */
+describe('My Inbox’s header', () => {
+  const late = 'Return the borrowed press tool'
+  const lateRow = (): Record<string, unknown> => ({
+    ...dayRow(),
+    id: 'inst-b',
+    checklist_item_id: 'item-b',
+    scheduled_date: '2026-11-12',
+    checklist_items: { title: late, links: null, repeat_type: 'once', created_by_user_id: 'u-abe' },
+  })
+  const sections = (card: HTMLElement) =>
+    Array.from(card.querySelectorAll('[data-my-inbox-section]')).map((el) => [el.getAttribute('data-my-inbox-section'), el.textContent])
+
+  it('draws one door beside the title, and Due Today and Overdue as labels with their counts', async () => {
+    H.today = [dayRow()]
+    H.overdue = [lateRow()]
+    renderWithProviders(<Inbox role="helpers" />)
+    const card = document.getElementById('dash-my-inbox') as HTMLElement
+    await within(card).findByText(late)
+
+    // One heading names the card. The sections sit a rank under it.
+    expect(Array.from(card.querySelectorAll('h2')).map((h) => h.textContent)).toEqual(['My Inbox'])
+    expect(sections(card)).toEqual([
+      ['today', 'Due Today1'],
+      ['overdue', 'Overdue1'],
+    ])
+    // One door for the whole inbox, on the title's own row.
+    const doors = within(card).getAllByRole('link', { name: 'View all of your tasks in the Checklist' })
+    expect(doors).toHaveLength(1)
+    expect(doors[0]?.getAttribute('href')).toBe('/checklist')
+    expect(doors[0]?.textContent).toBe('View all →')
+    expect(doors[0]?.parentElement).toBe(card.querySelector('h2')?.parentElement)
+  })
+
+  it('reads Overdue alone on a day with nothing due, with the same title and door', async () => {
+    H.overdue = [lateRow()]
+    renderWithProviders(<Inbox role="helpers" />)
+    const card = document.getElementById('dash-my-inbox') as HTMLElement
+    await within(card).findByText(late)
+
+    expect(card.querySelector('h2')?.textContent).toBe('My Inbox')
+    expect(sections(card)).toEqual([['overdue', 'Overdue1']])
+    expect(within(card).getAllByRole('link', { name: 'View all of your tasks in the Checklist' })).toHaveLength(1)
+  })
+})
