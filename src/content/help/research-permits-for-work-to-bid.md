@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: market, who builds, companies we bid, tie a name, clock, application to permit, quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -150,6 +150,37 @@ The builder's sheet also says which of our customers the name is. Look under **O
 Sometimes a customer's name begins the name on the permit. The sheet then asks **Same company?** Press **Same company**, **Not them** or **Not sure**. Nothing is tied until you press.
 
 Is the right customer not shown? Press **Tie to a customer** and search our customers. Then press **Same company** beside the right one. For a person the press reads **Works for them**.
+
+## See whether the companies we bid build here
+
+Press **Market** on the strip, beside **Builders**. Market says what the permits mean for us.
+
+The first table lists every company we priced a job for in two years. Each row shows our bids, our wins and the permits its names pulled. The permits are commercial ones from the last twelve months, in every city the app reads. A practice bid does not count. A customer named for a bid site does not count either.
+
+The last column says what the row reads as.
+
+- {{chip:green|Builds, and we win}} means they pull permits and we have won with them. Keep them close.
+- {{chip:red|Builds, we never win}} means three or more bids and no win. Ask them why.
+- {{chip:yellow|Builds, two tries}} means one or two bids so far. That is too early to say.
+- {{chip:gray|No permit on record}} means no permit carries their exact name. They may still build.
+
+Three chips filter the table. **Builds here** shows the companies with a permit. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
+
+A company may file under a person or under another name. Press **Tie a name** on its row to find that name. The sheet suggests names and says why. Nothing is tied until you press. A tied name's permits then count for the company.
+
+The small words under a company say where its permits are. Press one to open that builder's sheet.
+
+Two numbers sit over the table. The first says how many of the companies we bid pulled a permit. The second is the middle wait on the clock.
+
+## Read the clock
+
+The clock sits under the table on **Market**. Its bar shows how long you have once the city shows a job. The dark mark is the middle wait. The band is the middle half of the jobs.
+
+In San Antonio the clock runs from an application to its permit. The wait is weeks long. Call while the application waits.
+
+In Austin the clock runs from the building permit to the plumber's permit. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
+
+A city with too few dated permits draws no clock.
 
 ## Read the count
 
