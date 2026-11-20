@@ -6544,7 +6544,8 @@ Nothing left People → Contracts: both pages keep a door.
 
 ### Party and signer (of a paper)
 
-v2.7977 (punch list #403), the ground; since v2.7986 the **Send for signature** window takes the signer and every send keeps them on the paper.
+v2.7977 (punch list #403), the ground.
+Since v2.7986 the **Send for signature** window takes the signer and every send keeps them on the paper.
 The **party** is who a paper is with, and it is a record: a customer, a supply house, a trade company, or someone on no list yet.
 The paper points at the party's contact (`person_contract_documents.party_contact_id`, a `contacts` row) and is filed under `party:<contact id>`, a name no person can have, so a company named like a teammate never lands on the teammate.
 The **signer** is the human who signs: a name, a title and an address kept on the paper as it was sent (`signer_name`, `signer_title`, `signer_email`), with the business they sign for in words (`signing_for`).
