@@ -203,6 +203,8 @@
     "test:pg:salaried-week": "bash scripts/pgtest-salaried-week.sh",
     "test:pg:primary-scope-reports": "bash scripts/pgtest-primary-scope-reports.sh",
     "test:pg:primary-scope-job-photos": "bash scripts/pgtest-primary-scope-job-photos.sh",
+    "test:pg:document-builders": "bash scripts/pgtest-document-builders.sh",
+    "test:pg:document-builder-sheets": "bash scripts/pgtest-document-builder-sheets.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
