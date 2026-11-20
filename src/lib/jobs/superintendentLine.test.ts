@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { laborDaysOf, superintendentLine, targetWords, type SuperintendentLineInput } from './superintendentLine'
+import { hoursVerdict, laborDaysOf, paceGapShort, superintendentLine, targetWords, type SuperintendentLineInput } from './superintendentLine'
 
 /** A job half done on half its hours, no money read, no plan, no checklist: the plainest input. */
 const base: SuperintendentLineInput = {
@@ -38,6 +38,45 @@ describe('superintendentLine: the verdict', () => {
     expect(l.tone).toBe('even')
     expect(l.headline).toBe('On pace.')
     expect(l.days).toBe(0)
+  })
+
+  it('a small job cannot hide a large gap inside one crew day: a tenth of the budget counts, said in hours', () => {
+    // The walk of 2026-11-20: a job at 140% of a small budget with the work at 80% read On pace.
+    // 14 h in on a 10 h budget at 80%: 6 h over, a quarter of the assumed 24 h crew day, and 60 points of the budget.
+    const over = superintendentLine({ ...base, hoursBudget: 10, hoursUsed: 14, pctDone: 80 })
+    expect(over.tone).toBe('behind')
+    expect(over.days).toBe(0)
+    expect(over.hoursAhead).toBe(-6)
+    expect(over.headline).toBe('6 hours behind.')
+    expect(over.move?.kind).toBe('set-pct')
+    // The other way: 9 h in on a 40 h budget at 45%, 9 h to the good.
+    const under = superintendentLine({ ...base, hoursBudget: 40, hoursUsed: 9, pctDone: 45 })
+    expect(under.tone).toBe('ahead')
+    expect(under.days).toBe(0)
+    expect(under.headline).toBe('9 hours ahead at this pace.')
+    // One hour is one hour.
+    expect(superintendentLine({ ...base, hoursBudget: 10, hoursUsed: 9, pctDone: 80 }).headline).toBe('1 hour behind.')
+    // Under a tenth of the budget and under a crew day: on pace, as before.
+    const near = superintendentLine({ ...base, hoursBudget: 40, hoursUsed: 20, pctDone: 45 })
+    expect(near.tone).toBe('even')
+    expect(near.headline).toBe('On pace.')
+    // A large job is decided by its crew days long before a tenth of its budget, as before.
+    expect(superintendentLine({ ...base, hoursBudget: 1000, hoursUsed: 524, pctDone: 50 }).headline).toBe('1 day behind.')
+  })
+
+  it('hoursVerdict: a crew day either way, or a tenth of the budget under a day', () => {
+    expect(hoursVerdict({ donePct: 80, hoursPct: 140, hoursBudget: 10, crewDay: 24 })).toMatchObject({ days: 0, side: -1 })
+    expect(hoursVerdict({ donePct: 50, hoursPct: 59.9, hoursBudget: 40, crewDay: 24 })).toMatchObject({ days: 0, side: 0 })
+    expect(hoursVerdict({ donePct: 50, hoursPct: 60, hoursBudget: 40, crewDay: 24 })).toMatchObject({ days: 0, side: -1 })
+    expect(hoursVerdict({ donePct: 60, hoursPct: 50, hoursBudget: 40, crewDay: 24 })).toMatchObject({ days: 0, side: 1 })
+    expect(hoursVerdict({ donePct: 50, hoursPct: 56, hoursBudget: 400, crewDay: 24 })).toMatchObject({ days: -1, side: -1 })
+  })
+
+  it('paceGapShort: days when there are any, else the hours', () => {
+    expect(paceGapShort({ days: 2, hoursAhead: 50 })).toBe('+2 d')
+    expect(paceGapShort({ days: -3, hoursAhead: -70 })).toBe('-3 d')
+    expect(paceGapShort({ days: 0, hoursAhead: -6 })).toBe('-6 h')
+    expect(paceGapShort({ days: 0, hoursAhead: 9 })).toBe('+9 h')
   })
 
   it('reads a job past its budget by the hours it really used, never as on pace', () => {
@@ -153,8 +192,10 @@ describe('superintendentLine: the words', () => {
     const subOnly = superintendentLine({ ...base, hoursBudget: 70, hoursUsed: 0, subHours: 9, pctDone: 25 })
     expect(subOnly.hoursWords).toBe('70 h budget ◆ from the bid · 9 h in, all on sub sheets')
     expect(subOnly.hoursPct).toBeCloseTo((9 / 70) * 100, 6)
-    // 9 h in is past the 8 h floor, so the line reads a pace: 25% done against 13% of the hours is under a crew day ahead.
-    expect(subOnly.tone).toBe('even')
+    // 9 h in is past the 8 h floor, so the line reads a pace: 25% done against 13% of the hours is under a crew
+    // day ahead, and 12 points of the budget, which counts since the tenth-of-the-budget rule.
+    expect(subOnly.tone).toBe('ahead')
+    expect(subOnly.headline).toBe('9 hours ahead at this pace.')
     expect(superintendentLine({ ...base, hoursBudget: 70, hoursUsed: 0, subHours: 7, pctDone: 25 }).tone).toBe('early')
     const mixed = superintendentLine({ ...base, hoursUsed: 100, subHours: 9 })
     expect(mixed.hoursWords).toBe('200 h budget ◆ from the bid · 109 h in (9 h on sub sheets)')

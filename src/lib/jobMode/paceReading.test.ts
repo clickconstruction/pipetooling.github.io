@@ -61,6 +61,19 @@ describe('paceReading: hours used against work done, in hours', () => {
     expect(paceReading({ ...base, values: [] }).bars?.workWords).toBe('')
   })
 
+  it('a small job cannot hide a large gap inside one crew day: a tenth of the budget is over, or under', () => {
+    // 14 h in on a 10 h budget at 80%: 6 h over, a quarter of a 24 h crew day. It read On track.
+    const over = paceReading({ ...base, hoursBudget: 10, hoursUsed: 14, pctDone: 80, laborDays: [{ ymd: '2026-11-19', hours: 14 }] })
+    expect(over).toMatchObject({ state: 'over', tone: 'red', headline: 'Hours are ahead of the work.' })
+    expect(plain(over.lines)).toEqual(['The gap is about 6 hours.', 'The hours budget is used up. The job is 4 hours past it.'])
+    // The other way, 9 h to the good on a 40 h budget.
+    const under = paceReading({ ...base, hoursBudget: 40, hoursUsed: 9, pctDone: 45 })
+    expect(under).toMatchObject({ state: 'under', tone: 'green' })
+    expect(plain(under.lines)).toEqual(['About 9 hours under so far.'])
+    // Under a tenth of the budget and under a crew day stays on track.
+    expect(paceReading({ ...base, hoursBudget: 40, hoursUsed: 20, pctDone: 45 }).state).toBe('track')
+  })
+
   it('on track is calm and asks for nothing', () => {
     const r = paceReading({ ...base, pctDone: 52, hoursUsed: 80 })
     expect(r).toMatchObject({ state: 'track', tone: 'calm', headline: 'On track.', setPctAsk: null, stillPct: null, finishAsk: null })

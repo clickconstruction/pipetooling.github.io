@@ -197,7 +197,8 @@ describe('SuperintendentCard', () => {
     const card = await screen.findByTestId('superintendent-line')
     // The face: its name, the headline, the two bars, the hours left and the finish day at the foot of the rail.
     expect(screen.getByTestId('pace-name').textContent).toBe('Job pace')
-    expect(screen.getByTestId('pace-headline').textContent).toBe('On track.')
+    // 9 of 70 hours at 25%: under a crew day ahead, and 12 points of the budget, so the work reads ahead.
+    expect(screen.getByTestId('pace-headline').textContent).toBe('The work is ahead of the hours.')
     expect(screen.getByTestId('pace-left').textContent).toBe('61 hours left in the budget. About 3 days for this crew.')
     expect(screen.getByTestId('pace-rail-finish').textContent).toContain('Fri, Nov 20')
     expect(screen.queryByTestId('pace-rail-at-pace')).toBeNull()
@@ -269,7 +270,8 @@ describe('SuperintendentCard', () => {
 
   it('with no stage reported, the rail spreads the job percent over the stages and says so behind the fold', async () => {
     // Three stages and 50% for the job: the first is done, and the second is part way, by its share of the price.
-    answer = async () => ({ readsWages: false, jobs: [project({ fixtures: fixtures.map((f) => ({ ...f, progress_pct: null })), pct_complete: 50, spentPct: null })] })
+    // 136 h of the 260 h track, so the hours sit with the work and the card is on track.
+    answer = async () => ({ readsWages: false, jobs: [project({ fixtures: fixtures.map((f) => ({ ...f, progress_pct: null })), pct_complete: 50, spentPct: null, labor: [{ ymd: '2026-10-20', who: 'Ana', hours: 66 }, { ymd: '2026-10-21', who: 'Ana', hours: 70 }] })] })
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     const card = await screen.findByTestId('superintendent-line')
     expect(screen.getByTestId('pace-rail').dataset.from).toBe('job')

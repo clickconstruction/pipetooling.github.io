@@ -1,4 +1,5 @@
 import { val } from '../valuesInPlace'
+import { hoursVerdict } from '../jobs/superintendentLine'
 import { paceDayWords } from './paceCard'
 
 /**
@@ -12,7 +13,8 @@ import { paceDayWords } from './paceCard'
  *
  * - the card compares two things, **Hours used** and **Work done**, on one scale. The gap between them is said
  *   in hours, the crew's own unit;
- * - ahead or behind is the line's own sum, the gap in the job's crew days, a day or more either way. Money is
+ * - ahead or behind is the line's own rule (`hoursVerdict`): a crew day or more either way, or a tenth of the
+ *   hours budget when the gap is under a crew day, so a small job cannot hide a large gap. Money is
  *   left out: a superintendent's read carries no dollar, and materials are bought before the work they are for.
  *   Money that leads is one calm line and the office's to watch;
  * - a gap asks before it warns. When hours have gone in since the percent was last set, the likely cause is an
@@ -127,13 +129,14 @@ export function paceReading(i: PaceReadingInput): PaceReading {
   const hoursPct = Math.round(hoursPctRaw)
   // The gap in hours: what is used over what the work done accounts for. The line's own sum, read the other way.
   const gapHours = used - (clamp(i.pctDone) / 100) * i.hoursBudget
-  const days = i.crewHoursPerDay > 0 ? Math.round(-gapHours / i.crewHoursPerDay) : 0
+  // Over, under or on track is the line's own rule: a crew day either way, or a tenth of the budget when under a day.
+  const side = hoursVerdict({ donePct: clamp(i.pctDone), hoursPct: hoursPctRaw, hoursBudget: i.hoursBudget, crewDay: i.crewHoursPerDay }).side
   // When the percent was last said, and the hours that went in on the days after it.
   const lastYmd = i.saidToday ? i.todayYmd : i.values.reduce<string | null>((best, v) => (best == null || v.ymd > best ? v.ymd : best), null)
   const sinceHours = lastYmd ? i.laborDays.reduce((s, d) => (d.ymd > lastYmd ? s + Math.max(0, d.hours) : s), 0) : 0
-  const over = days <= -1
+  const over = side < 0
   const old = over && lastYmd != null && sinceHours >= PACE_OLD_HOURS
-  const state: PaceReadingState = old ? 'old' : over ? 'over' : days >= 1 ? 'under' : 'track'
+  const state: PaceReadingState = old ? 'old' : over ? 'over' : side > 0 ? 'under' : 'track'
 
   const fill = clamp(Math.min(workPct, hoursPctRaw))
   const bars: PaceReadingBars = {

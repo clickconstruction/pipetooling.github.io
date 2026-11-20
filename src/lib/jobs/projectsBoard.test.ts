@@ -200,13 +200,15 @@ describe('checklistCountOf', () => {
 })
 
 describe('the Dashboard strip\'s counts and the worst project\'s words (PR 6)', () => {
-  const line = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, money: { leads: boolean; wrong?: boolean } | null = null) => ({ tone, days, money } as unknown as SuperintendentLine)
+  const line = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, money: { leads: boolean; wrong?: boolean } | null = null, hoursAhead = days * 24) => ({ tone, days, money, hoursAhead } as unknown as SuperintendentLine)
   it('counts the projects by tone, the money leaders inside behind', () => {
     expect(paceCounts([line('behind', -3), line('behind', 0, { leads: true }), line('ahead', 2), line('even', 0), line('early', 0)])).toEqual({ total: 5, behind: 2, moneyLeading: 1, even: 1, ahead: 1, early: 1 })
     expect(paceCounts([])).toEqual({ total: 0, behind: 0, moneyLeading: 0, even: 0, ahead: 0, early: 0 })
   })
   it('names the worst in three words, or none when it is not behind', () => {
     expect(worstWords(line('behind', -3))).toBe('3 d behind')
+    // A gap under a crew day is behind in hours, never 0 d.
+    expect(worstWords(line('behind', 0, null, -6))).toBe('6 h behind')
     expect(worstWords(line('behind', 0, { leads: true }))).toBe('money ahead')
     expect(worstWords(line('behind', 0, { leads: true, wrong: true }))).toBe('budget?')
     expect(worstWords(line('ahead', 2))).toBeNull()

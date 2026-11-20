@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · left: the owner's look on a phone, and three calls
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width, and the small-job gap fixed as v2.8120 · left: the owner's own look, and three calls
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -15,7 +15,7 @@ summary: >
 next: The owner looks at the card on a phone and answers the three calls below.
 size: M, built as one PR, and an XS for the Job Budget card
 blocker: None in the code.
-ver: v2.8048 · 8058
+ver: v2.8048 · 8058 · 8120
 opinion: your call — the card is built on the defaults, and each of the three calls is one small change either way
 ---
 
@@ -65,8 +65,8 @@ report of its own.
 2. The headline was money and the bar was hours. On the day of the assessment, three of the four projects
    that read *money ahead* had their hours under the work. Fixed on the crew's card: it reads hours.
 3. A job with no hours budget read *Too early to call.* Fixed on the crew's card.
-4. A gap under one crew day reads on track. On a small job that can be a large share of the budget. Not
-   changed.
+4. A gap under one crew day reads on track. On a small job that can be a large share of the budget. Fixed
+   as v2.8120 on the owner's word: a gap of a tenth of the hours budget counts too, and is said in hours.
 
 **Who uses it.** Two superintendent accounts are live, one of them the sample account. Of 18 working
 projects, 5 read red that day. **My finish date** and **Ask a master** were two days old and had been pressed
@@ -153,6 +153,21 @@ project, on the dev server at `main` against live data.
 
 Left on the test project, on purpose: that Status Report, and two clock sessions of a few minutes in the
 sample account's name. Job Mode on the sample account is off again.
+
+## The walk as a real superintendent (2026-11-20)
+
+The owner asked for the walk as the company's superintendent, on his phone. It was done through View as at a
+phone's width, on the dev server at `main` against live data, and nothing that writes was pressed.
+
+- **His page showed no Job pace card at that moment.** He was clocked in with no job linked. The card draws
+  only for the job he is on or next, which is how it has always been mounted. A day that starts with a clock
+  in and no job hides the card until a job is linked.
+- **Drawn for his first stop under his own sign-in**, through a temporary hook that was never committed, the
+  card read amber, *Is 40% still right?*, both bars, *set 28 days ago*, and the hours since. The first stage
+  wore its tick. Nothing ran off the side at 390 pixels.
+- **How this is figured** opened with no dollar on it. It still shows the strip's own chip, *money ahead*.
+- **My finish date** and **Ask a master** opened their windows, the second naming the master on the job, and
+  both were closed. Nothing was saved or sent.
 
 ## How to verify
 
