@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test'
+import { test as setup, expect } from './fixtures'
 
 const AUTH_FILE = 'e2e/.auth/user.json'
 

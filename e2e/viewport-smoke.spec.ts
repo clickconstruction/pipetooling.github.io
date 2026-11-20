@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Request } from '@playwright/test'
+import type { Page, Request } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * Phone-viewport smoke (v2.1003, improvement-plan item #5): the whole class of
