@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
-import { resendPhysicalInvoiceEmailForBilledInvoice } from '../../lib/resendPhysicalInvoiceEmail'
+import { readPaperBillResendRecipient, resendPhysicalInvoiceEmailForBilledInvoice } from '../../lib/resendPhysicalInvoiceEmail'
 
 const CONFIRM_MODAL_Z = 120000
 
@@ -9,21 +9,43 @@ const CONFIRM_MODAL_Z = 120000
  * "Email again — PDF attached" (v2.2605): re-emails a BILLED physical invoice
  * — confirm first, like the Stripe resend. The PDF is rebuilt fresh
  * (same builders as the PDF tail); nothing on the row changes.
+ *
+ * A bill that went to the GC (v2.7959, `readRecipient`): the caller does not hold the GC's billing address, so the
+ * window reads it when it opens and names it. With no address on record it says where to add one and offers no send.
  */
 export default function PhysicalInvoiceResendButton({
   invoice,
   recipientEmail,
+  readRecipient = false,
   onSent,
 }: {
   invoice: { id: string; job_id: string }
   /** Shown in the confirm so the sender knows who receives it (bill-to override, else job customer email). */
   recipientEmail: string | null
+  /** The bill went to the GC: read the GC's billing address when the window opens, and name that. */
+  readRecipient?: boolean
   /** After the email is accepted (e.g. record a chase touch). */
   onSent?: () => void
 }) {
   const { showToast } = useToastContext()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
+  const [read, setRead] = useState<{ state: 'loading' } | { state: 'ready'; email: string } | { state: 'none'; message: string }>({ state: 'loading' })
+  const invoiceId = invoice.id
+  const jobId = invoice.job_id
+
+  useEffect(() => {
+    if (!confirmOpen || !readRecipient) return
+    let cancelled = false
+    setRead({ state: 'loading' })
+    void readPaperBillResendRecipient({ id: invoiceId, job_id: jobId }).then((r) => {
+      if (cancelled) return
+      setRead(r.ok ? { state: 'ready', email: r.recipient.email } : { state: 'none', message: r.message })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [confirmOpen, readRecipient, invoiceId, jobId])
 
   useEffect(() => {
     if (!confirmOpen) return
@@ -35,6 +57,8 @@ export default function PhysicalInvoiceResendButton({
   }, [confirmOpen])
 
   const emailLine = (recipientEmail ?? '').trim() || 'the customer'
+  // Without a read the send is always offered, as before. With one, only once the GC's address is known.
+  const canSend = !readRecipient || read.state === 'ready'
 
   async function send() {
     if (sending) return
@@ -74,20 +98,34 @@ export default function PhysicalInvoiceResendButton({
             >
               <div style={{ fontWeight: 600, marginBottom: '0.375rem' }}>Re-email this invoice?</div>
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                A freshly generated invoice PDF goes to <strong>{emailLine}</strong>. Nothing about the bill changes.
+                {!readRecipient ? (
+                  <>
+                    A freshly generated invoice PDF goes to <strong>{emailLine}</strong>. Nothing about the bill changes.
+                  </>
+                ) : read.state === 'ready' ? (
+                  <>
+                    This bill went to the GC. A freshly generated invoice PDF goes to the GC&rsquo;s billing email, <strong>{read.email}</strong>. Nothing about the bill changes.
+                  </>
+                ) : read.state === 'none' ? (
+                  read.message
+                ) : (
+                  'This bill went to the GC. Finding the GC’s billing email…'
+                )}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button type="button" disabled={sending} onClick={() => setConfirmOpen(false)}>
-                  Cancel
+                  {canSend ? 'Cancel' : 'Close'}
                 </button>
-                <button
-                  type="button"
-                  disabled={sending}
-                  onClick={() => void send()}
-                  style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }}
-                >
-                  {sending ? 'Sending…' : 'Send email'}
-                </button>
+                {canSend ? (
+                  <button
+                    type="button"
+                    disabled={sending}
+                    onClick={() => void send()}
+                    style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }}
+                  >
+                    {sending ? 'Sending…' : 'Send email'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>,

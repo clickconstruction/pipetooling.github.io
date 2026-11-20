@@ -6,9 +6,9 @@ import { buildBidRoomRevisionPayload, parseBidRoomRevisionPayload } from './bidR
 describe('bid room payload parser parity', () => {
   it('shared and client parsers agree on a built payload', () => {
     const built = buildBidRoomRevisionPayload({
-      projectName: 'Game Show Battle Rooms',
+      projectName: 'Glover Salter Babcock Reeve',
       projectAddress: '123 Main',
-      gcName: 'NORTHSTAR',
+      gcName: 'NESBITT',
       serviceTypeName: 'Plumbing',
       sections: [
         { name: 'To Plans', isAlternate: false, revenueSum: 249971.29, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 537.27 }], bidVersionId: 'v-tp' },

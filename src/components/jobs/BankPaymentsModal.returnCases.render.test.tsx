@@ -91,7 +91,7 @@ const CASES = [
     opened_at: '2026-08-29T22:17:00Z',
     bank_reason: null,
     source: 'unbanked',
-    recorded_payment: { payment_id: 'pay-066', job_id: 'job-066', job_number: '066', job_name: 'Venancio Diaz PRE', amount: 250, paid_on: '2026-08-19', job_revenue: 250, job_payments_made: 250 },
+    recorded_payment: { payment_id: 'pay-066', job_id: 'job-066', job_number: '066', job_name: 'Vernon Darby PRE', amount: 250, paid_on: '2026-08-19', job_revenue: 250, job_payments_made: 250 },
   }),
 ]
 
@@ -278,7 +278,7 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     expect(row.textContent).toContain('never deposited')
     fireEvent.click(row)
     const pane = await screen.findByTestId('ar-return-case-pane')
-    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('$250 was recorded as paid on #066 Venancio Diaz PRE. No deposit is linked to it.')
+    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('$250 was recorded as paid on #066 Vernon Darby PRE. No deposit is linked to it.')
     expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('10 days on, no deposit had come in for it.')
     expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('#066 reads paid in full. The money is not in the bank.')
     // DLF's $250 deposit in To match is not a new check for it: the payment is linked to its deposit instead.

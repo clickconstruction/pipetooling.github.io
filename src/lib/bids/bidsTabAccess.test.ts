@@ -46,9 +46,9 @@ describe('bidsTabAccess — who opens the page', () => {
 })
 
 describe('bidsTabAccess — the tab keys and the two groups', () => {
-  it('knows 27 tab keys, none twice', () => {
-    expect(BIDS_TABS).toHaveLength(27)
-    expect(new Set(BIDS_TABS).size).toBe(27)
+  it('knows 28 tab keys, none twice', () => {
+    expect(BIDS_TABS).toHaveLength(28)
+    expect(new Set(BIDS_TABS).size).toBe(28)
   })
 
   it('tells a tab key from anything else', () => {
@@ -73,7 +73,7 @@ describe('bidsTabAccess — the tab keys and the two groups', () => {
   })
 
   it('the Followup group is the seven followup lenses', () => {
-    expect(BIDS_TABS.filter(isFollowupLens)).toEqual(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money'])
+    expect(BIDS_TABS.filter(isFollowupLens)).toEqual(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money', 'permit-news'])
   })
 
   it('every group key and every role list is a tab key, and the groups do not overlap', () => {

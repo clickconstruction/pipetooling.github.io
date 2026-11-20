@@ -19,7 +19,7 @@ const DEPOSITS = [
   {
     mercury_transaction_id: 'mtx-seguin',
     amount: 1625,
-    counterparty_name: 'City of Seguin',
+    counterparty_name: 'City of Sefton',
     note: null,
     external_memo: null,
     posted_at: '2026-08-26T15:00:00Z',
@@ -94,7 +94,7 @@ function billedJob(): JobWithDetails {
     hcp_number: '908',
     click_number: null,
     job_name: 'Seguin permit',
-    customer_name: 'City of Seguin',
+    customer_name: 'City of Sefton',
     status: 'billed',
     revenue: 1625,
     payments_made: 0,

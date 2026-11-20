@@ -25,9 +25,9 @@ vi.mock('signature_pad', () => ({
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({}) }))
 
 const payload = buildBidRoomRevisionPayload({
-  projectName: 'Game Show Battle Rooms',
+  projectName: 'Glover Salter Babcock Reeve',
   projectAddress: '123 Main St, San Antonio',
-  gcName: 'NORTHSTAR CONSTRUCTION SERVICES',
+  gcName: 'NESBITT CONSTRUCTION SERVICES',
   serviceTypeName: 'Plumbing',
   inclusions: 'All plumbing per plans.',
   exclusions: 'Fixtures by others.',
@@ -313,7 +313,7 @@ describe('Bid Room failures read by their class (v2.5965)', () => {
     renderRoom()
     expect(await screen.findByText('No connection. Check your signal and try again.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByText(/Game Show Battle Rooms/)).toBeTruthy()
+    expect(await screen.findByText(/Glover Salter Babcock Reeve/)).toBeTruthy()
   })
 
   it('a refused load reads the page’s words, never the function’s', async () => {

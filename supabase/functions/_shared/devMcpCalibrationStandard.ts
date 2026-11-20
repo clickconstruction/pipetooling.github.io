@@ -5,11 +5,12 @@
 // number counts toward Gate B, and against anyone else it is practice. Who may be made one is the panel's own rule
 // (_shared/twinTeachers.ts): an estimating role, not a twin, not archived; a flag already set can always be lifted.
 // No new RPC and no dry-run wrapper: the dry run is the server's own read of the person, of every standard and of the
-// scored shadow runs that name the person as teacher, and the plan hash commits to them, so a standard set or lifted
+// scored shadow runs (through the staff RPC since v2.7947, the person's being those that carry their name), and the plan hash commits to them, so a standard set or lifted
 // since the plan, by anyone, refuses the apply. The way back is the same pair with the other value.
 // Pure: no network, no env. Tests: src/lib/devMcp/devMcpCalibrationStandard.test.ts.
 
 import { TWIN_PANEL_DOOR } from './devMcpTwin.ts'
+import { SHADOW_RUNS_READ } from './devMcpShadowRuns.ts'
 import { calibrationStandardSummary, calibrationStandardToast, canBeCalibrationStandard, TEACHER_ROLES, type TeacherCandidate } from './twinTeachers.ts'
 
 type Json = Record<string, unknown>
@@ -43,21 +44,38 @@ export function calibrationStandardInput(verb: CalibrationStandardVerb, input: J
 export const CALIBRATION_PERSON_SELECT = 'id,name,email,role,is_digital_twin,archived_at,calibration_standard'
 export type CalibrationPersonRow = TeacherCandidate
 
-/** The columns the server reads of the scored shadow runs that name the person as teacher. */
-export const CALIBRATION_RUN_SELECT = 'axis,assisted_at'
-export type CalibrationRunRow = { axis: string | null; assisted_at: string | null }
+/**
+ * The columns the server reads of every scored shadow run, through the staff RPC (devMcpShadowRuns.ts: the table
+ * answers a signed-in person no rows). The RPC names a run's teacher and never gives their id, so the person's runs
+ * are the ones that carry their name (calibrationRunsOf).
+ */
+export const CALIBRATION_RUN_SELECT = 'axis,assisted_at,teacher_name'
+export const CALIBRATION_RUNS_SOURCE = SHADOW_RUNS_READ
+export type CalibrationRunRow = { axis: string | null; assisted_at: string | null; teacher_name?: string | null }
 /** How many of those runs one read carries; a count at the limit is said to be at least that many. */
 export const CALIBRATION_RUNS_LIMIT = 1000
+/** The query the server sends the staff RPC: every scored run, narrowed to what the plan reads. */
+export const CALIBRATION_RUNS_QUERY = `select=${CALIBRATION_RUN_SELECT}&status=eq.scored&limit=${CALIBRATION_RUNS_LIMIT}`
 
 export type CalibrationWorld = {
   person: CalibrationPersonRow | null
   /** Every user flagged a standard today, the person among them when flagged. */
   standards: readonly CalibrationPersonRow[]
-  /** The scored shadow runs whose teacher is the person; null when the read was refused. */
+  /** Every scored shadow run, whoever taught it; null when the read was refused. */
   runs: readonly CalibrationRunRow[] | null
 }
 
 const nameOf = (u: Pick<CalibrationPersonRow, 'name' | 'email'>): string => (u.name ?? '').trim() || u.email
+
+/**
+ * The scored runs that name the person as teacher, by the name on the run whatever its case or padding. Null when
+ * the person has no name to match: the count is then unknown, never zero.
+ */
+export function calibrationRunsOf(person: Pick<CalibrationPersonRow, 'name'>, runs: readonly CalibrationRunRow[]): CalibrationRunRow[] | null {
+  const name = (person.name ?? '').trim().toLowerCase()
+  if (!name) return null
+  return runs.filter((r) => (r.teacher_name ?? '').trim().toLowerCase() === name)
+}
 
 /** The person's scored runs as the gate reads them: those that count beside those an estimator took robot fixtures on, by axis. */
 export function calibrationRunCounts(runs: readonly CalibrationRunRow[]): { scored: number; counted: number; assisted: number; by_axis: Record<string, number> } {
@@ -96,11 +114,12 @@ export function calibrationStandardDryRun(p: CalibrationStandardPayload, world: 
   const after = p.standard ? [...before, { ...person, calibration_standard: true }] : before.filter((u) => u.id !== person.id)
   const afterSorted = [...after].sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
   const beforeSorted = [...before].sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
-  const counts = world.runs ? calibrationRunCounts(world.runs) : null
+  const mine = world.runs ? calibrationRunsOf(person, world.runs) : null
+  const counts = mine ? calibrationRunCounts(mine) : null
   const atLimit = !!world.runs && world.runs.length >= CALIBRATION_RUNS_LIMIT
   const n = counts?.counted ?? 0
   const runWords = !counts
-    ? 'The scored shadow runs that name them as teacher could not be read, so how many move is not known.'
+    ? `The scored shadow runs that name them as teacher could not be ${world.runs ? 'matched, since they have no name on their account' : 'read'}, so how many move is not known. The Robots board lists each run with its teacher.`
     : counts.scored === 0
       ? `No scored shadow run names ${who} as teacher yet, so no score moves today: the flag decides the ones to come.`
       : `${atLimit ? 'At least ' : ''}${n} scored shadow run${n === 1 ? '' : 's'} that name${n === 1 ? 's' : ''} ${who} as teacher ${p.standard ? `would count toward Gate B, where ${n === 1 ? 'it reads' : 'they read'} as practice today` : `would read as practice, where ${n === 1 ? 'it counts' : 'they count'} toward Gate B today`}.${counts.assisted ? ` ${counts.assisted} more ${counts.assisted === 1 ? 'is' : 'are'} assisted (the estimator took robot fixtures) and never count${counts.assisted === 1 ? 's' : ''} either way.` : ''}`
@@ -117,7 +136,7 @@ export function calibrationStandardDryRun(p: CalibrationStandardPayload, world: 
       to: p.standard ? 'a calibration standard' : 'not a calibration standard',
       standards_before: beforeSorted.map((u) => ({ id: u.id, name: nameOf(u) })),
       standards_after: afterSorted.map((u) => ({ id: u.id, name: nameOf(u) })),
-      scored_shadow_runs: counts ? { ...counts, at_least: atLimit } : null,
+      scored_shadow_runs: counts ? { ...counts, at_least: atLimit, matched_by: 'the teacher\'s name on the run' } : null,
       warnings,
       then: `apply sets calibration_standard ${p.standard ? 'true' : 'false'} on their users row as you, as the ★ Calibration standard card at ${TWIN_PANEL_DOOR} does. ${calibrationStandardSummary(afterSorted)} ${runWords} The flag is read by score_shadows and the Scoreboard's gate math the next time either runs: no score is rewritten. The way back is this pair with standard: ${p.standard ? 'false' : 'true'}.`,
     },

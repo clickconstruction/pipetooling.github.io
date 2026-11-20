@@ -90,8 +90,8 @@ describe('buildSubsHqRows', () => {
       people: [BEHAR, EDGAR],
       users: [],
       sheets: [
-        sheet({ id: 'by-name', label: '251 · 180 Go Away Rd', assignedToName: ' edgar ', jobNumber: '251' }),
-        sheet({ id: 'by-junction', label: '273 · 9703 Lenox Hl', assignedToName: 'someone else', jobNumber: '273' }),
+        sheet({ id: 'by-name', label: '251 · 719 Go Away Rd', assignedToName: ' edgar ', jobNumber: '251' }),
+        sheet({ id: 'by-junction', label: '273 · 3507 Lister Hl', assignedToName: 'someone else', jobNumber: '273' }),
       ],
       assignees: [{ labor_job_id: 'by-junction', person_id: 'p-edgar' }],
       commitments: [],
@@ -258,14 +258,14 @@ describe('groupUnattributedSheets', () => {
 
   it('groups by (label, raw name, reason) with dedupe count and summed balance', () => {
     const groups = groupUnattributedSheets([
-      entry({ sheetId: 's1', label: '892 · 582 Curvatura', jobNumber: '892', rawAssignedTo: 'MIke Rodriguez', balance: 200 }),
-      entry({ sheetId: 's2', label: '892 · 582 Curvatura', jobNumber: '892', rawAssignedTo: 'mike rodriguez', balance: 700 }),
+      entry({ sheetId: 's1', label: '892 · 999 Calder', jobNumber: '892', rawAssignedTo: 'MIke Rodriguez', balance: 200 }),
+      entry({ sheetId: 's2', label: '892 · 999 Calder', jobNumber: '892', rawAssignedTo: 'mike rodriguez', balance: 700 }),
       entry({ sheetId: 's3', label: '901 · 12 Oak', jobNumber: '901', rawAssignedTo: 'Behar | Kyle', reason: 'shared', balance: 500 }),
     ])
     expect(groups).toHaveLength(2)
     // Sorted by total open balance desc.
     expect(groups[0]).toMatchObject({
-      label: '892 · 582 Curvatura',
+      label: '892 · 999 Calder',
       jobNumber: '892',
       reason: 'unmatched',
       sheetCount: 2,

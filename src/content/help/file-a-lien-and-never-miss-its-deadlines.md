@@ -84,8 +84,8 @@ The roll lags sales and carries no exemptions. So the CAD link sits on every row
 
 :::example The Property record row on a GC job
 **The appraisal roll's answer for 9703 Linmor Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
-*Owner of record, mails to* **Karrow Ulric & Barrowby Shelmina** · 3203 Spider Lily · San Antonio, TX 78258
-*Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar
+*Owner of record, mails to* **Karrow Ulric & Barrowby Shelmina** · 5913 Stella Leah · San Antonio, TX 78258
+*Legal* CB 7474A (Carmody Hills UT-3), Block 3 Lot 35 · *County* Bexar
 {{button:blue|Save this owner}} *Not right? Paste the CAD page…*
 :::
 
@@ -210,7 +210,7 @@ Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*
 
 One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Its press reads the same two ways. {{button:outline|Print the copies to mail}} opens that job's Lien window at the press of that name. After the print the row reads {{button:outline|Enter mail numbers}}. That press opens **Filed liens: copies to mail** at the job's own line. A receipt on a lien does not change its row. The row reads **Print the copies to mail** until its stamped copy is printed. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
 
-The top half prints. The window reads every lien's stamped copy as it opens. Until then the press reads like **Reading 11 stamped copies…**. Then it counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with its pages and its mail-by day. The name and address read as the envelope carries them. The street is on one line and the city is on the next. Under each envelope are five boxes for its certified mail number, four digits to a box. Keep the mail sheet in the office. Behind it, each envelope's letter and stamped copy print in that order.
+The top half prints. The window reads every lien's stamped copy as it opens. Until then the press reads like **Reading 11 stamped copies…**. Then it counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with its pages and its mail-by day. The name and address read as the envelope carries them. The street is on one line and the city is on the next. Under each envelope are five boxes for its certified mail number, four digits to a box. Keep the mail sheet in the office. Behind it, each envelope's letter and stamped copy print in that order. A divider page prints in front of each envelope. It shows the envelope's number on the mail sheet and how to write the envelope. Do not mail the divider. Mail only the pages behind it, up to the next divider.
 
 A lien that cannot print is listed under the press with its reason. The rest still print. A lien with no document number has {{button:outline|Type it on its card ›}}. A lien with no stamped lien saved has {{button:outline|Add the stamped scans ›}}. Any other has **Open the Lien window**.
 

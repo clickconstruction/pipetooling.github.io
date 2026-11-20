@@ -10,12 +10,12 @@ const ROSTER = [
   { id: 'p-abe', name: 'Abraham', kind: 'sub', accountRole: 'superintendent' },
 ]
 const JOBS = [
-  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Corbray', job_address: '582 Curvatura' },
+  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Corbray', job_address: '999 Calder' },
   { id: 'j-880', hcp_number: '880', customer_name: 'Kestrin Contracting', job_address: '150 E Sonmere' },
 ]
 const sheet = (over: Partial<WorkOrderBoardSheet> & { id: string }): WorkOrderBoardSheet => ({
   job_number: '892',
-  address: '582 Curvatura',
+  address: '999 Calder',
   assigned_to_name: 'Miguel Rodriguez',
   labor_rate: 50,
   items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 1750 }],
@@ -131,7 +131,7 @@ describe('buildWorkOrderBoard — order and search', () => {
   it('search matches sub, job number, customer, address and WO number', () => {
     const b = board([sheet({ id: 's1' })], [order({ id: 'o1', status: 'accepted', labor_job_id: 's1', record_id: 'WO-892-01' })])
     const row = b.rows[0]!
-    for (const q of ['miguel', '892', 'corbray', 'curvatura', 'wo-892']) expect(workOrderBoardRowMatches(row, q)).toBe(true)
+    for (const q of ['miguel', '892', 'corbray', 'calder', 'wo-892']) expect(workOrderBoardRowMatches(row, q)).toBe(true)
     expect(workOrderBoardRowMatches(row, 'airlowe')).toBe(false)
   })
   it('legacy ?wof= words map onto rail groups', () => {

@@ -20,7 +20,7 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
-const detailJob = makeJob({ id: 'job-1', hcp_number: '1043', job_name: 'Kane', job_address: '162 Forest Drive, Seguin, TX', google_drive_link: null })
+const detailJob = makeJob({ id: 'job-1', hcp_number: '1043', job_name: 'Kane', job_address: '785 Forest Drive, Seguin, TX', google_drive_link: null })
 
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async () => detailJob,

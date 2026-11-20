@@ -29,7 +29,7 @@ import {
   type BidUpdateWorld,
 } from '../../../supabase/functions/_shared/devMcpBidUpdate'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
-import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { BID_DATE_SENT_ATTESTATION_NULLS } from '../bids/bidDateSentAttestation'
 import { BID_LOSS_CATEGORIES } from '../bidLossCategories'
 import { buildOutcomeChangeBidNoteBody } from '../outcomeChangeBidNote'
@@ -496,8 +496,12 @@ describe('the three the robots’ queue reads (v2.7928)', () => {
   })
 
   it('reads the axes in use only when the plan names one, off the three places an axis lives, and survives a refused read', async () => {
-    expect(AXIS_SOURCES.map((x) => `${x.table}.${x.column}`)).toEqual(['twin_run_scores.axis', 'twin_shadow_runs.axis', 'bids.backtest_axis'])
-    for (const src of AXIS_SOURCES) expect(Object.keys(CATALOG_TABLES[src.table]?.columns ?? {}), src.table).toContain(src.column)
+    expect(AXIS_SOURCES.map((x) => `${x.table}.${x.column}`)).toEqual(['twin_run_scores.axis', 'rpc/list_shadow_runs.axis', 'bids.backtest_axis'])
+    // Two are tables and one is the staff RPC: the shadow runs' own table answers a signed-in person no rows (devMcpShadowRuns.ts).
+    for (const src of AXIS_SOURCES) {
+      if (src.table.startsWith('rpc/')) expect(CATALOG_RPCS[src.table.slice(4)], src.table).toHaveLength(1)
+      else expect(Object.keys(CATALOG_TABLES[src.table]?.columns ?? {}), src.table).toContain(src.column)
+    }
     const asked: string[] = []
     const reads = (refuse = false): BidReads => ({
       rows: (table, query) => {
@@ -511,7 +515,7 @@ describe('the three the robots’ queue reads (v2.7928)', () => {
     })
     const w = await readBidUpdateWorld(reads(), p({ backtest_axis: 'small TI' }), ME)
     expect(w.axes).toEqual(['institutional', 'proto/auto-service', 'small TI'])
-    expect(asked).toEqual(expect.arrayContaining(['twin_run_scores?select=axis&axis=not.is.null&limit=1000', 'twin_shadow_runs?select=axis&axis=not.is.null&limit=1000', 'bids?select=backtest_axis&backtest_axis=not.is.null&limit=1000']))
+    expect(asked).toEqual(expect.arrayContaining(['twin_run_scores?select=axis&axis=not.is.null&limit=1000', 'rpc/list_shadow_runs?select=axis&axis=not.is.null&limit=1000', 'bids?select=backtest_axis&backtest_axis=not.is.null&limit=1000']))
     asked.length = 0
     expect((await readBidUpdateWorld(reads(), p({ holdout: true }), ME)).axes).toBeNull()
     expect(asked).toHaveLength(3)

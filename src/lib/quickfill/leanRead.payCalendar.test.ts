@@ -36,6 +36,7 @@ const billOf = (invoiceId: string | null, ageDays: number | null, customerId: st
   sentAtIso: null,
   externalSendChannel: null,
   billToEmail: null,
+  billedTo: 'customer',
   ...over,
 })
 

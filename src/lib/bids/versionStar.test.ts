@@ -95,16 +95,16 @@ describe('letterPriceCountByVersion', () => {
 })
 
 describe('afterOpenPriceDeleted', () => {
-  // BP384's shape: NORTHSTAR open, PlanHub's WENDI is the lowest sort order left on the bid.
+  // BP384's shape: NESBITT open, PlanHub's WENDI is the lowest sort order left on the bid.
   const planHubWendi: BundlePricing = { id: 'p-planhub-wendi', bid_version_id: 'v-planhub', sort_order: 2 }
-  const northstarWendi: BundlePricing = { id: 'p-ns-wendi', bid_version_id: 'v-ns', sort_order: 3 }
-  const northstarVe: BundlePricing = { id: 'p-ns-ve', bid_version_id: 'v-ns', sort_order: 4 }
+  const nesbittWendi: BundlePricing = { id: 'p-ns-wendi', bid_version_id: 'v-ns', sort_order: 3 }
+  const nesbittVe: BundlePricing = { id: 'p-ns-ve', bid_version_id: 'v-ns', sort_order: 4 }
 
   it("a split bid opens its version's ★ and saves nothing — never the bid's lowest price from another version", () => {
     const out = afterOpenPriceDeleted({
       deletedId: 'p-ns-scratch',
       activeVersion: { id: 'v-ns', starred_price_book_version_id: 'p-ns-ve' },
-      remaining: [planHubWendi, northstarWendi, northstarVe],
+      remaining: [planHubWendi, nesbittWendi, nesbittVe],
       bidSavedPricingId: 'p-ns-ve',
     })
     expect(out).toEqual({ viewId: 'p-ns-ve' })
@@ -112,7 +112,7 @@ describe('afterOpenPriceDeleted', () => {
   })
 
   it("a split version with no ★ of its own opens its first price; with no prices left, nothing", () => {
-    expect(afterOpenPriceDeleted({ deletedId: 'p-x', activeVersion: { id: 'v-ns', starred_price_book_version_id: null }, remaining: [planHubWendi, northstarVe, northstarWendi], bidSavedPricingId: null }))
+    expect(afterOpenPriceDeleted({ deletedId: 'p-x', activeVersion: { id: 'v-ns', starred_price_book_version_id: null }, remaining: [planHubWendi, nesbittVe, nesbittWendi], bidSavedPricingId: null }))
       .toEqual({ viewId: 'p-ns-wendi' })
     expect(afterOpenPriceDeleted({ deletedId: 'p-x', activeVersion: { id: 'v-ns', starred_price_book_version_id: null }, remaining: [planHubWendi], bidSavedPricingId: 'p-planhub-wendi' }))
       .toEqual({ viewId: null })

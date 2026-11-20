@@ -91,7 +91,7 @@ function templateFor(ctx: TeamSampleContext, type: string): { subject: string; b
 const SAMPLE_WORD_ASK_GCS = [
   { gcName: SAMPLE_GC.company, amount: 125_000, promise: { payBy: '2026-10-15', late: false, daysLate: 0 } },
   { gcName: 'RLC · Dunmere Mallin', amount: 98_500, promise: null },
-  { gcName: 'Structura', amount: 89_000, promise: { payBy: '2026-09-20', late: true, daysLate: 9 } },
+  { gcName: 'Sheffield', amount: 89_000, promise: { payBy: '2026-09-20', late: true, daysLate: 9 } },
 ] as const
 
 /**
@@ -128,9 +128,9 @@ export function sampleLienStatusPayload(todayYmd: string): LienStatusPayload {
       job(1052, 'Cedar Bend Apartments, Building B', SAMPLE_GC.company, 12_150, [month(2)], 'draft'),
       job(1031, 'Linmoor remodel', 'RLC · Dunmere Mallin', 9_800, [month(2), month(1)], 'draft'),
       job(1039, 'Service visit, 628 Tarrow Rd', 'RLC · Dunmere Mallin', 1_710, [month(1)], 'owner'),
-      job(1044, 'Mission Flats drains', 'Structura', 6_400, [month(1)], 'draft', later),
+      job(1044, 'Mission Flats drains', 'Sheffield', 6_400, [month(1)], 'draft', later),
     ],
-    liens: [{ number: '1012', name: 'Wildflower', gc: '', owed: 603, byYmd: soon, needs: ['legal'] }],
+    liens: [{ number: '1012', name: 'Whitlock', gc: '', owed: 603, byYmd: soon, needs: ['legal'] }],
     kindsUnset: 1,
     trackingOwed: 0,
     pastWindow: { jobs: 2, owed: 3_450 },
@@ -168,7 +168,7 @@ export function sampleMoneyWaitingPayload(todayYmd: string): MoneyWaitingEmailPa
       row('inv-1', 'job-1', '1041', 'Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 'gc-sample', SAMPLE_GC.company, 41, 26_000),
       row('inv-2', 'job-2', '1046', 'Cedar Bend Apartments — top out', '2530 Cedar Bend Dr, Kyle, TX 78640', 'gc-sample', SAMPLE_GC.company, 19, 8_200),
       row('inv-3', 'job-3', '1054', 'Water heater replacement', SAMPLE_HOMEOWNER.address, 'home-sample', SAMPLE_HOMEOWNER.name, 58, 4_380),
-      row('inv-4', 'job-4', '1039', 'Structura — pretest', '901 Structura Way, Buda, TX 78610', 'structura', 'Structura', 33, 12_640),
+      row('inv-4', 'job-4', '1039', 'Sheffield — pretest', '901 Sheffield Way, Buda, TX 78610', 'sheffield', 'Sheffield', 33, 12_640),
       row('inv-5', 'job-5', '1057', 'Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 'hunter', 'Hunter Homes', 6, 5_724),
     ],
     pay_speeds: {
@@ -179,7 +179,7 @@ export function sampleMoneyWaitingPayload(todayYmd: string): MoneyWaitingEmailPa
         hunter: { medianDays: 30, samples: 5 },
       },
       segments: { residential: { medianDays: 14, samples: 12 }, commercial: { medianDays: 27, samples: 28 } },
-      customerTypes: { 'gc-sample': 'commercial', 'home-sample': 'residential', structura: 'commercial', hunter: 'commercial' },
+      customerTypes: { 'gc-sample': 'commercial', 'home-sample': 'residential', sheffield: 'commercial', hunter: 'commercial' },
     },
   }
 }
@@ -255,7 +255,7 @@ export function sampleBilledReportPayload(todayYmd: string): BilledReportPayload
   const contacts: Record<string, { email: string | null; phone: string | null }> = {
     'gc-sample': { email: SAMPLE_GC.email, phone: '(512) 555-0199' },
     'home-sample': { email: SAMPLE_HOMEOWNER.email, phone: SAMPLE_HOMEOWNER.phone },
-    structura: { email: 'ap@structura.example.com', phone: null },
+    sheffield: { email: 'ap@sheffield.example.com', phone: null },
     hunter: { email: null, phone: '(512) 555-0142' },
   }
   const rows: BilledReportRow[] = mw.rows.map((r) => {
@@ -329,7 +329,7 @@ export function sampleWeeklyMoneyPayload(weekMonday: string): WeeklyMoneyPayload
       job('job-1', '1041', 'Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 86_000, { labor_cost: 6_420, supply_cost: 3_180, payments_in: 26_000 }, 40, 55),
       job('job-3', '1054', 'Water heater replacement', SAMPLE_HOMEOWNER.address, 4_380, { labor_cost: 640, supply_cost: 1_210, payments_in: 4_380 }, 0, 100),
       job('job-5', '1057', 'Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 18_900, { labor_cost: 2_980, sub_cost: 1_500, mercury_cost: 420 }, 20, 25),
-      job('job-4', '1039', 'Structura — pretest', '901 Structura Way, Buda, TX 78610', 12_640, { labor_cost: 380 }, 60, null, null),
+      job('job-4', '1039', 'Sheffield — pretest', '901 Sheffield Way, Buda, TX 78610', 12_640, { labor_cost: 380 }, 60, null, null),
     ],
     overhead: { office_labor_hours: 38, office_labor_cost: 1_520, office_job_charges: 210, bid_labor_hours: 11, bid_labor_cost: 495 },
   }
@@ -364,10 +364,10 @@ export function sampleGcMoneyMondayPayload(todayYmd: string): GcMoneyMondayPaylo
 /** The Weekly movement payload (lift 6): the sample company's stage moves in one week, one sent back. */
 export function sampleWeeklyMovementPayload(weekMonday: string): WeeklyMovementPayload {
   const e = (event: string, job: string, display: string, address: string, weekday: string, mover: string, revenue: number, extra: Partial<WeeklyMovementPayloadEntry> = {}): WeeklyMovementPayloadEntry => ({ event_id: event, job_id: job, display, address, weekday, mover_name: mover, revenue, ...extra })
-  const working = [e('ev-1', 'job-5', '1057 · Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 'Mon', 'Wendi Douglas', 18_900), e('ev-2', 'job-6', '1060 · Structura — phase 2', '901 Structura Way, Buda, TX 78610', 'Wed', 'Wendi Douglas', 42_500)]
+  const working = [e('ev-1', 'job-5', '1057 · Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 'Mon', 'Wendi Douglas', 18_900), e('ev-2', 'job-6', '1060 · Sheffield — phase 2', '901 Sheffield Way, Buda, TX 78610', 'Wed', 'Wendi Douglas', 42_500)]
   const ready = [e('ev-3', 'job-3', '1054 · Water heater replacement', SAMPLE_HOMEOWNER.address, 'Tue', 'Ana Lead', 4_380)]
   const billed = [e('ev-4', 'job-1', '1041 · Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 'Thu', 'Malachi Sample', 86_000), e('ev-5', 'job-3', '1054 · Water heater replacement', SAMPLE_HOMEOWNER.address, 'Thu', 'Malachi Sample', 4_380)]
-  const sent_backs = [e('ev-6', 'job-4', '1039 · Structura — pretest', '901 Structura Way, Buda, TX 78610', 'Fri', 'Wendi Douglas', 12_640, { from_label: 'Ready to bill', to_label: 'Working' })]
+  const sent_backs = [e('ev-6', 'job-4', '1039 · Sheffield — pretest', '901 Sheffield Way, Buda, TX 78610', 'Fri', 'Wendi Douglas', 12_640, { from_label: 'Ready to bill', to_label: 'Working' })]
   const sections = [
     { to_status: 'working', label: 'Working', entries: working },
     { to_status: 'ready_to_bill', label: 'Ready to bill', entries: ready },

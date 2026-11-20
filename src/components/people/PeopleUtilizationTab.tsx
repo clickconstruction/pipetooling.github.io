@@ -32,6 +32,7 @@ import {
 } from '../../lib/people/utilization'
 import { BAND_FILL } from '../../lib/people/utilizationColors'
 import { describeWeek, describeWeekShort } from '../../lib/people/weekAvailability'
+import { salariedWeekWords } from '../../lib/salariedEffectiveHours'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
@@ -92,7 +93,7 @@ function roleWords(role: string): string {
 }
 
 function canWorkWords(p: PersonUtilization): { main: string; sub: string | null; week: string | null } {
-  if (p.canWork.source === 'schedule') return { main: `${p.canWork.hours} h`, sub: 'the schedule', week: null }
+  if (p.canWork.source === 'schedule') return { main: `${p.canWork.hours} h`, sub: 'set week', week: p.canWork.salariedWeek ? salariedWeekWords(p.canWork.salariedWeek) : null }
   if (p.canWork.source === 'assumed') return { main: `${p.canWork.hours} h`, sub: 'assumed, not asked', week: null }
   const when = p.canWork.setAt ? new Date(p.canWork.setAt) : null
   const by = p.canWork.setBy && p.canWork.setBy === p.person.id ? 'they said' : 'the office set'
@@ -235,7 +236,7 @@ export default function PeopleUtilizationTab({ authRole, authUserId, io: ioIn }:
               <span style={MUTED}>
                 Can work {cw.main}
                 {cw.sub ? ` · ${cw.sub}` : ''}
-                {p.canWork.days ? ` · ${describeWeek(p.canWork.days)}` : ''}
+                {p.canWork.days ? ` · ${describeWeek(p.canWork.days)}` : cw.week ? ` · ${cw.week}` : ''}
               </span>
               <div style={{ display: 'flex', gap: 6 }}>
                 {changePress(p)}

@@ -30,7 +30,7 @@ describe('team sample emails (What the team sees)', () => {
   it('Money waiting is the digest\u2019s own renderer over the sample company (v2.4161)', () => {
     const m = buildTeamSampleEmail('money_waiting', ctx)
     expect(m.subject).toBe('Money waiting — 3 customers off pace, $51,220 open')
-    expect(m.html).toContain('Structura')
+    expect(m.html).toContain('Sheffield')
     expect(m.html).toContain('https://clicktooling.com/jobs?jobDetail=job-1')
     expect(m.text).toContain('slowest first')
   })
@@ -124,7 +124,7 @@ describe('team sample emails (What the team sees)', () => {
   it('the account man’s ask names his GCs and the total', () => {
     const m = buildTeamSampleEmail('gc_word_ask', ctx)
     expect(m.html).toContain('Sample Contracting')
-    expect(m.html).toContain('Structura')
+    expect(m.html).toContain('Sheffield')
   })
   it('the template emails use the live row when there is one, the sender’s default when not', () => {
     const fallback = buildTeamSampleEmail('sign_in', ctx)

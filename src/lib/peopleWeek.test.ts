@@ -32,7 +32,7 @@ describe('the words', () => {
     expect(personLine(p.people[2]!)).toBe('nothing moved')
     expect(cardLine(p.people[0]!.cards[0]!)).toBe('Put the plumbing tools in a neat home · 0 → 100 · done · 3 of 3 · 3 photos')
     expect(cardLine(p.people[0]!.cards[2]!)).toBe('Clear the back half of the floor · 25 → 75 · “puddy and the glue, Thursday” · 1 photo')
-    expect(jobLine(p.people[0]!.jobs[0]!)).toBe('1105 · Madison Park kitchen · 65% done · 3 days · 2 reports')
+    expect(jobLine(p.people[0]!.jobs[0]!)).toBe('1105 · Morris Park kitchen · 65% done · 3 days · 2 reports')
     expect(stuckLine(p.people[2]!.stuck[0]!)).toBe('One marker every mile · 32 days, no move')
   })
   it('renders text and html with every person and the Review link, escaping the html', () => {

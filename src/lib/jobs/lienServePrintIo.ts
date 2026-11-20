@@ -11,7 +11,7 @@ import { demandDate } from '../jobsDocuments/demandLetter'
 import { filingDocPdfBlob, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import { LIEN_SERVED_COPY_SENT_KIND, lienServeLetters, lienServedCopySentTitle } from '../jobsDocuments/lienServedCopy'
 import { fileSentCopy } from '../sent/sentCopiesIo'
-import { lienServeMailSheet, type LienServeJob, type LienServeRun } from './lienServePackets'
+import { lienServeMailSheet, lienServeReturnAddress, type LienServeJob, type LienServeRun } from './lienServePackets'
 import { buildLienServeStackPdf, type LienServePdfJob } from './lienServePdf'
 import { lienStampedPrintFileName, lienStampedPrintSnapshot } from './lienStampedCopy'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -53,7 +53,7 @@ export async function buildLienServeRun(run: Pick<LienServeRun, 'ready' | 'held'
     autoPrint: opts.autoPrint,
     sheet: (failed) => {
       const out = new Set([...missing, ...failed].map((f) => f.key))
-      return lienServeMailSheet({ ready: run.ready.filter((r) => !out.has(r.job.filing.id)), held: run.held }, { printedOn: demandDate(opts.todayYmd), letter: opts.letter, notPrinted: notPrintedOf(failed) })
+      return lienServeMailSheet({ ready: run.ready.filter((r) => !out.has(r.job.filing.id)), held: run.held }, { printedOn: demandDate(opts.todayYmd), letter: opts.letter, notPrinted: notPrintedOf(failed), from: lienServeReturnAddress(opts.letterhead) })
     },
   })
   return { ...out, ready: out.jobs.map((j) => ({ ...j, ready: byKey.get(j.key)! })), notPrinted: notPrintedOf(out.failed) }

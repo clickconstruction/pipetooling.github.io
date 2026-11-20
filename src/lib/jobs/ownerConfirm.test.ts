@@ -49,7 +49,7 @@ const parcel = (over: Partial<ParcelRecord> = {}): ParcelRecord => ({
   nameCare: '',
   legalDescription: 'LOT 1 BLK 2',
   situsAddress: '5498 CINDER VALLEY DR, SCHERTZ, TX 78108',
-  mailingAddress: '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209',
+  mailingAddress: '3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209',
   county: 'Guadalupe',
   source: 'Guadalupe Appraisal District',
   taxYear: '2025',
@@ -64,7 +64,7 @@ describe('ownerKind', () => {
   })
   it('companies via ownerLooksLikeCompany; the rest are people; "USA Properties LLC" is a company', () => {
     expect(ownerKind('SAMPLE STATION LTD')).toBe('company')
-    expect(ownerKind('TC/JP SEGUIN 2019 LLC')).toBe('company')
+    expect(ownerKind('TN/JT SEFTON 7852 LLC')).toBe('company')
     expect(ownerKind('USA PROPERTIES LLC')).toBe('company')
     expect(ownerKind('KARROW ULRIC & BARROWBY SHELMINA')).toBe('individual')
     expect(ownerKind('')).toBe('individual')
@@ -126,13 +126,13 @@ describe('readsAs', () => {
 describe('groupByProperty', () => {
   it('groups jobs at one street address, sorts by earliest first deadline, and flags a closed window', () => {
     const rows = [
-      row({ jobId: 'a', hcpNumber: '883', jobAddress: '2100 Independence Dr, New Braunfels', firstWorkMonth: '2026-03', firstDeadline: '2026-06-15' }),
+      row({ jobId: 'a', hcpNumber: '883', jobAddress: '9345 Iverson Dr, New Braunfels', firstWorkMonth: '2026-03', firstDeadline: '2026-06-15' }),
       row({ jobId: 'b', hcpNumber: '650', firstDeadline: '2026-09-15' }),
-      row({ jobId: 'c', hcpNumber: '523', jobAddress: '2100 Independence Dr., New Braunfels TX', firstWorkMonth: '2026-05', firstDeadline: '2026-08-17' }),
+      row({ jobId: 'c', hcpNumber: '523', jobAddress: '9345 Iverson Dr., New Braunfels TX', firstWorkMonth: '2026-05', firstDeadline: '2026-08-17' }),
       row({ jobId: 'd', hcpNumber: '900', jobAddress: '1 Nowhere Ln', firstWorkMonth: '', firstDeadline: null }),
     ]
     const props = groupByProperty(rows, '2026-09-14')
-    expect(props.map((p) => p.key)).toEqual(['2100 independence', '5498 cinder', '1 nowhere'])
+    expect(props.map((p) => p.key)).toEqual(['9345 iverson', '5498 cinder', '1 nowhere'])
     expect(props[0]!.jobs.map((j) => j.hcpNumber)).toEqual(['523', '883'])
     expect(props[0]!.firstDeadline).toBe('2026-06-15')
     expect(props[0]!.windowClosed).toBe(true)
@@ -210,7 +210,7 @@ describe('the job form (PR 2)', () => {
 
 describe('Bill Customer owner line and the unconfirmed reader (v2.3450)', () => {
   const typed = { owner_name: '', owner_company: 'Elwick Holdings LLC', owner_mailing_address: '4 Example Way', owner_confirmed_at: '2026-09-14T00:00:00Z', parcel_source: '' }
-  const fromRoll = { owner_name: '', owner_company: 'SAMPLE STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District' }
+  const fromRoll = { owner_name: '', owner_company: 'SAMPLE STATION LTD', owner_mailing_address: '3342 Bramwell', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District' }
   it('reads "from the roll · unconfirmed" only when provenance is on the row and nobody stamped it', () => {
     expect(ownerFromRollUnconfirmed(fromRoll)).toBe(true)
     expect(ownerFromRollUnconfirmed({ ...fromRoll, owner_confirmed_at: '2026-09-15T00:00:00Z' })).toBe(false)
@@ -256,7 +256,7 @@ describe('a job with no clock hours is dated from its creation month (v2.3747)',
     expect(parsed.map((r) => r.firstMonthFromCreation)).toEqual([true, false])
     const props = groupByProperty(parsed, '2026-09-23')
     expect(props.map((p) => p.noticeLabel)).toEqual(["April's window closed · later months live", 'due Oct 15 · dated from the job’s creation'])
-    const closed = groupByProperty([row({ jobId: 'j372', hcpNumber: '372', jobAddress: '1780 FM 1343', firstWorkMonth: '2026-02', firstDeadline: '2026-05-15', firstMonthFromCreation: true })], '2026-09-23')
+    const closed = groupByProperty([row({ jobId: 'j372', hcpNumber: '372', jobAddress: '4815 FM 1343', firstWorkMonth: '2026-02', firstDeadline: '2026-05-15', firstMonthFromCreation: true })], '2026-09-23')
     expect(closed[0]!.noticeLabel).toBe("February's window closed · dated from the job’s creation")
     expect(closed[0]!.firstMonthFromCreation).toBe(true)
   })

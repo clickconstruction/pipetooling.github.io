@@ -10,9 +10,9 @@ import {
 } from './stagesWeeklyMovement'
 
 const JOBS: WeeklyJobLite[] = [
-  { id: 'j1', hcp_number: '948', click_number: '', job_name: 'Connect sink', job_address: '12803 El Dorado', revenue: 3850 },
+  { id: 'j1', hcp_number: '948', click_number: '', job_name: 'Connect sink', job_address: '51964 El Dalton', revenue: 3850 },
   { id: 'j2', hcp_number: '', click_number: '77', job_name: 'Spec house', job_address: '', revenue: 18200 },
-  { id: 'j3', hcp_number: '729', click_number: '', job_name: 'SVP Round Rock', job_address: '1200 Kenney Fort', revenue: 745 },
+  { id: 'j3', hcp_number: '729', click_number: '', job_name: 'SCW Round Rock', job_address: '1200 Kenney Fort', revenue: 745 },
 ]
 const USERS = [
   { id: 'u1', name: 'Taunya' },

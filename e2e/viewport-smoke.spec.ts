@@ -167,6 +167,36 @@ for (const size of [
 }
 
 /**
+ * The Projects board's cards hold a long job name (v2.7952). A card is a grid of one column, and left at
+ * auto that column grew to the title's one line: an 88-character name drew 613 px of title in a 504 px card,
+ * over the next card, and the page scrolled sideways by 160 px at 1024. Real names come and go, so the check
+ * writes a made-up long name into every card's title on the page itself, then measures. Nothing is saved.
+ */
+for (const size of [PHONE, { width: 1024, height: 768 }, { width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
+  test(`Projects board: a long job name stays inside its card at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size)
+    await page.goto('/projects-board')
+    // The count shows once the board has read its projects; a board with none has no card to measure.
+    await expect(page.getByTestId('projects-board')).toContainText(/\d+ projects?/, { timeout: 20000 })
+    const measured = await page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="project-card"]'))
+      const titles = cards.map((card) => card.querySelector<HTMLElement>('button[aria-label^="Open "]'))
+      for (const title of titles) if (title) title.textContent = `J0000 · ${'a made-up job name far too long for its card '.repeat(4)}`
+      return {
+        cards: cards.length,
+        titles: titles.filter(Boolean).length,
+        pastEdge: Math.max(0, ...cards.map((card) => card.scrollWidth - card.clientWidth)),
+        notCut: titles.filter((title) => title && title.scrollWidth <= title.clientWidth).length,
+      }
+    })
+    expect(measured.titles, 'a card drew without its title press').toBe(measured.cards)
+    expect(measured.pastEdge, `a card's rows run ${measured.pastEdge}px past its edge at ${size.width}px`).toBe(0)
+    expect(measured.notCut, `${measured.notCut} long titles drew whole instead of ending in an ellipsis`).toBe(0)
+    await expectNoSidewaysOverflow(page, `/projects-board @ ${size.width}px`)
+  })
+}
+
+/**
  * Job Parts Tally's three tabs share one row at the page's full width on every tab (v2.6117). The page
  * sat in Layout's column with auto side margins and no width, so its content sized it: a tab whose widest
  * line was shorter than the screen drew a narrower page, and the row grew and shrank as each tab loaded.

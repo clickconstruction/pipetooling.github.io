@@ -245,7 +245,10 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and thirty-seven verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and thirty-seven since v2.7939, whose robot book pair is the Pricing tab's own update of an entry's prices on `price_book_entries` under that table's RLS, held to an entry of a book that is `is_robot` with no bid, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and forty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and forty-five since v2.7970, whose archive pair is the Digital twins panel's own update of `revoked_at` on a twin's live `twin_credentials` rows under the table's dev-only RLS and then `archive-user` or `restore-user` called as the dev, each keeping its own role check, and whose rounds pair is the Rounds card's own `robot_rounds_stop`, which takes a dev or the master, with no new role and no new policy;
+one hundred and forty-one since v2.7958, whose price matrix pair is the Price it with the robot window's own insert on `bid_price_matrix_requests` and its Take it back, under that table's pricing-sharers RLS, with no new role and no new policy;
+one hundred and thirty-nine since v2.7909, whose receipt take-off is the receipt press's own update of `sends` on the filed affidavit's `job_lien_filings` row under the table's own update policy, never the day served, with the file then sent to Drive's trash through `drive-link`'s own trash door, no new role and no new policy;
+one hundred and thirty-seven since v2.7939, whose robot book pair is the Pricing tab's own update of an entry's prices on `price_book_entries` under that table's RLS, held to an entry of a book that is `is_robot` with no bid, with no new role and no new policy;
 one hundred and thirty-five since v2.7934, whose calibration standard pair is the Digital twins panel's own update of `calibration_standard` on a person's `users` row under the table's dev update policy, a new standard held to a live person who is not a twin, with no new role and no new policy;
 one hundred and thirty-three since v2.7918, whose rung pair is the Digital twins panel's own update of `read_only` on a twin's `users` row under the table's dev update policy, held to a row that is a twin, with no new role and no new policy;
 one hundred and thirty-one since v2.7900, whose key revoke is the Digital twins panel's own update of `revoked_at` on the key's `twin_credentials` row under the table's dev-only RLS, with `read_twin_keys` reading that table by a column list that never names `token_hash`, no new role and no new policy;
@@ -897,6 +900,7 @@ Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
 Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' quick send does, under `person_contract_documents`' own write policy, and reads the Contract Book and the roster under theirs.
+Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
@@ -1241,12 +1245,20 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Split in two** (v2.7891, `docs/migrations/20261119010000_trip_split.md`): **`trip_split(trip, from_day, dry_run)`** cuts a trip at a day into two, for the trips office: dev, master_technician, assistant, controller, primary.
   It is a SECURITY INVOKER that writes through `trip_save` twice in one call, so the trips tables' own policies refuse a training account, a digital twin and an archived caller, and a person on the trip who is not in the office cannot split it.
   The press is drawn for the reader who can change the trip.
+- **Join with the next** (v2.7963, `docs/migrations/20261119180000_trip_join.md`): **`trip_join(trip, next_trip, dry_run)`** makes a trip and the trip that went out next on the same home one trip, for the trips office: dev, master_technician, assistant, controller, primary.
+  It is a SECURITY INVOKER that writes through `trip_save` and deletes the next trip in one call, so the trips tables' own policies refuse a training account, a digital twin and an archived caller, and a person on the trip who is not in the office cannot join it.
+  **`trip_join_line(trip, next_trip, move)`** is the one definer step: it reads what the two trips hold of a job's lines and ties a line only the next trip holds to the joined trip, for the trips office and only for a trip and its next trip, and it refuses a training account that asks for the move, a digital twin and an archived caller itself.
+  A primary, who cannot put a trip on a bill, can join two trips and so carry a line's tie from one to the other.
+  No price, bill or total changes when a tie is carried.
+  **`trip_next_id(trip)`** is a SECURITY INVOKER read under the caller's own policies.
 - **Deleted trips** (v2.7800, `docs/migrations/20261118100000_trips_deleted.md`): a deleted trip is kept in `deleted_records_archive`, its row, its people and its jobs under the trip's id.
   The people and the jobs are kept only when the trip itself went, so a save that rewrites them and a deleted job that takes its link leave nothing.
   **`trip_deleted_list(site)`**, a SECURITY DEFINER, reads a site's deleted trips that nothing has put back, for the trips office alone: dev, master_technician, assistant, controller and primary.
   A person who was on the trip reads no deleted one, and the archive table itself stays dev-only.
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
+  Since v2.7963 the list names the trip a deleted one was joined into (`joined_into`), and the fold draws no **Put back** for it.
+  The save itself refuses nothing more for a joined trip.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
   Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 - **How far is far** (v2.7888): `app_settings` `trips_far_miles_v1`, the miles from the shop that make a site a trip from home, is read by every signed-in user, as `app_settings` is, and set by a dev alone under the table's own dev policy.
@@ -2522,8 +2534,10 @@ A training-mode account cannot sign, since starting a paper is a write.
   `permit_set_builder_keys` runs as the service role alone.
   Since v2.6866 (punch list #307) the same people see two blocks in a bid's Edit window, drawn only for `canResearchPermits` roles and read through `bid_site_permits` under the same row security: **This site** under the address and **What we can see about** the GC under its card.
   Since v2.6872 the same people may answer who a permit's name is, under a bid's site permit and since v2.6963 on a builder's sheet on Builders, where a take-back is one more insert: `builder_customer_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete.
-  The same `canResearchPermits` roles alone see the Bid Board's **Permit news on your bids** strip and its row chips (v2.6870, `showPermitNews` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
-  Since v2.7923 the strip lists the reader's own bids (`isMyBid`), and only an office reader keeps the one folded line for everyone else's when they have none of their own.
+  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
+  Since v2.7941 the same roles read the news on **Followup → Permit news** (`?tab=permit-news`), where the red count and the first list are the reader's own bids (`isMyBid`) and **Everyone's** lists the rest.
+  A superintendent is turned away from that lens with the other office lenses, and a primary by its own allowlist.
+  Since v2.7940 the same people may say whether a permit on a bid's address is that bid's job: `bid_permit_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and a take-back is one more insert.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;
@@ -3168,7 +3182,7 @@ Imitate lands on `roleHomePath(role)`.
 | **My Bids** (Dashboard collapsible; **My Bids (`n`)** after load) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Rejected clock sessions (org-wide, review/delete; the Dashboard notice is the pay-approved owner's too since v2.6758, punch list #188 row 33) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Notes to the dev inbox** (Help feedback until v2.7658; it also lists the wrench's notes, punch list #380) on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before; the card's Overdue rows drew **Forward** for every role until v2.7965) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual).
 Sending does not imply inbox access.

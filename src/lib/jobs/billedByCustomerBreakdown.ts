@@ -11,7 +11,7 @@
  * (journey J4-1 (b): Quickfill used to say 58 where the board said 59).
  */
 import { jobPartyName } from './jobPartyExclusive'
-import { listPayer } from './billToParty'
+import { effectiveInvoiceParty, listPayer, type EffectiveBillParty } from './billToParty'
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -58,6 +58,8 @@ export type BilledBreakdownBill = {
   externalSendChannel: string | null
   /** The invoice's bill-to email override (alternate recipient), when set. */
   billToEmail: string | null
+  /** Who the bill went to (v2.7959): a paper bill to the GC is emailed again to the GC's billing address, not `customerEmail`. */
+  billedTo: EffectiveBillParty
 }
 
 /** Board fixtures arrive sequence-sorted (enrichJobsLedgerPrimaryRows); scoping preserves that order. */
@@ -129,6 +131,7 @@ export function buildBilledByCustomerBreakdown(
       sentAtIso: inv?.sent_to_customer_at ?? null,
       externalSendChannel: (inv?.external_send_channel ?? '').trim() || null,
       billToEmail: (inv?.bill_to_email ?? '').trim() || null,
+      billedTo: effectiveInvoiceParty(job, inv),
     }
     const g = groups.get(key)
     if (g) {

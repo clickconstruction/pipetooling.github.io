@@ -42,7 +42,7 @@ const FIELDS: DemandLetterFields = {
   businessEmail: 'office@clickplumbing.com',
   recipientName: 'Kestrin Contracting',
   recipientEmail: 'ap@kestrin.example',
-  recipientAddress: '2904 Corporate CR Ste 114, Flower Mound, TX 75028',
+  recipientAddress: '1265 Coleridge CR Ste 114, Flower Mound, TX 75028',
   invoiceNumber: '915',
   invoiceDate: '2026-07-15',
   serviceDescription: 'Relwyn Health — plumbing',
@@ -575,7 +575,7 @@ describe('prefill reads the same rule (v2.3515)', () => {
     issuer: { companyName: 'Click Plumbing and Electrical', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' },
     senderName: 'Malachi',
     senderEmailFallback: 'office@x.com',
-    recipient: { name: 'Sam Coyle', email: 'sam@x.com', address: '' },
+    recipient: { name: 'Seth Cadwell', email: 'sam@x.com', address: '' },
     priorNotices: [],
     propertyKind: 'residential',
     todayYmd: '2026-09-16',
@@ -583,7 +583,7 @@ describe('prefill reads the same rule (v2.3515)', () => {
 
   it('job 102: the letter claims $2,355, the statement shows $3,000 paid, and the sentence says so', () => {
     const bill = inv('a', 5355, '2026-08-04T15:43:00Z')
-    const job = { id: 'j102', hcp_number: '102', job_name: 'Samantha Coyle', last_work_date: null, payments: [{ invoice_id: null, amount: 3000 }], invoices: [bill] } as unknown as JobWithDetails
+    const job = { id: 'j102', hcp_number: '102', job_name: 'Sheila Cadwell', last_work_date: null, payments: [{ invoice_id: null, amount: 3000 }], invoices: [bill] } as unknown as JobWithDetails
     const f = buildDemandLetterPrefill(ctx(job, [bill]))
     expect(f.paymentsReceived).toBe('3000.00')
     expect(f.outstanding).toBe('2355.00')
@@ -615,7 +615,7 @@ describe('the letter as a page (v2.4577)', () => {
     paid: '0.00',
     balance: '625.00',
   }
-  const fields: DemandLetterFields = { ...FIELDS, statement: [STMT_867, second], outstanding: '2335.00', serviceAddress: '410 TX-123, Seguin, TX 78155', recipientAddress: '2209 N. 23rd St., McAllen, TX 78501' }
+  const fields: DemandLetterFields = { ...FIELDS, statement: [STMT_867, second], outstanding: '2335.00', serviceAddress: '410 TX-123, Seguin, TX 78155', recipientAddress: '6020 N. 23rd St., McAllen, TX 78501' }
 
   it('opens with the addressee, the subject and the boxed amount, and ends demand → notice history → signature → enclosures', () => {
     const model = buildDemandLetterModel({ ...fields, enclosures: [{ label: 'A-1', kind: 'invoice', title: 'Invoice #1', pages: 1 }] }, '2026-09-14')
@@ -632,7 +632,7 @@ describe('the letter as a page (v2.4577)', () => {
   })
 
   it('the addressee reads as an envelope does', () => {
-    expect(recipientLines('Southern Pine Construction', '2209 N. 23rd St., McAllen, TX 78501')).toEqual(['Southern Pine Construction', '2209 N. 23rd St.', 'McAllen, TX 78501'])
+    expect(recipientLines('Southern Pine Construction', '6020 N. 23rd St., McAllen, TX 78501')).toEqual(['Southern Pine Construction', '6020 N. 23rd St.', 'McAllen, TX 78501'])
     expect(recipientLines('A', '1 Main St\nSuite 2\nAustin, TX 78701')).toEqual(['A', '1 Main St', 'Suite 2', 'Austin, TX 78701'])
     expect(recipientLines('', '')).toEqual(['—'])
     expect(demandSubject([STMT_867], '')).toEqual({ text: 'Invoice #867-2608180928', detail: '' })

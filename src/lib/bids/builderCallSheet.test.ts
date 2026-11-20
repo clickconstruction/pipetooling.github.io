@@ -3,14 +3,14 @@ import { buildBuilderCallSheetHtml, buildFollowupQueueCallSheetHtml, type CallSh
 
 const BUILDER: CallSheetBuilder = {
   name: 'Sai Engineers & Contractors',
-  address: '1708 W. San Antonio St, Lockhart TX',
+  address: '8631 W. San Antonio St, Lockhart TX',
   phone: '(512) 555-0100',
   lastContactLabel: '3 months ago',
   hitRatePct: 25,
   openValueLabel: '$360k',
   people: [{ name: 'Ravi Patel', phones: ['(512) 555-0142'], email: 'ravi@sample-engineers.example', note: 'PM' }],
   bids: [
-    { label: 'REGAN SQUARE PR5 (214)', sectionLabel: 'Not yet won or lost', dueLabel: '04/12', lastUpdateLabel: '1 month ago' },
+    { label: 'ROGER SQUARE PR5 (214)', sectionLabel: 'Not yet won or lost', dueLabel: '04/12', lastUpdateLabel: '1 month ago' },
     { label: 'Lockhart Retail Shell', sectionLabel: 'Unsent', dueLabel: '08/12', lastUpdateLabel: null },
   ],
 }
@@ -22,7 +22,7 @@ describe('buildBuilderCallSheetHtml', () => {
     expect(html).toContain('tel:+15125550142')
     expect(html).toContain('25% hit rate')
     expect(html).toContain('$360k open')
-    expect(html).toContain('REGAN SQUARE PR5 (214)')
+    expect(html).toContain('ROGER SQUARE PR5 (214)')
     expect(html).toContain('no update')
     expect(html).toContain('Aug 4, 2026 for Wendi')
   })

@@ -18,6 +18,8 @@
 // and the bids those rows are on, and the plan hash commits to them. Pure: no env, no network; the reads come in
 // through one small interface (src/lib/devMcp/devMcpRobotBookPrice.test.ts).
 
+import { SHADOW_RUNS_READ } from './devMcpShadowRuns.ts'
+
 type Json = Record<string, unknown>
 const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : null)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -105,7 +107,10 @@ export type RobotBookEntryRow = { id: string; fixture_type_id: string | null; na
 /** A count row's assignment to an entry: the row reads the entry's price unless it carries its own. */
 export type RobotBookUseRow = { bid_id: string; price_book_entry_id: string; unit_price_override: number | null }
 export type RobotBookBidRow = { id: string; bid_number: string | null; project_name: string | null; bid_date_sent: string | null; outcome: string | null }
-export type RobotBookRunRow = { shadow_bid_id: string; status: string }
+/** A robot's run as the staff RPC answers it: the shadow bid by its number, never its id (devMcpShadowRuns.ts). */
+export type RobotBookRunRow = { shadow_bid_number: string | null; status: string }
+/** How many locked or scored runs one plan reads. */
+export const ROBOT_BOOK_RUNS_LIMIT = 1000
 
 /** How many assignments, and how many bids, one plan reads; at the limit the plan says at least. */
 export const ROBOT_BOOK_USES_LIMIT = 1000
@@ -119,8 +124,8 @@ export type RobotBookWorld = {
   /** The assignments that point at the entries the ask finds; null when the read was refused. */
   uses: RobotBookUseRow[] | null
   bids: RobotBookBidRow[]
-  /** The robots' locked or scored runs on those bids. */
-  runs: RobotBookRunRow[]
+  /** The robots' locked or scored runs, every one of them; null when the read was refused. */
+  runs: RobotBookRunRow[] | null
 }
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0)
@@ -164,9 +169,11 @@ export async function readRobotBookWorld(reads: RobotBookReads, p: RobotBookPric
   if (!bidIds.length) return { books, tradeName, entries, uses, bids: [], runs: [] }
   const [bids, runs] = await Promise.all([
     reads.rows('bids', `select=id,bid_number,project_name,bid_date_sent,outcome&id=in.(${bidIds.join(',')})&limit=${ROBOT_BOOK_BIDS_LIMIT}`).catch(() => [] as Json[]),
-    reads.rows('twin_shadow_runs', `select=shadow_bid_id,status&shadow_bid_id=in.(${bidIds.join(',')})&status=in.(locked,scored)&limit=${ROBOT_BOOK_BIDS_LIMIT}`).catch(() => [] as Json[]),
+    // Through the staff RPC, matched to the bids by number in the dry run. A refused read is null, never an empty list:
+    // "no locked robot bid" and "could not look" are different answers.
+    reads.rows(SHADOW_RUNS_READ, `select=shadow_bid_number,status&status=in.(locked,scored)&limit=${ROBOT_BOOK_RUNS_LIMIT}`).catch(() => null),
   ])
-  return { books, tradeName, entries, uses, bids: bids as RobotBookBidRow[], runs: runs as RobotBookRunRow[] }
+  return { books, tradeName, entries, uses, bids: bids as RobotBookBidRow[], runs: runs as RobotBookRunRow[] | null }
 }
 
 // ── the dry run ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -256,8 +263,9 @@ export function robotBookPriceDryRun(p: RobotBookPricePayload, world: RobotBookW
   const bidById = new Map(world.bids.map((b) => [b.id, b]))
   const known = reachedBidIds.map((id) => bidById.get(id)).filter((b): b is RobotBookBidRow => !!b)
   const sent = known.filter((b) => !!b.bid_date_sent)
-  const lockedIds = new Set(world.runs.map((r) => r.shadow_bid_id))
-  const locked = known.filter((b) => lockedIds.has(b.id))
+  const bidNumber = (v: unknown): string => (v == null ? '' : String(v).trim())
+  const lockedNumbers = world.runs ? new Set(world.runs.map((r) => bidNumber(r.shadow_bid_number)).filter(Boolean)) : null
+  const locked = lockedNumbers ? known.filter((b) => lockedNumbers.has(bidNumber(b.bid_number))) : []
   const named = (list: RobotBookBidRow[]): string => `${list.slice(0, ROBOT_BOOK_BIDS_NAMED).map(bidWords).join(', ')}${list.length > ROBOT_BOOK_BIDS_NAMED ? `, and ${list.length - ROBOT_BOOK_BIDS_NAMED} more` : ''}`
   const warnings: string[] = []
   if (!liveUses) warnings.push('The rows that read these entries could not be read, so which bids move is not known. Read them before you apply: bid_pricing_assignments by price_book_entry_id.')
@@ -265,6 +273,7 @@ export function robotBookPriceDryRun(p: RobotBookPricePayload, world: RobotBookW
     if (atLimit) warnings.push(`The read of the rows stopped at ${ROBOT_BOOK_USES_LIMIT}, so every count here is at least that many.`)
     if (reachedBidIds.length > known.length) warnings.push(`${reachedBidIds.length - known.length} of the ${reachedBidIds.length} bids could not be read by name, so the sent and locked counts cover the ${known.length} that could.`)
     if (sent.length) warnings.push(`${sent.length} sent bid${sent.length === 1 ? '' : 's'} read${sent.length === 1 ? 's' : ''} these entries live and would show a new number on the grid, where the paper that went out keeps the old one: ${named(sent)}.`)
+    if (!lockedNumbers && known.length) warnings.push('The robots\' runs could not be read, so the locked and scored robot bids among these are not counted. The Robots board lists them.')
     if (locked.length) warnings.push(`${locked.length} robot bid${locked.length === 1 ? '' : 's'} with a locked or scored run read${locked.length === 1 ? 's' : ''} these entries. The locked total on the run stays as it was locked; the bid's own grid would read the new price, so the two part: ${named(locked)}.`)
   }
   if (held.length) warnings.push(`${held.length} of ${p.entries.length} asked ${held.length === 1 ? 'is' : 'are'} held and not in this plan.${heldWords}`)
@@ -285,7 +294,7 @@ export function robotBookPriceDryRun(p: RobotBookPricePayload, world: RobotBookW
       changes,
       unchanged,
       held,
-      reach: liveUses ? { rows: liveUses.length, bids: reachedBidIds.length, sent_bids: sent.length, locked_robot_bids: locked.length, at_least: atLimit } : null,
+      reach: liveUses ? { rows: liveUses.length, bids: reachedBidIds.length, sent_bids: sent.length, locked_robot_bids: lockedNumbers ? locked.length : null, at_least: atLimit } : null,
       warnings,
       then: `apply writes ${n === 1 ? 'that price' : `those ${n} prices`} on ${n === 1 ? 'the entry\'s own row' : 'each entry\'s own row'} as you, as saving the entry on the Pricing tab's book panel does, one entry a write, each reported done or held. A robot book is never copied into a bid, so a row assigned to an entry reads it live. ${reachWords} The book keeps no history: the reason and each price before and after stand on the apply's line in this seat's call log alone, so the way back is this pair with the before prices.`,
     },

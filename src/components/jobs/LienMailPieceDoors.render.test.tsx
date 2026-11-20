@@ -32,11 +32,11 @@ describe('LienMailPieceDoors', () => {
     fireEvent.change(screen.getByLabelText('The other address, on one line'), { target: { value: '1 Main St, Austin, Texas 787' } })
     expect(screen.getByText('needs a two-letter state, a ZIP or ZIP+4')).toBeTruthy()
     expect(again.disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('The other address, on one line'), { target: { value: '9993 IH 10 West Suite 102, San Antonio, TX 78230' } })
+    fireEvent.change(screen.getByLabelText('The other address, on one line'), { target: { value: '1130 IH 10 West Suite 102, San Antonio, TX 78230' } })
     expect(again.disabled).toBe(false)
     fireEvent.click(again)
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(2))
-    expect(resend).toHaveBeenLastCalledWith({ pieceId: 'p1', mode: 'address', jobNumber: '650', address: { name: '', organization: 'AXO Schertz Holdings LLC', address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230' } })
+    expect(resend).toHaveBeenLastCalledWith({ pieceId: 'p1', mode: 'address', jobNumber: '650', address: { name: '', organization: 'AXO Schertz Holdings LLC', address1: '1130 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'handled by hand ›' }))
     const record = screen.getByRole('button', { name: 'record it ›' }) as HTMLButtonElement

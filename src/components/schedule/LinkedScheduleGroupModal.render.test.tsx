@@ -69,7 +69,7 @@ function renderModal(overrides: Partial<Parameters<typeof LinkedScheduleGroupMod
       open
       onClose={() => {}}
       groupId="g1"
-      getJobDisplayTitle={() => '940 · Lyndsey McDermott'}
+      getJobDisplayTitle={() => '940 · Lorna Mowbray'}
       canManage
       addPeople={[{ userId: 'u-mario', displayName: 'Mario' }]}
       {...overrides}
@@ -80,7 +80,7 @@ function renderModal(overrides: Partial<Parameters<typeof LinkedScheduleGroupMod
 describe('LinkedScheduleGroupModal redesign', () => {
   it('renders one header card per leg with shared job/date/time, person rows, and no table', async () => {
     renderModal()
-    const jobTitles = await screen.findAllByText('940 · Lyndsey McDermott')
+    const jobTitles = await screen.findAllByText('940 · Lorna Mowbray')
     expect(jobTitles).toHaveLength(2)
     expect(screen.getByText(/Wed, Aug 5/)).toBeTruthy()
     expect(screen.getByText(/Wed, Aug 12/)).toBeTruthy()
@@ -95,13 +95,13 @@ describe('LinkedScheduleGroupModal redesign', () => {
 
   it('shows the outside-week badge only with hub-week context', async () => {
     renderModal({ weekStart: '2026-08-02', weekEnd: '2026-08-08' })
-    await screen.findAllByText('940 · Lyndsey McDermott')
+    await screen.findAllByText('940 · Lorna Mowbray')
     expect(screen.getAllByText('outside week')).toHaveLength(1)
   })
 
   it('hides badges and shows the combined add-person row in Dispatch Mode (no week context)', async () => {
     renderModal()
-    await screen.findAllByText('940 · Lyndsey McDermott')
+    await screen.findAllByText('940 · Lorna Mowbray')
     expect(screen.queryByText('outside week')).toBeNull()
     expect(screen.getByText('Add a person…')).toBeTruthy()
     expect(screen.getByText('Add')).toBeTruthy()
@@ -109,7 +109,7 @@ describe('LinkedScheduleGroupModal redesign', () => {
 
   it('Remove asks in-app (no window.confirm): confirm strip appears, Cancel restores (v2.1603)', async () => {
     renderModal()
-    await screen.findAllByText('940 · Lyndsey McDermott')
+    await screen.findAllByText('940 · Lorna Mowbray')
     const firstRemove = screen.getAllByText('Remove')[0]
     expect(firstRemove).toBeTruthy()
     fireEvent.click(firstRemove!)
@@ -123,7 +123,7 @@ describe('LinkedScheduleGroupModal redesign', () => {
 
   it('read-only variant renders the cards without manage buttons', async () => {
     renderModal({ canManage: false, addPeople: undefined })
-    await screen.findAllByText('940 · Lyndsey McDermott')
+    await screen.findAllByText('940 · Lorna Mowbray')
     expect(screen.queryByText('Unlink')).toBeNull()
     expect(screen.queryByText('Remove')).toBeNull()
   })

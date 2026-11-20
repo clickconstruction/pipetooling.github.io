@@ -51,7 +51,7 @@ const HASH = 'a'.repeat(64)
 const SHA = 'c'.repeat(64)
 const TODAY = '2026-11-20'
 
-const filingRow = (over: Partial<LienServiceFiling> = {}): LienServiceFiling => ({ id: FILING, job_id: JOB, fields: { form: 'short', isSub: true }, filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: 'https://drive.google.com/file/d/abc/view', serve_due: '2026-11-23', served_at: null, sends: [], ...over })
+const filingRow = (over: Partial<LienServiceFiling> = {}): LienServiceFiling => ({ id: FILING, job_id: JOB, fields: { form: 'short', isSub: true }, filed_at: '2026-11-16', recording_number: '20269990001', county: 'Marlow', document_url: 'https://drive.google.com/file/d/abc/view', serve_due: '2026-11-23', served_at: null, sends: [], ...over })
 const world = (over: Partial<LienServiceWorld> = {}): LienServiceWorld => ({
   job: { id: JOB, job_name: 'ZZ Test Maple Court', job_address: '14 Maple Ct, Marlow, TX 78000', hcp_number: '2291', click_number: '', gc_customer_id: GC },
   filing: filingRow(),
@@ -88,9 +88,9 @@ describe('the pair and what it stands on', () => {
     expect(isWriteVerb('read_lien_filings')).toBe(false)
     expect(SERVER).toContain("case 'read_lien_filings': {")
     expect(SERVER).toContain("name: 'read_lien_filings',")
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(137)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(145)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else:')
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', target, { served_at: write.servedOn, sends: lienServiceSends(write) }, 'return=representation')")
     expect(README).toContain('`plan_lien_service(service \\| services)` · `apply_lien_service(service, plan_hash)`')
     expect(README).toContain('`read_lien_filings(show?, job_id?)`')

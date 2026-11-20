@@ -65,7 +65,7 @@ function payload(owner: string, mailing: string) {
 
 describe('BillCustomerOwnerLine', () => {
   it('a GC job with no owner: the roll’s answer with provenance, and Use writes the property through the shared helper', async () => {
-    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')))
+    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209')))
     renderWithProviders(<BillCustomerOwnerLine jobId="j650" userId="u-taunya" />)
     await waitFor(() => expect(screen.getByTestId('bill-customer-owner-line').getAttribute('data-state')).toBe('found'))
     expect(screen.getByText(/Owner of record for 5498 Cinder Valley Dr 200:/)).toBeTruthy()

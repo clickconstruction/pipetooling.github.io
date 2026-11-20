@@ -14,7 +14,7 @@ describe('buildDuplicateJobAddressGroups', () => {
     const groups = buildDuplicateJobAddressGroups([
       job('a', '109 Tamberline Trail', 'working', '2026-02-24'),
       job('b', '109  tamberline   trail', 'paid', '2026-02-25'),
-      job('c', '717 Trinity St', 'working', '2026-03-01'),
+      job('c', '972 Tarleton St', 'working', '2026-03-01'),
       job('d', '', 'working', '2026-03-02'),
       job('e', null as unknown as string, 'working', '2026-03-03'),
     ])

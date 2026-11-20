@@ -57,11 +57,11 @@ const textOn = (doc: FakeJsPDF, text: string) => doc.calls.filter((c) => c.text 
 describe('gcChecksSheetPdfBlob', () => {
   it('draws the title, the period, the summary, both sections and the foot, with the page count on every page', async () => {
     const report = buildGcChecksReport({ gcId: 'gc-1', jobs: [job(1, 1, '48211')], sinceYmd: '2026-06-01' })
-    const blob = await gcChecksSheetPdfBlob('Structura Builders', report, { asOfYmd: '2026-09-28' })
+    const blob = await gcChecksSheetPdfBlob('Sheffield Builders', report, { asOfYmd: '2026-09-28' })
     const doc = FakeJsPDF.last!
     expect(blob.type).toBe('application/pdf')
     const drawn = doc.calls.map((c) => c.text).join(' ')
-    expect(drawn).toContain('Structura Builders — where your checks were applied')
+    expect(drawn).toContain('Sheffield Builders — where your checks were applied')
     expect(drawn).toContain('Since Jun 1, 2026 · as of Sep 28, 2026')
     expect(drawn).toContain('1 payment')
     expect(drawn).toContain('Each payment, and where it sits now')
@@ -78,7 +78,7 @@ describe('gcChecksSheetPdfBlob', () => {
   it('keeps every row whole on one page and draws the header row again on each page the table runs onto', async () => {
     const jobs = Array.from({ length: 80 }, (_, i) => job(i + 1, 1, String(50000 + i)))
     const report = buildGcChecksReport({ gcId: 'gc-1', jobs })
-    await gcChecksSheetPdfBlob('Structura Builders', report, { asOfYmd: '2026-09-28' })
+    await gcChecksSheetPdfBlob('Sheffield Builders', report, { asOfYmd: '2026-09-28' })
     const doc = FakeJsPDF.last!
     expect(doc.pages).toBeGreaterThan(2)
     for (let i = 0; i < 80; i++) {
@@ -96,7 +96,7 @@ describe('gcChecksSheetPdfBlob', () => {
 
   it('runs a check that paid more bills than a page holds onto the next page, under its header row again', async () => {
     const report = buildGcChecksReport({ gcId: 'gc-1', jobs: [job(1, 120, '9999')] })
-    await gcChecksSheetPdfBlob('Structura Builders', report, { asOfYmd: '2026-09-28' })
+    await gcChecksSheetPdfBlob('Sheffield Builders', report, { asOfYmd: '2026-09-28' })
     const doc = FakeJsPDF.last!
     const pages = new Set(doc.calls.filter((c) => / of 120$/.test(c.text)).map((c) => c.page))
     expect(pages.size).toBeGreaterThan(1)

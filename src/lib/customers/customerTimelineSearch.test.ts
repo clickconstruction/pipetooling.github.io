@@ -7,7 +7,7 @@ const customers = [
   c('2', 'Ridgeway'),
   c('3', 'Old Ridgeway Homes', '2025-01-01T00:00:00Z'),
   c('4', 'Lee Park'),
-  c('5', 'Parker Homes'),
+  c('5', 'Parkhurst Homes'),
   c('6', 'Park Place'),
   c('7', 'Parkside'),
 ]

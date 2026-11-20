@@ -31,7 +31,7 @@ const input: CallerMatchInput = {
     j274: { id: 'j274', hcp_number: '', click_number: '1122', job_name: 'Tarrow Rd', job_address: '4410 Tarrow Rd, San Antonio, TX', customer_id: null, customer_name: null, gc_customer_id: 'rlc', customer_address_id: 'a2', revenue: 0, payments_made: 0, master_user_id: null, last_work_date: null },
     j212: { id: 'j212', hcp_number: '1234', click_number: null, job_name: 'Sample job', job_address: '212 Kettle Dr, Buda, TX 78610', customer_id: null, customer_name: null, gc_customer_id: 'harb', customer_address_id: null, revenue: 4_250, payments_made: 0, master_user_id: null, last_work_date: null },
     // Nothing mailed yet: a notice still in draft.
-    j275: { id: 'j275', hcp_number: '858', click_number: null, job_name: 'Service Visit — 410 Candelaria', job_address: '410 Candelaria, Helotes, TX 78023', customer_id: null, customer_name: null, gc_customer_id: 'rlc', customer_address_id: null, revenue: 7_902, payments_made: 0, master_user_id: null, last_work_date: null },
+    j275: { id: 'j275', hcp_number: '858', click_number: null, job_name: 'Service Visit — 410 Chilton', job_address: '410 Chilton, Helotes, TX 78023', customer_id: null, customer_name: null, gc_customer_id: 'rlc', customer_address_id: null, revenue: 7_902, payments_made: 0, master_user_id: null, last_work_date: null },
   },
   gcsById: { rlc: { id: 'rlc', name: 'RLC', address: '', email: '', policy: 'ask', policyNote: '' }, harb: { id: 'harb', name: 'Harborline Builders', address: '', email: '', policy: 'ask', policyNote: '' } },
   addressesById: {
@@ -72,7 +72,7 @@ describe('someone’s calling (v2.3854)', () => {
     expect(sentIds('san antonio')).toEqual(['j274', 'j273'])
     expect(findOnDesk('linmor buda', index)).toMatchObject({ sent: [], trimmed: false })
     expect(findOnDesk('l', index)).toMatchObject({ sent: [] })
-    expect(sentIds('candelaria')).toEqual([]) // a job with nothing mailed is not a letter anyone is holding
+    expect(sentIds('chilton')).toEqual([]) // a job with nothing mailed is not a letter anyone is holding
   })
 
   it('a GC’s name finds its sent letters, newest first', () => {

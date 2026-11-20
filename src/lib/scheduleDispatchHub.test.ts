@@ -65,7 +65,7 @@ describe('findDuplicateJobAddress', () => {
     const rows = [
       { job_address: '109 Tamberline Trail Shavano Park, TX 78231' },
       { job_address: '109  tamberline trail shavano park, tx 78231' },
-      { job_address: '717 Trinity St Lockhart, TX' },
+      { job_address: '972 Tarleton St Lockhart, TX' },
     ]
     const dup = findDuplicateJobAddress(rows)
     expect(dup?.count).toBe(2)

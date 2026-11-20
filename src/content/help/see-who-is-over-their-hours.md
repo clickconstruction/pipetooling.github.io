@@ -22,7 +22,7 @@ The tiles under the lines count the field crew. **Over their hours** and **Light
 
 The field crew and the office are two lists. Each row is one person.
 
-- **Can work** is the hours they can work in a week. Amber *assumed, not asked* means nobody has drawn their week yet, so the board reads 40.
+- **Can work** is the hours they can work in a week. Amber *assumed, not asked* means nobody has drawn their week yet, so the board reads 40. *set week* means the hours come from a salaried person's week in pay, with its days under it.
 - The bars are the last eight pay weeks. A pay week runs Sunday to Saturday. The dashed line is 100 percent. Red is over, green is full, blue is steady, amber is light.
 - **Last week** reads worked hours against the hours they could work, with the percent under it.
 - **Days over 8 h** counts the days past eight hours in the window.
@@ -42,7 +42,7 @@ People can draw their own week from **My Time** on their dashboard. The office's
 ## Watch-outs
 
 - The board counts recorded time. That is every closed session approved or waiting, plus the one on the clock right now.
-- Salaried people stay on the schedule's hours and out of the counts. They join the counts only when pay lets them record hours and they punched.
+- Salaried people read against the week their pay sets, like *8 h Mon to Thu, 4 h Fri*. They stay out of the counts. They join the counts only when pay lets them record hours and they punched. Until someone draws them a week, they still read against their set week.
 - Office people clock unevenly. A light office run is never a verdict.
 - Company holidays have no record in the app, so a holiday week reads light for everyone.
 - Recorded days off come out of a person's week at that day's drawn length.

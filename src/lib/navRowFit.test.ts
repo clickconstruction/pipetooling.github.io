@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { NAV_ROW_ALL_ON_ROW, NAV_ROW_MENU_ORDER, navRowFit, navRowNeeds, readNavRow, sameNavRowFit, type NavRowParts } from './navRowFit'
+import { NAV_ROW_ALL_ON_ROW, NAV_ROW_ICON_HOLD, NAV_ROW_MENU_ORDER, navRowFit, navRowNeeds, navRowPressGive, readNavRow, sameNavRowFit, type NavRowParts } from './navRowFit'
 
 /**
  * The dev's row as measured on 2026-11-18 at 16 px a rem: the menu, home and search are 114 px; the right end is
@@ -201,5 +201,41 @@ describe('the header in index.css', () => {
     for (const body of rules) expect(body).not.toMatch(/flex-wrap:\s*wrap\b/)
     // The phone's rule says so outright, so a later sheet-wide default cannot bring the second line back.
     expect(rules.some((body) => /flex-wrap:\s*nowrap/.test(body))).toBe(true)
+  })
+})
+
+describe('a tight row that is still too long (2026-11-19)', () => {
+  /**
+   * The dev's row on the Bids page, measured at 320 px: the left end 113.5, and at the right the three coloured
+   * presses (33.5 each), the worded Bid press (53.3) and the gear (36), with four 8 px gaps between.
+   */
+  const BIDS_DEV: NavRowParts = { left: 113.5, fixed: 33.5 * 3 + 53.3 + 36 + 4 * 8, wrench: 44, people: 38, customers: 0, gap: 8 }
+  const TIGHT_GAP = 2
+
+  it('is tight on a 320 px phone, and with its gaps closed is still 9 px longer than the row', () => {
+    expect(navRowFit(row(320), BIDS_DEV)).toEqual({ inMenu: ['wrench', 'people'], tight: true })
+    const closed = 113.5 + TIGHT_GAP + 33.5 * 3 + 53.3 + 36 + 4 * TIGHT_GAP
+    expect(closed - row(320)).toBeCloseTo(9.3, 1)
+  })
+
+  it('so the coloured presses of a tight row may shrink under their padding, and no other row’s may', () => {
+    expect(navRowPressGive(true)).toEqual({ minWidth: 0 })
+    // On a row that fits, a press that could shrink would be measured short and the fit would answer from that.
+    expect(navRowPressGive(false)).toBeUndefined()
+    expect(NAV_ROW_ICON_HOLD).toEqual({ flexShrink: 0 })
+  })
+
+  it('stays tight once the presses have given: the fit counts plain gaps, which the shrunk row cannot hold', () => {
+    // After the give the four presses are 9.3 px narrower between them and the row exactly fills its 304 px.
+    const given: NavRowParts = { ...BIDS_DEV, fixed: BIDS_DEV.fixed - 9.3 }
+    expect(navRowFit(row(320), given)).toEqual({ inMenu: ['wrench', 'people'], tight: true })
+  })
+
+  it('the phone row’s five coloured presses carry the give, and their four icons hold their size', () => {
+    const layout = readFileSync(resolve(__dirname, '../components/Layout.tsx'), 'utf8')
+    const rightEnd = layout.slice(layout.indexOf('data-nav-row-right'), layout.indexOf('data-navtrack="icon-cluster"'))
+    expect(rightEnd.match(/\.\.\.navRowPressGive\(navRow\.tight\)/g)).toHaveLength(5)
+    expect(rightEnd.match(/style=\{NAV_ROW_ICON_HOLD\}/g)).toHaveLength(4)
+    expect(rightEnd).toContain('title="New Bid"')
   })
 })

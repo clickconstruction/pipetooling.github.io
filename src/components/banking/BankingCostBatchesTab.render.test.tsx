@@ -14,7 +14,7 @@ const TX = '33333333-3333-4333-8333-333333333333'
 const BATCH = '77777777-7777-4777-8777-777777777777'
 
 const jobs: Record<string, unknown>[] = [
-  { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Diamondback', job_address: '1 Catch-all Rd', service_type_id: null, service_type_name: 'Plumbing' },
+  { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Davenport', job_address: '1 Catch-all Rd', service_type_id: null, service_type_name: 'Plumbing' },
   { id: TARGET, hcp_number: '629', click_number: '', job_name: 'ROUGH IN', job_address: '2 Draw St', service_type_id: null, service_type_name: 'Plumbing' },
 ]
 
@@ -85,7 +85,7 @@ describe('BankingCostBatchesTab', () => {
 
     // A job through the search: its batches first, the batch listed once.
     fireEvent.change(screen.getByLabelText('Pick a job to see the batches that touched it'), { target: { value: '583' } })
-    fireEvent.click(await screen.findByText(/J583 · Diamondback - 1 Catch-all Rd/))
+    fireEvent.click(await screen.findByText(/J583 · Davenport - 1 Catch-all Rd/))
     expect(await screen.findByText('Batches that touched this job (1)')).toBeTruthy()
     expect(screen.getAllByText('Earlier move')).toHaveLength(1)
     expect(screen.getByText(/listed once, in the first section/)).toBeTruthy()

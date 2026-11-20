@@ -77,7 +77,7 @@ describe('buildBidFixtureCountsText', () => {
       ['DEMO', null],
     ])
     const text = buildBidFixtureCountsTextGrouped({
-      bidLabel: 'BP339 SAISD - DAVIS MS PHASE II',
+      bidLabel: 'BP339 SFDHT - DEVLIN MZ PHASE II',
       rows: [
         { fixture: 'WC-1', count: 4 },
         { fixture: 'L-1', count: 12 },
@@ -95,7 +95,7 @@ describe('buildBidFixtureCountsText', () => {
     })
     expect(text).toBe(
       [
-        'Bid: BP339 SAISD - DAVIS MS PHASE II',
+        'Bid: BP339 SFDHT - DEVLIN MZ PHASE II',
         '',
         '22 13 16 · Sanitary Waste and Vent Piping',
         'ft of 4IN WASTE — 751.45',

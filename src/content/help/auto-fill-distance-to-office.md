@@ -22,5 +22,5 @@ The bid form fills in the distance to the office for you. It measures from the p
 Set the office once under **Settings → Templates → Office address**. Saving looks up the coordinates. Every bid then measures from there. Until it is set, distances measure from the **Map default view** address instead. The note shows which address was used.
 
 :::example
-Project Address "14540 HWY 105 W. Conroe, TX 77304" → click away → Distance fills with the mileage from your office, labeled with how it was measured.
+Project Address "61747 HWY 105 W. Conroe, TX 77304" → click away → Distance fills with the mileage from your office, labeled with how it was measured.
 :::

@@ -23,8 +23,8 @@ const item = (over: Partial<AuditQueueItem> & { id: string }): AuditQueueItem =>
 
 describe('jobNameFromShell — the row is named for the job, not the robot’s copy', () => {
   it('drops the ZZ prefix and the backtest / shadow suffix', () => {
-    expect(jobNameFromShell('ZZ Twin MPH CASA LINDA (backtest R2)')).toBe('MPH CASA LINDA')
-    expect(jobNameFromShell('ZZ Twin BONILLA LAW FIRM (backtest)')).toBe('BONILLA LAW FIRM')
+    expect(jobNameFromShell('ZZ Twin MCK COLBY LACHANCE (backtest R2)')).toBe('MCK COLBY LACHANCE')
+    expect(jobNameFromShell('ZZ Twin BENNING LAW FIRM (backtest)')).toBe('BENNING LAW FIRM')
     expect(jobNameFromShell('ZZ Shadow Gallenby Park')).toBe('Gallenby Park')
     expect(jobNameFromShell('Plain name')).toBe('Plain name')
     expect(jobNameFromShell(null)).toBe('Unknown project')
@@ -108,7 +108,7 @@ describe('parking a slate (the owner’s call of 2026-10-09)', () => {
     item({ id: 'tye' }),
     aug31('garcia'),
     aug31('livarg'),
-    item({ id: 'sealed-1', shellName: 'ZZ Shadow Patagonia', sealed: true }),
+    item({ id: 'sealed-1', shellName: 'ZZ Shadow Penrose', sealed: true }),
     item({ id: 'done-1', status: 'done' }),
   ]
 

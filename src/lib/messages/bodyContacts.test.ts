@@ -22,7 +22,7 @@ Marrex Builders
 [image: phone] (832) 871-4166 ext. 121
 [image: email] glenn@marrexbuilders.example <https://server.utags.co/gLCOFBOU>
 [image: website] www.maxxbuilders.com/ <https://server.utags.co/ejwGNauh>
-[image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477
+[image: company-address] 6582 Brockman Dr. Suite 102 Stafford, TX, 77477
 [image: company-logo]
 [image: instagram] <https://server.utags.co/yhmOAqla> [image: linkedin]
 <https://server.utags.co/yXRIBtGM> [image: twitter]
@@ -33,7 +33,7 @@ Marrex Builders
 const BODY = `Wendi,
 
 We at *Marrex Builders* are currently working on a project called *Northeast
-Bible Church Elementary Building* located at *19185 FM 2252 Northeast Bible
+Bible Church Elementary Building* located at *77804 FM 2252 Northeast Bible
 Church, Garden Ridge, TX 78266*
 
 Link to Plans*:
@@ -47,7 +47,7 @@ describe('bodyContacts: the contact points in an email’s words (v2.6513)', () 
     expect(bodyContactPoints(SIGNATURE)).toEqual([
       { kind: 'phone', number: '(832) 871-4166', ext: '121', words: '(832) 871-4166 ext. 121' },
       { kind: 'email', address: 'glenn@marrexbuilders.example', words: 'glenn@marrexbuilders.example' },
-      { kind: 'address', words: '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477' },
+      { kind: 'address', words: '6582 Brockman Dr. Suite 102 Stafford, TX, 77477' },
     ])
   })
 
@@ -80,7 +80,7 @@ describe('bodyContacts: the contact points in an email’s words (v2.6513)', () 
   })
 
   it('finds the project’s street address in the body, inside the sender’s bold marks', () => {
-    expect(bodyContactPoints(BODY)).toEqual([{ kind: 'address', words: '19185 FM 2252 Northeast Bible Church, Garden Ridge, TX 78266' }])
+    expect(bodyContactPoints(BODY)).toEqual([{ kind: 'address', words: '77804 FM 2252 Northeast Bible Church, Garden Ridge, TX 78266' }])
   })
 
   it('keeps the body’s own words in order around the points, newlines and all', () => {
@@ -129,7 +129,7 @@ describe('bodyContacts: the contact points in an email’s words (v2.6513)', () 
   })
 
   it('the map opens the same search the customer window does', () => {
-    expect(mapHref('4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477')).toBe('https://www.google.com/maps/search/?api=1&query=4150%20Bluebonnet%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
+    expect(mapHref('6582 Brockman Dr. Suite 102 Stafford, TX, 77477')).toBe('https://www.google.com/maps/search/?api=1&query=6582%20Brockman%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
   })
 })
 
@@ -143,10 +143,10 @@ describe('bodyContacts: the line a press leaves on the thread', () => {
     const thread = contactPressBody('Grace', 'thread', 'glenn@marrexbuilders.example', glenn)
     expect(thread).toBe("Grace opened a thread for glenn@marrexbuilders.example from Glenn's email of Oct 22.")
     expect(contactPressOf(thread)).toEqual({ who: 'Grace', press: 'thread', value: 'glenn@marrexbuilders.example' })
-    expect(contactPressOf(contactPressBody('Grace', 'map', '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477', glenn))).toEqual({
+    expect(contactPressOf(contactPressBody('Grace', 'map', '6582 Brockman Dr. Suite 102 Stafford, TX, 77477', glenn))).toEqual({
       who: 'Grace',
       press: 'map',
-      value: '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477',
+      value: '6582 Brockman Dr. Suite 102 Stafford, TX, 77477',
     })
     expect(contactPressOf(contactPressBody('Grace', 'email', 'glenn@marrexbuilders.example', glenn))?.press).toBe('email')
     expect(contactPressOf(contactPressBody('Grace', 'text', '512-555-0142', glenn))?.press).toBe('text')
@@ -168,7 +168,7 @@ describe('bodyContacts: the line a press leaves on the thread', () => {
       contactPressBody('Grace', 'thread', 'glenn@marrexbuilders.example', glenn),
       PRESS_WORDS_UI.toast('call', '(832) 871-4166 ext. 121'),
       PRESS_WORDS_UI.toast('thread', 'glenn@marrexbuilders.example'),
-      PRESS_WORDS_UI.toast('map', '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477'),
+      PRESS_WORDS_UI.toast('map', '6582 Brockman Dr. Suite 102 Stafford, TX, 77477'),
       PRESS_WORDS_UI.undone,
       ...Object.values(PRESS_WORDS_UI.tips),
     ]) {

@@ -3,7 +3,7 @@ import { findLooseIdentityPairs, identityKeysLooselyEqual, normalizeIdentityKey 
 
 describe('normalizeIdentityKey (T5-07)', () => {
   it('folds case, punctuation, whitespace and diacritics', () => {
-    expect(normalizeIdentityKey('  José García. ')).toBe('jose garcia')
+    expect(normalizeIdentityKey('  Joán Goodwín. ')).toBe('joan goodwin')
     expect(normalizeIdentityKey('WATTS')).toBe('watts')
     expect(normalizeIdentityKey('Mike. Holmby')).toBe('mike holmby')
   })
@@ -20,15 +20,15 @@ describe('normalizeIdentityKey (T5-07)', () => {
 
 describe('identityKeysLooselyEqual', () => {
   it('equal keys, or ≥2-token containment on both sides', () => {
-    expect(identityKeysLooselyEqual('jose garcia', 'jose garcia')).toBe(true)
-    expect(identityKeysLooselyEqual('jose garcia', 'jose luis garcia')).toBe(true)
-    expect(identityKeysLooselyEqual('j garcia', 'jose garcia')).toBe(true)
-    expect(identityKeysLooselyEqual('garcia jose', 'jose luis garcia')).toBe(true)
+    expect(identityKeysLooselyEqual('joan goodwin', 'joan goodwin')).toBe(true)
+    expect(identityKeysLooselyEqual('joan goodwin', 'joan luis goodwin')).toBe(true)
+    expect(identityKeysLooselyEqual('j goodwin', 'joan goodwin')).toBe(true)
+    expect(identityKeysLooselyEqual('goodwin joan', 'joan luis goodwin')).toBe(true)
   })
   it('never merges on a single token ("Selwick" stays separate from "Selwick General Contractors")', () => {
     expect(identityKeysLooselyEqual('selwick', 'selwick general contractors')).toBe(false)
-    expect(identityKeysLooselyEqual('jose', 'jose garcia')).toBe(false)
-    expect(identityKeysLooselyEqual('', 'jose')).toBe(false)
+    expect(identityKeysLooselyEqual('joan', 'joan goodwin')).toBe(false)
+    expect(identityKeysLooselyEqual('', 'joan')).toBe(false)
   })
 })
 

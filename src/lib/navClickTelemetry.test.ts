@@ -72,7 +72,7 @@ describe('navButtonName', () => {
     expect(navButtonName(button('aria-label="Call customer at (830) 555-0187"'))).toBe('Call customer')
     expect(navButtonName(button('aria-label="Crew on Ridgeway Builders — open hours by person"'))).toBe('Crew')
     expect(navButtonName(button('title="Schedule strip — Done — last Sun Oct 25"'))).toBe('Schedule strip')
-    expect(navButtonName(button('aria-label="Residential property at 11704 FM1117 — change the kind"'))).toBe('Residential property')
+    expect(navButtonName(button('aria-label="Residential property at 29007 FM1117 — change the kind"'))).toBe('Residential property')
     expect(navButtonName(button('aria-label="No job account at Ferguson yet — tap to ask the office"'))).toBe('No job account')
     expect(navButtonName(button('', 'Done · 0 open · Today’s lines'))).toBe('Done')
     expect(navButtonName(button('', '  Bill\n Customer '))).toBe('Bill Customer')

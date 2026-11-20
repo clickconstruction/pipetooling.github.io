@@ -68,14 +68,14 @@ describe('scope presets', () => {
 describe('buildScopedFixtureCopyText', () => {
   it('renders exactly the shipped grouped format for the selection', () => {
     const text = buildScopedFixtureCopyText({
-      bidLabel: 'BP339 SAISD - DAVIS MS PHASE II',
+      bidLabel: 'BP339 SFDHT - DEVLIN MZ PHASE II',
       groups: GROUPS,
       selected: new Set(['b', 'c']),
       sectionTitleByCode: TITLES,
     })
     expect(text).toBe(
       [
-        'Bid: BP339 SAISD - DAVIS MS PHASE II',
+        'Bid: BP339 SFDHT - DEVLIN MZ PHASE II',
         '',
         '22 11 16 · Domestic Water Piping',
         'ft of 3/4IN WATER — 1782.15',

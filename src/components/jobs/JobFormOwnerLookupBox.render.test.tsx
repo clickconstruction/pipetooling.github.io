@@ -65,7 +65,7 @@ const base = {
 
 describe('JobFormOwnerLookupBox', () => {
   it('a GC job: found on the roll → owner, mail to, legal + provenance, county, Use; Use writes through the shared helper for every job at the address and hands the row back', async () => {
-    lookupMock.mockImplementation(async (a: string) => proposalFromLookupPayload(a, payload('KARROW ULRIC & BARROWBY SHELMINA', '3203 SPIDER LILY, SAN ANTONIO, TX 78258')))
+    lookupMock.mockImplementation(async (a: string) => proposalFromLookupPayload(a, payload('KARROW ULRIC & BARROWBY SHELMINA', '5913 STELLA LEAH, SAN ANTONIO, TX 78258')))
     const onConfirmed = vi.fn()
     renderWithProviders(<JobFormOwnerLookupBox {...base} onConfirmed={onConfirmed} />)
     await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
@@ -73,7 +73,7 @@ describe('JobFormOwnerLookupBox', () => {
     // The card (v2.3666) is a suggestion — it names the address it answers, not a green "found".
     expect(screen.getByText("The appraisal roll's answer for 9703 Linmor Hl")).toBeTruthy()
     expect(screen.getByTestId('owner-lookup-owner').textContent).toBe('Karrow Ulric & Barrowby Shelmina')
-    expect(screen.getByText(/3203 Spider Lily/i)).toBeTruthy()
+    expect(screen.getByText(/5913 Stella Leah/i)).toBeTruthy()
     expect(screen.getByText(/CB 4696A BLK 3 LOT 35/)).toBeTruthy()
     expect(screen.getByText(/Bexar Appraisal District · 2025/)).toBeTruthy()
     expect(screen.getByText('Check this parcel on Bexar CAD ↗')).toBeTruthy()

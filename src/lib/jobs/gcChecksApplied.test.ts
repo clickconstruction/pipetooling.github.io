@@ -17,7 +17,7 @@ import {
   type ChecksPaymentIn,
 } from './gcChecksApplied'
 
-const GC = 'gc-structura'
+const GC = 'gc-sheffield'
 
 const inv = (id: string, job_id: string, sequence_order: number, amount: number, over: Partial<ChecksInvoiceIn> = {}): ChecksInvoiceIn => ({
   id,
@@ -84,7 +84,7 @@ describe('paymentKind / checkLabel / labels', () => {
     expect(checksJobLabel({ hcp_number: null, click_number: '1041', job_name: 'Oak Ridge Ph 2', job_address: '4410 Oak Ridge Dr' })).toBe('4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2')
     expect(checksJobLabel({ hcp_number: null, click_number: null, job_name: null, job_address: '' })).toBe('Job')
     // A name that repeats the street adds nothing: the number stands alone.
-    expect(checksJobLabel({ hcp_number: '858', click_number: null, job_name: 'Service Visit — 9703 Lenox Hl (HCP 858)', job_address: '9703 Lenox Hl, San Antonio, TX 78255' })).toBe('9703 Lenox Hl, San Antonio, TX 78255 · 858')
+    expect(checksJobLabel({ hcp_number: '858', click_number: null, job_name: 'Service Visit — 3507 Lister Hl (HCP 706)', job_address: '3507 Lister Hl, San Antonio, TX 78255' })).toBe('3507 Lister Hl, San Antonio, TX 78255 · 858')
     expect(formatYmdLong('2026-09-24')).toBe('Sep 24, 2026')
   })
 })

@@ -40,7 +40,7 @@ describe('words', () => {
     expect(contractCoversLine(['1064', '1054'])).toBe('Covers jobs 1054 and 1064')
   })
   it('keeps the street of an address', () => {
-    expect(streetOf('180 Go Away Rd, Blanco, TX 78606')).toBe('180 Go Away Rd')
+    expect(streetOf('719 Go Away Rd, Blanco, TX 78606')).toBe('719 Go Away Rd')
     expect(streetOf(null)).toBe('')
   })
   it('the sheet names the jobs and the button counts them', () => {
@@ -62,9 +62,9 @@ describe('words', () => {
 
 describe('buildCoverableJobs', () => {
   const jobs = [
-    { id: 'a', hcp_number: '251', click_number: null, job_name: 'Michael Palvern', job_address: '180 Go Away Rd, Blanco, TX', status: 'billed' },
+    { id: 'a', hcp_number: '251', click_number: null, job_name: 'Michael Palvern', job_address: '719 Go Away Rd, Blanco, TX', status: 'billed' },
     { id: 'b', hcp_number: '843', click_number: null, job_name: 'x', job_address: '102 Jared Robson, Blanco', status: 'billed' },
-    { id: 'c', hcp_number: '', click_number: 'J922', job_name: 'y', job_address: '138 W Pat Dolan, Blanco', status: 'working' },
+    { id: 'c', hcp_number: '', click_number: 'J922', job_name: 'y', job_address: '210 W Phil Darrow, Blanco', status: 'working' },
     { id: 'd', hcp_number: '620', click_number: null, job_name: 'z', job_address: null, status: 'paid' },
     { id: 'e', hcp_number: '825', click_number: null, job_name: 'w', job_address: '121 North Calvin Barlow', status: 'billed' },
   ]
@@ -72,7 +72,7 @@ describe('buildCoverableJobs', () => {
     const out = buildCoverableJobs(jobs, 'a', new Set())
     expect(out.map((j) => j.num)).toEqual(['825', '843', 'J922', '620'])
     expect(out[3]).toMatchObject({ paid: true, where: 'z', statusWord: 'Paid' })
-    expect(out[2]).toMatchObject({ where: '138 W Pat Dolan', statusWord: 'Working' })
+    expect(out[2]).toMatchObject({ where: '210 W Phil Darrow', statusWord: 'Working' })
   })
   it('flags a job another paper covers', () => {
     const out = buildCoverableJobs(jobs, null, new Set(['b']))

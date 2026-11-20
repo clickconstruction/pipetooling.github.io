@@ -172,6 +172,51 @@ describe('buildUtilizationBoard', () => {
     expect(a2.lastFullWeek?.workedHours).toBe(42)
   })
 
+  it('holds a salaried person to their own set week from pay, and to the default week when the row has none', () => {
+    const six = [0, 6, 6, 6, 6, 6, 0]
+    const sessions = week('u-grace', '2026-11-01', [6, 6, 6, 6, 6]).map((s) => ({ ...s, origin: 'salary_schedule' }))
+    const g = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [{ ...grace, salariedWeek: six }], sessions, answers: [] }).people[0]!
+    expect(g.kind).toBe('salaried')
+    expect(g.canWork).toEqual({ hours: 30, source: 'schedule', setAt: null, setBy: null, days: null, salariedWeek: six })
+    expect(g.lastFullWeek).toMatchObject({ canWorkHours: 30, availableHours: 30, workedHours: 30, pct: 100, band: 'full' })
+    const d = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [grace], sessions, answers: [] }).people[0]!
+    expect(d.canWork).toMatchObject({ hours: 40, source: 'schedule', salariedWeek: [0, 8, 8, 8, 8, 8, 0] })
+    expect(d.lastFullWeek?.pct).toBe(75)
+  })
+
+  it("takes a day off in a set week at that day's hours, and nothing for a day the week does not pay", () => {
+    const shortFriday = [0, 8, 8, 8, 8, 4, 0]
+    const sessions = week('u-grace', '2026-11-01', [8, 8, 8, 8, 0]).map((s) => ({ ...s, origin: 'salary_schedule' }))
+    const g = buildUtilizationBoard({
+      todayYmd: TODAY,
+      nowMs: NOW,
+      people: [{ ...grace, salariedWeek: shortFriday }],
+      sessions,
+      answers: [],
+      // Friday Nov 6 and Saturday Nov 7.
+      timeOff: [{ user_id: 'u-grace', startYmd: '2026-11-06', endYmd: '2026-11-07' }],
+    }).people[0]!
+    expect(g.lastFullWeek).toMatchObject({ canWorkHours: 36, hoursOff: 4, availableHours: 32, workedHours: 32, pct: 100 })
+  })
+
+  it('reads a salaried person who records real hours against their set week until someone draws one, never an assumed 40', () => {
+    const six = [0, 6, 6, 6, 6, 6, 0]
+    const sessions = week('u-abraham', '2026-11-01', [6, 6, 6, 6, 6])
+    const board = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [{ ...abraham, salariedWeek: six }], sessions, answers: [] })
+    const a = board.people[0]!
+    expect(a.kind).toBe('hourly')
+    expect(a.canWork).toMatchObject({ hours: 30, source: 'schedule', salariedWeek: six })
+    expect(a.lastFullWeek).toMatchObject({ availableHours: 30, pct: 100 })
+    expect(board.team[6]!.availableHours).toBe(30)
+    expect(board.counts.unanswered).toBe(0)
+    expect(board.lines.some((l) => l.includes('not said their hours'))).toBe(false)
+    // A drawn answer still wins over the set week.
+    const answers: AvailableHoursAnswer[] = [{ user_id: 'u-abraham', hours_per_week: 24, effective_from: '2026-09-01', set_by: 'u-office', set_at: '2026-09-01T10:00:00Z' }]
+    const drawn = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [{ ...abraham, salariedWeek: six }], sessions, answers }).people[0]!
+    expect(drawn.canWork).toMatchObject({ hours: 24, source: 'answered' })
+    expect(drawn.lastFullWeek?.pct).toBe(125)
+  })
+
   it('keeps the office on its own side: the crew line, tiles and verdicts read the field alone', () => {
     const sessions = [
       ...['2026-10-18', '2026-10-25', '2026-11-01'].flatMap((s) => week('u-wendi', s, [10, 10, 10, 10, 10])),

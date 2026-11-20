@@ -123,6 +123,16 @@ export function localDayOf(iso: string): string {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
 }
 
+/**
+ * A press's day and time on the device's own clock, like *Thu, Nov 19, 1:26 PM*: how the look names a
+ * person's last press, and how the answer window tells two presses that read alike apart.
+ */
+export function actStampWords(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+}
+
 function n(value: number): string {
   return value.toLocaleString('en-US')
 }

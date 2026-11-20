@@ -98,7 +98,7 @@ describe('feeModelOf / indexMatters / releaseRecipients', () => {
 describe('buildLegalReview', () => {
   const accounts = [
     { key: 'c:tle', name: 'The Reading Corner', reviewDays: 69, balance: 15781 },
-    { key: 'c:sam', name: 'Sam Coyle', reviewDays: 69, balance: 5355 },
+    { key: 'c:sam', name: 'Seth Cadwell', reviewDays: 69, balance: 5355 },
     { key: 'n:bryan helbrow', name: 'Bryan Helbrow', reviewDays: 21, balance: 1239 },
     { key: 'c:hill', name: 'Hilltop', reviewDays: 30, balance: 6200 },
   ]
@@ -119,7 +119,7 @@ describe('buildLegalReview', () => {
     const r = buildLegalReview(accounts, matters, '2026-09-11', (id) => (id === 'u-t' ? 'Taunya' : null))
     expect(r.underReview).toBe(3)
     expect(r.withFirm).toBe(1)
-    expect(r.requested).toEqual([{ key: 'c:sam', name: 'Sam Coyle', by: 'Taunya', note: 'Ready for your eyes.', days: 2 }])
+    expect(r.requested).toEqual([{ key: 'c:sam', name: 'Seth Cadwell', by: 'Taunya', note: 'Ready for your eyes.', days: 2 }])
     expect(r.oldestDays).toBe(69)
     expect(r.firstKey).toBe('c:sam')
     expect(r.balanceUnderReview).toBe(15781 + 5355 + 1239)
@@ -133,7 +133,7 @@ describe('buildLegalReview', () => {
 
 describe('buildFirmActivity', () => {
   const m1 = matter({ id: 'm1', payer_key: 'c:tle', payer_name: 'The Reading Corner', stage: 'referred' })
-  const m2 = matter({ id: 'm2', payer_key: 'c:sam', payer_name: 'Sam Coyle', stage: 'demand' })
+  const m2 = matter({ id: 'm2', payer_key: 'c:sam', payer_name: 'Seth Cadwell', stage: 'demand' })
   const e = (id: string, matter_id: string, kind: string, amount: number | null, created_at: string, ack = false) => ({ id, matter_id, kind, amount, body: '', occurred_on: '2026-09-11', meta: {}, via_portal: true, created_by: null, acknowledged_at: ack ? '2026-09-11T00:00:00Z' : null, created_at })
   it('counts only unacknowledged portal entries and opens on a payment first', () => {
     const a = buildFirmActivity([

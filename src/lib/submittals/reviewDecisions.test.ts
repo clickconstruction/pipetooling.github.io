@@ -130,9 +130,9 @@ describe('reviewDecisions', () => {
 
   it('2026-10-03 · the summary counts a row sent back for one part apart from a row sent back whole', () => {
     const rows = [
-      it_({ id: 'lav', tag: 'LAV-1', review_decision: 'rejected', reviewed_by_name: 'structura' }),
-      it_({ id: 'mop', tag: 'MOP', review_decision: 'rejected', reviewed_by_name: 'structura' }),
-      it_({ id: 'wc', tag: 'WC-1', review_decision: 'revise', reviewed_by_name: 'structura' }),
+      it_({ id: 'lav', tag: 'LAV-1', review_decision: 'rejected', reviewed_by_name: 'sheffield' }),
+      it_({ id: 'mop', tag: 'MOP', review_decision: 'rejected', reviewed_by_name: 'sheffield' }),
+      it_({ id: 'wc', tag: 'WC-1', review_decision: 'revise', reviewed_by_name: 'sheffield' }),
       it_({ id: 'fd', tag: 'FD' }),
     ]
     const parts = new Map([
@@ -142,8 +142,8 @@ describe('reviewDecisions', () => {
     ])
     const s = summarizeDecisions(rows, parts)
     expect(s).toMatchObject({ rejected: 2, revise: 1, sentBack: 3, rejectedInPart: 1, reviseInPart: 1 })
-    expect(describeDecisions(s)).toBe('1 with a part to revise · 1 rejected · 1 with a part rejected · by structura')
+    expect(describeDecisions(s)).toBe('1 with a part to revise · 1 rejected · 1 with a part rejected · by sheffield')
     // With no parts given the words are what they were.
-    expect(describeDecisions(summarizeDecisions(rows))).toBe('1 revise · 2 rejected · by structura')
+    expect(describeDecisions(summarizeDecisions(rows))).toBe('1 revise · 2 rejected · by sheffield')
   })
 })

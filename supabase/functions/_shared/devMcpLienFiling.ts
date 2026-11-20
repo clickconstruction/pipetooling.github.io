@@ -334,7 +334,7 @@ export async function readLienFilingWorld(reads: LienFilingReads, p: LienFilingP
   const correctionRow = (await reads.rows('job_lien_claim_corrections', `select=job_id,amount_off&job_id=eq.${job.id}`))[0]
   const monthsRow = await reads.rows('job_lien_affidavit_months', `select=job_id,months,reason,set_by_name,set_at&job_id=eq.${job.id}`).then((rows) => rows[0], () => undefined)
   const filings = (await reads.rows('job_lien_filings', `select=${LIEN_FILING_FILING_COLS}&job_id=eq.${job.id}&voided_at=is.null&order=created_at.asc`)).map(filingOnRecord)
-  // The number as other jobs hold it, however it was typed: "2026-0222921", "2026 0222921" and "20260222921" are one
+  // The number as other jobs hold it, however it was typed: "2026-9990001", "2026 9990001" and "20269990001" are one
   // instrument. The read is loose (the letters and digits in order, anything between) and the key decides.
   const numberRows = (await reads.rows('job_lien_filings', `select=id,job_id,county,filed_at,recording_number&kind=eq.affidavit&voided_at=is.null&recording_number=ilike.${recordingLoosePattern(p.recording_number)}&job_id=neq.${job.id}&limit=50`)).filter((r) => recordingKey(str(r.recording_number)) === recordingKey(p.recording_number))
   const otherJobIds = [...new Set(numberRows.map((r) => str(r.job_id)).filter(Boolean))]
@@ -402,7 +402,7 @@ export function sameWords(a: string, b: string): boolean {
 }
 /** The PostgREST `ilike` pattern that finds a recording number however it was punctuated: its letters and digits in order, anything between. */
 export const recordingLoosePattern = (s: string): string => [...recordingKey(s)].join('*')
-/** A recording number as compared: its letters and digits alone, so "2026 0222921" and "2026-0222921" are one number. */
+/** A recording number as compared: its letters and digits alone, so "2026 9990001" and "2026-9990001" are one number. */
 export const recordingKey = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 const countyKey = (s: string) => s.toLowerCase().replace(/\bcounty\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
 const list = (xs: readonly string[]): string => (xs.length > 0 ? xs.join(', ') : 'none')

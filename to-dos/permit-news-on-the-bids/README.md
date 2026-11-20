@@ -1,8 +1,8 @@
 ---
 name: "Permit news on Followup: a red count of your own bids' new lines, each answered in one press"
 number: 401
-group: ready
-status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2, the answers, is next
+group: waiting
+status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2 (the answers table, alone, so its merge holds no deploy) shipped as v2.7940 · PR 3 (the answers' read, write and kernel, the Permit news lens on Followup, the red count, the strip off the board) shipped as v2.7941 · PR 4 (the chip with the name and the day, a door on the board, the Call queue and Waiting to hear) shipped as v2.7942
 summary: >
   An estimator asked for the strip Permit news on your bids to move lower on the Bid Board or
   onto Followup. The live lines say the place is the smaller problem: the strip lists every
@@ -14,11 +14,11 @@ summary: >
   press: on a plumber's permit We lost it…, Still waiting or Not our job, and on a building
   permit Got it or Not our job. Three rules in the kernel drop the lines the records can rule out before
   anyone is asked. An answered line rides as a chip on the bid wherever it is chased.
-next: PR 2, the answers table with its read and its sorting kernel, then PR 3, the lens and the red count. The owner took the picks under The calls as they stand.
+next: Two weeks of the lens, then weigh the Dashboard line. Two small things are left under The plan: a taken-off permit in the bid's This site list, and the bid's suite read from its project name.
 size: M as a train of four (S · S · M · S), a fifth only if asked
-blocker: none
-ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own)
-opinion: build — the owner chose Followup and said go; the rules are in, the answers table is next
+blocker: Two weeks of answers on the lens, to read before the Dashboard line and the two leftovers are weighed.
+ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own) · v2.7940 (the answers table) · v2.7941 (the lens, the count, the strip gone) · v2.7942 (the chip as a door)
+opinion: built — watch what gets answered for two weeks before adding to it
 ---
 
 # Permit news on the bids (#401)
@@ -339,7 +339,7 @@ lens.
 | `src/pages/Bids.tsx` | The Followup tab is a plain button | **PR 3.** The red inbox pill beside it, as Robots has for audits. |
 | New `BidsPermitNewsLens.tsx` | — | **PR 3.** The lens: the cards with their reasons and answers, the loss window in the card, the one-line receipt with Undo, Answered on your bids, the empty state. |
 | `BidBoardNewsMarkLost.tsx`, `BidLostQuickPopover.tsx` | The outcome under a news line | Unchanged, drawn from the lens. |
-| New table `bid_permit_answers` | — | **PR 2.** Append only, as `builder_customer_answers` is: the bid, the city, the permit's number and type, the answer (`this_job`, `not_this_job`, `taken_back`), who, when. The newest row per bid and permit stands. RLS as the bid's own. Read beside the board's one read. |
+| Table `bid_permit_answers` | — | **PR 2, shipped.** Append only, as `builder_customer_answers` is: the bid, the city, the permit's number and type, the answer (`this_job`, `not_this_job`, `taken_back`), who, when. The newest row per bid and permit stands. Read and insert for the people who read permits. Read beside the board's one read. |
 | `PermitChip.tsx`, `BidsCallQueueTab.tsx`, `BidsWaitingToHearLens.tsx`, `BidsBidBoardTab.tsx` | A label on the board's row | **PR 4.** The chip's words carry the name and the day. It is a door to the line on Followup, and it rides on the bid in the Call queue and on a Waiting to hear row. |
 | `BidSitePermits.tsx` | Every permit on the street number | **PR 4.** A permit taken off the bid says so, with who and when. A line says how many permits on the address are on another suite. |
 | Guide `see-what-the-city-has-on-a-bids-address` | *See permit news on the Bid Board* | Rewritten with each PR. |
@@ -351,16 +351,26 @@ Each PR ships with its release note, its fragment and the guide's change.
 1. **The rules, and yours first (S). Shipped, v2.7923.** The three rules in the kernel, with a
    case for each of the eight live shapes. The strip, still on the board, lists the reader's own
    lines. **This site** says how many permits on another suite it left out. No migration.
-2. **The answers (S).** The migration (`SET lock_timeout`, the four fence calls, its doc), the
-   read, the writes, and the kernel that sorts a reader's lines. No screen. Pushed right after
-   the merge.
-3. **The lens and the count (M).** Followup → Permit news, the red count on Followup as its own
-   press, the answers with Undo, the loss window in the card. A kernel for a card's reasons
-   (`permitReasons`), with a test for each tick and each question mark. The strip leaves the Bid Board. Render smokes for the
+2. **The answers (S). Shipped, v2.7940.** The migration `20261119130000_bid_permit_answers`,
+   alone. The deploy refuses a client that names a table the database lacks, until the push, so
+   the table went first and the read, the write, the fold (`foldPermitAnswers`) and the inbox
+   (`permitInbox`) went with the lens.
+3. **The lens and the count (M). Shipped, v2.7941.** Followup → Permit news, the red count on Followup as its own
+   press, the answers with Undo, the loss window in the card. The card's words and reasons
+   are `permitNewsCard`, with a test for each tick and each question mark. The strip leaves the Bid Board. Render smokes for the
    lens with none, some and answered, and for the count on the tab row.
-4. **Where a bid is chased (S).** The chip with the name and the day, as a door on the board's
-   row, on the Call queue and on Waiting to hear. Taken-off permits in This site.
+4. **Where a bid is chased (S). Shipped, v2.7942.** The chip with the name and the day, as a
+   door on the board's row, on the Call queue and on Waiting to hear.
 5. **The Dashboard line (S).** Only if asked for after two weeks of the lens.
+
+Left over, each a small PR of its own:
+
+- **A taken-off permit in This site.** The list in the bid's window reads the address alone. It
+  needs the bid's id to say *Taken off this bid by Priya, Nov 14* with **Put back**.
+- **The bid's suite from its project name.** A bid named *Suite 100, Tradewind Drive* with no
+  suite in its address still gets a card for a permit on suite 120. One live card on 2026-11-19
+  was of this kind. Read the words *suite*, *ste* and *unit* from the name, never a bare number
+  sign, since *Market #12* is a store.
 
 ## How to verify
 

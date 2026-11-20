@@ -1,0 +1,1376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Document builder tab</title>
+<style>
+  [hidden] { display: none !important; }
+  /* Drawn 2026-11-19 for punch list #404, at the owner's ask: where the Sub NDA builder (#389) lives in the app.
+     A tab on Documents named Document builder, dev only. A dev edits a builder, shares a link to it and picks
+     the GCs who see it. Nothing here is built. Every name is made up. No clause wording is on this page:
+     every meaning, breach line and site line is a placeholder in plain words. One state object (S) drives
+     the three drawn screens, so a press on one shows on the others. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --green: #15803d; --green-tint: #f0fdf4; --amber: #92400e; --amber-tint: #fffbeb; --amber-line: #f0c36d;
+    --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #d9dde3; --warn: #d97706; --top: #b91c1c; --top-tint: #fef2f2; --teal: #0f766e; --teal-tint: #f0fdfa;
+    --dead: #e5e7eb; --dead-ink: #374151;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --green: #4ade80; --green-tint: #12301f; --amber: #fcd34d; --amber-tint: #3a2f11; --amber-line: #7a5d14;
+    --blue: #93c5fd; --blue-tint: #1e3358; --violet: #c4b5fd; --violet-tint: #2c2350; --violet-line: #5b4bb0;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b; --top: #fca5a5; --top-tint: #3b1a1a; --teal: #5eead4; --teal-tint: #123f3b;
+    --dead: #4b5563; --dead-ink: #d1d5db;
+  }
+  /* A customer's page stays light in the app, so this wrapper pins the light values. */
+  .light {
+    color-scheme: light; color: var(--text-base);
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --blue: #1d4ed8; --blue-tint: #eff6ff; --bar: #d9dde3; --warn: #d97706; --top: #b91c1c; --top-tint: #fef2f2; --teal: #0f766e; --teal-tint: #f0fdfa;
+    --amber: #92400e; --amber-tint: #fffbeb; --green: #15803d; --green-tint: #f0fdf4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 72px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: grid; gap: 8px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--font); color: var(--text-strong); }
+  h2 { font: 700 19px/1.2 var(--font); margin: 0; color: var(--text-strong); }
+  p { margin: 0; }
+  b { color: var(--text-strong); }
+  button, input, textarea, select { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+  a { color: var(--text-link); }
+  .jump { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .sect { margin-top: 30px; display: grid; gap: 8px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .say { font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); color: var(--text-base); overflow: hidden; min-width: 0; }
+  .page { padding: 14px; display: grid; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+  .card h3 { margin: 0; font-size: 14px; color: var(--text-strong); }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+  .fine { font-size: 12px; color: var(--text-muted); }
+  .k { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+
+  .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .chip.level { background: var(--blue-tint); color: var(--blue); }
+  .chip.teal { background: var(--teal-tint); color: var(--teal); }
+  .chip.stricter { background: var(--amber-tint); color: var(--amber); }
+  .chip.top { background: var(--top-tint); color: var(--top); }
+  .chip.ok { background: var(--green-tint); color: var(--green); }
+  .chip.wait { background: var(--bg-muted); color: var(--text-700); }
+  .chip.dev { background: var(--violet-tint); color: var(--violet); }
+
+  /* The Documents tab row, as the app draws it. */
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 14px 0; }
+  .tab { border: 1px solid var(--border); background: var(--surface); color: var(--text-700); border-radius: 8px; padding: 5px 10px; font-size: 13px; min-height: 32px; }
+  .tab[aria-pressed="true"] { background: var(--press); border-color: var(--press); color: var(--press-ink); font-weight: 600; }
+  .tab.still { cursor: default; }
+  .brow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+  .brow:first-of-type { border-top: 0; padding-top: 0; }
+  .brow .name { font-weight: 700; color: var(--text-strong); font-size: 14.5px; }
+  .brow .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+  .brow.later { opacity: .6; }
+  .primary { border: 0; background: var(--press); color: var(--press-ink); border-radius: 9px; padding: 9px 14px; font-weight: 700; min-height: 40px; }
+  .primary:disabled { background: var(--dead); color: var(--dead-ink); cursor: not-allowed; }
+  .second { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); border-radius: 9px; padding: 7px 12px; font-weight: 600; min-height: 38px; }
+  .small { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-link); border-radius: 8px; padding: 3px 10px; font-size: 12.5px; font-weight: 600; min-height: 32px; }
+  .second:disabled, .small:disabled { opacity: .5; cursor: not-allowed; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  /* A builder, open: its bar, then the edit or share side beside what a GC sees. */
+  .obar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .obar .name { font-weight: 700; font-size: 16px; color: var(--text-strong); }
+  .obar .grow { flex: 1 1 auto; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; padding: 14px; align-items: start; }
+  .side { display: grid; gap: 12px; min-width: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: none; color: var(--text-700); padding: 6px 14px; min-height: 36px; font-weight: 600; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: var(--press); color: var(--press-ink); }
+  .seg button.only-phone { display: none; }
+  @media (max-width: 900px) {
+    .split { grid-template-columns: minmax(0, 1fr); }
+    .seg button.only-phone { display: inline-block; }
+  }
+
+  /* The grid: a row a topic, a column a level. A cell is a press. */
+  .gridwrap { overflow-x: auto; }
+  table.grid { border-collapse: separate; border-spacing: 4px; width: 100%; min-width: 560px; table-layout: fixed; }
+  table.grid th { font-size: 12px; text-align: left; padding: 2px 4px; color: var(--text-strong); vertical-align: bottom; }
+  table.grid th.topic { width: 24%; font-weight: 600; font-size: 12.5px; vertical-align: top; padding-top: 8px; }
+  .cell { width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface); color: var(--text-700); border-radius: 8px; padding: 6px 8px; font-size: 11.5px; line-height: 1.35; min-height: 62px; display: grid; gap: 3px; align-content: start; }
+  .cell .says { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cell .n { color: var(--text-muted); font-size: 10.5px; }
+  .cell[aria-pressed="true"] { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone); }
+  .cell.changed { background: var(--amber-tint); }
+  select, input[type="text"], input[type="search"], textarea { width: 100%; color: var(--text-base); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 9px; font-size: 16px; }
+  textarea { min-height: 58px; resize: vertical; }
+  .field { display: grid; gap: 4px; }
+  .field > span { font-size: 12.5px; font-weight: 600; color: var(--text-700); }
+  .lrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .x { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); border-radius: 8px; min-width: 40px; min-height: 40px; }
+  .levrow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .levrow:first-of-type { border-top: 0; }
+  .levrow .pic { color: var(--text-muted); font-size: 12.5px; display: block; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; }
+  .bars i { display: block; width: 4px; border-radius: 2px; background: var(--bar); }
+  .bars i:nth-child(1) { height: 6px; } .bars i:nth-child(2) { height: 10px; } .bars i:nth-child(3) { height: 14px; } .bars i:nth-child(4) { height: 18px; }
+
+  /* Share. */
+  .switch { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--text-strong); font-weight: 600; padding: 0; min-height: 36px; }
+  .switch i { width: 38px; height: 22px; border-radius: 999px; background: var(--bar); position: relative; display: block; }
+  .switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: left 140ms; }
+  .switch[aria-pressed="true"] i { background: var(--green); }
+  .switch[aria-pressed="true"] i::after { left: 18px; }
+  .url { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg-muted); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; color: var(--text-700); }
+  .gcrow { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13.5px; min-height: 40px; cursor: pointer; }
+  .gcrow:first-of-type { border-top: 0; }
+  .gcrow input { width: 18px; height: 18px; margin: 0; accent-color: var(--press); flex: 0 0 auto; }
+  .gcrow .jobs { margin-left: auto; color: var(--text-muted); font-size: 12.5px; }
+  .choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: start; width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface); color: var(--text-base); border-radius: 9px; padding: 8px 10px; }
+  .choice[aria-pressed="true"] { border-color: var(--press); box-shadow: 0 0 0 1px var(--press); }
+  .choice .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-strong); margin-top: 2px; }
+  .choice[aria-pressed="true"] .dot { border-color: var(--press); background: radial-gradient(var(--press) 45%, transparent 50%); }
+  .choice .t { font-weight: 600; color: var(--text-strong); }
+
+  /* Share: one row a GC, with where the send stands and the box that sends it. */
+  .grow { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .grow:first-of-type { border-top: 0; padding-top: 0; }
+  .gtop { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; justify-content: space-between; font-size: 13.5px; }
+  .grow .chips { margin-top: 0; }
+  .sendbox { border: 1px dashed var(--border-strong); background: var(--bg-subtle); border-radius: 10px; padding: 10px 12px; display: grid; gap: 10px; }
+  .warn { border: 1px solid var(--amber-line); background: var(--amber-tint); color: var(--amber); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; }
+
+  /* What a GC sees: the flow's frame, small. */
+  .pv { display: grid; gap: 6px; min-width: 0; position: sticky; top: 10px; }
+  .flow { display: flex; flex-direction: column; height: 600px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); overflow: hidden; }
+  .fhead { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px 12px; display: grid; gap: 6px; }
+  .fhead h3 { margin: 0; font-size: 16px; color: var(--text-strong); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .dots { display: flex; gap: 4px; align-items: center; height: 16px; }
+  .dots i { flex: 1 1 0; height: 6px; border-radius: 999px; background: var(--bar); display: block; }
+  .dots i.now { height: 14px; }
+  .fbody { flex: 1 1 auto; overflow-y: auto; padding: 14px; display: grid; gap: 12px; align-content: start; }
+  .ffoot { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px 12px; display: grid; gap: 8px; }
+  ul.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.lines li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; font-size: 13.5px; }
+  ul.lines li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--tone, var(--text-muted)); margin-top: 7px; }
+  ul.lines li.quiet { color: var(--text-muted); }
+  ul.lines li.quiet::before { background: var(--border-strong); }
+  ul.lines li.head { display: block; }
+  ul.lines li.head::before { display: none; }
+  ul.lines li.also { border-top: 1px solid var(--border); padding-top: 10px; }
+  .track { position: relative; height: 26px; }
+  .track .line { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 999px; background: var(--bar); }
+  .track .fill { position: absolute; left: 0; top: 10px; height: 6px; border-radius: 999px; background: var(--tone); }
+  .track .knob { position: absolute; top: 2px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--tone); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--tone); }
+  .stops { display: flex; justify-content: space-between; }
+  .stops button { border: 0; background: none; color: var(--text-muted); font-size: 12px; padding: 4px 0; min-height: 30px; }
+  .stops button[aria-current="true"] { color: var(--text-strong); font-weight: 700; }
+  .nav { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+
+  /* The GC's own page. */
+  .gc-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px; display: grid; gap: 2px; }
+  .gc-head .co { font-weight: 700; font-size: 17px; color: var(--text-strong); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
+
+  /* The insurance sheet: one printed page, always light. */
+  .sheet { background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 4px; padding: 26px 28px 20px; display: grid; gap: 12px; font-size: 13px; }
+  .sheet .lh { text-align: center; display: grid; gap: 1px; padding-bottom: 10px; border-bottom: 2px solid var(--text-strong); }
+  .sheet .lh b { font-size: 16px; letter-spacing: .02em; }
+  .sheet .lh span { font-size: 12px; color: var(--text-muted); }
+  .sheet .ttl { text-align: center; display: grid; gap: 2px; }
+  .sheet .ttl b { font-size: 16px; letter-spacing: .04em; }
+  .sheet .ttl span { font-weight: 600; color: var(--text-strong); }
+  .sheet .must { border: 1.5px solid var(--text-strong); border-radius: 4px; padding: 10px 12px; display: grid; gap: 4px; text-align: center; }
+  .sheet .must b { font-size: 14px; }
+  .sheet .holder { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; }
+  .sheet table { border-collapse: collapse; width: 100%; }
+  .sheet th { text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid var(--border-strong); }
+  .sheet td { padding: 7px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .sheet td:first-child { font-weight: 700; color: var(--text-strong); width: 46%; padding-right: 12px; text-decoration: underline; text-underline-offset: 2px; }
+  .sheet .stamp { font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 8px; }
+  @media (max-width: 560px) { .sheet { padding: 18px 14px; } }
+  .crow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--border); }
+  .crow:first-of-type { border-top: 0; }
+  .crow > input[type="checkbox"] { width: 18px; height: 18px; margin: 9px 0 0; accent-color: var(--press); }
+  .crow .nm { font-weight: 600; color: var(--text-strong); font-size: 13.5px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .trow { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(0, auto); gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .trow:first-of-type { border-top: 0; }
+
+  /* A field on the sheet: words you press and type over. Its mark says where the words come from. */
+  .split.sheetwide { grid-template-columns: 330px minmax(0, 1fr); }
+  .split.sheetwide .pv { position: static; }
+  @media (max-width: 900px) { .split.sheetwide { grid-template-columns: minmax(0, 1fr); } }
+  .f { border-radius: 4px; padding: 0 4px; }
+  .f.usual { box-shadow: inset 0 -1px 0 var(--border-strong); }
+  .f.blank { background: var(--blue-tint); color: var(--blue); }
+  .f.own { background: var(--amber-tint); color: var(--amber); box-shadow: inset 0 -2px 0 var(--amber-line); }
+  .f.still { cursor: default; font-weight: 600; }
+  .sheet.editing .f { cursor: text; outline: none; }
+  .sheet.editing .f.usual:hover { background: var(--bg-muted); }
+  .sheet.editing .f:focus { box-shadow: 0 0 0 2px var(--text-link); background: var(--surface); color: var(--text-base); }
+  .sheet.editing td:first-child { text-decoration: none; }
+  /* A field hugs its own words, so its mark is no wider than they are. */
+  .sheet .lh > .f, .sheet .ttl > .f, .sheet .ttl > span, .sheet .must > .f, .sheet .must > span { justify-self: center; }
+  .sheet .holder > .f { align-self: start; justify-self: start; }
+  .trow .chip { white-space: normal; border-radius: 10px; text-align: right; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 12px; }
+  .legend .f { padding: 1px 7px; }
+  .ctl { border: 1px dashed var(--border-strong); background: none; color: var(--text-link); border-radius: 6px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; min-height: 28px; justify-self: start; }
+  .rowf { display: flex; gap: 6px; align-items: baseline; justify-content: space-between; margin: 0; }
+  .rowf.mid { justify-content: center; }
+  .rowf .ctl { flex: 0 0 auto; padding: 0 7px; }
+  .must .ctl { justify-self: center; }
+  .drow { display: grid; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .drow .nm { font-weight: 600; color: var(--text-strong); font-size: 13.5px; }
+
+  /* The second pass: one way to edit, one send, and the marks that have a way out. */
+  @media (min-width: 901px) { .split { grid-template-columns: minmax(0, 1fr) 440px; } .split.sheetwide { grid-template-columns: 330px minmax(0, 1fr); } }
+  @media (max-width: 900px) { .split[data-mode="share"] .pv { display: none; } }
+  .editing .f { cursor: text; outline: none; }
+  .editing .f.usual:hover { background: var(--bg-muted); }
+  .editing .f:focus { box-shadow: 0 0 0 2px var(--text-link); background: var(--surface); color: var(--text-base); }
+  .flow .mean { font-size: 13.5px; color: var(--text-700); }
+  ul.lines li.rowf { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .flow .card > .ctl { justify-self: start; }
+  .chip.press { border: 0; cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; }
+  .readform { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; padding: 10px 14px; background: var(--amber-tint); border-bottom: 1px solid var(--amber-line); }
+  .readform .field { flex: 1 1 220px; max-width: 320px; }
+  .readform .fine { flex: 1 1 100%; }
+  .warn.check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+  .warn.check input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--press); flex: 0 0 auto; }
+  .sendfoot { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; justify-items: start; }
+  /* The map as small squares, for a phone, where the grid's words do not fit. */
+  .mini { display: none; gap: 4px; }
+  .mrow { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 40px); gap: 4px; align-items: center; }
+  .mrow .ml { font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
+  .mrow .mh { display: grid; justify-items: center; }
+  .mc { height: 36px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface); position: relative; }
+  .mc::after { content: ''; position: absolute; inset: 9px 12px; border-radius: 4px; background: var(--tone); opacity: .35; }
+  .mc[aria-pressed="true"] { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone); }
+  .mc[aria-pressed="true"]::after { opacity: 1; }
+  .mc.changed { background: var(--amber-tint); }
+  @media (max-width: 700px) { .gridwrap { display: none; } .mini { display: grid; } }
+  /* A certificate beside what the sheet asks of it. */
+  .check { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; align-items: start; }
+  @media (max-width: 760px) { .check { grid-template-columns: minmax(0, 1fr); } }
+  .certpic { display: grid; gap: 7px; padding: 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-subtle); }
+  .certpic i { display: block; height: 7px; border-radius: 3px; background: var(--bar); }
+
+  /* The written parts. */
+  .prose { display: grid; gap: 10px; max-width: 78ch; }
+  .prose h3 { margin: 8px 0 0; font-size: 15px; color: var(--text-strong); }
+  .tbl { overflow-x: auto; }
+  table.plain { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.plain th, table.plain td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border-strong); }
+  table.plain th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); border-top: 0; }
+  .theme { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); border-radius: 8px; padding: 4px 10px; font-size: 12.5px; min-height: 32px; justify-self: start; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Mock-up · a first drawing · nothing here is built · every name is made up</p>
+    <h1>Document builder, a tab on Documents</h1>
+    <p class="say">Where the builders live. The first is the Sub NDA, which a GC walks. The second is insurance requirements for subs, one sheet for each job you run as the GC. In both you press the words and type, publish a revision, and send it with the same send. This is the second pass. The presses work, and a press on one screen shows on the others. No clause wording is on this page.</p>
+    <div class="jump">
+      <a href="#s1">1 · The tab</a>
+      <a href="#s2">2 · A builder, open</a>
+      <a href="#s3">3 · What a GC sees</a>
+      <a href="#s4">4 · Insurance requirements, open</a>
+      <a href="#s5">5 · What a sub sees</a>
+      <a href="#best">Is this the best we can do?</a>
+      <a href="#plan">The plan</a>
+    </div>
+    <button type="button" class="theme" id="theme">Dark</button>
+  </header>
+
+  <section class="sect" id="s1" aria-labelledby="c1">
+    <div class="cap" id="c1">1 · Documents, with the new tab</div>
+    <p class="say">One more tab at the end of the row, for a dev only. It lists every builder. There are two, and they are two different kinds. Someone walks the Sub NDA and picks levels. Someone fills the insurance sheet for a job.</p>
+    <div class="frame">
+      <div class="tabs" id="doc-tabs"></div>
+      <div class="page">
+        <div class="card">
+          <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center">
+            <h3>Document builder</h3><span class="chip dev">Dev only</span>
+          </div>
+          <p class="muted">A builder makes one kind of paper from a few settings. You set it up here, then share it.</p>
+          <div id="builders"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="s2" aria-labelledby="c2">
+    <div class="cap" id="c2">2 · The Sub NDA, open</div>
+    <p class="say">What a GC sees is on the right, and it is where you type. Press any words on it and they change. The left side is the map: a row a topic, a column a level. Press a cell and the right side opens that page. <b>Share</b> holds the link and the send.</p>
+    <div class="frame">
+      <div class="obar">
+        <button type="button" class="small" id="back">‹ Document builder</button>
+        <span class="name">Sub NDA</span>
+        <span id="state-chips" class="btns" style="gap:6px"></span>
+        <span class="grow"></span>
+        <button type="button" class="primary" id="publish"></button>
+      </div>
+      <div class="readform" id="read-form" hidden></div>
+      <div class="split" id="split" data-mode="edit">
+        <div class="side">
+          <div class="btns">
+            <div class="seg" id="seg"></div>
+            <span class="muted" id="rev-note"></span>
+          </div>
+          <div id="panel" class="side"></div>
+        </div>
+        <div class="pv">
+          <div class="btns"><div class="k" id="pv-cap"></div><span class="grow"></span><button type="button" class="switch" id="marks" aria-pressed="true"><i></i><span></span></button></div>
+          <div class="flow light" id="flow"></div>
+          <p class="fine">The same step-by-step flow as the spike. It starts on the disclaimer and its box.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="s3" aria-labelledby="c3">
+    <div class="cap" id="c3">3 · What a GC sees</div>
+<p class="say">What reaches a GC when you press <b>Send</b>. First the email. Then their own page, with the builder on it where the job is. The link alone is the third way in, for someone with no page. Open the builder on their page here and your side reads <i>Opened</i>.</p>
+    <div class="two">
+      <div class="frame light">
+        <div class="gc-head"><div class="co">The email</div><div class="muted" id="mail-cap"></div></div>
+        <div class="page" id="mail-page"></div>
+      </div>
+      <div class="frame light">
+        <div class="gc-head"><div class="co">Acme Plumbing</div><div class="muted">For Northgate Builders · your jobs with us</div></div>
+        <div class="page" id="gc-page"></div>
+      </div>
+      <div class="frame light">
+        <div class="gc-head"><div class="co">Acme Plumbing</div><div class="muted">Opened by link · Sub NDA builder</div></div>
+        <div class="page" id="link-page"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="s4" aria-labelledby="c4a">
+    <div class="cap" id="c4a">4 · Insurance requirements for subs, open</div>
+<p class="say">The sheet is the editor. Press any words on it and type. A field's colour says where its words come from: <b>your usual</b>, <b>filled from the job</b>, or <b>changed for this job</b>. The left side lists what differs, holds the link, and sends the sheet to the job's trades with the same send as the Sub NDA's. When a certificate comes in, <b>Check it against the sheet</b> puts the two side by side.</p>
+    <div class="frame">
+      <div class="obar">
+        <button type="button" class="small" id="i-back">‹ Document builder</button>
+        <span class="name">Insurance requirements for subs</span>
+        <span id="i-chips" class="btns" style="gap:6px"></span>
+        <span class="grow"></span>
+        <button type="button" class="primary" id="i-publish"></button>
+      </div>
+      <div class="readform" id="i-read-form" hidden></div>
+      <div class="split sheetwide" id="i-split">
+        <div class="side">
+          <label class="field"><span>Job</span><select id="i-job" aria-label="Job"></select></label>
+          <div class="btns"><div class="seg" id="i-seg"></div></div>
+          <span class="muted" id="i-note"></span>
+          <div id="i-panel" class="side"></div>
+        </div>
+        <div class="pv">
+          <div class="btns"><div class="k" id="i-cap"></div><span class="grow"></span><button type="button" class="switch" id="i-marks" aria-pressed="true"><i></i><span></span></button></div>
+          <div class="light" id="i-sheet"></div>
+          <p class="fine">Placeholder words and amounts. Your insurance agent and your attorney set the real ones.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="s5" aria-labelledby="c5a">
+    <div class="cap" id="c5a">5 · What a sub sees</div>
+    <p class="say">The app already asks a trade for its certificate, takes it on the trade's own page and watches the day it runs out. The sheet is the missing first half: what the certificate must show on this job. A sub reads it on their page, or sends the link to their insurance agent, who needs no login. Press <i>Open the sheet</i> here and your side reads <i>Opened</i>.</p>
+    <div class="two">
+      <div class="frame light">
+        <div class="gc-head"><div class="co">Cedar Fork Drain</div><div class="muted">Your work for Acme Plumbing</div></div>
+        <div class="page" id="sub-page"></div>
+      </div>
+      <div class="frame light">
+        <div class="gc-head"><div class="co">Acme Plumbing</div><div class="muted">Opened by link · what their insurance agent sees</div></div>
+        <div class="page" id="agent-page"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="best" aria-labelledby="c4">
+    <div class="cap" id="c4">Is this the best we can do?</div>
+    <div class="prose" id="best-body">
+      <p><b>The first pass was not.</b> Each builder held up alone, but side by side they were two designs in one tab. You said to fix all five faults, and this page is the second pass.</p>
+      <h3>What the second pass changed</h3>
+      <div class="tbl"><table class="plain">
+        <tr><th>#</th><th>The fault</th><th>What is drawn now</th></tr>
+        <tr><td>1</td><td>Two sends, and the weaker one was on the document you will use most</td><td>One send. The same row, the same states and the same box for a GC and for a job's trades, with one press for everyone who is ready. It names who it held and why.</td></tr>
+        <tr><td>2</td><td>Two ways to edit</td><td>One. Press the words and type, on the insurance sheet and on the GC's view of the Sub NDA. The grid is now the map to a page, not a form.</td></tr>
+        <tr><td>3</td><td>A change to your usual sheet reached no job</td><td>In <i>The standing sheet</i> the press reads <i>Publish to 1 job</i>. The left side names each job that gets it and each job it holds.</td></tr>
+        <tr><td>4</td><td>A certificate was checked by eye, and a changed sheet said nothing</td><td><i>Check it against the sheet</i> puts the certificate beside what the sheet asks, one line to tick each. A certificate is marked outdated when a name, the place or an amount changes.</td></tr>
+        <tr><td>5</td><td>The warning chips had no way out</td><td>The chip is a press. It records who read which revision and when. A new revision is unread again, and a send asks before it goes out unread.</td></tr>
+      </table></div>
+      <p><b>What the render showed.</b> I walked every press on both builders at desktop width, then on a phone in dark. Typing on the GC's view marked the page as changed on the map as I typed. The one press sent to 1 GC and named the 2 it held. A change to the sheet's foot line left a certificate good, and a change to an amount outdated it. On a phone the Sub NDA's two sides first sat side by side and ran off the screen, which I fixed. The grid gives way to a small map of 28 squares there.</p>
+      <h3>What I weighed, and why each lost</h3>
+      <div class="tbl"><table class="plain">
+        <tr><th>Choice</th><th>Drawn</th><th>What lost, and why</th></tr>
+        <tr><td>Where it lives</td><td>A tab on Documents, last in the row</td><td>Its own page, as the spike has it. Nobody would find it. Settings, beside the clauses. You chose Documents, and the next builders belong there too.</td></tr>
+        <tr><td>How words are changed, in both builders</td><td>On the document itself. Press any words and type.</td><td>A form beside the document, which I drew first for both. You read in one place and typed in another, and with every field editable the form grew as long as the page.</td></tr>
+        <tr><td>What the Sub NDA's grid is for</td><td>A map. It keeps its words at desktop, since reading across a row is its use. On a phone it is 28 small squares.</td><td>A form, as first drawn. Dropped altogether. You could no longer see a gap, or how a topic climbs across the levels.</td></tr>
+        <tr><td>When an edit reaches anyone outside</td><td>On <i>Publish</i>, as a numbered revision</td><td>At once. Someone may be reading while you type half a sentence.</td></tr>
+        <tr><td>How a document reaches someone</td><td>One send for a GC and for a trade: who, a note, the day it went, the day they opened it</td><td>A tick beside each name, which I drew first for GCs. It told nobody. One press and a list, which I drew first for trades. It had no <i>Opened</i> and no case for a trade with no page.</td></tr>
+        <tr><td>Sending to many</td><td>One press that says its count, sends to everyone who is ready, and names who it held with the reason</td><td>All or nothing. One trade with no page would stop the sheet reaching the rest.</td></tr>
+        <tr><td>Someone with no page, or a page turned off</td><td>The row says so. Sending to them alone makes a page. It never turns one back on.</td><td>Making or turning on a page without saying. A page that was turned off was turned off for a reason.</td></tr>
+        <tr><td>A new revision after someone has read the old one</td><td>The row says <i>Changed since they opened it</i>, with <i>Tell them it changed</i></td><td>Telling everyone at each publish. A small fix to a word would send five emails.</td></tr>
+        <tr><td>Where it sits on a GC's page</td><td>Under the job it is about, or at the top when it is about all their jobs</td><td>Always at the top. Their page is laid out by job.</td></tr>
+        <tr><td>What the insurance builder is</td><td>A sheet with blanks, filled for each job</td><td>Levels, like the Sub NDA. An amount is a number your agent sets, not a step on a slider. A Contract Book paper. Nobody signs this sheet.</td></tr>
+        <tr><td>How you tell a job's own words from your usual</td><td>A colour on the field, and a list on the left with <i>Back to the usual</i></td><td>No mark at all. A year on, nobody could say why one job's sheet reads differently. A second copy of the sheet for each job. A change to your usual would reach no job.</td></tr>
+        <tr><td>A change to your usual</td><td>One press to every job that is ready. A job with changes of its own waiting is held.</td><td>Publishing each job again by hand, as first drawn. Pushing it into every job at once. A job's half-made changes would go out with it.</td></tr>
+        <tr><td>When a certificate comes in</td><td>The sheet's own lines are the check list, with <i>Mark it good</i> and <i>Send it back, naming 2 things missing</i></td><td>Checking by eye, as today. The sheet would only work for the sub.</td></tr>
+        <tr><td>When a certificate is outdated</td><td>When a name, the place or an amount changes</td><td>At every new revision. A fix to the foot line would send every trade back to their agent.</td></tr>
+        <tr><td>Sending something nobody has read</td><td>A warning with a box to tick, <i>Send it anyway</i></td><td>No warning, as first drawn. A hard stop. You could not send to a test customer while the words are still being set.</td></tr>
+      </table></div>
+      <h3>Where it is still weak</h3>
+      <p><b>The tab is sorted by builder, and the work is sorted by job.</b> Both documents end at the same place: what a sub owes you on one job. A job's own row, with its sheet, its secrecy paper and each trade's standing, would be the truer home later.</p>
+      <p><b>Each builder still mixes setting it up with using it.</b> Setting up is rare and suits a dev. Using it is weekly and is office work. Splitting the two is what lets the office in.</p>
+      <p><b>The check list is ticked by hand.</b> Reading the certificate and ticking what it finds would be a later step. The list is what makes that possible.</p>
+      <p><b><i>Opened</i> means their page or the link was opened.</b> It does not say the right person read it.</p>
+      <p><b>The send is an email only.</b> A text with the same link would be a small step after.</p>
+      <p><b>The amounts and the words are placeholders.</b> I cannot tell you what to require. Your insurance agent and your attorney set them.</p>
+      <p><b>A field is plain words.</b> It has no bold of its own and no picture. A logo at the top would be one more field to add.</p>
+      <p><b>A finished paper for a GC is not drawn.</b> What goes to a GC here is the builder, a thing to walk. A job's secrecy paper would go the same way once the card's own train makes one.</p>
+      <h3>Settled by you on Nov 19</h3>
+      <div class="tbl"><table class="plain">
+        <tr><th>Call</th><th>Your answer</th></tr>
+        <tr><td>Where the builders live</td><td>A <i>Document builder</i> tab on Documents, for a dev only for now.</td></tr>
+        <tr><td>What a dev can do there</td><td>Edit a builder, share a link to it, and pick the GCs who see it.</td></tr>
+        <tr><td>The second builder</td><td>Insurance requirements for subs, one sheet for each job you run as the GC, laid out like the sample you gave.</td></tr>
+        <tr><td>How a GC gets a document from here</td><td>You send it to them. They open it by link, or see it on their own page.</td></tr>
+        <tr><td>What can be changed on the insurance sheet</td><td>Every field.</td></tr>
+        <tr><td>Whether a job may change your own name, the title and the opening words</td><td>"Yes, any field". Each one a job changes carries its mark and sits in the list on the left.</td></tr>
+        <tr><td>The five faults of the first pass</td><td>"Yes, all five".</td></tr>
+      </table></div>
+      <h3>Yours to decide</h3>
+      <div class="tbl"><table class="plain">
+        <tr><th>Call</th><th>My pick</th></tr>
+        <tr><td>Which builder is built first</td><td>Insurance requirements. Every job you run as the GC needs one, and the Sub NDA may be used once.</td></tr>
+        <tr><td>A certificate for each job, or one for each company</td><td>One for each job, as drawn. Ask your agent whether one certificate can cover several jobs.</td></tr>
+        <tr><td>Who fills a job's sheet</td><td>A dev sets the standing sheet. The office fills a job's sheet, as soon as the tab is open to the office.</td></tr>
+        <tr><td>Sending something nobody has read</td><td>A box to tick while the tab is dev only. A hard stop for a real customer once the office can send.</td></tr>
+        <tr><td>What outdates a certificate</td><td>A change to a name, the place or an amount. Not a change to the other words.</td></tr>
+        <tr><td><i>Make this the usual</i>, pressed on a job</td><td>Keep it.</td></tr>
+        <tr><td>Which jobs get a sheet</td><td>Only the jobs you run as the GC.</td></tr>
+        <tr><td>The sheet in Spanish</td><td>English only, since an insurance agent reads it. The words around it on a sub's page stay in both.</td></tr>
+        <tr><td>What a send to a GC is about, when you do not pick</td><td>All their jobs with you.</td></tr>
+        <tr><td>What a GC can do with the Sub NDA at first</td><td><i>Look only</i>. Add <i>Look, then send their picks</i> as the step after. Both are drawn.</td></tr>
+        <tr><td>What a GC reads as the Sub NDA's name</td><td><i>Secrecy on your jobs</i> on their page, as drawn. <i>Sub NDA</i> is your word for it.</td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="sect" id="plan" aria-labelledby="c5">
+    <div class="cap" id="c5">The plan</div>
+    <div class="prose" id="plan-body" style="max-width:none">
+      <p style="max-width:78ch">Ten small steps in three groups. Each ships by itself and is useful by itself. The first is what the spike becomes. Insurance comes before the rest of the Sub NDA, so the send is built once, where it is used most, and the Sub NDA then reuses it.</p>
+      <div class="tbl"><table class="plain">
+        <tr><th>#</th><th>Step</th><th>What you can do after it</th><th>Size</th><th>Waits on</th></tr>
+        <tr><td colspan="5" class="k">Both builders</td></tr>
+        <tr><td>1</td><td><b>The tab, with the spike in it</b></td><td>A dev opens Documents, presses <i>Document builder</i>, opens <i>Sub NDA</i> and walks the flow on the made-up job. The page at /paper-builder goes away.</td><td>S</td><td>Your yes</td></tr>
+        <tr><td>2</td><td><b>A builder's contents move into the database</b></td><td>Nothing new to see. A builder's standing part is saved, with a draft, a published copy, a revision number and who read it.</td><td>M</td><td>Step 1</td></tr>
+        <tr><td colspan="5" class="k">Insurance requirements for subs</td></tr>
+        <tr><td>3</td><td><b>The standing sheet and a job's sheet</b></td><td>A dev types on the standing sheet, then on a job's sheet. The left side lists what differs, with the way back. <i>Publish to 3 jobs</i> sends a change to your usual to every job that is ready. The agent's check is marked on the usual. The sheet prints.</td><td>M</td><td>Step 2</td></tr>
+        <tr><td>4</td><td><b>The sheet's link</b></td><td>A published sheet opens by link with no login. A sub sends it to their insurance agent.</td><td>S</td><td>Step 3</td></tr>
+        <tr><td>5</td><td><b>The send, built once, to a job's trades</b></td><td>A row a trade: who it went to, the day, <i>Opened</i>, <i>Tell them it changed</i>. One press sends to everyone who is ready and names who it held. A trade's own page says what the certificate must name, with <i>Open the sheet</i>.</td><td>M</td><td>Step 4</td></tr>
+        <tr><td>6</td><td><b>A certificate for each job, checked against the sheet</b></td><td>A certificate is kept against the job it is for. <i>Check it against the sheet</i> lists what the sheet asks, to tick. <i>Send it back</i> names what is missing. A change to a name or an amount marks the certificates it outdates.</td><td>M</td><td>Step 5, and your call</td></tr>
+        <tr><td colspan="5" class="k">Sub NDA</td></tr>
+        <tr><td>7</td><td><b>Edit on the GC's view, and Publish</b></td><td>A dev presses the words on the GC's view and types. The map shows which pages changed, with the way back. <i>Publish</i> makes a revision, and the attorney's read is marked on it.</td><td>M</td><td>Step 2</td></tr>
+        <tr><td>8</td><td><b>The link</b></td><td>A dev switches the link on, copies it and can make a new one. Anyone with it walks the published builder. Look only.</td><td>S</td><td>Steps 4 and 7</td></tr>
+        <tr><td>9</td><td><b>Send it to a GC</b></td><td>Step 5's send, pointed at GCs, with the job it is about. It is on their page, under that job.</td><td>S</td><td>Steps 5 and 8</td></tr>
+        <tr><td>10</td><td><b>Send their picks</b></td><td>A GC's last step reads <i>Send these picks</i>. They land under <i>Picks sent to you</i>, and in <b>Needs you</b>.</td><td>S to M</td><td>Step 9, and your call</td></tr>
+        <tr><td>Later</td><td><b>A job's row</b></td><td>One row a job: its sheet, its secrecy paper and each trade's standing. The tab sorted by the work.</td><td>M</td><td>Both builders in use</td></tr>
+        <tr><td>Later</td><td><b>A job's secrecy paper</b></td><td>The card's own train: the Contract Book takes settings, then a job requires the paper its settings make.</td><td>L</td><td>An attorney's read</td></tr>
+      </table></div>
+      <h3>What is already there</h3>
+      <p style="max-width:78ch">The Sub NDA's flow is used three times as it is: as the page a dev types on, behind the link and on a GC's page. Its rules and its tests come along unchanged. For insurance, the app already asks a trade for its certificate, takes it on the trade's page, lets the office mark it good and watches the day it runs out. Steps 3 to 6 add what the certificate must say in front of that, and the check list behind it.</p>
+      <details>
+        <summary>For the build</summary>
+        <div class="prose" style="margin-top:8px">
+          <p><b>Shared parts, each a kernel with its tests.</b> A field, which is a text box drawn as the document's own words and keeps only what differs from its base. The read mark, a revision with who read it and when. The send, a recipient's states and the batch's count, its ready list and its held list with reasons.</p>
+          <p><b>Step 1.</b> <code>documentsPageTab.ts</code> gains <code>builder</code>, shown to a dev only through <code>shownDocumentsPageTab</code>. A registry lists the builders. <code>PaperFlow</code>, <code>paperBuilder.ts</code> and the fixture are renamed to the document builder and reused. The route in <code>App.tsx</code> is removed. No migration. One release note and fragment, with the Documents architecture doc, the glossary and the access doc amended.</p>
+          <p><b>Step 2.</b> A migration alone, pushed before any client reads it: <code>document_builders</code>, a row a builder, with its kind (walked or filled), a draft, a published copy, a revision, who published and when, and who read which revision. Read and written by a dev only. It ends with the four fence calls.</p>
+          <p><b>Step 3.</b> <code>document_builder_sheets</code>, a builder and a project, with the job's blanks and its own fields as a draft and a published copy, and the usual's revision it was published on. A pure kernel lays the standing sheet over a job and names what is missing. The blanks start from the job: <code>gc_projects.property_owner_customer_id</code> and the project's address. Your name comes from the company's own settings, as the portal's letterhead does. The press that publishes your usual is a batch: it says its count, acts on the jobs that are ready and names each it held. Printing goes through <code>printRoot.ts</code>.</p>
+          <p><b>Step 4.</b> An edge function answers a published sheet for a link's token, and refuses one that is off. A public page outside the app's frame, light, with no login. Only the token's hash is kept. Step 8 reuses the function and the page's frame.</p>
+          <p><b>Step 5.</b> <code>document_builder_sends</code>: the builder or the sheet, who it went to, the contact, the job it is about, the day it went, the day and the revision they opened. The email is the insurance ask <code>paperEmail.ts</code> already writes, with the link. The trade portal's answer gains each job's published sheet, and <code>PAPER_WORDS.coi</code> its line and press in both languages. A send makes a page for someone who never had one, never turns one back on, and writes a sent copy.</p>
+          <p><b>Step 6.</b> A certificate's row in <code>person_contract_documents</code> gains the project it is for and the asks it was checked against. A kernel turns a published sheet into its asks, and says a certificate is outdated when they differ. <code>companyPapers.ts</code> reads a company's certificate for a job. The start gate keeps reading the company's own certificate until this lands.</p>
+          <p><b>Steps 7 to 10.</b> Kernels for what differs between the draft and the published copy, page by page. Step 9 adds only the customer portal's block, placed by job, to step 5's send. Step 10 is a new kind on <code>submit-portal-request</code> that writes the picks and nothing else.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var CO = 'Acme Plumbing';
+  var LV = ['std', 'gov', 'mid', 'strict'];
+  var LEVEL = {
+    std: { name: 'Standard', pic: 'Aligned with regular businesses' },
+    gov: { name: 'Elevated', pic: 'Aligned with hospitals, banks and government buildings' },
+    mid: { name: 'Aggressive', pic: 'Aligned with military bases and defense plants' },
+    strict: { name: 'Strict', pic: 'Aligned with private research labs' }
+  };
+  // Placeholder words, the same as the card's first mock-up. Not clause wording, and no attorney has read them.
+  function L(says, breach, site) { return { says: says, breach: breach, site: site || [] }; }
+  var TOPICS = [
+    { key: 'photos', label: 'Photos and video', L: {
+      std: L('Work photos only, into ' + CO + '\'s system, then deleted from the phone.', ['Taking a photo that is not of the work.', 'Keeping a work photo on a phone after it is uploaded.', 'Sending or posting a job photo to anyone outside the job.']),
+      gov: L('Work photos only, and none that show people, screens or signs.', ['Taking a photo that is not of the work.', 'Taking a photo that shows people, screens or signs.', 'Keeping a work photo on a phone after it is uploaded.', 'Sending or posting a job photo to anyone outside the job.']),
+      mid: L('Work photos only, taken by the site lead and checked before they leave the site.', ['Taking any photo, unless you are the site lead.', 'Taking a photo off site before it is checked.', 'Sending or posting a job photo to anyone outside the job.'], ['A site lead who checks every photo before it leaves.']),
+      strict: L('No photos or video at all.', ['Taking any photo or video on site.', 'Having a camera out on site.'], ['Someone on site who watches for cameras.']) } },
+    { key: 'devices', label: 'Phones and devices', L: {
+      std: L('Phones stay put away in marked areas.', ['Having a phone out in a marked area.'], ['Marked areas, with signs.']),
+      gov: L('Phones stay put away anywhere on site, except on breaks.', ['Having a phone out anywhere on site, except on a break.'], ['Someone on site who watches for phones.']),
+      mid: L('Phones are locked up before anyone enters a marked area.', ['Carrying a phone into a marked area.', 'Carrying a smart watch or a camera into a marked area.'], ['Marked areas, with lockers at each door.']),
+      strict: L('No phones or devices past the gate.', ['Carrying a phone or any device past the gate.'], ['A staffed gate, with lockers outside it.']) } },
+    { key: 'access', label: 'Getting on site', L: {
+      std: L('Badge worn on site. Sign in and out each day.', ['Being on site without a badge.', 'Not signing in or out.'], ['Badges, and someone to issue them.', 'A sign-in sheet at the door.']),
+      gov: L('Badge, sign in and out, and photo ID shown at the door.', ['Being on site without a badge.', 'Not signing in or out.', 'Coming on site without showing photo ID.'], ['Badges, and someone to issue them.', 'A staffed door that checks ID.']),
+      mid: L('Badge, sign in and out, and a background check before the first day.', ['Being on site without a badge.', 'Not signing in or out.', 'Starting work before the background check clears.'], ['Badges, and someone to issue them.', 'A staffed door.', 'Someone to run background checks before the first day.']),
+      strict: L('Badge, sign in and out, a background check before the first day, and an escort in marked areas.', ['Being on site without a badge.', 'Not signing in or out.', 'Starting work before the background check clears.', 'Being in a marked area without an escort.'], ['Badges, and someone to issue them.', 'A staffed door.', 'Someone to run background checks before the first day.', 'Escorts free to walk with each person in a marked area.']) } },
+    { key: 'talk', label: 'Talking on site', L: {
+      std: L('Talk with the owner\'s staff or tenants only about the work in front of you.', ['Talking with the owner\'s staff or tenants about anything but the work in front of you.']),
+      gov: L('Talk about the job only with people working on it.', ['Talking about the job with anyone who is not working on it.']),
+      mid: L('Talk about the job only with people on the job\'s list.', ['Talking about the job with anyone who is not on the job\'s list.'], ['A list of who is on the job, kept current.']),
+      strict: L('No talk about the job with the owner\'s staff or tenants. Questions go to the site lead.', ['Talking about the job with the owner\'s staff or tenants at all.', 'Answering a question about the job yourself. It goes to the site lead.'], ['A site lead on site to take questions.']) } },
+    { key: 'term', label: 'How long secrecy lasts', L: {
+      std: L('3 years after each person\'s last day on the job.', ['Sharing anything secret about the job within 3 years of your last day.']),
+      gov: L('5 years after each person\'s last day on the job.', ['Sharing anything secret about the job within 5 years of your last day.']),
+      mid: L('7 years after each person\'s last day on the job.', ['Sharing anything secret about the job within 7 years of your last day.']),
+      strict: L('10 years after each person\'s last day on the job.', ['Sharing anything secret about the job within 10 years of your last day.']) } },
+    { key: 'files', label: 'Files at the end', L: {
+      std: L('Returned or destroyed within 10 days, confirmed in writing.', ['Keeping any job file more than 10 days after your work ends.', 'Not confirming in writing that the files are gone.']),
+      gov: L('Returned or destroyed within 7 days, confirmed in writing.', ['Keeping any job file more than 7 days after your work ends.', 'Not confirming in writing that the files are gone.']),
+      mid: L('Returned or destroyed within 5 days, confirmed in writing.', ['Keeping any job file more than 5 days after your work ends.', 'Not confirming in writing that the files are gone.']),
+      strict: L('Returned or destroyed within 3 days, confirmed in writing.', ['Keeping any job file more than 3 days after your work ends.', 'Not confirming in writing that the files are gone.']) } },
+    { key: 'report', label: 'Reporting a leak', L: {
+      std: L('Reported to ' + CO + ' within 3 days.', ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 3 days.']),
+      gov: L('Reported to ' + CO + ' within 2 days.', ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 2 days.']),
+      mid: L('Reported to ' + CO + ' within 24 hours.', ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 24 hours.']),
+      strict: L('Reported to ' + CO + ' the same day.', ['Knowing of a leak or a legal demand and not telling ' + CO + ' the same day.']) } }
+  ];
+  var TODAY = 'Nov 24';
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function topic(k) { return TOPICS.filter(function (x) { return x.key === k; })[0]; }
+  function tone(v) { return v === 'strict' ? 'var(--top)' : v === 'mid' ? 'var(--warn)' : v === 'gov' ? 'var(--teal)' : 'var(--press)'; }
+  function chipKind(v) { return v === 'strict' ? 'top' : v === 'mid' ? 'stricter' : v === 'gov' ? 'teal' : 'level'; }
+  function bars(v) { var b = el('span', 'bars'); LV.forEach(function (x, i) { var bar = el('i'); if (i <= LV.indexOf(v)) bar.style.background = tone(v); b.appendChild(bar); }); return b; }
+  function first(person) { return person.split(',')[0]; }
+  function copy(x) { return JSON.parse(JSON.stringify(x)); }
+
+  // ---- Three things both builders share: a field you type on, the mark that someone read a revision, and the send.
+
+  // A field: words you press and type over, where you read them. Its mark says where the words come from:
+  // 'usual', 'own' (changed and not yet the usual) or 'blank' (filled from the job).
+  function field(text, mark, label, onInput, tag) {
+    var e = el(tag || 'span', 'f ' + mark, text);
+    e.setAttribute('contenteditable', 'true'); e.setAttribute('role', 'textbox'); e.setAttribute('spellcheck', 'false'); e.setAttribute('aria-label', label);
+    e.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); e.blur(); } });
+    e.addEventListener('input', function () { onInput(e.textContent, e); });
+    return e;
+  }
+  function ctl(words, label, onPress) { var b = el('button', 'ctl', words); b.type = 'button'; b.setAttribute('aria-label', label); b.addEventListener('click', onPress); return b; }
+
+  // Who read which revision. A new revision is unread until someone marks it, so the warning has a way out.
+  var READ = { nda: { rev: 0, by: '', on: '', open: false, name: '' }, ins: { rev: 0, by: '', on: '', open: false, name: '' } };
+  function readChip(host, r, rev, unread, readBy, redraw) {
+    if (r.rev === rev) { host.appendChild(el('span', 'chip ok', readBy + ' ' + r.by + ', ' + r.on)); return; }
+    var b = el('button', 'chip stricter press', unread); b.type = 'button';
+    b.addEventListener('click', function () { r.open = !r.open; redraw(); });
+    host.appendChild(b);
+  }
+  function readForm(host, r, rev, whoLabel, pressWords, redraw) {
+    host.textContent = ''; host.hidden = !(r.open && r.rev !== rev); if (host.hidden) return;
+    var f = el('label', 'field'), inp = el('input'); f.appendChild(el('span', null, whoLabel)); inp.type = 'text'; inp.value = r.name; f.appendChild(inp);
+    var go = el('button', 'primary', pressWords); go.type = 'button'; go.disabled = !r.name.trim();
+    inp.addEventListener('input', function () { r.name = inp.value; go.disabled = !r.name.trim(); });
+    go.addEventListener('click', function () { r.rev = rev; r.by = r.name.trim(); r.on = TODAY; r.open = false; redraw(); });
+    var no = el('button', 'second', 'Cancel'); no.type = 'button'; no.addEventListener('click', function () { r.open = false; redraw(); });
+    host.appendChild(f); host.appendChild(go); host.appendChild(no);
+    host.appendChild(el('p', 'fine', 'Kept with the revision. A new revision is unread again until someone marks it.'));
+  }
+
+  // The send. One row a person or a company, with where the send stands, and one press for everyone who is ready.
+  // `cfg.people` have a page that is 'on', 'none' (never made) or 'off' (turned off on purpose, which a send never undoes).
+  function sendList(host, cfg) {
+    var ui = cfg.ui, c = el('div', 'card'); c.appendChild(el('h3', null, cfg.title)); c.appendChild(el('p', 'muted', cfg.lead));
+    if (cfg.findId) {
+      var q = el('input'); q.type = 'search'; q.placeholder = cfg.findWords; q.value = ui.q; q.setAttribute('aria-label', cfg.findWords); q.id = cfg.findId;
+      q.addEventListener('input', function () { ui.q = q.value; cfg.redraw(); var again = $(cfg.findId); again.focus(); again.setSelectionRange(ui.q.length, ui.q.length); });
+      c.appendChild(q);
+    }
+    function deliver(x, to, about, note, why) {
+      cfg.sent[x.key] = { to: to, on: TODAY, about: about, opened: null, openedRev: 0 };
+      if (x.page === 'none') x.page = 'on';
+      if (cfg.onMail) cfg.onMail({ gc: x.name, to: to, about: about, note: note, why: why });
+    }
+    function unreadGate(into) {
+      if (!cfg.unread) return;
+      var w = el('label', 'warn check'), box = el('input'); box.type = 'checkbox'; box.checked = ui.anyway;
+      box.addEventListener('change', function () { ui.anyway = box.checked; cfg.redraw(); });
+      w.appendChild(box); w.appendChild(el('span', null, cfg.unread + ' Send it anyway.')); into.appendChild(w);
+    }
+    var blocked = !cfg.published || (cfg.unread && !ui.anyway);
+    var hits = cfg.people.filter(function (x) { return x.name.toLowerCase().indexOf(ui.q.trim().toLowerCase()) >= 0; }), list = el('div');
+    hits.forEach(function (x) {
+      var st = cfg.sent[x.key], row = el('div', 'grow'), top = el('div', 'gtop');
+      top.appendChild(el('b', null, x.name)); if (x.sub) top.appendChild(el('span', 'muted', x.sub)); row.appendChild(top);
+      var chips = el('div', 'chips'), bt = el('div', 'btns');
+      if (st) {
+        chips.appendChild(el('span', 'chip wait', 'Sent ' + st.on + ' to ' + st.to));
+        chips.appendChild(st.opened ? el('span', 'chip ok', 'Opened ' + st.opened) : el('span', 'chip stricter', 'Not opened yet'));
+        if (cfg.about) chips.appendChild(el('span', 'chip wait', st.about === 'all' ? 'All their jobs' : st.about));
+        var stale = st.opened && st.openedRev < cfg.rev;
+        if (stale) chips.appendChild(el('span', 'chip stricter', 'Changed since they opened it'));
+        var again = el('button', 'small', stale ? 'Tell them it changed' : 'Send it again'); again.type = 'button';
+        again.addEventListener('click', function () { st.on = TODAY; if (stale) st.opened = null; if (cfg.onMail) cfg.onMail({ gc: x.name, to: st.to, about: st.about, note: '', why: stale ? 'changed' : 'again' }); cfg.redrawAll(); });
+        var off = el('button', 'small', 'Take it off their page'); off.type = 'button';
+        off.addEventListener('click', function () { delete cfg.sent[x.key]; cfg.redrawAll(); });
+        bt.appendChild(again); bt.appendChild(off);
+      } else {
+        if (x.page === 'none') chips.appendChild(el('span', 'chip wait', 'No page yet'));
+        if (x.page === 'off') chips.appendChild(el('span', 'chip top', 'Their page is off'));
+        if (ui.sending !== x.key) {
+          var send = el('button', 'small', 'Send it to them'); send.type = 'button';
+          send.addEventListener('click', function () { ui.sending = x.key; ui.draft = { to: x.people[0], about: 'all', note: cfg.note }; cfg.redraw(); });
+          bt.appendChild(send);
+        }
+      }
+      if (cfg.extra) cfg.extra(x, chips, bt);
+      if (chips.childNodes.length) row.appendChild(chips);
+      if (bt.childNodes.length) row.appendChild(bt);
+
+      if (ui.sending === x.key && !st) {
+        var box = el('div', 'sendbox'), d = ui.draft;
+        var f1 = el('label', 'field'), s1 = el('select'); f1.appendChild(el('span', null, 'To'));
+        x.people.forEach(function (pn) { var o = el('option', null, pn); o.value = pn; s1.appendChild(o); });
+        s1.value = d.to; s1.addEventListener('change', function () { d.to = s1.value; cfg.redraw(); }); f1.appendChild(s1); box.appendChild(f1);
+        if (cfg.about) {
+          var f2 = el('label', 'field'), s2 = el('select'); f2.appendChild(el('span', null, 'About'));
+          var o0 = el('option', null, 'All their jobs with you'); o0.value = 'all'; s2.appendChild(o0);
+          x.jobs.forEach(function (jn) { var o = el('option', null, jn); o.value = jn; s2.appendChild(o); });
+          s2.value = d.about; s2.addEventListener('change', function () { d.about = s2.value; }); f2.appendChild(s2); box.appendChild(f2);
+        }
+        var f3 = el('label', 'field'), ta = el('textarea'); f3.appendChild(el('span', null, 'A note to them')); ta.value = d.note;
+        ta.addEventListener('input', function () { d.note = ta.value; }); f3.appendChild(ta); box.appendChild(f3);
+        if (!cfg.published) box.appendChild(el('div', 'warn', cfg.unpublished));
+        else if (x.page === 'none') box.appendChild(el('div', 'warn', x.name + ' has no page yet. Sending makes one.'));
+        else if (x.page === 'off') {
+          var wn = el('div', 'warn'); wn.appendChild(document.createTextNode('Their page was turned off on ' + x.offOn + '. A send never turns a page back on. '));
+          var on = el('button', 'small', 'Turn their page on'); on.type = 'button'; on.addEventListener('click', function () { x.page = 'on'; cfg.redraw(); }); wn.appendChild(on);
+          box.appendChild(wn);
+        } else box.appendChild(el('p', 'muted', 'They get an email with a link to their page. No login.'));
+        unreadGate(box);
+        var sb = el('div', 'btns'), go = el('button', 'primary', 'Send to ' + first(d.to)); go.type = 'button'; go.disabled = blocked || x.page === 'off';
+        go.addEventListener('click', function () { deliver(x, first(d.to), d.about, d.note, 'first'); ui.sending = null; ui.draft = null; ui.outcome = ''; cfg.redrawAll(); });
+        var no = el('button', 'second', 'Cancel'); no.type = 'button'; no.addEventListener('click', function () { ui.sending = null; ui.draft = null; cfg.redraw(); });
+        sb.appendChild(go); sb.appendChild(no); box.appendChild(sb);
+        row.appendChild(box);
+      }
+      list.appendChild(row);
+    });
+    if (!hits.length) list.appendChild(el('p', 'muted', 'Nobody matches those words.'));
+    c.appendChild(list);
+
+    // One press for everyone who is ready. It says its count, sends to them, and names who it held with the reason.
+    var waiting = cfg.people.filter(function (x) { return !cfg.sent[x.key]; });
+    var ready = waiting.filter(function (x) { return x.page === 'on'; }), held = waiting.filter(function (x) { return x.page !== 'on'; });
+    var foot = el('div', 'sendfoot');
+    if (ui.sending == null) unreadGate(foot);
+    var all = el('button', 'primary', ready.length ? 'Send to ' + plural(ready.length, cfg.noun[0], cfg.noun[1]) + (ready.length === 1 ? ' who is ready' : ' who are ready') : 'Nothing to send'); all.type = 'button';
+    all.disabled = !ready.length || blocked;
+    all.addEventListener('click', function () {
+      ready.forEach(function (x) { deliver(x, first(x.people[0]), 'all', cfg.note, 'first'); });
+      ui.outcome = 'Sent to ' + plural(ready.length, cfg.noun[0], cfg.noun[1]) + '.' + (held.length ? ' Held ' + held.length + '.' : ''); cfg.redrawAll();
+    });
+    foot.appendChild(all);
+    if (ui.outcome) foot.appendChild(el('span', 'chip ok', ui.outcome));
+    if (!cfg.published) foot.appendChild(el('p', 'muted', cfg.unpublished));
+    held.forEach(function (x) { foot.appendChild(el('p', 'muted', 'Held: ' + x.name + (x.page === 'none' ? ' has no page yet. Send to them alone to make one.' : '. Their page is off.'))); });
+    foot.appendChild(el('p', 'fine', 'Each send is kept under Sent copies on Documents.'));
+    c.appendChild(foot); host.appendChild(c);
+  }
+
+  // ---- 1 · The tab row and the list of builders.
+  function drawDocs() {
+    var row = $('doc-tabs'); row.textContent = '';
+    ['Search', 'Estimates', 'Bids', 'Jobs', 'Supply invoices', 'Sent copies', 'Agreements', 'Photos', 'Painted maps', 'Company', 'Where files go'].forEach(function (t) {
+      var b = el('button', 'tab still', t); b.type = 'button'; b.setAttribute('aria-pressed', 'false'); b.tabIndex = -1; row.appendChild(b);
+    });
+    var mine = el('button', 'tab', 'Document builder'); mine.type = 'button'; mine.setAttribute('aria-pressed', 'true'); row.appendChild(mine);
+
+    var host = $('builders'); host.textContent = '';
+    function line(name, says, chips, to) {
+      var r = el('div', 'brow'), left = el('div'); left.appendChild(el('div', 'name', name)); left.appendChild(el('div', 'muted', says));
+      var ch = el('div', 'chips'); chips.forEach(function (c) { ch.appendChild(el('span', 'chip ' + c[0], c[1])); }); left.appendChild(ch); r.appendChild(left);
+      var open = el('button', 'primary', 'Open'); open.type = 'button'; open.addEventListener('click', function () { $(to).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      r.appendChild(open); host.appendChild(r);
+    }
+    var n = changedCells().length, sentTo = Object.keys(S.sent).length;
+    var a = [['ok', 'Published, revision ' + S.rev]];
+    if (n) a.push(['stricter', plural(n, 'page', 'pages') + ' changed, not published']);
+    a.push(['wait', sentTo ? 'Sent to ' + plural(sentTo, 'GC', 'GCs') : 'Sent to no GC']); a.push(['wait', S.linkOn ? 'Link on' : 'Link off']);
+    a.push(READ.nda.rev === S.rev ? ['ok', 'Read by an attorney'] : ['stricter', 'Not read by an attorney']);
+    line('Sub NDA', 'A job\'s secrecy paper for the people you bring onto it. Four levels, seven topics.', a, 's2');
+    var made = JOBS.filter(function (j) { return j.rev > 0; }).length, missing = 0, check = 0;
+    JOBS.forEach(function (j) { j.trades.forEach(function (t) { if (t.cert.st === 'none') missing += 1; if (t.cert.st === 'in' || outdated(j, t.cert)) check += 1; }); });
+    var b = [[made ? 'ok' : 'wait', 'A sheet on ' + made + ' of ' + plural(JOBS.length, 'job', 'jobs')]];
+    if (check) b.push(['level', plural(check, 'certificate', 'certificates') + ' to check']);
+    b.push([missing ? 'stricter' : 'ok', missing ? plural(missing, 'trade', 'trades') + ' with no certificate' : 'Every trade has a certificate']);
+    b.push(READ.ins.rev === STD.rev ? ['ok', 'Checked by your insurance agent'] : ['stricter', 'Not checked by your insurance agent']);
+    line('Insurance requirements for subs', 'What each sub must carry on a job you run as the GC. One sheet a job.', b, 's4');
+  }
+
+  // ---- 2 · The Sub NDA, open. The GC's view on the right is where the words are typed. The grid is the map to it.
+  var GCS = [
+    { key: 'northgate', name: 'Northgate Builders', page: 'on', people: ['Dana Whitlock, project manager', 'Sam Ortega, superintendent'], jobs: ['J2391 Northgate Tower fit-out', 'J2402 Northgate Annex'] },
+    { key: 'harlan', name: 'Harlan and Pike Construction', page: 'on', people: ['Lee Okafor, owner'], jobs: ['J1180 Pike Street clinic', 'J1195 Harlan warehouse'] },
+    { key: 'redmesa', name: 'Red Mesa General', page: 'none', people: ['Rosa Benally, estimator'], jobs: ['J2210 Red Mesa school wing'] },
+    { key: 'tollgate', name: 'Tollgate Commercial', page: 'off', offOn: 'Oct 3', people: ['Pat Lindqvist, project manager'], jobs: ['J0977 Tollgate plaza', 'J1012 Tollgate garage'] },
+    { key: 'bexley', name: 'Bexley Build Group', page: 'on', people: ['Morgan Adeyemi, owner'], jobs: ['J2301 Bexley lofts'] }
+  ];
+  GCS.forEach(function (g) { g.sub = plural(g.jobs.length, 'job', 'jobs') + ' with you'; });
+  var NOTE = 'Here is how we bind the people we bring onto your jobs. Tell me what you would change.';
+  var S = {
+    mode: 'edit', cell: { t: 'photos', l: 'gov' }, marks: true,
+    rev: 2, linkOn: true, link: 'sub-nda-7Kq2', copied: false, can: 'send',
+    sent: { northgate: { to: 'Dana Whitlock', on: 'Nov 20', about: 'all', opened: 'Nov 21', openedRev: 2, picks: true },
+      harlan: { to: 'Lee Okafor', on: 'Nov 18', about: 'J1180 Pike Street clinic', opened: null, openedRev: 0 } },
+    ui: { sending: null, draft: null, anyway: false, outcome: '', q: '' },
+    mail: { gc: 'Northgate Builders', to: 'Dana Whitlock', about: 'all', note: NOTE, why: 'first' }
+  };
+  // What GCs see is the published copy. A page differs from it until Publish.
+  var PUB = {};
+  function snap() { TOPICS.forEach(function (x) { LV.forEach(function (v) { PUB[x.key + ':' + v] = copy(x.L[v]); }); }); }
+  snap();
+  function cellChanged(t, l) { return JSON.stringify(topic(t).L[l]) !== JSON.stringify(PUB[t + ':' + l]); }
+  function changedCells() { var out = []; TOPICS.forEach(function (x) { LV.forEach(function (v) { if (cellChanged(x.key, v)) out.push([x.key, v]); }); }); return out; }
+  function gcOf(key) { return GCS.filter(function (g) { return g.key === key; })[0]; }
+  function setCell(t, l) { S.cell = { t: t, l: l }; draw(); }
+
+  function drawBar() {
+    var chips = $('state-chips'); chips.textContent = '';
+    chips.appendChild(el('span', 'chip ok', 'Published, revision ' + S.rev));
+    readChip(chips, READ.nda, S.rev, 'Not read by an attorney. Mark it read', 'Read by', draw);
+    readForm($('read-form'), READ.nda, S.rev, 'The attorney who read it', 'Mark revision ' + S.rev + ' as read', draw);
+    var n = changedCells().length, p = $('publish');
+    p.textContent = n ? 'Publish revision ' + (S.rev + 1) : 'Nothing to publish'; p.disabled = !n;
+    $('rev-note').textContent = n ? plural(n, 'page', 'pages') + ' changed. GCs see revision ' + S.rev + ' until you publish.' : 'GCs see what you see.';
+    $('pv-cap').textContent = S.marks ? 'What a GC sees. Press any words to change them.' : 'What a GC sees';
+    var seg = $('seg'); seg.textContent = '';
+    [['edit', 'Edit'], ['share', 'Share']].forEach(function (o) {
+      var b = el('button', null, o[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(S.mode === o[0]));
+      b.addEventListener('click', function () { S.mode = o[0]; draw(); }); seg.appendChild(b);
+    });
+    $('split').setAttribute('data-mode', S.mode);
+    var mk = $('marks'); mk.setAttribute('aria-pressed', String(S.marks)); mk.lastChild.textContent = S.marks ? 'Marks are on' : 'Marks are off, as a GC sees it';
+  }
+
+  function drawEdit(host) {
+    var c = el('div', 'card');
+    c.appendChild(el('h3', null, 'The map: a row a topic, a column a level'));
+    c.appendChild(el('p', 'muted', 'Press a cell to open that page on the right. The words are typed there, on the page itself.'));
+    var gw = el('div', 'gridwrap'), tb = el('table', 'grid'), hr = el('tr');
+    hr.appendChild(el('th', 'topic', ''));
+    LV.forEach(function (v) { var th = el('th'); th.appendChild(el('span', 'chip ' + chipKind(v), LEVEL[v].name)); hr.appendChild(th); });
+    tb.appendChild(hr);
+    var mini = el('div', 'mini'), mh = el('div', 'mrow'); mh.appendChild(el('span'));
+    LV.forEach(function (v) { var s = el('span', 'mh'); s.appendChild(bars(v)); s.title = LEVEL[v].name; mh.appendChild(s); }); mini.appendChild(mh);
+    TOPICS.forEach(function (x) {
+      var tr = el('tr'); tr.appendChild(el('th', 'topic', x.label));
+      var mr = el('div', 'mrow'); mr.appendChild(el('span', 'ml', x.label));
+      LV.forEach(function (v) {
+        var d = x.L[v], on = S.cell.t === x.key && S.cell.l === v, ch = cellChanged(x.key, v);
+        var td = el('td'), b = el('button', 'cell' + (ch ? ' changed' : '')); b.type = 'button';
+        b.style.setProperty('--tone', tone(v)); b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', x.label + ' at ' + LEVEL[v].name);
+        b.appendChild(el('span', 'says', d.says));
+        b.appendChild(el('span', 'n', plural(d.breach.length, 'breach line', 'breach lines') + (d.site.length ? ', ' + plural(d.site.length, 'site line', 'site lines') : '')));
+        b.addEventListener('click', function () { setCell(x.key, v); });
+        td.appendChild(b); tr.appendChild(td);
+        // The same cell as a small square, for a phone: its level's colour, and a mark when it has changed.
+        var m = el('button', 'mc' + (ch ? ' changed' : '')); m.type = 'button'; m.style.setProperty('--tone', tone(v));
+        m.setAttribute('aria-pressed', String(on)); m.setAttribute('aria-label', x.label + ' at ' + LEVEL[v].name);
+        m.addEventListener('click', function () { setCell(x.key, v); });
+        mr.appendChild(m);
+      });
+      tb.appendChild(tr); mini.appendChild(mr);
+    });
+    gw.appendChild(tb); c.appendChild(gw); c.appendChild(mini);
+    host.appendChild(c);
+
+    var ch = changedCells(), d = el('div', 'card');
+    d.appendChild(el('h3', null, ch.length ? plural(ch.length, 'page', 'pages') + ' changed since revision ' + S.rev : 'Nothing changed since revision ' + S.rev));
+    var lg = el('div', 'legend'); lg.appendChild(el('span', 'f usual', 'As published')); lg.appendChild(el('span', 'f own', 'Changed, not published')); d.appendChild(lg);
+    ch.forEach(function (k) {
+      var row = el('div', 'drow'), left = el('div'), nm = el('div', 'nm', topic(k[0]).label + ' '); nm.appendChild(el('span', 'chip ' + chipKind(k[1]), LEVEL[k[1]].name));
+      left.appendChild(nm); row.appendChild(left);
+      var bt = el('div', 'btns'), go = el('button', 'small', 'Open it'); go.type = 'button'; go.addEventListener('click', function () { setCell(k[0], k[1]); });
+      var back = el('button', 'small', 'Back to revision ' + S.rev); back.type = 'button';
+      back.addEventListener('click', function () { topic(k[0]).L[k[1]] = copy(PUB[k[0] + ':' + k[1]]); draw(); });
+      bt.appendChild(go); bt.appendChild(back); row.appendChild(bt); d.appendChild(row);
+    });
+    host.appendChild(d);
+
+    var lv = el('div', 'card'); lv.appendChild(el('h3', null, 'The levels and the other pages'));
+    LV.forEach(function (v) {
+      var r = el('div', 'levrow'); r.appendChild(bars(v));
+      var tx = el('span'); tx.appendChild(el('b', null, LEVEL[v].name)); tx.appendChild(el('span', 'pic', LEVEL[v].pic)); r.appendChild(tx);
+      lv.appendChild(r);
+    });
+    var others = el('div', 'btns');
+    ['Open the levels', 'Open Before you start', 'Open Match the paper to the site'].forEach(function (w) { var b = el('button', 'small', w); b.type = 'button'; others.appendChild(b); });
+    lv.appendChild(others);
+    lv.appendChild(el('p', 'fine', 'Each opens on the right, and is typed on the same way.'));
+    host.appendChild(lv);
+  }
+
+  function drawShare(host) {
+    var a = el('div', 'card'); a.appendChild(el('h3', null, 'The link'));
+    var sw = el('button', 'switch'); sw.type = 'button'; sw.setAttribute('aria-pressed', String(S.linkOn));
+    sw.appendChild(el('i')); sw.appendChild(el('span', null, S.linkOn ? 'The link is on' : 'The link is off'));
+    sw.addEventListener('click', function () { S.linkOn = !S.linkOn; S.copied = false; draw(); });
+    a.appendChild(sw);
+    if (S.linkOn) {
+      a.appendChild(el('div', 'url', 'app.example/b/' + S.link));
+      var bt = el('div', 'btns');
+      var cp = el('button', 'second', 'Copy the link'); cp.type = 'button'; cp.addEventListener('click', function () { S.copied = true; draw(); });
+      var nw = el('button', 'small', 'Make a new link'); nw.type = 'button';
+      nw.addEventListener('click', function () { S.link = 'sub-nda-' + Math.random().toString(36).slice(2, 6); S.copied = false; draw(); });
+      bt.appendChild(cp); bt.appendChild(nw);
+      if (S.copied) bt.appendChild(el('span', 'chip ok', 'Copied'));
+      a.appendChild(bt);
+      a.appendChild(el('p', 'muted', 'Anyone with the link can walk the builder. Nobody can change it from there. A new link stops the old one.'));
+    } else a.appendChild(el('p', 'muted', 'Nobody can open the builder by link. A GC you sent it to still sees it on their page.'));
+    host.appendChild(a);
+
+    sendList(host, {
+      title: 'Send it to a GC', lead: 'A GC you send it to gets an email. They also find the builder on the page they already open.',
+      people: GCS, sent: S.sent, rev: S.rev, published: true, about: true, noun: ['GC', 'GCs'], note: NOTE, ui: S.ui,
+      findId: 'gc-find', findWords: 'Find a GC',
+      unread: READ.nda.rev === S.rev ? '' : 'No attorney has read revision ' + S.rev + '.',
+      onMail: function (m) { S.mail = m; }, redraw: drawPanel, redrawAll: draw
+    });
+
+    var w = el('div', 'card'); w.appendChild(el('h3', null, 'What a GC can do'));
+    [['look', 'Look only', 'They walk the builder and read each level. Nothing comes back to you.'],
+     ['send', 'Look, then send their picks', 'The last step reads Send these picks to ' + CO + '. Their picks land here for you to read. Nothing is set by it.']
+    ].forEach(function (o) {
+      var b = el('button', 'choice'); b.type = 'button'; b.setAttribute('aria-pressed', String(S.can === o[0]));
+      b.appendChild(el('span', 'dot')); var tx = el('span'); tx.appendChild(el('div', 't', o[1])); tx.appendChild(el('div', 'muted', o[2])); b.appendChild(tx);
+      b.addEventListener('click', function () { S.can = o[0]; draw(); });
+      w.appendChild(b);
+    });
+    if (S.can === 'send') {
+      w.appendChild(el('div', 'k', 'Picks sent to you'));
+      if (S.sent.northgate && S.sent.northgate.picks) {
+        var r = el('div', 'brow'), left = el('div');
+        left.appendChild(el('div', null, 'Northgate Builders, Nov 20'));
+        var ch = el('div', 'chips'); ch.appendChild(el('span', 'chip teal', 'Elevated, 1 page off it')); left.appendChild(ch);
+        r.appendChild(left); var op = el('button', 'small', 'Open'); op.type = 'button'; r.appendChild(op); w.appendChild(r);
+      } else w.appendChild(el('p', 'muted', 'Nothing waiting on you. A GC\'s picks show here when they send them.'));
+    }
+    host.appendChild(w);
+  }
+
+  function drawPanel() { var host = $('panel'); host.textContent = ''; if (S.mode === 'share') drawShare(host); else drawEdit(host); }
+
+  // What a GC sees: one topic page of the flow, at the level of the picked cell. With the marks on, every piece of
+  // words on it is a field, and a line can be added or taken off.
+  function drawFlow() {
+    var f = $('flow'); f.textContent = ''; f.className = 'flow light' + (S.marks ? ' editing' : '');
+    var ti = TOPICS.map(function (x) { return x.key; }).indexOf(S.cell.t), x = TOPICS[ti], v = S.cell.l, d = x.L[v], pub = PUB[x.key + ':' + v], edit = S.marks;
+    function words(text, was, label, set, tag) { return edit ? field(text, text === was ? 'usual' : 'own', label, function (nv, e) { set(nv); e.className = 'f ' + (nv === was ? 'usual' : 'own'); liveFlow(); }, tag) : el(tag || 'span', null, text); }
+    var head = el('div', 'fhead');
+    head.appendChild(el('div', 'k', 'Step ' + (ti + 4) + ' of 11'));
+    var h = el('h3', null, x.label + ' '); h.appendChild(el('span', 'chip ' + chipKind(v), LEVEL[v].name)); head.appendChild(h);
+    var dots = el('div', 'dots');
+    for (var i = 0; i < 11; i++) {
+      var dot = el('i'); if (i === ti + 3) dot.className = 'now';
+      if (i === 1) dot.style.background = tone('std'); else if (i >= 3 && i <= 9) dot.style.background = tone(i === ti + 3 ? v : 'std'); else if (i < ti + 3) dot.style.background = 'var(--text-muted)';
+      dots.appendChild(dot);
+    }
+    head.appendChild(dots); f.appendChild(head);
+
+    var body = el('div', 'fbody');
+    var mean = el('p', 'mean'); mean.appendChild(words(d.says, pub.says, 'What it means', function (nv) { d.says = nv; })); body.appendChild(mean);
+    function lines(title, list, was, kind, addWords, split) {
+      var card = el('div', 'card'); card.appendChild(el('h3', null, title));
+      var ul = el('ul', 'lines'); ul.style.setProperty('--tone', tone(v));
+      var under = LV[LV.indexOf(v) - 1], before = split && under ? x.L[under].breach : null;
+      function one(l, i, quiet) {
+        var li = el('li', (quiet ? 'quiet ' : '') + 'rowf');
+        li.appendChild(words(l, was[i], kind + ', line ' + (i + 1), function (nv) { list[i] = nv; }));
+        if (edit) li.appendChild(ctl('×', 'Remove ' + kind + ' line ' + (i + 1), function () { list.splice(i, 1); draw(); }));
+        ul.appendChild(li);
+      }
+      var own = [], kept = [];
+      list.forEach(function (l, i) { if (before && before.indexOf(l) >= 0) kept.push(i); else own.push(i); });
+      if (before && own.length) { var hd = el('li', 'head'); hd.appendChild(el('span', 'chip ' + chipKind(v), 'New at ' + LEVEL[v].name)); ul.appendChild(hd); }
+      own.forEach(function (i) { one(list[i], i, false); });
+      if (kept.length) { ul.appendChild(el('li', 'head also k', 'Also applies')); kept.forEach(function (i) { one(list[i], i, true); }); }
+      card.appendChild(ul);
+      if (edit) card.appendChild(ctl(addWords, addWords, function () { list.push('A new line.'); draw(); }));
+      return card;
+    }
+    body.appendChild(lines('What puts a person in breach', d.breach, pub.breach, 'Breach', 'Add a breach line', true));
+    if (d.site.length || edit) body.appendChild(lines('What the site must have', d.site, pub.site, 'Site', 'Add a site line', false));
+    f.appendChild(body);
+
+    var foot = el('div', 'ffoot'), at = (LV.indexOf(v) + 1) * 25;
+    var tr = el('div', 'track'); tr.style.setProperty('--tone', tone(v));
+    tr.appendChild(el('div', 'line')); var fill = el('div', 'fill'); fill.style.width = at + '%'; tr.appendChild(fill);
+    var knob = el('div', 'knob'); knob.style.left = 'calc(' + at + '% + ' + (11 - at * 0.22).toFixed(1) + 'px)'; tr.appendChild(knob); foot.appendChild(tr);
+    var stops = el('div', 'stops');
+    ['off'].concat(LV).forEach(function (s) {
+      var b = el('button', null, s === 'off' ? 'Off' : LEVEL[s].name); b.type = 'button';
+      if (s === v) b.setAttribute('aria-current', 'true');
+      if (s === 'off') b.disabled = true; else b.addEventListener('click', function () { setCell(x.key, s); });
+      stops.appendChild(b);
+    });
+    foot.appendChild(stops);
+    var nav = el('div', 'nav'), bk = el('button', 'second', 'Back'); bk.type = 'button';
+    bk.addEventListener('click', function () { setCell(TOPICS[Math.max(0, ti - 1)].key, v); });
+    var last = ti === TOPICS.length - 1, nx = el('button', 'primary', last ? 'Next: Review' : 'Next: ' + TOPICS[ti + 1].label); nx.type = 'button';
+    nx.addEventListener('click', function () { if (!last) setCell(TOPICS[ti + 1].key, v); });
+    nav.appendChild(bk); nav.appendChild(nx); foot.appendChild(nav); f.appendChild(foot);
+  }
+  // A redraw while a field on the flow is being typed in: everything but the flow under the caret.
+  function liveFlow() { drawDocs(); drawBar(); drawPanel(); drawDoors(); }
+
+  // ---- 3 · What reaches a GC: the email, their own page, and the link alone.
+  function builderCard(st) {
+    var c = el('div', 'card'); c.style.borderColor = 'var(--press)';
+    var hd = el('div', 'btns'); hd.appendChild(el('h3', null, 'Secrecy on ' + (st.about === 'all' ? 'your jobs' : 'this job')));
+    if (!st.opened) hd.appendChild(el('span', 'chip level', 'New'));
+    else if (st.openedRev < S.rev) hd.appendChild(el('span', 'chip stricter', 'Changed since you opened it'));
+    c.appendChild(hd);
+    c.appendChild(el('p', null, 'See how ' + CO + ' binds the people it brings onto ' + (st.about === 'all' ? 'your jobs' : 'this job') + '. Pick a level and read what it asks.'));
+    var b = el('button', 'primary', 'Open the Sub NDA builder'); b.type = 'button'; b.style.justifySelf = 'start';
+    b.addEventListener('click', function () { st.opened = TODAY; st.openedRev = S.rev; draw(); });
+    c.appendChild(b);
+    c.appendChild(el('p', 'fine', (st.opened ? 'You opened this on ' + st.opened + '. ' : '') + (S.can === 'send' ? 'You can send your picks to ' + CO + ' at the end. Nothing is set until they confirm.' : 'You can look. Nothing is sent.')));
+    return c;
+  }
+  function drawDoors() {
+    var m = S.mail, mp = $('mail-page'); mp.textContent = '';
+    $('mail-cap').textContent = 'To ' + m.to + ' at ' + m.gc;
+    var mc = el('div', 'card');
+    mc.appendChild(el('div', 'k', 'From ' + CO));
+    mc.appendChild(el('h3', null, m.why === 'changed' ? 'We changed the secrecy builder you looked at' : m.why === 'again' ? 'A reminder: secrecy on your jobs with ' + CO : 'Secrecy on your jobs with ' + CO));
+    mc.appendChild(el('p', null, 'Hello ' + m.to.split(' ')[0] + ','));
+    if (m.note) mc.appendChild(el('p', null, m.note));
+    mc.appendChild(el('p', null, m.why === 'changed' ? 'It has changed since you opened it. The new one is on your page.' : 'It is on your page' + (m.about === 'all' ? '.' : ', under ' + m.about + '.')));
+    var ob = el('button', 'primary', 'Open your page'); ob.type = 'button'; ob.style.justifySelf = 'start'; mc.appendChild(ob);
+    mc.appendChild(el('p', 'fine', 'No login. This link is yours, so do not pass it on.'));
+    mp.appendChild(mc);
+    mp.appendChild(el('p', 'fine', 'The email\'s own words are placeholders too.'));
+
+    var g = $('gc-page'); g.textContent = '';
+    var st = S.sent.northgate, ng = gcOf('northgate');
+    if (st && st.about === 'all') g.appendChild(builderCard(st));
+    ng.jobs.forEach(function (jn) {
+      var jc = el('div', 'card'); jc.appendChild(el('h3', null, jn));
+      jc.appendChild(el('p', 'muted', 'Bills, waivers and the stage plan, as they are today.'));
+      if (st && st.about === jn) jc.appendChild(builderCard(st));
+      g.appendChild(jc);
+    });
+    if (!st) g.appendChild(el('p', 'muted', 'Nothing was sent to Northgate Builders, so their page has no builder on it.'));
+
+    var l = $('link-page'); l.textContent = '';
+    if (!S.linkOn) { l.appendChild(el('div', 'card', 'This link is no longer open. Ask ' + CO + ' for a new one.')); return; }
+    var n = el('div', 'card'); n.appendChild(el('h3', null, 'Before you start'));
+    var ul = el('ul', 'lines');
+    ['This tool does not give legal advice.', 'Use it with your own attorney present.', 'It is experimental. Use it for trial purposes only.'].forEach(function (t) { ul.appendChild(el('li', null, t)); });
+    n.appendChild(ul); n.appendChild(el('p', 'fine', 'Placeholder words, for an attorney to confirm.'));
+    var lab = el('label', 'gcrow'), box = el('input'); box.type = 'checkbox'; lab.appendChild(box); lab.appendChild(el('b', null, 'I have read this.')); n.appendChild(lab);
+    var nx = el('button', 'primary', 'Next: The basis'); nx.type = 'button'; nx.disabled = true; box.addEventListener('change', function () { nx.disabled = !box.checked; }); n.appendChild(nx);
+    l.appendChild(n);
+    l.appendChild(el('p', 'fine', 'Revision ' + S.rev + ', the one you published. Your unpublished changes are not here.'));
+  }
+
+  // ---- 4 · Insurance requirements: a sheet with blanks, filled for each job the company runs as the GC.
+  // Placeholder words and amounts in plain words, written for this drawing. Not the sample's wording, and not advice.
+  // `STD.rev` is the published usual. `STD.dirty` is a change to it that no job has yet.
+  var STD = {
+    rev: 1, dirty: false,
+    f: { co: CO, addr1: '2200 Made Up Road', addr2: 'Austin, TX 78700', title: 'INSURANCE REQUIREMENTS', sub: 'For subcontractors on',
+      lead: 'The certificate must name as additional insured:', at: 'for work at', holder: 'Certificate holder:',
+      hName: CO, hAddr1: '2200 Made Up Road', hAddr2: 'Austin, TX 78700', colA: 'Coverage', colB: 'Least amount',
+      foot: 'The insurer must be licensed in Texas and rated A or better.' },
+    open: ['Before you start work, send us a certificate of insurance for this job.',
+      'Keep it current while you are on the job. Send a new one when it renews or your insurer changes.',
+      'Give this page to your insurance agent. It says what the certificate must show.'],
+    cover: [
+      { key: 'cgl', label: 'Commercial general liability', limit: '$1,000,000 each occurrence, $2,000,000 general aggregate' },
+      { key: 'auto', label: 'Commercial auto liability', limit: '$1,000,000 each accident' },
+      { key: 'wc', label: 'Workers\' compensation', limit: 'As the law requires' },
+      { key: 'el', label: 'Employer\'s liability', limit: '$1,000,000' },
+      { key: 'umb', label: 'Umbrella', limit: '$1,000,000' }
+    ]
+  };
+  var FNAME = { co: 'Your name at the top', addr1: 'Your address, first line', addr2: 'Your address, second line', title: 'The title', sub: 'The line under the title',
+    lead: 'The words before the names', at: 'The words before the place', holder: 'The certificate holder\'s label', hName: 'The certificate holder',
+    hAddr1: 'The holder\'s address, first line', hAddr2: 'The holder\'s address, second line', colA: 'The first column\'s heading', colB: 'The second column\'s heading', foot: 'The line at the foot' };
+  // A trade's certificate: none, in (came in, yours to check) or ok (checked against the sheet's revision `rev`).
+  var JOBS = [
+    { key: 'cedar', name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', insured: ['Pecan Ridge Holdings, Ltd.', 'Lone Oak Property Management, Inc.'],
+      rev: 1, stdRev: 1, changed: false, link: 'cedar-park-9Rt4', over: { 'cover.umb.limit': '$5,000,000' }, off: {}, extra: [],
+      trades: [
+        { key: 'cedarfork', name: 'Cedar Fork Drain', page: 'on', people: ['Ana Pruitt, owner'], cert: { st: 'ok', good: 'Mar 3', rev: 1 } },
+        { key: 'lonemesa', name: 'Lone Mesa Excavation', page: 'on', people: ['Ben Winters, owner'], cert: { st: 'in', on: 'Nov 18' } },
+        { key: 'pecos', name: 'Pecos Insulation', page: 'on', people: ['Gil Marsh, owner'], cert: { st: 'none' } },
+        { key: 'hilltop', name: 'Hilltop Electric', page: 'none', people: ['Noor Abbasi, office'], cert: { st: 'none' } }],
+      sent: { cedarfork: { to: 'Ana Pruitt', on: 'Nov 12', about: 'all', opened: 'Nov 12', openedRev: 1 }, lonemesa: { to: 'Ben Winters', on: 'Nov 12', about: 'all', opened: 'Nov 14', openedRev: 1 } },
+      ui: { sending: null, draft: null, anyway: false, outcome: '', q: '' } },
+    { key: 'mesa', name: 'Mesa Verde Retail Shell', place: '77 Placeholder Parkway, Round Rock, TX 78664', insured: ['Mesa Verde Partners, LLC'],
+      rev: 0, stdRev: 0, changed: false, link: 'mesa-verde-2Lm8', over: {}, off: { umb: 1 }, extra: [],
+      trades: [{ key: 'cedarfork', name: 'Cedar Fork Drain', page: 'on', people: ['Ana Pruitt, owner'], cert: { st: 'none' } }],
+      sent: {}, ui: { sending: null, draft: null, anyway: false, outcome: '', q: '' } }
+  ];
+  var I = { job: 'cedar', mode: 'job', marks: true, copied: false, check: null, ticks: {}, good: '', outcome: '' };
+  // What a job's published sheet asks, as one string. A certificate keeps the string it was checked against, so a
+  // change to the words around the asks leaves it good, and a change to a name or an amount outdates it.
+  function asked(j) { return asks(j).join('|'); }
+  function outdated(j, c) { return c.st === 'ok' && c.asked !== j.pubAsks; }
+  function job() { return JOBS.filter(function (j) { return j.key === I.job; })[0]; }
+  function behind(j) { return j.rev > 0 && j.stdRev < STD.rev; }
+  function dirty(j) { return j.changed || j.rev === 0 || behind(j); }
+  function stdTouch() { STD.dirty = true; I.outcome = ''; }
+  function usual(key) {
+    var p = key.split('.');
+    if (p[0] === 'f') return STD.f[p[1]];
+    if (p[0] === 'open') return STD.open[+p[1]];
+    var cv = STD.cover.filter(function (c) { return c.key === p[1]; })[0];
+    return cv ? cv[p[2]] : '';
+  }
+  function setUsual(key, v) {
+    var p = key.split('.');
+    if (p[0] === 'f') STD.f[p[1]] = v; else if (p[0] === 'open') STD.open[+p[1]] = v;
+    else STD.cover.forEach(function (c) { if (c.key === p[1]) c[p[2]] = v; });
+  }
+  function fieldName(key) {
+    var p = key.split('.');
+    if (p[0] === 'f') return FNAME[p[1]];
+    if (p[0] === 'open') return 'Opening line ' + (+p[1] + 1);
+    var cv = STD.cover.filter(function (c) { return c.key === p[1]; })[0];
+    return (cv ? cv.label : 'A coverage line') + (p[2] === 'limit' ? ', its amount' : ', its name');
+  }
+  function words(j, key) { return j && j.over[key] != null ? j.over[key] : usual(key); }
+  function differs(j) { return Object.keys(j.over).length + Object.keys(j.off).length + j.extra.length; }
+  // What the sheet asks of a certificate, one line each: the check list.
+  function asks(j) {
+    var out = j.insured.map(function (n) { return 'It names ' + n + ' as additional insured.'; });
+    out.push('It is for work at ' + j.place + '.'); out.push('The certificate holder is ' + words(j, 'f.hName') + '.');
+    STD.cover.forEach(function (cv) { if (!j.off[cv.key]) out.push(words(j, 'cover.' + cv.key + '.label') + ': ' + words(j, 'cover.' + cv.key + '.limit') + '.'); });
+    j.extra.forEach(function (x) { out.push(x.label + ': ' + x.limit + '.'); });
+    return out;
+  }
+
+  function drawInsBar() {
+    var j = job(), std = I.mode === 'std', chips = $('i-chips'); chips.textContent = '';
+    if (!std) chips.appendChild(j.rev ? el('span', 'chip ok', 'Published, revision ' + j.rev) : el('span', 'chip wait', 'No sheet yet'));
+    else chips.appendChild(el('span', 'chip ok', 'Your usual, revision ' + STD.rev));
+    readChip(chips, READ.ins, STD.rev, 'Not checked by your insurance agent. Mark it checked', 'Checked by', drawIns);
+    readForm($('i-read-form'), READ.ins, STD.rev, 'The agent who checked your usual sheet', 'Mark your usual, revision ' + STD.rev + ', as checked', drawIns);
+    if (!std && READ.ins.rev === STD.rev && differs(j)) chips.appendChild(el('span', 'chip stricter', plural(differs(j), 'thing differs', 'things differ') + ' from the checked usual'));
+    var p = $('i-publish'), ready = JOBS.filter(function (x) { return x.rev > 0 && !x.changed; });
+    if (std) { p.textContent = STD.dirty ? (ready.length ? 'Publish to ' + plural(ready.length, 'job', 'jobs') : 'Publish your usual') : 'Nothing to publish'; p.disabled = !STD.dirty; }
+    else { p.textContent = dirty(j) ? 'Publish this job\'s sheet' : 'Nothing to publish'; p.disabled = !dirty(j); }
+    $('i-note').textContent = std ? 'You are changing your usual sheet. Every job starts on it.'
+      : j.rev === 0 ? 'No sub sees a sheet for this job until you publish.' : behind(j) ? 'Your usual changed since this sheet was published. Publish to bring it up.'
+      : STD.dirty ? 'Your usual has changes not yet published. This sheet shows them.' : j.changed ? 'Changed. Subs see revision ' + j.rev + ' until you publish.' : 'Subs see what you see.';
+    $('i-cap').textContent = I.check ? 'A certificate, checked against this job\'s sheet' : !I.marks ? 'The sheet, as a sub sees it' : std ? 'The standing sheet. Press any words to change them for every job.' : 'This job\'s sheet. Press any words to change them.';
+    var sel = $('i-job'); sel.textContent = '';
+    JOBS.forEach(function (x) { var o = el('option', null, x.name + (x.rev ? '' : ', no sheet yet')); o.value = x.key; sel.appendChild(o); });
+    sel.value = I.job; sel.disabled = std;
+    var seg = $('i-seg'); seg.textContent = '';
+    [['job', 'This job'], ['std', 'The standing sheet']].forEach(function (o) {
+      var b = el('button', null, o[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(I.mode === o[0]));
+      b.addEventListener('click', function () { I.mode = o[0]; I.check = null; drawIns(); });
+      seg.appendChild(b);
+    });
+    var mk = $('i-marks'); mk.hidden = !!I.check; mk.setAttribute('aria-pressed', String(I.marks)); mk.lastChild.textContent = I.marks ? 'Marks are on' : 'Marks are off, as a sub sees it';
+  }
+
+  function drawInsRail() {
+    var host = $('i-panel'), j = job(); host.textContent = '';
+    if (I.mode === 'std') {
+      var s = el('div', 'card'); s.appendChild(el('h3', null, 'Your usual sheet'));
+      s.appendChild(el('p', 'muted', 'Every job starts on these words and amounts. A job then changes only what differs.'));
+      var key = el('div', 'legend'); key.appendChild(el('span', 'f usual', 'Your usual')); key.appendChild(el('span', 'f blank', 'Filled from each job')); s.appendChild(key);
+      host.appendChild(s);
+      // One press sends a change to your usual to every job that is ready, and names each job it held with the reason.
+      var t = el('div', 'card'); t.appendChild(el('h3', null, STD.dirty ? 'Where this change goes' : 'Every job is on your usual'));
+      JOBS.forEach(function (x) {
+        var row = el('div', 'trow'); row.appendChild(el('span', null, x.name));
+        var why = x.rev === 0 ? ['wait', 'Held. It has no sheet yet.'] : x.changed ? ['stricter', 'Held. It has changes of its own waiting.'] : STD.dirty ? ['level', 'Gets it, as revision ' + (x.rev + 1)] : ['ok', 'Revision ' + x.rev];
+        row.appendChild(el('span', 'chip ' + why[0], why[1])); t.appendChild(row);
+      });
+      if (I.outcome) t.appendChild(el('span', 'chip ok', I.outcome));
+      t.appendChild(el('p', 'fine', 'A field a job has changed keeps the job\'s own words. A held job gets your usual when you publish that job.'));
+      host.appendChild(t); return;
+    }
+    var d = el('div', 'card'), n = differs(j); d.appendChild(el('h3', null, n ? plural(n, 'thing differs', 'things differ') + ' on this job' : 'This job is on your usual sheet'));
+    var lg = el('div', 'legend');
+    lg.appendChild(el('span', 'f usual', 'Your usual')); lg.appendChild(el('span', 'f blank', 'Filled from the job')); lg.appendChild(el('span', 'f own', 'Changed for this job'));
+    d.appendChild(lg);
+    if (!n) d.appendChild(el('p', 'muted', 'Only its names and its place are its own. Press any words on the sheet to change them for this job.'));
+    Object.keys(j.over).forEach(function (k) {
+      var row = el('div', 'drow'), left = el('div');
+      left.appendChild(el('div', 'nm', fieldName(k))); left.appendChild(el('div', 'muted', 'Your usual: ' + usual(k)));
+      row.appendChild(left);
+      var bt = el('div', 'btns'), back = el('button', 'small', 'Back to the usual'); back.type = 'button';
+      back.addEventListener('click', function () { delete j.over[k]; j.changed = true; drawIns(); });
+      var mk = el('button', 'small', 'Make this the usual'); mk.type = 'button';
+      mk.addEventListener('click', function () { setUsual(k, j.over[k]); delete j.over[k]; stdTouch(); j.changed = true; drawIns(); });
+      bt.appendChild(back); bt.appendChild(mk); row.appendChild(bt); d.appendChild(row);
+    });
+    Object.keys(j.off).forEach(function (k) {
+      var cv = STD.cover.filter(function (c) { return c.key === k; })[0]; if (!cv) return;
+      var row = el('div', 'drow'), left = el('div'); left.appendChild(el('div', 'nm', cv.label)); left.appendChild(el('div', 'muted', 'Not asked on this job.')); row.appendChild(left);
+      var bt = el('div', 'btns'), put = el('button', 'small', 'Put it back'); put.type = 'button';
+      put.addEventListener('click', function () { delete j.off[k]; j.changed = true; drawIns(); });
+      bt.appendChild(put); row.appendChild(bt); d.appendChild(row);
+    });
+    j.extra.forEach(function (x, i) {
+      var row = el('div', 'drow'), left = el('div'); left.appendChild(el('div', 'nm', x.label)); left.appendChild(el('div', 'muted', 'Added for this job.')); row.appendChild(left);
+      var bt = el('div', 'btns'), rm = el('button', 'small', 'Take it off'); rm.type = 'button';
+      rm.addEventListener('click', function () { j.extra.splice(i, 1); j.changed = true; drawIns(); });
+      var mk = el('button', 'small', 'Make this the usual'); mk.type = 'button';
+      mk.addEventListener('click', function () { STD.cover.push({ key: 'x' + STD.cover.length, label: x.label, limit: x.limit }); j.extra.splice(i, 1); stdTouch(); j.changed = true; drawIns(); });
+      bt.appendChild(rm); bt.appendChild(mk); row.appendChild(bt); d.appendChild(row);
+    });
+    host.appendChild(d);
+
+    var a = el('div', 'card'); a.appendChild(el('h3', null, 'This sheet\'s link'));
+    if (j.rev === 0) a.appendChild(el('p', 'muted', 'Publish this job\'s sheet first. A link then opens it.'));
+    else {
+      a.appendChild(el('div', 'url', 'app.example/s/' + j.link));
+      var bt = el('div', 'btns'), cp = el('button', 'second', 'Copy the link'); cp.type = 'button'; cp.addEventListener('click', function () { I.copied = true; drawIns(); });
+      var pr = el('button', 'second', 'Print the sheet'); pr.type = 'button';
+      bt.appendChild(cp); bt.appendChild(pr); if (I.copied) bt.appendChild(el('span', 'chip ok', 'Copied')); a.appendChild(bt);
+      a.appendChild(el('p', 'muted', 'Anyone with the link can read and print this one sheet. A sub sends it on to their insurance agent.'));
+    }
+    host.appendChild(a);
+
+    // The same send as the Sub NDA's, to the trades on this job. A trade's row also says where its certificate stands.
+    j.trades.forEach(function (t) { t.sub = ''; });
+    sendList(host, {
+      title: 'Send the sheet to this job\'s trades', lead: 'A trade you send it to gets an email with the ask for a certificate. They also find the sheet on their own page.',
+      people: j.trades, sent: j.sent, rev: j.rev, published: j.rev > 0, unpublished: 'Publish this job\'s sheet first.', about: false, noun: ['trade', 'trades'],
+      note: 'Here is what your certificate must show on this job. Hand it to your insurance agent.', ui: j.ui,
+      unread: READ.ins.rev === STD.rev ? '' : 'Your insurance agent has not checked your usual sheet.',
+      extra: function (t, chips, bt) {
+        var c = t.cert, old = outdated(j, c);
+        if (old) chips.appendChild(el('span', 'chip stricter', 'The sheet changed since their certificate'));
+        else if (c.st === 'ok') chips.appendChild(el('span', 'chip ok', 'Certificate good to ' + c.good));
+        else if (c.st === 'in') chips.appendChild(el('span', 'chip level', 'Certificate came in ' + c.on));
+        else chips.appendChild(el('span', 'chip stricter', c.says || 'No certificate yet'));
+        if (c.st === 'in' || old) {
+          var go = el('button', 'small', old ? 'Check it again' : 'Check it against the sheet'); go.type = 'button';
+          go.addEventListener('click', function () { I.check = t.key; I.ticks = {}; I.good = c.good || ''; drawIns(); $('i-cap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+          bt.appendChild(go);
+        }
+      },
+      redraw: drawInsRail, redrawAll: function () { drawIns(); drawDocs(); }
+    });
+  }
+
+  // One field on the sheet. `how` says where its words live: a key of the usual sheet, or the job's own get and set.
+  function fld(j, how, edit, tag) {
+    var std = I.mode === 'std' && edit, own = how.key && j && !std && j.over[how.key] != null;
+    var text = how.key ? (std ? usual(how.key) : words(j, how.key)) : how.get();
+    if (!edit) return el(tag || 'span', null, text);
+    return field(text, how.key ? (own ? 'own' : 'usual') : 'blank', how.key ? fieldName(how.key) : how.name, function (v, e) {
+      if (!how.key) how.set(v);
+      else if (std) { setUsual(how.key, v); stdTouch(); }
+      else if (v === usual(how.key)) delete j.over[how.key]; else j.over[how.key] = v;
+      if (!std) j.changed = true;
+      if (how.key && !std) e.className = 'f ' + (j.over[how.key] != null ? 'own' : 'usual');
+      insLive();
+    }, tag);
+  }
+
+  // The sheet itself: one page, in the order of the sample the owner gave. With `edit` on, every piece of words is a
+  // field and each list has its own small presses, which a sub never sees.
+  function sheetInto(host, j, edit) {
+    host.textContent = '';
+    var std = I.mode === 'std' && edit, sh = el('div', 'sheet' + (edit ? ' editing' : ''));
+    function F(key, tag) { return fld(j, { key: key }, edit, tag); }
+    var lh = el('div', 'lh'); lh.appendChild(F('f.co', 'b')); lh.appendChild(F('f.addr1')); lh.appendChild(F('f.addr2')); sh.appendChild(lh);
+    var tt = el('div', 'ttl'); tt.appendChild(F('f.title', 'b'));
+    var sub = el('span');
+    if (std) { sub.appendChild(F('f.sub')); sub.appendChild(document.createTextNode(' ')); sub.appendChild(el('span', 'f blank still', 'the job\'s name')); }
+    else if (j.over['f.sub'] != null) sub.appendChild(F('f.sub'));
+    else sub.appendChild(fld(j, { name: 'The line under the title', get: function () { return usual('f.sub') + ' ' + j.name; }, set: function (v) { j.over['f.sub'] = v; } }, edit));
+    tt.appendChild(sub); sh.appendChild(tt);
+
+    STD.open.forEach(function (l, i) {
+      var p = el('p', 'rowf'); p.appendChild(F('open.' + i));
+      if (std) p.appendChild(ctl('×', 'Remove opening line ' + (i + 1), function () { STD.open.splice(i, 1); stdTouch(); drawIns(); }));
+      sh.appendChild(p);
+    });
+    if (std) sh.appendChild(ctl('Add an opening line', 'Add an opening line', function () { STD.open.push('A new line.'); stdTouch(); drawIns(); }));
+
+    var must = el('div', 'must'); must.appendChild(F('f.lead'));
+    if (std) must.appendChild(el('b', 'f blank still', 'The property\'s owner, from each job'));
+    else {
+      j.insured.forEach(function (n, i) {
+        var row = el('div', 'rowf mid');
+        row.appendChild(fld(j, { name: 'Additional insured, name ' + (i + 1), get: function () { return j.insured[i]; }, set: function (v) { j.insured[i] = v; } }, edit, 'b'));
+        if (edit) row.appendChild(ctl('×', 'Remove name ' + (i + 1), function () { j.insured.splice(i, 1); j.changed = true; drawIns(); }));
+        must.appendChild(row);
+      });
+      if (edit) must.appendChild(ctl('Add a name', 'Add a name', function () { j.insured.push('A name'); j.changed = true; drawIns(); }));
+    }
+    var at = el('span'); at.appendChild(F('f.at')); at.appendChild(document.createTextNode(' '));
+    at.appendChild(std ? el('span', 'f blank still', 'the job\'s address') : fld(j, { name: 'The place', get: function () { return j.place; }, set: function (v) { j.place = v; } }, edit));
+    must.appendChild(at); sh.appendChild(must);
+
+    var h = el('div', 'holder'); h.appendChild(F('f.holder'));
+    var hb = el('div'); hb.appendChild(F('f.hName', 'b')); hb.appendChild(el('div')).appendChild(F('f.hAddr1')); hb.appendChild(el('div')).appendChild(F('f.hAddr2')); h.appendChild(hb); sh.appendChild(h);
+
+    var tb = el('table'), hr = el('tr'); hr.appendChild(el('th')).appendChild(F('f.colA')); hr.appendChild(el('th')).appendChild(F('f.colB')); tb.appendChild(hr);
+    STD.cover.forEach(function (cv, i) {
+      if (!std && j.off[cv.key]) return;
+      var tr = el('tr'); tr.appendChild(el('td')).appendChild(F('cover.' + cv.key + '.label'));
+      var td = el('td'), cellRow = el('div', 'rowf'); td.appendChild(cellRow); cellRow.appendChild(F('cover.' + cv.key + '.limit'));
+      if (edit) cellRow.appendChild(ctl('×', (std ? 'Remove ' : 'Do not ask for ') + cv.label, function () { if (std) { STD.cover.splice(i, 1); stdTouch(); } else { j.off[cv.key] = 1; j.changed = true; } drawIns(); }));
+      tr.appendChild(td); tb.appendChild(tr);
+    });
+    if (!std) j.extra.forEach(function (x, i) {
+      var tr = el('tr');
+      tr.appendChild(el('td')).appendChild(fld(j, { name: 'An added line, its name', get: function () { return x.label; }, set: function (v) { x.label = v; } }, edit));
+      var td = el('td'), cellRow = el('div', 'rowf'); td.appendChild(cellRow); cellRow.appendChild(fld(j, { name: 'An added line, its amount', get: function () { return x.limit; }, set: function (v) { x.limit = v; } }, edit));
+      if (edit) cellRow.appendChild(ctl('×', 'Take off ' + x.label, function () { j.extra.splice(i, 1); j.changed = true; drawIns(); }));
+      tr.appendChild(td); tb.appendChild(tr);
+    });
+    sh.appendChild(tb);
+    if (edit) sh.appendChild(ctl(std ? 'Add a coverage line' : 'Add a coverage line for this job', 'Add a coverage line', function () {
+      if (std) { STD.cover.push({ key: 'x' + STD.cover.length, label: 'A coverage', limit: 'An amount' }); stdTouch(); } else { j.extra.push({ label: 'A coverage', limit: 'An amount' }); j.changed = true; }
+      drawIns();
+    }));
+    var foot = el('p', 'fine'); foot.appendChild(document.createTextNode('* ')); foot.appendChild(F('f.foot')); sh.appendChild(foot);
+    sh.appendChild(el('div', 'stamp', std ? 'The standing sheet. No job is on it.' : j.rev === 0 ? 'Draft. Not published.' : 'Revision ' + (dirty(j) ? j.rev + 1 + ', not yet published' : j.rev) + ' · ' + j.name));
+    host.appendChild(sh);
+  }
+
+  // A certificate that came in, beside what the sheet asks of it. The sheet's own fields are the check list.
+  function checkInto(host, j) {
+    host.textContent = '';
+    var t = j.trades.filter(function (x) { return x.key === I.check; })[0], list = asks(j);
+    var wrap = el('div', 'check');
+    var left = el('div', 'card'); left.appendChild(el('h3', null, t.name + '\'s certificate'));
+    var pic = el('div', 'certpic'); for (var i = 0; i < 9; i++) { var b = el('i'); b.style.width = (i % 3 === 2 ? 55 : 100) + '%'; pic.appendChild(b); } left.appendChild(pic);
+    left.appendChild(el('p', 'fine', 'Their file shows here, as they uploaded it on their page.'));
+    wrap.appendChild(left);
+    var right = el('div', 'card'), done = list.filter(function (_, i) { return I.ticks[i]; }).length;
+    right.appendChild(el('h3', null, 'What this job\'s sheet asks, revision ' + j.rev));
+    list.forEach(function (line, i) {
+      var lab = el('label', 'gcrow'), box = el('input'); box.type = 'checkbox'; box.checked = !!I.ticks[i];
+      box.addEventListener('change', function () { I.ticks[i] = box.checked; drawIns(); });
+      lab.appendChild(box); lab.appendChild(el('span', null, line)); right.appendChild(lab);
+    });
+    var f = el('label', 'field'), inp = el('input'); f.appendChild(el('span', null, 'Good until')); inp.type = 'text'; inp.value = I.good; inp.placeholder = 'The last day on the certificate';
+    f.appendChild(inp); right.appendChild(f);
+    var bt = el('div', 'btns'), miss = list.length - done;
+    var ok = el('button', 'primary', miss ? done + ' of ' + list.length + ' checked' : 'Mark it good'); ok.type = 'button'; ok.disabled = !!miss || !I.good.trim();
+    inp.addEventListener('input', function () { I.good = inp.value; ok.disabled = !!miss || !I.good.trim(); });
+    ok.addEventListener('click', function () { t.cert = { st: 'ok', good: I.good.trim(), rev: j.rev, asked: j.pubAsks }; I.check = null; drawIns(); drawDocs(); });
+    var back = el('button', 'second', miss ? 'Send it back, naming ' + plural(miss, 'thing', 'things') + ' missing' : 'Nothing is missing'); back.type = 'button'; back.disabled = !miss || done === 0;
+    back.addEventListener('click', function () { t.cert = { st: 'none', says: 'Sent back ' + TODAY + ', ' + plural(miss, 'thing', 'things') + ' missing' }; I.check = null; drawIns(); drawDocs(); });
+    var no = el('button', 'small', 'Close'); no.type = 'button'; no.addEventListener('click', function () { I.check = null; drawIns(); });
+    bt.appendChild(ok); bt.appendChild(back); bt.appendChild(no); right.appendChild(bt);
+    right.appendChild(el('p', 'fine', 'Tick what the certificate shows. What is left unticked is what goes back to them, in words.'));
+    wrap.appendChild(right); host.appendChild(wrap);
+  }
+
+  JOBS.forEach(function (j) { j.pubAsks = asked(j); j.trades.forEach(function (t) { if (t.cert.st === 'ok') t.cert.asked = j.pubAsks; }); });
+
+  // ---- 5 · The sub's own page, and what their insurance agent opens by link. Both read the sheet with no marks.
+  function drawSub() {
+    var g = $('sub-page'); g.textContent = '';
+    var c = el('div', 'card'); c.appendChild(el('h3', null, 'Your certificate of insurance'));
+    JOBS.forEach(function (j) {
+      var mine = j.trades.filter(function (t) { return t.key === 'cedarfork'; })[0], st = j.sent.cedarfork; if (!mine) return;
+      var row = el('div', 'brow'), left = el('div');
+      left.appendChild(el('div', 'name', j.name));
+      if (j.rev === 0 || !st) { left.appendChild(el('div', 'muted', CO + ' has not sent this job\'s requirements yet.')); row.appendChild(left); c.appendChild(row); return; }
+      left.appendChild(el('div', 'muted', ('It must name ' + j.insured.join(' and ') + '.').replace('..', '.')));
+      var ch = el('div', 'chips'), cert = mine.cert, old = outdated(j, cert);
+      ch.appendChild(old ? el('span', 'chip stricter', 'The requirements changed. Send a new certificate.') : cert.st === 'ok' ? el('span', 'chip ok', 'Certificate good to ' + cert.good) : cert.st === 'in' ? el('span', 'chip level', 'We have it. We are checking it.') : el('span', 'chip stricter', cert.says || 'No certificate yet'));
+      left.appendChild(ch);
+      var bt = el('div', 'btns'); bt.style.marginTop = '8px';
+      var op = el('button', 'second', 'Open the sheet'); op.type = 'button'; op.addEventListener('click', function () { st.opened = TODAY; st.openedRev = j.rev; drawIns(); });
+      var ag = el('button', 'second', 'Send it to my insurance agent'); ag.type = 'button';
+      var up = el('button', 'primary', 'Upload your certificate'); up.type = 'button';
+      bt.appendChild(op); bt.appendChild(ag); bt.appendChild(up); left.appendChild(bt); row.appendChild(left); c.appendChild(row);
+    });
+    g.appendChild(c);
+    g.appendChild(el('p', 'fine', 'Upload your certificate is on this page today. The other two presses and the line above them are new.'));
+
+    var agp = $('agent-page'); agp.textContent = '';
+    var j = job();
+    if (j.rev === 0) { agp.appendChild(el('div', 'card', 'This job has no sheet yet. A link opens it once ' + CO + ' publishes one.')); return; }
+    var holder = el('div'); agp.appendChild(holder); sheetInto(holder, j, false);
+    var pr = el('button', 'primary', 'Print this sheet'); pr.type = 'button'; pr.style.justifySelf = 'start'; agp.appendChild(pr);
+  }
+
+  // A redraw while a field is being typed in: everything but the sheet under the caret.
+  function insLive() { drawDocs(); drawInsBar(); drawInsRail(); drawSub(); }
+  function drawIns() {
+    drawInsBar(); drawInsRail();
+    if (I.check) checkInto($('i-sheet'), job()); else sheetInto($('i-sheet'), job(), I.marks);
+    drawSub();
+  }
+  $('i-job').addEventListener('change', function () { I.job = $('i-job').value; I.copied = false; I.check = null; drawIns(); });
+  $('i-publish').addEventListener('click', function () {
+    if (I.mode === 'std') {
+      // Your usual goes to every job that is ready. A job with no sheet, or with changes of its own waiting, is held.
+      var ready = JOBS.filter(function (x) { return x.rev > 0 && !x.changed; }), held = JOBS.length - ready.length;
+      STD.rev += 1; STD.dirty = false;
+      ready.forEach(function (x) { x.rev += 1; x.stdRev = STD.rev; x.pubAsks = asked(x); });
+      I.outcome = 'Published to ' + plural(ready.length, 'job', 'jobs') + '.' + (held ? ' Held ' + held + '.' : '');
+    } else { var j = job(); j.rev += 1; j.changed = false; j.stdRev = STD.rev; j.pubAsks = asked(j); }
+    drawIns(); drawDocs();
+  });
+  $('i-back').addEventListener('click', function () { $('s1').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('i-marks').addEventListener('click', function () { I.marks = !I.marks; drawIns(); });
+
+  function draw() { drawDocs(); drawBar(); drawPanel(); drawFlow(); drawDoors(); drawIns(); }
+
+  $('publish').addEventListener('click', function () { S.rev += 1; snap(); draw(); });
+  $('back').addEventListener('click', function () { $('s1').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('marks').addEventListener('click', function () { S.marks = !S.marks; draw(); });
+  var root = document.documentElement;
+  if (/[?&]theme=dark/.test(location.search)) root.setAttribute('data-theme', 'dark');
+  function themeWords() { $('theme').textContent = root.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark'; }
+  $('theme').addEventListener('click', function () { if (root.getAttribute('data-theme') === 'dark') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', 'dark'); themeWords(); });
+  themeWords();
+  draw();
+})();
+</script>
+</body>
+</html>

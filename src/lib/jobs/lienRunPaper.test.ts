@@ -4,8 +4,8 @@ import { runEnvelopes } from './runEnvelopes'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import { plainWordsFailures } from '../plainWords'
 
-const owner = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'TC/JP SEGUIN 2019 LLC', address: '9993 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230', email: '', method: 'certified_mail', tracking: '', ...over })
-const gc = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Southern Pine Construction', address: '2209 N. 23rd St., McAllen, TX 78501', email: 'ap@southernpine.test', method: 'certified_mail', tracking: '', ...over })
+const owner = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'TN/JT SEFTON 7852 LLC', address: '1130 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230', email: '', method: 'certified_mail', tracking: '', ...over })
+const gc = (over: Partial<RunRecipient> = {}): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Southern Pine Construction', address: '6020 N. 23rd St., McAllen, TX 78501', email: 'ap@southernpine.test', method: 'certified_mail', tracking: '', ...over })
 const notice = (over: Partial<RunNotice> = {}): RunNotice => ({
   itemId: 'it878',
   jobId: 'j878',
@@ -43,11 +43,11 @@ describe('what cannot be mailed is held (v2.4971)', () => {
   })
 
   it('runMailing renumbers: the ones that go out 1 to N, the held ones after, and the window lists them in that order', () => {
-    const envs = runEnvelopes([notice({ recipients: [gc({ address: '' })] }), notice({ itemId: 'it2', jobId: 'j2', label: '898 · Relwyn', jobNumber: '898', amount: 4800, recipients: [owner({ name: 'EPC SPARTI LLC', address: '550 HERITAGE DR STE 200, JUPITER, FL 33458' }), gc({ name: 'Kestrin Contracting', address: '2904 Corporate CR, Flower Mound, TX 75028', email: '' })] })])
+    const envs = runEnvelopes([notice({ recipients: [gc({ address: '' })] }), notice({ itemId: 'it2', jobId: 'j2', label: '898 · Relwyn', jobNumber: '898', amount: 4800, recipients: [owner({ name: 'EVM HUXLEY LLC', address: '752 HAWTHORN DR STE 200, JUPITER, FL 33458' }), gc({ name: 'Kestrin Contracting', address: '2904 Corporate CR, Flower Mound, TX 75028', email: '' })] })])
     expect(envs.map((e) => e.n)).toEqual([1, 2, 3])
     const m = runMailing(envs)
     expect(m.mailed.map((e) => [e.n, e.name])).toEqual([
-      [1, 'EPC SPARTI LLC'],
+      [1, 'EVM HUXLEY LLC'],
       [2, 'Kestrin Contracting'],
     ])
     expect(m.held.map((h) => [h.env.n, h.env.name, h.why])).toEqual([[3, 'Southern Pine Construction', 'No mailing address. Set it on the customer, then print this envelope from the run.']])
@@ -64,7 +64,7 @@ describe('the words for a stack of documents', () => {
   })
 
   it('the address reads as the envelope does', () => {
-    expect(runAddressLines('9993 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230')).toEqual(['9993 IH 10 WEST SUITE 102', 'SAN ANTONIO, TX 78230'])
+    expect(runAddressLines('1130 IH 10 WEST SUITE 102, SAN ANTONIO, TX 78230')).toEqual(['1130 IH 10 WEST SUITE 102', 'SAN ANTONIO, TX 78230'])
     expect(runAddressLines('% SABLOW HEALTH CARE REIT INC, 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612')).toEqual(['% SABLOW HEALTH CARE REIT INC', '18500 VON KARMAN AVE STE 550', 'IRVINE, CA 92612'])
     expect(runAddressLines('4 Example Way, Schertz, TX')).toEqual(['4 Example Way', 'Schertz, TX'])
     expect(runAddressLines('')).toEqual([])
@@ -79,7 +79,7 @@ describe('the sheet, the divider and the foot', () => {
     expect(html).toContain('Today’s mail <span>· 2 envelopes · 8 documents · October 8, 2026</span>')
     expect(html).toContain('Work down the list. Tick each box as you go.')
     expect(html).toContain('<b>1 envelope is held back</b>')
-    expect(html).toContain('<td class="n">1</td><td class="to"><strong>TC/JP SEGUIN 2019 LLC</strong><small>9993 IH 10 WEST SUITE 102<br>SAN ANTONIO, TX 78230</small></td>')
+    expect(html).toContain('<td class="n">1</td><td class="to"><strong>TN/JT SEFTON 7852 LLC</strong><small>1130 IH 10 WEST SUITE 102<br>SAN ANTONIO, TX 78230</small></td>')
     expect(html).toContain('<b>7 documents</b> · counsel’s letter, the notice, the pay page, 4 unpaid invoices<br>878 · Tune 5- Seguin · $38,625.00')
     expect(html).toContain('<span>☐ stuffed</span><span>☐ label on</span><span>☐ mailed</span>')
     expect((html.match(/<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number<\/span><span class="box"><small>20 or 22 digits from the certified label<\/small>/g) ?? []).length).toBe(2)
@@ -92,7 +92,7 @@ describe('the sheet, the divider and the foot', () => {
     expect(html).toContain('<div class="rundiv" data-run-divider="1"><div class="band"></div>')
     expect(html).toContain('<div class="ret">Click Plumbing and Electrical<br>5501 Balcones Dr A141<br>Austin, TX 78731</div>')
     expect(html).toContain('CERTIFIED MAIL · RETURN RECEIPT REQUESTED<span>Article no.')
-    expect(html).toContain('<div class="to"><strong>TC/JP SEGUIN 2019 LLC</strong><br>9993 IH 10 WEST SUITE 102<br>SAN ANTONIO, TX 78230</div>')
+    expect(html).toContain('<div class="to"><strong>TN/JT SEFTON 7852 LLC</strong><br>1130 IH 10 WEST SUITE 102<br>SAN ANTONIO, TX 78230</div>')
     expect(html).toContain('<div class="facen">Envelope 1 of 13 · Owner of record</div>')
     expect(html).toContain('<span class="num">1</span><span class="of">of 13 envelopes</span>')
     expect(html).toContain('<b>7 documents follow this page</b> · counsel’s letter, the notice, the pay page, 4 unpaid invoices. The next divider is envelope 2.')
@@ -186,8 +186,8 @@ describe('an envelope with a parted notice inside prints nothing (v2.7517)', () 
   })
 
   it('the rest of the run goes out: only the parted notice is held', () => {
-    const m = runMailing(runEnvelopes([notice({ parted, recipients: [owner()] }), notice({ itemId: 'it2', jobId: 'j2', label: '898 · Relwyn', jobNumber: '898', amount: 4800, recipients: [owner({ name: 'EPC SPARTI LLC', address: '550 HERITAGE DR, AUSTIN, TX 78701' })] })]))
-    expect(m.mailed.map((e) => e.name)).toEqual(['EPC SPARTI LLC'])
+    const m = runMailing(runEnvelopes([notice({ parted, recipients: [owner()] }), notice({ itemId: 'it2', jobId: 'j2', label: '898 · Relwyn', jobNumber: '898', amount: 4800, recipients: [owner({ name: 'EVM HUXLEY LLC', address: '550 HERITAGE DR, AUSTIN, TX 78701' })] })]))
+    expect(m.mailed.map((e) => e.name)).toEqual(['EVM HUXLEY LLC'])
     expect(m.held.map((h) => h.why)).toEqual([WHY])
   })
 

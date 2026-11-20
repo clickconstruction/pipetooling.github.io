@@ -54,8 +54,8 @@ describe('formatAddressTwoLines', () => {
     expect(formatAddressTwoLines('   ')).toBe(null)
   })
   it('splits at the newly added San Antonio-metro localities (v2.1458 — the "Converse TX" orphan)', () => {
-    expect(formatAddressTwoLines('11545 Chestnut Rose Converse TX')).toEqual({
-      line1: '11545 Chestnut Rose',
+    expect(formatAddressTwoLines('51116 Chadwick Rawlins Converse TX')).toEqual({
+      line1: '51116 Chadwick Rawlins',
       line2: 'Converse TX',
     })
     expect(formatAddressTwoLines('100 Pat Booker Rd Universal City TX 78148')).toEqual({
@@ -82,8 +82,8 @@ describe('formatAddressTwoLines', () => {
     })
   })
   it('drops the ZIP from the city line (the reported case)', () => {
-    expect(formatAddressTwoLines('4527 Western Pine Woods San Antonio, TX 78249')).toEqual({
-      line1: '4527 Western Pine Woods',
+    expect(formatAddressTwoLines('8039 Wendell Pine Woods San Antonio, TX 78249')).toEqual({
+      line1: '8039 Wendell Pine Woods',
       line2: 'San Antonio, TX',
     })
     expect(formatAddressTwoLines('121 Milo Hollin Blanco, TX 78606')).toEqual({

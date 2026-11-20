@@ -71,6 +71,37 @@ describe('the invoice behind the notice (v2.3437)', () => {
   })
 })
 
+describe('the enclosed invoice names who the bill went to (v2.7956)', () => {
+  const billTo = (j: JobWithDetails) => noticeInvoiceDocs(j).map((d) => d.doc.customerName)
+  const one = (over: Record<string, unknown>, invOver: Record<string, unknown> = {}) =>
+    ({ ...job, invoices: [{ ...inv('open', 1710, 2), ...invOver }], payments: [], ...over }) as unknown as JobWithDetails
+  const gc = { id: 'gc-1', name: 'Acme Builders' }
+
+  it('a GC job with no customer prints the GC, where it printed "Customer"', () => {
+    const gcJob = one({ customer_name: null, customer_id: null, gc_customer_id: 'gc-1', bill_to_party: 'gc', gcCustomer: gc })
+    expect(billTo(gcJob)).toEqual(['Acme Builders'])
+    const [html] = noticeInvoicePrintSections(noticeInvoiceDocs(gcJob))
+    expect(html).toContain('Acme Builders')
+    expect(html).not.toMatch(/Bill to[^A-Za-z]*(?:<[^>]+>\s*)*Customer\b/)
+  })
+
+  it('a GC-billed job with its own customer prints the GC, who was billed', () => {
+    expect(billTo(one({ customer_name: 'Pat Example', gc_customer_id: 'gc-1', bill_to_party: 'gc', gcCustomer: gc }))).toEqual(['Acme Builders'])
+  })
+
+  it("a bill typed to someone else prints that name, and a customer's bill the customer", () => {
+    expect(billTo(one({ gc_customer_id: 'gc-1', bill_to_party: 'gc', gcCustomer: gc }, { bill_to_name: 'Jo Tenant', bill_to_email: 'jo@example.com' }))).toEqual(['Jo Tenant'])
+    expect(billTo(one({ customer_name: 'Pat Example' }))).toEqual(['Pat Example'])
+    // A job that names nobody keeps the old word.
+    expect(billTo(one({ customer_name: null, customer_id: null }))).toEqual(['Customer'])
+  })
+
+  it('a memo that spells it "cheques" is the mailing note, not the Scope', () => {
+    const doc = { narrativeTitle: 'Cheques can be sent to: 100 Example St', serviceLines: [{ description: 'Gas install' }], invoiceNumberDisplay: '#2', footer: '' } as unknown as PhysicalInvoiceDocument
+    expect(enclosedInvoiceDocument(doc, { sequence_order: 2 }, '867', null).narrativeTitle).toBe('')
+  })
+})
+
 describe("the pay page's description of a bill (v2.3758)", () => {
   const line = (description: string) => ({ description }) as PhysicalInvoiceDocument['serviceLines'][number]
   it('one service line is the line itself, whatever the memo says', () => {
@@ -89,6 +120,12 @@ describe("the pay page's description of a bill (v2.3758)", () => {
     expect(payPageDescription({ serviceLines: [line('CHANGE ORDER: Added gas to fire features at pool')], narrativeTitle: note, lineDescription: '' })).toBe('CHANGE ORDER: Added gas to fire features at pool')
     expect(payLineIsNotTheWork('Make checks payable to Click Plumbing')).toBe(true)
     expect(payLineIsNotTheWork('Check valve replaced at the meter')).toBe(false)
+    // "Cheques" is the same note (v2.7956).
+    expect(payLineIsNotTheWork('Cheques can be sent to: 100 Example St, Austin TX')).toBe(true)
+    expect(payLineIsNotTheWork('Paper cheque may be mailed to our office')).toBe(true)
+    expect(payLineIsNotTheWork('Make cheques payable to Example Plumbing')).toBe(true)
+    expect(payLineIsNotTheWork('Mail your cheque to 100 Example St')).toBe(true)
+    expect(payLineIsNotTheWork('Chequered tile cut around the drain')).toBe(false)
   })
   it('never runs past a row', () => {
     const long = 'x'.repeat(200)

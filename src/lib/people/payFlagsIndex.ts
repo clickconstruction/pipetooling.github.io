@@ -11,19 +11,24 @@
  * answer-preserving today — the win is what happens on FUTURE renames.
  */
 
-/** Row shape of `list_people_pay_flags` (see migration 20260722230000). */
+import { salariedWeekOf, type SalariedWeek } from '../salariedEffectiveHours'
+
+/** Row shape of `list_people_pay_flags` (see migration 20260722230000; the week since 20261118190000). */
 export type PayFlagRpcRow = {
   person_name: string | null
   person_id: string | null
   is_salary: boolean | null
   record_hours_but_salary: boolean | null
   show_in_hours: boolean | null
+  salaried_week_hours?: readonly (number | string | null)[] | null
 }
 
 export type PayFlags = {
   isSalary: boolean
   recordHoursButSalary: boolean
   showInHours: boolean
+  /** The set week, Sunday first; 8 hours Monday to Friday when the row carries none. */
+  salariedWeek: SalariedWeek
 }
 
 export type PayFlagsIndex = {
@@ -40,6 +45,7 @@ function toFlags(r: PayFlagRpcRow): PayFlags {
     isSalary: r.is_salary === true,
     recordHoursButSalary: r.record_hours_but_salary === true,
     showInHours: r.show_in_hours === true,
+    salariedWeek: salariedWeekOf(r),
   }
 }
 

@@ -157,6 +157,11 @@ function unitNoOf(projectName: string | null | undefined): string[] | null {
   return m ? unitsOf(m[0]) : null
 }
 
+/** The suites a permit names: in its address, as most feeds write one, else in San Antonio's project line. Null when it names none. */
+export function permitUnitsOf(permit: { address: string | null; project_name?: string | null }): string[] | null {
+  return unitsOf(permit.address) ?? unitNoOf(permit.project_name)
+}
+
 function rangeOf(unit: string): [number, number] | null {
   const m = unit.match(/^(\d+)(?:-(\d+))?$/)
   if (!m) return null
@@ -281,7 +286,7 @@ function permitsOnStreet<P extends SiteMatchPermit>(site: BidSite, permits: read
   for (const p of permits) {
     const canon = canonOfStreet(p.address)
     if (canon == null || !sameSite(site.canon, canon)) continue
-    if (onAnotherUnit(site.units, unitsOf(p.address) ?? unitNoOf(p.project_name)) !== anotherUnit) continue
+    if (onAnotherUnit(site.units, permitUnitsOf(p)) !== anotherUnit) continue
     const key = p.permit_number ? `${p.permit_number}|${p.permit_type ?? ''}` : p.id
     const held = byPermit.get(key)
     if (!held || (held.stage !== 'issued' && p.stage === 'issued')) byPermit.set(key, p)

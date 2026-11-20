@@ -32,6 +32,10 @@ function badgeStyle(tone: BidsLensBadgeTone, active: boolean): CSSProperties {
       verticalAlign: '1px',
     }
   }
+  // Lines waiting on an answer: the red of the tab row's inbox pill. On the open lens it darkens the pill's own blue, as the other counts do.
+  if (tone === 'alert') {
+    return { fontSize: '0.62rem', fontWeight: 700, padding: '0.06rem 0.4rem', borderRadius: 999, background: active ? 'rgba(0,0,0,0.25)' : '#dc2626', color: 'white', verticalAlign: '1px' }
+  }
   return {
     fontSize: '0.62rem',
     fontWeight: 700,

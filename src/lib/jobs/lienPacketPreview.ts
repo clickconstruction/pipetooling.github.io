@@ -165,8 +165,8 @@ export type LienPacketReportInput = {
   pages: number
   /** The cover letter was asked for. */
   letter: boolean
-  /** The liens in the file, in the stack's order, each with the pages its own papers take. */
-  ready: ReadonlyArray<{ pages: number; ready: Pick<LienServeRunReady, 'job' | 'envelopes' | 'letter' | 'file'> }>
+  /** The liens in the file, in the stack's order, each with the pages its own papers take and the dividers the file puts in front of its envelopes. */
+  ready: ReadonlyArray<{ pages: number; dividers?: number; ready: Pick<LienServeRunReady, 'job' | 'envelopes' | 'letter' | 'file'> }>
   held: ReadonlyArray<LienServeHeld>
   /** The liens the print left out after all, each with its reason. */
   notPrinted: ReadonlyArray<{ job: Pick<LienServeJob, 'jobLabel'>; reason: string }>
@@ -197,13 +197,15 @@ export function lienPacketReport(input: LienPacketReportInput): string[] {
     lines.push(input.path)
     lines.push(`Built by the Lien desk’s own print${input.letter ? ', with the cover letter' : ', with no cover letter'}. Nothing was saved, filed or marked as mailed.`)
     lines.push('', 'In the file:')
-    const sheet = input.pages - input.ready.reduce((n, r) => n + r.pages, 0)
+    const inFile = (r: { pages: number; dividers?: number }) => r.pages + (r.dividers ?? 0)
+    const sheet = input.pages - input.ready.reduce((n, r) => n + inFile(r), 0)
     lines.push(`  ${span(1, Math.max(1, sheet))} · Mail sheet`)
     let at = sheet
     for (const r of input.ready) {
-      const each = r.ready.letter && input.letter ? `each a letter and ${count(r.ready.file.pages, 'stamped page', 'stamped pages')}` : `each ${count(r.ready.file.pages, 'stamped page', 'stamped pages')}, no letter`
-      lines.push(`  ${span(at + 1, at + r.pages)} · ${label(r.ready.job)} · ${count(r.ready.envelopes.length, 'envelope', 'envelopes')}, ${each}`)
-      at += r.pages
+      const divider = (r.dividers ?? 0) > 0 ? 'a divider, ' : ''
+      const each = r.ready.letter && input.letter ? `each ${divider}a letter and ${count(r.ready.file.pages, 'stamped page', 'stamped pages')}` : `each ${divider}${count(r.ready.file.pages, 'stamped page', 'stamped pages')}, no letter`
+      lines.push(`  ${span(at + 1, at + inFile(r))} · ${label(r.ready.job)} · ${count(r.ready.envelopes.length, 'envelope', 'envelopes')}, ${each}`)
+      at += inFile(r)
     }
   }
   if (input.held.length > 0) {

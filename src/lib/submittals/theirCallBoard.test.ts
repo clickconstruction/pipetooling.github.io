@@ -51,10 +51,10 @@ describe('theirCallBoard', () => {
 })
 
 describe('who answered', () => {
-  const answer = (o: Partial<{ review_decision: string | null; reviewed_by_name: string | null; reviewed_at: string | null; decision_source: string; decision_entered_by_name: string | null }> = {}) => ({ review_decision: 'rejected' as string | null, reviewed_by_name: 'structura' as string | null, reviewed_at: '2026-10-02T15:00:00Z' as string | null, decision_source: 'entered', decision_entered_by_name: 'Wendi' as string | null, ...o })
+  const answer = (o: Partial<{ review_decision: string | null; reviewed_by_name: string | null; reviewed_at: string | null; decision_source: string; decision_entered_by_name: string | null }> = {}) => ({ review_decision: 'rejected' as string | null, reviewed_by_name: 'sheffield' as string | null, reviewed_at: '2026-10-02T15:00:00Z' as string | null, decision_source: 'entered', decision_entered_by_name: 'Wendi' as string | null, ...o })
 
   it('answers typed in by the office say who answered and who typed', () => {
-    expect(whoAnsweredLine([answer(), answer(), answer({ review_decision: null })])).toBe('structura answered. Wendi typed the answers in on Oct 2.')
+    expect(whoAnsweredLine([answer(), answer(), answer({ review_decision: null })])).toBe('sheffield answered. Wendi typed the answers in on Oct 2.')
   })
 
   it('answers given on the link say so, with the last day', () => {
@@ -62,17 +62,17 @@ describe('who answered', () => {
   })
 
   it('a mix counts the typed ones', () => {
-    expect(whoAnsweredLine([answer(), answer({ decision_source: 'room' }), answer({ decision_source: 'room', reviewed_by_name: 'Dana Whitfield' })])).toBe('structura and Dana Whitfield answered. Wendi typed in 1 of the 3 answers. The last came on Oct 2.')
+    expect(whoAnsweredLine([answer(), answer({ decision_source: 'room' }), answer({ decision_source: 'room', reviewed_by_name: 'Dana Whitfield' })])).toBe('sheffield and Dana Whitfield answered. Wendi typed in 1 of the 3 answers. The last came on Oct 2.')
   })
 
   it('nothing answered says nothing, and the reviewer has no name yet', () => {
     expect(whoAnsweredLine([answer({ review_decision: null })])).toBe('')
     expect(reviewerNames([answer({ review_decision: null })])).toBe('the reviewer')
-    expect(reviewerNames([answer()])).toBe('structura')
+    expect(reviewerNames([answer()])).toBe('sheffield')
   })
 
   it('all approved says so in one line that points on', () => {
-    expect(allApprovedLine(13, [answer({ review_decision: 'approved', reviewed_at: '2026-10-09T15:00:00Z' })])).toBe('All 13 approved by structura on Oct 9. Nothing is left to do here. Order them in step 8.')
+    expect(allApprovedLine(13, [answer({ review_decision: 'approved', reviewed_at: '2026-10-09T15:00:00Z' })])).toBe('All 13 approved by sheffield on Oct 9. Nothing is left to do here. Order them in step 8.')
   })
 })
 

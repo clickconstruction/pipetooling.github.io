@@ -88,7 +88,7 @@ describe('TripSplitWindow', () => {
     draw()
     expect(screen.queryByTestId('trip-split-bill-note')).toBeNull()
     expect(screen.getByText('Both trips keep what it was for, who asked, how it went and the jobs. No clock row, bill or cost changes.')).toBeTruthy()
-    expect(screen.getByText('A split has no undo. To take one back, delete the new trip and add its days to the first with Change.')).toBeTruthy()
+    expect(screen.getByText('To take a split back, open the first trip and press Join with the next.')).toBeTruthy()
   })
 
   it('holds the press while the split is on its way, and closes on Cancel, the × and Escape', () => {

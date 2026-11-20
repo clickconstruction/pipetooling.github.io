@@ -38,10 +38,10 @@ describe('resolveDevelopmentIdForJobPayload', () => {
 describe('developmentPickerOptions', () => {
   it('name-sorts active developments and drops archived ones', () => {
     const opts = developmentPickerOptions(
-      [dev('d2', 'Wildflower'), dev('d1', 'Sagemoor Phase 2'), dev('d3', 'Old Town', MASTER, '2026-07-01')],
+      [dev('d2', 'Whitlock'), dev('d1', 'Sagemoor Phase 2'), dev('d3', 'Old Town', MASTER, '2026-07-01')],
       null,
     )
-    expect(opts.map((o) => o.name)).toEqual(['Sagemoor Phase 2', 'Wildflower'])
+    expect(opts.map((o) => o.name)).toEqual(['Sagemoor Phase 2', 'Whitlock'])
   })
 
   it('keeps the currently linked development even when archived', () => {
@@ -79,7 +79,7 @@ describe('validateNewDevelopmentName', () => {
 })
 
 describe('validateRenameDevelopment', () => {
-  const devs = [dev('d1', 'Sagemoor'), dev('d2', 'Wildflower'), dev('d3', 'Old Town', MASTER, '2026-07-01')]
+  const devs = [dev('d1', 'Sagemoor'), dev('d2', 'Whitlock'), dev('d3', 'Old Town', MASTER, '2026-07-01')]
 
   it('accepts a fresh name and trims it', () => {
     expect(validateRenameDevelopment('d1', '  Sagemoor Phase 2 ', devs)).toEqual({ ok: true, name: 'Sagemoor Phase 2' })
@@ -90,7 +90,7 @@ describe('validateRenameDevelopment', () => {
   })
 
   it('rejects a clash with another ACTIVE development', () => {
-    const r = validateRenameDevelopment('d1', 'wildflower', devs)
+    const r = validateRenameDevelopment('d1', 'whitlock', devs)
     expect(r.ok).toBe(false)
   })
 
@@ -104,14 +104,14 @@ describe('developmentUnarchiveClash', () => {
   it('finds the active row blocking an unarchive, else null', () => {
     const archived = dev('d3', 'Sagemoor', MASTER, '2026-07-01')
     expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'sagemoor')])?.id).toBe('d1')
-    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'Wildflower')])).toBeNull()
+    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'Whitlock')])).toBeNull()
   })
 })
 
 describe('sortDevelopmentsForSettings', () => {
   it('splits active/archived, each name-sorted case-insensitively', () => {
     const { active, archived } = sortDevelopmentsForSettings([
-      dev('d2', 'wildflower'),
+      dev('d2', 'whitlock'),
       dev('d1', 'Sagemoor'),
       dev('d4', 'zz old', MASTER, '2026-07-01'),
       dev('d3', 'Aged Oaks', MASTER, '2026-07-01'),

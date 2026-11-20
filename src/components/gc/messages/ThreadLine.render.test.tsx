@@ -14,7 +14,7 @@ const email: ThreadMessage = {
   direction: 'in',
   at: '2026-10-22T15:08:00.000Z',
   who: 'Glenn Gelwin <glenn@maxxbuilders.example> to bids@',
-  subject: 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid',
+  subject: 'Northeast Barlow Church Elementary Building @ San Antonio - Invitation to Bid',
   body: `Wendi,\n\nWe at *Marrex Builders* invite you to bid.\n\n*Link to Plans*:\n**${PLANS}\n<${PLANS}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*`,
 }
 

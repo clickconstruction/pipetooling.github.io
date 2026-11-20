@@ -46,6 +46,7 @@ import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
 import { deletedTripLines, TRIP_DELETE_KEPT_WORDS } from '../../lib/trips/tripDeleted'
 import { TRIP_SPLIT_FAILED_WORDS, tripSplitDoneWords } from '../../lib/trips/tripSplit'
+import { nextTripOf, TRIP_JOIN_FAILED_WORDS, tripJoinDoneWords } from '../../lib/trips/tripJoin'
 import { tripAlreadyOnLinesWords, tripDeleteLineWords, tripOnLinesWords, tripSheetLineNote, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
 import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import { siteCardCharges, tripCostLines, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
@@ -62,6 +63,7 @@ import ConfirmDialog from '../ConfirmDialog'
 import { TripBillLineWindow } from '../trips/TripBillLineWindow'
 import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
 import { TripSplitWindow } from '../trips/TripSplitWindow'
+import { TripJoinWindow } from '../trips/TripJoinWindow'
 import { Card, type CardFold } from './developmentPageBits'
 import { DevelopmentTripsLook, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
@@ -160,6 +162,8 @@ export function DevelopmentTripsCard({
   /** The trip whose Put on a bill window is open. */
   const [billing, setBilling] = useState<TripRecord | null>(null)
   const [splitting, setSplitting] = useState<TripRecord | null>(null)
+  /** The pair whose Join with the next window is open: the trip, and the trip that went out next when it was pressed. */
+  const [joining, setJoining] = useState<{ record: TripRecord; next: TripRecord } | null>(null)
 
   // One trip asked for, by a link or a press: handed to the look, which opens its row. It waits here while the
   // look is folded, and is dropped once the look has opened it.
@@ -320,6 +324,24 @@ export function DevelopmentTripsCard({
       setBusy(false)
     }
   }
+  // Join with the next: the pair is fixed when the press is made, and both ids go to the database, which refuses a
+  // pair that is no longer next to each other. One call makes them one trip.
+  const openJoin = (record: TripRecord) => {
+    const next = trips.records ? nextTripOf(record, trips.records) : null
+    if (next) setJoining({ record, next })
+  }
+  const join = async (record: TripRecord, next: TripRecord) => {
+    setBusy(true)
+    try {
+      await trips.join(record.id, next.id)
+      setJoining(null)
+      showToast(tripJoinDoneWords(record, next, todayYmd), 'success', 6000)
+    } catch (e) {
+      showToast(formatErrorMessage(e, TRIP_JOIN_FAILED_WORDS), 'error', 6000)
+    } finally {
+      setBusy(false)
+    }
+  }
   const remove = async (record: TripRecord) => {
     setAsking(null)
     setBusy(true)
@@ -441,6 +463,8 @@ export function DevelopmentTripsCard({
             onChange={(record) => setSheet({ record, isNew: false })}
             onDelete={setAsking}
             onSplit={setSplitting}
+            onJoin={openJoin}
+            canJoin={(record) => !!trips.records && !!nextTripOf(record, trips.records)}
             offers={offerLines.lines}
             moreOffersWords={offerLines.more}
             offerBusy={busy}
@@ -468,6 +492,7 @@ export function DevelopmentTripsCard({
       {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} lineStaysNote={sheetLineNote} onSave={save} onClose={() => setSheet(null)} /> : null}
       {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onOpenChangeOrders={openChangeOrders} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
       {splitting ? <TripSplitWindow key={splitting.id} record={splitting} todayYmd={todayYmd} onBill={!!lineOf(splitting)} busy={busy} onSplit={(ymd) => void split(splitting, ymd)} onClose={() => setSplitting(null)} /> : null}
+      {joining ? <TripJoinWindow key={`${joining.record.id}|${joining.next.id}`} record={joining.record} next={joining.next} todayYmd={todayYmd} lines={{ here: !!lineOf(joining.record), next: !!lineOf(joining.next) }} busy={busy} onJoin={() => void join(joining.record, joining.next)} onClose={() => setJoining(null)} /> : null}
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}

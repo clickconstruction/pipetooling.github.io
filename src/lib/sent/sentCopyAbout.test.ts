@@ -18,11 +18,11 @@ describe('what a sent copy is about', () => {
   it('draws each job as J<number> · <name> and the bid as B<number> · <project>, each a link', () => {
     const maps = {
       jobs: new Map([[JOB, { id: JOB, hcp_number: '1076', click_number: null, job_name: 'Sneegas Post Test' }]]),
-      bids: new Map([[BID, { id: BID, bid_number: 244, project_name: 'Emergency Animal Hospital' }]]),
+      bids: new Map([[BID, { id: BID, bid_number: 244, project_name: 'Edgerton Abbott Halloran' }]]),
     }
     expect(sentCopyAbout({ jobIds: [JOB], bidId: BID }, maps)).toEqual([
       { kind: 'job', label: 'J1076 · Sneegas Post Test', to: `/jobs?edit=${JOB}` },
-      { kind: 'bid', label: 'B244 · Emergency Animal Hospital', to: `/bids?bidId=${BID}` },
+      { kind: 'bid', label: 'B244 · Edgerton Abbott Halloran', to: `/bids?bidId=${BID}` },
     ])
   })
 

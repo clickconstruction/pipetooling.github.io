@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { Movement } from '../../lib/materials/onSite'
 import { ANSWER_WORDS, answerPressWords, suggestedAnswer, takeBackPlan, type AnswerChoice, type LineChange } from '../../lib/materials/pressAnswers'
-import type { PersonAct } from '../../lib/materials/sitePersonActs'
+import { actStampWords, type PersonAct } from '../../lib/materials/sitePersonActs'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -64,6 +64,16 @@ function useEscape(onClose: () => void) {
 
 function pressWords(a: PersonAct): string {
   return [a.what, a.part, a.qty].filter(Boolean).join(' · ')
+}
+
+/** When and where a press was made and by whom. The day and minute tell two presses that read alike apart. */
+function pressWhereWords(a: PersonAct): string {
+  return [actStampWords(a.at), a.where, a.who].filter(Boolean).join(' · ')
+}
+
+/** The press's own words under it, when it has any: its note, or the paper a delivery came on. */
+function PressNote({ act }: { act: PersonAct }) {
+  return act.note ? <span style={{ ...muted, fontStyle: 'italic' }}>Note: {act.note}</span> : null
 }
 
 const CHOICES: AnswerChoice[] = ['take_back', 'mark', 'second_count', 'leave']
@@ -139,9 +149,10 @@ export default function PressAnswerWindow({ acts, movementsOf, boxLabel, give, a
             <div key={a.id} style={rowBox} data-testid="answer-row">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <strong>{pressWords(a)}</strong>
-                <span style={muted}>{[a.where, a.who].filter(Boolean).join(' · ')}</span>
+                <span style={muted}>{pressWhereWords(a)}</span>
+                <PressNote act={a} />
               </div>
-              <select aria-label={`Answer for ${pressWords(a)}`} value={of(a)} onChange={(e) => setChoice((c) => ({ ...c, [a.id]: e.target.value as AnswerChoice }))} style={field}>
+              <select aria-label={`Answer for ${pressWords(a)}, ${actStampWords(a.at)}`} value={of(a)} onChange={(e) => setChoice((c) => ({ ...c, [a.id]: e.target.value as AnswerChoice }))} style={field}>
                 {CHOICES.map((c) => <option key={c} value={c}>{ANSWER_WORDS[c].pick}</option>)}
               </select>
               <span style={muted}>
@@ -223,7 +234,8 @@ export function AnswerWithdrawWindow({ act, withdraw, onClose, onDone }: Withdra
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{label}</h2>
         <div style={{ display: 'grid', gap: '0.2rem' }}>
           <strong>{pressWords(act)}</strong>
-          <span style={muted}>{[act.where, act.who].filter(Boolean).join(' · ')}</span>
+          <span style={muted}>{pressWhereWords(act)}</span>
+          <PressNote act={act} />
           <span style={muted}>{takenBack ? 'Taken back' : 'Marked as not allowed'} by {answer.byName || 'a dev'}: {answer.why}</span>
         </div>
         <div style={note}>{takenBack ? 'The press goes back into every number, as it was before it was taken back.' : 'The mark comes off. No number changes.'} The answer stays on record as withdrawn.</div>

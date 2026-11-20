@@ -6,7 +6,7 @@ const good = {
   customerName: 'Michael Hadwin',
   audience: 'customer',
   bills: [
-    { jobLabel: 'Water heater · Job 612', jobNumber: '612', jobAddress: '3827 Sage Ridge Dr', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
+    { jobLabel: 'Water heater · Job 612', jobNumber: '612', jobAddress: '9771 Sutter Ridge Dr', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
     { jobLabel: 'Service call · Job 655', jobNumber: '655', jobAddress: null, amount: 250, billedOn: '2026-08-18', payUrl: null, checkRef: '655' },
   ],
   totalDue: 1700,
@@ -158,7 +158,7 @@ describe('agreements (Contract Desk PR 5)', () => {
       customerName: 'Michael Palvern',
       bills: [],
       agreements: [
-        { jobLabel: 'J922', jobAddress: '138 W Pat Dolan', status: 'signed', templateName: 'Terms', amountCents: 500000, signedAt: '2026-09-03T00:14:00Z', signerName: 'Michael Palvern', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=abc' },
+        { jobLabel: 'J922', jobAddress: '210 W Phil Darrow', status: 'signed', templateName: 'Terms', amountCents: 500000, signedAt: '2026-09-03T00:14:00Z', signerName: 'Michael Palvern', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=abc' },
         { jobLabel: 'J923', status: 'sent', signUrl: 'javascript:alert(1)' },
         { jobLabel: 'J924', status: 'draft' },
       ],

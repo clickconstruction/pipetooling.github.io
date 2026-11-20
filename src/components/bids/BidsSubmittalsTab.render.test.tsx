@@ -937,19 +937,19 @@ describe('BidsSubmittalsTab', () => {
       fireEvent.change(within(dialog).getByLabelText('Their note on TOTO TET2UB31#SS'), { target: { value: 'They want TET2UA31#SS' } })
       fireEvent.click(within(dialog).getByTestId('answer-all-approved'))
       fireEvent.change(within(dialog).getByLabelText('Who answered'), { target: { value: 'new' } })
-      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Structura' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Sheffield' } })
       expect(within(dialog).getByTestId('answer-save').textContent).toBe('Record 2 answers')
       fireEvent.click(within(dialog).getByTestId('answer-save'))
       await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
       // The reviewer joins the room by name alone.
-      expect(state.writes.find((w) => w.table === 'bid_submittal_people')!.payload).toMatchObject({ room_id: 'room-1', name: 'Structura', email: null, how: 'named' })
+      expect(state.writes.find((w) => w.table === 'bid_submittal_people')!.payload).toMatchObject({ room_id: 'room-1', name: 'Sheffield', email: null, how: 'named' })
       // Each answer is its own write on the parts it covers, in one save.
       const partWrites = state.writes.filter((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')
       expect(partWrites.map((w) => [w.filters.find((f) => f[0] === 'id:in')?.[1], (w.payload as Record<string, unknown>).review_decision, (w.payload as Record<string, unknown>).review_note])).toEqual([
         [['pt-bowl'], 'approved', null],
         [['pt-valve'], 'rejected', 'They want TET2UA31#SS'],
       ])
-      expect(partWrites[1]!.payload).toMatchObject({ reviewed_by_name: 'Structura', reviewed_by_email: null, reviewed_by_person_id: 'person-new', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
+      expect(partWrites[1]!.payload).toMatchObject({ reviewed_by_name: 'Sheffield', reviewed_by_email: null, reviewed_by_person_id: 'person-new', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
       // One line on the thread and one event for the whole save.
       expect(state.writes.filter((w) => w.table === 'bid_submittal_messages')).toHaveLength(1)
       expect(state.writes.find((w) => w.table === 'bid_submittal_messages')!.payload).toMatchObject({ tags: ['WC-1'], metadata: { counts: { approved: 1, revise: 0, rejected: 1 } } })
@@ -1182,10 +1182,10 @@ describe('BidsSubmittalsTab', () => {
       const approve = within(within(dialog).getByRole('group', { name: 'Their answer on WATTS LFN36M1' })).getByRole('button', { name: 'Approved' })
       expect(document.activeElement).toBe(approve)
       fireEvent.click(approve)
-      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Structura' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Sheffield' } })
       fireEvent.click(within(dialog).getByTestId('answer-save'))
       await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Their answer on DWH-1' })).toBeNull())
-      expect(state.parts.find((p) => p.id === 'pt-watts')).toMatchObject({ review_decision: 'approved', reviewed_by_name: 'Structura', decision_source: 'entered' })
+      expect(state.parts.find((p) => p.id === 'pt-watts')).toMatchObject({ review_decision: 'approved', reviewed_by_name: 'Sheffield', decision_source: 'entered' })
       expect(state.parts.find((p) => p.id === 'pt-rheem')!.review_decision).toBeNull()
       // The answered part is released, so its line loses the door; the other part still waits and keeps it.
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Enter their answer on DWH-1 WATTS LFN36M1' })).toBeNull())
@@ -1569,8 +1569,8 @@ describe('BidsSubmittalsTab', () => {
     // BP375's shape: answers typed on a draft, one row sent back, one approved, two with no answer (one of them with no product).
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
     state.items = [
-      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
-      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield' }),
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield' }),
       item({ id: 'it-3', tag: 'FCO', sequence_order: 3, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
       item({ id: 'it-4', tag: 'UTILITY SINK', sequence_order: 4, submitted_label: null, status: 'missing' }),
     ]
@@ -1586,7 +1586,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('road-6').getAttribute('data-open')).toBe('true')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
-      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('sheffield approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
       // 2026-10-05 · one button where there were two. It says what it does; the line beside it says the rows are chosen next, and that nothing is sent.
       expect(screen.queryByTestId('resubmit-sent-back')).toBeNull()
       // Punch list #84 · while step 7 is the live step a dashed loop marked Next revision runs back to step 2. It is decoration: hidden from readers.
@@ -1629,8 +1629,8 @@ describe('BidsSubmittalsTab', () => {
   it('2026-10-05 · Every row in the question carries the approved row too, and Cancel or Esc writes nothing', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
     state.items = [
-      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
-      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield' }),
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield' }),
       item({ id: 'it-3', tag: 'FCO', sequence_order: 3, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
     ]
     state.writes = []
@@ -1666,7 +1666,7 @@ describe('BidsSubmittalsTab', () => {
     // BP375 on 2026-10-05: rows sent back, rows with no answer, no row and no part approved.
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
     state.items = [
-      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield' }),
       item({ id: 'it-3', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
     ]
     state.writes = []
@@ -1723,8 +1723,8 @@ describe('BidsSubmittalsTab', () => {
   it('2026-10-03 · a row sent back for one part of three says so: the cell counts the parts, and the step counts it apart from a row rejected whole', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
     state.items = [
-      item({ id: 'lav', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TSL.MON.B.38.2.PS1.BK + TOTO T25S51E#CP + BOBRICK B-8236', status: 'proposed', review_decision: 'rejected', review_note: 'TOTO T25S51E#CP: TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
-      item({ id: 'fd', tag: 'FD', sequence_order: 2, submitted_label: 'JRSMITH 2005LXH03', status: 'proposed', review_decision: 'rejected', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
+      item({ id: 'lav', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TSL.MON.B.38.2.PS1.BK + TOTO T25S51E#CP + BOBRICK B-8236', status: 'proposed', review_decision: 'rejected', review_note: 'TOTO T25S51E#CP: TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
+      item({ id: 'fd', tag: 'FD', sequence_order: 2, submitted_label: 'JRSMITH 2005LXH03', status: 'proposed', review_decision: 'rejected', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'sheffield', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
     ]
     const p = (id: string, seq: number, label: string, review_decision: string | null) => ({ id, item_id: 'lav', bid_id: 'b398', sequence_order: seq, label, quantity: 1, on_submittal: true, source: 'takeoff', source_line_id: null, source_template_item_id: null, sheet_pages: [], procure_key: `k-${id}`, decision_source: 'entered', review_decision })
     state.parts = [p('sink', 1, 'TSL.MON.B.38.2.PS1.BK', null), p('faucet', 2, 'TOTO T25S51E#CP', 'rejected'), p('drain', 3, 'BOBRICK B-8236', null)]
@@ -1736,7 +1736,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getAllByTestId('their-call-parts').map((e) => e.textContent)).toEqual(['2 with no answer yet'])
       // Step 6 is open: the answers are what the next step reads.
       expect((await screen.findByTestId('decisions-line')).textContent).toContain('2sent back')
-      expect(screen.getByTestId('their-call-who').textContent).toContain('structura answered. Wendi typed the answers in')
+      expect(screen.getByTestId('their-call-who').textContent).toContain('sheffield answered. Wendi typed the answers in')
       // What came back is named in the step: the part, and the reviewer's words when they gave any.
       expect(screen.getAllByTestId('sent-back-row')).toHaveLength(2)
     } finally {

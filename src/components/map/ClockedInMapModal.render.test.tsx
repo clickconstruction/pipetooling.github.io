@@ -34,7 +34,7 @@ vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async <T,>(op: () => PromiseLike<{ data: T; error: null }>) => (await op()).data,
 }))
 vi.mock('../../hooks/useOfficeAnchor', () => ({
-  useOfficeAnchor: () => ({ lat: 29.653, lng: -97.797, source: 'office_address', label: '12921 FM 20, Kingsbury, TX 78638' }),
+  useOfficeAnchor: () => ({ lat: 29.653, lng: -97.797, source: 'office_address', label: '62552 FM 20, Kingsbury, TX 78638' }),
 }))
 vi.mock('../../hooks/useOverheadOfficeJobId', () => ({ useOverheadOfficeJobId: () => 'office-job' }))
 let mobile = false
@@ -88,7 +88,7 @@ vi.mock('./PinsMapCanvas', () => ({
   ),
 }))
 
-const VELLANO = '1160 Lago Vista Dr, San Marcos, TX 78666'
+const VELLANO = '5057 Lowell Vista Dr, San Marcos, TX 78666'
 const NOW = new Date('2026-09-22T16:45:00Z').getTime()
 
 function s(p: Partial<ClockSessionRow> & { id: string; user_id: string }): ClockSessionRow {
@@ -143,7 +143,7 @@ beforeEach(() => {
   invokeMock.mockImplementation(async (...args: unknown[]) =>
     args[0] === 'driving-distance' ? { data: { ok: true, meters: 32186, seconds: 1920 }, error: null } : { data: { results: [] }, error: null },
   )
-  cacheRows.mockReturnValue([{ address_normalized: '1160 lago vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 }])
+  cacheRows.mockReturnValue([{ address_normalized: '5057 lowell vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 }])
   vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
 })
 afterEach(() => {
@@ -189,7 +189,7 @@ describe('ClockedInMapModal', () => {
     expect(popup.textContent).toMatch(/since \d{1,2}:\d{2} [AP]M · 4h 27m/)
     expect(popup.textContent).toContain('18 mi')
     fireEvent.click(screen.getAllByRole('button', { name: 'Directions' })[0]!)
-    expect(openExternal).toHaveBeenCalledWith(expect.stringContaining('google.com/maps/search/?api=1&query=1160%20Lago%20Vista'))
+    expect(openExternal).toHaveBeenCalledWith(expect.stringContaining('google.com/maps/search/?api=1&query=5057%20Lowell%20Vista'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Open job' })[0]!)
     expect(onOpenJob).toHaveBeenCalledWith('j1', expect.objectContaining({ job_name: 'Vellano Pinpoint' }))
     expect(onClose).toHaveBeenCalled()
@@ -253,7 +253,7 @@ describe('ClockedInMapModal', () => {
 
   it('Travel times routes each placed stop to the office once: the rail reads miles · minutes, the button ticks, the footer counts; a refused stop reads the ≈ estimate', async () => {
     cacheRows.mockReturnValue([
-      { address_normalized: '1160 lago vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 },
+      { address_normalized: '5057 lowell vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 },
       { address_normalized: '1 echols rd, kingsbury, tx', lat: 29.7, lng: -97.6 },
     ])
     invokeMock.mockImplementation(async (...args: unknown[]) => {

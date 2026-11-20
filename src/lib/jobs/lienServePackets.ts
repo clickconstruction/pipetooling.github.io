@@ -222,6 +222,7 @@ export const LIEN_SERVE_SHEET_WORDS = {
   stackWithLetter: 'Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.',
   stackNoLetter: 'Each envelope takes one clerk’s stamped copy. They come off the printer in the order below.',
   steps: [
+    'Each envelope has a divider page in front of its pages, with the same number as this list. Do not mail the divider.',
     'Mail each envelope by certified mail. Write its number in the boxes under its line.',
     'In the app, open the Lien desk. Press Enter mail numbers on Filed · copies to mail, or on the job’s own line. Type the day mailed and each number.',
   ],
@@ -231,6 +232,55 @@ export const LIEN_SERVE_SHEET_WORDS = {
   numberLabel: 'Certified mail number',
   held: 'Not in this print',
 } as const
+
+/**
+ * The divider in front of each envelope's pages (the owner, 2026-11-19, after a 22-envelope print: "to avoid the
+ * possible situation where someone might get confused and put the wrong thing in the wrong envelope"). It carries the
+ * envelope's number on the mail sheet and the envelope's face, and it stays on the desk, as the notice run's divider
+ * does (`runDividerHtml`). The face is what a person writes: the return address and the name and address. It carries
+ * no certified mail line (the owner, 2026-11-19): the post office's label says that, the number's home is the mail
+ * sheet's boxes, and whether a return receipt is asked for is not this page's to say.
+ */
+export const LIEN_SERVE_DIVIDER_WORDS = {
+  tag: 'Divider · do not mail this page',
+  stop: 'Do not mail this page.',
+  face: 'The envelope’s face. Write or print the envelope like this.',
+  pull: 'Pull this page out before you seal the envelope. It stays on the desk with the mail sheet.',
+  stays: 'stays on the desk',
+} as const
+
+/** One divider's words: which envelope it is, what is behind it and where they stop, and the three things to tick. */
+export type LienServeDivider = { n: number; total: number; number: string; of: string; who: string; job: string; mailBy: string; late: boolean; stop: string; behind: string; ticks: string[]; pull: string; foot: [string, string]; faceFoot: string }
+
+export function lienServeDivider(row: Pick<LienServeSheetRow, 'n' | 'job' | 'to' | 'name' | 'pages' | 'mailBy'>, total: number): LienServeDivider {
+  const pages = Math.max(0, Math.round(Number(row.pages) || 0))
+  const these = pages === 1 ? 'the 1 page' : pages > 1 ? `the ${pages} pages` : 'the pages'
+  const last = row.n >= total
+  return {
+    n: row.n,
+    total,
+    number: String(row.n),
+    of: `of ${total} ${total === 1 ? 'envelope' : 'envelopes'}`,
+    who: row.to,
+    job: row.job,
+    mailBy: row.mailBy ? `Mail by ${row.mailBy}` : '',
+    late: row.mailBy.includes('late'),
+    stop: LIEN_SERVE_DIVIDER_WORDS.stop,
+    behind: `Mail only ${these} behind it. ${last ? 'They are the last pages of this print.' : `They stop at the next divider, envelope ${row.n + 1}.`}`,
+    ticks: ['Envelope written as drawn', pages > 0 ? `${pages} ${pages === 1 ? 'page' : 'pages'} in the envelope` : 'Pages in the envelope', `Number written at #${row.n} on the mail sheet`],
+    pull: LIEN_SERVE_DIVIDER_WORDS.pull,
+    foot: [`Divider · envelope ${row.n} of ${total} · ${row.name}`, LIEN_SERVE_DIVIDER_WORDS.stays],
+    faceFoot: `Envelope ${row.n} of ${total} · ${row.to}`,
+  }
+}
+
+const PHONE = /^[+(]?[\d][\d\s().+-]{6,}$/
+/** The return address for an envelope's face, off the letterhead: the company, then its address lines. A phone or an email is no line of an envelope. */
+export function lienServeReturnAddress(letterhead: { company: string; contactLines: ReadonlyArray<string> } | null | undefined): string[] {
+  const company = (letterhead?.company ?? '').trim()
+  if (!company) return []
+  return [company, ...(letterhead?.contactLines ?? []).map((l) => l.trim()).filter((l) => l && !l.includes('@') && !PHONE.test(l))]
+}
 
 /** A certified mail number as the post office's label prints it: five groups of four digits. The sheet draws a box for each group. */
 export const LIEN_CERTIFIED_NUMBER_GROUPS = 5
@@ -277,6 +327,8 @@ export type LienServeSheet = {
   columns: readonly string[]
   /** The label beside each envelope's boxes for its certified mail number. */
   numberLabel: string
+  /** The return address on each divider's envelope face (`lienServeReturnAddress`); empty draws none. */
+  from: string[]
   rows: LienServeSheetRow[]
   heldHead: string
   held: Array<{ job: string; words: string; act: string }>
@@ -289,7 +341,7 @@ export type LienServeSheet = {
  * the office can split the stack without reading it. `notPrinted` adds a lien the run could not put in the stack
  * after all, with the reason.
  */
-export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, opts: { printedOn: string; letter: boolean; notPrinted?: ReadonlyArray<{ job: LienServeJob; reason: string }> }): LienServeSheet {
+export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, opts: { printedOn: string; letter: boolean; notPrinted?: ReadonlyArray<{ job: LienServeJob; reason: string }>; from?: ReadonlyArray<string> }): LienServeSheet {
   let n = 0
   const rows: LienServeSheetRow[] = run.ready.flatMap((r) => {
     const pages = r.file.pages + (opts.letter && r.letter ? 1 : 0)
@@ -309,12 +361,13 @@ export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, op
     steps: [anyLetter ? LIEN_SERVE_SHEET_WORDS.stackWithLetter : LIEN_SERVE_SHEET_WORDS.stackNoLetter, ...LIEN_SERVE_SHEET_WORDS.steps],
     columns: LIEN_SERVE_SHEET_WORDS.columns,
     numberLabel: LIEN_SERVE_SHEET_WORDS.numberLabel,
+    from: [...(opts.from ?? [])],
     rows,
     heldHead: LIEN_SERVE_SHEET_WORDS.held,
     held: [
       ...run.held.map((h) => ({ job: h.job.jobLabel, words: `Not printed: ${h.holds.map((x) => x.words).join(', ')}.`, act: [...new Set(h.holds.map((x) => x.act))].join(' ') })),
       ...(opts.notPrinted ?? []).map((f) => ({ job: f.job.jobLabel, words: `Not printed: ${f.reason.trim().replace(/[.\s]+$/, '')}.`, act: 'Print this lien again from the Lien desk.' })),
     ],
-    foot: [`Mail sheet${opts.printedOn ? ` printed ${opts.printedOn}` : ''}`, anyLetter ? 'The first letter is the next page' : 'The first copy is the next page'],
+    foot: [`Mail sheet${opts.printedOn ? ` printed ${opts.printedOn}` : ''}`, 'The first envelope’s divider is the next page'],
   }
 }

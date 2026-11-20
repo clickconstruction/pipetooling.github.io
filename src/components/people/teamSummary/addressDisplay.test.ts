@@ -3,15 +3,15 @@ import { compactAddressForHoursDisplay } from './addressDisplay'
 
 describe('compactAddressForHoursDisplay', () => {
   it('strips trailing state + 5-digit ZIP from a space-separated address', () => {
-    expect(compactAddressForHoursDisplay('12921 FM 20 Kingsbury TX 78209')).toBe(
-      '12921 FM 20 Kingsbury',
+    expect(compactAddressForHoursDisplay('62552 FM 20 Kingsbury TX 78209')).toBe(
+      '62552 FM 20 Kingsbury',
     )
   })
 
   it('strips trailing ", STATE ZIP" from a comma-separated address', () => {
     expect(
-      compactAddressForHoursDisplay('12921 FM 20, Kingsbury, TX 78209'),
-    ).toBe('12921 FM 20, Kingsbury')
+      compactAddressForHoursDisplay('62552 FM 20, Kingsbury, TX 78209'),
+    ).toBe('62552 FM 20, Kingsbury')
   })
 
   it('handles ZIP+4 (NNNNN-NNNN) suffix', () => {

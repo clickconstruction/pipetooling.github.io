@@ -41,7 +41,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**. The **→** beside the rail advances one stage. Clicking the rail's current dot opens all three, so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
 :::example The sub tells you first
-While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
+While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 785 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
 :::
 
 **A sheet moves itself when the facts do.** The sub may report **100%** from the portal. Or the signed work order's last day may pass. Either way, the rail shows {{chip:purple|Waiting on inspection}} on its own, with a small ***· auto*** mark. Nobody has to click. If you move it back to *Waiting on work* by hand after that, your call stays. *Waiting on customer* is still yours to set once the inspection passes.
@@ -67,6 +67,17 @@ The sheet's row on **Jobs → Subs → Pay** says which bill it rides on, under 
 Moving the sheet back a stage clears the bill. Deleting the bill clears it too.
 
 The sub does not see which bill the sheet rides on.
+
+## See these sentences on the sample
+
+The sample of a sub's page shows these sentences, each on a sheet of its own.
+
+- **Open the sample.** Go to [Settings → What customers see](/settings?tab=settings-what-customers-see) and open the **Sub portal** step.
+- **One sheet is queued.** It shows the pay day you promised.
+- **One sheet waits on the customer.** It carries the line *This customer usually pays 4 to 6 weeks after we ask.*
+- **One sheet says the customer paid.** Its chip reads *Customer paid* with yesterday's date.
+
+The sample is made up. No real sub, customer or payment is on it.
 
 ## How long the customer usually takes
 

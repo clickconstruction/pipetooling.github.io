@@ -32,9 +32,9 @@ describe('splitTextForQueryHighlight', () => {
   })
 
   it('handles digits inside larger labels (number mode)', () => {
-    expect(splitTextForQueryHighlight('926 · Estimate for Dylan Beck', '92')).toEqual([
+    expect(splitTextForQueryHighlight('926 · Estimate for Debra Blakely', '92')).toEqual([
       { text: '92', match: true },
-      { text: '6 · Estimate for Dylan Beck', match: false },
+      { text: '6 · Estimate for Debra Blakely', match: false },
     ])
   })
 })

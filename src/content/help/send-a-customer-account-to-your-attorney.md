@@ -33,7 +33,7 @@ An account is the **payer**. The payer is the GC when one pays, otherwise the cu
 Then come the tabs: ***Narrative · Account · Paper · Evidence · With the firm · Timeline***. **Narrative** is your own account of the matter, which the firm reads first. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You hold back what the firm should not read on the Timeline's **Said** lane, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
 
 :::example Not every account should go
-Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads **Can we sue? Not yet** and **What's left for us? −$182 · not worth it**. The firm's third and a filing cost eat more than the balance. {{button:outline|Write it down…}} is the honest exit for that one. The firm never needs to see it.
+Selby Tilden Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads **Can we sue? Not yet** and **What's left for us? −$182 · not worth it**. The firm's third and a filing cost eat more than the balance. {{button:outline|Write it down…}} is the honest exit for that one. The firm never needs to see it.
 :::
 
 ## 4. Set the firm up once

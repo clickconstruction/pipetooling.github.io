@@ -426,6 +426,19 @@ describe('mailLines: the mail tied to a bid or a job in Messages', () => {
     expect(lines[1]!.mail).toMatchObject({ ready: 1, kept: 0 })
   })
 
+  it('nor is Gmail’s picture of a Drive link: a mail that carries only one beside its link draws no press (v2.7954)', () => {
+    const preview = 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png'
+    const files = [
+      { message_id: 'm1', kind: 'file', bucket_path: 'gm/1-preview', name: preview },
+      { message_id: 'm1', kind: 'link', bucket_path: null, name: 'Google Drive' },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/1-preview', name: preview },
+      { message_id: 'm2', kind: 'file', bucket_path: 'gm/specs.pdf', name: 'specs.pdf' },
+    ]
+    const lines = mailLines([mail({ id: 'm1' }), mail({ id: 'm2' })], { ...ctx, files })
+    expect(lines[0]!.mail).toBeUndefined()
+    expect(lines[1]!.mail).toMatchObject({ ready: 1, kept: 0 })
+  })
+
   it('reads only columns the messages table has', () => {
     const types = readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')
     const start = types.indexOf('      messages: {')

@@ -20,11 +20,11 @@ const SESSION = '55555555-5555-4555-8555-555555555555'
 const BATCH = '77777777-7777-4777-8777-777777777777'
 
 const jobs: Record<string, unknown>[] = [
-  { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Diamondback', job_address: '1 Catch-all Rd', service_type_id: null, service_type_name: 'Plumbing' },
+  { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Davenport', job_address: '1 Catch-all Rd', service_type_id: null, service_type_name: 'Plumbing' },
   { id: TARGET, hcp_number: '629', click_number: '', job_name: 'ROUGH IN', job_address: '2 Draw St', service_type_id: null, service_type_name: 'Plumbing' },
 ]
 
-const sourceJob = { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Diamondback', job_address: '1 Catch-all Rd', service_type_id: null }
+const sourceJob = { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Davenport', job_address: '1 Catch-all Rd', service_type_id: null }
 
 const bank: CostMoveBankRow = { source: 'bank', allocationId: 'a1', txId: TX, postedYmd: '2026-09-10', counterparty: 'Shell', cardId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', cardNickname: 'Truck 2', category: 'Fuel', txAmount: -84.1, allocationAmount: -84.1, note: null }
 const supply: CostMoveSupplyRow = { source: 'supply', invoiceId: INV, supplyHouse: 'Reece', invoiceNumber: '4471', invoiceYmd: '2026-10-08', amount: 507.8, pct: 100, isPaid: false, purchaseOrder: 'Gray Fox' }
@@ -115,7 +115,7 @@ describe('CostMoveModal', () => {
     // Apply: the dry run once more, then the write; the window says what it wrote and offers Done.
     fireEvent.click(screen.getByRole('button', { name: 'Apply 5 ops' }))
     await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1))
-    expect(onApplied.mock.calls[0]![0]).toEqual({ batchId: BATCH, label: expect.stringMatching(/^Move cost: J583 · Diamondback → J629 · ROUGH IN \(\d{4}-\d{2}-\d{2}\)$/) })
+    expect(onApplied.mock.calls[0]![0]).toEqual({ batchId: BATCH, label: expect.stringMatching(/^Move cost: J583 · Davenport → J629 · ROUGH IN \(\d{4}-\d{2}-\d{2}\)$/) })
     expect(rpcCalls.filter((c) => c.name === 'cost_batch_apply').map((c) => (c.args as { p_dry_run: boolean }).p_dry_run)).toEqual([true, true, false])
     expect(await screen.findByRole('heading', { name: 'Cost moved' })).toBeTruthy()
     expect(screen.getByText(BATCH)).toBeTruthy()

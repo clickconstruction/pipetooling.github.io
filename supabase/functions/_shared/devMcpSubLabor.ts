@@ -375,6 +375,8 @@ export type LaborPerson = {
    * and a sheet that names them alone is their own too, owed as sub labor (`teamSheetRule`, Taunya, 2026-11-15).
    */
   pay_ledger: 'sub' | 'crew'
+  /** Which of the form's two lists offers them: its Subcontractors list, or the Office Team group beside it. */
+  offered_as: 'subcontractors' | 'office_team'
   sample: boolean
   /** Every roster row of theirs, for finding their sheets. */
   people_ids: string[]
@@ -387,13 +389,33 @@ type Candidate = { user: LaborUserRow | null; roster: LaborPersonRow[] }
 /** The kinds the form's Subcontractors list offers (`rosterNamesSubcontractors`): subs and primaries, by roster kind or by the account's role. */
 export const SHEET_PERSON_KINDS = ['sub', 'primary'] as const
 export const SHEET_PERSON_ROLES = ['subcontractor', 'primary'] as const
+/**
+ * The teammates the form's **Office Team** group offers beside them (`rosterNamesEveryoneElse`): an account of one of
+ * these roles (the form reads a controller as an assistant, and lists a dev last), or a roster row of one of these
+ * kinds with no account. A helper is in neither list.
+ */
+export const SHEET_TEAM_ROLES = ['master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'dev'] as const
+export const SHEET_TEAM_KINDS = ['master_technician', 'assistant', 'estimator', 'superintendent'] as const
+
+const roleWords = (role: string | null): string => (role ?? 'no').replace(/_/g, ' ').replace(/^helpers$/, 'helper')
+const aOrAn = (words: string): string => `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words}`
+
+/** What a teammate is, for the plan's warning: their account's role first, then what the roster calls them when it differs. */
+export function teammateWords(person: Pick<LaborPerson, 'kind' | 'role'>): string {
+  if (person.kind === 'primary' || person.role === 'primary') return 'a primary'
+  const kind = person.kind ? roleWords(person.kind) : null
+  if (!person.role) return `${aOrAn(kind ?? 'teammate')} on the roster with no account`
+  const role = roleWords(person.role)
+  return kind && kind !== role ? `${aOrAn(role)}, on the roster as ${aOrAn(kind)}` : aOrAn(role)
+}
 
 /**
- * The one person an ask means, as the form's Subcontractors list would offer them: an account whose role is
- * subcontractor or primary, or a roster row of kind sub or primary with no account. Refused in words for nobody,
- * several, any other teammate (paid through payroll from their hours), an archived person, a sub on the bench and a
- * twin. A primary's sheet is a teammate's own, which the Pay ledger counts as owed to them (*Team · sub labor*); the
- * person says which way theirs reads.
+ * The one person an ask means, as the form's **Paid to** step would offer them: its Subcontractors list (an account
+ * whose role is subcontractor or primary, or a roster row of kind sub or primary with no account) or its Office Team
+ * (an account of a `SHEET_TEAM_ROLES` role, or a roster row of a `SHEET_TEAM_KINDS` kind with no account). Refused in
+ * words for nobody, several, a helper or any other role the step does not offer, an archived person, a sub on the bench
+ * and a twin. A teammate's sheet is their own, which the Pay ledger counts as owed to them (*Team · sub labor*,
+ * `teamSheetRule`); the person says which way theirs reads.
  */
 export function laborPersonFacts(read: PersonRead): { ok: true; person: LaborPerson } | { ok: false; refused: string } {
   const candidates: Candidate[] = read.users.map((user) => ({ user, roster: read.people.filter((p) => p.account_user_id === user.id) }))
@@ -408,18 +430,26 @@ export function laborPersonFacts(read: PersonRead): { ok: true; person: LaborPer
   const c = candidates[0]!
   const name = nameOf(c)
   const offered = (r: LaborPersonRow): boolean => (SHEET_PERSON_KINDS as readonly string[]).includes(r.kind ?? '')
+  const teamKind = (r: LaborPersonRow): boolean => (SHEET_TEAM_KINDS as readonly string[]).includes(r.kind ?? '')
   const subRow = c.roster.find((r) => offered(r) && !r.archived_at) ?? c.roster.find(offered) ?? null
   const role = (c.user?.role ?? '').trim() || null
   if (c.user?.is_digital_twin) return { ok: false, refused: `${name} is a digital twin, not a person the company pays.` }
-  const isOffered = c.user ? (SHEET_PERSON_ROLES as readonly string[]).includes(role ?? '') : !!subRow
-  if (!isOffered) {
-    const what = subRow ? `on the roster as a ${subRow.kind} with a ${(role ?? 'no').replace(/_/g, ' ')} account` : `${role ? `a ${role.replace(/_/g, ' ')}` : `on the roster as ${c.roster.map((r) => r.kind).filter(Boolean).join(', ') || 'no kind'}`}`
-    return { ok: false, refused: `${name} is not a subcontractor or a primary (${what}), the two the form's Subcontractors list offers. Any other teammate is paid through payroll from their hours: plan_clock_sessions writes those. A new sub is plan_account with kind sub.` }
+  const onSubList = c.user ? (SHEET_PERSON_ROLES as readonly string[]).includes(role ?? '') : !!subRow
+  // The Office Team reads an account by its role, whatever its roster row says, and a roster row by its kind when no account stands behind it.
+  const teamRow = c.user ? null : (c.roster.find((r) => teamKind(r) && !r.archived_at) ?? c.roster.find(teamKind) ?? null)
+  const onOfficeTeam = !onSubList && (c.user ? (SHEET_TEAM_ROLES as readonly string[]).includes(role ?? '') : !!teamRow)
+  if (!onSubList && !onOfficeTeam) {
+    const what = subRow ? `on the roster as a ${subRow.kind} with a ${roleWords(role)} account` : `${role ? `a ${roleWords(role)}` : `on the roster as ${c.roster.map((r) => r.kind).filter(Boolean).join(', ') || 'no kind'}`}`
+    return { ok: false, refused: `${name} is not someone the form's Paid to step offers (${what}). It offers a subcontractor, a primary and the Office Team: a master technician, an assistant, an estimator, a superintendent. A helper is paid through payroll from their hours: plan_clock_sessions writes those. A new sub is plan_account with kind sub.` }
   }
-  if (c.user?.archived_at || subRow?.archived_at) return { ok: false, refused: `${name} is archived. People → Archived → Bring back restores them; a sheet is not written for someone who has left.` }
-  if (subRow && subRow.kind === 'sub' && has(subRow.end_date)) return { ok: false, refused: `${name} is on the bench since ${String(subRow.end_date).slice(0, 10)}, and the form offers no benched sub for a new sheet. People → Subs takes them off the bench first.` }
+  if (c.user?.archived_at || (onSubList ? subRow?.archived_at : teamRow?.archived_at)) return { ok: false, refused: `${name} is archived. People → Archived → Bring back restores them; a sheet is not written for someone who has left.` }
+  if (onSubList && subRow && subRow.kind === 'sub' && has(subRow.end_date)) return { ok: false, refused: `${name} is on the bench since ${String(subRow.end_date).slice(0, 10)}, and the form offers no benched sub for a new sheet. People → Subs takes them off the bench first.` }
+  // The row the assignee row names. A teammate's account is tied by a roster row that still stands, as the name trigger reads none that is archived; with none, the plan says no row ties the sheet.
+  const liveSubRow = subRow && !subRow.archived_at ? subRow : null
+  const tieRow = onSubList ? (subRow ?? c.roster[0] ?? null) : c.user ? (liveSubRow ?? c.roster.find((r) => !r.archived_at) ?? null) : teamRow
+  const kind = onSubList ? (subRow?.kind ?? null) : (tieRow?.kind ?? null)
   const names = [...new Set([c.user?.name, ...c.roster.map((r) => r.name)].map((n) => (n ?? '').trim()).filter(Boolean))]
-  return { ok: true, person: { name, people_id: subRow?.id ?? c.roster[0]?.id ?? null, user_id: c.user?.id ?? null, kind: subRow?.kind ?? null, role, pay_ledger: subRow?.kind === 'sub' && (!role || role === 'subcontractor') ? 'sub' : 'crew', sample: c.user?.is_sample === true, people_ids: c.roster.map((r) => r.id), names } }
+  return { ok: true, person: { name, people_id: tieRow?.id ?? null, user_id: c.user?.id ?? null, kind, role, pay_ledger: kind === 'sub' && (!role || role === 'subcontractor') ? 'sub' : 'crew', offered_as: onSubList ? 'subcontractors' : 'office_team', sample: c.user?.is_sample === true, people_ids: c.roster.map((r) => r.id), names } }
 }
 
 // ── the world ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -729,7 +759,7 @@ const ADD_DOES_NOT = [
   'It moves no bank row. A bank row already allocated to this job stays allocated: plan_cost_batch moves it.',
   'It writes no miles (the form no longer asks), no invoice link, and no work order or agreement for the sub to sign.',
   'It leaves the stage at Working, where the form starts a sheet. Jobs → Subs moves the stage; Paid sets itself once the balance is $0.',
-  'It writes a sheet for one subcontractor or primary. A sheet for several people, or for any other teammate, is the form\'s own.',
+  'It writes a sheet for one person the form\'s Paid to step offers: a subcontractor, a primary or one of the Office Team. A sheet for several people, or for a helper, is the form\'s own.',
 ]
 
 /**
@@ -768,8 +798,9 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
     if (bank.length) warnings.push(`${label} already carries ${bank.length === 1 ? 'a bank row' : `${bank.length} bank rows`} allocated as cost that may be this same pay (bank_rows_that_may_be_this_pay). Each counts in the job's profit as a card charge, and the sheet would count as sub labor: the same dollars twice. ${TWICE_FIX}`)
     if (overlap.length) warnings.push(`${person.name} already has ${overlap.length === 1 ? 'a sheet' : `${overlap.length} sheets`} on ${label} in these days; this one is written beside ${overlap.length === 1 ? 'it' : 'them'} because second_sheet_ok is true.`)
     if (p.through && !p.lines.some((l) => l.day)) warnings.push(`The sheet covers ${dayWords(p.date, p.through)} and no line names its day. Give each line its day so the sheet says which day was which.`)
-    if (person.pay_ledger === 'crew' && person.people_id) warnings.push(`${person.name} is ${person.kind === 'primary' || person.role === 'primary' ? 'a primary' : `a ${person.kind ?? 'teammate'} with a ${(person.role ?? 'no').replace(/_/g, ' ')} account`}, not a roster sub. The form's Subcontractors list offers them. A sheet that names them alone is their own: the Pay ledger counts what is open on it as owed to them, sub labor paid to someone on payroll (Team · sub labor). The sheet still counts on ${label} as sub labor, and a payment on it is still recorded.`)
-    if (!person.people_id) warnings.push(`${person.name} has an account and no roster row on People, so no assignee row would tie the sheet to them: their portal and get_hours_statement find a sheet by that row. The sheet still counts on ${label} and in the Pay ledger under their name. People → Subs adds the roster row; then plan again.`)
+    const officeTeam = person.offered_as === 'office_team'
+    if (person.pay_ledger === 'crew' && person.people_id) warnings.push(`${person.name} is ${teammateWords(person)}, not a roster sub. The form's ${officeTeam ? 'Office Team group' : 'Subcontractors list'} offers them. A sheet that names them alone is their own: the Pay ledger counts what is open on it as owed to them, sub labor paid to someone on payroll (Team · sub labor).${officeTeam ? ' It is money on top of their wages, and no payroll screen reads a sheet.' : ''} The sheet still counts on ${label} as sub labor, and a payment on it is still recorded.`)
+    if (!person.people_id) warnings.push(`${person.name} has an account and no roster row on People, so no assignee row would tie the sheet to them: their portal and get_hours_statement find a sheet by that row. The sheet still counts on ${label} and in the Pay ledger under their name.${officeTeam ? ' The Pay ledger reads a name it cannot find on the roster as an outside sub, so the sheet would not read as Team · sub labor until they have a roster row.' : ''} People → Subs adds the roster row; then plan again.`)
     if (person.sample) warnings.push(`${person.name} is a sample account: this is a practice sheet on real job cost. Remove it with action remove when the walk is done.`)
     const noteBody = subLaborNoteBody(p, world, person.name)
     return {
@@ -777,7 +808,15 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
       reply: {
         action: 'add',
         job: jobCard(job),
-        person: { name: person.name, people_id: person.people_id, user_id: person.user_id, kind: person.kind ?? (person.role === 'primary' ? 'primary' : 'sub'), pay_ledger: person.pay_ledger === 'sub' ? 'a roster sub: the sheet reads as theirs in the Pay ledger' : 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them', ...(person.sample ? { sample: true } : {}) },
+        person: {
+          name: person.name,
+          people_id: person.people_id,
+          user_id: person.user_id,
+          kind: person.kind ?? (officeTeam ? (person.role ?? 'teammate') : person.role === 'primary' ? 'primary' : 'sub'),
+          ...(officeTeam ? { account_role: person.role, offered_by: "the form's Office Team group" } : {}),
+          pay_ledger: person.pay_ledger === 'sub' ? 'a roster sub: the sheet reads as theirs in the Pay ledger' : officeTeam && !person.people_id ? 'no roster row: the Pay ledger reads the name as an outside sub until People gives them one' : 'Team · sub labor: a sheet of their own, which the Pay ledger counts as owed to them',
+          ...(person.sample ? { sample: true } : {}),
+        },
         sheet: row,
         lines: linesCard(items, rate),
         totals: { owed_to_them: owed / 100, cost_on_the_job: cost / 100, ...(hours ? { hours } : {}), priced: 'amount' in p.lines[0]! ? 'flat amounts' : 'hours at a rate' },

@@ -97,7 +97,7 @@ const world = (over: Partial<LienFilingWorld> = {}): LienFilingWorld => ({
 const filing = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   job_id: JOB,
   county: 'Marlow County',
-  recording_number: '2026 0222921',
+  recording_number: '2026 9990001',
   filed_on: '2026-11-16',
   scan: { name: 'maple-court.pdf', size_bytes: 485026, sha256: SHA },
   paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct, Marlow, TX 78000', legal_description: 'Lot 4, Blk 7, Maple Addition', owner: 'Pat Sample' },
@@ -139,9 +139,9 @@ describe('the pair and what it stands on', () => {
     }
     expect(isLienFilingVerb('plan_affidavit_draft')).toBe(false)
     expect(planVerbFor('apply_lien_filing')).toBe('plan_lien_filing')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(137)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(145)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else:')
     expect(SERVER).toContain("plan_lien_filing → apply_lien_filing (a filed lien affidavit recorded as the job's Lien window records it once the clerk has stamped it")
     expect(README).toContain('`plan_lien_filing(filing \\| filings)` · `apply_lien_filing(filing, plan_hash)`')
     expect(README).toContain("one hundred and eleven since v2.7511's recorded lien filing")
@@ -206,7 +206,7 @@ describe('the pair and what it stands on', () => {
 describe('lienFilingShape — one filing', () => {
   it('takes the clerk’s facts, the scan and what the paper says', () => {
     const p = shaped()
-    expect(p).toMatchObject({ action: 'lien_filing', job_id: JOB, county: 'Marlow', recording_number: '2026 0222921', filed_on: '2026-11-16', scan: { name: 'maple-court.pdf', size_bytes: 485026, sha256: SHA }, saved_copy: null, filed_outside_the_desk: false, accept_differences: false })
+    expect(p).toMatchObject({ action: 'lien_filing', job_id: JOB, county: 'Marlow', recording_number: '2026 9990001', filed_on: '2026-11-16', scan: { name: 'maple-court.pdf', size_bytes: 485026, sha256: SHA }, saved_copy: null, filed_outside_the_desk: false, accept_differences: false })
     expect(p.paper_states).toEqual({ claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct, Marlow, TX 78000', legal_description: 'Lot 4, Blk 7, Maple Addition', owner: 'Pat Sample' })
   })
 
@@ -279,7 +279,7 @@ describe('the plan’s and the apply’s input', () => {
     expect(clashes.get(3)).toContain('same job twice (entry 1)')
     expect(clashes.has(1)).toBe(false)
     expect(clashes.has(2)).toBe(false)
-    const sameNumber = lienFilingBatchClashes([a, shaped({ job_id: JOB_B, recording_number: '2026-0222921', scan: null })])
+    const sameNumber = lienFilingBatchClashes([a, shaped({ job_id: JOB_B, recording_number: '2026-9990001', scan: null })])
     expect(sameNumber.get(1)).toContain('same recording number twice (entry 1)')
     const sameFile = lienFilingBatchClashes([a, shaped({ job_id: JOB_B, recording_number: '888' })])
     expect(sameFile.get(0)).toContain('one file, one lien')
@@ -305,7 +305,7 @@ describe('readLienFilingWorld — the reads', () => {
           if (table === 'jobs_ledger' && query.includes(`id=eq.${JOB}`)) return [world().job as never]
           if (table === 'jobs_ledger' && query.includes('job_address=ilike.')) return [{ id: JOB_B, job_name: 'ZZ Test Maple B', hcp_number: '2304', click_number: '', customer_address_id: PROPERTY_B }]
           if (table === 'jobs_ledger' && query.includes('id=in.(')) return [{ id: JOB_B, job_name: 'ZZ Test Maple B', hcp_number: '2304', click_number: '' }]
-          if (table === 'job_lien_filings' && query.includes('recording_number=ilike.')) return [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026-0222921' }, { id: 'near', job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026x0222921' }]
+          if (table === 'job_lien_filings' && query.includes('recording_number=ilike.')) return [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026-9990001' }, { id: 'near', job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', recording_number: '2026x9990001' }]
           if (table === 'job_lien_filings') return [NOTICE]
           return tables[table] ?? []
         },
@@ -318,7 +318,7 @@ describe('readLienFilingWorld — the reads', () => {
     )
     expect(asked).toContain(`windows:${LIEN_FILING_WINDOW_DAYS}`)
     // The number is read loosely and compared by its letters and digits, so punctuation never hides the same instrument.
-    expect(asked.find((q) => q.includes('recording_number=ilike.'))).toContain(`recording_number=ilike.2*0*2*6*0*2*2*2*9*2*1&job_id=neq.${JOB}`)
+    expect(asked.find((q) => q.includes('recording_number=ilike.'))).toContain(`recording_number=ilike.2*0*2*6*9*9*9*0*0*0*1&job_id=neq.${JOB}`)
     expect(asked.find((q) => q.includes('job_address=ilike.'))).toContain(`job_address=ilike.${encodeURIComponent('14 Maple Ct*')}&id=neq.${JOB}`)
     expect(w.row?.open_balance).toBe(4180)
     expect(w.gc).toEqual({ id: GC, name: 'ZZ Test Builders', address: '5 Builder Way' })
@@ -366,7 +366,7 @@ describe('lienFilingDryRun — a paper that matches the desk', () => {
     expect(wrote.noticesSentWords).toBe(fields.noticesSentWords)
     expect(wrote.ownerName).toBe('Pat Sample')
     expect(wrote.signingCounty).toBe('Marlow')
-    expect(dry.write.row).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '2026 0222921', filed_at: '2026-11-16', serve_due: serveDueForFiling('2026-11-16') })
+    expect(dry.write.row).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '2026 9990001', filed_at: '2026-11-16', serve_due: serveDueForFiling('2026-11-16') })
     // A staged scan's link is the server's to add once the file lands.
     expect(dry.write.row).not.toHaveProperty('document_url')
     expect(Object.keys(dry.write.row).sort()).toEqual(['amount', 'county', 'created_by', 'fields', 'filed_at', 'job_id', 'kind', 'recording_number', 'serve_due'])
@@ -378,7 +378,7 @@ describe('lienFilingDryRun — a paper that matches the desk', () => {
     expect(reply.differences).toEqual([])
     expect(reply.job).toMatchObject({ label: 'JP2291', name: 'ZZ Test Maple Court', address: '14 Maple Ct, Marlow, TX 78000', general_contractor: 'ZZ Test Builders', owner: 'Pat Sample' })
     expect(reply.serve_by).toBe('2026-11-23')
-    expect(String(reply.says)).toBe('JP2291: affidavit filed 2026-11-16 in Marlow County as instrument 2026 0222921, claim $4,180.00. Copies go to the owner and the original contractor by 2026-11-23.')
+    expect(String(reply.says)).toBe('JP2291: affidavit filed 2026-11-16 in Marlow County as instrument 2026 9990001, claim $4,180.00. Copies go to the owner and the original contractor by 2026-11-23.')
     expect(String(reply.not_done)).toContain('nobody is told')
   })
 
@@ -510,14 +510,14 @@ describe('lienFilingDryRun — what it refuses', () => {
 
   it('a second filing on the job, and a recording number that is already on another job', () => {
     const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-10', recording_number: '555', county: 'Marlow', document_url: 'https://example.test/copy', serve_due: '2026-11-16' }
-    expect(refusal(shaped(), world({ filings: [NOTICE, onFile] }))).toContain('an affidavit is already on file for this job (instrument 555, filed 2026-11-10, with its saved copy), and it is not instrument 2026 0222921')
+    expect(refusal(shaped(), world({ filings: [NOTICE, onFile] }))).toContain('an affidavit is already on file for this job (instrument 555, filed 2026-11-10, with its saved copy), and it is not instrument 2026 9990001')
     expect(refusal(shaped({ replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), world())).toContain('replace_saved_copy is for a filing already on record')
-    expect(refusal(shaped(), world({ sameNumber: [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', job_label: 'JP2304' }] }))).toContain('instrument 2026 0222921 is already on JP2304')
+    expect(refusal(shaped(), world({ sameNumber: [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', job_label: 'JP2304' }] }))).toContain('instrument 2026 9990001 is already on JP2304')
   })
 })
 
 describe('lienFilingDryRun — a filing already on record with no saved copy', () => {
-  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: '', serve_due: '2026-11-23', amount: 4180, fields: null }
+  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20269990001', county: 'Marlow', document_url: '', serve_due: '2026-11-23', amount: 4180, fields: null }
 
   it('takes the scan alone', () => {
     const dry = ready(shaped(), world({ filings: [NOTICE, onFile], items: [{ ...APPROVED, status: 'sent' }] }))
@@ -543,7 +543,7 @@ describe('lienFilingDryRun — a filing already on record with no saved copy', (
 describe('lienFilingDryRun — a paper already on record (v2.7837)', () => {
   const FIELDS = { isSub: true, workMonthsWords: 'September 2026', noticesSentWords: 'certified mail on October 9, 2026', propertyAddress: '14 Maple Ct, Marlow, TX 78000', legalDescription: 'LOT 4 BLK 7 MAPLE ADDITION', ownerName: 'Pat Sample', unpaidAmount: '4180.00' }
   const COPY = 'https://drive.google.com/file/d/1oldOldOldOldOldOldOldOldOld/view'
-  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: COPY, serve_due: '2026-11-23', amount: 4180, fields: FIELDS }
+  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20269990001', county: 'Marlow', document_url: COPY, serve_due: '2026-11-23', amount: 4180, fields: FIELDS }
   const w = (over: Record<string, unknown> = {}) => world({ filings: [NOTICE, { ...onFile, ...over }], items: [{ ...APPROVED, status: 'sent' }] })
   const check = (p: LienFilingPayload, wd: LienFilingWorld) => {
     const dry = lienFilingDryRun(p, wd, WHO, TODAY)
@@ -554,7 +554,7 @@ describe('lienFilingDryRun — a paper already on record (v2.7837)', () => {
   it('answers on_record, with nothing to write, when the record says what the paper says', () => {
     const reply = check(shaped(), w())
     expect(reply).toMatchObject({ agrees: true, differences: [], writes: 'nothing: a check alone, with no plan_hash' })
-    expect(reply.says).toBe('JP2291: instrument 20260222921 is on record, filed 2026-11-16 in Marlow County, and its record says what the paper says.')
+    expect(reply.says).toBe('JP2291: instrument 20269990001 is on record, filed 2026-11-16 in Marlow County, and its record says what the paper says.')
     expect(reply.next).toContain('replace_saved_copy: true and replace_because')
     expect(reply).not.toHaveProperty('copy_to_mail')
     expect(reply).not.toHaveProperty('plan_hash')

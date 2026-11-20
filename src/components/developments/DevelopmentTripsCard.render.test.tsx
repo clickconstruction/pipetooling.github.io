@@ -9,7 +9,7 @@
  * read, a link to a trip that is gone says so once, and Copy link copies the trip's address. Every name and
  * every dollar here is made up.
  */
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import { EMPTY_CARD_CHARGE_EXCLUSIONS } from '../../../supabase/functions/_shared/cardChargeAllocationFilter'
@@ -61,7 +61,7 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
     records: [lifts], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true, deleted: [], deletedKnown: true, deletedFailed: false,
     roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }], punches: [punch], punchesFailed: false, dismissals: [], names: new Map(),
-    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), split: vi.fn(async () => null), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
+    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), split: vi.fn(async () => null), join: vi.fn(async () => null), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
 }
 const NO_DAYS: string[] = []
@@ -445,7 +445,7 @@ describe('DevelopmentTripsCard', () => {
 
 describe('DevelopmentTripsCard: deleted trips', () => {
   const walk: TripRecord = { ...newTripRecord({ id: 't3', developmentId: 'd1' }), tripNumber: 3, purpose: 'Reset the riser the framers moved', people: [{ personId: null, userId: null, name: 'Priya', days: { '2026-11-09': 'site', '2026-11-11': 'site' } }] }
-  const gone: DeletedTrip = { record: walk, deletedAt: '2026-11-16T18:00:00.000Z', deletedByName: 'Dana Office', jobsGone: 0 }
+  const gone: DeletedTrip = { record: walk, deletedAt: '2026-11-16T18:00:00.000Z', deletedByName: 'Dana Office', jobsGone: 0, joinedInto: null }
 
   it('lists the site’s deleted trips under the rows, in a fold, with who deleted each', () => {
     draw(state({ deleted: [gone] }))
@@ -538,3 +538,74 @@ describe('Split in two (v2.7891)', () => {
   })
 })
 
+describe('Join with the next (v2.7963)', () => {
+  // Luis out two days, then out two more as a second trip: two trips that were really one.
+  const A: TripRecord = { ...lifts, id: 't5', tripNumber: 5, people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site' } }] }
+  const B: TripRecord = { ...lifts, id: 't9', tripNumber: 9, purpose: '', people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-11-03': 'site', '2026-11-04': 'road' } }] }
+  const openRow = (name: string) => {
+    const row = screen.getAllByTestId('trip-row').find((r) => r.textContent?.includes(name))
+    if (!row) throw new Error(`no row for ${name}`)
+    fireEvent.click(within(row).getByTestId('trip-row-press'))
+    return row
+  }
+  const press = () => screen.getByText('Join with the next', { selector: '[data-testid="trip-join"] button' })
+
+  it('an open trip with a trip after it offers the press beside Split in two, and the site’s last trip does not', () => {
+    draw(state({ records: [B, A] }))
+    openRow('Trip 5')
+    expect(press()).toBeTruthy()
+    cleanup()
+    draw(state({ records: [B, A] }))
+    const last = openRow('Trip 9')
+    expect(within(last).getByTestId('trip-open')).toBeTruthy()
+    expect(within(last).queryByTestId('trip-join')).toBeNull()
+    cleanup()
+    // One trip on a site has no next.
+    draw(state({ records: [A] }))
+    openRow('Trip 5')
+    expect(screen.queryByTestId('trip-join')).toBeNull()
+  })
+
+  it('draws both trips and the one they become, joins them through the hook with both ids, and says the joined trip', async () => {
+    const trips = state({ records: [A, B], join: vi.fn(async () => ({ tripId: 't5', tripNumber: 5, goneTripId: 't9', goneTripNumber: 9, line: 'none' as const })) })
+    draw(trips)
+    openRow('Trip 5')
+    fireEvent.click(press())
+    expect(screen.getByRole('dialog', { name: 'Join Trip 5 with Trip 9' })).toBeTruthy()
+    expect(screen.getByTestId('trip-join-first').textContent).toBe('Trip 5 · Oct 30 to 31Luis · 2 days')
+    expect(screen.getByTestId('trip-join-second').textContent).toBe('Trip 9 · Nov 3 to 4Luis · 2 days')
+    expect(screen.getByTestId('trip-join-joined').textContent).toBe('Trip 5 · Oct 30 to Nov 4Luis · 4 days')
+    expect(trips.join).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Join into one trip'))
+    await waitFor(() => expect(trips.join).toHaveBeenCalledWith('t5', 't9'))
+    expect(await screen.findByText('Joined. Trip 5 is now Oct 30 to Nov 4, 4 days.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByTestId('trip-join-window')).toBeNull())
+    // Nothing else is written: the join is one call.
+    expect(trips.save).not.toHaveBeenCalled()
+    expect(trips.remove).not.toHaveBeenCalled()
+    expect(trips.split).not.toHaveBeenCalled()
+  })
+
+  it('names the reason and keeps the window when the join is refused', async () => {
+    const trips = state({ records: [A, B], join: vi.fn(async () => Promise.reject(new Error('That is not the next trip on this site any more. Close this and look again.'))) })
+    draw(trips)
+    openRow('Trip 5')
+    fireEvent.click(press())
+    fireEvent.click(screen.getByText('Join into one trip'))
+    expect(await screen.findByText(/That is not the next trip on this site any more\. Close this and look again\./)).toBeTruthy()
+    expect(screen.getByTestId('trip-join-window')).toBeTruthy()
+    // The press is live again for another try.
+    await waitFor(() => expect((screen.getByText('Join into one trip') as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('a trip that was joined away waits under Deleted trips, says where its days are, and has no Put back', () => {
+    const gone: DeletedTrip = { record: B, deletedAt: '2026-11-16T18:00:00.000Z', deletedByName: 'Dana Office', jobsGone: 0, joinedInto: { tripId: 't5', tripNumber: 5 } }
+    draw(state({ records: [A], deleted: [gone] }))
+    fireEvent.click(screen.getByTestId('trips-deleted-fold'))
+    const row = screen.getByTestId('trips-deleted-row')
+    expect(row.textContent).toContain('Joined into Trip 5 on Nov 16 by Dana Office')
+    expect(within(row).getByTestId('trips-deleted-joined').textContent).toBe('Its days are on Trip 5. To take the join back, press Split in two on Trip 5.')
+    expect(within(row).queryByTestId('trips-deleted-put-back')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Put back' })).toBeNull()
+  })
+})

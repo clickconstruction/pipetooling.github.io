@@ -92,9 +92,12 @@ export function PermitSkimDeck({
   onLive,
   mode = 'skim',
   onSecondLook,
+  quietSince = null,
 }: {
   authUserId: string
   city: string
+  /** The city's newest permit day when its own source has stopped publishing (`cityQuiet`), else null: the caught-up words then say what stopped. */
+  quietSince?: string | null
   floor: ValueFloor
   todayYmd: string
   isMobile: boolean
@@ -405,7 +408,7 @@ export function PermitSkimDeck({
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
         <div style={{ ...cardStyle, padding: '1.5rem 1rem', textAlign: 'center' }}>
-          {mode === 'second' ? <EmptyState main="Nothing waiting on a second look." tail={secondLookCaughtUpWords(tally.kept, tally.passed)} compact /> : <EmptyState main="Nothing waiting on a skim." tail={caughtUpWords(tally.kept, tally.passed)} compact />}
+          {mode === 'second' ? <EmptyState main="Nothing waiting on a second look." tail={secondLookCaughtUpWords(tally.kept, tally.passed)} compact /> : <EmptyState main="Nothing waiting on a skim." tail={caughtUpWords(tally.kept, tally.passed, quietSince ? { city, since: quietSince } : null, todayYmd)} compact />}
           {dig && (
             <button type="button" onClick={onDigIn} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 10, padding: '12px 18px', fontSize: '0.9375rem', fontWeight: 700, minHeight: 48, cursor: 'pointer', width: '100%', maxWidth: 360 }}>
               {dig}

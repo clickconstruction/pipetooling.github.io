@@ -5,12 +5,13 @@
  *
  * This file reads that reply and says each deleted trip in words for the **Deleted trips** fold on the Trips look.
  * Putting one back is the trip's own save under its own id, the door the Undo of a delete already uses, so nothing
- * here writes. Pure: days are `YYYY-MM-DD` strings in the company's calendar, and the caller hands in how an
+ * here writes. A trip that went because it was joined into another (v2.7963, `trip_join`) says so and offers no
+ * Put back: its days are on the joined trip, and a join is taken back with Split in two. Pure: days are `YYYY-MM-DD` strings in the company's calendar, and the caller hands in how an
  * instant becomes one.
  */
 import { addDays } from './tripDays'
-import { tripFromRow, type TripRecord, type TripRow } from './tripRecord'
-import { monthDay, tripNameOfRecord } from './tripsLook'
+import { tripFromRow, tripNumberOf, type TripRecord, type TripRow } from './tripRecord'
+import { monthDay, tripNameOfRecord, tripNumberWords } from './tripsLook'
 
 /** How long the archive keeps a deleted row before its daily purge takes it. */
 export const TRIP_DELETED_KEEP_DAYS = 90
@@ -39,6 +40,8 @@ export type DeletedTrip = {
   deletedByName: string | null
   /** How many jobs the trip named that have been deleted since. They are not in `record.jobIds`. */
   jobsGone: number
+  /** The trip this one was joined into, which holds its days; null for a trip somebody deleted. */
+  joinedInto: { tripId: string; tripNumber: number | null } | null
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -58,6 +61,7 @@ export function parseDeletedTrips(data: unknown): DeletedTrip[] {
       deletedAt: typeof item.deleted_at === 'string' && item.deleted_at ? item.deleted_at : null,
       deletedByName: typeof item.deleted_by_name === 'string' && item.deleted_by_name.trim() ? item.deleted_by_name.trim() : null,
       jobsGone: gone,
+      joinedInto: isObject(item.joined_into) && typeof item.joined_into.trip_id === 'string' && item.joined_into.trip_id ? { tripId: item.joined_into.trip_id, tripNumber: tripNumberOf(item.joined_into.trip_number) } : null,
     })
   }
   return out
@@ -72,8 +76,10 @@ export type DeletedTripLine = {
   why: string
   /** Who went, by name. */
   who: string
-  /** *Deleted Nov 18 by Dana*. */
+  /** *Deleted Nov 18 by Dana*, and *Joined into Trip 7 on Nov 18 by Dana* for a trip that was joined away. */
   deleted: string
+  /** *Its days are on Trip 7. To take the join back, press Split in two on Trip 7.*; null for a trip somebody deleted. It has no Put back. */
+  joined: string | null
   /** *kept until Feb 16*; null when the day it was deleted is not known. */
   kept: string | null
   /** *A job it named is gone since.*; null when every job it named is still there. */
@@ -93,12 +99,14 @@ export function deletedTripLine(d: DeletedTrip, args: { todayYmd: string; toYmd:
   const name = tripNameOfRecord(d.record, args.todayYmd)
   const day = d.deletedAt ? args.toYmd(d.deletedAt) : null
   const until = day ? addDays(day, TRIP_DELETED_KEEP_DAYS) : null
+  const into = d.joinedInto ? (tripNumberWords(d.joinedInto.tripNumber) ?? 'another trip') : null
   return {
     id: d.record.id,
     name: name.full,
     why: d.record.purpose.trim() || 'A trip',
     who: d.record.people.map((p) => p.name.trim()).filter(Boolean).join(', '),
-    deleted: ['Deleted', day ? monthDay(day) : null, d.deletedByName ? `by ${d.deletedByName}` : null].filter(Boolean).join(' '),
+    deleted: [into ? `Joined into ${into}` : 'Deleted', day ? `${into ? 'on ' : ''}${monthDay(day)}` : null, d.deletedByName ? `by ${d.deletedByName}` : null].filter(Boolean).join(' '),
+    joined: into ? `Its days are on ${into === 'another trip' ? 'that trip' : into}. To take the join back, press Split in two on ${into === 'another trip' ? 'that trip' : into}.` : null,
     kept: until ? (until <= args.todayYmd ? 'goes within a day' : `kept until ${monthDay(until)}`) : null,
     gone: deletedTripGoneWords(d.jobsGone),
     pressLabel: `${TRIP_PUT_BACK_LABEL} ${name.said}`,

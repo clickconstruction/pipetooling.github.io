@@ -5,7 +5,7 @@
  * a desk uses, and the words of the caught-up state. No React, no Supabase.
  */
 import { haversineMeters, TRAVEL_ROAD_WINDING_FACTOR, type LatLng } from '../jobTravelEstimate'
-import { hintFor, rowLens, rowsAboveFloor, shortMoney, sqFtWords, type ContactHistory, type Hint, type PermitVerdict, type ResearchPermitRow, type ValueFloor } from './permitResearch'
+import { hintFor, rowLens, rowsAboveFloor, shortDay, shortMoney, sqFtWords, type ContactHistory, type Hint, type PermitVerdict, type ResearchPermitRow, type ValueFloor } from './permitResearch'
 
 const METERS_PER_MILE = 1609.344
 
@@ -196,10 +196,15 @@ export function skimKeyAct(key: string): SkimKeyAct | null {
 /** How long an answer is held before it is written, so Undo has something to take back. */
 export const SKIM_HOLD_MS = 15_000
 
-/** The caught-up state's second line: what this sitting answered, and when more arrives. */
-export function caughtUpWords(kept: number, passed: number): string {
+/**
+ * The caught-up state's second line: what this sitting answered, and when more arrives. In a city
+ * whose own source has stopped publishing (`quiet`: its name and its newest permit day, from
+ * `cityQuiet`) tomorrow's pull is not a promise of permits, so the line says what stopped instead.
+ */
+export function caughtUpWords(kept: number, passed: number, quiet?: { city: string; since: string } | null, todayYmd?: string): string {
   const n = kept + passed
   const sitting = n === 0 ? 'Every permit the feed brought has an answer.' : `You answered ${n} just now: ${kept} to investigate, ${passed} passed.`
+  if (quiet) return `${sitting} ${quiet.city} has published nothing since ${shortDay(quiet.since, todayYmd)}. Our pull still runs every morning at 5:30 AM.`
   return `${sitting} The next pull is tomorrow at 5:30 AM.`
 }
 

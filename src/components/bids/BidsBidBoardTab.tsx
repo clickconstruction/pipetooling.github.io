@@ -88,11 +88,8 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountStrips'
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
-import { BidBoardPermitNews } from './BidBoardPermitNews'
-import { BidBoardNewsMarkLost } from './BidBoardNewsMarkLost'
-import { PermitChip } from './PermitChip'
-import { useBidPermitNews } from '../../hooks/useBidPermitNews'
-import { useOurPermitNames } from '../../hooks/useOurPermitNames'
+import { PermitNewsChip } from './PermitChip'
+import type { PermitNewsDoors } from '../../lib/research/bidPermitNews'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -140,10 +137,8 @@ type BidsBidBoardTabProps = {
   canSeeEstimatingLabor?: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
   showEstimatingHealth?: boolean
-  /** Permit news (punch list #307): the strip and the row's chip, for the people who read Prospects → Permits. Off when not passed. */
-  showPermitNews?: boolean
-  /** Permit news is the reader's own (punch list #401): which bids are theirs, the Plumbing trade a plumbing permit is news on, and whether the reader is the office, who keeps one quiet line for everyone else's. */
-  permitNewsReader?: { isMine: (bid: BidWithBuilder) => boolean; plumbingServiceTypeId: string | null; office: boolean }
+  /** What the city has on each bid's address, as the chip on its row (punch list #307), for the people who read Prospects → Permits. The page reads it once for the board and for Followup's Permit news (punch list #401), and a chip on a bid with a line there opens it. None when not passed. */
+  permitNews?: PermitNewsDoors
   /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
   showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
@@ -293,8 +288,7 @@ export function BidsBidBoardTab({
   isDev,
   canSeeEstimatingLabor = false,
   showEstimatingHealth = true,
-  showPermitNews = false,
-  permitNewsReader,
+  permitNews,
   showMap = true,
   jobsByBidId,
   budgetChips,
@@ -345,8 +339,6 @@ export function BidsBidBoardTab({
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   // What the city has on each undecided bid's address: one read for the board (punch list #307).
   // The names that are us on a plumbing permit (Settings → Company): our own permit reads ours, never another name.
-  const ourPermitNames = useOurPermitNames(showPermitNews)
-  const permitNews = useBidPermitNews(bids, showPermitNews, ourPermitNames, permitNewsReader?.plumbingServiceTypeId ?? null)
   // The development on bids (punch list #208, v2.6019): the house filter beside the search, the
   // Pipeline's house filter mirrored — it appears once any bid on the board has a development.
   const [developmentFilter, setDevelopmentFilter] = useState('')
@@ -1599,7 +1591,7 @@ export function BidsBidBoardTab({
               ) : null}
               {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
               {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
-              {permitNews.chips.get(bid.id) ? <span title="What the city has on this bid's address"><PermitChip chip={permitNews.chips.get(bid.id)!} /></span> : null}
+              {permitNews?.chips.get(bid.id) ? <span title="What the city has on this bid's address" style={{ minWidth: 0, maxWidth: '100%' }}><PermitNewsChip bidId={bid.id} news={permitNews} /></span> : null}
             </div>
           </td>
           {/* v2.4264: the value reads at the estimator name's size, in tabular figures — the owner could not read it at the cell's 11px. */}
@@ -1799,7 +1791,7 @@ export function BidsBidBoardTab({
         ) : null}
         {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
         {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
-        {permitNews.chips.get(bid.id) ? <div style={{ margin: '0.15rem 0' }}><PermitChip chip={permitNews.chips.get(bid.id)!} /></div> : null}
+        {permitNews?.chips.get(bid.id) ? <div style={{ margin: '0.15rem 0', minWidth: 0 }}><PermitNewsChip bidId={bid.id} news={permitNews} /></div> : null}
         {bidDevelopmentName(bid) ? (
           <div
             title="Development for this bid"
@@ -1989,19 +1981,6 @@ export function BidsBidBoardTab({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <BidBoardPermitNews
-            news={permitNews.news}
-            isMine={permitNewsReader ? (bidId) => { const bid = bids.find((b) => b.id === bidId); return bid != null && permitNewsReader.isMine(bid) } : undefined}
-            othersAlone={permitNewsReader?.office ?? false}
-            onOpenBid={(bidId) => {
-              const bid = bids.find((b) => b.id === bidId)
-              if (bid) onEditBid(bid)
-            }}
-            renderMarkLost={(bidId, close) => {
-              const bid = bids.find((b) => b.id === bidId)
-              return bid ? <BidBoardNewsMarkLost bid={bid} bidLabel={bidDisplayName(bid)} packets={gcPacketsByBid[bid.id]} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} onChanged={onReloadBids} onClose={close} /> : null
-            }}
-          />
           <nav
             aria-label="Bid Board sections"
             style={{

@@ -206,7 +206,7 @@ describe('proposeCounty — the ladder', () => {
 describe('owner and homestead heuristics', () => {
   it('tells entities from people', () => {
     expect(ownerLooksLikeCompany('ORTEGA HOLDINGS LLC')).toBe(true)
-    expect(ownerLooksLikeCompany('NEW BRAUNFELS CITY OF')).toBe(true)
+    expect(ownerLooksLikeCompany('NEW BAINBRIDGE CITY OF')).toBe(true)
     expect(ownerLooksLikeCompany('COMAL ISD')).toBe(true)
     expect(ownerLooksLikeCompany('WHITFIELD DANA & MARCUS')).toBe(false)
     expect(ownerLooksLikeCompany('GARZA ELENA M')).toBe(false)

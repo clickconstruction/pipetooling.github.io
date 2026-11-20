@@ -31,7 +31,7 @@ describe('the words', () => {
     expect(farShortLine(3)).toBe('3 addresses far from the office')
     expect(farShortLine(1)).toBe('1 address far from the office')
     expect(farShortLine(0)).toBe('')
-    expect(unplacedName({ tableLabel: 'Vasquez pretest', sublabel: 'J1419' })).toBe('J1419 · Vasquez pretest')
+    expect(unplacedName({ tableLabel: 'Varga pretest', sublabel: 'J1419' })).toBe('J1419 · Varga pretest')
     expect(unplacedName({ tableLabel: 'Holmby', sublabel: ' ' })).toBe('Holmby')
   })
 })

@@ -32,7 +32,7 @@ vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async <T,>(op: () => PromiseLike<{ data: T; error: null }>) => (await op()).data,
 }))
 vi.mock('../../hooks/useOfficeAnchor', () => ({
-  useOfficeAnchor: (enabled: boolean) => (enabled ? { lat: 29.653, lng: -97.797, source: 'map_default_view', label: '12921 FM 20, Kingsbury' } : null),
+  useOfficeAnchor: (enabled: boolean) => (enabled ? { lat: 29.653, lng: -97.797, source: 'map_default_view', label: '62552 FM 20, Kingsbury' } : null),
 }))
 const openExternal = vi.fn()
 // The photo archive's walk is answered here: nothing found, and nothing asked of the network.

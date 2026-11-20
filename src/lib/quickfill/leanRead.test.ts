@@ -30,7 +30,7 @@ function group(name: string, customerId: string | null, worstAgeDays: number | n
       stripePaid: false,
       sentAtIso: null,
       externalSendChannel: null,
-      billToEmail: null,
+      billToEmail: null, billedTo: 'customer',
     })),
   }
 }

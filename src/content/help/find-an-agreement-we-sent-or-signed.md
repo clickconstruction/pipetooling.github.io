@@ -2,7 +2,7 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders.
@@ -105,6 +105,14 @@ A person who already has the paper out gets the same copy again. The window says
 
 A job's contract is not sent here. Send it from its job.
 
+## Write or change a paper
+
+Press **Contract library**, beside **Send a paper**. The library opens over the list.
+
+The library is the same one People has under Contracts. Write a paper there, change one, or build a packet.
+
+Press **Send to…** on a paper to pick the person right away.
+
 ## See a voided one
 
 The list opens on **Sent and signed**. A voided contract is not in it.
@@ -150,6 +158,8 @@ Type the job's number to see every paper signed for that job. The job's own **Pa
 The office can. That is the leader, the assistants, the controller and a dev.
 
 Other roles do not see the tab. Nobody reads a paper here that they could not already open.
+
+The Contract library keeps the rules it has on People. The leader and a dev can delete there. The controller and a dev see its **Forms** tab.
 
 A GC project's papers follow GC mode. An owner contract shows to a dev. A statement of work shows to the leader, the controller and a dev.
 

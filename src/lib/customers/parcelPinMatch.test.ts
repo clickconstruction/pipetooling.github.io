@@ -24,7 +24,7 @@ describe('typedHouseNumber and streetCore', () => {
     expect(streetCore('1000 S Old Hwy 81 Ste 4, Kyle, TX')).toBe('old 81')
     expect(streetCore('FM 1234')).toBe('1234')
     expect(streetCore('County Road 123')).toBe('123')
-    expect(streetCore('9703 Lenox Hl # 2')).toBe('lenox hl')
+    expect(streetCore('3507 Lister Hl # 2')).toBe('lister hl')
     expect(streetCore('123')).toBe('')
   })
 })
@@ -95,9 +95,9 @@ describe('parcelSitusHold', () => {
     expect(isBlankSitus('Null')).toBe(true)
     expect(isBlankSitus('NULL')).toBe(true)
     expect(isBlankSitus(' n/a ')).toBe(true)
-    expect(isBlankSitus('858 FM 1209')).toBe(false)
-    expect(parcelSitusHold('858 FM1209, Bastrop, TX 78602', { situsAddress: 'Null' })).toBeNull()
-    expect(parcelSitusHold('976 County Road 7718, Devine, TX 78016', { situsAddress: 'NULL' })).toBeNull()
+    expect(isBlankSitus('706 FM 1209')).toBe(false)
+    expect(parcelSitusHold('706 FM1209, Bastrop, TX 78602', { situsAddress: 'Null' })).toBeNull()
+    expect(parcelSitusHold('997 County Road 7718, Devine, TX 78016', { situsAddress: 'NULL' })).toBeNull()
   })
 
   it('accepts Bexar’s situs line that carries the city with no comma, and still holds another street (v2.6537)', () => {

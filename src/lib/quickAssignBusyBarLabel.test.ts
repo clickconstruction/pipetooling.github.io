@@ -4,8 +4,8 @@ import { firstTwoWords, quickAssignBusyBarLabel, quickAssignBusyBarTown } from '
 describe('quickAssignBusyBarLabel', () => {
   it('reads J-number · customer (two words) · town', () => {
     expect(
-      quickAssignBusyBarLabel({ hcpNumber: '568', clickNumber: null, customerName: 'Diamondback Homes LLC', jobAddress: '12 Gray Fox Trail, Neeses, SC 29107' }),
-    ).toBe('J568 · Diamondback Homes · Neeses')
+      quickAssignBusyBarLabel({ hcpNumber: '568', clickNumber: null, customerName: 'Davenport Homes LLC', jobAddress: '12 Gray Fox Trail, Neeses, SC 29107' }),
+    ).toBe('J568 · Davenport Homes · Neeses')
   })
 
   it('falls back to the Click number, and finds a TX town with no comma before the state', () => {
@@ -15,7 +15,7 @@ describe('quickAssignBusyBarLabel', () => {
   })
 
   it('finds the town when the address ends in the state with no zip', () => {
-    expect(quickAssignBusyBarLabel({ hcpNumber: '1057', clickNumber: null, customerName: 'DLF Harlund Repairs', jobAddress: '5339 Texas 304, Harlund, TX' })).toBe('J1057 · DLF Harlund · Harlund')
+    expect(quickAssignBusyBarLabel({ hcpNumber: '1057', clickNumber: null, customerName: 'DLF Harlund Repairs', jobAddress: '2556 Texas 304, Harlund, TX' })).toBe('J1057 · DLF Harlund · Harlund')
   })
 
   it('leaves out what the block does not have', () => {
@@ -34,8 +34,8 @@ describe('firstTwoWords', () => {
 
 describe('quickAssignBusyBarTown', () => {
   it('reads the city from the strict comma form and from the no-zip form', () => {
-    expect(quickAssignBusyBarTown('582 Curvatura, Canyon Lake, TX 78132')).toBe('Canyon Lake')
-    expect(quickAssignBusyBarTown('12921 FM 20, Kingsbury, TX')).toBe('Kingsbury')
+    expect(quickAssignBusyBarTown('999 Calder, Canyon Lake, TX 78132')).toBe('Canyon Lake')
+    expect(quickAssignBusyBarTown('62552 FM 20, Kingsbury, TX')).toBe('Kingsbury')
   })
   it('does not mistake a two-word street for a town', () => {
     expect(quickAssignBusyBarTown('1 Test Street')).toBe('')

@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · nothing of the builder is built
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · nothing of the builder is shipped
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The owner's review of the look and the open calls below, with the seven wider calls in *The wider look*. Then the Contract Book step, which waits on nothing else.
+next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -22,12 +22,14 @@ opinion: your call — the engine is small and sits on what the Contract Book al
 
 The mock-up is [mockup.html](mockup.html). It works: one set of settings drives the Contract Book
 screens, the office's page, the GC's page and the sample, so a change anywhere shows everywhere. It was
-rendered with Playwright at desktop and phone width, in light and dark, before it was shown. It is **a
-first drawing, not the final look**. The owner likes the idea and the sliders and does not love how they
-are drawn. Every name on it is made up, and it shows no clause wording: sections are topic names and
-grey bars.
+rendered with Playwright at desktop and phone width, in light and dark, before it was shown, and checked
+at both widths and both themes in the Browser pane after each round of the 2026-11-19 review. It is **a
+drawing under review, not the final look**. The owner likes the idea and the sliders and did not love how
+they were first drawn. Every name on it is made up, and it shows no clause wording: sections are topic
+names and grey bars.
 
 The same mock-up as a private page: *Sub NDA builder* — https://claude.ai/artifact/QyTbYekg9q7y7zEsQSqaeA.
+That page is the 2026-11-17 drawing and has not been republished since.
 The approach, with the settings table, a picture of the flow and the points for an attorney, is a private
 doc: *Sub NDA builder: the approach* — https://claude.ai/artifact/DqgiW7svWcdY7Y3xENVrhA.
 
@@ -67,6 +69,28 @@ Shown every topic on one slider, *Off, Light, Strict*:
 > I like the idea of all of this, but I don't love the execution. Can we save this all to a punchlist
 > card for us to review and make calls on at a later time and then build?
 
+2026-11-19, in the review of the look, with the four levels settled:
+
+> I would like to add to the NDA builder a flow where a user set's the basis for the level they want
+> their NDA to express and then goes through a series of pages with the slider at the bottom and it shows
+> them the core clause and what people will be in breach for so they can slide back and fourth and see
+> the difference
+
+> I want to first build the flow for these pages and then dig into the contents of the NDA
+
+Shown the flow, the same day. The second note stops mid-sentence, as he wrote it:
+
+> I would like to at the first page of the NDA builder give a disclaimer saying that this is not legal
+> advice and requests made via this tool should be done so with legal council representing your interest
+> present and use of this is for experimental purposes only.
+
+> making NDAs should be tuned to the real conditions on the site, if you choose clauses or methods that
+> your site is not setup to enforce such as badging or security gates that require an active perimeter
+> enforcment staff
+
+> I need to spell this out for a user who is about to fill it out, I think this can go after the basics
+> and before the specific clauses
+
 ## The twelve questions the settings answer
 
 The checklist for reading the upstream NDA. A setting or a fixed rule answers each one.
@@ -100,6 +124,29 @@ The owner answered these four on 2026-11-17. Each was the recommended pick.
 4. **Who signed, as the GC sees it.** The count, and each sub business with its date. No worker names.
    A job can be set to the count only, or to every signer by name.
 
+The owner settled these five on 2026-11-19, in the review of the look.
+
+5. **Not *Light* and *Strict*. A level sits beside a kind of place.** In his words: "I don't think light
+   and strict are the right words to use here. I think we should show alignment with something else."
+   What it is for, in his words: "I wanna give a user the tools to be able to feel like they have chosen
+   the level of escalation they want."
+6. **Four levels above *Off*.** *Standard* is "for private or publicly traded businesses". Above it is a
+   level "for government facilities", which he named *Elevated*. Above that is the level for military
+   installations. The top level is for private research labs and keeps the name *Strict*.
+7. **The place beside each level is the closer fit.** He asked whether his analogies were "consistent
+   with the kind of NDA that would be given out", saw the session's version beside his own, and answered
+   "The closer fit". *Standard*: a regular business. *Elevated*: a hospital, a bank or a government
+   building. *Aggressive*: a military base or a defense plant. *Strict*: a private research lab, on
+   top as he had it from the start. The satellite factory he first named sits on the third level as a
+   defense plant. No real company or person is named.
+8. **The third level is *Aggressive*.** The session's pick was *High*. Shown the two side by side, he
+   answered "Keep Aggressive". The four levels read *Standard, Elevated, Aggressive, Strict*.
+9. **A level says what it is *aligned with*.** The session's pick was *like*, because *aligned with* can
+   read as a promise. Shown the two side by side, he answered "Aligned with". The lines read *Aligned
+   with regular businesses*, *Aligned with hospitals, banks and government buildings*, *Aligned with
+   military bases and defense plants* and *Aligned with private research labs*. Point 12 for an attorney
+   asks what that line promises.
+
 ## Open: the look
 
 This is what the review is for. The owner likes sliders. He has not seen a drawing he would build.
@@ -107,25 +154,58 @@ This is what the review is for. The owner likes sliders. He has not seen a drawi
 **What he said no to.** A slider whose stops are the terms (*5 years, 7 years, 10 years*). A top slider
 whose handle stayed on *Strict* while the words under it said *Custom*.
 
-**What the mock-up draws now**, as one reading of his notes, not yet accepted:
+**What the mock-up draws now.** The levels are settled above. The rest is one reading of his notes, not
+yet accepted:
 
-- One slider for the whole job: *Off* (no secrecy paper), *Light*, *Strict*. On a mix its handle leaves
+- One slider for the whole job: *Off* (no secrecy paper), then the four levels. On a mix its handle leaves
   the named stops, sits at the mix's average, turns grey and carries a *Custom mix* tag.
-- Seven topics under it, each on the same slider, *Off, Light, Strict*. The words under a slider say what
-  that stop means.
+- Seven topics under it, each on the same slider. The words under a slider say what that stop means.
 - Three topics show *Off* greyed and read *In every paper*.
+- At the top, **the flow** he asked for on 2026-11-19, as a first drawing he has not yet accepted. It has
+  eleven steps in one frame of one height.
+  - Step 1, *Before you start*, is his disclaimer in three plain lines: not legal advice, use it with
+    your own attorney present, experimental and for trial purposes only. A box, *I have read this.*, must
+    be ticked before any later step opens.
+  - Step 2, *The basis*, is the level the job's paper should express.
+  - Step 3, *Match the paper to the site*, is his note on real site conditions, with what the chosen
+    basis asks of the site.
+  - Steps 4 to 10 are one page a topic, in the order of the seven topics. Each has *The core clause* as
+    grey bars, *What puts a person in breach* in plain lines with *New at* marks, *What the site must
+    have* where the level asks something of the site, and the topic's slider at the bottom. The page
+    changes while the handle is dragged. A page moved off the basis says so and offers *Back to* it.
+  - Step 11 is *Review*, with *Change* on each topic and the office's confirm.
+- Under the flow, **the grid**: seven topics by four levels on one page, each box with its rule, what
+  puts a person in breach and what the site must have, all placeholders for him to correct. A list under
+  it names what is the same in every paper today, with the session's suggestion of what could move with
+  the level: what counts as secret, and what happens after a breach.
+- Under the grid, the settled levels on the whole-job slider, with each level's place under it.
+- On the office's page, *Set it step by step* opens the flow.
+
+**Why the places are these.** A place is strict in two ways: how hard it is to get on site, and how much
+its paper asks. A government building and a military base are strict the first way, by law and by the
+gate, and much about a public job is public record. A private research lab is strict the second way,
+because the paper is all it has. So the lab is on top for a secrecy paper, and the page should say why,
+since many readers will guess the base. On a real base or lab the GC's own form is the likely paper, and
+the builder steps aside for it.
 
 **The calls to make at the review:**
 
 | Call | The choices | The session's pick |
 |---|---|---|
-| What a slider's stops say | *Off, Light, Strict* on every topic, or something else he has in mind | *Off, Light, Strict*, with the meaning written under the slider |
-| How a custom mix shows on the top slider | The handle between stops with a tag; a fourth stop named *Custom*; the slider greyed with a *Custom* chip beside it | The handle between stops with a tag |
+| How a custom mix shows on the top slider | The handle between stops with a tag; a sixth stop named *Custom*; the slider greyed with a *Custom* chip beside it | The handle between stops with a tag |
 | Which topics get a slider | Photos and video, phones and devices, getting on site, talking on site, how long, files at the end, reporting a leak. More, fewer or other names. | These seven |
 | Which topics can be *Off* | All of them, or only those a secrecy paper can do without | Only the first four. A paper with no term, no return of files and no duty to report is not one an attorney is likely to approve. |
-| The words *light enforcement* and *strict enforcement* | Keep them, or *Light* and *Strict* | *Light* and *Strict*, and keep *enforce* for who may enforce the paper |
-| What *Light* and *Strict* mean on each topic | The terms under each stop | The mock-up's are placeholders for him and counsel to set |
+| What each level means on each topic | The terms under each stop | The mock-up's are placeholders for him and counsel to set. Two neighbouring levels may share a wording. |
 | The GC's page | The same sliders with looser stops greyed, or a plain list with a *Propose* press | The same sliders |
+| Sliders as the choices | He said he hoped for "other options as choices". Not yet answered by any drawing. | Ask him, with two or three drawn side by side |
+| The flow and the one-page list | The flow replaces the office's list of seven sliders, or both stay and the list is the quick way | Both. The flow for a first setting, the list for a change. |
+| Who walks the flow | The office only, or the GC too from their page | The office first. A GC's walk ends in a proposal, never a setting. |
+| What a breach line is | Plain words kept beside each wording in the Contract Book and approved with it, or written by hand for a job | Kept beside each wording, so a page never says more than its clause |
+| The tick on the disclaimer | A box that must be ticked before the flow opens, as drawn, or the words alone | The box, and the build keeps who ticked it and when |
+| Where else the disclaimer shows | The flow only, or also the GC's page before *Propose a stricter setting* | Both. He said *requests made via this tool*, and a GC's proposal is one. |
+| How the site note ends | His sentence stops at the badging and gates. The mock-up finishes it: *A rule nobody enforces protects nothing. It also puts people in breach of a rule they cannot follow.* | His to confirm or reword |
+| What the site must have | A line for each level of a topic, kept beside its wording like a breach line, or the one page alone | A line for each level, so the warning sits where the choice is made |
+| A custom mix, once there is a basis | *Custom mix: 1 Aggressive, 6 Standard*, as drawn, or *Standard, 1 page off it* | The second. The basis is the level he picked, and it would answer the custom-mix call above. |
 
 ## Open: the picks the build stands on
 
@@ -228,8 +308,9 @@ paper until an entry has a settings list, and the first one is a test entry.
 3. **Settings on the job, the ground (M).** The columns on `job_required_papers`, `job_papers_require`
    accepting a clause-built entry with settings, a function that sets them and locks at the first
    signature, the read-revision rule, the freeze with the hash, and the signature's *Signing for* line.
-4. **The office's settings page (M).** Inside `JobDocumentsRequiredPapers`. This is the first screen the
-   open look decides.
+4. **The office's settings page (M).** The step-by-step flow lands here, reused from the Document
+   builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
+   `JobDocumentsRequiredPapers`. This is the first screen the open look decides.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -259,6 +340,13 @@ These are the builder's own questions, apart from the draft's wording.
 9. Must each wording's Spanish twin be approved, and which language governs?
 10. The plain-words summary is not the contract. Is one line saying so enough?
 11. A topic set to *Off* leaves a clause out. Which topics may ever be left out?
+12. Each level says the kind of place it is aligned with. Does *aligned with military bases and defense
+    plants* promise a GC or a signer that the paper meets those places' own rules, and must the page say
+    the site's own rules still govern?
+13. The flow opens on a disclaimer: not legal advice, use it with your own attorney present, experimental.
+    What must it say, and does a tick make it hold?
+14. A job's paper can ask for more than the site enforces, such as badges with nobody to check them. What
+    does a rule nobody enforces do to the rest of the paper?
 
 ## What to know before building
 
@@ -394,7 +482,7 @@ Sizes for this card's own steps are the train's above.
 | 5 | Send a paper and open the Contract library from Documents | S to M | Wider call 5 |
 | 6 | Step 1 here, the Book takes settings | M | Nothing |
 | 7 | Step 2 here, the summary and the sample | S | Nothing |
-| 8 | An outside party as a record, with the *Signing for* line of step 3 | M | Wider call 3 |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Wider call 3, on card #403 |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
 | 11 | Steps 3 to 7 here | M · M · M · M · S | The look for step 4. Counsel before a real job. |
@@ -408,10 +496,12 @@ Sizes for this card's own steps are the train's above.
 2. **Counsel.** Who reads the wording, and whether a fixed secrecy paper goes first so the gate is used
    before the builder exists.
 3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
-   holds a paper today.
+   holds a paper today. Card #403 lays out the options, a pick and a mock-up
+   (`to-dos/outside-signer-record/README.md`), and the call is made there.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
-5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.
+5. **Documents or both.** Settled 2026-11-19 on card #403, its call 5: both. People sends to a person on
+   the roster, and Documents sends to anyone.
 6. **The GC and the gate.** Whether a GC ever signs a job's paper, and what *one signature per GC* should
    mean. `docs/recent-features/v2.7726.md` names it as the owner's call 4 and its wording is not in the
    repo.
@@ -420,7 +510,30 @@ Sizes for this card's own steps are the train's above.
 
 ## Where it stands
 
-Nothing of the builder is built and no code is written. The owner settled four calls and liked the
-idea. He liked sliders and did not love either drawing of them, so the look is the first thing to
-review. After that come the picks the build stands on, then step 1. The gate under it is live and
-unused, and *The wider look* orders what is left around it.
+Nothing of the builder is shipped. The owner settled four calls on 2026-11-17 and liked the idea. He
+liked sliders and did not love either drawing of them, so the look was the first thing to review. That
+review began on 2026-11-19 and settled the four levels, their names, their places and how a place is
+said. He then asked for the step-by-step flow, saw it drawn, and said "I think this is coming together
+to the point we can build it as a spike and then refine from there". A spike of the flow in the app
+was built the same day in its own session: real code on made-up data, dev-only, shipped nowhere. It
+is on the branch `spike/document-builder`.
+
+The same day he decided where the builder lives for now: a **Document builder** tab on Documents, for
+a dev only, apart from any job. That is its own card, [#404](../document-builder/README.md), with the
+flow as he shaped it in the spike, a second builder for a job's insurance requirements, and a train of
+ten steps. **#404 is built first.** This card's own train, which ends with a job requiring the paper
+its settings make, comes after it and is untouched by it. Where this card's mock-up and the spike differ
+on the flow, the spike is newer.
+
+The grid of seven topics by four levels is drawn in this card's mock-up. Every line in it is one
+session's placeholder, and the owner has not yet read it box by box. That read comes before any wording
+goes to an attorney. Where the grid and the spike's own contents differ, the spike is newer.
+
+He also asked whether this should become a contract builder long term. The session's answer: yes as a
+direction, since a paper's settings are data, and a call to make once a second paper works. #404's
+second builder has since shown one limit: a job's insurance requirements did not fit levels and topics,
+so that tab holds two kinds of builder.
+
+The calls in *Open: the look* are what is left of the review. After that come the picks the build stands
+on, then step 1. The gate under it is live and unused, and *The wider look* orders what is left around
+it.

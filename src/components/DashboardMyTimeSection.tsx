@@ -9,6 +9,7 @@ import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
 import { EmptyState } from './EmptyState'
 import { DashboardMyHoursBlock } from './dashboard/DashboardMyHoursBlock'
+import type { SalariedWeek } from '../lib/salariedEffectiveHours'
 import { myTimeWeekEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
@@ -254,11 +255,13 @@ type Props = {
   hoursDaysCorrect: Set<string>
   /** When true (e.g. salaried pay config), week day cells do not open the My Time day editor. */
   disableDayEditor?: boolean
+  /** A salaried person's own set week, for Your hours (8 hours Monday to Friday when missing). */
+  salariedWeek?: SalariedWeek | null
   /** This week's seconds, for a host that draws the section folded (v2.3891); null while loading. */
   onWeekSeconds?: (seconds: number | null) => void
 }
 
-export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, onWeekSeconds }: Props) {
+export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, salariedWeek = null, onWeekSeconds }: Props) {
   const prefixMap = useLedgerPrefixMap()
   const { user: authUser, role: authRole } = useAuth()
   const myTimeSubjectDisplayName = useMemo(() => {
@@ -709,7 +712,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
         </div>
       </div>
       {/* Your hours (design spike): what you said you can work, this week against it, eight weeks as bars. */}
-      <DashboardMyHoursBlock userId={userId} displayName={myTimeSubjectDisplayName} role={authRole ?? ''} isSalary={disableDayEditor} />
+      <DashboardMyHoursBlock userId={userId} displayName={myTimeSubjectDisplayName} role={authRole ?? ''} isSalary={disableDayEditor} salariedWeek={salariedWeek} />
       {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
         sessionCountByDay,
         onDayClick: disableDayEditor ? undefined : setEditorDate,

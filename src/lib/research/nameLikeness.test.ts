@@ -38,14 +38,14 @@ describe('nameLikeness', () => {
   })
 
   it('says which telling words are shared, and grades a name with more of its own lower', () => {
-    expect(nameLikeness('Reliable Commercial Construction', 'Reliable Construction Industries')).toEqual({ grade: 70, reason: 'shared', words: 'Shares the word Reliable', marked: ['reliable'] })
+    expect(nameLikeness('Renshaw Commercial Construction', 'Renshaw Construction Industries')).toEqual({ grade: 70, reason: 'shared', words: 'Shares the word Renshaw', marked: ['renshaw'] })
     expect(nameLikeness('Ridgeway Builders', 'Ridgeway Roofing Co')).toEqual({ grade: 60, reason: 'shared', words: 'Shares the word Ridgeway', marked: ['ridgeway'] })
     expect(nameLikeness('Marlow Design Group', 'Marlow Studio Design + Build')).toMatchObject({ reason: 'shared', words: 'Shares the word Marlow' })
     expect(nameLikeness('Pecan Grove Pharmacy', 'Pecan Grove Dental')).toBeNull()
   })
 
   it('refuses a word that only sits inside a longer, unrelated name', () => {
-    expect(nameLikeness('Structura', 'Bandit Structural Concrete Works')).toBeNull()
+    expect(nameLikeness('Sheffield', 'Bandit Structural Concrete Works')).toBeNull()
     expect(nameLikeness('Selwick General Contractors', 'Selwick Ridge Electric and Mechanical Works')).toBeNull()
   })
 
@@ -58,8 +58,8 @@ describe('nameLikeness', () => {
   })
 
   it('reads initials', () => {
-    expect(nameLikeness('DSI', 'Diamondback Solutions International')).toMatchObject({ grade: 55, reason: 'initials', words: 'Initials match' })
-    expect(nameLikeness('Diamondback Solutions International', 'DSI')).toMatchObject({ reason: 'initials' })
+    expect(nameLikeness('DSI', 'Davenport Solutions International')).toMatchObject({ grade: 55, reason: 'initials', words: 'Initials match' })
+    expect(nameLikeness('Davenport Solutions International', 'DSI')).toMatchObject({ reason: 'initials' })
   })
 })
 
@@ -135,7 +135,7 @@ describe('what two records share', () => {
   it('puts ours beside the city’s and marks an address and a zip in common', () => {
     const rows = compareRows({
       customerName: 'Ridgeway Builders',
-      bidAddresses: ['4120 Mill Street, San Antonio, TX 78215', '88 Harbor St, San Antonio, TX 78215', '3798 Kyle Crossing Kyle, TX 78640', null],
+      bidAddresses: ['4120 Mill Street, San Antonio, TX 78215', '88 Harbor St, San Antonio, TX 78215', '8030 Kyle Crossing Kyle, TX 78640', null],
       siteStreets: ['4120 Mill Street', '88 Harbor St'],
       name: 'Ridgeway Builders of Texas LLC',
       permits: [

@@ -77,7 +77,7 @@ describe('GcFindCheckModal', () => {
   it('reads the GC’s payments, shows the newest checks, then finds one by number with its trail', async () => {
     io.fetch.mockResolvedValue(inputs)
     const onClose = vi.fn()
-    render(<GcFindCheckModal gcId="gc-1" gcName="Structura Builders" onClose={onClose} />)
+    render(<GcFindCheckModal gcId="gc-1" gcName="Sheffield Builders" onClose={onClose} />)
     expect(await screen.findByText('Newest 2 of 2')).toBeTruthy()
     expect(io.fetch).toHaveBeenCalledWith('gc-1')
     expect(screen.getAllByTestId('gc-found-check')).toHaveLength(2)
@@ -124,17 +124,17 @@ describe('GcFindCheckModal', () => {
     io.pdf.mockClear()
     io.built.mockClear()
     io.filed.mockClear()
-    render(<GcFindCheckModal gcId="gc-1" gcName="Structura Builders" onClose={() => {}} />)
+    render(<GcFindCheckModal gcId="gc-1" gcName="Sheffield Builders" onClose={() => {}} />)
     expect(await screen.findByText(/The sheet: 2 payments since Sep 28, 2025/)).toBeTruthy()
 
     // The sheet is a PDF (v2.4913): built from the period's report, named for the GC and the day, filed under the GC.
     fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
     await waitFor(() => expect(io.filed).toHaveBeenCalledTimes(1))
-    expect(io.pdf.mock.calls[0]![0]).toBe('Structura Builders')
+    expect(io.pdf.mock.calls[0]![0]).toBe('Sheffield Builders')
     expect(io.pdf.mock.calls[0]![1]).toMatchObject({ sinceYmd: '2025-09-28', earlierCount: 1 })
     expect(io.pdf.mock.calls[0]![2]).toEqual({ asOfYmd: '2026-09-28' })
-    expect(io.built.mock.calls[0]![0]).toMatchObject({ fileName: 'checks-applied_Structura-Builders_2026-09-28.pdf' })
-    expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Structura Builders', customerId: 'gc-1' }))
+    expect(io.built.mock.calls[0]![0]).toMatchObject({ fileName: 'checks-applied_Sheffield-Builders_2026-09-28.pdf' })
+    expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Sheffield Builders', customerId: 'gc-1' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'show all 3' }))
     expect(screen.getByText(/The sheet: 3 payments on record/)).toBeTruthy()
@@ -189,7 +189,7 @@ describe('GcFindCheckModal', () => {
 
   it('says when the read failed', async () => {
     io.fetch.mockRejectedValue(new Error('no route to host'))
-    render(<GcFindCheckModal gcId="gc-1" gcName="Structura Builders" onClose={() => {}} />)
+    render(<GcFindCheckModal gcId="gc-1" gcName="Sheffield Builders" onClose={() => {}} />)
     expect(await screen.findByText('no route to host')).toBeTruthy()
   })
 })

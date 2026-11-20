@@ -25,7 +25,7 @@ describe('canTransition', () => {
 
 describe('parseCtRfiFlags', () => {
   it('parses the CT export: header skipped, sheet + question kept', () => {
-    const text = 'RFI flags\tZZ Twin LIVSTE\np1 P200\tfixture on plan missing from schedule\np2 P201 · Canvas 2\triser disagrees here'
+    const text = 'RFI flags\tZZ Twin LGLBPH\np1 P200\tfixture on plan missing from schedule\np2 P201 · Canvas 2\triser disagrees here'
     expect(parseCtRfiFlags(text)).toEqual([
       { sheet_ref: 'p1 P200', question: 'fixture on plan missing from schedule' },
       { sheet_ref: 'p2 P201 · Canvas 2', question: 'riser disagrees here' },

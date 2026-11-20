@@ -4,6 +4,7 @@ import {
   ROBOT_BOOK_BIDS_LIMIT,
   ROBOT_BOOK_ENTRIES_MAX,
   ROBOT_BOOK_LOG_LINE_MAX,
+  ROBOT_BOOK_RUNS_LIMIT,
   ROBOT_BOOK_USES_LIMIT,
   isRobotBookPriceVerb,
   readRobotBookWorld,
@@ -25,6 +26,7 @@ import {
 } from '../../../supabase/functions/_shared/devMcpRobotBookPrice'
 import { WRITE_VERBS, alreadyApplied, planHash, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { SHADOW_RUNS_COLUMNS } from '../../../supabase/functions/_shared/devMcpShadowRuns'
 import { resolvePricingWriteTarget } from '../bids/pricingWriteTarget'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -107,7 +109,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
 
   it('reads the book, its entries, the rows that read the named entries and the bids those are on', async () => {
     const asked: string[] = []
-    const reads = (refuseUses = false): RobotBookReads => ({
+    const reads = (refuseUses = false, refuseRuns = false): RobotBookReads => ({
       rows: (table, query) => {
         asked.push(`${table}?${query}`)
         if (table === 'price_book_versions') return Promise.resolve([{ id: BOOK, name: '🤖 Robot Default', service_type_id: TRADE }])
@@ -115,7 +117,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
         if (table === 'price_book_entries') return Promise.resolve([{ id: eid(1), fixture_type_id: 'f1', total_price: '850.00', rough_in_price: 850, top_out_price: 0, trim_set_price: 0, fixture_types: { name: ' Water closet ' } }, { id: eid(2), fixture_type_id: 'f2', total_price: 600, rough_in_price: 600, top_out_price: 0, trim_set_price: 0, fixture_types: null }])
         if (table === 'bid_pricing_assignments') return refuseUses ? Promise.reject(new Error('403')) : Promise.resolve([{ bid_id: bidId(1), price_book_entry_id: eid(1), unit_price_override: null }, { bid_id: bidId(2), price_book_entry_id: eid(1), unit_price_override: '700' }])
         if (table === 'bids') return Promise.resolve([{ id: bidId(1), bid_number: '9001', project_name: 'ZZ Shadow one', bid_date_sent: null, outcome: null }])
-        if (table === 'twin_shadow_runs') return Promise.resolve([{ shadow_bid_id: bidId(1), status: 'locked' }])
+        if (table === 'rpc/list_shadow_runs') return refuseRuns ? Promise.reject(new Error('403')) : Promise.resolve([{ shadow_bid_number: '9001', status: 'locked' }])
         return Promise.resolve([])
       },
     })
@@ -127,12 +129,15 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
       `bid_pricing_assignments?select=bid_id,price_book_entry_id,unit_price_override&price_book_entry_id=in.(${eid(1)})&order=bid_id.asc&limit=${ROBOT_BOOK_USES_LIMIT}`,
       // Only the bid whose row carries no price of its own is looked up: the other is not reached.
       `bids?select=id,bid_number,project_name,bid_date_sent,outcome&id=in.(${bidId(1)})&limit=${ROBOT_BOOK_BIDS_LIMIT}`,
-      `twin_shadow_runs?select=shadow_bid_id,status&shadow_bid_id=in.(${bidId(1)})&status=in.(locked,scored)&limit=${ROBOT_BOOK_BIDS_LIMIT}`,
+      // The runs through the staff RPC, every locked or scored one: the table itself answers a signed-in person no rows.
+      `rpc/list_shadow_runs?select=shadow_bid_number,status&status=in.(locked,scored)&limit=${ROBOT_BOOK_RUNS_LIMIT}`,
     ])
     expect(w.tradeName).toBe('Plumbing')
     expect(w.entries[0]).toEqual({ id: eid(1), fixture_type_id: 'f1', name: 'Water closet', total_price: 850, rough_in_price: 850, top_out_price: 0, trim_set_price: 0 })
     expect(w.uses).toEqual([{ bid_id: bidId(1), price_book_entry_id: eid(1), unit_price_override: null }, { bid_id: bidId(2), price_book_entry_id: eid(1), unit_price_override: 700 }])
-    expect(w.runs).toEqual([{ shadow_bid_id: bidId(1), status: 'locked' }])
+    expect(w.runs).toEqual([{ shadow_bid_number: '9001', status: 'locked' }])
+    // A refused read of the runs is null, never an empty list.
+    expect((await readRobotBookWorld(reads(false, true), p([{ name: 'water closet', price: 900 }]))).runs).toBeNull()
     // By the book's own id, and a refused read of the rows leaves the reach unknown, never empty.
     asked.length = 0
     const byId = await readRobotBookWorld(reads(true), p([{ entry_id: eid(1), price: 900 }], { service_type_id: undefined, version_id: BOOK }))
@@ -147,7 +152,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
     expect(cols('price_book_versions')).toEqual(expect.arrayContaining(['id', 'name', 'service_type_id', 'is_robot', 'bid_id', 'created_at']))
     expect(cols('price_book_entries')).toEqual(expect.arrayContaining(['id', 'version_id', 'fixture_type_id', 'total_price', 'rough_in_price', 'top_out_price', 'trim_set_price', 'sequence_order']))
     expect(cols('bid_pricing_assignments')).toEqual(expect.arrayContaining(['bid_id', 'price_book_entry_id', 'unit_price_override']))
-    expect(cols('twin_shadow_runs')).toEqual(expect.arrayContaining(['shadow_bid_id', 'status']))
+    for (const c of ['shadow_bid_number', 'status']) expect(SHADOW_RUNS_COLUMNS as readonly string[], c).toContain(c) // devMcpShadowRuns.test.ts holds those to the RPC's answer
   })
 
   it('finds an entry by its name whatever its case or padding, or by its id', () => {
@@ -193,7 +198,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
         { id: bidId(1), bid_number: '9001', project_name: 'ZZ Shadow one', bid_date_sent: null, outcome: null },
         { id: bidId(2), bid_number: '9002', project_name: 'Made-up office', bid_date_sent: '2026-11-01', outcome: null },
       ],
-      runs: [{ shadow_bid_id: bidId(1), status: 'locked' }],
+      runs: [{ shadow_bid_number: '9001', status: 'locked' }, { shadow_bid_number: '7777', status: 'scored' }],
     })
     expect(reply.changes[0]!.reads_it).toEqual({ rows: 3, bids: 2, own_price_rows: 1 })
     expect(reply.reach).toEqual({ rows: 3, bids: 2, sent_bids: 1, locked_robot_bids: 1, at_least: false })
@@ -202,6 +207,19 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
       "1 robot bid with a locked or scored run reads these entries. The locked total on the run stays as it was locked; the bid's own grid would read the new price, so the two part: b9001 ZZ Shadow one.",
     ])
     expect(reply.then).toContain('3 count rows on 2 bids read them with no price of their own and would read the new price at once. A row with its own unit price is not reached.')
+  })
+
+  it('says so when the robots’ runs could not be read, and never counts that as none', () => {
+    const w = {
+      uses: [use(1, 1)],
+      bids: [{ id: bidId(1), bid_number: '9001', project_name: 'ZZ Shadow one', bid_date_sent: null, outcome: null }],
+    }
+    const blind = plan([{ name: 'Water closet', price: 900 }], { ...w, runs: null })
+    expect(blind.reach).toEqual({ rows: 1, bids: 1, sent_bids: 0, locked_robot_bids: null, at_least: false })
+    expect(blind.warnings).toEqual(["The robots' runs could not be read, so the locked and scored robot bids among these are not counted. The Robots board lists them."])
+    // Read and empty is a real none, and a bid number is matched whatever type the row carries it as.
+    expect(plan([{ name: 'Water closet', price: 900 }], { ...w, runs: [] }).reach).toMatchObject({ locked_robot_bids: 0 })
+    expect(plan([{ name: 'Water closet', price: 900 }], { ...w, runs: [{ shadow_bid_number: ' 9001 ', status: 'scored' }] }).reach).toMatchObject({ locked_robot_bids: 1 })
   })
 
   it('says so when the rows could not be read, when the read stopped at its limit, and when a bid could not be named', () => {
@@ -278,7 +296,7 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     const from = SERVER.indexOf("case 'plan_robot_book_price':")
-    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_pay_setup':", from))
+    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_price_matrix_request':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     expect(branch).toContain('world = await readRobotBookWorld(reads, p)')
     expect(branch).toContain("await restRows(session, 'PATCH', 'price_book_entries', `${robotBookPricePatchQuery(dry.book, change)}&select=id`, robotBookPricePatch(change.after), 'return=representation')")
@@ -286,12 +304,12 @@ describe('a robot book’s price from the dev seat (v2.7939)', () => {
     expect(branch).toContain('{ target: robotBookLogLine(dry.book, landedChanges), rowCount: landedChanges.length }')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-five verbs and nothing else')
     expect(SERVER).toContain('plan_robot_book_price → apply_robot_book_price (prices that stand in a 🤖 Robot Default price book')
     expect(README).toContain('| `plan_robot_book_price(prices)` · `apply_robot_book_price(prices, plan_hash)` |')
     expect(README).toContain("one hundred and thirty-seven since v2.7939's robot book pair")
-    expect(README).toContain('one hundred and thirty-seven `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and forty-five `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain("v2.7939 (server 0.111.0) — a robot book's price changed from the seat")
   })
 })

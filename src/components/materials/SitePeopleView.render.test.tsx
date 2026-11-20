@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, ContainerMove, Movement, MovementReason, Place } from '../../lib/materials/onSite'
 import type { SiteTrail } from '../../lib/materials/sitePeopleTrailIo'
+import { actStampWords } from '../../lib/materials/sitePersonActs'
 import SitePeopleView from './SitePeopleView'
 
 afterEach(() => cleanup())
@@ -161,6 +162,22 @@ describe('SitePeopleView, answers to a press', () => {
     expect(onLedgerChanged).toHaveBeenCalledWith(['j1'])
     await waitFor(() => expect(readAnswers).toHaveBeenCalledTimes(2))
     expect(screen.queryByTestId('site-people-answer-bar')).toBeNull()
+  })
+
+  it('tells two presses that read alike apart in the window, by their day and minute and by their note', () => {
+    const alike = [row('used', 1, 'g22', '2026-11-19T13:25:00', 'Sam R.'), row('used', 1, 'g22', '2026-11-19T13:26:00', 'Sam R.', 'for the bunker sink')]
+    draw({ canAnswer: true, movements: [...movements, ...alike] })
+    for (const pick of screen.getAllByLabelText('Pick Used 2" PVC 90')) fireEvent.click(pick)
+    fireEvent.click(screen.getByRole('button', { name: 'Answer 2 presses…' }))
+    const rows = screen.getAllByTestId('answer-row')
+    expect(rows).toHaveLength(2)
+    // The list's order, newest first: the use with a note, then the one with none.
+    expect(rows[0]?.textContent).toContain(actStampWords('2026-11-19T13:26:00'))
+    expect(rows[0]?.textContent).toContain('Note: for the bunker sink')
+    expect(rows[1]?.textContent).toContain(actStampWords('2026-11-19T13:25:00'))
+    expect(rows[1]?.textContent).not.toContain('Note:')
+    const labels = (dialog().getAllByRole('combobox') as HTMLSelectElement[]).map((s) => s.getAttribute('aria-label'))
+    expect(new Set(labels).size).toBe(2)
   })
 
   it('keeps a press picked when its answer is refused', async () => {

@@ -39,4 +39,4 @@ Only you and the office see your hours. Nobody sees a wage here.
 
 - Until you answer, the office reads you at 40 hours a week and the board says so.
 - A new drawing holds from the Sunday you pick. The weeks before keep what you said then.
-- Salaried people read the schedule's hours and have no Set hours press.
+- Salaried people read the week their pay sets, like *8 h Mon to Thu, 4 h Fri*. They have no Set hours press.

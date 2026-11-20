@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, extra trips not on a bill, bill tab trips, add a trip from a job, split in two, split a trip, a trip that was two, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
+keywords: trip, trips, extra trips not on a bill, bill tab trips, add a trip from a job, split in two, split a trip, a trip that was two, join with the next, join two trips, two trips that were one, undo a split, joined into, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -224,9 +224,50 @@ Both trips keep what it was for, who asked, how it went and the jobs. No clock r
 
 A trip on a job's lines keeps its line. The new trip then starts with no billing said.
 
-A split has no undo. To take one back, delete the new trip. Then add its days to the first trip with {{button:outline|Change}}.
+To take a split back, open the first trip and press {{button:outline|Join with the next}}.
 
 A trip of one day has no **Split in two**.
+
+## Join two trips that were really one
+
+Sometimes two trips are really one. The crew ended the trip by mistake and started a new one. A join also takes a split back.
+
+1. Open the first of the two trips.
+2. Press {{button:outline|Join with the next}}.
+3. Read the two trips and the one trip they become.
+4. Press {{button:blue|Join into one trip}}.
+
+The next trip is the one that went out next on the same site. You do not pick it.
+
+The open trip keeps its number and its words. Everyone from both trips is on it, with every day from both.
+
+Sometimes both trips give one person the same day. The window names those days. The open trip's kind stays.
+
+The open trip may say nothing for what it was for, who asked or how it went. The open trip then takes the next trip's words.
+
+The joined trip names the jobs of both trips. No clock row, bill or cost changes.
+
+The next trip goes. The next trip's number is never given to another trip.
+
+### Billing and a trip's line
+
+One trip may say no billing. The joined trip then takes the other trip's billing.
+
+The two trips may say two different billings. The window says so and the press is dead. Make them match with {{button:outline|Change}}, then join.
+
+Only the next trip may be on a job's lines. That line then moves to the joined trip.
+
+Both trips may be on a job's lines. The window says so and the press is dead. A trip holds one line.
+
+### Where the next trip goes
+
+The next trip waits under **Deleted trips** for 90 days. The line there reads **Joined into Trip 7**, with the number of the joined trip.
+
+A joined trip has no **Put back**. The joined trip holds those days already.
+
+To take a join back, open the joined trip and press {{button:outline|Split in two}}.
+
+The last trip on a site has no **Join with the next**.
 
 ## Put a deleted trip back
 
@@ -243,6 +284,8 @@ A job the trip named may have been deleted since. The line says so. The trip the
 A trip on a job's lines comes back tied to that line again. A line that was removed since is not made again.
 
 A site whose only trip was deleted still shows its Trips look. You can put the trip back from there.
+
+A trip that was joined into another has no **Put back**. The line names the joined trip.
 
 After 90 days a deleted trip is gone for good.
 
@@ -470,4 +513,4 @@ A browser can block the print window. The look then says so beside the link. All
 
 ## Who can do this
 
-The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. Everyone who reads every trip sees **Deleted trips** and can put a trip back. The same people can split a trip in two. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
+The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. Everyone who reads every trip sees **Deleted trips** and can put a trip back. The same people can split a trip in two and join a trip with the next. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).

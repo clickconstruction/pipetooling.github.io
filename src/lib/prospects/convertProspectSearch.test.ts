@@ -24,7 +24,7 @@ describe('searchConvertProspects', () => {
     prospect({ id: 'pre', company_name: 'Drymoor Construction' }),
     prospect({ id: 'contact', company_name: 'Acme', contact_name: 'Dryden Smith' }),
     prospect({ id: 'conv', company_name: 'Drylock Inc', prospect_fit_status: 'converted' }),
-    prospect({ id: 'phone', company_name: 'Beta', phone_number: '979-732-5731' }),
+    prospect({ id: 'phone', company_name: 'Beta', phone_number: '979-555-0188' }),
   ]
 
   it('returns nothing for a blank query', () => {
@@ -36,7 +36,7 @@ describe('searchConvertProspects', () => {
   })
 
   it('matches phone and email substrings', () => {
-    expect(searchConvertProspects(rows, '732-5731').map((p) => p.id)).toEqual(['phone'])
+    expect(searchConvertProspects(rows, '555-0188').map((p) => p.id)).toEqual(['phone'])
   })
 
   it('never returns converted prospects', () => {

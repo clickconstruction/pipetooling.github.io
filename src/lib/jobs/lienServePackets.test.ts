@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeDivider, lienServeReturnAddress, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, type LienCopyRead } from './lienStampedCopy'
 import { lienServedCopySentTitle } from '../jobsDocuments/lienServedCopy'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
@@ -207,6 +207,36 @@ describe('lienEnvelopeAddressLines — the street, then the city, state and ZIP'
   })
 })
 
+describe('the divider in front of an envelope', () => {
+  const row = { n: 7, job: '2104 · Sample Job', to: 'Owner', name: 'Hollow Creek Holdings LLC', pages: '3', mailBy: 'Nov 23' }
+
+  it('carries the envelope’s number on the mail sheet, says not to mail it, and says where its pages stop', () => {
+    const d = lienServeDivider(row, 22)
+    expect(d).toMatchObject({ n: 7, total: 22, number: '7', of: 'of 22 envelopes', who: 'Owner', job: '2104 · Sample Job', mailBy: 'Mail by Nov 23', late: false })
+    expect(d.stop).toBe('Do not mail this page.')
+    expect(d.behind).toBe('Mail only the 3 pages behind it. They stop at the next divider, envelope 8.')
+    expect(d.ticks).toEqual(['Envelope written as drawn', '3 pages in the envelope', 'Number written at #7 on the mail sheet'])
+    expect(d.pull).toBe('Pull this page out before you seal the envelope. It stays on the desk with the mail sheet.')
+    expect(d.foot).toEqual(['Divider · envelope 7 of 22 · Hollow Creek Holdings LLC', 'stays on the desk'])
+    expect(d.faceFoot).toBe('Envelope 7 of 22 · Owner')
+  })
+
+  it('says the last envelope’s pages are the last of the print, counts one page as one, and flags a late day', () => {
+    expect(lienServeDivider({ ...row, n: 22 }, 22).behind).toBe('Mail only the 3 pages behind it. They are the last pages of this print.')
+    const one = lienServeDivider({ ...row, n: 1, pages: '1', mailBy: 'Nov 11 · late' }, 1)
+    expect(one).toMatchObject({ of: 'of 1 envelope', late: true, mailBy: 'Mail by Nov 11 · late' })
+    expect(one.behind).toBe('Mail only the 1 page behind it. They are the last pages of this print.')
+    expect(one.ticks[1]).toBe('1 page in the envelope')
+  })
+
+  it('takes the return address off the letterhead, with no phone or email on the envelope', () => {
+    expect(lienServeReturnAddress({ company: 'Sample Plumbing LLC', contactLines: ['PO Box 100', 'Kyle, TX 78640', '(512) 555-0142', 'office@example.com'] })).toEqual(['Sample Plumbing LLC', 'PO Box 100', 'Kyle, TX 78640'])
+    expect(lienServeReturnAddress({ company: 'Sample Plumbing LLC', contactLines: ['1200 Example Dr A141', 'Austin, TX 78700', '512-555-0142'] })).toEqual(['Sample Plumbing LLC', '1200 Example Dr A141', 'Austin, TX 78700'])
+    expect(lienServeReturnAddress(undefined)).toEqual([])
+    expect(lienServeReturnAddress({ company: ' ', contactLines: ['PO Box 100'] })).toEqual([])
+  })
+})
+
 describe('the mail sheet', () => {
   const ok = (pages: number): LienCopyRead => ({ state: 'ok', file: { kind: 'pdf', pages, bytes: 450_000, sha256: 'abc' } })
   const plan = lienServePlan([job('2291'), job('2104', { serve_due: '2026-11-11', fields: { ...FIELDS, isSub: false } }, { isSub: false }), job('2340', { recording_number: '' })], CTX)
@@ -224,18 +254,21 @@ describe('the mail sheet', () => {
     expect(sheet.rows[0]).toMatchObject({ name: 'Hollow Creek Holdings LLC', address: '88 Sample Ridge Rd, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd', 'Austin, TX 78700'] })
     expect(sheet.held).toEqual([{ job: '2340 · Sample Job', words: 'Not printed: no recording number yet.', act: 'Type the number the clerk gave.' }])
     expect(sheet.steps[0]).toBe('Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.')
-    expect(sheet.foot).toEqual(['Mail sheet printed November 16, 2026', 'The first letter is the next page'])
+    expect(sheet.foot).toEqual(['Mail sheet printed November 16, 2026', 'The first envelope’s divider is the next page'])
+    // The sheet says there is a divider in front of each envelope, and that it is not mailed.
+    expect(sheet.steps[1]).toBe('Each envelope has a divider page in front of its pages, with the same number as this list. Do not mail the divider.')
+    expect(sheet.from).toEqual([])
     // The name and address come last, with the rest of the line. The certified mail number is no column: its boxes sit under each line.
     expect(sheet.columns).toEqual(['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'])
     expect(sheet.numberLabel).toBe('Certified mail number')
-    expect(sheet.steps[1]).toBe('Mail each envelope by certified mail. Write its number in the boxes under its line.')
+    expect(sheet.steps[2]).toBe('Mail each envelope by certified mail. Write its number in the boxes under its line.')
   })
 
   it('counts the stamped copy alone when the letters are left out, and says so', () => {
     const sheet = lienServeMailSheet(run, { printedOn: '', letter: false })
     expect(sheet.rows.map((r) => r.pages)).toEqual(['3', '2', '2'])
     expect(sheet.steps[0]).toBe('Each envelope takes one clerk’s stamped copy. They come off the printer in the order below.')
-    expect(sheet.foot).toEqual(['Mail sheet', 'The first copy is the next page'])
+    expect(sheet.foot).toEqual(['Mail sheet', 'The first envelope’s divider is the next page'])
   })
 
   it('names a lien the run could not put in the stack after all', () => {

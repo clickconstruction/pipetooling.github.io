@@ -10,7 +10,7 @@ function renderSheet(onSave = vi.fn()) {
   renderWithProviders(
     <ScheduleDispatchMoveBlockSheet
       open
-      title="J1004 · Kane- Hot water line leak"
+      title="J1004 · Kurt- Hot water line leak"
       windowLabel="4:00 PM–5:30 PM"
       sourceYmd="2026-09-03"
       sourceUserId="abraham"
@@ -31,7 +31,7 @@ function renderSheet(onSave = vi.fn()) {
 describe('ScheduleDispatchMoveBlockSheet', () => {
   it('opens on the current cell with nothing to move', () => {
     renderSheet()
-    expect(screen.getByText('J1004 · Kane- Hot water line leak')).toBeTruthy()
+    expect(screen.getByText('J1004 · Kurt- Hot water line leak')).toBeTruthy()
     const save = screen.getByRole('button', { name: 'Nothing to move' }) as HTMLButtonElement
     expect(save.disabled).toBe(true)
     expect(screen.getByRole('button', { name: /Thu/ }).getAttribute('aria-pressed')).toBe('true')
