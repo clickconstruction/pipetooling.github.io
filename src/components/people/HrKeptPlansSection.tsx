@@ -14,8 +14,10 @@ const capital = (words: string): string => words.charAt(0).toUpperCase() + words
  * applied in a session on his word, as every plan is today, and the session checks it again first. The list reads the
  * words of a plan and never its arguments.
  *
- * With `personId` the list is that person's alone and says how many wait on other files. The whole section hides when
- * nothing waits and nothing went stale, and when the read is refused (before the table's migration is pushed).
+ * With `personId` the list is that person's alone and says how many wait on other files, each person a press, also
+ * when this person has none (v2.8071: a file with no plan of its own used to hide the plans waiting elsewhere, and on a
+ * wide screen an open file hides the list of every file). The section hides when nothing waits anywhere and nothing
+ * went stale. A read that fails says so with its reason (v2.8071): a hidden list reads as nothing waiting.
  */
 export function HrKeptPlansSection({
   nameForPerson,
@@ -31,24 +33,66 @@ export function HrKeptPlansSection({
   reloadKey?: number
 }) {
   const [rows, setRows] = useState<KeptPlanRow[]>([])
+  const [heldWhy, setHeldWhy] = useState<string | null>(null)
+  const [again, setAgain] = useState(0)
 
   useEffect(() => {
     let live = true
     void loadKeptPlans().then((r) => {
-      if (live) setRows(r.rows)
+      if (!live) return
+      setRows(r.rows)
+      setHeldWhy(r.heldWhy)
     })
     return () => {
       live = false
     }
-  }, [reloadKey])
+  }, [reloadKey, again])
 
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
   const all = useMemo(() => keptPlansToShow(rows, todayYmd, calendarYmdInAppTzFromIso), [rows, todayYmd])
   const waiting = personId ? all.waiting.filter((r) => r.person_id === personId) : all.waiting
   const stale = personId ? all.stale.filter((r) => r.person_id === personId) : all.stale
   const elsewhere = personId ? all.waiting.length - waiting.length : 0
+  /** The other files a plan waits on, each once, in the order their oldest plan was kept. */
+  const elsewherePeople = personId ? [...new Set(all.waiting.filter((r) => r.person_id !== personId).map((r) => r.person_id))] : []
 
-  if (waiting.length === 0 && stale.length === 0) return null
+  const nameLink = { font: 'inherit', fontWeight: 600, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' } as const
+
+  if (heldWhy) {
+    return (
+      <p role="alert" data-testid="hr-kept-plans-held" style={{ margin: '0 0 0.9rem', fontSize: '0.8rem', color: 'var(--text-amber-700)', maxWidth: '88ch', overflowWrap: 'anywhere' }}>
+        Waiting on you could not be read: {heldWhy}{' '}
+        <button type="button" onClick={() => setAgain((n) => n + 1)} style={{ ...nameLink, color: 'var(--text-link)' }}>
+          Read it again
+        </button>
+      </p>
+    )
+  }
+
+  const elsewhereLine =
+    elsewhere > 0 ? (
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: waiting.length + stale.length > 0 ? '0.5rem' : 0 }} data-testid="hr-kept-plans-elsewhere">
+        {waiting.length + stale.length > 0 ? `${elsewhere} more ${elsewhere === 1 ? 'waits' : 'wait'} on other files: ` : `${elsewhere} ${elsewhere === 1 ? 'plan waits' : 'plans wait'} on other files: `}
+        {elsewherePeople.map((id, i) => (
+          <span key={id}>
+            {i > 0 ? ' · ' : ''}
+            <button type="button" onClick={() => onOpenPerson(id)} style={nameLink}>
+              {nameForPerson(id)}
+            </button>
+          </span>
+        ))}
+      </div>
+    ) : null
+
+  if (waiting.length === 0 && stale.length === 0) {
+    if (!elsewhereLine) return null
+    return (
+      <section aria-label="Waiting on you" data-testid="hr-kept-plans" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.9rem', marginBottom: '0.9rem', maxWidth: '88ch' }}>
+        <strong style={{ color: 'var(--text-strong)', marginRight: '0.6rem' }}>Waiting on you</strong>
+        {elsewhereLine}
+      </section>
+    )
+  }
 
   const chip = (amber: boolean) => ({
     display: 'inline-block',
@@ -68,7 +112,7 @@ export function HrKeptPlansSection({
       <li key={r.id} data-testid={`kept-plan-${r.id}`} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', background: 'var(--surface)', minWidth: 0 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.5rem', alignItems: 'baseline' }}>
           {personId ? null : (
-            <button type="button" onClick={() => onOpenPerson(r.person_id)} style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>
+            <button type="button" onClick={() => onOpenPerson(r.person_id)} style={nameLink}>
               {nameForPerson(r.person_id)}
             </button>
           )}
@@ -94,11 +138,7 @@ export function HrKeptPlansSection({
         {waiting.map(row)}
         {stale.map(row)}
       </ul>
-      {elsewhere > 0 ? (
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }} data-testid="hr-kept-plans-elsewhere">
-          {elsewhere} more {elsewhere === 1 ? 'waits' : 'wait'} on other files.
-        </div>
-      ) : null}
+      {elsewhereLine}
     </section>
   )
 }
