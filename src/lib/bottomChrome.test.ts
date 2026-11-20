@@ -5,6 +5,7 @@ import {
   ON_TAB_BAR_BORDER,
   ON_TAB_BAR_LAP_PX,
   bottomChromeCss,
+  footClearanceCss,
   onTabBarBottomCss,
   onTabBarKeyboardSlideCss,
   pageBottomPaddingCss,
@@ -105,5 +106,20 @@ describe('what sits on the tab bar', () => {
 
   it('slides a pinned bar out by its own height, the chrome and its border', () => {
     expect(onTabBarKeyboardSlideCss()).toBe(`translateY(calc(100% + var(${APP_BOTTOM_CHROME_VAR}, 0px) + 1px))`)
+  })
+})
+
+describe('what stands at the foot of the screen', () => {
+  it('clears the larger of the tab bar and the home indicator', () => {
+    expect(footClearanceCss()).toBe(`max(var(${APP_BOTTOM_CHROME_VAR}, 0px), env(safe-area-inset-bottom, 0px))`)
+  })
+
+  it('never adds the two, and never names the tab bar by a height of its own', () => {
+    // The old copies read `calc(60px + env(safe-area-inset-bottom))`: the inset twice over on a phone
+    // with a home indicator, and 60 px for a tab bar that is not there on a screen without one.
+    const css = footClearanceCss()
+    expect(css).not.toContain('+')
+    expect(css).not.toMatch(/\d\dpx/)
+    expect(css.match(/safe-area-inset-bottom/g)).toHaveLength(1)
   })
 })

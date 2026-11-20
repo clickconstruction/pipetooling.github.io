@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFooter'
+import { footClearanceCss } from '../../lib/bottomChrome'
 
 /**
  * The block sheet (v2.3885, punch list #30 PR 4b-2): what a tap on a schedule
@@ -8,7 +8,8 @@ import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFoot
  * each drawn only when its handler is passed.
  */
 
-const BOTTOM_INSET = `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`
+/** The sheet's last row clears the tab bar while one is up, and the home indicator with none (v2.8051). */
+const BOTTOM_INSET = footClearanceCss()
 
 export function ScheduleSheet({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode }) {
   return (
@@ -18,7 +19,7 @@ export function ScheduleSheet({ title, subtitle, onClose, children }: { title: s
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: '18px 18px 0 0', padding: `0.6rem 0.8rem calc(1rem + ${BOTTOM_INSET})`, display: 'grid', gap: '0.5rem', boxShadow: '0 -8px 24px rgba(0,0,0,.2)', maxHeight: 'min(85vh, 100%)', overflowY: 'auto' }}
+        style={{ width: '100%', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: '18px 18px 0 0', paddingTop: '0.6rem', paddingLeft: '0.8rem', paddingRight: '0.8rem', paddingBottom: `calc(1rem + ${BOTTOM_INSET})`, display: 'grid', gap: '0.5rem', boxShadow: '0 -8px 24px rgba(0,0,0,.2)', maxHeight: 'min(85vh, 100%)', overflowY: 'auto' }}
       >
         <div aria-hidden style={{ width: '2.4rem', height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto 0.2rem' }} />
         <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>{title}</h3>
