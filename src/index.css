@@ -472,29 +472,46 @@ button:focus-visible {
   padding-top: max(var(--app-nav-pad-y), var(--app-nav-safe-top, env(safe-area-inset-top, 0px)));
 }
 
-/* The way back from View as, on a phone (v2.7782): one amber line above the header, holding the whole
-   button with its whole name, where as the icon row's last press it ran off the screen. It sits just before
-   the nav chrome, takes the status-bar padding on itself, and tells the chrome under it there is none
-   left to take (`--app-nav-safe-top`, read by the nav, the health strip and the search bar). A long
-   name wraps inside the line. No rule under it: the header below is amber too, so the two read as one. */
+/* The way back from View as, on a phone (v2.7782): one amber line above the header, where as the icon
+   row's last press its name ran off the screen. It sits just before the nav chrome, takes the status-bar
+   padding on itself, and tells the chrome under it there is none left to take (`--app-nav-safe-top`,
+   read by the nav, the health strip and the search bar).
+   The line is the press: a flat band edge to edge, 24 px for one line of words, with no box, no gutter and
+   no gap above the header. 24 px is the smallest press WCAG 2.2 allows (2.5.8), and the band is the whole
+   width of the screen. It starts under the status bar, never in it, where a tap is the phone's own
+   scroll to the top. A long name wraps inside the band. A shade darker than the amber header under it,
+   so it reads as its own bar. */
 .appViewAsStrip {
-  display: flex;
-  padding: 6px var(--app-nav-pad-x) 0;
-  padding-top: max(6px, env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--bg-amber-100);
-  color: var(--text-amber-800);
 }
 .appViewAsStripExit {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 100%;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px var(--app-nav-pad-x);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-amber-200);
+  color: var(--text-amber-900);
   font: inherit;
+  font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 18px;
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.appViewAsStripExit:active {
+  background: var(--border-amber);
+}
+/* The ring is drawn inside the band: outside it would be cut off by the screen's edges. */
+.appViewAsStripExit:focus-visible {
+  outline-offset: -2px;
 }
 .appViewAsStrip + .appNavChrome {
   --app-nav-safe-top: 0px;
