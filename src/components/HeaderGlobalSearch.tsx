@@ -59,6 +59,7 @@ import {
   type DoorViewer,
 } from '../lib/search/doors'
 import { boxDoors, siteDoors, type BoxSearchJob } from '../lib/materials/boxSearch'
+import { boxRowsOpenThePhoneScreen } from '../lib/materials/materialsJobDoor'
 import { loadPaintedMapsForSearch } from '../lib/paintedMap/paintedMapIo'
 import { paintedMapDoors, type PaintedMapSearchRow } from '../lib/paintedMap/paintedMapSearch'
 import { canOpenMaterialsTab } from '../lib/materials/materialsTabs'
@@ -293,13 +294,13 @@ export function HeaderGlobalSearchProvider({
   const doors = useMemo<Door[]>(() => {
     if (!viewer) return []
     const mine = doorsFor(viewer, sources)
-    const boxes = storeVersion >= 0 ? jobIdsWithData().flatMap((jobId) => boxDoors({ jobs: boxJobs, containers: listContainers(jobId), lines: containerLines(listMovements(jobId)), places: listPlaces(jobId), forField: fieldLookup })) : []
+    const boxes = storeVersion >= 0 ? jobIdsWithData().flatMap((jobId) => boxDoors({ jobs: boxJobs, containers: listContainers(jobId), lines: containerLines(listMovements(jobId)), places: listPlaces(jobId), forField: boxRowsOpenThePhoneScreen(role, fieldLookup) })) : []
     // A site that holds boxes (punch list #330): one door to the whole site's materials, for the roles that get that screen.
     const siteGroups = sitesAllowed && storeVersion >= 0 ? groupDeskBySite(jobIdsWithData(), onSiteSites.siteOfJob, onSiteSites.siteNames) : []
     const sites = siteDoors(siteGroups.flatMap((g) => (g.kind === 'site' ? [{ siteId: g.siteId, name: g.name, jobs: g.jobIds.length, boxes: g.jobIds.reduce((n, id) => n + listContainers(id).filter((c) => !c.retiredAt && c.kind !== 'unsorted').length, 0) }] : [])))
     const maps = paintedMapDoors(paintedMaps)
     return fieldLookup ? [...fieldLookupDoors(mine, viewer), ...sites, ...boxes, ...maps] : [...mine, ...sites, ...boxes, ...maps]
-  }, [viewer, sources, fieldLookup, boxJobs, storeVersion, sitesAllowed, onSiteSites, paintedMaps])
+  }, [viewer, sources, fieldLookup, role, boxJobs, storeVersion, sitesAllowed, onSiteSites, paintedMaps])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {

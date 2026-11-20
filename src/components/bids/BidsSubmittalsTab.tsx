@@ -155,7 +155,7 @@ async function downloadFile(path: string): Promise<ArrayBuffer> {
 export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPreview, onSelectBid, onClose, onOpenPricing, onlyMyBids, setOnlyMyBids, isMyBid }: BidsSubmittalsTabProps) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
-  const { user, profileName } = useAuth()
+  const { user, profileName, role: viewerRole } = useAuth()
   const prefixMap = useLedgerPrefixMap()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -2642,6 +2642,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   items={procItems}
                   reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
+                  viewerRole={viewerRole}
                   busy={busy}
                   onCounts={setProcCounts}
                   // v2.4663 · a draft nobody has shared: its lines read Not sent yet, not Waiting on the GC.

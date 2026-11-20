@@ -6,6 +6,8 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
+import { boxDeskLink } from '../../lib/materials/boxDeskLink'
+import { onSiteTabLink } from '../../lib/materials/materialsJobDoor'
 import { REASON_WORDS } from '../../lib/materials/onSite'
 import { listMovements } from '../../lib/materials/onSiteStore'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
@@ -23,9 +25,10 @@ const chip = (tone: 'amber' | 'red' | 'green' | 'blue' | 'dim'): CSSProperties =
 })
 
 /**
- * `door` is where the press leads: the office's page (Jobs → Materials) by default, or, for the crew's job window
- * (punch list #355, Today's work), the Tally's On site tab on this job, which is the crew's own screen for the
- * boxes. The crew's door leaves the money and the credits out: they are the office's reads.
+ * `door` is where the press leads: the office's page (Jobs → Materials) by default, or the Tally's On site tab on
+ * this job, the screen for the boxes of everyone else: the crew's job window (punch list #355, Today's work) and a
+ * primary's (`opensMaterialsDesk`, since Jobs → Materials turns a primary to Reports). That door leaves the money and
+ * the credits out: they are the office's reads.
  */
 export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate, door = 'desk' }: { jobId: string; onBeforeNavigate?: () => void; door?: 'desk' | 'tally' }) {
   const crew = door === 'tally'
@@ -57,7 +60,7 @@ export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate, door 
           ) : null}
         </>
       )}
-      <button type="button" data-testid="job-window-materials-door" onClick={() => { onBeforeNavigate?.(); navigate(crew ? `/tally?tab=on-site&job=${jobId}` : `/jobs?tab=materials&job=${jobId}`) }} style={{ justifySelf: 'start', minHeight: crew ? 44 : 40, padding: '0 0.9rem', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
+      <button type="button" data-testid="job-window-materials-door" onClick={() => { onBeforeNavigate?.(); navigate(crew ? onSiteTabLink(jobId) : boxDeskLink(jobId)) }} style={{ justifySelf: 'start', minHeight: crew ? 44 : 40, padding: '0 0.9rem', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
         {crew ? 'Open Materials on site' : 'Open the materials page'}
       </button>
     </div>

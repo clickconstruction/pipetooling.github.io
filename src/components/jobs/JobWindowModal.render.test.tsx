@@ -48,14 +48,14 @@ beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn())
 })
 
-function windowUi(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job') {
+function windowUi(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job', authRole = 'dev') {
   return (
     <UpdateFocusOpenerBridgeProvider>
       <JobWindowModal
         jobId="job-1"
         initialTab={initialTab}
         onClose={onClose}
-        authRole="dev"
+        authRole={authRole}
         scheduleContext={null}
         assignedJobsRows={[]}
         initialJob={windowJob}
@@ -159,6 +159,16 @@ describe('JobWindowModal', () => {
     // The panes' own close affordances are gone — one window, one ✕.
     expect(screen.queryByLabelText('Close job detail')).toBeNull()
     await waitFor(() => expect(screen.getAllByText(/Kitchen rough-in/).length).toBeGreaterThan(0))
+  })
+
+  it('the Materials tab’s press is the office’s page for the office and the Tally’s On site tab for a primary', async () => {
+    // Jobs → Materials turns a primary to Reports, so a primary's press opens the boxes on the Tally.
+    for (const [role, words] of [['dev', 'Open the materials page'], ['primary', 'Open Materials on site']] as const) {
+      const view = renderWithProviders(windowUi(vi.fn(), 'job', role))
+      fireEvent.click(tab('Materials'))
+      expect((await screen.findByTestId('job-window-materials-door')).textContent, role).toBe(words)
+      view.unmount()
+    }
   })
 
   it('Edit shows the form half, Bill shows the billing half, and typed state survives switching', async () => {
