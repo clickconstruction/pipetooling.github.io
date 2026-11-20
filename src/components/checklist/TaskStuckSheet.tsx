@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { STUCK_ASK, STUCK_REASONS, STUCK_REASON_MAX, STUCK_TITLE, stuckPressLabel, stuckReasonTidy, stuckRule, stuckSentence } from '../../lib/tasks/taskDoerActs'
 import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { TaskSheetHead } from './TaskSheetHead'
 
 /**
  * Can't do it (punch list #369, step C6, tool 2): the person doing a task says what is in the way, in one press, and
@@ -70,15 +71,7 @@ export function TaskStuckSheet({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby="task-stuck-title" onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="task-stuck-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
-            {STUCK_TITLE}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
-            ×
-          </button>
-        </div>
-        <p style={{ margin: '4px 0 10px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{taskTitle}</p>
+        <TaskSheetHead title={STUCK_TITLE} labelId="task-stuck-title" taskTitle={taskTitle} onClose={onClose} />
         <div style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: 8 }}>{STUCK_ASK}</div>
         <div role="group" aria-label={STUCK_ASK} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
           {STUCK_REASONS.map((r) => {

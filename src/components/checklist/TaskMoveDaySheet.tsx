@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { dayLabel } from '../../lib/checklistDueDates'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MOVE_DAY_PICK_LABEL, MOVE_DAY_TITLE, moveDayPicks, moveDayPressLabel, moveDayRule, moveDaySentence } from '../../lib/tasks/taskDoerActs'
+import { TaskSheetHead } from './TaskSheetHead'
 
 type Choice = 'tomorrow' | 'monday' | 'day'
 
@@ -84,15 +85,7 @@ export function TaskMoveDaySheet({
   return createPortal(
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', zIndex: 1210, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" aria-labelledby="task-move-day-title" onClick={(e) => e.stopPropagation()} style={{ ...panel, background: 'var(--surface)', color: 'var(--text-strong)', boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <h2 id="task-move-day-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
-            {MOVE_DAY_TITLE}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
-            ×
-          </button>
-        </div>
-        <p style={{ margin: '4px 0 12px', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{taskTitle}</p>
+        <TaskSheetHead title={MOVE_DAY_TITLE} labelId="task-move-day-title" taskTitle={taskTitle} onClose={onClose} />
         <div role="group" aria-label="Move it to" style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 10, overflow: 'hidden', minWidth: 0 }}>
           {segments.map(([key, label], i) => {
             const on = choice === key
