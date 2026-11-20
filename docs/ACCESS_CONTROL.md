@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -893,6 +893,11 @@ The Documents tab's *Sent from this job* and the Documents page's **Sent copies*
 *Sent* until v2.6308) show to the office (`canReadSentCopies`);
 `primary` and `estimator` open both places without them.
 Pay stubs are never filed here.
+
+**Document builder** (v2.7980, the Documents page's **Document builder** tab, punch list #404): the tab shows to a dev alone (`canUseDocumentBuilder`, one list, `DOCUMENT_BUILDER_TEAM` in `src/lib/documentBuilder/access.ts`).
+It is the owner's call of 2026-11-19 that the builders are a dev's for now.
+Every other role opens `/documents` without the tab, and a link to `?tab=builder` shows them Estimates.
+The tab reads and writes no table yet: the Sub NDA's flow runs on a made-up paper in the client.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.

@@ -6495,6 +6495,23 @@ and it reads the record back above the button before the press, *The record will
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
+### Document builder (Documents → Document builder)
+
+v2.7980 (punch list #404).
+The last tab on the Documents page, for a dev only, where builders live.
+A **builder** makes one kind of paper from a few settings.
+A **walked** builder is one someone walks page by page, picking a level.
+A **filled** builder is one page with blanks that each job fills.
+The tab lists the builders one row each, with chips that say where each stands and an **Open** press, and a new kind is added in code ([`builders.ts`](../src/lib/documentBuilder/builders.ts), [`DocumentsBuilderTab.tsx`](../src/components/documents/DocumentsBuilderTab.tsx)).
+The first builder is the **Sub NDA**, the owner's name for a job's secrecy paper for the people the company brings onto the job.
+Its **levels** are *Standard*, *Elevated*, *Aggressive* and *Strict*, loosest first, each beside the kind of place it is *aligned with*.
+Its **topics** are seven, each on one level or on *Off*, and three of them are in every paper and have no *Off*.
+The **basis** is the level the whole paper starts on, and a page moved to another level is *off the basis*.
+The flow is eleven steps in one frame: *Before you start*, *The basis*, *Match the paper to the site*, one page a topic and *Review* ([`DocumentBuilderFlow.tsx`](../src/components/documentBuilder/DocumentBuilderFlow.tsx) over the rules in [`documentBuilder.ts`](../src/lib/documentBuilder/documentBuilder.ts)).
+A topic's page lists *What puts a person in breach*, the lines the level brings above the ones it keeps under *Also applies*, then *What the site must have*, then *The core clause* as grey bars.
+Every word in it is a placeholder that no attorney has read, no clause wording is in the app or the repo, and the flow runs on a made-up job and saves nothing.
+In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
+
 ### Agreements tab
 
 v2.7617 (punch list #376).
