@@ -39,6 +39,36 @@ describe('a bullet of ours reads the order log', () => {
     expect(readOrderLog(log([line({ orderedOn: '2026-11-10', expectedOn: '2026-12-01' })]), 'Rough In', DAY_ONE).fact).toBe('1 of 1 line lands on the first day or after it. The last lands Dec 1.')
   })
 
+  it('is open when a line’s day to land has gone by and nobody marked it on site', () => {
+    // Ordered, expected Nov 3, never marked delivered. Day one is Nov 23 and today is Nov 20: 17 days late, 20 days "ahead".
+    const lateOne = log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03' })])
+    expect(readOrderLog(lateOne, 'Rough In', '2026-11-23', '2026-11-20')).toEqual({ ok: false, fact: '1 of 1 line was due Nov 3 and is not on site.', door: W.orderDoor, href: orderLogHref('bid-1') })
+    const lateTwo = log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-05' }), line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03' }), line({ orderedOn: '2026-10-20', expectedOn: '2026-11-21' })])
+    expect(readOrderLog(lateTwo, 'Rough In', '2026-11-23', '2026-11-20')).toMatchObject({ ok: false, fact: '2 of 3 lines are past due and not on site. The oldest was due Nov 3.' })
+    // A day gone by is said before a day on the first day or after it, and with no days of ours planned.
+    expect(readOrderLog(log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03' }), line({ orderedOn: '2026-10-20', expectedOn: '2026-11-25' })]), 'Rough In', '2026-11-23', '2026-11-20').fact).toBe('1 of 2 lines was due Nov 3 and is not on site.')
+    expect(readOrderLog(lateOne, 'Rough In', null, '2026-11-20').fact).toBe('1 of 1 line was due Nov 3 and is not on site.')
+  })
+
+  it('still reads ready on a line that lands today or after it and before the first day', () => {
+    const tomorrow = log([line({ orderedOn: '2026-11-10', expectedOn: '2026-11-21' })])
+    expect(readOrderLog(tomorrow, 'Rough In', '2026-11-23', '2026-11-20')).toMatchObject({ ok: true, fact: '0 of 1 line on site. The last lands Nov 21, 2 days ahead.' })
+    expect(readOrderLog(log([line({ orderedOn: '2026-11-10', expectedOn: '2026-11-20' })]), 'Rough In', '2026-11-23', '2026-11-20').ok).toBe(true)
+  })
+
+  it('with no today it compares with the first day alone, as before', () => {
+    const lateOne = log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03' })])
+    const old = { ok: true, fact: '0 of 1 line on site. The last lands Nov 3, 20 days ahead.', door: W.orderDoor, href: orderLogHref('bid-1') }
+    expect(readOrderLog(lateOne, 'Rough In', '2026-11-23')).toEqual(old)
+    expect(readOrderLog(lateOne, 'Rough In', '2026-11-23', '')).toEqual(old)
+  })
+
+  it('does not count a line that is on site as overdue, however old its day to land', () => {
+    const read = log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03', deliveredOn: '2026-11-12' }), line({ orderedOn: '2026-11-10', expectedOn: '2026-11-21' })])
+    expect(readOrderLog(read, 'Rough In', '2026-11-23', '2026-11-20')).toMatchObject({ ok: true, fact: '1 of 2 lines on site. The last lands Nov 21, 2 days ahead.' })
+    expect(readOrderLog(log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03', deliveredOn: '2026-11-12' })]), 'Rough In', '2026-11-23', '2026-11-20')).toMatchObject({ ok: true, fact: 'The one line is on site.' })
+  })
+
   it('cannot tell without our days unless everything is on site', () => {
     expect(readOrderLog(log([line({ orderedOn: '2026-11-10', expectedOn: '2026-11-25' })]), 'Rough In', null).fact).toBe(W.noDays)
   })
@@ -99,6 +129,12 @@ describe('the seam a list is built with', () => {
     expect(reader(bullet({ reads: 'permit' }))?.fact).toBe(W.reading)
     expect(reader(bullet({ reads: 'hand' }))).toBeNull()
     expect(readerFor(lines, new Map([['job-1', { failed: true }]]))(bullet({ reads: 'trip' }))).toEqual({ ok: false, fact: W.failed, door: '', href: null })
+  })
+
+  it('hands today to the order log’s reader, and reads as before with none', () => {
+    const reads = new Map([['job-1', { orderLog: log([line({ orderedOn: '2026-10-20', expectedOn: '2026-11-03' })]) }]])
+    expect(readerFor(lines, reads, '2026-11-20')(bullet({ reads: 'order_log' }))).toMatchObject({ ok: false, fact: '1 of 1 line was due Nov 3 and is not on site.' })
+    expect(readerFor(lines, reads)(bullet({ reads: 'order_log' }))?.ok).toBe(true)
   })
 
   it('names each choice in the words that follow "ours,"', () => {
