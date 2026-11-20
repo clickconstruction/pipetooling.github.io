@@ -377,6 +377,46 @@ export function holdText(site: Site, s: Stage, newStart: string): string {
   return lines.join('\n')
 }
 
+// ---------- The list behind the ready bar ----------
+
+/** What resting on the ready bar lists: what it takes to start the stage, the open bullets first, then the ones with a yes. */
+export type ReadyList = {
+  title: string
+  /** 5 of 6 ready, which is 83%. Every bullet counts the same. */
+  count: string
+  open: Array<{ id: string; words: string; line: string; no: boolean }>
+  met: Array<{ id: string; words: string }>
+}
+
+export function readyList(s: Stage): ReadyList {
+  const ready = readiness(s.bullets)
+  const open = openBullets(s)
+  const line = (b: Bullet): string => {
+    if (saidNo(s, b) && s.arrival) return `${s.arrival.by} said No on site, ${monthDay(s.arrival.day)}.`
+    return b.on === 'us' ? `Ours. ${b.fact}` : plainSentence(bulletLine(b))
+  }
+  return {
+    title: open.length ? `What it takes to start ${s.name}` : `${s.name} has every yes`,
+    count: `${ready.yes} of ${ready.total} ready, which is ${ready.pct}%. Every bullet counts the same.`,
+    // A No first, as the bar draws it.
+    open: [...open.filter((b) => saidNo(s, b)), ...open.filter((b) => !saidNo(s, b))].map((b) => ({ id: b.id, words: b.words, line: line(b), no: saidNo(s, b) })),
+    met: metBullets(s).map((b) => ({ id: b.id, words: b.words })),
+  }
+}
+
+/** The Schedule look on the strip of looks: how many stages are ahead, and in amber what they owe us. */
+export function scheduleLookWords(stages: readonly Stage[], site: Site, today: string): { n: number; count: string; need: string | null } {
+  const ahead = stagesAhead(stages).length
+  const owed = answersOwed(stages, site, today)
+  return { n: ahead, count: countWords(ahead, 'stage', 'stages'), need: owed ? `${countWords(owed, 'answer', 'answers')} owed` : null }
+}
+
+/** Under the banner: how far they have moved on this site so far, or nothing when they have not. */
+export function siteMovedWords(stages: readonly Stage[]): string | null {
+  const moved = siteMovedDays(stages)
+  return moved ? `They have moved ${countWords(moved, 'day', 'days')} on this site so far.` : null
+}
+
 // ---------- The GC's page ----------
 
 /** The job's two switches: it shares its stage dates, and it shows what we need before each stage. */

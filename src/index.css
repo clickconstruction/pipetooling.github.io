@@ -6510,8 +6510,25 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .scWord:disabled { color: var(--text-muted); text-decoration: none; cursor: wait; }
 .scMore { margin: 0; padding: 0 4px; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 1.125rem; line-height: 1; cursor: pointer; position: relative; }
 .scMore:hover, .scMore:active { background: none; color: var(--text-strong); }
+/* The ready bar as a press (`ReadyMarks`): resting on it, or pressing it on a phone, lists what it takes to start. */
+.scReady { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 4px; padding: 2px 4px; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; white-space: nowrap; cursor: help; position: relative; }
+.scReady:hover, .scReady:active { background: var(--bg-muted); }
+.scReady:focus-visible { outline: 2px solid var(--text-link); outline-offset: 1px; }
+.scReadyList { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: block; width: min(420px, 80vw); padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-base); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); font-size: 0.84375rem; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal; cursor: default; }
+/* The Schedule look's cards (`DevelopmentScheduleCard`): the stage's colour is the bar on the card's left edge. */
+.scStageCard { padding: 12px 14px 12px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.scStageCard[data-light='green'] { box-shadow: inset 5px 0 0 #16a34a; }
+.scStageCard[data-light='amber'] { box-shadow: inset 5px 0 0 #f59e0b; }
+.scStageCard[data-light='red'] { box-shadow: inset 5px 0 0 #dc2626; }
+.scStageCard[data-light='grey'] { box-shadow: inset 5px 0 0 var(--border-strong); }
+.scDot { flex: none; width: 14px; height: 14px; margin-top: 4px; border-radius: 50%; background: var(--border-strong); }
+.scDot[data-light='green'] { background: #16a34a; }
+.scDot[data-light='amber'] { background: #f59e0b; }
+.scDot[data-light='red'] { background: #dc2626; }
 .scAdd { flex: 1 1 14rem; min-width: 0; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-base); font: inherit; font-size: 0.875rem; }
 @media (pointer: coarse), (max-width: 640px) {
+  .scReady { min-height: 32px; }
+  .scPress { min-height: 44px; }
   .scBox::after, .scMore::after, .scWord::after { content: ''; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
   .scChip { min-height: 32px; padding: 4px 12px; }
   .scAdd { min-height: 44px; font-size: 16px; }

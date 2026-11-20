@@ -5937,6 +5937,7 @@ The **ready bar** is one small box a bullet with a percent after it, every bulle
 The **notice** is the days we need before our first day, one number a site, ten by default for a far site and two for a near one, and **We decide by** is our first day less the notice (`goNoGoDay`).
 Every day they give for ready is kept, and first to newest is how far they have **moved** (`movedDays`).
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
+The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
 The rules are [`startChecks.ts`](../src/lib/startChecks/startChecks.ts), the rows [`startCheckRows.ts`](../src/lib/startChecks/startCheckRows.ts), and nothing in it blocks a schedule, a clock-in or a bill.
 
 ### Users lenses (People → Users)

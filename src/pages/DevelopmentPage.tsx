@@ -112,17 +112,23 @@ import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import { DevelopmentTripsCard } from '../components/developments/DevelopmentTripsCard'
+import { DevelopmentScheduleCard } from '../components/developments/DevelopmentScheduleCard'
 import { scoreboardTripCut } from '../lib/trips/tripScoreboardCut'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { useSiteTrips } from '../hooks/useSiteTrips'
+import { useSiteIsFar } from '../hooks/useSiteIsFar'
+import { useSiteStartChecks, type SiteStartJob } from '../hooks/useSiteStartChecks'
 import { useLandOnLook } from '../hooks/useLandOnLook'
-import { asksForTripsLook, tripIdAsked, tripRowAnchor, tripRowAsked } from '../lib/trips/jobTrips'
+import { asksForTripsLook, DEVELOPMENT_LOOK_PARAM, tripIdAsked, tripRowAnchor, tripRowAsked } from '../lib/trips/jobTrips'
 import { plansByDateTrips } from '../lib/trips/tripLane'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 import { tripHistoryLines } from '../lib/trips/tripHistory'
 import { NO_TRIP_PEOPLE, tripOfRecord } from '../lib/trips/tripRecord'
 import { tripsStripWords } from '../lib/trips/tripsLook'
+import { scheduleLookWords } from '../lib/startChecks/startChecks'
+import { contactName } from '../lib/startChecks/startCheckRows'
+import { isOfficeRole } from '../lib/doorRoles'
 import { foldPhotoBatches } from '../lib/developments/photoLines'
 
 
@@ -416,6 +422,22 @@ export default function DevelopmentPage() {
   const tripsOpen = siteTrips.shows && !isFolded(lookFolds, 'trips', false)
   // `?look=trips` (punch list #379, PR 6): the Job window's line links here, and the page lands on its Trips look once it shows. The card of a trip's bar on Plans by date makes the same move.
   const goToTrips = useLandOnLook({ asked: asksForTripsLook(searchParams) && siteTrips.shows, askKey: tripIdAsked(searchParams) ?? 'look', targetId: tripRowAsked(searchParams), anchorId: DEVELOPMENT_JUMP_ANCHOR.trips, unfold: () => (isFolded(lookFolds, 'trips', false) ? toggleLook('trips') : undefined) })
+  // The Schedule look (punch list #382, PR 5): every stage ahead on the site with what must be true before it. It reads
+  // only the jobs this person is on the desk of, and shows only when one of them has a stage line. Who we ask is the GC's
+  // contact on the bids, as the head names them. The site's distance is read only while its notice is on the default.
+  const scheduleJobs = useMemo<SiteStartJob[]>(
+    () => (shown ? shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), part: siteRead?.parts.find((p) => p.id === (j.plan_part_id ?? null))?.name?.trim() || (j.job_name ?? '').trim() || jobLabel(j) })) : []),
+    [shown, jobLabel, siteRead?.parts],
+  )
+  const [scheduleWantsFar, setScheduleWantsFar] = useState(false)
+  const siteFar = useSiteIsFar(siteAddress, scheduleWantsFar)
+  const siteStart = useSiteStartChecks({ developmentId: developmentId ?? '', jobs: scheduleJobs, contact: contactName({ gcContact: people?.gcContact?.name, gc: data?.customer?.name }), far: siteFar, enabled: !!data && !!developmentId })
+  const scheduleNeedsFar = siteStart.shows && !siteStart.notice.own
+  useEffect(() => {
+    if (scheduleNeedsFar) setScheduleWantsFar(true)
+  }, [scheduleNeedsFar])
+  // `?look=schedule` lands the page on the look once it shows, as `?look=trips` does.
+  useLandOnLook({ asked: searchParams.get(DEVELOPMENT_LOOK_PARAM) === 'schedule' && siteStart.shows, askKey: 'schedule', anchorId: DEVELOPMENT_JUMP_ANCHOR.schedule, unfold: () => (isFolded(lookFolds, 'schedule', false) ? toggleLook('schedule') : undefined) })
   // One trip, opened from its name on this page (a History line, a Plans by date card, a Scoreboard row): the look opens, the card opens the trip's row and the page lands on that row. `?trip=` asks the same from a link.
   const [tripOpen, setTripOpen] = useState<{ id: string; n: number } | null>(null)
   const openTrip = (id: string) => {
@@ -1210,7 +1232,7 @@ export default function DevelopmentPage() {
   // The strip's six looks: the plain count with its noun, and in amber what in it needs the leader.
   const activePieces = pieces.filter((r) => !r.done && !r.archived).length
   const archivedPieces = pieces.filter((r) => r.archived).length
-  const looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook } = {
+  const looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook; schedule?: DevelopmentLook } = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
     money: moneyShown ? { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need } : { n: 0, count: OFFICE_READS_MONEY_CHIP, need: null },
@@ -1223,6 +1245,8 @@ export default function DevelopmentPage() {
     photos: photosLookWords(sitePhotos.census, door),
     // The seventh look, only on a site with a trip or far from the shop.
     ...(siteTrips.shows ? { trips: tripsStripWords(siteTrips.records ?? [], todayYmdInAppTz(), tripOffers) } : {}),
+    // Schedule, only on a site with a stage line this person is on the desk of.
+    ...(siteStart.shows ? { schedule: scheduleLookWords(siteStart.stages.map((s) => s.stage), siteStart.site, todayYmdInAppTz()) } : {}),
   }
 
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
@@ -1840,6 +1864,18 @@ export default function DevelopmentPage() {
             }
           />
         ) : null}
+
+        {/* The Schedule look (punch list #382, PR 5): what must be true before each stage ahead, and where it stands. The card draws only when the look shows. */}
+        <DevelopmentScheduleCard
+          anchorId={DEVELOPMENT_JUMP_ANCHOR.schedule}
+          developmentId={dev.id}
+          read={siteStart}
+          todayYmd={todayYmdInAppTz()}
+          me={{ userId: authUser?.id ?? null, name: profileName ?? '' }}
+          can={{ window: role != null && ['dev', 'master_technician', 'assistant', 'controller', 'estimator'].includes(role), notice: isOfficeRole(role), company: isOfficeRole(role) }}
+          foldFor={(line) => ({ open: !isFolded(lookFolds, 'schedule', false), onToggle: () => toggleLook('schedule'), line })}
+          contactLine={people?.gcContact?.name ? `${people.gcContact.name} is the GC’s contact on the bids.` : null}
+        />
       </div>
       {chipConfirm ? (
         <DevelopmentChipConfirm title={chipConfirm.title} rows={chipConfirm.rows} preview={chipConfirm.preview} previewCaption={chipConfirm.previewCaption} confirmLabel={chipConfirm.confirmLabel} busy={busy} onConfirm={chipConfirm.onConfirm} onCancel={() => setChipConfirm(null)} />

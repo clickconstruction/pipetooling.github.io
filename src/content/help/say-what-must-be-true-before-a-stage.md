@@ -123,6 +123,30 @@ A green box has a yes. An empty box is still open. Every bullet counts the same,
 
 The bar reads 100% only when every bullet has a yes.
 
+## See every stage on a site
+
+The site's Development page has a look named **Schedule**. It shows one card for each stage ahead on the site.
+
+1. Open the site's Development page.
+2. Press **Schedule** at the end of the strip of looks.
+
+A banner on top says how many answers they owe us. It also says how many days they have moved on the site.
+
+Each card has a coloured dot and one sentence. The sentence says where the stage stands.
+
+| Dot | What it means |
+|---|---|
+| Red | Their day is after ours, or the day to decide has come. |
+| Amber | We are waiting on something, and the day to decide is near. |
+| Green | Nothing is open. |
+| Grey | The stage has no list yet, or its day to decide is far off. |
+
+The cards with trouble come first. Red is on top, then amber, green and grey.
+
+Rest on a card's ready bar to see what it still takes to start. On a phone, press the bar.
+
+Press the card's one press to open the stage. You see the same four lines and the same lists as on the job.
+
 ## Add a bullet to the company's list
 
 The office can keep a good bullet for every job.
