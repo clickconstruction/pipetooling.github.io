@@ -75,7 +75,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Lines | Symbol | Role |
 |---|---|---|
 | 1–92 | imports | 7 eager pages (6–12: 5 auth + `BidRoom`, `SubmittalRoom`), **34 `lazy()` staff pages** (13–46), 14 eager public/room pages (47–60, incl. `PartnerStatement` 56), 30 contexts/components |
-| 100–118 | `AuthGateLoadingScreen` | "Loading…", then after 5 s a `/fix-cache.html` link |
+| 100–118 | `AuthGateLoadingScreen` | "Loading…", then after 5 s a `/fix-cache.html` link; no header is over it, so it draws in `.appBareScreen` (`index.css`), which pays the phone's top inset for every header-less screen |
 | 120–125 | `ProtectedRoute` | `useAuth` loading → gate screen; no user → `SignedOutGate` (`components/SignInReturn.tsx`): keeps the asked-for address for a visitor who arrived signed out, then `/sign-in` |
 | 127–146 | `SignInRoute` | signed in → `LeaveSignIn`: the one-shot return address (the page's own `?next=`, else `POST_LOGIN_REDIRECT_KEY`, written only by `keepReturnAddress` and good for an hour; a path on this site only, `lib/signInReturnAddress.ts`) else the role's landing |
 | 149–184 | `AuthHandler` | `#access_token&refresh_token&type=magiclink` → clear hash → `setSession` → `wipeServiceWorkersAndCaches` → reload |

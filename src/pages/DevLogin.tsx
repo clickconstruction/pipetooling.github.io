@@ -95,7 +95,7 @@ export default function DevLogin() {
 
   if (autoFiring && loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <div className="appBareScreen">
         <p>Signing in as {twinAliasEmail(asParam) ?? DEV_LOGIN_EMAIL}…</p>
       </div>
     )
