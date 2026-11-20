@@ -2,7 +2,7 @@
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
 group: close
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`, call 8 on `claude/402-precise-location-use-where`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · call 8, the task screens and the box map, is v2.8011 · all five merged and live on clicktooling.com by 2026-11-20 (#8981, #8989, #9000, #9008, #9016) · walked on the live site with a stood-in reading: `/way` as an iPhone, an Android and a desk, and the box map in light and dark
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`, PR 4 on `claude/402-precise-location-way`, call 8 on `claude/402-precise-location-use-where`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001 · PR 4, the shared map, is v2.8004 · call 8, the task screens and the box map, is v2.8011 · all five merged and live on clicktooling.com by 2026-11-20 (#8981, #8989, #9000, #9008, #9016) · walked on the live site with a stood-in reading: `/way` as an iPhone, an Android and a desk, and the box map in light and dark · audited 2026-11-20 by a second session on made-up readings, every screen at 320, 390 and 1280 px in light and dark: the rule and the seven screens held, six faults were found around them, five are in fix PRs (#9071, #9078, #9083, #9085, #9091) and one waits for the owner (what the shared map sends for an area)
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -11,7 +11,7 @@ summary: >
   signal, or a reading so rough that the switch looks off. When it looks off, the line sets the
   phone's two numbers side by side and lists the steps to the switch for this phone alone. The map
   pulls back to the whole circle, and the dot stays where it was.
-next: The first walk on an iPhone with Precise Location switched off. Write the margin the phone shows on this card. Then the card can close.
+next: The first walk on an iPhone with Precise Location switched off. Write the margin the phone shows on this card, and how old the reading's own time stamp is. Decide what the shared map sends for an area (*The audit*). Then the card can close.
 size: M as a train of four (S · M · S · S), then call 8 as its own follow-up (S)
 blocker: A person with an iPhone. Every call was taken at the pick on 2026-11-19 and all of it is built. No real phone has been read with the switch off, so the first walk on one is the proof.
 opinion: build — four small PRs, and it answers the first question a person on site has
@@ -275,8 +275,8 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
   change to that file.
 - **Near me**, on the window a painter picks a job from, lists the jobs within about five miles of
   one reading (`paintedMapJobPickerIo.ts`). A rough reading lists the jobs near the middle of an
-  area. The Tally's own **My location** press flies its map the same way. Neither is part of this
-  card.
+  area. Neither is part of this card. The Tally's own **Use my location** did more than fly its
+  map: on the **Pin a box** sheet it could pin a box from a rough reading. See *The audit*.
 - On a desk, `/way`'s sure sentence says *Your phone is sure within 15 ft.*, while its weak one
   says *This device is only sure…*. The sure sentence is older than this card. Not part of it.
 
@@ -313,7 +313,7 @@ Built on Grace's word of 2026-11-19, and merged and live on 2026-11-20.
   back to the circle when the area's edge is near the map. The journey step `painted-map-page`
   gained a sentence, and the page's two other registrations quote none of its words.
 - **Call 8 is v2.8011 (#9016).** The seven screens that take one reading of the phone no longer act on a
-  rough one: a task's **Use where I am**, **How far am I?**, **Show where I am** and **Standing at
+  rough one (the Tally's own two map sheets were not among them, see *The audit*): a task's **Use where I am**, **How far am I?**, **Show where I am** and **Standing at
   this task?**, and the box map's **Use my location**, **Show where I am**, **I found it** and
   **Pin it here**. The two that set a spot draw the line in every state. That version's fragment
   has the table of what each screen does and says. A walk of the box map found the steps drawn
@@ -328,3 +328,65 @@ Built on Grace's word of 2026-11-19, and merged and live on 2026-11-20.
 - **What is left is the walk on a real iPhone.** What a screen does about a weak or a rough reading
   is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`, the place
   panel's in `paintedPlaceDot.ts`, and the task screens' and the box map's in `taskPlaceReading.ts`.
+
+## The audit, 2026-11-20
+
+A second session read the five PRs and walked every screen in a headless Chrome with a stand-in for
+the phone's reading: the walk, **Put the dot where I am**, `/way/sample`, a task's **Where is it?**
+sheet and the box map, as an iPhone, an Android and a desk, at 320, 390 and 1280 px, in light and
+dark. Every write was refused. No real phone was read, so everything here rests on made-up readings.
+
+**What held.**
+
+- The rule, against readings of each kind: 4.5 m, 20 m, 35 m, 100 m, 300 m, 1,000 m, 1,414 m, 3,200 m
+  and 20 km on an iPhone, 2,000 m on Android, 12 m, 140 m and 8 km on a desk. Each edge reads as the
+  picks say, and no margin is worded tighter than the phone gave it.
+- Android's rough area cannot read as a spot. Its own code reports the larger of its set width, about 2 km, and the true
+  margin, never under 200 m, and Android 17 only widens the area where few people live.
+- Every screen drew what its fragment's table says, and nothing ran wider than the screen at 320 px.
+  The Google canvas of #387 honours `me.area` and `marginFrameStep`.
+
+**Found, and in fix PRs.**
+
+| Fault | What a person met | PR |
+|---|---|---|
+| A rough reading with an old time stamp was dropped before it was called rough (`walkFix`) | The walk could say *Finding you…* for as long as an iPhone with the switch off handed its one remembered reading. From Apple's documents, not seen on a phone. | #9071 |
+| A press the phone did not answer said so at the top of the place panel, off the screen, in the box map's words (*Drag the map by hand*) | **Put the dot where I am** looked as if it did nothing | #9078 |
+| **Draw it by hand instead** left the map where the rough reading had pulled it | A view four miles across, under *Press the map where the line starts.* | #9083 |
+| **Show the steps** was 32 px tall, and the two values broke mid-phrase at 320 px | *within 2* / *miles* | #9085 |
+| The Tally's own **Use my location**, on **Pin a box** and **Site map**, still took a rough reading as a spot. A box map with nowhere to open had no map to drag after one. | A box could be pinned miles off, reading *within 10,500 ft*. On a job with no address on the map, **Move the pin by hand** was a dead end. | #9091 |
+
+**For the owner: what the shared map sends for an area.**
+
+While **Show where I am** is on, `/way` sends every reading's point to the company, a rough one too,
+and the first one at once. The office's **Who opened it** reads the point and not its margin. It says
+*Showed where they were* and opens a pin on it.
+
+- A reader whose phone gives only an area is shown at its middle, which can be miles from them.
+  The page tells that reader *the map cannot show where you stand*, and two lines below says the
+  company *sees where you are*.
+- A reader with the switch on can open with one reading off a cell tower. That one is kept as the
+  first point. If they close the page within a minute, it is the only point the office has.
+- It is a wrong record, not a leak: the reader pressed the press, and an area says less than a spot.
+  How many visits it has touched is not known. The visits table reads as empty to the dev seat.
+
+The fix is client only, with no migration. It has three parts.
+
+1. The office's sheet reads `first_accuracy_m` and `last_accuracy_m`. For a rough point it says
+   *Their phone gave only an area, 4 miles across.* and offers no pin.
+2. The page sends nothing while it is still waiting on a rough reading. Once the readings have
+   stayed rough it either sends the area as an area, or sends nothing. That choice is the owner's.
+3. The page's own line under an area says which of the two it did.
+
+**Known, and left.**
+
+- After **Keep painting**, an old rough reading can say *looks off* once more. Hiding it by its time
+  stamp would also hide the one reading an iPhone with the switch off hands back, so it stays.
+- The box map's **Show where I am** says nothing before the first reading. *Finding you…* shows only
+  once a rough one has come.
+- An app saved to an Android Home Screen is told to press and hold *the browser's icon*. The person
+  never opened a browser. A browser on an iPhone that calls itself Safari, as Brave does, is sent to
+  *Safari Websites*.
+- With the steps open on a 320 px phone, the task sheet's map is down to 60 px.
+- The pill *Drag the blue dot onto the spot.* still touches the map's credit line on a phone.
+
