@@ -54,6 +54,21 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     copyList = null
   })
 
+  it('a bill that went to the GC names the GC and no address of its own, and no address at all still reads true (v2.7972)', async () => {
+    const { unmount } = render(<StripeInvoiceSendFromStripeButton {...props} customerEmail={null} payer="gc" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
+    const gc = await screen.findByRole('dialog')
+    expect(gc.textContent).toContain('The bill email goes to the GC, at the address on the Stripe invoice from Click Plumbing and Electrical; they pay on Stripe.')
+    unmount()
+    render(<StripeInvoiceSendFromStripeButton {...props} customerEmail={null} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
+    const plain = await screen.findByRole('dialog')
+    expect(plain.textContent).toContain('The bill email goes to the address on the Stripe invoice from Click Plumbing and Electrical')
+    expect(plain.textContent).not.toContain('no email on file')
+  })
+
   it('the confirm names the address, the sender and where the customer pays', async () => {
     render(<StripeInvoiceSendFromStripeButton {...props} />)
     await settle()
