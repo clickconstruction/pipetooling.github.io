@@ -201,6 +201,56 @@ describe('a paper built from settings, on Contracts and clauses', () => {
     expect(within(win).getByRole('status').textContent).toBe('Photos and video has no wording for Strict.')
   })
 
+  it('reads the summary beside the paper: the level in words, then a line a setting', async () => {
+    await open()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Preview with settings' }))
+    const win = screen.getByRole('dialog')
+    expect(win.querySelector('[data-clause-summary]')).toBeNull()
+    fireEvent.click(within(win).getByRole('button', { name: 'Summary' }))
+    const summary = win.querySelector('[data-clause-summary]') as HTMLElement
+    expect(summary.querySelector('[data-clause-summary-level]')?.textContent).toBe('Standard, aligned with regular businesses')
+    expect([...summary.querySelectorAll('[data-clause-summary-line] dt')].map((x) => x.textContent)).toEqual(['Photos and video: Standard', 'How long secrecy lasts: Short'])
+    expect(within(summary).getByText('The summary is made from the same settings as the paper, so the two cannot disagree. It is not the contract.')).toBeTruthy()
+    expect(win.querySelector('[data-clause-paper]')).toBeNull()
+    fireEvent.change(within(win).getByLabelText('Photos and video'), { target: { value: 'off' } })
+    expect(summary.querySelector('[data-clause-summary-level]')?.textContent).toBe('A mix of its own')
+    expect(within(summary).getByText('Nothing is asked.')).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Paper' }))
+    expect(win.querySelector('[data-clause-paper]')).toBeTruthy()
+  })
+
+  it('prints the sample: the same paper for a made-up party, with SAMPLE across it and its stamp', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    await open()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Preview with settings' }))
+    fireEvent.change(screen.getByLabelText('Photos and video'), { target: { value: 'strict' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Print the sample' }))
+    const sample = screen.getByRole('dialog', { name: 'The sample, as it prints' })
+    const sheet = sample.querySelector('[data-clause-sample]') as HTMLElement
+    expect(sheet.querySelector('[data-clause-sample-mark]')?.textContent).toBe('SAMPLE')
+    expect(within(sheet).getByText('Jordan Sample, Sample Sub LLC')).toBeTruthy()
+    expect(within(sheet).getByText('Job J0000, a sample')).toBeTruthy()
+    expect([...sheet.querySelectorAll('[data-clause-base] li')].map((li) => li.textContent)).toEqual(['Fixed placeholder one.', 'Photo placeholder B.', 'Secrecy lasts one year.'])
+    expect(sheet.querySelector('[data-clause-between]')?.textContent).toBe('Between Click Construction and Sample Sub LLC.')
+    expect(sheet.querySelector('[data-clause-sample-stamp]')?.textContent).toBe('SAMPLE, not for signature. A mix of its own. Revision 4.')
+    expect(sample.closest('[data-theme="light"]')).toBeTruthy()
+    fireEvent.click(within(sample).getByRole('button', { name: 'Print' }))
+    expect(print).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(sample).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'The sample, as it prints' })).toBeNull()
+    print.mockRestore()
+  })
+
+  it('has no sample for a paper that cannot go', async () => {
+    await open(library({ withoutStrict: true }))
+    fireEvent.click(within(card()).getByRole('button', { name: 'Preview with settings' }))
+    const win = screen.getByRole('dialog')
+    expect((within(win).getByRole('button', { name: 'Print the sample' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.change(within(win).getByLabelText('Photos and video'), { target: { value: 'strict' } })
+    expect((within(win).getByRole('button', { name: 'Print the sample' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(win).getByText('No sample while the paper cannot go.')).toBeTruthy()
+  })
+
   it('gives an ordinary paper its first settings list, the keys made from the names', async () => {
     await open()
     fireEvent.click(within(card('doc-msa')).getByRole('button', { name: 'Settings list' }))
