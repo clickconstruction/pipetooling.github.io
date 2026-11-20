@@ -26,6 +26,7 @@ import {
   builtTile,
   clockAt,
   clockDaysWords,
+  clockMiddleNearStart,
   clockNote,
   clockScaleDays,
   clockTile,
@@ -368,6 +369,9 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
   const left = clockAt(q1, scale)
   const width = Math.max(1.5, clockAt(q3, scale) - left)
   const mid = clockAt(median, scale)
+  // A middle close to the bar's start is said beside the first word: under its mark the two run together on a phone.
+  const near = clockMiddleNearStart(mid)
+  const days = { whiteSpace: 'nowrap', color: 'var(--text-strong)' } as const
   return (
     <div data-market-clock={clock.kind}>
       <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{clockTitle(clock)}</div>
@@ -376,8 +380,11 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
         <span style={{ position: 'absolute', top: -3, bottom: -3, left: `${mid}%`, width: 2, background: 'var(--text-strong)' }} />
       </div>
       <div style={{ position: 'relative', height: 18, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-        <span style={{ position: 'absolute', left: 0 }}>{clock.kind === 'application' ? 'applied' : 'issued'}</span>
-        <strong style={{ position: 'absolute', left: `${Math.max(14, Math.min(80, mid))}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>{clockDaysWords(median)}</strong>
+        <span data-clock-start style={{ position: 'absolute', left: 0, display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
+          {clock.kind === 'application' ? 'applied' : 'issued'}
+          {near && <strong style={days}>{clockDaysWords(median)}</strong>}
+        </span>
+        {!near && <strong style={{ ...days, position: 'absolute', left: `${Math.min(80, mid)}%`, transform: 'translateX(-50%)' }}>{clockDaysWords(median)}</strong>}
         <span style={{ position: 'absolute', right: 0 }}>{scale} days</span>
       </div>
       <div style={{ ...muted, marginTop: 4 }}>{clockNote(clock)}</div>

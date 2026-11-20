@@ -197,6 +197,8 @@ describe('Market, the clock', () => {
     expect(await screen.findByText('San Antonio · application to permit')).toBeTruthy()
     const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
     expect(within(clock).getByText('45 days')).toBeTruthy()
+    // A middle well along the bar is said under its mark, apart from the bar's first word.
+    expect((clock.querySelector('[data-clock-start]') as HTMLElement).textContent).toBe('applied')
     expect(within(clock).getByText(/Half of the applications wait 45 days or more for the permit\./)).toBeTruthy()
     expect(marketIo.loadMarketPermits).toHaveBeenCalledWith('San Antonio', '2025-11-19')
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
@@ -208,7 +210,12 @@ describe('Market, the clock', () => {
     marketIo.loadMarketPermits.mockResolvedValue([])
     draw({ city: 'Austin', rows: AUSTIN_ROWS })
     expect(await screen.findByText('Austin · building permit to the plumber’s permit')).toBeTruthy()
-    expect(within(document.querySelector('[data-market-clock="plumber"]') as HTMLElement).getByText(/Read Austin for who builds\./)).toBeTruthy()
+    const plumber = document.querySelector('[data-market-clock="plumber"]') as HTMLElement
+    expect(within(plumber).getByText(/Read Austin for who builds\./)).toBeTruthy()
+    // The middle is days from the start, where the word issued is: the days are drawn beside the word, once, and not on top of it.
+    const start = plumber.querySelector('[data-clock-start]') as HTMLElement
+    expect(start.textContent).toMatch(/^issued(\d+ days?|the same day)$/)
+    expect(plumber.querySelectorAll('strong')).toHaveLength(1)
     expect(screen.getByText('from a building permit to the plumber’s permit')).toBeTruthy()
     expect(document.querySelector('[data-market-clock="application"]')).toBeNull()
   })
