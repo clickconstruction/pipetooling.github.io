@@ -2672,6 +2672,22 @@ body.my-time-boundary-dragging {
   padding-left: 44px;
   background: linear-gradient(to right, transparent, var(--bg-page) 36px);
 }
+/* On a phone the two bands around the tab row close up (the owner, 2026-11-20).
+   Above: the page's own 0.25rem of top padding is cancelled, and when the row is
+   the first thing under the header the tabs' 6px of transparent press area tucks
+   under `.appMain`'s top padding too, so the filled tab sits 8px below the header's
+   line instead of 18px. Under a banner (the first child of `.appMain` is then the
+   banner, not the page's wrapper) the press area stays clear of it.
+   Below: 0.5rem to the tab's first content instead of 1.5rem. */
+@media (max-width: 640px) {
+  .checklist-tab-bar {
+    margin-top: -0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .appMain > div:first-child .checklist-tab-bar {
+    margin-top: calc(-0.25rem - 6px);
+  }
+}
 
 /* Roadmap toolbar: drop the "Roadmap" label on phones — the picker explains itself */
 @media (max-width: 480px) {
