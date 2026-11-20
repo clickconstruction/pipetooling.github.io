@@ -140,6 +140,8 @@ describe('plan_case → apply_case: the input becomes dev_case_write\'s payload'
     }
     expect(caseInput('plan_case', {})).toMatchObject({ ok: false })
     bad({ person_id: 'Pat Doe', log: ['x'] }, 'plan_case needs case')
+    // Found on the live walk of 0.118.0: find_person answers a login's users.id, and the door wants the roster row's id. The shape says so.
+    expect(caseInput('plan_case', {})).toMatchObject({ ok: false, error: expect.stringContaining("find_person answers a login's users.id, which this door refuses") })
     bad({ person_id: PERSON }, 'nothing to write')
     bad({ person_id: PERSON, items: 'one' }, 'items and log are lists')
     bad({ person_id: PERSON, items: Array.from({ length: CASE_CHANGES_MAX + 1 }, (_, i) => ({ item_no: i + 1, reopen: true })) }, 'at most 50 item changes')

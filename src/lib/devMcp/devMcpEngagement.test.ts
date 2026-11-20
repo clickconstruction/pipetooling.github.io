@@ -74,6 +74,7 @@ describe('plan_engagement → apply_engagement: the input becomes dev_engagement
       if (!r.ok) expect(r.error, words).toContain(words)
     }
     bad(undefined, 'plan_engagement needs engagement')
+    bad(undefined, "find_person answers a login's users.id, which this door refuses")
     bad({ person_id: 'Pat Doe', close: { ended_on: '2026-10-30' } }, 'plan_engagement needs engagement')
     bad({ person_id: PERSON }, 'names none of open, change, close, withdraw')
     bad({ person_id: PERSON, open: { kind: 'employee', started_on: '2026-01-05', source: 'owner' }, close: { ended_on: '2026-02-01' } }, 'names open and close of open, change, close, withdraw')
