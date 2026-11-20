@@ -8871,6 +8871,8 @@ export type Database = {
           office_values: Json | null
           paper_revision: number | null
           partnership_id: string | null
+          party_contact_id: string | null
+          party_name: string | null
           person_id: string | null
           person_name: string
           public_token_expires_at: string | null
@@ -8879,13 +8881,17 @@ export type Database = {
           sign_by: string | null
           signed_at: string | null
           signer_consented_at: string | null
+          signer_email: string | null
           signer_ip: string | null
           signer_last_viewed_at: string | null
+          signer_name: string | null
           signer_printed_name: string | null
           signer_signature_storage_path: string | null
+          signer_title: string | null
           signer_user_agent: string | null
           signing_body_format: string
           signing_body_html: string | null
+          signing_for: string | null
           status: string
           supersedes_person_contract_document_id: string | null
           updated_at: string | null
@@ -8922,6 +8928,8 @@ export type Database = {
           office_values?: Json | null
           paper_revision?: number | null
           partnership_id?: string | null
+          party_contact_id?: string | null
+          party_name?: string | null
           person_id?: string | null
           person_name: string
           public_token_expires_at?: string | null
@@ -8930,13 +8938,17 @@ export type Database = {
           sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
+          signer_email?: string | null
           signer_ip?: string | null
           signer_last_viewed_at?: string | null
+          signer_name?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
+          signer_title?: string | null
           signer_user_agent?: string | null
           signing_body_format?: string
           signing_body_html?: string | null
+          signing_for?: string | null
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -8973,6 +8985,8 @@ export type Database = {
           office_values?: Json | null
           paper_revision?: number | null
           partnership_id?: string | null
+          party_contact_id?: string | null
+          party_name?: string | null
           person_id?: string | null
           person_name?: string
           public_token_expires_at?: string | null
@@ -8981,13 +8995,17 @@ export type Database = {
           sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
+          signer_email?: string | null
           signer_ip?: string | null
           signer_last_viewed_at?: string | null
+          signer_name?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
+          signer_title?: string | null
           signer_user_agent?: string | null
           signing_body_format?: string
           signing_body_html?: string | null
+          signing_for?: string | null
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -9048,6 +9066,13 @@ export type Database = {
             columns: ["partnership_id"]
             isOneToOne: false
             referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_party_contact_id_fkey"
+            columns: ["party_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {

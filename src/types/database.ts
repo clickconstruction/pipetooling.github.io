@@ -32552,6 +32552,8 @@ export type Database = {
           office_values: Json | null
           paper_revision: number | null
           partnership_id: string | null
+          party_contact_id: string | null
+          party_name: string | null
           person_id: string | null
           person_name: string
           public_token_expires_at: string | null
@@ -32560,13 +32562,17 @@ export type Database = {
           sign_by: string | null
           signed_at: string | null
           signer_consented_at: string | null
+          signer_email: string | null
           signer_ip: string | null
           signer_last_viewed_at: string | null
+          signer_name: string | null
           signer_printed_name: string | null
           signer_signature_storage_path: string | null
+          signer_title: string | null
           signer_user_agent: string | null
           signing_body_format: string
           signing_body_html: string | null
+          signing_for: string | null
           status: string
           supersedes_person_contract_document_id: string | null
           updated_at: string | null
@@ -32603,6 +32609,8 @@ export type Database = {
           office_values?: Json | null
           paper_revision?: number | null
           partnership_id?: string | null
+          party_contact_id?: string | null
+          party_name?: string | null
           person_id?: string | null
           person_name: string
           public_token_expires_at?: string | null
@@ -32611,13 +32619,17 @@ export type Database = {
           sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
+          signer_email?: string | null
           signer_ip?: string | null
           signer_last_viewed_at?: string | null
+          signer_name?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
+          signer_title?: string | null
           signer_user_agent?: string | null
           signing_body_format?: string
           signing_body_html?: string | null
+          signing_for?: string | null
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -32654,6 +32666,8 @@ export type Database = {
           office_values?: Json | null
           paper_revision?: number | null
           partnership_id?: string | null
+          party_contact_id?: string | null
+          party_name?: string | null
           person_id?: string | null
           person_name?: string
           public_token_expires_at?: string | null
@@ -32662,13 +32676,17 @@ export type Database = {
           sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
+          signer_email?: string | null
           signer_ip?: string | null
           signer_last_viewed_at?: string | null
+          signer_name?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
+          signer_title?: string | null
           signer_user_agent?: string | null
           signing_body_format?: string
           signing_body_html?: string | null
+          signing_for?: string | null
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -32729,6 +32747,13 @@ export type Database = {
             columns: ["partnership_id"]
             isOneToOne: false
             referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_party_contact_id_fkey"
+            columns: ["party_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {
@@ -45028,6 +45053,10 @@ export type Database = {
         Args: { p_from: string; p_into: string }
         Returns: undefined
       }
+      contacts_fold_papers: {
+        Args: { p_from: string; p_into: string }
+        Returns: undefined
+      }
       contacts_fold_quick_replies: {
         Args: { p_from: string; p_into: string }
         Returns: undefined
@@ -49606,6 +49635,10 @@ export type Database = {
         Returns: boolean
       }
       painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
+      paper_party_contact: {
+        Args: { p_record_id: string; p_record_table: string }
+        Returns: string
+      }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {
         Args: { p_job_id: string; p_partnership_id: string }
@@ -49894,6 +49927,20 @@ export type Database = {
           p_created_by: string
           p_job_ledger_id: string
           p_project_id: string
+        }
+        Returns: boolean
+      }
+      primary_user_can_read_job_reports: {
+        Args: { p_job_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      primary_user_can_read_report: {
+        Args: {
+          p_bid_id: string
+          p_created_by: string
+          p_job_ledger_id: string
+          p_project_id: string
+          p_user_id: string
         }
         Returns: boolean
       }
@@ -50232,6 +50279,10 @@ export type Database = {
         }[]
       }
       report_edit_window_days: { Args: never; Returns: number }
+      report_jobs_open_to_user: {
+        Args: { p_job_ids: string[]; p_user_id: string }
+        Returns: string[]
+      }
       report_sub_visibility_months: { Args: never; Returns: number }
       reporting_window_calendar_civil_day: {
         Args: { p_civil_day: string; p_timezone: string }
@@ -50264,6 +50315,14 @@ export type Database = {
           window_end_utc: string
           window_start_utc: string
         }[]
+      }
+      reports_open_to_address: {
+        Args: { p_email: string; p_report_ids: string[] }
+        Returns: string[]
+      }
+      reports_open_to_user: {
+        Args: { p_report_ids: string[]; p_user_id: string }
+        Returns: string[]
       }
       request_field_job: {
         Args: {
