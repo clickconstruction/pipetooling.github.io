@@ -9,8 +9,11 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { SheetPaperRead } from '../components/documentBuilder/SheetPaper'
+import { SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
+import { INSURANCE_SHEET_FIXTURE } from '../lib/documentBuilder/insuranceSheet.fixture'
 import { DOCUMENT_BUILDER_LINK_WORDS as WORDS } from '../lib/documentBuilder/link'
 import { openBuilderLink, type BuilderLinkView } from '../lib/documentBuilder/linkIo'
+import { layOver, startJobSheet } from '../lib/documentBuilder/sheet'
 
 type Props = {
   /** Opens the link. For a smoke. */
@@ -26,13 +29,30 @@ const FINE: CSSProperties = { margin: 0, fontSize: '0.75rem', color: 'var(--text
 
 type View = BuilderLinkView | { kind: 'reading' }
 
+/** What customers see: a made-up sheet on a made-up job. Its amounts are words, not numbers: the app sets no amount. */
+const SAMPLE: BuilderLinkView = {
+  kind: 'sheet',
+  revision: 1,
+  job: 'Cedar Park Medical Office',
+  sheet: layOver(
+    { ...INSURANCE_SHEET_FIXTURE, cover: INSURANCE_SHEET_FIXTURE.cover.map((c) => ({ ...c, limit: 'A made-up amount' })) },
+    startJobSheet({ name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', insured: ['Pecan Ridge Holdings, Ltd.'] }),
+  ),
+}
+
 export default function BuilderLink({ open = openBuilderLink }: Props) {
   const { code = '' } = useParams()
+  // What customers see: the sample token draws a made-up sheet and reads no link, table or function.
+  const sample = sampleStateFromToken(code) !== null
   const [view, setView] = useState<View>({ kind: 'reading' })
   const [tries, setTries] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    if (sample) {
+      setView(SAMPLE)
+      return
+    }
     setView({ kind: 'reading' })
     void open(code).then((got) => {
       if (!cancelled) setView(got)
@@ -40,13 +60,18 @@ export default function BuilderLink({ open = openBuilderLink }: Props) {
     return () => {
       cancelled = true
     }
-  }, [open, code, tries])
+  }, [open, code, tries, sample])
 
   return (
     <div data-theme="light" data-builder-link={view.kind} style={PAGE}>
       {/* The page is the sheet and little else, so printing it is hiding what is not the sheet. */}
       <style>{`@page { size: letter; margin: 0.5in; } @media print { .builder-link-chrome { display: none !important; } [data-builder-link] { background: none !important; padding: 0 !important; min-height: 0 !important; } [data-sheet-paper] { border: 0 !important; padding: 0 !important; } }`}</style>
       <div style={COLUMN}>
+        {sample ? (
+          <div role="status" className="builder-link-chrome" style={{ background: 'var(--text-strong)', color: 'var(--surface)', fontSize: 13, padding: '8px 16px', borderRadius: 8 }}>
+            {SAMPLE_BANNER_TEXT}
+          </div>
+        ) : null}
         {view.kind === 'reading' ? <p style={FINE}>Opening the link…</p> : null}
         {view.kind === 'gone' ? (
           <div style={CARD} role="status">
