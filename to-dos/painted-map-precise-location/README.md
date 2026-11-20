@@ -2,7 +2,7 @@
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
 group: ready
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`, PR 2 on `claude/402-precise-location-walk`, PR 3 on `claude/402-precise-location-dot`) · PR 1, the kernel, is v2.7984 · PR 2, the walk, is v2.7994 · PR 3, Put the dot where I am, is v2.8001
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -11,7 +11,7 @@ summary: >
   signal, or a reading so rough that the switch looks off. When it looks off, the line sets the
   phone's two numbers side by side and lists the steps to the switch for this phone alone. The map
   pulls back to the whole circle, and the dot stays where it was.
-next: The first walk on an iPhone with Precise Location switched off, now that the walk's line is built, and PR 3 (Put the dot where I am).
+next: The first walk on an iPhone with Precise Location switched off, now that the walk's line is built, and PR 4 (the shared map at `/way`).
 size: M as a train of four (S · M · S · S), then call 8 as its own follow-up (S)
 blocker: None. Every call was taken at the pick on 2026-11-19. No real phone has been read with the switch off, so the first walk on one is the proof.
 opinion: build — four small PRs, and it answers the first question a person on site has
@@ -262,6 +262,10 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
 - The two older pills over the map, for placing and for drawing, sit 26 px up and touch the map's
   credit line on a phone, where the credit runs to two rows. The new pill sits 42 px up. Not part
   of this card.
+- **Start the map where I am**, in the draw panel of a map that opened with no address, flies the
+  map to whatever one reading it gets (`startWhereIAm`). On a rough reading that is the middle of an
+  area miles off, with no word about why. It wants what **Put the dot where I am** got in v2.8001:
+  stay put and draw the line. Not part of this card.
 
 ## Neighbours
 
@@ -286,5 +290,10 @@ Building, on Grace's word of 2026-11-19.
   dark, as Chrome on Android and as a desk, and that version's fragment has what it showed.
 - **A second canvas** (#387's Google map) does what that fragment lists under *What a second canvas
   must do*: it takes `me.area`, draws the dashed circle with no dot, and asks `marginFrameStep`.
-- **Next is the walk on a real iPhone**, then PR 3. What a screen does about a weak or a rough
-  reading is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`.
+- **PR 3, Put the dot where I am, is v2.8001.** A rough reading leaves the dot and the map where
+  they were, and the place panel draws the line with *The dot was not moved.* A press has no better
+  reading to wait for, so the line calls it rough at once. The panel speaks of the phone only from
+  a reading taken on that visit, so a place opened to change no longer says *Found you.*
+- **Next is the walk on a real iPhone**, then PR 4. What a screen does about a weak or a rough
+  reading is its own sentence, kept with the screen: the walk's two are in `paintedWalkWords.ts`
+  and the place panel's in `paintedPlaceDot.ts`.

@@ -5,16 +5,21 @@
  *
  * The chips are kinds (punch list #393): each gives the dot its own mark, and a name to a place
  * that has none yet. A name somebody typed is theirs, and a chip never changes it.
+ *
+ * Under **Put the dot where I am** the Precise Location line says how that one reading did (punch
+ * list #402): on, a weak signal, or a rough area. A rough reading does not move the dot, and the
+ * line then shows the way to the switch.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
 import { PAINTED_PLACE_KINDS, PLACE_KIND_HINT_WORDS, PLACE_WARN_COLOR, pressPlaceKindChip, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
+import { PLACE_DOT_WEAK_NOTE_WORDS, placeDotRoughNoteWords } from '../../lib/paintedMap/paintedPlaceDot'
 import { PAINTED_PLACE_NO_CODES_WORDS } from '../../lib/paintedMap/paintedPlacePhoto'
-import { isPoorFix } from '../../lib/paintedMap/paintedTrack'
-import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { PlaceGlyphDrawing } from './PaintedPlaceMark'
+import { PreciseLocationLine } from './PreciseLocationLine'
 
 /** The photo as the panel hands it over: a new picture, the one the place already has, or none. */
 export type PaintedPlacePhotoChoice = { kind: 'new'; id: string; blob: Blob } | { kind: 'keep' } | { kind: 'none' }
@@ -24,8 +29,13 @@ type Props = {
   place: PaintedPlace | null
   /** The saved photo, to look at. */
   photoUrl: string | null
-  /** The phone's margin, while the dot still sits on its reading. Null once the dot was moved by hand. */
+  /**
+   * The margin of a reading taken on this visit, while the dot still sits on it. Null once the dot was moved by hand,
+   * and for a saved place's own margin, which says nothing of the phone as it is now.
+   */
   accuracyM: number | null
+  /** The last press got a rough reading: the phone gave an area, and the dot was left where it was. Its margin. */
+  roughAccuracyM?: number | null
   /** A reading was taken and the dot was then moved off it. */
   movedOffReading: boolean
   finding: boolean
@@ -55,7 +65,7 @@ function handHeld(): boolean {
   }
 }
 
-export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
+export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
@@ -68,8 +78,13 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
     if (shot) setKeepSaved(false)
   }, [shot])
 
-  const sure = taskPlaceAccuracyWords(accuracyM)
-  const poor = isPoorFix(accuracyM)
+  const phoneKind = usePhoneKind()
+  // A rough reading moves nothing on the map, so its words are the only sign the press did anything. On a phone they
+  // can land under the fold of this panel: bring them into view when they come.
+  const roughRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (roughAccuracyM != null) roughRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [roughAccuracyM])
   const preview = shot?.previewUrl ?? (keepSaved ? photoUrl : null)
   const hasPhoto = Boolean(shot) || keepSaved
   const waiting = busy || shrinking
@@ -174,14 +189,15 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
         <button type="button" style={finding ? deadPress : press} disabled={finding} onClick={onUseWhereIAm}>
           {finding ? 'Finding you…' : 'Put the dot where I am'}
         </button>
-        {sure && poor ? (
-          <p role="status" data-painted-place-fix="poor" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
-            Your phone is only sure {sure}. Drag the dot onto the spot.
-          </p>
-        ) : sure ? (
-          <p role="status" data-painted-place-fix="ok" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-green-700)' }}>
-            Found you. Your phone is sure {sure}.
-          </p>
+        {roughAccuracyM != null ? (
+          // One reading, asked for by the press: there is no better one to wait for, so it is called rough at once.
+          <div ref={roughRef} data-painted-place-fix="rough">
+            <PreciseLocationLine accuracyM={roughAccuracyM} kind={phoneKind} roughHeld roughNote={placeDotRoughNoteWords(phoneKind)} />
+          </div>
+        ) : accuracyM != null ? (
+          <div data-painted-place-fix="read">
+            <PreciseLocationLine accuracyM={accuracyM} kind={phoneKind} roughHeld weakNote={PLACE_DOT_WEAK_NOTE_WORDS} />
+          </div>
         ) : movedOffReading ? (
           <p role="status" data-painted-place-fix="moved" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             You moved the dot. The place is where the dot is now.
