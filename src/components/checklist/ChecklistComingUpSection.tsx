@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { sequentialWaiting, type SequentialTaskLite } from '../../lib/checklistTechTreeGraph'
+import { WAITING_FOR_OPEN_WORDS, waitingForFoldLine } from '../../lib/checklistWaitingForFold'
 
 export type WaitingGroup = {
   blockerId: string
@@ -142,7 +143,7 @@ export function useComingUpWaitingGroups(authUserId: string | null): WaitingGrou
 
 /**
  * The grouped waiting list itself (dashed group cards + show-more), shared by
- * the Checklist/Dashboard section and the My Inbox strip. `groupBackground`
+ * the Checklist's fold and the Dashboard's My Inbox strip. `groupBackground`
  * paints each dashed card (the strip sits on --bg-subtle, so its cards use
  * --surface); the default stays transparent.
  */
@@ -236,23 +237,83 @@ export function ComingUpWaitingGroupList({ groups, groupBackground }: { groups: 
 }
 
 /**
- * "⏳ Waiting For" (v2.2264, grouped v2.2269): header + grouped waiting list as
- * a standalone section — the Checklist Today tab's rendering. The Dashboard
- * moved to the My Inbox footer strip in v2.2650 (same hook + list, different
- * shell in DashboardMyInboxCard). Renders nothing while empty.
+ * The fold itself: one row that says what waits, and the grouped list under it once pressed. Folded on every mount and
+ * never remembered, the same as the Dashboard's My Inbox strip, whose shell this copies (the dashed quiet box, the
+ * count and peek while folded, the ⌄ that turns to ⌃). The row is one real button with `aria-expanded`, which is also
+ * what lets it open inside a look at another person's Task Mode (`lookAllowsPress`). Draws nothing with nothing waiting.
+ */
+export function ChecklistWaitingForFold({ groups }: { groups: WaitingGroup[] }) {
+  const [open, setOpen] = useState(false)
+  const listId = useId()
+  const line = waitingForFoldLine(groups)
+
+  if (!line) return null
+
+  return (
+    <div
+      data-waiting-for={open ? 'open' : 'folded'}
+      style={{
+        margin: '1rem 0 0.75rem',
+        background: 'var(--bg-subtle)',
+        border: '1px dashed var(--border)',
+        borderRadius: 11,
+        padding: open ? '0 0.6rem 0.25rem' : 0,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.65rem',
+          width: '100%',
+          minHeight: 44,
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+          padding: open ? '0.55rem 0.15rem' : '0.55rem 0.75rem',
+        }}
+      >
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+            <span aria-hidden>⏳ </span>Waiting For
+          </span>
+          <span style={{ display: 'flex', gap: '0.3rem', minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {open ? (
+              <span>{WAITING_FOR_OPEN_WORDS}</span>
+            ) : (
+              <>
+                <span data-waiting-for-count style={{ flexShrink: 0, fontWeight: 600, color: 'var(--text-700)' }}>
+                  {line.countWords}
+                </span>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>· {line.peek}</span>
+              </>
+            )}
+          </span>
+        </span>
+        <span aria-hidden style={{ fontSize: '1rem', color: 'var(--text-muted)', flexShrink: 0 }}>{open ? '⌃' : '⌄'}</span>
+      </button>
+      {open ? (
+        <div id={listId}>
+          <ComingUpWaitingGroupList groups={groups} groupBackground="var(--surface)" />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * "⏳ Waiting For" (v2.2264, grouped v2.2269): the Checklist Today tab's section, the fetch joined to the fold. It is
+ * reference, not work, so it starts folded (`ChecklistWaitingForFold`). The Dashboard moved to the My Inbox footer
+ * strip in v2.2650 (same hook + list, its own shell in DashboardMyInboxCard). Renders nothing while empty.
  */
 export function ChecklistComingUpSection({ authUserId }: { authUserId: string | null }) {
   const groups = useComingUpWaitingGroups(authUserId)
-
-  if (groups.length === 0) return null
-
-  return (
-    <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>⏳ Waiting For</span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>yours, once the step ahead clears</span>
-      </div>
-      <ComingUpWaitingGroupList groups={groups} />
-    </div>
-  )
+  return <ChecklistWaitingForFold groups={groups} />
 }

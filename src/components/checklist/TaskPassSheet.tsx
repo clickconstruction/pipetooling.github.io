@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { TaskChoiceRows } from './TaskChoiceRows'
 import { PASS_TITLE, passAnswers, passCountWords, passSummary, type PassAnswer, type TaskDoerTarget } from '../../lib/tasks/taskDoerActs'
 
 /**
@@ -71,20 +72,8 @@ export function TaskPassSheet({
                 {error}
               </p>
             ) : null}
-            <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
-              {passAnswers(task).map((c, i) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  data-pass-answer={c.key}
-                  disabled={busy}
-                  onClick={() => onAnswer(c.key)}
-                  style={{ display: 'grid', gap: 1, width: '100%', minHeight: 50, padding: '8px 12px', textAlign: 'left', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', border: 'none', borderTop: i === 0 ? 'none' : '1px solid var(--border)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
-                >
-                  <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{c.label}</span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.words}</span>
-                </button>
-              ))}
+            <div style={{ marginTop: 12 }}>
+              <TaskChoiceRows choices={passAnswers(task)} onPick={onAnswer} busy={busy} keyAttr="data-pass-answer" />
             </div>
             {sorted > 0 ? (
               <p role="status" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--text-green-700)' }}>

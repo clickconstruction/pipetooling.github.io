@@ -28,3 +28,5 @@ Since [`20261119063000`](./20261119063000_permit_plumbing_ties.md) a San Antonio
 ## Release order
 
 Merge after [#8901](https://github.com/clickconstruction/pipetooling.github.io/pull/8901), then `supabase db push` from a main checkout. Order against the client deploy does not matter. Time `research_permits_v3` for San Antonio signed in: v2 took 68 ms.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); types regenerated in #8936.

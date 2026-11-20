@@ -202,6 +202,8 @@ Either answer keeps the record right, and History shows a skipped day as **Skipp
 
 ## Choose what to do first
 
+**⋯ More** on a task opens a short list of choices. Each choice has a picture beside its name and one line on what the choice does.
+
 The **Next** card is the first open task in the order the office set. Want to start on another one? Press **⋯ More** on that task, then **Do first**. The task moves into **Next**, and a line under the label reads *You picked this to do first.*
 
 Your pick is kept on this phone or computer. Nobody else sees it. To go back to the list's own order, press **⋯ More** on the Next card, then **Stop doing it first**.
@@ -260,4 +262,4 @@ Assigned to a task someone else marked done, but it isn't? On **History**, tap t
 
 ## ⏳ Waiting For
 
-Roadmap tasks that are yours but not yet ready show in **Waiting For**. They are grayed, with no checkbox. On Checklist → **Today** it's its own section. On the Dashboard it's a quiet folded strip at the foot of the **My Inbox** card. The strip shows the count plus a peek at the first blocker. Tap to unfold. They're grouped under the step that's holding them. Each group names that task once, with who's on it and the stage. Your waiting tasks are listed beneath in the order they'll unlock. A small *then* marks the ones queued behind another. Only the first three groups show. Tap **…and N more steps ahead** for the rest. The moment a step ahead is done, your task moves onto your list on its own.
+Roadmap tasks that are yours but not yet ready show in **Waiting For**. Waiting tasks are grayed, with no checkbox. On Checklist → **Today** it is one folded row under your tasks. The row says how many tasks wait and behind how many steps, like *5 tasks behind 2 steps*. Tap the row to open the list. Tap it again to fold it. The row is folded each time you open the page. On the Dashboard it's a quiet folded strip at the foot of the **My Inbox** card. The strip shows the count plus a peek at the first blocker. Tap to unfold. Waiting tasks are grouped under the step that's holding them. Each group names that task once, with who's on it and the stage. Your waiting tasks are listed beneath in the order they'll unlock. A small *then* marks the ones queued behind another. Only the first three groups show. Tap **…and N more steps ahead** for the rest. The moment a step ahead is done, your task moves onto your list on its own.

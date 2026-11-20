@@ -7,8 +7,24 @@
 import { DO_FIRST_LABEL, DO_FIRST_OFF_LABEL, DO_FIRST_OFF_WORDS, DO_FIRST_WORDS } from './doFirst'
 import { DROP_TITLE } from './taskDrop'
 
-/** One row of a choice sheet: what it is called and one line on what it does. */
-export type TaskChoice<K extends string = string> = { key: K; label: string; words: string }
+/** The colour a choice's picture wears. The sheet holds the theme's tint and ink for each (`TaskChoiceRows`). */
+export type TaskChoiceTone = 'blue' | 'amber' | 'green' | 'red' | 'violet' | 'slate'
+
+/** The drawing beside a choice, named for what it shows. The sheet holds the icon for each (`TaskChoiceRows`). */
+export type TaskChoiceIcon = 'to-top' | 'put-back' | 'calendar-on' | 'stop-hand' | 'thumbs-up' | 'struck-circle' | 'to-person' | 'pen' | 'footsteps' | 'pin' | 'tick' | 'skip'
+
+/** A choice's picture: it says what the row does before its words are read (the owner, 2026-11-20: "showing as well as telling"). */
+export type TaskChoicePicture = { icon: TaskChoiceIcon; tone: TaskChoiceTone }
+
+/** One row of a choice sheet: its picture, what it is called and one line on what it does. */
+export type TaskChoice<K extends string = string> = { key: K; label: string; words: string; picture: TaskChoicePicture }
+
+/** The picture of each way to start a map. */
+export const TASK_MAP_START_PICTURES: Readonly<Record<TaskMapStart, TaskChoicePicture>> = {
+  line: { icon: 'pen', tone: 'blue' },
+  walk: { icon: 'footsteps', tone: 'green' },
+  place: { icon: 'pin', tone: 'violet' },
+}
 
 /** How a new map for a task starts: a line drawn by hand, a line walked or driven, or one point. */
 export type TaskMapStart = 'line' | 'walk' | 'place'
@@ -23,10 +39,10 @@ export const TASK_MAP_NOT_OPENED = 'The map window could not open here.'
  * device that cannot.
  */
 export function taskMapStarts(canWalk: boolean): TaskChoice<TaskMapStart>[] {
-  const rows: TaskChoice<TaskMapStart>[] = [{ key: 'line', label: 'Draw it by hand', words: 'Trace the line with a finger.' }]
+  const rows: Omit<TaskChoice<TaskMapStart>, 'picture'>[] = [{ key: 'line', label: 'Draw it by hand', words: 'Trace the line with a finger.' }]
   if (canWalk) rows.push({ key: 'walk', label: 'Walk or drive it', words: 'The phone paints the line as you go.' })
   rows.push({ key: 'place', label: 'Leave a point', words: 'Tap the spot. Add a name, words and a photo.' })
-  return rows
+  return rows.map((r) => ({ ...r, picture: TASK_MAP_START_PICTURES[r.key] }))
 }
 
 /** What the tools need to know about the task they act on. The page builds one from a day row. */
@@ -59,11 +75,26 @@ export const TASK_MORE_LABEL = '⋯ More'
 export const TASK_MORE_TITLE = 'More for this task'
 
 /**
+ * The picture of each act behind More, beside its key so the rule and the picture are read together. Amber is the
+ * stuck mark's own colour on a card, green is the way made clear, and red is the one row that ends a task with no work
+ * done. No two rows a sheet can show together share a drawing (`taskDoerActs.test.ts`).
+ */
+export const TASK_MORE_PICTURES: Readonly<Record<TaskMoreKey, TaskChoicePicture>> = {
+  first: { icon: 'to-top', tone: 'green' },
+  unfirst: { icon: 'put-back', tone: 'slate' },
+  move: { icon: 'calendar-on', tone: 'blue' },
+  stuck: { icon: 'stop-hand', tone: 'amber' },
+  unstuck: { icon: 'thumbs-up', tone: 'green' },
+  drop: { icon: 'struck-circle', tone: 'red' },
+  hand: { icon: 'to-person', tone: 'violet' },
+}
+
+/**
  * The rows of More for one task. Only what the database would allow is offered, so a press never ends in a refusal the
  * screen could have seen coming. An empty list draws no More at all.
  */
 export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck' | 'first' | 'next'>>): TaskChoice<TaskMoreKey>[] {
-  const rows: TaskChoice<TaskMoreKey>[] = []
+  const rows: Omit<TaskChoice<TaskMoreKey>, 'picture'>[] = []
   // Do first leads, since it is the one row that changes nothing but the person's own order. A stuck task is never Next.
   if (!t.done && !t.stuck) {
     if (t.first) rows.push({ key: 'unfirst', label: DO_FIRST_OFF_LABEL, words: DO_FIRST_OFF_WORDS })
@@ -76,7 +107,7 @@ export function taskMoreChoices(t: Pick<TaskDoerTarget, 'once' | 'done'> & Parti
   if (t.once && !t.done && !t.roadmap && !t.vehicle) rows.push({ key: 'drop', label: DROP_TITLE, words: 'Close it with a reason.' })
   // A roadmap task's people are the roadmap's, so it is handed on from the Roadmap.
   if (!t.done && !t.roadmap) rows.push({ key: 'hand', label: HAND_TITLE, words: 'Give it to the right person, notes and all.' })
-  return rows
+  return rows.map((r) => ({ ...r, picture: TASK_MORE_PICTURES[r.key] }))
 }
 
 // --- Not today: the person moves a one-time task's due day (task_move_day) ---
@@ -243,6 +274,15 @@ export const PASS_MIN_TASKS = 2
 
 export type PassAnswer = 'done' | 'move' | 'stuck' | 'drop' | 'skip'
 
+/** The picture of each answer of the pass. An answer that is one of More's acts wears that act's picture. */
+export const PASS_ANSWER_PICTURES: Readonly<Record<PassAnswer, TaskChoicePicture>> = {
+  done: { icon: 'tick', tone: 'green' },
+  move: TASK_MORE_PICTURES.move,
+  stuck: TASK_MORE_PICTURES.stuck,
+  drop: TASK_MORE_PICTURES.drop,
+  skip: { icon: 'skip', tone: 'slate' },
+}
+
 /** Where the pass stands: *2 of 8*. */
 export function passCountWords(index: number, total: number): string {
   return `${Math.min(index + 1, total)} of ${total}`
@@ -254,12 +294,12 @@ export function passCountWords(index: number, total: number): string {
  */
 export function passAnswers(t: Pick<TaskDoerTarget, 'once' | 'done'> & Partial<Pick<TaskDoerTarget, 'roadmap' | 'vehicle' | 'stuck'>>): TaskChoice<PassAnswer>[] {
   const more = taskMoreChoices(t).map((r) => r.key)
-  const rows: TaskChoice<PassAnswer>[] = [{ key: 'done', label: 'Done', words: 'It is finished. Mark it done.' }]
+  const rows: Omit<TaskChoice<PassAnswer>, 'picture'>[] = [{ key: 'done', label: 'Done', words: 'It is finished. Mark it done.' }]
   if (more.includes('move')) rows.push({ key: 'move', label: 'Still on it', words: 'Pick the day you will do it.' })
   if (more.includes('stuck')) rows.push({ key: 'stuck', label: STUCK_TITLE, words: 'Say what is in the way.' })
   if (more.includes('drop')) rows.push({ key: 'drop', label: DROP_TITLE, words: 'Close it with a reason.' })
   rows.push({ key: 'skip', label: 'Skip', words: 'Leave it as it is.' })
-  return rows
+  return rows.map((r) => ({ ...r, picture: PASS_ANSWER_PICTURES[r.key] }))
 }
 
 /** What the pass came to, said when its last task is answered or the person stops. */

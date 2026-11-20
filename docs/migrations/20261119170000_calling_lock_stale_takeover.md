@@ -18,3 +18,5 @@ The select, insert and delete policies are untouched, and so are the restrictive
 **Proof.** `npm run test:pg:calling-lock-takeover` (`supabase/tests/calling_lock_takeover`, in `scripts/sql-beds.txt`): the migration's second run keeps one update policy and deletes only the stale rows; a second caller takes a row three weeks old, a row with no time and a row 31 minutes old, and is refused a row 29 minutes old; nobody restamps a stale row in its holder's name or hands it to a third caller; the old holder is refused the row once it is live again; delete is still a caller's own row only; an archived caller, a read-only caller and a signed-out visitor take nothing.
 
 **Apply order:** either way round. The client sends the same upsert as before, so the old client works on the new policy and the new policy changes nothing the old client reads. Until the push the takeover is refused as it always was.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since a policy is not in the types.

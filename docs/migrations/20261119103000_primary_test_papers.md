@@ -16,3 +16,5 @@ A primary reads the test papers of their own jobs (punch list #400 PR 4, `to-dos
 ## Verify
 
 Read-only on prod after the push, as the dev: `select pg_get_functiondef('public.can_reach_job_for_test_report(uuid)'::regprocedure) like '%primary_can_access_job(j.id)%'` reads true. The SQL bed `npm run test:pg:primary-test-papers` (`supabase/tests/primary_test_papers/20_scenario.sql`) reads the gate, the table and the bucket as a primary on their own job, a primary on nothing, the assistant, the master and a helper on the crew. CI runs it from `scripts/sql-beds.txt`.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no new name in `database.ts`, since `can_reach_job_for_test_report` is replaced under its own name.

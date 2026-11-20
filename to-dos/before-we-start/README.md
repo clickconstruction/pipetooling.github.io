@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 8, our bullets read the app, the order log, the trip and the permit. Then PR 9, the GC's page, the first thing a GC sees.
+next: PR 9, the GC's page, the first thing a GC sees. Then PR 10, on arrival, and PR 11, the line of time.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: None. The owner approved the design. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -371,7 +371,7 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
   who, one door for Go and Hold, and a read of our days for the desk. Its bed runs in the SQL beds workflow.
 - **PR 4, the list on a stage: built** (v2.8003). The job window's Documents tab has **Before we start**, and
   Jobs → Subs has a door to it. Three things wait for their own PRs: **Ask them** (6), **Go or hold** (7) and the
-  eye (9). A bullet of ours is ticked by hand until PR 8 reads the order log, the trip and the permit.
+  eye (9). A bullet of ours was ticked by hand alone until PR 8.
 - **PR 5, the Schedule look: built** (v2.8006). The Development page's last look: the banner, one card a stage
   ahead sorted by trouble, the ready bar with its list, and the stage's sentence. The banner's ask press is PR 6.
 - **PR 6, Ask them: built** (v2.8010). One ask across every stage it covers, opened filled in the customer's box
@@ -380,5 +380,10 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
 - **PR 7, Go or hold: built** (v2.8012). The decision with a name on it, a go on their promise that comes back for a
   last check, a Hold that moves our window and writes the note the office sends, and the Go taken back. With it the
   office has the whole loop, and nothing is shown to the GC.
-- **Next:** PR 8, our bullets read the app.
+- **PR 8, our bullets read the app: built** (v2.8015). A bullet of ours says where it is read from, changed in
+  place: a hand tick, the order log, Trips or the city's permits. Two limits. Nothing in the app records our own
+  permit for a job, so the permit is read from the city's feed at the job's address and only in the cities we read.
+  Each read runs under the reader's own row security, so a superintendent can read a bullet open that the office
+  reads ready: a read every desk seat sees alike needs a definer read on the server, and is not built.
+- **Next:** PR 9, the GC's page.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.

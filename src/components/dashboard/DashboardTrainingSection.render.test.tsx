@@ -65,7 +65,7 @@ describe('DashboardTrainingSection', () => {
     await screen.findByText('1 course to do')
     expect(document.querySelector('[data-training-card]')?.getAttribute('data-training-card')).toBe('red')
     expect(screen.getByText('OSHA 30 refresher')).toBeTruthy()
-    expect(screen.getByText(/30 lessons of about five minutes · about 3 hours in all/)).toBeTruthy()
+    expect(screen.getByText('30 short lessons, about 3 hours')).toBeTruthy()
     fireEvent.click(screen.getByText('Start'))
     await screen.findByText('Course page')
     expect(seen[seen.length - 1]).toBe(true)
