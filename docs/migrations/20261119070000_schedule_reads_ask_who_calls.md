@@ -34,3 +34,5 @@ Safe on either side of the client deploy, so the push follows the merge with no 
 Proved by CI's `schedule-reads-gate` bed (`scripts/pgtest-schedule-reads-gate.sh`, `supabase/tests/schedule_reads_gate/`, a line in `scripts/sql-beds.txt`, `npm run test:pg:schedule-reads-gate`), on the whole schema with the migration applied twice. The `job-papers-lists` bed read both functions with no login, as the database itself; it now reads them as the service role, the way the dispatch functions do.
 
 **Not yet applied.** Push from a clean checkout of `main` right after the merge: `bash scripts/db-push.sh`.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); `schedule_read_gate` reached `database.ts` in #9003.

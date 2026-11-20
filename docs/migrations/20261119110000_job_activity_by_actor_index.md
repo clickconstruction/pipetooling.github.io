@@ -15,3 +15,5 @@ No function, table, column or policy changes. Additive and idempotent.
 read that errors leaves the changed jobs out and the list is still drawn. So the client may
 deploy first. Push right after the merge all the same, since the slow read runs on every open of
 the picker until the index is there.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since an index is not in the types.

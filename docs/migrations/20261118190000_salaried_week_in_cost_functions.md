@@ -37,3 +37,5 @@ Nobody, until a week is set. Every pay row reads 8 hours on the five weekdays, s
 ## Order
 
 Needs `20261118160000` first: the functions call `salaried_hours_on` and name the column. A push applies them in filename order. Idempotent. No `CREATE TABLE`, so no fence calls. No table is locked: the statements replace functions.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); its functions keep their names, and the week `list_people_pay_flags` returns reached `database.ts` in #8833.

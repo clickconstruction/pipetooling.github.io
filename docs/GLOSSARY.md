@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-19
+last_updated: 2026-11-20
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -148,13 +148,15 @@ since v2.5646 (punch list #129) the customer's word on paying and the money of a
 **Key Restriction**: No access to Projects, Workflows, Jobs, or Quickfill pages
 
 ### primary (Primary)
-Materials and job reports specialist with access to Materials (full), Jobs (**Reports and Billing** tabs), Bids (**full access** — all tabs including Pricing and Cover Letter, which are hidden only for superintendents — [`Bids.tsx`](../src/pages/Bids.tsx)), and Dashboard with Recent Reports and Send task.
+Materials and job reports specialist with access to Materials (full), Jobs (the **Reports** tab only, `Jobs.tsx` `primaryTabs`), Bids (the Bid Board, RFI, Change Order and Lien Release, `PRIMARY_BIDS_TABS` in [`bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts)), and Dashboard with Recent Reports, My Bids and Send task, each held to their own work (`ACCESS_CONTROL.md` → primary).
 Cannot access Customers, Projects, People, or Prospects.
 
-**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports) + Billing tab (view jobs, add materials), full Bids access (create/edit/delete bids, all tabs), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send");
-since v2.5655 the paid verbs on the jobs they account-manage or sold only (`is_job_people`)
+**Capabilities**: Full Materials system, Jobs Reports tab (since v2.7906 the reports of the jobs they account-manage or are listed superintendent on, and the ones they wrote;
+they can file a report on any job), their own bids and the bid document tabs, Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send");
+since v2.5655 the paid verbs, and since v2.7921 and v2.7929 the other money verbs and money reads, on the jobs they account-manage or sold only (`is_job_people`);
+since v2.7926 the test papers of the jobs that name them account manager (`primary_can_access_job`), since v2.7936 the photos of the jobs whose reports they read or whose crew they are on, and since v2.7931 none of the money desks
 
-**Key Restriction**: No access to Customers, Projects, People, Prospects, Quickfill, or Jobs tabs other than Reports and Billing
+**Key Restriction**: No access to Customers, Projects, People, Prospects, Quickfill, or any Jobs tab other than Reports
 
 ### superintendent (Superintendent)
 Runs jobs, manages subcontractors, and drafts bids — but only on projects they are explicitly assigned to via `project_superintendents` (adoption through `master_superintendents` no longer grants project access).
@@ -1758,7 +1760,7 @@ New pure helper **`buildApprovedClosedHoursByPersonByDate`** sums approved-close
 The math becomes:
 
 - `approvedClockOnDay = Σ approved-closed clock hours for person+date (all buckets)`
-- `dayHoursRaw = is_salary ? (weekday && approvedClockOnDay > 0 ? 8 : 0) : approvedClockOnDay`
+- `dayHoursRaw = is_salary ? (approvedClockOnDay > 0 ? that day's hours in the person's week : 0) : approvedClockOnDay` (`salariedFlatDayHours(workDate, salariedWeekOf(cfg))`, 8 on a weekday and 0 at the weekend by default, since v2.7865)
 - `overheadOnDay` = approved closed clock on the **org office job** (**`overhead_office_job_ledger_id_v1`**) plus any **bid-only** clock that day
 - `fieldHours = max(0, dayHoursRaw − overheadOnDay)`
 - **`crewAttributedHrs = dayHoursRaw × Σ pct/100`** over **`people_crew_jobs`** + **`people_crew_bids`** assignments excluding the office job (**share-of-total-day**, matches the **`sync_crew_jobs_from_clock`** trigger and `teamLabor.ts` / `payReportAssignmentsBreakdown.ts` — see **v2.539** Option E)
@@ -3108,6 +3110,10 @@ Beside the place the giver may add one **Photo of the spot** (`TaskSpotPhotoFiel
 It shows where tasks are and never where a person is.
 Since v2.7686 it draws on Google Maps through the shared `PinsMapGoogleCanvas`, **Satellite** as Google's `hybrid` and **Streets** as its `roadmap` (`googleMapTypeForLayer` in `lib/map/googleMapType.ts`), and falls back to the Leaflet canvas with no browser key or once Google fails on the page.
 Since v2.7794 (punch list #395) the card draws in the shared frame `PinsMapFrame`, which holds the provider rule, the **Satellite** and **Streets** switch (`MapViewControl`) and **Time**.
+Google counts as failed on the page in four cases: its script has not loaded in 10 s, Google refuses the key, the canvas throws while it draws (`GoogleCanvasBoundary`), or the frame stays empty for 8 s of the time it is in the window.
+Every Google canvas shares these checks (`useGoogleCanvasDoors`), and the frame keeps a failure for the page.
+Since v2.7981 Google's one global for a refused key is set once by `googleAuthFailure.ts`, so every Google map on the screen hears the refusal.
+Since v2.7876 the 8 s clock waits while the map is scrolled off screen (`paintClock.ts`, `useFrameInView`), since Google builds no map far below the window.
 Since v2.7809 *Where my tasks are* draws in it too, on its Leaflet half, where Time looks at a task's place and never at the person's own dot.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
@@ -3144,7 +3150,7 @@ It has no page of its own and no header button: it is one line wherever the app 
 The header's search is its door with no job open (since v2.7227): **Paint a map** starts one, on a job picked in the sheet or on no job, and every map the reader can open is found by its name under *Painted maps* (`paintedMapSearch.ts`).
 A map on no job is its maker's and the office's until **Put it on a job…**.
 Since v2.7859 (punch list #392) the Dashboard's top row carries **Paint a map** for every role, clocked in or not: wide beside the Tally square in Job Mode with the job it lands on, a quiet link on the office's phone, a square after Job Report at a desk and on a leader's phone (`PaintAMapPress` over `paintedMapPress.ts`).
-The press lands on the job the person is clocked onto, else the stop under way or next today, else the start sheet opens on the person's last job or asks (since v2.7915), and a job the press picked can be changed on the start sheet with **Change the job**.
+The press lands on the job the person is clocked onto, else the stop under way or next today, else the start sheet opens on the person's next job or last job or asks (since v2.7915, the next job since v2.7933), and a job the press picked can be changed on the start sheet with **Change the job**.
 **The Saved band** (v2.7866, punch list #392) is the green band a painted map's window draws once a save lands in it: *Saved on* the job, what is on the map and who can open it, and on a phone one blue **Text it from my phone…** for whoever may share the map (`PaintedMapSavedBand` over `paintedMapSaved.ts`).
 Since v2.7894 the band's press is the Share sheet's whole: it asks `desk.can` once, on a yes the phone picks the link's code and Messages opens inside the press, and a page left within a minute of a hand-off takes back what the band said about Messages not opening (`onPageLeft`).
 While the band carries that press **Draw a line** is plain, so the screen has one blue press.
@@ -3640,7 +3646,7 @@ Since v2.6872 (punch list #307) a name a city lists on permits can be **tied** t
 The answers are kept append-only in `builder_customer_answers` (newest decisive answer per name and customer stands;
 **Take back** undoes, on the bid or on the builder's sheet), Builders' **Our bids** counts a tied customer's bids beside a customer of the same name (v2.6963), and the app never ties a name on a likeness, only an exact same name.
 **Ours** (v2.6959) is the chip on a plumbing permit whose listed name is one of **our names on plumbing permits**: the short list on Settings → Company (`app_settings.permit_our_names_v1`, `src/lib/research/ourNames.ts`) plus the company name on paper bills, compared by the feed's own name key.
-The bid's two permit blocks draw it, the Bid Board reads *Plumbing permit · ours* in place of *another name*, and it says whose permit it is, never that a bid was won.
+The bid's two permit blocks draw it, the Bid Board reads *Plumbing permit · ours* in place of the red *Permit lists …* chip (*another name* until v2.7942), and it says whose permit it is, never that a bid was won.
 
 **Database**: Uses `customers` table (linked via `customer_id`)
 
@@ -3792,7 +3798,7 @@ the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
-Each trip also has a short number on its site, **Trip 5**, handed out by the database when the trip is made (v2.7703, `trips.trip_number`): never typed, never changed, and never given to another trip, so a bill that cites it means one trip for good.
+Each trip also has a short number on its site, **Trip 5**, handed out by the database when the trip is made (v2.7703, `trips.trip_number`): never typed, never changed while the trip stays on its site, and never given to another trip, so a bill that cites it means one trip for good.
 Since v2.7886 the dev seat's `read_trips` gives each trip that number (`trip_number`), and `plan_trip` and `apply_trip` name it in their replies.
 A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
 A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
@@ -3844,7 +3850,7 @@ A site whose only trip was deleted still shows its look, and the delete's questi
 Each person goes where their days are, a trip on a bill keeps its line while the new trip starts with no billing said, and a split is taken back with **Join with the next**.
 **Join with the next** (since v2.7963, `lib/trips/tripJoin.ts`, `trip_join`) is the press beside **Split in two** on an open trip that has a trip after it on the same site: the two become one trip, which keeps the open trip's number and words and holds everyone and every day from both.
 The next trip is the one that went out next on the same development, or on the same job for a trip with no development, in the look's own order (`trip_next_id`), and the database refuses any other pair.
-Where both trips give one person the same day the open trip's kind stays, an empty billing takes the other's, two different billings and a line on each trip refuse in words, and a line only the next trip holds is tied to the joined trip.
+Where both trips give one person the same day the open trip's kind stays, an empty billing takes the other's, two different billings and a line on each trip refuse in words, and a line only the next trip holds is tied to the joined trip, keeping its name, which the window says whenever one trip holds a line (`TRIP_JOIN_LINE_NAME_NOTE`, v2.7975).
 The trip that went waits under **Deleted trips** marked *Joined into Trip 7* with no **Put back** (`joined_into` on its archive row), its number is not given again, and a join is taken back with **Split in two**.
 Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
 Since v2.7884 it also carries a trip the deleted job held by itself: the trip goes to the kept job's development when it is in one, and to the kept job when it is in none.
@@ -5625,7 +5631,8 @@ Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job /
 
 ### Stages line "man-hours applied" (Pipeline tab) — **v2.592**
 Read-only clock-icon line on each Stages-board card, directly under **`b:`**, showing **total man-hours applied** to the job as a compact `8h 15m` / `45m` label (via **`formatDecimalWorkHoursToHhMm`**, which returns **`—`** for non-positive values), with a **per-person breakdown on hover** (`title` tooltip, descending).
-Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **8h Mon–Fri**, hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs.
+Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **each day's hours in the person's week** (`salaried_week_hours`, 8 h Mon–Fri by default;
+the RPC since v2.7840, the kernel since v2.7865), hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs.
 Loaded **once per Stages visit** in **[`Jobs.tsx`](../src/pages/Jobs.tsx)** (`loadStagesManHours`, load-once `useRef`, retry on error);
 shows **`…`** while loading and **`—`** when the job has no allocated hours or the caller's role has no RLS read access to the labor tables.
 See **`RECENT_FEATURES.md`** → v2.592.
@@ -6059,7 +6066,8 @@ Since v2.7447 the last day of work may be set to any past day, also one earlier 
 the confirm window names the months that leave the lien clock and asks a second look, **Set the day anyway**, for a day far from the hours.
 Since v2.7516 the § 53.056 tab says when the Lien desk already holds the job's approved or printed notice, with **Open it on the Lien desk ›** (`lienWindowPrintNote.ts`), since a print from the tab is a new copy with no signature.
 Since v2.7558 that tab prints a set per envelope, each behind the run's divider (*Print 2 envelopes*, with *Reprint envelope 2 ›* under it, `lienNoticeOneOff.ts`), and since v2.7557 its **Save & record sends…** takes a photo of each paper copy's certified receipt and reads the mail number off it (`LienReceiptPhotoPress`).
-A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Enter mail numbers…* prints the cover letter and a COPY page for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`);
+A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Enter mail numbers…* prints the cover letter and, behind it, the clerk's stamped copy (the filing's saved copy, every page) for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`;
+the stamped copy in place of the redrawn COPY page since v2.7916, `lienStampedCopy.ts`);
 every filed lien at once is the Lien desk's *Filed liens: copies to mail* window (see **The Board**).
 
 ### Lien desk
@@ -6393,7 +6401,7 @@ Since v2.7714 the affidavits' To send for Master approval carries *Send N for ap
 Since v2.7898 (the owner's pick of 2026-11-18) the Retainage line under the notices ends in *Open ›*, the door to By paper's Retainage list, whole and with nothing typed in the find box (`lienBoardRetainageDoor.ts`).
 The title bar's door to the run left every view on a computer in v2.7490, so By job has no door to the run;
 a phone keeps the run as the first row of **More**.
-**Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
+**Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind the Filed · copies to mail bin's door (*Print N liens' copies ›* or *Enter mail numbers · N ›*, `lienServeStageDoorWords`, since v2.7798) and its To do rows.
 Its top half prints every filed lien's cover letter and copies by serve-by day and lists what it holds with the reason;
 since v2.7916 the copy in each envelope is the **stamped copy**, the filing's saved copy with every page, read as the window opens (`lienStampedCopy.ts`, `useLienCopyReads.ts`) and printed as one PDF (`lienServePdf.ts`), and the page the app redrew from the filing's fields is gone.
 A lien with no saved copy, or with one the app cannot read or print, is held with its reason and its door, and a saved copy of more than three pages or over 4 MB is asked about before it prints (`lienCopyDoubt`).
@@ -7917,6 +7925,8 @@ Since **v2.6352** the leader and a dev also read it on the Dashboard as the **Pr
 open, the same cards.
 Since **v2.7885** (punch list #397 PR 5) a superintendent reads the same line on his Dashboard, above Recent reports, and sets nothing on it.
 The pace card's rail carries each stage's checklist as a press, and its foot a door, **All projects**, to the board.
+Since **v2.7811** a project's card also reads what the crew says about the finish, *✎ Sam says Mon, Nov 23: waiting on the inspector*: each person's newest **My finish date** on the job, two on the small card and six on the large one (`latestFinishCallsByPerson`, `boardSaysWords` in `lib/jobMode/finishCall.ts`), read once for all cards by `useFinishCallsForJobs`, on the board and on the Dashboard's Projects strip.
+A failed read draws nothing.
 The strip's stage count is a press that lists the stages, since a phone cannot hover.
 Guide *see where every project stands and set its expected hours*.
 Since **v2.6665** (punch list #234 PR 2) a project leaves award with a **planned finish** frozen beside its hours on `job_budgets` (`planned_start` · `planned_finish` · `planned_source` rough · assumed · typed · `planned_detail`;
