@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: ready
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · PR 1, values in place, is built (v2.7985)
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · PR 1, values in place (v2.7985), and PR 2, the rules (v2.7992), are built
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 2, the rules with their tests, lifted from the spike's kernel. Then PR 3, the table.
+next: PR 3, the table, one migration with its four closing calls, its doc and its bed. Then PR 4, the list on a stage.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: None. The owner approved the design. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -364,5 +364,8 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
 
 - **PR 1, values in place: built** (v2.7985). The shared piece, its tests, its looks and the convention. No
   screen uses it yet. It holds what [#399](../values-in-place/README.md) asked of it.
-- **Next:** PR 2, the rules, lifted from the spike's kernel with the tests listed above.
+- **PR 2, the rules: built** (v2.7992). `src/lib/startChecks/startChecks.ts` with the tests listed above. One
+  row was added to the standing table: a stage line with a list and no days of ours reads *We have not planned
+  our days for this stage.* with **Plan our days**, since a line has no window until the office plans it.
+- **Next:** PR 3, the table.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
