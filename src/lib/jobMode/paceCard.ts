@@ -27,10 +27,10 @@ export type PaceRail = {
 const clamp = (n: number) => Math.max(0, Math.min(100, n))
 
 /** One piece of the job's labor budget, as the pace reads it: a stage worked in order, or a bid line outside the stages. */
-export type PaceRailPiece = { id: string; name: string; hours: number; pctDone: number | null; kind: 'order' | 'any' | 'other' }
+export type PaceRailPiece = { id: string; name: string; hours: number; pctDone: number | null; kind: 'order' | 'any' | 'other'; /** The piece's price on the job, when known: what the job's percent weighs it by. */ price?: number }
 
 /** A row the rail will draw. `lineIds` are the bid lines behind it: one for a stage, several for the folded row. */
-export type PaceRailStage = { id: string; name: string; hours: number; pctDone: number | null; lineIds: string[] }
+export type PaceRailStage = { id: string; name: string; hours: number; pctDone: number | null; lineIds: string[]; /** The row's price on the job, when every piece behind it has one. */ weight?: number }
 
 /**
  * The rail's rows from the pace's pieces: the job's stages in order, each by its name, and every other bid line
@@ -44,35 +44,41 @@ export type PaceRailStage = { id: string; name: string; hours: number; pctDone: 
  * does. With no line reported it has none, and the job's percent is spread over it like any stage.
  */
 export function paceRailStages(pieces: ReadonlyArray<PaceRailPiece>): PaceRailStage[] {
-  const stages: PaceRailStage[] = pieces.filter((p) => p.kind === 'order').map((p) => ({ id: p.id, name: p.name, hours: p.hours, pctDone: p.pctDone, lineIds: [p.id] }))
+  const stages: PaceRailStage[] = pieces.filter((p) => p.kind === 'order').map((p) => ({ id: p.id, name: p.name, hours: p.hours, pctDone: p.pctDone, lineIds: [p.id], weight: p.price }))
   const rest = pieces.filter((p) => p.kind !== 'order')
   if (rest.length === 0) return stages
   const hours = rest.reduce((sum, p) => sum + Math.max(0, p.hours), 0)
   const reported = rest.filter((p) => p.pctDone != null)
   const pctDone = reported.length === 0 ? null : hours > 0 ? reported.reduce((sum, p) => sum + clamp(p.pctDone ?? 0) * Math.max(0, p.hours), 0) / hours : reported.reduce((sum, p) => sum + clamp(p.pctDone ?? 0), 0) / rest.length
-  return [...stages, { id: 'other', name: PACE_CARD_WORDS.otherWork, hours, pctDone, lineIds: rest.map((p) => p.id) }]
+  const weight = rest.every((p) => p.price != null) ? rest.reduce((sum, p) => sum + Math.max(0, p.price ?? 0), 0) : undefined
+  return [...stages, { id: 'other', name: PACE_CARD_WORDS.otherWork, hours, pctDone, lineIds: rest.map((p) => p.id), weight }]
 }
 
 /**
  * The job's stages as a rail. A stage is done at 100. The first stage that is not done is the one in hand.
  *
  * When the crew has reported any stage by itself, each stage reads its own number and an unreported one reads 0.
- * When nobody has, the job's one percent is spread over the stages in their order by their share of the hours:
+ * When nobody has, the job's one percent is spread over the stages in their order by their share of the job:
  * at 25% on a job whose first stage is a fifth of the work, the first stage is done and the second is started.
+ * The share is the stage's price where every row carries one (`weight`), since the job's percent is built from the
+ * stages by price (`jobPercentFromLines`). Spread by hours, a first stage marked done read 98% and still in hand:
+ * the stages' labor shares are not their price shares. Hours are the share only when a price is missing.
  * Fewer than two stages is no rail: the card draws one bar for the work instead.
  */
-export function paceStageRail(stages: ReadonlyArray<{ name: string; hours: number; pctDone: number | null }>, jobPct: number | null): PaceRail | null {
+export function paceStageRail(stages: ReadonlyArray<{ name: string; hours: number; pctDone: number | null; weight?: number }>, jobPct: number | null): PaceRail | null {
   if (stages.length < 2) return null
   const reported = stages.some((s) => s.pctDone != null)
   let pcts: number[]
   if (reported) {
     pcts = stages.map((s) => clamp(s.pctDone ?? 0))
   } else {
-    const total = stages.reduce((sum, s) => sum + Math.max(0, s.hours), 0)
+    const priced = stages.every((s) => s.weight != null && Number.isFinite(s.weight)) && stages.reduce((sum, s) => sum + Math.max(0, s.weight ?? 0), 0) > 0
+    const shareOf = (s: { hours: number; weight?: number }) => Math.max(0, priced ? s.weight ?? 0 : s.hours)
+    const total = stages.reduce((sum, s) => sum + shareOf(s), 0)
     const doneHours = (clamp(jobPct ?? 0) / 100) * total
     let before = 0
     pcts = stages.map((s) => {
-      const hours = Math.max(0, s.hours)
+      const hours = shareOf(s)
       const pct = hours > 0 ? clamp(((doneHours - before) / hours) * 100) : doneHours >= before && total > 0 && doneHours >= total ? 100 : 0
       before += hours
       return pct
@@ -115,6 +121,18 @@ export function paceFinish(input: { plannedFinishYmd: string | null | undefined;
   if ((input.tone !== 'ahead' && input.tone !== 'behind') || input.days === 0) return { planned, atPace: null }
   const words = paceDayWords(addDays(input.plannedFinishYmd, -input.days))
   return { planned, atPace: words ? { words, tone: input.tone } : null }
+}
+
+/**
+ * Each piece's price on the job, for the rail's spread. A piece that is a line carries its line's price. A piece
+ * that is no line, the board's own fold of the lines outside the stages, carries the price of every line no other
+ * piece names.
+ */
+export function paceStagePrices(lines: ReadonlyArray<{ id: string; price: number }>, pieceIds: ReadonlyArray<string>): Map<string, number> {
+  const byId = new Map(lines.map((l) => [l.id, Math.max(0, Number.isFinite(l.price) ? l.price : 0)]))
+  const named = new Set(pieceIds.filter((id) => byId.has(id)))
+  const rest = [...byId.entries()].reduce((sum, [id, price]) => (named.has(id) ? sum : sum + price), 0)
+  return new Map(pieceIds.map((id) => [id, byId.get(id) ?? rest]))
 }
 
 /** The hours bar: what is in against the budget. `fillPct` stops at the bar's end, and `over` says the hours passed it. */

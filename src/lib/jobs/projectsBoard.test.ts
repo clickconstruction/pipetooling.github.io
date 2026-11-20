@@ -107,7 +107,7 @@ describe('projectPace', () => {
     const pace = projectPace({ job: job({ spentPct: 78 }), target: null, checklist: none, settings })
     expect(pace.input.money).toEqual({ spentUsd: 78, budgetUsd: 100 })
     expect(pace.line.money).toMatchObject({ spentPct: 78, leads: true })
-    expect(pace.line.headline).toBe('Spending 28 points ahead of the work.')
+    expect(pace.line.headline).toBe('Money is ahead of the work.')
     expect(projectPace({ job: job({ spentPct: null }), target: null, checklist: none, settings }).line.money).toBeNull()
   })
 

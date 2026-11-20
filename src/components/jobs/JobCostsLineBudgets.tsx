@@ -108,7 +108,7 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
           {jobPct != null ? `the job is ${Math.round(jobPct)}% done` : 'no percent on the job yet'}
           {spentUsd != null && spentUsd > 0 && jobPct != null ? (
             <span style={{ display: 'block', fontWeight: 600, color: ahead ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
-              {ahead ? `spending ${Math.round((spentPct ?? 0) - jobPct)} points ahead of the work` : `${usd0(Math.max(0, (budgetUsd * jobPct) / 100 - spentUsd))} kept so far`}
+              {ahead ? `${usd0(Math.max(0, spentUsd - (budgetUsd * jobPct) / 100))} over so far` : `${usd0(Math.max(0, (budgetUsd * jobPct) / 100 - spentUsd))} kept so far`}
             </span>
           ) : null}
         </div>
