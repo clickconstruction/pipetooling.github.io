@@ -67,7 +67,7 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
     },
     changeBullet: async (bulletId, patch) => {
       write('changeBullet')
-      put({ bullets: db.rows.bullets.map((b) => (b.id === bulletId ? { ...b, ...(patch.words !== undefined ? { words: patch.words } : {}), ...(patch.wantsPhoto !== undefined ? { wants_photo: patch.wantsPhoto } : {}), ...(patch.shownToGc !== undefined ? { shown_to_gc: patch.shownToGc } : {}), ...(patch.byDay !== undefined ? { by_day: patch.byDay } : {}) } : b)) })
+      put({ bullets: db.rows.bullets.map((b) => (b.id === bulletId ? { ...b, ...(patch.words !== undefined ? { words: patch.words } : {}), ...(patch.wantsPhoto !== undefined ? { wants_photo: patch.wantsPhoto } : {}), ...(patch.shownToGc !== undefined ? { shown_to_gc: patch.shownToGc } : {}), ...(patch.byDay !== undefined ? { by_day: patch.byDay } : {}), ...(patch.reads !== undefined ? { reads: patch.reads, ...(patch.reads !== 'hand' ? { hand_ok: false, hand_ok_at: null, hand_ok_by_name: '' } : {}) } : {}) } : b)) })
     },
     removeBullet: async (bulletId) => {
       write('removeBullet')

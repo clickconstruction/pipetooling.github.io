@@ -5978,6 +5978,7 @@ A **bullet** waits on them (the GC, the customer) or on us.
 A bullet on them is open or a **yes**, and a yes says how we know: their word, their photo, or we saw it.
 A bullet that **asks for a photo** is not a yes on their word alone.
 A bullet of ours is ticked by nobody: it shows where it stands and the press that fixes it.
+A bullet of ours says where it is **read from** (v2.8015): a hand tick, or the order log, Trips or the city's permits, each a reader in `startCheckReaders.ts` that says ready or open, the fact, and the door to the screen that holds it.
 The **ready bar** is one small box a bullet with a percent after it, every bullet counting the same, and it reads 100% only when every bullet has a yes (`readiness`).
 The **notice** is the days we need before our first day, one number a site, ten by default for a far site and two for a near one, and **We decide by** is our first day less the notice (`goNoGoDay`).
 Every day they give for ready is kept, and first to newest is how far they have **moved** (`movedDays`).
