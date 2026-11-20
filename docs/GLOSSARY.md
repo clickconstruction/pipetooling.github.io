@@ -1025,6 +1025,12 @@ the editor's text comes with Quo).
 Every change is a row of `contract_clause_proposals`, so the approved and declined ones are each clause's **History**.
 *Preview per trade* puts a paper together for a company;
 *Build a paper from clauses* starts a library document's first clause.
+Since v2.8019 a paper may be **built from settings** (punch list #389): its **settings list** (`contract_template_documents.settings_def`, set by a dev or the controller through `set_paper_settings`) names each **setting** with its **choices** from loosest to strictest, the **blanks** a clause may hold and the named **levels**.
+A clause's **Only when** (`when_opts`) ties it to one choice of one setting, and a clause in every paper has none.
+A **place** (`slot`) is a spot in the paper with one **wording** for each choice, numbered once and lettered 2A and 2B, and a tied clause with no place is left out for every other choice.
+A job's **picks** are one choice a setting, and the paper is put together for them by `assemblePaper` and its twin `contract_paper_clauses`, which say the same words when a gap stops it (`src/lib/contracts/paperSettings.ts`).
+A paper is **read** while its read mark, an attorney's name and a day, names its revision, so any later publish leaves it unread.
+A paper built from settings goes with a job's settings only, and until a job carries them it is refused as a copy, at the sign page and in the pickers.
 Since v2.5294 a copy of such a paper reads as its clauses on `/contract/accept` (the database's assembly, `contract_paper_clauses`, through `get-contract-for-signer`), signs only at the revision the page showed (`accept-contract`, else *The paper changed since you opened it.*), and its signed record draws the frozen clauses.
 Since v2.5329 a statement of work built from clauses (`gc_sows.paper_id`) reads and signs the same way in the trade's portal, with the exhibit for its package's one trade.
 Since v2.5334 a dev picks a statement of work's **Paper** on its card, and the money team our contract's on its send, once the customer's portal reads clauses (`OWNER_CONTRACT_PAPER_LIVE`, v2.5345).
