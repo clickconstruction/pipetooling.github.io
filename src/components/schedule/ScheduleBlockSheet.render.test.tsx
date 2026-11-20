@@ -8,8 +8,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ScheduleBlockSheet } from './ScheduleBlockSheet'
 
-vi.mock('../dispatchMode/DispatchModeFooter', () => ({ DISPATCH_MODE_FOOTER_HEIGHT_PX: 56 }))
-
 afterEach(cleanup)
 
 const base = { title: 'J473 · Mike Holmby', subtitle: '7:00 AM–9:00 AM · Malachi · 109 Tamberline Trail', note: '', onClose: () => {}, onOpenJob: () => {} }
@@ -43,5 +41,12 @@ describe('ScheduleBlockSheet', () => {
     expect(screen.getByText('call first')).toBeTruthy()
     const labels = [...screen.getByRole('dialog').querySelectorAll('button')].map((b) => b.querySelector('span')?.textContent)
     expect(labels.indexOf('Copy to techs')).toBeLessThan(labels.indexOf('Move'))
+  })
+
+  it("its last row clears the tab bar or the home indicator, whichever is larger, and never the two added (v2.8051)", () => {
+    render(<ScheduleBlockSheet {...base} />)
+    const padding = screen.getByRole('dialog').style.paddingBottom
+    expect(padding).toBe('calc(1rem + max(var(--app-bottom-chrome, 0px), env(safe-area-inset-bottom, 0px)))')
+    expect(padding).not.toContain('60px')
   })
 })

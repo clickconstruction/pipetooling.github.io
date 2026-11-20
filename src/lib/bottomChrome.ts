@@ -79,3 +79,13 @@ export function onTabBarBottomCss(): string {
 export function onTabBarKeyboardSlideCss(): string {
   return `translateY(calc(100% + var(${APP_BOTTOM_CHROME_VAR}, 0px) + 1px))`
 }
+
+/**
+ * What a sheet or a bar at the foot of the screen stands clear of: the tab bar while one is up, whose
+ * height already holds the home indicator's inset, and the inset alone with no tab bar. The larger of
+ * the two, never their sum: the sum is the old mistake, 10 px too much on a phone with a home
+ * indicator and 60 px too much on a screen with no tab bar at all.
+ */
+export function footClearanceCss(): string {
+  return `max(var(${APP_BOTTOM_CHROME_VAR}, 0px), env(safe-area-inset-bottom, 0px))`
+}

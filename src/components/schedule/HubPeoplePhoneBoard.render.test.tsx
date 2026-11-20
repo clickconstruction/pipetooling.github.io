@@ -118,6 +118,8 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     const abraham = screen.getByRole('button', { name: /Abraham: Already on J927/ }) as HTMLButtonElement
     expect(abraham.disabled).toBe(true)
     expect(screen.getByRole('status').textContent).toContain('Copying J927 · Mike Holmby · 12–4 to…')
+    // The mode bar floats on the tab bar or the home indicator, whichever is larger, never the two added (v2.8051).
+    expect(screen.getByRole('status').style.bottom).toBe('calc(max(var(--app-bottom-chrome, 0px), env(safe-area-inset-bottom, 0px)) + 0.5rem)')
   })
 
   it('a solo copy lets the source tech take it on another day; a move reads its own cell as where it is now', async () => {
