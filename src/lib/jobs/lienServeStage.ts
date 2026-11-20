@@ -101,12 +101,17 @@ export function lienServeStageCounts(plan: { ready: ReadonlyArray<{ job: { filin
  * *Mailed* box under the cursor), or one copy's line. The selectors live here so the window's markup and the landing
  * cannot drift.
  */
-export type LienServeLanding = { part: 'print' } | { part: 'numbers'; jobId?: string; recipient?: 'owner' | 'original_contractor'; /** Put the cursor in the copy's number box. */ cursor?: boolean; /** Land on the lien's whole row, the cursor on its *Mailed* box. */ tick?: boolean }
+export type LienServeLanding = { part: 'print' } | { part: 'numbers'; jobId?: string; recipient?: 'owner' | 'original_contractor'; /** Put the cursor in the copy's number box. */ cursor?: boolean; /** Land on the lien's whole row, the cursor on its *Mailed* box. */ tick?: boolean; /** The reader came from a printed code (a divider's, the mail sheet's): the lien's row says which day its first number records. */ fromCode?: boolean }
 
 /** What the landing puts the cursor in: the lien's *Mailed* box, a copy's number box, or nothing. */
 export function lienServeLandingFocus(land: LienServeLanding): string | null {
   if (land.part !== 'numbers') return null
   return land.tick ? 'input[type="checkbox"]' : land.cursor ? 'input[type="text"]' : null
+}
+
+/** Where a printed code lands (v2.7964): one envelope's number box with the cursor in it, the owner's when the link names none, or the head of the mail numbers for the list's code. */
+export function lienServeCodeLanding(door: { jobId: string | null; recipient: 'owner' | 'original_contractor' | null }): LienServeLanding {
+  return door.jobId ? { part: 'numbers', jobId: door.jobId, recipient: door.recipient ?? 'owner', cursor: true, fromCode: true } : { part: 'numbers', fromCode: true }
 }
 
 export function lienServeLandingSelector(land: LienServeLanding): string {

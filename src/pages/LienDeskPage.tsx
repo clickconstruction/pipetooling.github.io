@@ -47,7 +47,7 @@ import { scopeForStagesSection } from '../lib/jobs/stagesSectionPrefs'
 import { hasInAppHistory } from '../lib/inAppHistory'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { LEGAL_DESK_PATH, PIPELINE_HREF } from '../lib/legal/legalDeskRoute'
-import { LIEN_DESK_DEFAULT_KIND, lienDeskFromSearch, lienDeskHref, type LienDeskKind } from '../lib/lien/lienDeskRoute'
+import { LIEN_DESK_DEFAULT_KIND, lienDeskFromSearch, lienDeskHref, type LienCopiesReader, type LienDeskKind } from '../lib/lien/lienDeskRoute'
 import LienDesk from '../components/jobs/LienDesk'
 import LienInstrumentsModal from '../components/jobs/LienInstrumentsModal'
 import { lienMailProofWindowTab, type LienMailProofLanding } from '../lib/jobs/lienMailProofDoor'
@@ -251,6 +251,16 @@ export default function LienDeskPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scansAsked])
 
+  // Filed liens: copies to mail over the desk (v2.7964): `?copies=<job id>&to=…`, a divider's or the mail sheet's code, consumed once, the same way.
+  const [copiesDoor, setCopiesDoor] = useState<{ jobId: string | null; recipient: LienCopiesReader | null; key: number } | null>(null)
+  const copiesAsked = address.copies
+  useEffect(() => {
+    if (!copiesAsked) return
+    setCopiesDoor({ ...copiesAsked, key: Date.now() })
+    navigate(lienDeskHref({ kind: address.kind, job: address.job, pile: address.pile }), { replace: true, state: location.state })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copiesAsked])
+
   // A way back: the page behind when there is one, else the Pipeline, as `/accounts-receivable` does.
   const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
   const goBack = useCallback(() => {
@@ -341,6 +351,7 @@ export default function LienDeskPage() {
         openRun={runDoor}
         openProperty={propertyDoor}
         openScans={scansDoor}
+        openCopies={copiesDoor}
         calendarRows={calendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind or a last day re-reads the clocks; the desk's own queue follows either.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeDivider, lienServeReturnAddress, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeDivider, lienServeMailLink, lienServeReturnAddress, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, type LienCopyRead } from './lienStampedCopy'
 import { lienServedCopySentTitle } from '../jobsDocuments/lienServedCopy'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
@@ -207,6 +207,16 @@ describe('lienEnvelopeAddressLines — the street, then the city, state and ZIP'
   })
 })
 
+describe('the address a printed code opens', () => {
+  it('names the job and whose envelope and nothing else, on the desk’s own page', () => {
+    expect(lienServeMailLink('j7', 'original_contractor', 'https://app.example')).toBe('https://app.example/lien-desk?copies=j7&to=contractor')
+    expect(lienServeMailLink('j7', 'owner', 'https://app.example')).toBe('https://app.example/lien-desk?copies=j7&to=owner')
+    // The mail sheet's own code opens the list.
+    expect(lienServeMailLink(null, null, 'https://app.example')).toBe('https://app.example/lien-desk?copies=1')
+    expect(lienServeMailLink('  ', 'owner', 'https://app.example')).toBe('https://app.example/lien-desk?copies=1')
+  })
+})
+
 describe('the divider in front of an envelope', () => {
   const row = { n: 7, job: '2104 · Sample Job', to: 'Owner', name: 'Hollow Creek Holdings LLC', pages: '3', mailBy: 'Nov 23' }
 
@@ -258,6 +268,10 @@ describe('the mail sheet', () => {
     // The sheet says there is a divider in front of each envelope, and that it is not mailed.
     expect(sheet.steps[1]).toBe('Each envelope has a divider page in front of its pages, with the same number as this list. Do not mail the divider.')
     expect(sheet.from).toEqual([])
+    // Each line carries the address its divider's code opens, and the sheet the list's.
+    expect(sheet.link.endsWith('/lien-desk?copies=1')).toBe(true)
+    for (const r of sheet.rows) expect(r.link).toMatch(/\/lien-desk\?copies=[^&]+&to=(owner|contractor)$/)
+    expect(sheet.rows.map((r) => r.link.endsWith(r.to === 'Owner' ? '&to=owner' : '&to=contractor'))).not.toContain(false)
     // The name and address come last, with the rest of the line. The certified mail number is no column: its boxes sit under each line.
     expect(sheet.columns).toEqual(['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'])
     expect(sheet.numberLabel).toBe('Certified mail number')

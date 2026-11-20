@@ -105,6 +105,20 @@ describe('LienServeWindow', () => {
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Job 2104, original contractor, certified mail number')
   })
 
+  it('opened from a divider’s code, lands on that envelope’s number and says which day its first number records', () => {
+    open({ land: { part: 'numbers', jobId: 'job-2104', recipient: 'original_contractor', cursor: true, fromCode: true } })
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Job 2104, original contractor, certified mail number')
+    const note = document.querySelectorAll('[data-lien-serve-code-day]')
+    expect(note).toHaveLength(1)
+    expect(note[0]!.closest('[data-lien-serve-job]')?.getAttribute('data-lien-serve-job')).toBe('job-2104')
+    expect(note[0]!.textContent).toBe('The first number marks this lien mailed on Nov 16. Mailed another day? Change Mailed on at the top first.')
+  })
+
+  it('says nothing of the day on a landing that came from no code, or from the mail sheet’s', () => {
+    open({ land: { part: 'numbers', jobId: 'job-2104', recipient: 'owner', cursor: true } })
+    expect(document.querySelectorAll('[data-lien-serve-code-day]')).toHaveLength(0)
+  })
+
   it('opened from its own press, lights nothing', () => {
     open()
     expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
