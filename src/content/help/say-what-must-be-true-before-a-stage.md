@@ -2,7 +2,7 @@
 title: say what must be true before a stage starts
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: before we start, start checks, ready, is the site ready, stage ready, what must be true, bullets, checklist before a stage, their word, their photo, we saw it, days of notice, we decide by, go or no go, ready bar, percent ready, values in place, underlined, change a date, starter list, the four, company list
+keywords: before we start, start checks, is it as told, not as told, said no on site, arrival, ready, is the site ready, stage ready, what must be true, bullets, checklist before a stage, their word, their photo, we saw it, days of notice, we decide by, go or no go, ready bar, percent ready, values in place, underlined, change a date, starter list, the four, company list
 order: 100
 ---
 Before we start is a short list of what must be true before the crew goes to a stage. You write it on the job, and you tick each thing as you learn it is true.
@@ -229,6 +229,24 @@ Their tick lands here as a yes on their word, in the customer's name. A photo la
 Their page never shows a bullet of ours. It shows no name of ours, no trip and no cost.
 
 After a Go with nothing open, their page reads **Crew confirmed for** our first day.
+
+## When the crew says No on site
+
+The first of ours to reach a stage is asked **Is it as told?** in Job Mode. The crew sees every bullet from them that none of ours has seen yet.
+
+A **Yes, all as told** turns each of those bullets into a yes we saw, in that person's name.
+
+A **No** on a bullet opens the bullet again. The customer's word on that bullet is taken back. The stage turns red, and its sentence names who got there and the day.
+
+The bullet's line reads *said No on site* in red. Ask them again, and tick the bullet once it is true.
+
+Dispatch gets one line for the arrival, at the top of its inbox. The line names who told us the thing was ready. Press {{button:outline-blue|Open the list}} on that line to open the job on this list.
+
+Nothing closes that line by itself. Close it once the site is as told, or once the list has changed.
+
+A No is worth asking on every job. The office can press **Add to the company's list** right on the red line.
+
+The crew's own steps are in [say whether a site is as we were told](/help/say-whether-a-site-is-as-we-were-told).
 
 ## Add a bullet to the company's list
 

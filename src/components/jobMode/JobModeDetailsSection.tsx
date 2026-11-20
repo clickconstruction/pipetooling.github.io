@@ -19,6 +19,7 @@ import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
+import { JobModeArrivalCheck } from './JobModeArrivalCheck'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
 import { JobFirstLookStrip } from '../firstLook/JobFirstLookStrip'
@@ -284,6 +285,9 @@ export default function JobModeDetailsSection({
         gap: '0.75rem',
       }}
     >
+      {/* Is it as told? (punch list #382, PR 10): the look on arrival leads the job's details, since it is asked before
+          anything is unloaded. Nothing when there is nothing to ask. */}
+      <JobModeArrivalCheck jobId={jobId} />
       {/* Painted maps (punch list #345): the way in and what is where. The person standing on the site is the one who
           can mark it, so the press to paint one is here, beside the address and out of the day's press bar. */}
       <JobPaintedMapsStrip jobId={jobId} developmentId={contact?.development_id ?? null} jobLabel={[hcpNumber, jobName].filter(Boolean).join(' · ') || null} address={jobAddress} />

@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { STAGE_CHECK_WORDS, isStageCheckRequest, stageCheckPayloadFrom } from '../lib/jobs/stageCheckDispatch'
+import { NOT_AS_TOLD_WORDS, notAsToldFrom } from '../lib/startChecks/arrival'
 import { StageCheckWaitingLine } from './stageChecklists/StageCheckWaitingLine'
 import { StageCheckWindow, type StageCheckWindowIo } from './stageChecklists/StageCheckWindow'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
@@ -189,6 +190,8 @@ export function DispatchInboxSection({
   }
   const windowRow = stageCheckWindowId ? (requests.find((r) => r.id === stageCheckWindowId) ?? null) : null
   const windowPayload = windowRow ? stageCheckPayloadFrom(windowRow.pending_payload) : null
+  // A No on arrival (punch list #382) rides the stage check's road with no check behind it: its door is the job's list.
+  const windowNotAsTold = windowRow && !windowPayload ? notAsToldFrom(windowRow.pending_payload) : null
   const stageCheckWindowEl = windowRow ? (
     <StageCheckWindow
       row={windowRow}
@@ -217,8 +220,16 @@ export function DispatchInboxSection({
               closeStageCheckWindow(windowRow.id)
               jobDetailModal.openJobDetail({ jobId, openStageChecklist: { fixtureId: windowPayload.fixture_id, questionId: windowPayload.question_id } })
             }
-          : null
+          : jobDetailModal && windowRow.job_ledger_id && windowNotAsTold
+            ? () => {
+                const jobId = windowRow.job_ledger_id as string
+                closeStageCheckWindow(windowRow.id)
+                jobDetailModal.openJobDetail({ jobId, initialTab: 'documents' })
+              }
+            : null
       }
+      openCheckLabel={windowNotAsTold ? NOT_AS_TOLD_WORDS.openList : undefined}
+      footWords={windowNotAsTold ? NOT_AS_TOLD_WORDS.windowFoot : undefined}
       onLower={onSetPriority ? () => setPrioritySheet({ requestId: windowRow.id, direction: 'lower', label: windowRow.title.slice(0, 80) }) : null}
       onClose={() => closeStageCheckWindow(windowRow.id)}
       io={stageCheckWindowIo}
@@ -306,6 +317,7 @@ export function DispatchInboxSection({
                 // which the inbox has read since v2.1615, so the row's doors need no new column.
                 const isStageCheck = isStageCheckRequest(req)
                 const stageCheck = isStageCheck ? stageCheckPayloadFrom(req.pending_payload) : null
+                const notAsTold = isStageCheck && !stageCheck ? notAsToldFrom(req.pending_payload) : null
                 // An open stage check opens its context window on the row press (PR 2b); its thread loads as the
                 // expanded thread does, and the inline block stays folded while the window has it.
                 const windowed = isStageCheck && !isClosed
@@ -425,7 +437,8 @@ export function DispatchInboxSection({
                     <PayTermsRequestActions requestId={req.id} bidId={req.bid_id} terms={payTerms} from={fromLabel} role={role} onCloseRequestWithNote={onCloseRequestWithNote} />
                   ) : null
                 // The row's two doors, Open the job and Open the check, on an open stage check whose payload names the check.
-                const stageCheckJobId = stageCheck && !isClosed && jobDetailModal ? req.job_ledger_id : null
+                // A No on arrival has no check: its second door is Open the list, the job's Documents tab.
+                const stageCheckJobId = (stageCheck || notAsTold) && !isClosed && jobDetailModal ? req.job_ledger_id : null
                 const stageCheckBtnStyle = {
                   padding: '0.35rem 0.75rem',
                   background: 'var(--surface)',
@@ -466,6 +479,22 @@ export function DispatchInboxSection({
                       style={stageCheckBtnStyle}
                     >
                       {STAGE_CHECK_WORDS.openCheck}
+                    </button>
+                  ) : null
+                const openStartListBtn =
+                  stageCheckJobId && notAsTold ? (
+                    <button
+                      type="button"
+                      data-dispatch-open-start-list={req.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        jobDetailModal?.openJobDetail({ jobId: stageCheckJobId, initialTab: 'documents' })
+                      }}
+                      title={NOT_AS_TOLD_WORDS.openListTitle(notAsTold.stageName)}
+                      aria-label={`${NOT_AS_TOLD_WORDS.openList}: ${req.title}`}
+                      style={stageCheckBtnStyle}
+                    >
+                      {NOT_AS_TOLD_WORDS.openList}
                     </button>
                   ) : null
                 const showLinkJobPicturesAction =
@@ -883,6 +912,7 @@ export function DispatchInboxSection({
                         {openJobFromBidBtn}
                         {payTermsBtns}
                         {openStageCheckBtn}
+                        {openStartListBtn}
                         {openStageCheckJobBtn}
                         {linkJobPicturesBtn}
                         {openSupplyShareBtn}
