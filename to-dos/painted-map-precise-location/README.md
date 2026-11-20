@@ -2,7 +2,7 @@
 name: "Precise Location on the painted map: say it is on, and show the way to the switch when it looks off"
 number: 402
 group: ready
-status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · not built
+status: asked 2026-11-18 through the coordinator session · designed the same day, with a prototype drawn on the app at a phone's width in light and dark from made-up readings · shown to the owner on a private look page with eight calls, each with a pick · the owner's word 2026-11-19 (*build the four PRs with your picks*), every call at the pick · Grace's word to build 2026-11-19 · building in small PRs on `claude/402-*` branches, each cut from fresh main (PR 1 on `claude/402-precise-location-kernel-7c75dd`) · PR 1, the kernel, is v2.7984
 summary: >
   Today the painted map speaks about location only when something is wrong, so nothing tells a
   person that Precise Location is on. A page is never told whether the switch is on. It gets each
@@ -11,7 +11,7 @@ summary: >
   signal, or a reading so rough that the switch looks off. When it looks off, the line sets the
   phone's two numbers side by side and lists the steps to the switch for this phone alone. The map
   pulls back to the whole circle, and the dot stays where it was.
-next: PR 1, the kernel and its tests, cut from fresh main.
+next: PR 2, the walk — the line on the walk panel in every state, the canvas's `frameMargin`, the guide and the Glossary.
 size: M as a train of four (S · M · S · S), then call 8 as its own follow-up (S)
 blocker: None. Every call was taken at the pick on 2026-11-19. No real phone has been read with the switch off, so the first walk on one is the proof.
 opinion: build — four small PRs, and it answers the first question a person on site has
@@ -104,7 +104,7 @@ Every line below was printed by the prototype's kernel. Bold is the line's lead.
 | 300 m | **The signal is weak here.** Your phone is only sure within 990 ft. |
 | 3,200 m, held 4 s | **Precise Location looks off.** Then two rows, *Your phone now: within 2 miles* and *With Precise Location on: within 20 ft*, then the steps. |
 | The same on Android | Android's own names: *Precise location is on.* and *Use precise location*. |
-| The same on a desk | **Found you.** when sure. **This device only knows the area it is in.** *It is only sure within 2 miles.* when rough. No switch is named. |
+| The same on a desk | **Found you.** when sure. **The signal is weak here.** *This device is only sure within 120 ft.* when weak. **This device only knows the area it is in.** *It is only sure within 2 miles.* when rough. No switch is named. |
 
 - Margins are in feet up to half a mile, rounded up the way `taskPlaceAccuracyWords` does, then in
   whole miles, rounded up. The words never claim more than the phone did.
@@ -114,12 +114,15 @@ Every line below was printed by the prototype's kernel. Bold is the line's lead.
 - The steps for Safari on an iPhone, and for an app saved to the Home Screen: *Open the Settings
   app.* · *Tap Privacy & Security, then Location Services.* · *Tap Safari Websites.* · *Turn on
   Precise Location.* · *Come back to this screen.* Chrome on an iPhone taps *Chrome*, and another
-  iPhone browser taps *the browser you are using*.
+  iPhone browser taps *the browser you are using*. So does a page inside another app's own window,
+  which does not call itself Safari.
 - The steps on Android: *Press and hold the browser's icon, then tap App info.* · *Tap
   Permissions, then Location.* · *Turn on Use precise location.* · *Come back to this screen.*
 - The shared map while rough, for a stranger: *Your phone is only giving the area you are in.* ·
   *It is only sure within 2 miles, so the map cannot show where you stand.* · *To see where you
-  stand, turn on Precise Location:* then the steps.
+  stand, turn on Precise Location:* then the steps. On a desk the lead is *This device only knows
+  the area it is in.* and the ask is *To see where you stand, turn on precise location on your
+  phone:*
 - The walk adds after a weak line: *This part is drawn faint. Fix it by hand when you look the
   line over.* After a rough one: *A line cannot be painted from a reading that wide.*
 - **Put the dot where I am** adds after a weak line: *Drag the dot onto the spot.* After a rough
@@ -165,10 +168,12 @@ On main today:
 
 New:
 
-- `src/lib/paintedMap/preciseLocation.ts`: `preciseStateOf`, `provesPrecise`, `marginWords`,
-  `areaAcrossWords`, `phoneKindOf`, `preciseSwitchName`, `preciseSteps`, `preciseWords`,
-  `wayRoughWords`, `roughCompareWords`, `roughCircleWords`, and the constants
-  `PRECISE_PROVEN_METERS = 100` and `PRECISE_ROUGH_HOLD_MS = 4000`.
+- `src/lib/paintedMap/preciseLocation.ts`, on main since v2.7984: `preciseStateOf`, `provesPrecise`,
+  `marginWords`, `areaAcrossWords`, `phoneKindOf`, `preciseSwitchName`, `preciseSteps`,
+  `preciseWords`, `wayWeakWords`, `wayRoughWords`, `roughCompareWords`, `roughCircleWords`,
+  `PRECISE_ALREADY_ON_WORDS`, `USUAL_MARGIN_WORDS`, and the constants `PRECISE_PROVEN_METERS = 100`
+  and `PRECISE_ROUGH_HOLD_MS = 4000`. It has no clock: a screen counts the 4 s and hands the answer
+  in as `roughHeld`, and a screen that asks once, on a press, hands in `true`.
 - `src/components/paintedMap/PreciseLocationLine.tsx`: the line, the steps and the tick.
 
 Read the prototype with
@@ -253,5 +258,11 @@ After the four, call 8 as its own PR: the same line on a task's **Use where I am
 
 ## Where it stands
 
-Designed and picked. Not built. The session that picks it up puts its branch in `status` and
-builds PR 1.
+Building, on Grace's word of 2026-11-19.
+
+- **PR 1, the kernel, is v2.7984.** `preciseLocation.ts` and its tests, with no screen changed. It
+  differs from the prototype's kernel in three places, each a reading of the picks: a page inside
+  another app's own window on an iPhone is another browser, a desk is not called a phone, and nothing
+  is set beside a reading that is not rough. That version's fragment has them.
+- **Next is PR 2, the walk.** What a screen does about a weak or a rough reading is its own
+  sentence, kept with the screen: the walk's two go in `paintedWalkWords.ts`.
