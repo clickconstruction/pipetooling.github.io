@@ -64,7 +64,8 @@ function mount() {
   const onUnavailable = vi.fn<(reason: string) => void>()
   const view = render(<PinsMapGoogleCanvas apiKey="test-key" onUnavailable={onUnavailable} pins={PINS} selectedId={null} onSelect={() => {}} fitSignal={0} height={300} isMobile={false} />)
   const observer = ObserverStub.made[ObserverStub.made.length - 1]
-  const mapDiv = view.getByTestId('map-div')
+  // Its own map's div: a case may mount two canvases, and the page then holds two.
+  const mapDiv = view.container.querySelector('[data-testid="map-div"]') as HTMLElement
   return {
     onUnavailable,
     view,
@@ -214,5 +215,25 @@ describe('the other doors, as they were', () => {
     see(false)
     act(() => (window as Window & { gm_authFailure?: () => void }).gm_authFailure?.())
     expect(onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
+  })
+
+  it('two Google maps on one screen are both told the key is rejected, the one that came first too', () => {
+    // A window with a map of its own, open over a page with one. The global holds one function.
+    const page = mount()
+    const over = mount()
+    act(() => (window as Window & { gm_authFailure?: () => void }).gm_authFailure?.())
+    expect(page.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
+    expect(over.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
+    expect(page.onUnavailable).toHaveBeenCalledTimes(1)
+    expect(over.onUnavailable).toHaveBeenCalledTimes(1)
+  })
+
+  it('a map still hears when the one that came before it leaves first', () => {
+    const first = mount()
+    const second = mount()
+    first.view.unmount()
+    act(() => (window as Window & { gm_authFailure?: () => void }).gm_authFailure?.())
+    expect(first.onUnavailable).not.toHaveBeenCalled()
+    expect(second.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildEmailReportPeople, digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites } from './emailReportPeople'
+import { buildEmailReportPeople, digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites, sendNowWords } from './emailReportPeople'
 import type { SubscriptionWithAuthors } from '../reportEmailSubscriptions'
 
 const roster = [
@@ -104,5 +104,26 @@ describe('the person editor plan', () => {
     })
     const off = drafts.map((d) => ({ ...d, on: false }))
     expect(planDigestRowWrites('u-rob', rob.digests, off)).toEqual({ inserts: [], updates: [], deletes: ['r1'] })
+  })
+})
+
+describe('sendNowWords', () => {
+  it('says how many went out', () => {
+    expect(sendNowWords({ sent: 0 })).toBe('No new reports to send (already up to date).')
+    expect(sendNowWords({ sent: 1 })).toBe('Emailed 1 report.')
+    expect(sendNowWords({ sent: 4, skippedTestJobs: 0, skippedOutOfScope: 0 })).toBe('Emailed 4 reports.')
+    expect(sendNowWords(null)).toBe('No new reports to send (already up to date).')
+  })
+
+  it('names the reports on ZZ test jobs it left out', () => {
+    expect(sendNowWords({ sent: 2, skippedTestJobs: 1 })).toBe('Emailed 2 reports. 1 report on a ZZ test job was left out.')
+    expect(sendNowWords({ sent: 0, skippedTestJobs: 3 })).toBe('No new reports to send (already up to date). 3 reports on ZZ test jobs were left out.')
+  })
+
+  it('names the reports a primary may not read, with the reason', () => {
+    expect(sendNowWords({ sent: 2, skippedOutOfScope: 1 })).toBe('Emailed 2 reports. 1 report was left out. A primary is sent only the reports on their own jobs.')
+    expect(sendNowWords({ sent: 1, skippedTestJobs: 1, skippedOutOfScope: 5 })).toBe(
+      'Emailed 1 report. 1 report on a ZZ test job was left out. 5 reports were left out. A primary is sent only the reports on their own jobs.',
+    )
   })
 })

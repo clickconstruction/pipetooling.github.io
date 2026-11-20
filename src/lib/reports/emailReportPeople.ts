@@ -171,3 +171,24 @@ export function planDigestRowWrites(userId: string, existing: readonly PersonDig
   }
   return plan
 }
+
+/** What `send-report-email` answers a manual send with, as far as the editor reads it. */
+export type SendNowAnswer = { sent?: number; skippedTestJobs?: number; skippedOutOfScope?: number }
+
+/**
+ * The line under **Send now**: how many went out, and how many the function left out and why, so the count reads
+ * honest. A report on a ZZ test job is never sent (v2.6127). A report a primary may not read in the app is not sent
+ * to them either (the owner's word of 2026-11-19).
+ */
+export function sendNowWords(answer: SendNowAnswer | null | undefined): string {
+  const sent = answer?.sent ?? 0
+  const testJobs = answer?.skippedTestJobs ?? 0
+  const outOfScope = answer?.skippedOutOfScope ?? 0
+  const sentWords = sent === 0 ? 'No new reports to send (already up to date).' : `Emailed ${sent} report${sent === 1 ? '' : 's'}.`
+  const testJobWords = testJobs === 0 ? '' : testJobs === 1 ? ' 1 report on a ZZ test job was left out.' : ` ${testJobs} reports on ZZ test jobs were left out.`
+  const scopeWords =
+    outOfScope === 0
+      ? ''
+      : `${outOfScope === 1 ? ' 1 report was left out.' : ` ${outOfScope} reports were left out.`} A primary is sent only the reports on their own jobs.`
+  return sentWords + testJobWords + scopeWords
+}
