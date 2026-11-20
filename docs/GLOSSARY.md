@@ -2323,11 +2323,12 @@ Guide: `reconcile-cash-app-payments.md`.
 
 ### Pay run (People → Pay → Payroll)
 The weekly payroll work view (was **Pay reports** until v2.3317): Draft Payroll generates the week's pay reports, the table lists each report with its balance and **Record payment**, and the amber "N upcoming" link names weeks with clocked time and no report.
-Since v2.6155 (punch list #217, people-docs-1) the Draft Payroll window shows its money as bars instead of the *Total | Left* sentence and the Status and Paid columns: a period bar captioned *This period · $11,482.50 · 4 of 9 paid* (paid against the people with pay due, not the whole roster) with its parts *paid · owed · withheld · no report* and each part's share, one **Cash due** column per row with a bar of the same parts (an estimate hatched, a report's deductions as *withheld*) or a blue **Record payment** for a report with nothing paid on it, **$** with the cents drawn smaller and *salary 8h* under a salaried figure, an amber dot (*● 2 waiting*, a press to Hours) on a row with sessions awaiting approval, and *N sessions await approval ›* as a chip in the button row;
+Since v2.6155 (punch list #217, people-docs-1) the Draft Payroll window shows its money as bars instead of the *Total | Left* sentence and the Status and Paid columns: a period bar captioned *This period · $11,482.50 · 4 of 9 paid* (paid against the people with pay due, not the whole roster) with its parts *paid · owed · withheld · no report* and each part's share, one **Cash due** column per row with a bar of the same parts (an estimate hatched, a report's deductions as *withheld*) or a blue **Record payment** for a report with nothing paid on it, **$** with the cents drawn smaller and the salaried chip under a salaried figure, an amber dot (*● 2 waiting*, a press to Hours) on a row with sessions awaiting approval, and *N sessions await approval ›* as a chip in the button row;
 the $ column is still `draftPayrollRowCashDue`, and the print summary keeps the old words.
 Kernel `lib/pay/draftPayrollBars.ts`;
 `components/pay/DraftPayrollBars.tsx`;
 guide `run-the-pay-week`.
+The salaried chip names the person's own set week (`salaryFlatHoursShortChip`, v2.7829): *salary 8h* on the default week, *salary 6h* when every paid day is that long and *salary 36h wk* when the days differ.
 Unit = the pay report, clock = the week.
 Sibling view: **Balances**.
 
