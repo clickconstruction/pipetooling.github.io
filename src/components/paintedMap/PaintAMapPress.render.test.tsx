@@ -12,7 +12,6 @@ vi.mock('../../lib/supabase', () => ({ supabase: {} }))
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { onPaintedMapAsk, type PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
 import type { PaintPressDay } from '../../lib/paintedMap/paintedMapPressIo'
-import { UpdateFocusOpenerBridgeProvider, useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { PAINT_PRESS_WAIT_MS, PaintAMapPress } from './PaintAMapPress'
 
 const cedar = { id: 'j-cedar', number: 'J2417', name: 'Cedar Hollow 12', address: '1208 Wrenfield Loop' }
@@ -42,60 +41,34 @@ const settle = async () => {
   })
 }
 
-describe('PaintAMapPress · wide (Job Mode)', () => {
-  it('reads the day when drawn and says the job the map will land on', async () => {
+describe('PaintAMapPress · tile (Job Mode)', () => {
+  it('draws its name in the look the row hands it, and reads nothing until pressed', async () => {
     const load = vi.fn(async () => clockedOnCedar)
-    render(<PaintAMapPress userId="u1" role="subcontractor" shape="wide" load={load} now={() => TEN_AM} />)
-    // Before the read lands it says nothing that could turn out wrong.
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('The way in, drawn or walked')
+    render(<PaintAMapPress userId="u1" role="subcontractor" shape="tile" tileStyle={{ minHeight: 62 }} load={load} now={() => TEN_AM} />)
     await settle()
-    expect(load).toHaveBeenCalledTimes(1)
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On J2417 · Cedar Hollow 12')
-    expect(screen.getByRole('button', { name: 'Paint a map. On J2417 · Cedar Hollow 12' })).toBeTruthy()
+    const tile = screen.getByRole('button', { name: 'Paint a map' })
+    expect(tile.getAttribute('data-paint-a-map-press')).toBe('tile')
+    expect(tile.textContent).toBe('Paint a map')
+    expect(tile.style.minHeight).toBe('62px')
+    expect(load).not.toHaveBeenCalled()
   })
 
-  it('opens the start sheet on that job at once, with no second read', async () => {
+  it('reads the day on the press and opens the start sheet on the job', async () => {
     const load = vi.fn(async () => clockedOnCedar)
-    render(<PaintAMapPress userId="u1" role="subcontractor" shape="wide" load={load} now={() => TEN_AM} />)
-    await settle()
-    fireEvent.click(document.querySelector('[data-paint-a-map-press="wide"]')!)
+    render(<PaintAMapPress userId="u1" role="subcontractor" shape="tile" load={load} now={() => TEN_AM} />)
+    fireEvent.click(document.querySelector('[data-paint-a-map-press="tile"]')!)
     await settle()
     expect(load).toHaveBeenCalledTimes(1)
     expect(asks).toHaveLength(1)
     expect(asks[0]).toMatchObject({ kind: 'start', home: { jobId: 'j-cedar', label: 'J2417 · Cedar Hollow 12', address: '1208 Wrenfield Loop', canChangeJob: true } })
-    expect(recordNavClick).toHaveBeenCalledWith('u1', 'subcontractor', 'paint-a-map', '#dashboard-wide')
+    expect(recordNavClick).toHaveBeenCalledWith('u1', 'subcontractor', 'paint-a-map', '#dashboard-tile')
   })
 
-  it('with no job today, says the person picks, and opens the sheet on no job', async () => {
-    render(<PaintAMapPress userId="u1" role="subcontractor" shape="wide" load={async () => nothing} now={() => TEN_AM} />)
-    await settle()
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
-    fireEvent.click(document.querySelector('[data-paint-a-map-press="wide"]')!)
+  it('with no job today, opens the sheet on no job', async () => {
+    render(<PaintAMapPress userId="u1" role="subcontractor" shape="tile" load={async () => nothing} now={() => TEN_AM} />)
+    fireEvent.click(document.querySelector('[data-paint-a-map-press="tile"]')!)
     await settle()
     expect(asks[0]).toMatchObject({ kind: 'start', home: { jobId: null } })
-  })
-
-  it('reads again when the clock changes', async () => {
-    let day: PaintPressDay = nothing
-    const load = vi.fn(async () => day)
-    let tell = () => {}
-    const Teller = () => {
-      tell = useUpdateFocusOpenerBridge().notifySessionChanged
-      return null
-    }
-    render(
-      <UpdateFocusOpenerBridgeProvider>
-        <Teller />
-        <PaintAMapPress userId="u1" role="subcontractor" shape="wide" load={load} now={() => TEN_AM} />
-      </UpdateFocusOpenerBridgeProvider>,
-    )
-    await settle()
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
-    day = { clock: { job: pinto }, todayStops: [] }
-    act(() => tell())
-    await settle()
-    expect(load).toHaveBeenCalledTimes(2)
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On J2431 · Pinto Ridge 3')
   })
 })
 

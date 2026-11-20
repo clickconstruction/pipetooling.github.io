@@ -48,7 +48,8 @@ function minutesOf(pgTime: string): number {
   return Number(m[1]) * 60 + Number(m[2])
 }
 
-const paintable = (job: PaintPressJob | null | undefined): job is PaintPressJob => !!job && !!job.id && !job.billingOnly && !job.office
+/** A job with a site of its own: not a line on a bill, and not the office's job. Job Mode's top row reads the same rule. */
+export const paintable = (job: PaintPressJob | null | undefined): job is PaintPressJob => !!job && !!job.id && !job.billingOnly && !job.office
 
 /**
  * The job the press lands on.
@@ -84,20 +85,7 @@ export function paintPressJobLabel(job: Pick<PaintPressJob, 'number' | 'name'>):
 
 export const PAINT_PRESS_WORDS = {
   press: 'Paint a map',
-  /** The second line when the day names no job: the sheet opens on the person's next job or their last, or asks. */
-  pick: 'On your next or last job, or a pick',
-  /** The second line while the day is being read. It says nothing that could turn out wrong. */
-  reading: 'The way in, drawn or walked',
-  /** The press's name for a screen reader, with where the map will land. */
-  aria: (line: string | null) => (line ? `Paint a map. ${line}` : 'Paint a map'),
 } as const
-
-/** The second line under the press: `On J2417 · Cedar Hollow 12`, or that the person picks. */
-export function paintPressLine(landing: PaintPressLanding): string {
-  if (landing.kind === 'pick') return PAINT_PRESS_WORDS.pick
-  const label = paintPressJobLabel(landing.job)
-  return label ? `On ${label}` : 'On the job you are on'
-}
 
 /**
  * What the start sheet opens on. A landed job can still be changed there, since the app's pick is a
@@ -109,10 +97,10 @@ export function paintPressHome(landing: PaintPressLanding): PaintedMapHome {
   return { jobId: landing.job.id, developmentId: null, label: paintPressJobLabel(landing.job) ?? 'This job', developmentLabel: '', address: landing.job.address?.trim() || null, center: null, canChangeJob: true }
 }
 
-/** The three shapes the press takes on the Dashboard's top row. */
+/** The three shapes the press takes on the Dashboard's top row. Each reads the day on the press, so the Dashboard pays nothing to draw it. */
 export type PaintPressShape =
-  /** Job Mode: wide, beside the Tally square, with the second line. */
-  | 'wide'
+  /** Job Mode: one of the day's row's equal squares (`lib/jobMode/topRow.ts`). */
+  | 'tile'
   /** The office's phone: a quiet link beside Job report and Tally. */
   | 'link'
   /** A desk, and a leader's phone: a square after Job Report. */
@@ -120,6 +108,6 @@ export type PaintPressShape =
 
 /** Which shape a row draws, from the two facts the row already has. */
 export function paintPressShape(row: { hasClockSlot: boolean; quietSquares: boolean }): PaintPressShape {
-  if (!row.hasClockSlot) return 'wide'
+  if (!row.hasClockSlot) return 'tile'
   return row.quietSquares ? 'link' : 'square'
 }

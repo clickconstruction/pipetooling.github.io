@@ -14,7 +14,7 @@ Anyone who can open a job can paint a map for it.
 
 The Dashboard has a {{button:outline|Paint a map}} press near the top. You do not have to be clocked in to see it.
 
-- In Job Mode the press sits beside the tally button. It says which job the map is for.
+- In Job Mode the press is one of the squares under the header.
 - On the office's phone the press is a link under the clock.
 - Everywhere else the press is a square after **Job Report**.
 
