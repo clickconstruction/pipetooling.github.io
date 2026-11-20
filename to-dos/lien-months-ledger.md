@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day are in PRs #9134, #9130 and #9133
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below.
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -164,6 +164,48 @@ no month to tick on a missed notice, since the step was handed the notice's own 
 A missed notice with no month still due now offers its closed months to tick, so a paper already on
 record can stand for one. The step's checks and its reason still rule. The fragment is
 `docs/recent-features/v2.8027.md`.
+
+## Audited 2026-11-20
+
+The owner asked for this card's work to be audited by a session on Fable 5.2. The findings, the method and five sheets of
+screenshots are in the lead session's shared notes (`review-361.md` and the `review-361` folder). The build itself (#8990)
+carries the Fable 5.2 trailer. The walk note and the two fixes of v2.8026 and v2.8027 are Opus 5.5.
+
+**What held.** The total that left with the `tfoot` drew the same value the claim line draws, so no total, amount or count
+is missing or different, and on eight live notices the bills' Owed added up to the claim to the dollar. Every deadline is
+the kernel's. Record it… opened its step on every pile, at a desk and on a phone. Nothing slides at 390, 375 or 320 px.
+
+**Three faults, fixed the same day.**
+
+- **v2.8063 (#9076).** A closed month a paper named in time read *named after the window — information*. It reads *named
+  in time* now, and keeps the old words only when every paper that names it went after its deadline. The words were older
+  than this card. The rebuild carried them over.
+- **v2.8064 (#9077).** The card asked for a tick nobody could make. Every Sent notice drew a *This notice* column of dead
+  ticks, because the desk handed the grid no item there, and the lead line said *Tick a month to put it on this notice.*
+  on Ready and Printed notices too. A Sent notice has no such column now, and the lead asks only where a row can be ticked.
+  The fragment of v2.7989 says a notice that went has no column to tick. On the live desk it had one until this.
+- **v2.8074 (#9075).** On a phone the *noted by* line of a closed month ran into the tick's column, and under the tick
+  itself at 320 px with a long name. It wraps inside its own column.
+
+**Five questions, put to the owner with pictures, and his answers.**
+
+1. *On a missed notice, how should Record it… open?* **Nothing picked, nothing ticked.** v2.8027 handed the step the closed
+   months, and the step ticked every month it was handed and picked the paper when the property had one, so a typed
+   reason and one press recorded them all. The record reads such a month as noticed whatever the paper's date, and the
+   affidavit reads the same rows. PR #9134.
+2. *With two or more earlier papers, where should the tick column go?* **Pinned to the right edge.** The grid slid inside
+   its frame and the column past the edge was this notice's. Seen on made-up months. No live notice has more than one
+   earlier paper yet. PR #9130.
+3. *On a notice that went, what should Record it… do?* **Go straight to the by-hand record.** The step opened on the
+   notice's own paper with no month to tick and a dead Apply. PR #9134.
+4. *On a slow read the step opened half under the window. Fix it?* **Yes.** The watch on the footer's growth stopped after
+   4 s. The step now says when its read has ended and the pane lands on it again. PR #9134.
+5. *Which presses on a phone should grow to thumb size?* **Every press on the card.** Each is 44 px tall to the touch. A
+   press of words keeps its line, so the card is 26 px taller and no more. PR #9133.
+
+**Still open.** The figure in the head of the notice's column is Grace's choice, as above. The claim drops cents and its
+lines keep them, as before this card. The empty card names no next press. The audit read the affidavit's side of
+question 1 in the code and did not walk it.
 
 ## How to verify
 
