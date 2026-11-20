@@ -5368,7 +5368,7 @@ A bid's own rows (*Plan sets (Bids)*) are untouched: a bid pins what it was pric
 `src/lib/papers/papers.ts`) live in the same register: a `plan_sets` row whose kind is a paper kind (spec · submittal · schedule · scope · change order · meeting notes · task list · report · sheet · other) and whose `marks_up_set_id` is the set it *goes with*;
 `owed` marks one we wait on, `ask_lane` + `ask_request_id` hand the question it raised to the estimators' or Dispatch's inbox and read the answer back;
 a trigger refuses a paper as a part's current set and writes one `development_history_entries` line the day a paper is kept.
-Doors: the job's **Papers with the plans** block (`JobPapersSection.tsx`: *Keep a paper*, *We are owed a paper*, *It came*), **Keep this mail as a paper on JP…** on a tagged mail in My Mail and, since v2.7540 (punch list #368, PR 4), on the mail's window in Messages for an email on a Pipeline job that carries a file, where the whole office reads it (`MailPaperDoor.tsx`;
+Doors: the job's **Papers with the plans** block (`JobPapersSection.tsx`: *Keep a paper*, *We are owed a paper*, *It came*), **Keep this mail as a paper on JP…** on a tagged mail in My Mail and, since v2.7540 (punch list #368, PR 4), on the mail's window in Messages for an email on a Pipeline job, where the whole office reads it, on both only for a mail that carries a real file or a link to a file on a file host since v2.7973 (`MailPaperDoor.tsx`, `mailHasPaper` in `src/lib/papers/mailPaperLinks.ts`;
 `keep_paper` in `emailViewerActions.ts`), and the Plans look's *Papers* column.
 Guides: *keep the plans on a job*, *keep the papers with the plans*, *see everything on a development*.
 The mirror `plan_part_mirror_job_links(part)` is `SECURITY DEFINER`, since an estimator may switch a part's set without the right to update job rows;
@@ -5380,6 +5380,7 @@ the crew's as-built takes **Photos or a PDF** from the phone (the table holds th
 since v2.6609, punch list #276, the Plans section sits in the crew's own read-only job window under the job's status, `DetailJobModalPlans`, with **Add our as-built** and no **+ New set**, the old *Open plans* row kept only while the read finds no part);
 the mail door files the mail's files into the paper's folder (PR 5, the edge function `plan-set-files` over `_shared/planSetFilesRun.ts`).
 Since v2.7969 a picture from inside the mail's words, a signature's logo or a Drive link's preview (`isInlinePicture`, `src/lib/messages/inlinePicture.ts`), stays out of that folder and the line under the mail counts it (`splitMailFiles` → `pictures`).
+Since v2.7973 the mail's link fills the form's **Link** box, each link once (`mailPaperLinks`), with a **Mail's links** pick when the mail carries more than one.
 The card (`to-dos/plan-sets-by-part/`) retired 2026-11-07 after the mail door's live check: a tagged mail's PDF landed in **Plans › <paper name>** under the job's Plans folder and the paper took the folder's link;
 the site look gained *Move to…* and × on a paper the same day (v2.6632).
 

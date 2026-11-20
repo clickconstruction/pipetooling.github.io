@@ -26,6 +26,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { BidMailSetDoor } from '../bids/BidMailSetDoor'
 import { MailPaperDoor } from '../papers/MailPaperDoor'
 import { realFileCount } from '../../lib/plans/planSetFiles'
+import { mailPaperLinks } from '../../lib/papers/mailPaperLinks'
 import { Btn, input } from '../gc/gcUi'
 import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
 import { useOpenThread } from '../gc/messages/openThread'
@@ -132,6 +133,7 @@ export function EmailViewerActions({ message, invitation, presses, io, me, say, 
             at={message.at}
             messageId={message.id}
             mailFileCount={realFileCount((message.files ?? []).filter((f) => f.kept !== 'link'))}
+            mailLinks={mailPaperLinks((message.files ?? []).filter((f) => f.kept === 'link').map((f) => f.url))}
           />
         </div>
       )}
