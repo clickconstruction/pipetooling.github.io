@@ -4216,6 +4216,22 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull()
   })
 
+  // A notice that already went is among the papers (v2.8064, the audit of punch list #361): the desk drew a last column
+  // *This notice* of dead ticks on it, under a line that asked for a tick.
+  it('on a notice in Sent, the months card has no column for this notice and asks for no tick (v2.8064)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={sentData()} initialKind="notice" initialJobId="j650" initialPile="sent" />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull())
+    const card = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    expect(card.querySelector('[data-lien-grid-row]')).not.toBeNull()
+    // The paper that went is still a column, lettered A.
+    expect(card.querySelector('[data-lien-grid-paper="A"]')).not.toBeNull()
+    expect(card.querySelector('[data-lien-grid-paper="this"]')).toBeNull()
+    expect((card.querySelector('table') as HTMLElement).getAttribute('data-this')).toBe('no')
+    expect(card.querySelector('td[data-col="this"]')).toBeNull()
+    expect(card.textContent).not.toContain('Tick a month to put it on this notice.')
+  })
+
   it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
     await settle()

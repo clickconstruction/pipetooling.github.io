@@ -192,6 +192,8 @@ export default function LienDeskMonths({
   const missed = grid.rows.filter(isMissed)
   const infoRows = grid.rows.filter((r) => r.thisNotice.info)
   const lateRows = grid.rows.filter((r) => r.thisNotice.late)
+  // A tick is asked for only where one can be made: a notice past editing, or one whose months are all closed, has none.
+  const canTick = grid.rows.some((r) => !r.thisNotice.locked)
 
   // The foot of this notice's column (v2.7430): the months it names and their count, under the total they make.
   const foot: ReactNode =
@@ -218,15 +220,15 @@ export default function LienDeskMonths({
         </div>
       ) : (
         <>
-          {thisPaper || filings.length > 0 ? (
+          {(thisPaper && canTick) || filings.length > 0 ? (
             <p className="lienLedgerLead" data-lien-ledger-lead>
-              {thisPaper ? 'Tick a month to put it on this notice.' : null}
-              {thisPaper && filings.length > 0 ? ' ' : null}
+              {thisPaper && canTick ? 'Tick a month to put it on this notice.' : null}
+              {thisPaper && canTick && filings.length > 0 ? ' ' : null}
               {filings.length > 0 ? 'A check is a paper that already names the month.' : null}
             </p>
           ) : null}
           <div className="lienLedgerGridFrame">
-            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)}>
+            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)} data-this={thisPaper ? 'yes' : 'no'}>
               <thead>
                 <tr>
                   <th data-col="month">Month</th>
