@@ -16,7 +16,15 @@ import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { summarizeCustomerJobsBilling } from '../../lib/customerSummaryBilling'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
-import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../../lib/jobActivityFilter'
+import {
+  ACTIVITY_FILTERS,
+  countActivityByFilter,
+  filterActivity,
+  resolveActivityFilter,
+  visibleActivityFilters,
+  type ActivityFilter,
+} from '../../lib/jobActivityFilter'
+import { activityFilterAccessForRole } from '../../lib/jobs/jobActivityChipAccess'
 import {
   fetchCustomerSummaryActivity,
   type CustomerSummaryData,
@@ -288,7 +296,7 @@ export default function CustomerSummaryModal({
   const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
   /** Bumped by Retry: the feed reads again. */
   const [feedKey, setFeedKey] = useState(0)
-  const [filter, setFilter] = useState<ActivityFilter>('all')
+  const [chosenFilter, setFilter] = useState<ActivityFilter>('all')
   const [viewReport, setViewReport] = useState<ReportForView | null>(null)
   const [billingExpanded, setBillingExpanded] = useState(false)
 
@@ -340,6 +348,19 @@ export default function CustomerSummaryModal({
       cancelled = true
     }
   }, [customerId, feedKey])
+
+  // The chips this viewer is drawn (2026-11-20). Many jobs feed this list, so the role alone answers, and a line the
+  // feed did hand over still draws its chip.
+  const filters = useMemo(
+    () =>
+      visibleActivityFilters(
+        ACTIVITY_FILTERS,
+        activityFilterAccessForRole(role),
+        data ? countActivityByFilter(data.items.map((i) => i.inner)) : null,
+      ),
+    [role, data],
+  )
+  const filter = resolveActivityFilter(chosenFilter, filters)
 
   const visibleItems = useMemo(() => {
     if (!data) return []
@@ -609,7 +630,7 @@ export default function CustomerSummaryModal({
         ) : null}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="group" aria-label="Filter interactions">
-          {ACTIVITY_FILTERS.map((f) => (
+          {filters.map((f) => (
             <button
               key={f.value}
               type="button"

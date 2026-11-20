@@ -11,7 +11,14 @@ import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerR
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
-import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../lib/jobActivityFilter'
+import {
+  ACTIVITY_FILTERS,
+  JOB_ACTIVITY_FILTERS,
+  resolveActivityFilter,
+  visibleActivityFilters,
+  type JobActivityFilter,
+} from '../lib/jobActivityFilter'
+import { useJobActivityFilterAccess } from '../hooks/useJobActivityFilterAccess'
 import type { JobActivityMessage } from '../lib/jobs/jobActivityMessages'
 import { countJobUpdates, filterJobUpdates, mergeJobUpdates } from '../lib/jobs/jobUpdatesCustomerLines'
 import { JobUpdatesCustomerLine } from './jobs/JobUpdatesCustomerLine'
@@ -301,17 +308,15 @@ export function JobThreadNotesPanel({
   const reportIds = useMemo(() => activity.flatMap((i) => (i.kind === 'report' ? [i.report.id] : [])), [activity])
   const photoCounts = useReportPhotoCounts(reportIds)
 
-  const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
+  const [chosenFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const filterEnabled = activityProp != null
+  // The chips this viewer is drawn (2026-11-20): Reports and Billing only for a person who reads them on this job.
+  const filterAccess = useJobActivityFilterAccess(filterEnabled ? tagJobId : null, viewerRole, tagViewerId)
   // The customer's lines (v2.5527) join the activity by time, under their own pill.
   const withCustomer = filterEnabled && customerLines !== undefined
   const entries = useMemo(
     () => mergeJobUpdates(activity, withCustomer ? (customerLines ?? []) : []),
     [activity, withCustomer, customerLines],
-  )
-  const visibleEntries = useMemo(
-    () => (filterEnabled ? filterJobUpdates(entries, activityFilter) : entries),
-    [filterEnabled, entries, activityFilter],
   )
   // Per-bucket counts for the filter pills — same array the filter reads, so a
   // pill's number always matches what clicking it shows.
@@ -319,7 +324,17 @@ export function JobThreadNotesPanel({
     () => (filterEnabled ? countJobUpdates(entries) : null),
     [filterEnabled, entries],
   )
-  const filters: { value: JobActivityFilter; label: string }[] = withCustomer ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
+  const everyFilter: { value: JobActivityFilter; label: string }[] = withCustomer ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
+  const filters = useMemo(
+    () => visibleActivityFilters(everyFilter, filterAccess, activityCounts),
+    [everyFilter, filterAccess, activityCounts],
+  )
+  // A chosen filter whose chip is not drawn for this viewer reads as All.
+  const activityFilter = resolveActivityFilter(chosenFilter, filters)
+  const visibleEntries = useMemo(
+    () => (filterEnabled ? filterJobUpdates(entries, activityFilter) : entries),
+    [filterEnabled, entries, activityFilter],
+  )
   // If the selected bucket empties out (items reloaded, note deleted), fall
   // back to All rather than stranding the user on a blank feed behind a pill
   // that is now demoted to non-clickable.
@@ -385,7 +400,11 @@ export function JobThreadNotesPanel({
           aria-label="Filter activity"
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}
         >
-          {filters.map((f) => {
+          {everyFilter.map((f) => {
+            const drawn = filters.some((v) => v.value === f.value)
+            // A chip this viewer is not drawn leaves no gap. The ＋ Report door keeps the Reports pill's place for a
+            // hand who leaves reports and reads only their own.
+            if (!drawn && !(f.value === 'reports' && onLeaveReport)) return null
             const active = activityFilter === f.value
             const count = f.value === 'all' ? null : (activityCounts?.[f.value] ?? 0)
             // Empty buckets demote to quiet non-clickable text (the v2.1475
@@ -397,7 +416,7 @@ export function JobThreadNotesPanel({
             const withChip = (pill: ReactNode): ReactNode =>
               f.value === 'reports' && onLeaveReport
                 ? [
-                    pill,
+                    drawn ? pill : null,
                     <button
                       key="leave-report"
                       type="button"
