@@ -80,6 +80,7 @@ function fixture() {
     person_file_amendments: [] as Record<string, unknown>[],
     person_case_items: [] as Record<string, unknown>[],
     person_case_log: [] as Record<string, unknown>[],
+    person_engagements: [] as Record<string, unknown>[],
   }
 }
 const history = { dev_history_read: { count: 2, lines: [{ at: '2026-10-07T10:00:00Z', body: 'Lift stations in.\nMore.', kind: 'note' }, { at: '2026-09-20T10:00:00Z', body: 'The funeral weekend.', kind: 'note' }] } }
@@ -139,7 +140,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.119.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.120.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')

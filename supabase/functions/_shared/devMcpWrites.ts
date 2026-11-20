@@ -34,6 +34,7 @@ import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { caseInput, isCaseVerb } from './devMcpCase.ts'
 import { dropKeptPlanInput } from './devMcpKeptPlans.ts'
+import { engagementInput, isEngagementVerb } from './devMcpEngagement.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
 import { isTwinKeyVerb, twinKeyCommitment, twinKeyInput } from './devMcpTwinKey.ts'
@@ -144,6 +145,11 @@ export const WRITE_VERBS = {
   // stays with its reason, and a plan already decided is refused by the door. Keeping a plan is not a verb of its own:
   // keep: true on plan_hr_entry, plan_person_doc or plan_person_report stores it after the dry run (devMcpKeptPlans.ts).
   drop_kept_plan: { rpc: 'dev_kept_plan_decide', step: 'drop' },
+  // v2.8000 / 0.120.0 (punch list #315, upgrade 4c): a person's standing over time (dev_engagement_write, migration
+  // 20261113090000): a stretch opened, the capacity changed from a day, the running stretch ended, or one taken off
+  // with its reason. The door refuses days that overlap. The shape is devMcpEngagement.ts's.
+  plan_engagement: { rpc: 'dev_engagement_write', step: 'plan' },
+  apply_engagement: { rpc: 'dev_engagement_write', step: 'apply' },
   // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
@@ -1188,6 +1194,11 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const n = keep.length + takeOff.length
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${n} mark${n === 1 ? '' : 's'}`, planHash }
   }
+  if (isEngagementVerb(verb)) {
+    const built = engagementInput(verb, input)
+    if (!built.ok) return { ok: false, error: built.error }
+    return { ok: true, rpc, step, body: { p: built.p, p_dry_run: step === 'plan' }, dryRunBody: { p: built.p, p_dry_run: true }, target: built.target, planHash }
+  }
   if (verb === 'drop_kept_plan') {
     const built = dropKeptPlanInput(input)
     if (!built.ok) return { ok: false, error: built.error }
@@ -1794,6 +1805,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
   if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
   if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
+  if (verb === 'apply_engagement') return `Nothing written: this plan was already applied on this person's standing${when}. The stretches already read that way: get_person_file's engagements lists them. A further change is a new plan from the standing as it is.`
   if (verb === 'apply_case') return `Nothing written: this plan was already applied on this person's case${when}. The items and the log already read that way: get_case_brief's open_items and log show them. A further change is a new plan from the case as it stands.`
   if (verb === 'apply_theme_review') return `Nothing written: this plan was already applied on those marks${when}. A kept mark reads as kept already and a mark that came off as off already in a new plan; read_rows on legal_theme_marks shows the stamps, and the file's By theme view draws them.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`

@@ -144,7 +144,8 @@ right to apply in the session on his word, as today.
 
 - **PR 4a (v2.7111, built):** migration `20261113090000`, the table, the one door `dev_engagement_write` (no direct write to the table), the kernel (`standingOn(day)`, overlaps refused), the bed. Kinds built: employee and subcontractor.
 - **4b (v2.7991, built):** the fact strip wears the standing and opens **Standing…** (`PersonStandingWindow.tsx`: record a stretch, change from a day, end the running one, take one off with its reason), and the Timeline's Employment source draws each change (`engagementLines`). The help guide has the steps.
-- **4c:** the seat. **4d:** the mark on hours and `isPresence` in
+- **4c (v2.8000, built, server 0.120.0):** `get_person_file` and `get_case_brief` carry `engagements`, the seat's Timeline draws each change, and `plan_engagement` → `apply_engagement` write through `dev_engagement_write`. `get_hours_statement` is untouched: it has nothing to leave out until 4d.
+- **4d:** the mark on hours and `isPresence` in
   the statement's reader (`hoursStatementRead.ts` takes its first recorded day from every row today).
   **4e:** the other readers.
 - **His calls:** the list of kinds. And 4d changes what existing rows mean: which rows get the mark is

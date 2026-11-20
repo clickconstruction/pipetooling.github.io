@@ -140,6 +140,8 @@ describe('plan_case → apply_case: the input becomes dev_case_write\'s payload'
     }
     expect(caseInput('plan_case', {})).toMatchObject({ ok: false })
     bad({ person_id: 'Pat Doe', log: ['x'] }, 'plan_case needs case')
+    // Found on the live walk of 0.118.0: find_person answers a login's users.id, and the door wants the roster row's id. The shape says so.
+    expect(caseInput('plan_case', {})).toMatchObject({ ok: false, error: expect.stringContaining("find_person answers a login's users.id, which this door refuses") })
     bad({ person_id: PERSON }, 'nothing to write')
     bad({ person_id: PERSON, items: 'one' }, 'items and log are lists')
     bad({ person_id: PERSON, items: Array.from({ length: CASE_CHANGES_MAX + 1 }, (_, i) => ({ item_no: i + 1, reopen: true })) }, 'at most 50 item changes')
@@ -337,6 +339,7 @@ describe('get_case_brief carries the numbers, the open items and the log (0.118.
     person_file_amendments: [],
     person_case_items: CASE_ITEMS,
     person_case_log: CASE_LOG,
+    person_engagements: [],
   })
 
   it('the selects are ones the door accepts', async () => {
@@ -452,7 +455,7 @@ describe('the seat, its docs and the migration carry the pair and the reads', ()
       expect(SERVER).toContain(`case '${v}':`)
       expect(SERVER).toContain(`name: '${v}',`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.119.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.120.0'")
     expect(SERVER).toContain('plan_case → apply_case (a person\'s case: its open items, each numbered by the file')
     expect(SERVER).toContain("exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target)))")
     expect(SERVER).toContain("readerAs(jwt).rpc('person_file_next_exhibit_no', { p_person_id: personId })")

@@ -175,9 +175,10 @@ describe('get_case_brief opens with the manifest and the rules, whole on a file 
     const out = await getCaseBrief(r, { person: BIG_PERSON }, DEV)
     if ('refused' in out) throw new Error(out.refused)
     // Since 0.118.0 the brief draws the case's items and log (open_items, log), so those two are named in its held;
-    // the four the manifest alone reads are held on their own parts.
-    expect(out.held).toHaveLength(2)
-    expect(out.held).toEqual(expect.arrayContaining([{ source: 'case items', reason: 'permission denied for table person_case_items' }, { source: 'case log', reason: 'permission denied for table person_case_log' }]))
+    // since 0.120.0 it draws the standing too (engagements); the three the manifest alone reads are held on their own parts.
+    expect(out.held).toHaveLength(3)
+    expect(out.held).toEqual(expect.arrayContaining([{ source: 'case items', reason: 'permission denied for table person_case_items' }, { source: 'case log', reason: 'permission denied for table person_case_log' }, { source: 'standing', reason: 'permission denied for table person_engagements' }]))
+    expect(out.engagements).toBeNull()
     expect(out.open_items).toBeNull()
     expect(out.log).toBeNull()
     const part = (name: string) => out.manifest.parts.find((p) => p.part === name)!
@@ -212,7 +213,7 @@ describe('find_person tries each word when the whole name matches no one (v2.765
 
 describe('the server and the docs carry the manifest (v2.7651 / 0.97.0)', () => {
   it('the instructions send an HR read to get_case_brief before their first three hundred words end, and no longer say whole', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.119.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.120.0'")
     const at = SERVER.indexOf('const INSTRUCTIONS =')
     const opening = SERVER.slice(at, at + 700)
     expect(opening).toContain("For a person's HR file call get_case_brief first")

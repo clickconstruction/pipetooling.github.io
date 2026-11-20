@@ -17,6 +17,8 @@
 import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
 import { AMENDMENTS_NOTE, amendmentCounts, amendmentKeyOfRow, readPersonAmendments, seatAmendmentBits, type SeatAmendmentBits } from './devMcpAmendments.ts'
 import { EXHIBIT_NOTE, exhibitBits as exhibitBitsOf, exhibitNoOf, type SeatExhibitBits } from './devMcpCase.ts'
+import { ENGAGEMENT_SELECT, engagementsBlock } from './devMcpEngagement.ts'
+import type { PersonEngagementRow } from './personEngagements.ts'
 import type { RowFilter } from './devMcpDoor.ts'
 import { cutText, fitReply, replyChars, type FitStep, type Shortened, type ShortenedBlock } from './devMcpReplyFit.ts'
 import {
@@ -321,6 +323,17 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     fileIds: (filesByRecord.get(r.id) ?? []).map((f) => f.id),
   }))
 
+  // Punch list #315, upgrade 4c: the person's standing over time, a source of its own, dev-only and fail-soft. A read
+  // that fails is named in `held` and takes only the standing out; the start and last days still draw from the roster row.
+  let engagementRows: PersonEngagementRow[] | null = null
+  if (isDev) {
+    try {
+      engagementRows = (await readAllRows(reader, 'person_engagements', { select: ENGAGEMENT_SELECT, filters: eq('person_id', personId) })).rows as unknown as PersonEngagementRow[]
+    } catch (e) {
+      held.push({ source: 'employment', reason: `the standing over time could not be read (${e instanceof Error ? e.message : String(e)}); the start and last days are whole` })
+    }
+  }
+
   const input: PersonTimelineInput = {
     todayYmd: who.todayYmd,
     person: { id: person.id, name: person.name, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at },
@@ -338,6 +351,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     writeups,
     ncns,
     excuses,
+    engagements: engagementRows ?? [],
     namesById,
   }
 
@@ -506,6 +520,9 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     amendments: amendRead && !amendRead.heldWhy ? { ...amendmentCounts(amendRead), note: AMENDMENTS_NOTE } : null,
     ahead: aheadBlock(),
     months: monthsBlock(),
+    // v2.8000 (punch list #315, upgrade 4c): the standing over time, employee or subcontractor by stretch; null for
+    // another role or when it could not be read. Each change also draws on the Timeline under Employment.
+    engagements: engagementRows ? engagementsBlock(engagementRows, who.todayYmd) : null,
     evidence: evidenceBlock(),
     // v2.7976: what exhibit_no on a record and on its Timeline line means.
     evidence_note: isDev ? EXHIBIT_NOTE : 'dev only',
