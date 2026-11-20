@@ -2,7 +2,7 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, map, publish, publish revision, changed, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.
@@ -38,6 +38,44 @@ The first draft is placeholder words, for you to change. Nobody outside sees a d
 - {{chip:green|Published, revision 2}} names the copy everyone outside sees.
 - {{chip:yellow|Changes not published}} means the draft has moved on from that copy.
 - {{chip:yellow|Not read by an attorney}} means nobody has marked this revision as read. A new revision is unread again.
+
+## Change the Sub NDA's words
+
+The Sub NDA opens on two sides. The right side is what a GC sees. The left side is the map and what changed.
+
+1. Press any words on the right side and type over them.
+2. Wait for the bar to read *Draft saved*.
+
+- **Add a line** adds a line at the end of a list.
+- The small **×** beside a line takes it off.
+- A breach line that a stricter level keeps is one rule. Change it on the level that brings it.
+
+Nobody outside sees a draft. No clause wording is typed here. A clause stays grey bars.
+
+## Read the map
+
+The map has a row for each topic and a column for each level.
+
+1. Press a cell on the map.
+2. Read that topic at that level on the right side.
+
+A changed cell is marked. On a phone a cell is a small square. You do not type in the map.
+
+Under the map, each changed page has two presses.
+
+- {{button:outline-blue|Open it}} shows the page.
+- {{button:outline-blue|Back to revision 2}} puts the page back as it was published.
+
+## Publish a revision
+
+1. Read the list of what changed.
+2. Press the blue button on the bar. It names the revision, like {{button:blue|Publish revision 3}}.
+
+A list **Before this can be published** shows while something is missing. Fix each line and the button wakes.
+
+Press **Marks are on** to read the flow as a GC does. Press it again to type.
+
+To mark a revision as read, press **Mark it read** on the bar. Type the attorney's name and press the blue button. A new revision is unread again.
 
 ## Walk the Sub NDA
 

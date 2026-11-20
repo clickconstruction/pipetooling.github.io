@@ -6633,6 +6633,9 @@ A link **made new** stops the one before it, and a link **switched off** closes 
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
+Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of words on the flow is a field named by a **path** into the paper, and a **page** is the flow's own, a topic at a level among them ([`paperEdit.ts`](../src/lib/documentBuilder/paperEdit.ts)).
+The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
+A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 
 ### Agreements tab

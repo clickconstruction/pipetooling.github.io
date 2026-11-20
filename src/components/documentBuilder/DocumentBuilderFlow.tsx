@@ -58,6 +58,7 @@ import {
   type PaperStop,
   type PaperTopic,
 } from '../../lib/documentBuilder/documentBuilder'
+import { BuilderField, type BuilderFieldMark } from './BuilderField'
 import { levelInk, levelTone } from './levelTone'
 import { LevelBars, LevelChip, LevelTrack, DocumentBuilderSlider } from './DocumentBuilderSlider'
 
@@ -172,7 +173,53 @@ function useGlide(root: RefObject<HTMLElement | null>, page: string) {
 
 type Held = { settings: PaperSettings; flow: FlowState }
 
-export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSSProperties }) {
+/**
+ * Typing on the flow (step 7): every piece of words is a field, named by its path into the paper
+ * (`lib/documentBuilder/paperEdit.ts`). The flow draws the fields and hands each change up. It keeps no words itself.
+ */
+export type FlowEdit = {
+  /** `own` for words that differ from the published revision, else `usual`. */
+  mark: (path: string) => BuilderFieldMark
+  onWords: (path: string, words: string) => void
+  onAddLine: (listPath: string) => void
+  onRemoveLine: (listPath: string, index: number) => void
+}
+
+/** A page to show: its step, and for a topic the stop to stand on. A new `at` opens it again. */
+export type FlowOpen = { step: string; stop?: PaperStop; at: number }
+
+const CTL: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 6, padding: '0 8px', minHeight: 24, fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', justifySelf: 'start' }
+
+/** Words on the flow: a field while someone edits, the words alone when read. */
+function W({ edit, path, text, label, tag, style }: { edit?: FlowEdit; path: string; text: string; label: string; tag?: 'span' | 'b' | 'div'; style?: CSSProperties }) {
+  if (!edit) return <>{text}</>
+  return <BuilderField editing text={text} mark={edit.mark(path)} label={label} tag={tag} style={style} onType={(words) => edit.onWords(path, words)} />
+}
+
+/** A list of lines while someone edits: each a field with its way off, and a press that adds one. Kept by place, so a line being typed is never drawn anew. */
+function EditLines({ edit, listPath, lines, label, tone }: { edit: FlowEdit; listPath: string; lines: readonly string[]; label: string; tone?: string }) {
+  return (
+    <ul style={LIST}>
+      {lines.map((line, i) => (
+        <Line key={i} tone={tone}>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
+            <W edit={edit} path={`${listPath}.${i}`} text={line} label={`${label}, line ${i + 1}`} />
+            <button type="button" aria-label={`Remove line ${i + 1} of ${label}`} onClick={() => edit.onRemoveLine(listPath, i)} style={CTL}>
+              ×
+            </button>
+          </span>
+        </Line>
+      ))}
+      <li>
+        <button type="button" aria-label={`Add a line to ${label}`} onClick={() => edit.onAddLine(listPath)} style={CTL}>
+          Add a line
+        </button>
+      </li>
+    </ul>
+  )
+}
+
+export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen }) {
   const [held, setHeld] = useState<Held>(() => ({ settings: startSettings(def), flow: startFlow() }))
   const { settings, flow } = held
   const steps = flowSteps(def)
@@ -186,6 +233,22 @@ export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSS
   }, [flow.step])
 
   useGlide(body, step?.key ?? '')
+
+  // The map opens a page: its step, at its stop. The box on the first page is ticked for the person who edits.
+  const openAt = open?.at
+  useEffect(() => {
+    if (!open) return
+    setHeld((h) => {
+      const i = flowSteps(def).findIndex((s) => s.key === open.step)
+      if (i < 0) return h
+      const acked = h.flow.ackAt ? h.flow : withAck(h.flow, true, new Date().toISOString())
+      const on = h.settings.off ? withBasis(def, h.settings, h.settings.basis) : h.settings
+      const s = open.stop != null && topicOf(def, open.step) ? withTopic(def, on, open.step, open.stop) : on
+      return { settings: s, flow: settleFlow(def, s, { ...acked, step: i }) }
+    })
+    // Only a new press opens a page: the paper changes under it with every key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAt])
 
   if (!step) return null
 
@@ -221,7 +284,7 @@ export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSS
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '10px 14px 12px', display: 'grid', gap: 6 }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{stepCountLine(def, flow)}</div>
         <h2 style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', display: 'flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'center' }}>
-          {step.name}
+          {topic && edit ? <W edit={edit} path={`topic.${topic.key}.label`} text={topic.label} label={`The name of ${topic.label}`} /> : step.name}
           {topic ? (
             <LevelChip def={def} stop={at}>
               {stopShortName(def, at)}
@@ -256,11 +319,11 @@ export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSS
 
       <div ref={body} style={{ flex: '1 1 auto', overflowY: 'auto', padding: 14, minHeight: 0 }}>
         <div key={step.key} className="documentBuilderIn" style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
-          {step.kind === 'notice' ? <NoticePage def={def} /> : null}
-          {step.kind === 'basis' ? <BasisPage def={def} settings={settings} onPick={pickBasis} /> : null}
-          {step.kind === 'site' ? <SitePage def={def} settings={settings} /> : null}
-          {topic ? <TopicPage def={def} topic={topic} settings={settings} /> : null}
-          {step.kind === 'review' ? <ReviewPage def={def} settings={settings} flow={flow} onChange={(key) => go(steps.findIndex((s) => s.key === key))} /> : null}
+          {step.kind === 'notice' ? <NoticePage def={def} edit={edit} /> : null}
+          {step.kind === 'basis' ? <BasisPage def={def} settings={settings} onPick={pickBasis} edit={edit} /> : null}
+          {step.kind === 'site' ? <SitePage def={def} settings={settings} edit={edit} /> : null}
+          {topic ? <TopicPage def={def} topic={topic} settings={settings} edit={edit} /> : null}
+          {step.kind === 'review' ? <ReviewPage def={def} settings={settings} flow={flow} edit={edit} onChange={(key) => go(steps.findIndex((s) => s.key === key))} /> : null}
         </div>
       </div>
 
@@ -271,10 +334,16 @@ export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSS
               type="checkbox"
               checked={flow.ackAt != null}
               onChange={(e) => change({ flow: withAck(flow, e.target.checked, new Date().toISOString()) })}
+              aria-label={edit ? def.notice.tick : undefined}
               style={{ width: 20, height: 20, margin: 0, accentColor: '#2563eb' }}
             />
-            <span>{def.notice.tick}</span>
+            {edit ? null : <span>{def.notice.tick}</span>}
           </label>
+        ) : null}
+        {step.kind === 'notice' && edit ? (
+          <p style={{ ...MEAN, fontWeight: 600 }}>
+            <W edit={edit} path="notice.tick" text={def.notice.tick} label="The words beside the box" />
+          </p>
         ) : null}
         {step.kind === 'basis' ? (
           <>
@@ -318,12 +387,16 @@ export function DocumentBuilderFlow({ def, style }: { def: PaperDef; style?: CSS
 }
 
 /** Step 1: the disclaimer. Its lines are the data's, and the page says they are placeholders. */
-function NoticePage({ def }: { def: PaperDef }) {
+function NoticePage({ def, edit }: { def: PaperDef; edit?: FlowEdit }) {
   return (
     <div style={CARD}>
-      <h3 style={CARD_TITLE}>{def.notice.title}</h3>
-      <Lines>{def.notice.lines}</Lines>
-      <p style={FINE}>{def.notice.placeholder}</p>
+      <h3 style={CARD_TITLE}>
+        <W edit={edit} path="notice.title" text={def.notice.title} label="The disclaimer's title" />
+      </h3>
+      {edit ? <EditLines edit={edit} listPath="notice.lines" lines={def.notice.lines} label="the disclaimer" /> : <Lines>{def.notice.lines}</Lines>}
+      <p style={FINE}>
+        <W edit={edit} path="notice.placeholder" text={def.notice.placeholder} label="The disclaimer's note" />
+      </p>
     </div>
   )
 }
@@ -332,7 +405,7 @@ function NoticePage({ def }: { def: PaperDef }) {
  * Step 2: the level the paper should express. Each level is a press, and the slider below sets the same thing. What
  * the picked level does is drawn above the slider (`LevelFacts`), where it stays in view on a phone.
  */
-function BasisPage({ def, settings, onPick }: { def: PaperDef; settings: PaperSettings; onPick: (stop: PaperStop) => void }) {
+function BasisPage({ def, settings, onPick, edit }: { def: PaperDef; settings: PaperSettings; onPick: (stop: PaperStop) => void; edit?: FlowEdit }) {
   // The picked level is kept in view as the slider moves it down the list, which matters on a phone.
   const picked = useRef<HTMLButtonElement>(null)
   const pickedId = settings.off ? null : settings.basis
@@ -341,10 +414,14 @@ function BasisPage({ def, settings, onPick }: { def: PaperDef; settings: PaperSe
   }, [pickedId])
   return (
     <>
-      <p style={MEAN}>{def.words.basisAsk}</p>
+      <p style={MEAN}>
+        <W edit={edit} path="words.basisAsk" text={def.words.basisAsk} label="What the basis page asks" />
+      </p>
       <div style={CARD}>
         <div style={{ display: 'grid', gap: 2 }}>
-          <div style={{ ...GROUP_TITLE, padding: '0 8px 2px' }}>{def.words.levelsTitle}</div>
+          <div style={{ ...GROUP_TITLE, padding: '0 8px 2px' }}>
+            <W edit={edit} path="words.levelsTitle" text={def.words.levelsTitle} label="The title over the levels" />
+          </div>
           {def.levels.map((level) => {
             const on = !settings.off && settings.basis === level.id
             return (
@@ -384,7 +461,10 @@ function BasisPage({ def, settings, onPick }: { def: PaperDef; settings: PaperSe
         </div>
       </div>
       <p style={MUTED}>{basisNote(def, settings)}</p>
-      <p style={FINE}>{`${def.words.basisHow} The numbers above the slider are placeholders.`}</p>
+      <p style={FINE}>
+        <W edit={edit} path="words.basisHow" text={def.words.basisHow} label="How the basis works" />
+        {' The numbers above the slider are placeholders.'}
+      </p>
     </>
   )
 }
@@ -412,14 +492,18 @@ function LevelFacts({ def, level }: { def: PaperDef; level: PaperStop }) {
 }
 
 /** Step 3: the paper has to match what the site can really enforce, with what the basis asks of it. */
-function SitePage({ def, settings }: { def: PaperDef; settings: PaperSettings }) {
+function SitePage({ def, settings, edit }: { def: PaperDef; settings: PaperSettings; edit?: FlowEdit }) {
   const asks = siteAsks(def, settings.basis)
   return (
     <>
-      <p style={MEAN}>{def.site.lead}</p>
+      <p style={MEAN}>
+        <W edit={edit} path="site.lead" text={def.site.lead} label="The site page's lead" />
+      </p>
       <div style={CARD}>
-        <h3 style={CARD_TITLE}>{def.site.title}</h3>
-        <Lines>{def.site.lines}</Lines>
+        <h3 style={CARD_TITLE}>
+          <W edit={edit} path="site.title" text={def.site.title} label="The site page's title" />
+        </h3>
+        {edit ? <EditLines edit={edit} listPath="site.lines" lines={def.site.lines} label="the site page" /> : <Lines>{def.site.lines}</Lines>}
       </div>
       <div style={CARD}>
         <h3 style={CARD_TITLE}>{`What ${stopName(def, settings.basis)} asks of this site`}</h3>
@@ -433,9 +517,13 @@ function SitePage({ def, settings }: { def: PaperDef; settings: PaperSettings })
             ))}
           </div>
         ) : (
-          <p style={MUTED}>{def.site.asksNothing}</p>
+          <p style={MUTED}>
+            <W edit={edit} path="site.asksNothing" text={def.site.asksNothing} label="What the site page says when nothing is asked" />
+          </p>
         )}
-        <p style={FINE}>{def.site.placeholder}</p>
+        <p style={FINE}>
+          <W edit={edit} path="site.placeholder" text={def.site.placeholder} label="The site page's note" />
+        </p>
       </div>
     </>
   )
@@ -445,16 +533,25 @@ function SitePage({ def, settings }: { def: PaperDef; settings: PaperSettings })
  * Steps 4 to 10: one topic. What puts a person in breach leads, since it is what changes as the handle moves. What
  * the site must have is next. The core clause is one thin strip of grey bars at the foot: it says the least.
  */
-function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic; settings: PaperSettings }) {
+function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: PaperTopic; settings: PaperSettings; edit?: FlowEdit }) {
   const at = settings.topics[topic.key] ?? settings.basis
   const clause = clauseDrawing(def, topic.key, at)
   const breach = breachGroups(def, topic.key, at)
   const site = siteLines(def, topic.key, at)
   const tone = levelTone(def, at)
+  const here = `topic.${topic.key}.${at}`
+  const levelLines = at === PAPER_OFF ? [] : (topic.levels[at]?.breach ?? [])
+  const where = `${topic.label} at ${stopShortName(def, at)}`
   return (
     <>
-      {/* Every stop's meaning is laid in the one cell and only the current one is seen. The cell is then as tall
-          as the longest of them, so the cards under it hold still while the words change. */}
+      {edit ? (
+        // One field while someone edits: the words of the stop the page stands on.
+        <p style={MEAN}>
+          <W edit={edit} path={at === PAPER_OFF ? `topic.${topic.key}.offSays` : `${here}.says`} text={topicSays(def, topic.key, at)} label={`What ${where} means`} />
+        </p>
+      ) : (
+      /* Every stop's meaning is laid in the one cell and only the current one is seen. The cell is then as tall
+         as the longest of them, so the cards under it hold still while the words change. */
       <div style={{ display: 'grid' }}>
         {paperStops(def)
           .slice(topicFloor(topic))
@@ -464,6 +561,7 @@ function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic;
             </p>
           ))}
       </div>
+      )}
 
       <div style={CARD}>
         <h3 style={CARD_TITLE}>What puts a person in breach</h3>
@@ -480,11 +578,30 @@ function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic;
                 </LevelChip>
               </li>
             ) : null}
-            {breach.own.map((line) => (
-              <Line key={line} glide={`breach:${line}`} tone={tone}>
-                {line}
-              </Line>
-            ))}
+            {breach.own.map((line) =>
+              edit ? (
+                // Kept by its place in the level's own list, so the line being typed is never drawn anew.
+                <Line key={`own-${levelLines.indexOf(line)}`} tone={tone}>
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
+                    <W edit={edit} path={`${here}.breach.${levelLines.indexOf(line)}`} text={line} label={`A breach line of ${where}`} />
+                    <button type="button" aria-label={`Remove the breach line: ${line}`} onClick={() => edit.onRemoveLine(`${here}.breach`, levelLines.indexOf(line))} style={CTL}>
+                      ×
+                    </button>
+                  </span>
+                </Line>
+              ) : (
+                <Line key={line} glide={`breach:${line}`} tone={tone}>
+                  {line}
+                </Line>
+              ),
+            )}
+            {edit ? (
+              <li key="::add">
+                <button type="button" aria-label={`Add a breach line to ${where}`} onClick={() => edit.onAddLine(`${here}.breach`)} style={CTL}>
+                  Add a line
+                </button>
+              </li>
+            ) : null}
             {breach.carried.length > 0 ? (
               <li key="::also" data-glide="breach-also" className="documentBuilderIn" style={{ ...GROUP_TITLE, borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 2 }}>
                 Also applies
@@ -499,16 +616,20 @@ function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic;
         )}
       </div>
 
-      {site.length > 0 ? (
+      {site.length > 0 || (edit && at !== PAPER_OFF) ? (
         <div style={CARD} data-glide="site" className="documentBuilderIn">
           <h3 style={CARD_TITLE}>What the site must have</h3>
-          <ul style={LIST}>
-            {site.map((line) => (
-              <Line key={line} glide={`site:${line}`}>
-                {line}
-              </Line>
-            ))}
-          </ul>
+          {edit ? (
+            <EditLines edit={edit} listPath={`${here}.site`} lines={site} label={`what the site must have for ${where}`} />
+          ) : (
+            <ul style={LIST}>
+              {site.map((line) => (
+                <Line key={line} glide={`site:${line}`}>
+                  {line}
+                </Line>
+              ))}
+            </ul>
+          )}
           <p style={FINE}>If this site does not have these, pick a lower level on this page.</p>
         </div>
       ) : null}
@@ -530,7 +651,9 @@ function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic;
             {clause.kind === 'blank' ? (
               <>
                 <span style={{ ...BAR, flex: '30 1 0' }} />
-                <span style={FILLED_TAG}>{clause.blank}</span>
+                <span style={FILLED_TAG}>
+                  <W edit={edit} path={`${here}.blank`} text={clause.blank} label={`What fills the blank for ${where}`} />
+                </span>
                 <span style={{ ...BAR, flex: '70 1 0' }} />
               </>
             ) : (
@@ -551,8 +674,14 @@ function TopicPage({ def, topic, settings }: { def: PaperDef; topic: PaperTopic;
  * Step 11: the paper's shape. Each topic is a small track with its dot against the basis, and the row opens its
  * page. Under them, what the paper as it stands asks of the site, which is the list to hold against the real site.
  */
-function ReviewPage({ def, settings, flow, onChange }: { def: PaperDef; settings: PaperSettings; flow: FlowState; onChange: (key: string) => void }) {
-  if (settings.off) return <div style={{ ...CARD, fontSize: '0.84rem' }}>{def.words.offReview}</div>
+function ReviewPage({ def, settings, flow, onChange, edit }: { def: PaperDef; settings: PaperSettings; flow: FlowState; onChange: (key: string) => void; edit?: FlowEdit }) {
+  if (settings.off) {
+    return (
+      <div style={{ ...CARD, fontSize: '0.84rem' }}>
+        <W edit={edit} path="words.offReview" text={def.words.offReview} label="What the review says when the paper is Off" />
+      </div>
+    )
+  }
   const needs = siteNeeds(def, settings)
   const strictest = def.levels[def.levels.length - 1]
   const TRACK = 96
@@ -560,7 +689,9 @@ function ReviewPage({ def, settings, flow, onChange }: { def: PaperDef; settings
     <>
       <div style={CARD}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
-          <h3 style={CARD_TITLE}>{def.words.reviewTitle}</h3>
+          <h3 style={CARD_TITLE}>
+            <W edit={edit} path="words.reviewTitle" text={def.words.reviewTitle} label="The review's title" />
+          </h3>
           <LevelChip def={def} stop={settings.basis} wrap>
             {paperLevelLine(def, settings)}
           </LevelChip>

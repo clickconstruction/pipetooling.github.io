@@ -12,10 +12,10 @@
  * database holds, whose review press requires nothing of anyone. Insurance requirements for subs is filled: one
  * sheet with blanks for each job (`FilledBuilder`).
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { DocumentBuilderFlow } from '../documentBuilder/DocumentBuilderFlow'
 import { FilledBuilder } from '../documentBuilder/FilledBuilder'
+import { WalkedBuilder as WalkedEditor } from '../documentBuilder/WalkedBuilder'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
@@ -28,10 +28,8 @@ import {
   type DocumentBuilderEntry,
 } from '../../lib/documentBuilder/builders'
 import { readPaperDef } from '../../lib/documentBuilder/definition'
-import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
-import { FRAME_SCROLL_MARGIN_CSS, frameHeightCss, framePlace, frameScrollsIntoView, type FramePlace } from '../../lib/documentBuilder/frame'
 import { filledRowChips } from '../../lib/documentBuilder/sheetScreen'
 import { builderRowPress, builderStandingChips, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { GC_COMPANY } from '../../lib/gc/company'
@@ -98,52 +96,6 @@ function Chips({ chips }: { chips: BuilderChip[] }) {
   )
 }
 
-/**
- * The flow in a frame that fits on the screen whole, so the slider and the Next press stay in reach while the page
- * above them scrolls. Where the frame starts is measured, since the bars above it differ by screen and by role, and
- * `lib/documentBuilder/frame.ts` decides from that how the frame is sized: to the bottom of the screen on a computer,
- * and to the screen from the builder's own top on a phone, where the builder then scrolls itself to the top once.
- */
-function FlowOnScreen({ def, anchor }: { def: PaperDef; anchor: RefObject<HTMLElement | null> }) {
-  const holder = useRef<HTMLDivElement>(null)
-  const [place, setPlace] = useState<FramePlace | null>(null)
-  useLayoutEffect(() => {
-    const measure = () => {
-      if (!holder.current || !anchor.current) return
-      const frameTop = holder.current.getBoundingClientRect().top
-      const next = framePlace({
-        top: Math.round(frameTop + window.scrollY),
-        inset: Math.round(frameTop - anchor.current.getBoundingClientRect().top),
-        screen: window.innerHeight,
-      })
-      setPlace((was) => (was && was.from === next.from && was.offset === next.offset ? was : next))
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
-    watch?.observe(document.body)
-    return () => {
-      window.removeEventListener('resize', measure)
-      watch?.disconnect()
-    }
-  }, [anchor])
-
-  // Once, as the builder opens: on a screen with too little room under the tab row, bring the builder to the top.
-  const scrolled = useRef(false)
-  const scrolls = frameScrollsIntoView(place)
-  useEffect(() => {
-    if (!scrolls || scrolled.current) return
-    scrolled.current = true
-    if (typeof anchor.current?.scrollIntoView === 'function') anchor.current.scrollIntoView({ block: 'start' })
-  }, [scrolls, anchor])
-
-  return (
-    <div ref={holder} style={{ minWidth: 0 }}>
-      <DocumentBuilderFlow def={def} style={{ height: frameHeightCss(place) }} />
-    </div>
-  )
-}
-
 /** The press that loads a builder's first draft, with the reason under it when the database refuses. */
 function LoadFirstDraft({ entry, busy, refusal, onLoad }: { entry: DocumentBuilderEntry; busy: boolean; refusal: string | null; onLoad: () => void }) {
   const none = firstDraftOf(entry) == null
@@ -162,33 +114,34 @@ function LoadFirstDraft({ entry, busy, refusal, onLoad }: { entry: DocumentBuild
 }
 
 /**
- * A walked builder, open: the bar with the way back, then what a GC would walk, over the draft the database holds. A
- * draft that does not read as a paper is never half drawn: the page lists what is wrong with it instead.
+ * A walked builder, open, over the draft the database holds: the editor, where a dev types on what a GC would walk
+ * (`WalkedBuilder`, step 7). A draft that does not read as a paper is never half drawn: the page lists what is wrong
+ * with it instead.
  */
-function WalkedBuilder({ entry, rec, onBack }: { entry: DocumentBuilderEntry; rec: BuilderRecord; onBack: () => void }) {
-  const anchor = useRef<HTMLDivElement>(null)
+function WalkedBuilder({ entry, rec, onBack, onRecord }: { entry: DocumentBuilderEntry; rec: BuilderRecord; onBack: () => void; onRecord: (rec: BuilderRecord) => void }) {
   const parsed = readPaperDef(rec.draft)
+  if (parsed.ok) {
+    return (
+      <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} />
+        <p style={FINE}>
+          {`${parsed.def.title} on job ${parsed.def.job}, for ${parsed.def.protectedParty}. Nobody is asked to sign. The disclaimer, the breach lines, the site lines and the meanings are placeholders until an attorney has read them. No clause wording is on this page.`}
+        </p>
+      </div>
+    )
+  }
   return (
-    <div ref={anchor} style={{ display: 'grid', gap: 10, minWidth: 0, scrollMarginTop: FRAME_SCROLL_MARGIN_CSS }}>
+    <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
       <BuilderBar entry={entry} rec={rec} onBack={onBack} />
-      {parsed.ok ? (
-        <div style={{ maxWidth: 492, margin: '0 auto', width: '100%', minWidth: 0, display: 'grid', gap: 8 }}>
-          <FlowOnScreen def={parsed.def} anchor={anchor} />
-          <p style={FINE}>
-            {`${parsed.def.title} on job ${parsed.def.job}, for ${parsed.def.protectedParty}. Nobody is asked to sign. The disclaimer, the breach lines, the site lines and the meanings are placeholders until an attorney has read them. No clause wording is on this page.`}
-          </p>
-        </div>
-      ) : (
-        <div style={CARD}>
-          <h2 style={CARD_TITLE}>{`${entry.name} cannot be shown`}</h2>
-          <p style={MUTED}>The contents the database holds for this builder do not read as a paper. Nothing was changed.</p>
-          <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: 4, fontSize: '0.8rem', color: 'var(--text-base)' }}>
-            {parsed.problems.map((problem) => (
-              <li key={problem}>{problem}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div style={CARD}>
+        <h2 style={CARD_TITLE}>{`${entry.name} cannot be shown`}</h2>
+        <p style={MUTED}>The contents the database holds for this builder do not read as a paper. Nothing was changed.</p>
+        <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: 4, fontSize: '0.8rem', color: 'var(--text-base)' }}>
+          {parsed.problems.map((problem) => (
+            <li key={problem}>{problem}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
@@ -281,7 +234,7 @@ export default function DocumentsBuilderTab({ read = readDocumentBuilders, load 
   if (open) {
     const rec = records.get(open.id) ?? null
     if (rec && open.kind === 'filled') return <FilledBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} />
-    if (rec) return <WalkedBuilder entry={open} rec={rec} onBack={() => setOpen(null)} />
+    if (rec) return <WalkedBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} />
     return (
       <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
         <BuilderBar entry={open} rec={null} onBack={() => setOpen(null)} />
