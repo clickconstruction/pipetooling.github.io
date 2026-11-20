@@ -143,6 +143,7 @@
     "test:pg:theme-review": "bash scripts/pgtest-theme-review.sh",
     "test:pg:helper-on-job": "bash scripts/pgtest-helper-on-job.sh",
     "test:pg:agreements-on-file": "bash scripts/pgtest-agreements-on-file.sh",
+    "test:pg:paper-party": "bash scripts/pgtest-paper-party.sh",
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",
     "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",

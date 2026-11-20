@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · nothing is built · one call is left, call 8, and it does not hold PR 1
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · 2026-11-19 the word to build · PR 1, the ground, is built (v2.7977) · three calls are left: 8, which shapes step 4, and 9 and 10, which the build of PR 1 raised
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. Nothing is built, and one call is left at the foot.
-next: The owner's word to build PR 1, the ground, which no open call holds. Beside it his one call that is left: 8, which shapes step 4.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. PR 1, the ground, is built, and three calls are left at the foot.
+next: PR 2, the send keeps the signer, then step 3's two PRs. The owner's calls that are left: 8, which shapes step 4, and 9 and 10, two narrower readings PR 1 was built with.
 size: L as a train of seven (M · S · M · S · S · M · M)
-blocker: None for PR 1, PR 2 and step 3. Call 8 before step 4.
+blocker: None for PR 2 and step 3. Call 8 before step 4.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -237,7 +237,7 @@ and the view does it once.
 
 ## The plan
 
-Each step is one PR with its release note and fragment. Nothing is built until the owner says build.
+Each step is one PR with its release note and fragment. The word to build came on 2026-11-19, and step 1 is built.
 
 1. **The ground (M). The first PR.** A migration and no screen. `person_contract_documents` gains
    `party_contact_id`, `party_name`, `signer_name`, `signer_title`, `signer_email` and `signing_for`. The
@@ -248,6 +248,10 @@ Each step is one PR with its release note and fragment. Nothing is built until t
    (calls 4 and 7). An SQL bed proves each other role reads
    what it reads today and no more, and that an estimator reads no staff paper and no sub's own paper.
    It merges alone and is pushed before any client calls it.
+   **Built 2026-11-19 as v2.7977** (`20261120010000_paper_party.sql`, `docs/recent-features/v2.7977.md`), with three
+   things the plan did not name. The view gains four kinds, the fourth for a party on no list (call 6). A door,
+   `paper_party_contact`, finds or makes a party's contact, so step 3 needs no migration. The e-sign ledger takes the
+   audience *outside*. It was also built with two narrower readings, which are calls 9 and 10.
 2. **The send keeps the signer (S).** `send-contract-for-signature` writes the name, title and address on
    the row for every paper, staff and sub papers too. The Send for signature window gains **Signer name**
    and **Title (optional)**. This is the column the reminders and the signer's copy in #376 wait on.
@@ -396,13 +400,26 @@ Each is one question. The session's pick is first.
    **On the party's own page: the supply house's window and the Customer page.** The Agreements tab
    stays the four roles', as #376's call 3 settled. Or the tab opens to the estimator too, listing only
    the lines their role reads.
+9. **Does the estimator's read stop at agreements?** New on 2026-11-19, from building PR 1.
+   **Yes, agreements only, and PR 1 is built so.** On 2026-10-10 the Board's call kept a trade company's
+   W-9 and certificate to their states for the office, because the row carries the tax number's last
+   four, the answers' PDF and the signer's details. Call 4's reason for closing a person's paper was the
+   same: pay terms and tax forms. Or the estimator reads every kind of an outside company's paper, tax
+   forms among them, which is one line of the policy.
+10. **May an estimator open a signed form's PDF?** New on 2026-11-19, from building PR 1.
+    **No, as today, and PR 1 is built so.** The file opens for a dev, the controller and a pay-approved
+    master. An assistant reads the row and is refused the file. This card expected the estimator's rule
+    to be copied there, which would let an estimator open a file an assistant cannot. Or the estimator
+    opens an outside company's signed form, which is one gate in `open-contract-form-pdf`.
 
 ## Where it stands
 
-Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled seven calls on 2026-11-19. Call 1: the record lives on the contact.
+PR 1, the ground, is built (v2.7977): the columns, the stored name and its checks, the fold's helper, the
+door for a party's contact, the estimator's read and the view's four kinds, with a bed for each. No
+screen shows any of it yet. The map, the counts, the four options and the pick are above. The mock-up
+draws the pick and was redrawn once. The owner settled seven calls on 2026-11-19. Call 1: the record lives on the contact.
 Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
 own, which was not the session's pick, and which added call 7. Call 4: the four roles and the estimator
 read an outside party's paper, which was not the session's pick either, and which added call 8. Call 7:
-a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8 is open. No open
-call holds PR 1 or PR 2. They wait on his word to build.
+a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8 is open, and so are 9 and 10, which
+the build of PR 1 raised. No open call holds PR 2 or step 3. Grace's word to build came on 2026-11-19.
