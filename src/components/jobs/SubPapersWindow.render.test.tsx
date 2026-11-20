@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 const io = vi.hoisted(() => ({ fileSentCopy: vi.fn(), printPdfAndFile: vi.fn(), saveBlobAs: vi.fn() }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, printPdfAndFile: io.printPdfAndFile }))
@@ -491,6 +491,23 @@ describe('SubPapersWindow: Send', () => {
     // It went, so the step offers Done and no second Send.
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Send 3 papers by email' })).toBeNull()
+  })
+
+  it('a second click before the press goes dead sends nothing more: one email, one statement number', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    const press = screen.getByRole('button', { name: 'Send 3 papers by email' })
+    // Two clicks before the page draws again, as a double click lands: the second finds a send under way.
+    act(() => {
+      press.click()
+      press.click()
+    })
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Sent 3 papers to Harlan Mechanical'))
+    expect(db.invoke).toHaveBeenCalledTimes(1)
+    expect(db.mint.mock.calls.filter((c) => (c[1] as { p_kind: string }).p_kind === 'statement_of_account')).toHaveLength(1)
   })
 
   it('after Record payment it opens on the send step, on the payment record alone', async () => {

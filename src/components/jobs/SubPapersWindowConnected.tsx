@@ -17,7 +17,7 @@
  * Email is the one way built, so the view is handed `sendBy` with email alone. The office roles who see sub pay
  * may send, and an account in training may not.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PaperCompany, PaperContext, StatementRange } from '../../../supabase/functions/_shared/subPapers'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { fileSentCopy, printPdfAndFile } from '../../lib/sent/sentCopiesIo'
@@ -78,6 +78,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   const [registerRead, setRegisterRead] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [said, setSaid] = useState<{ tone: 'ok' | 'bad'; words: string } | null>(null)
+  /** A send is under way. A ref, since a second click can land before the dead press is drawn, and a paper must not go twice. */
+  const sending = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -155,7 +157,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       emailDoor={subPaperEmailDoor()}
       startOnSend={startOnSend}
       onSend={async (plan, papers, by, sendRange) => {
-        if (by !== 'email' || !personId) return false
+        if (by !== 'email' || !personId || sending.current) return false
+        sending.current = true
         setBusy('Sending…')
         setSaid(null)
         let made: SubPaper[] = []
@@ -175,6 +178,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
           setSaid({ tone: 'bad', words: subPaperNotSentWords({ reason: formatErrorMessage(e, 'the send function gave no reason'), numbered: made }) })
           return false
         } finally {
+          sending.current = false
           setBusy(null)
         }
       }}
