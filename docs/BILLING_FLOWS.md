@@ -457,7 +457,7 @@ Findings only (no fixes) — seeds for a later pass.
 15. Payments have no `created_by`/provenance column; auditability rests on note conventions.
 16. Fixture allocator / billable filter / line-description builders are intentionally duplicated client vs edge with keep-in-sync comments (`isBillableFixtureRow` has 4 copies).
 17. `'billed'` in the `JobsTab` union renders no tab (vestigial; the query param redirects to `stages`).
-18. Role-gate predicates duplicated across three files (`canRoleApplyBankPayments` / `canUnlinkMercuryPayment` / `canRoleUseArBankCount`); the SQL job-access EXISTS block is copy-pasted in ~10 payment RPCs.
+18. Role-gate predicates duplicated across files (`canRecordArPayments`, which the bank payments window reads since v2.8030, and `canRoleUseArBankCount` hold the office's four roles; `canUnlinkMercuryPayment` adds primary, whose paid verbs answer on their own job); the SQL job-access EXISTS block is copy-pasted in ~10 payment RPCs.
 19. ~~`AgreedWriteDownModal` and `JobFormModal`'s details-backfill read the Stripe mode pref without the dev-role gate.~~ **Fixed in v2.1118 (A5)**: both route through `stripeModeForBillingFromRole`; no ungated pref reads remain (and the row's mode wins server-side since A3 anyway).
 20. ~~Fixed in v2.1115 (A2)~~: `credit_note.created` now retrieves with the event-mode key, and `stripe_webhook_events.livemode` + `jobs_ledger_invoices.stripe_mode` (v2.1114) record modes — Banking's Stripe panels can distinguish test rows once they read the column.
 21. `delete_ready_to_bill_invoice` on a trip-charge row does not unwind the `create_turnaway_trip_charge` revenue bump (documented caveat in `supabase/migrations/20260709130000_turnaway_trip_charge.sql`).

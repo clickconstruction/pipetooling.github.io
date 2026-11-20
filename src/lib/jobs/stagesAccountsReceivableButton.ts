@@ -8,7 +8,7 @@ export function accountsReceivableButtonName(input: {
   unallocatedCount: number | null | undefined
   billedRowCount: number
 }): string {
-  if (!input.canRecordPayments) return 'Only dev, leader, assistant, and primary can record payments'
+  if (!input.canRecordPayments) return 'Only dev, leader, assistant, and controller can record payments'
   const n = input.unallocatedCount
   if (typeof n === 'number' && n > 0) {
     return `Accounts Receivable, ${n} unallocated bank transaction${n === 1 ? '' : 's'}`

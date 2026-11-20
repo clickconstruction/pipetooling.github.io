@@ -4,7 +4,7 @@ import { accountsReceivableButtonName } from './stagesAccountsReceivableButton'
 describe('accountsReceivableButtonName', () => {
   it('names the roles when the viewer cannot record payments, whatever is waiting', () => {
     expect(accountsReceivableButtonName({ canRecordPayments: false, unallocatedCount: 4, billedRowCount: 9 })).toBe(
-      'Only dev, leader, assistant, and primary can record payments',
+      'Only dev, leader, assistant, and controller can record payments',
     )
   })
 

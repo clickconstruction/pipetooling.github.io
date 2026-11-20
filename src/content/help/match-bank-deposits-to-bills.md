@@ -1,7 +1,7 @@
 ---
 title: match bank deposits to the bills they pay
 category: Billing & Money
-roles: dev, master_technician, assistant, controller, primary
+roles: dev, master_technician, assistant, controller
 keywords: accounts receivable, retainage, retainage held, release bill, retainage release, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
 where: /accounts-receivable
 ---

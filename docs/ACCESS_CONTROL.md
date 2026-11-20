@@ -2937,7 +2937,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 **master_technician** does not — **`RECENT_FEATURES`** **v2.497**).
 **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**;
 excludes **primary**).
-**Bank Payments** / AR on **Jobs → Stages** is not a primary's: their Jobs page is the Reports tab alone, and since v2.7931 `count_mercury_transactions_for_bank_payments` and the other bank payments reads refuse the role, though `canRoleUseArBankCount` still names it
+**Bank Payments** / AR on **Jobs → Stages** is not a primary's: their Jobs page is the Reports tab alone, since v2.7931 `count_mercury_transactions_for_bank_payments` and the other bank payments reads refuse the role, and since v2.8030 the client gates (`canRoleUseArBankCount`, `canRecordArPayments`) leave it out too, so their page never asks
 - Send task form (create and assign checklist tasks)
 - ChecklistAddModal ("detail send") available when canSendTask is true
 

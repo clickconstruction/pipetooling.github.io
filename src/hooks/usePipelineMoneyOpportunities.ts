@@ -57,9 +57,9 @@ export function usePipelineMoneyOpportunities(opts: {
 }): PipelineMoneyOpportunitiesData {
   const { enabled, authUserId, authRole } = opts
   const hideZz = useZzTestJobsHidden(authRole)
-  const canOpenAr =
-    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
   const isOffice = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  /** The office pool, as the bank payments reads answer it (no primary since v2.7931). */
+  const canOpenAr = isOffice
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
