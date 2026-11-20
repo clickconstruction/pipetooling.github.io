@@ -7694,3 +7694,17 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   background: var(--surface);
   color: var(--text-base);
 }
+
+/* The Document builder's map (punch list #404, step 7): a cell shows its words where there is room to read across a
+   row, and is a small square on a phone. */
+.documentBuilderMapWords {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .documentBuilderMapWords {
+    display: none;
+  }
+}
