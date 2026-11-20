@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromPlane, type PaintedPoint } from './paintedLine'
-import { WAY_DEVICE_KEY, WAY_FRAME_METERS, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_KEY, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayReading, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from './paintedWay'
+import { WAY_AREA_PRIVACY_WORDS, WAY_DEVICE_KEY, WAY_FRAME_METERS, WAY_SPOT_AFTER_AREA_MS, wayAreaSeenWords, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_KEY, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayReading, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from './paintedWay'
 
 const ORIGIN: PaintedPoint = { lat: 29.5, lng: -98.2 }
 const at = (eastM: number, northM: number): PaintedPoint => fromPlane(ORIGIN, { x: eastM, y: northM })
@@ -159,6 +159,25 @@ describe('who is looking: what the page keeps on the phone and says', () => {
     expect(wayPointIsDue(null, 1_000)).toBe(true)
     expect(wayPointIsDue(1_000, 30_000)).toBe(false)
     expect(wayPointIsDue(1_000, 61_000)).toBe(true)
+  })
+
+  it('sends a spot that follows an area after 20 seconds, and nothing else sooner than the minute (v2.8105)', () => {
+    const spotAfterArea = { lastWasArea: true, isArea: false }
+    expect(wayPointIsDue(1_000, 20_999, spotAfterArea)).toBe(false)
+    expect(wayPointIsDue(1_000, 21_000, spotAfterArea)).toBe(true)
+    // An area after an area, an area after a spot and a spot after a spot all wait the minute.
+    for (const turn of [{ lastWasArea: true, isArea: true }, { lastWasArea: false, isArea: true }, { lastWasArea: false, isArea: false }]) {
+      expect(wayPointIsDue(1_000, 30_000, turn), JSON.stringify(turn)).toBe(false)
+      expect(wayPointIsDue(1_000, 61_000, turn), JSON.stringify(turn)).toBe(true)
+    }
+    expect(wayPointIsDue(null, 0, spotAfterArea)).toBe(true)
+    expect(WAY_SPOT_AFTER_AREA_MS).toBe(20_000)
+  })
+
+  it('says under an area that the company sees the area, with no word of a dot (v2.8105)', () => {
+    expect(wayAreaSeenWords('Made Up Plumbing')).toBe('Made Up Plumbing sees only this area while this is on. Press Hide where I am to stop.')
+    expect(wayAreaSeenWords(null)).toBe('The company that sent this map sees only this area while this is on. Press Hide where I am to stop.')
+    expect(WAY_AREA_PRIVACY_WORDS).toBe('Where you are stays on your phone. We never see it.')
   })
 
   it('names who keeps what, and falls back when the company has no name', () => {
