@@ -178,7 +178,7 @@ Leaving for the settings pauses the painting, as any other app does. Press {{but
 
 Is the switch on already? Then your phone may only be hearing a cell tower. Step into the open and wait a moment.
 
-You can press {{button:blue|Draw it by hand instead}} at any time.
+You can press {{button:blue|Draw it by hand instead}} at any time. The map then goes back to the job.
 
 ## Look it over, then save
 
