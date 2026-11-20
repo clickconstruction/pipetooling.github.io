@@ -6542,6 +6542,17 @@ Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Cont
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
 
+### Party and signer (of a paper)
+
+v2.7977 (punch list #403), the ground: no screen shows them yet.
+The **party** is who a paper is with, and it is a record: a customer, a supply house, a trade company, or someone on no list yet.
+The paper points at the party's contact (`person_contract_documents.party_contact_id`, a `contacts` row) and is filed under `party:<contact id>`, a name no person can have, so a company named like a teammate never lands on the teammate.
+The **signer** is the human who signs: a name, a title and an address kept on the paper as it was sent (`signer_name`, `signer_title`, `signer_email`), with the business they sign for in words (`signing_for`).
+The two are kept apart because a rep leaves a supply house and the paper must still say who signed.
+`party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
+The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
+*Not on a list* is a party whose contact has no record yet.
+
 ### Sent copies
 
 v2.4554.

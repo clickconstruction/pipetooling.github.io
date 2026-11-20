@@ -419,6 +419,7 @@ Each lane adds to its own line below, never to the paragraph above, so two lanes
   empty for anyone else;
   Building's door widens it to the schedule's team;
   the board's loader reads it since v2.5192, so an estimator's board has the papers too);
+  since v2.7977 an estimator also reads a company's agreement row itself, and still only the states of its W-9 and its certificate (punch list #403, under *Agreements* below);
   `gc_paper_sends`, `gc_send_paper`, `gc_company_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
   The company window's **Documents** tab (B6-b-ii) lists the papers for anyone who opens the window, under those policies, and its **Send a paper** and **Record their insurance** are the Board's writes (`canUseGcBoardWrites`, a dev today), as the four functions are.
   Start (B6-c-i, `20261010061000_gc_start_project.sql`): `gc_start_project` refuses anyone but a dev in words before any write until award's door, though `gc_projects` is the office's table, and refuses a training account and a digital twin first.
@@ -901,7 +902,7 @@ Every other role opens `/documents` without the tab, and a link to `?tab=builder
 The tab reads and writes no table yet: the Sub NDA's flow runs on a made-up paper in the client.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
-The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
@@ -909,6 +910,12 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
+Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a row of the kind `agreement` that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
+It opens no paper filed under a person, no W-9, certificate or other kind, and no party on no list, and a digital twin reads none.
+It is a read alone: the four roles still write, and the estimator has no screen that lists these papers until the party's own page is built.
+A signed form's PDF still opens through `open-contract-form-pdf` for a dev, the controller and a pay-approved master alone, so the estimator opens none.
+`paper_party_contact` finds a party's contact, and makes one when the record has none, for the four roles that send a paper: a training account and a digital twin find one and never make one.
+`contacts_fold_papers` moves a party's papers when two contacts fold, as a definer that moves nothing for a caller off the office team, a training account, a digital twin or an archived account.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
