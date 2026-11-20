@@ -1622,6 +1622,21 @@ Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the th
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
+### Gear menu sections (app-wide)
+The gear menu reads in groups since v2.8059, each under a small label: **Modes**, **Show**, **Pages** and **Help and settings** (`gearMenuSections.ts`, `GearSectionLabel`).
+**Modes** holds the rows that change the page: Job Mode, Dispatch Mode with its PO tab, Task Mode.
+**Show** holds the rows that show or hide one thing: Pin bar, Tell the dev, Dark Mode.
+**Pages** holds the pages the menu is the door to, drawn in one order, `GEAR_PAGE_ORDER`: Checklist, Calendar, Materials, Map, Customers, People, Documents, Banking, Roadmap, Partnerships.
+A crew's pages come first and the office's last;
+until v2.8059 the rows sat in the order they were added.
+Who sees which page is unchanged and is one object in `Layout.tsx`, `gearPages`;
+a label is drawn only over a group with a row in it.
+**Help and settings** holds My logbook, Help and Settings.
+Sign out and the reloads sit last, under a grey band and no label.
+The wrench's press, where a narrow phone's header had no room for it, stays the first row, above every label.
+The phone dock's More sheet uses the same four labels: its last group read **Settings** until v2.8059.
+Display-only — no role's menu gained or lost a row.
+
 ### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
 It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
@@ -1643,8 +1658,9 @@ unread is kept per person per device as the time the box last listed the notes (
 The gear menu's switch for the wrench is the row **Tell the dev**, with the wrench's icon and a tick, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
 the row read **Fix Mode** until v2.8043, and the stored key `pt_fix_mode_<user>` keeps the old word so no choice was lost.
 The pin bar's switch is the row **Pin bar** with the pin's icon, **Pin Mode** until v2.8043 and stored as before (`pinModeToggle.ts`), and the strip at the bottom of a pinnable page is the **pin bar** in every word a person reads.
-Neither is a mode, because neither changes the page: a grey band under Task Mode sets the two apart in the gear menu, and the phone dock's More sheet lists them with Dark Mode under **Show**, below **Modes** (`gearSwitchWords.ts`).
-On a narrow phone the gear menu holds two rows named Tell the dev: the press that opens the box is the first row, and the ticked switch sits under the band.
+Neither is a mode, because neither changes the page: the gear menu lists the two with Dark Mode under its **Show** label, below **Modes**, and the phone dock's More sheet does the same (`gearSwitchWords.ts`).
+A grey band stood where the Show label is from v2.8043 to v2.8059.
+On a narrow phone the gear menu holds two rows named Tell the dev: the press that opens the box is the first row, above every label, and the ticked switch sits under **Show**.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
 Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
 Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).

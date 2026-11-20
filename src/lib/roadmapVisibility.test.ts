@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { canOpenRoadmap, canSeeRoadmapNeedsYou, roadmapPath } from './roadmapVisibility'
+import { GEAR_PAGE_ORDER } from './gearMenuSections'
 import type { UserRole } from '../hooks/useAuth'
 
 const ALL_ROLES: Array<UserRole | null> = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', null]
@@ -63,11 +64,15 @@ describe('the Roadmap door is the gear menu row above Partnerships (v2.6258)', (
     expect(partnerships).toBeGreaterThan(roadmap)
     // Nothing but the Roadmap row sits between the two.
     expect(gear.slice(roadmap, partnerships).match(/<NavLink/g) ?? []).toHaveLength(1)
+    // The order on the screen is the kernel's (v2.8059), and it keeps the two together, Roadmap first.
+    expect(GEAR_PAGE_ORDER.indexOf('partnerships')).toBe(GEAR_PAGE_ORDER.indexOf('roadmap') + 1)
   })
 
   it('the row keeps the roadmap gate (canOpenRoadmap, never under Task Mode) and the neighbours\' look', () => {
     const row = gear.slice(gear.lastIndexOf('{', gear.indexOf('to="/roadmap"')) - 40, gear.indexOf('to="/partnerships"'))
-    expect(row).toMatch(/\{canShowRoadmapNav && \(/)
+    // Since v2.8059 the menu draws its pages from one object, `gearPages`: the block is keyed, and the gate sits there.
+    expect(row).toMatch(/\{page === 'roadmap' && \(/)
+    expect(layout).toMatch(/roadmap: canShowRoadmapNav,/)
     expect(row).toMatch(/\{roadmapIcon\}\s*Roadmap/)
     expect(row).toMatch(/onClick=\{\(\) => setGearOpen\(false\)\}/)
     expect(layout).toMatch(/const canShowRoadmapNav = canOpenRoadmap\(role, taskModeActive\)/)

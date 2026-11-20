@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the gear menu's two show-or-hide switches (v2.8043, the owner's ask of 2026-11-20).
- * Fix Mode reads Tell the dev and Pin Mode reads Pin bar, each with its icon, under a band that sets
- * them apart from the page modes. The stored keys kept the old word, so a choice made before still holds.
+ * Render smoke for the gear menu's sections and its two show-or-hide switches (the owner's asks of 2026-11-20).
+ * v2.8043: Fix Mode reads Tell the dev and Pin Mode reads Pin bar, each with its icon. The stored keys kept the
+ * old word, so a choice made before still holds. v2.8059: the menu reads in groups under small labels, Modes,
+ * Show, Pages, Help and settings, with leaving and reloading last under a band.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -22,7 +23,48 @@ import { ThemeProvider } from '../contexts/ThemeContext'
 import { DailyGoalsGateProvider } from '../contexts/DailyGoalsGateContext'
 import { PersonDeskProvider } from '../contexts/PersonDeskContext'
 import { switchRowAriaLabel } from '../lib/gearSwitchWords'
+import { GEAR_PAGE_ORDER } from '../lib/gearMenuSections'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
+
+/** The one question Layout asks the screen: is it a phone's width? */
+function setScreen(phone: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: phone && query.includes('max-width: 640px'),
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia
+}
+
+/** The menu's rows by the label they sit under. `top` is what comes before any label, `last` what follows the band. */
+function rowsBySection(menu: HTMLElement): Record<string, string[]> {
+  const out: Record<string, string[]> = { top: [] }
+  let at = 'top'
+  for (const el of Array.from(menu.children) as HTMLElement[]) {
+    if (el.dataset.gearSection) at = el.dataset.gearSection
+    else if (el.dataset.testid === 'gear-leave-band') at = 'last'
+    else (out[at] ??= []).push(el.textContent ?? '')
+    out[at] ??= []
+  }
+  return out
+}
+
+const PAGE_NAMES: Record<(typeof GEAR_PAGE_ORDER)[number], string> = {
+  checklist: 'Checklist',
+  calendar: 'Calendar',
+  materials: 'Materials',
+  map: 'Map',
+  customers: 'Customers',
+  people: 'People',
+  documents: 'Documents',
+  banking: 'Banking',
+  roadmap: 'Roadmap',
+  partnerships: 'Partnerships',
+}
 
 async function openGearMenu() {
   const { container } = renderWithProviders(
@@ -50,28 +92,46 @@ const storedUnder = (prefix: string) =>
     .filter((k) => k.startsWith(prefix))
     .map((k) => localStorage.getItem(k))
 
-describe('Layout: the gear menu’s show-or-hide switches', () => {
+describe('Layout: the gear menu’s sections and switches', () => {
   beforeEach(() => localStorage.clear())
   afterEach(() => {
     cleanup()
     localStorage.clear()
   })
 
-  it('names them Pin bar and Tell the dev, with an icon each, under a band below the modes', async () => {
+  it('reads in groups on a phone: Modes, Show, Pages, Help and settings, then leaving and reloading', async () => {
+    setScreen(true)
     const menu = await openGearMenu()
-    const rows = Array.from(menu.children) as HTMLElement[]
-    const band = rows.findIndex((r) => r.dataset.testid === 'gear-switches-band')
-    expect(band).toBeGreaterThan(0)
-    // The last mode sits just above the band, and the two switches then Dark Mode just under it.
-    expect(rows[band - 1]!.textContent).toBe('Task Mode')
-    expect(rows.slice(band + 1, band + 4).map((r) => r.textContent)).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
-    expect(rows[band + 1]!.querySelector('svg')).toBeTruthy()
-    expect(rows[band + 2]!.querySelector('svg')).toBeTruthy()
-    // Every mode is above the band, and no row under it is called a mode but the phone's own Dark Mode.
-    const names = rows.map((r) => r.textContent ?? '')
-    expect(names.slice(0, band).filter((n) => /Mode/.test(n)).length).toBeGreaterThan(0)
-    expect(names.slice(band + 1).filter((n) => /Mode/.test(n))).toEqual(['Dark Mode'])
+    const groups = rowsBySection(menu)
+    expect(Object.keys(groups)).toEqual(['top', 'Modes', 'Show', 'Pages', 'Help and settings', 'last'])
+
+    // Every mode is under Modes, Task Mode last, and nothing else is.
+    expect(groups.Modes!.length).toBeGreaterThan(0)
+    expect(groups.Modes!.every((n) => /Mode|PO tab/.test(n))).toBe(true)
+    expect(groups.Modes![groups.Modes!.length - 1]).toMatch(/^Task Mode/)
+    // The switches, each with its icon. The only row called a mode outside Modes is the phone's own Dark Mode.
+    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
+    const show = menu.querySelector('[data-gear-section="Show"]')!
+    expect(show.nextElementSibling!.querySelector('svg')).toBeTruthy()
+    expect(show.nextElementSibling!.nextElementSibling!.querySelector('svg')).toBeTruthy()
+    // The pages are in the kernel's one order, a crew's first.
+    const order = GEAR_PAGE_ORDER.map((k) => PAGE_NAMES[k])
+    expect(groups.Pages!.length).toBeGreaterThan(2)
+    expect(groups.Pages).toEqual(order.filter((n) => groups.Pages!.includes(n)))
+    expect(groups.Pages!.slice(0, 2)).toEqual(['Checklist', 'Calendar'])
+    expect(groups['Help and settings']).toEqual(['Help', 'Settings'])
+    expect(groups.last).toEqual(['Sign out', 'Hard Reload'])
     expect(menu.textContent).not.toMatch(/Fix Mode|Pin Mode/)
+  })
+
+  it('at a desk keeps the same groups, with only the pages the header has no link to', async () => {
+    setScreen(false)
+    const menu = await openGearMenu()
+    const groups = rowsBySection(menu)
+    expect(Object.keys(groups)).toEqual(['top', 'Modes', 'Show', 'Pages', 'Help and settings', 'last'])
+    expect(groups.top).toEqual([])
+    expect(groups.Pages).not.toContain('Checklist')
+    expect(groups.Pages).toContain('Calendar')
   })
 
   it('reads each switch’s state and next press aloud, and keeps the stored keys', async () => {
