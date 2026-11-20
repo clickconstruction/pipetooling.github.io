@@ -97,6 +97,25 @@ describe('FilledBuilder', () => {
     expect(screen.getByText('Draft. Not published.')).toBeTruthy()
   })
 
+  it('shows nothing of the last job’s link or trades while the next job’s are read', async () => {
+    const mesaOwn = startJobSheet({ name: JOBS[1]!.name, place: JOBS[1]!.place, insured: ['Lone Oak Property Management'] })
+    const never = new Promise<never>(() => {})
+    const link = { ...LINK, read: vi.fn((_key: string, sheetId: string | null) => (sheetId === 'sheet-cedar' ? Promise.resolve({ ok: true as const, value: { on: true as const, code: 'abcdefghjkmnpqrs', madeAt: '2026-11-19T16:00:00Z', opened: 0, lastOpenedAt: null } }) : never)) }
+    const cedarTrade = { id: 'co-1', name: 'Made-up Concrete Co', page: { state: 'on' as const }, contacts: [{ name: 'Dana Whitlock', email: 'dana@example.test' }], send: null }
+    const sends = { ...SENDS, readParties: vi.fn((projectId: string) => (projectId === 'cedar' ? Promise.resolve([cedarTrade]) : never)) }
+    open({
+      sheets: [sheetRow(), sheetRow({ id: 'sheet-mesa', projectId: 'mesa', draft: mesaOwn, published: mesaOwn, publishedSheet: layOver(USUAL, mesaOwn) })],
+      io: { link, sends } as unknown as Partial<FilledBuilderIo>,
+    })
+    expect((await screen.findByTestId('builder-link-url')).textContent).toContain('/d/abcdefghjkmnpqrs')
+    expect(await screen.findByText('Made-up Concrete Co')).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Job' }), { target: { value: 'mesa' } })
+    // The other job's link must not sit here with Copy live, nor its trades with a send press.
+    expect(screen.queryByTestId('builder-link-url')).toBeNull()
+    expect(screen.getByText('Reading the link…')).toBeTruthy()
+    expect(screen.queryByText('Made-up Concrete Co')).toBeNull()
+    expect(screen.getByText("Reading this job's trades…")).toBeTruthy()
+  })
   it('holds a job’s publish until the usual is published, and says so', async () => {
     open({ rec: builder({ published: null, revision: 0 }) })
     expect(await screen.findByText('Publish your usual sheet first.')).toBeTruthy()
