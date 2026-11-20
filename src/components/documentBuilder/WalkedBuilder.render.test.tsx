@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DOCUMENT_BUILDERS } from '../../lib/documentBuilder/builders'
 import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
+import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
 import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fixture'
 import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { WalkedBuilder, type WalkedBuilderIo } from './WalkedBuilder'
@@ -101,6 +102,68 @@ describe('WalkedBuilder', () => {
       await vi.advanceTimersByTimeAsync(800)
     })
     expect((vi.mocked(io.saveBuilderDraft).mock.calls[1]?.[1] as PaperDef).notice.title).toBe(SECRECY_PAPER_FIXTURE.notice.title)
+  })
+
+  it('says a draft did not save, with the reason, and holds that until a later save lands', async () => {
+    vi.useFakeTimers()
+    const { io, onRecord } = draw()
+    vi.mocked(io.saveBuilderDraft).mockResolvedValueOnce({ ok: false, error: 'The draft did not save.' })
+    type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800)
+    })
+    expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Draft saved')).toBeNull()
+    expect(screen.getByText('Draft not saved')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toBe('The draft did not save.')
+    expect(onRecord).not.toHaveBeenCalled()
+
+    // The next typing sends the draft again. The bar holds its words until that save lands.
+    type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else at all')
+    expect(screen.getByText('Draft not saved')).toBeTruthy()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800)
+    })
+    expect(io.saveBuilderDraft).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('Draft saved')).toBeTruthy()
+    expect(screen.queryByText('Draft not saved')).toBeNull()
+    expect(onRecord).toHaveBeenCalledTimes(1)
+  })
+
+  it('hands up a save that lands after the builder is left', async () => {
+    const { io, onRecord, view } = draw()
+    let land: (res: Landed<BuilderRecord>) => void = () => {}
+    vi.mocked(io.saveBuilderDraft).mockImplementationOnce(() => new Promise<Landed<BuilderRecord>>((resolve) => (land = resolve)))
+    type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
+    view.unmount()
+    await waitFor(() => expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1))
+    const sent = vi.mocked(io.saveBuilderDraft).mock.calls[0]?.[1] as PaperDef
+    expect(sent.notice.title).toBe('Before anything else')
+    expect(onRecord).not.toHaveBeenCalled()
+    const saved = record({ draft: sent })
+    await act(async () => {
+      land({ ok: true, value: saved })
+    })
+    expect(onRecord).toHaveBeenCalledTimes(1)
+    expect(onRecord).toHaveBeenCalledWith(saved)
+  })
+
+  it('sends a draft that did not save again when the builder is left', async () => {
+    vi.useFakeTimers()
+    const { io, onRecord, view } = draw()
+    vi.mocked(io.saveBuilderDraft).mockResolvedValueOnce({ ok: false, error: 'The draft did not save.' })
+    type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800)
+    })
+    expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1)
+    view.unmount()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(io.saveBuilderDraft).toHaveBeenCalledTimes(2)
+    expect((vi.mocked(io.saveBuilderDraft).mock.calls[1]?.[1] as PaperDef).notice.title).toBe('Before anything else')
+    expect(onRecord).toHaveBeenCalledTimes(1)
   })
 
   it('marks a changed cell on the map and opens it from the list', () => {

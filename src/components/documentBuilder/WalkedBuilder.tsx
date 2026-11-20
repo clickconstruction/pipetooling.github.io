@@ -41,6 +41,10 @@ type Props = {
 /** How long the typing rests before the draft is saved. */
 const SAVE_AFTER_MS = 700
 
+/** Where the draft stands on the bar. `failed` holds from a save that did not land until a later one does. */
+type SaveState = 'saved' | 'saving' | 'failed'
+const SAVE_WORDS: Record<SaveState, string> = { saved: 'Draft saved', saving: 'Saving the draft…', failed: 'Draft not saved' }
+
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, minWidth: 0 }
 const CARD_TITLE: CSSProperties = { margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)' }
 const MUTED: CSSProperties = { margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }
@@ -73,7 +77,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   draftRef.current = draft
   const [marks, setMarks] = useState(true)
   const [open, setOpen] = useState<FlowOpen | undefined>(undefined)
-  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
+  const [saveState, setSaveState] = useState<SaveState>('saved')
   const [refusal, setRefusal] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [readOpen, setReadOpen] = useState(false)
@@ -90,21 +94,31 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   const here = useRef(true)
   const timer = useRef<number | null>(null)
   const chain = useRef<Promise<void>>(Promise.resolve())
+  /** The last save did not land, and no save has been asked for since. Leaving the builder sends the draft again. */
+  const unsaved = useRef(false)
   const save = useCallback(async () => {
     const res = await io.saveBuilderDraft(entry.id, draftRef.current)
-    if (!here.current) return
+    unsaved.current = !res.ok
+    // The saved row goes up to the tab even after the builder is left: the tab opens the builder from it next time.
     if (res.ok) onRecord(res.value)
-    else setRefusal(res.error)
-    if (timer.current == null) setSaveState('saved')
+    if (!here.current) return
+    if (!res.ok) {
+      setRefusal(res.error)
+      setSaveState('failed')
+    } else setSaveState(timer.current == null ? 'saved' : 'saving')
   }, [io, entry.id, onRecord])
+  const send = useCallback(() => {
+    unsaved.current = false
+    chain.current = chain.current.then(save)
+  }, [save])
   const flush = useCallback(async () => {
     if (timer.current != null) {
       window.clearTimeout(timer.current)
       timer.current = null
-      chain.current = chain.current.then(save)
-    }
+      send()
+    } else if (unsaved.current) send()
     await chain.current
-  }, [save])
+  }, [send])
   useEffect(() => {
     here.current = true
     return () => {
@@ -119,11 +133,11 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
     draftRef.current = next
     setDraft(next)
     setRefusal(null)
-    setSaveState('saving')
+    setSaveState((was) => (was === 'failed' ? was : 'saving'))
     if (timer.current != null) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
       timer.current = null
-      chain.current = chain.current.then(save)
+      send()
     }, SAVE_AFTER_MS)
   }
 
@@ -184,8 +198,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
           <Chip chip={{ tone: 'warn', words: read.words }} />
         )}
         <span style={{ flex: '1 1 auto' }} />
-        <span style={FINE} aria-live="polite">
-          {saveState === 'saving' ? 'Saving the draft…' : 'Draft saved'}
+        <span style={saveState === 'failed' ? { ...FINE, fontWeight: 600, color: 'var(--text-red-700)' } : FINE} aria-live="polite">
+          {SAVE_WORDS[saveState]}
         </span>
         <button type="button" disabled={press.dead || busy} style={mainPress(press.dead || busy)} onClick={() => void publish()}>
           {press.label}
