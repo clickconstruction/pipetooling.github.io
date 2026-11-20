@@ -44,6 +44,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'components/bids/BidsTakeoffTab.tsx': 'our own takeoff sheets; the schedule that goes to the GC is filed from the cover letter tab',
   'components/partnerships/PartnershipAgreementsTab.tsx': 'a partnership notice: kept on the partnership itself (notice_html), never in a list the whole office reads',
   'components/settings/ContractReaderModal.tsx': 'reading a contract in Settings; a contract that goes to someone is filed where it is sent',
+  'components/contracts/ClauseSamplePrint.tsx': 'the sample of a paper built from settings, printed from the Contract Book’s preview (punch list #389, step 2, v2.8020): the paper put together for a made-up party with SAMPLE across every page, for the office to read, so nothing goes to anyone',
   'lib/bidDocuments/costEstimatePage.ts': 'our own cost estimate: it holds cost and margin',
   'lib/bidDocuments/pricingPage.ts': 'our own pricing sheet: it holds cost and margin',
   'components/bids/BidsBuilderReviewTab.tsx': 'a call sheet for our own callers',
