@@ -120,6 +120,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
   the month at that pace, 3,871 in October, and nothing billed.
   Read again the same day (v2.8049): most of those loads were the automatic check of the live site, which no longer opens a Google map.
   On the five days that check reached no page, people made 4 to 19 requests a day.
+  People alone made roughly 10 to 40 map loads a day, read the same day in the console's chart of the Maps JavaScript API by day.
   So the pace above is too high, and the room under the free 10,000 is wider than it reads.
 - **Old maps.** Every painted map already saved was drawn over Esri's photograph. They will open on
   Google's with the same small shift.
