@@ -77,6 +77,7 @@ function seeded(over: Partial<MemoryStart> = {}): MemoryStart {
   })
 }
 
+let mayDecide = true
 function Harness({ db, far = true }: { db: MemoryStart; far?: boolean }) {
   // The io is made once a mount, so a press reads the same rows it wrote and the read is not asked for again on every draw.
   const [io] = useState(() => memoryStartChecksIo(db))
@@ -84,7 +85,7 @@ function Harness({ db, far = true }: { db: MemoryStart; far?: boolean }) {
   return (
     <>
       <span data-testid="shows">{String(read.shows)}</span>
-      <DevelopmentScheduleCard anchorId="development-schedule" developmentId="dev-1" read={read} todayYmd={TODAY} me={{ userId: 'u-dana', name: 'Dana' }} can={{ window: true, notice: true, company: true }} foldFor={(l) => ({ open: true, onToggle: () => {}, line: l })} contactLine="Ray Ortiz is the GC’s contact on the bids." askCustomerId="cust-1" jobNameOf={(id) => (id === 'j1' ? 'Lodge plumbing' : 'Bunkhouse plumbing')} />
+      <DevelopmentScheduleCard anchorId="development-schedule" developmentId="dev-1" read={read} todayYmd={TODAY} me={{ userId: 'u-dana', name: 'Dana' }} can={{ window: true, notice: true, company: true, decide: mayDecide }} foldFor={(l) => ({ open: true, onToggle: () => {}, line: l })} contactLine="Ray Ortiz is the GC’s contact on the bids." askCustomerId="cust-1" jobNameOf={(id) => (id === 'j1' ? 'Lodge plumbing' : 'Bunkhouse plumbing')} />
     </>
   )
 }
@@ -96,7 +97,10 @@ async function mount(db: MemoryStart, far = true) {
 const cards = () => Array.from(document.querySelectorAll('[data-schedule-stage]')) as HTMLElement[]
 const card = (id: string) => document.querySelector(`[data-schedule-stage="${id}"]`) as HTMLElement
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  mayDecide = true
+})
 
 describe('the Schedule look', () => {
   it('does not draw where this person is on no job’s desk, or no job has a stage line', async () => {
@@ -141,7 +145,9 @@ describe('the Schedule look', () => {
     await waitFor(() => expect(cards().length).toBe(4))
     expect(within(card('under')).getByRole('button', { name: 'Move our start' })).toBeTruthy()
     expect(within(card('trim')).getByRole('button', { name: 'Write the list' })).toBeTruthy()
-    expect(within(card('top')).getByRole('button', { name: 'Open' })).toBeTruthy()
+    expect(within(card('top')).getByRole('button', { name: 'Ask Ray' })).toBeTruthy()
+    // A stage with nothing to do yet is opened, not acted on.
+    expect(within(card('rough')).getByRole('button', { name: 'Open' })).toBeTruthy()
   })
 
   it('draws the values in a sentence in place: our first day and their day change where they sit, the rest are bold', async () => {
@@ -183,11 +189,14 @@ describe('the Schedule look', () => {
     const db = seeded()
     await mount(db)
     await waitFor(() => expect(cards().length).toBe(4))
-    fireEvent.click(within(card('top')).getByRole('button', { name: 'Open' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray' }))
     const stage = card('top').querySelector('[data-start-check-stage]') as HTMLElement
+    // The press named the ask, so the stage opens with the ask in hand.
+    expect(card('top').querySelector('[data-start-check-ask]')).toBeTruthy()
     expect(Array.from(stage.querySelectorAll('.vipLineLabel')).map((l) => l.textContent)).toEqual(['We start', 'Ray says ready', 'Notice we need', 'We decide by'])
     expect(within(stage).getByText('10 days')).toBeTruthy()
-    expect(within(card('top')).getByRole('button', { name: 'Close' })).toBeTruthy()
+    // The card's own press now closes it. The ask panel has a Close of its own.
+    expect(within(card('top')).getAllByRole('button', { name: 'Close' }).some((b) => b.getAttribute('aria-expanded') === 'true')).toBe(true)
     fireEvent.click(within(stage).getByRole('button', { name: 'The framing inspection has passed.' }))
     await waitFor(() => expect(card('top').dataset.light).toBe('green'))
     expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Nothing is open. Press Go to confirm the crew for Tue Dec 1.')
@@ -223,14 +232,105 @@ describe('the Schedule look', () => {
     const db = seeded()
     await mount(db)
     await waitFor(() => expect(cards().length).toBe(4))
-    fireEvent.click(within(card('top')).getByRole('button', { name: 'Open' }))
-    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray about 1' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray' }))
+    expect(within(card('top')).getByRole('button', { name: 'Ask Ray about 1' }).getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(within(card('top')).getByRole('button', { name: 'I called' }))
     await waitFor(() => expect(db.rows.asks.map((a) => `${a.bullet_id} ${a.how}`)).toEqual(['t1 phone']))
     await waitFor(() => expect(card('top').textContent).toContain('by phone. No answer yet.'))
     // A stage with nothing open on them offers no ask.
     fireEvent.click(within(card('trim')).getByRole('button', { name: 'Write the list' }))
     expect(within(card('trim')).queryByRole('button', { name: /^Ask Ray/ })).toBeNull()
+  })
+
+  it('Go, with every yes in: the press reads Go, the name is kept, and the Go can be taken back', async () => {
+    const db = seeded()
+    db.rows = { ...db.rows, marks: [...db.rows.marks, mark('m-t1', 't1', 'j1')] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect(card('top').dataset.light).toBe('green')
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Go' }))
+    const panel = card('top').querySelector('[data-start-check-decide]') as HTMLElement
+    expect(panel.textContent).toContain('Everything on the list has a yes.')
+    expect(panel.textContent).toContain('Send the crew for Tue Dec 1.')
+    expect(panel.textContent).toContain('Nothing is blocked. A crew can be scheduled with no Go.')
+    fireEvent.click(within(panel.querySelector('[data-decide="go"]') as HTMLElement).getByRole('button', { name: 'Go' }))
+    await waitFor(() => expect(db.rows.decisions).toHaveLength(1))
+    expect(db.rows.decisions[0]).toMatchObject({ kind: 'go', fixture_id: 'top', by_name: 'Dana', decided_on: '2026-11-17', open_then: [], start_then: '2026-12-01', hold_until: null })
+    await waitFor(() => expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Crew confirmed for Tue Dec 1. Dana pressed Go Nov 17.'))
+    expect(card('top').querySelector('[data-start-check-decide]')).toBeNull()
+    const foot = card('top').querySelector('[data-start-check-foot]') as HTMLElement
+    expect((foot.querySelector('[data-start-check-decision="go"]') as HTMLElement).textContent).toBe('Go. Dana, Nov 17.')
+    expect(within(foot).queryByRole('button', { name: 'Go or hold' })).toBeNull()
+    fireEvent.click(within(foot).getByRole('button', { name: 'Take the Go back' }))
+    await waitFor(() => expect(db.rows.decisions[0]?.taken_back_at).toBeTruthy())
+    await waitFor(() => expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Nothing is open. Press Go to confirm the crew for Tue Dec 1.'))
+  })
+
+  it('a go on their promise keeps what was open, and the stage says when it comes back', async () => {
+    const db = seeded()
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Go or hold' }))
+    // One panel at a time: the ask steps aside for the decision.
+    expect(card('top').querySelector('[data-start-check-ask]')).toBeNull()
+    const panel = card('top').querySelector('[data-start-check-decide]') as HTMLElement
+    expect(panel.textContent).toContain('1 thing is still open.')
+    expect(panel.textContent).toContain('This is a go on their promise. It comes back to you Mon Nov 30, the day before the crew leaves.')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Go, on their promise' }))
+    await waitFor(() => expect(db.rows.decisions[0]).toMatchObject({ kind: 'go', open_then: ['The framing inspection has passed.'] }))
+    await waitFor(() => expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Dana pressed Go Nov 17 with 1 thing open. Last check Mon Nov 30.'))
+    expect(card('top').dataset.light).toBe('amber')
+  })
+
+  it('a Hold moves our start and keeps its length, and writes the note for the office to send', async () => {
+    const db = seeded()
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Go or hold' }))
+    const hold = card('top').querySelector('[data-decide="hold"]') as HTMLElement
+    // A week on from our first day is offered, and the day can be picked.
+    expect((within(hold).getByLabelText('The day our start moves to') as HTMLInputElement).value).toBe('2026-12-08')
+    fireEvent.change(within(hold).getByLabelText('The day our start moves to'), { target: { value: '2026-12-15' } })
+    expect((hold.querySelector('[data-hold-note]') as HTMLElement).textContent).toBe('Ray, we are holding our start on the Lodge top out. We planned Tue Dec 1.\nWe cannot send a crew until this is true:\n1. The framing inspection has passed.\nOur next opening is Tue Dec 15. Tell us the day it is ready and we will lock it in.')
+    fireEvent.click(within(hold).getByRole('button', { name: 'Hold until Dec 15' }))
+    await waitFor(() => expect(db.rows.decisions[0]).toMatchObject({ kind: 'hold', hold_until: '2026-12-15', start_then: '2026-12-01', by_name: 'Dana' }))
+    expect(db.lines.find((l) => l.fixtureId === 'top')?.window).toEqual(['2026-12-15', '2026-12-26'])
+    // Nothing was sent. The note is in hand, written for the day our start moved to, and the office sends it.
+    expect(db.rows.asks).toEqual([])
+    const note = await waitFor(() => card('top').querySelector('[data-start-check-ask="note"]') as HTMLElement)
+    expect(note.textContent).toContain('The note for Ray')
+    expect(note.textContent).toContain('A hold tells nobody by itself. Change any word, then send the note.')
+    expect((within(note).getByLabelText('The hold note') as HTMLTextAreaElement).value).toContain('We planned Tue Dec 1.')
+    fireEvent.click(within(note).getByRole('button', { name: 'I emailed it' }))
+    await waitFor(() => expect(db.rows.asks.map((a) => `${a.kind} ${a.fixture_id} ${a.bullet_id} ${a.how}`)).toEqual(['hold_note top null email']))
+    await waitFor(() => expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toContain('On hold since Nov 17.'))
+    expect((card('top').querySelector('[data-start-check-decision="hold"]') as HTMLElement).textContent).toBe('On hold. Dana, Nov 17.')
+  })
+
+  it('a decision that is refused says why, and nothing is decided', async () => {
+    const db = seeded()
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Ask Ray' }))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Go or hold' }))
+    db.failNext = 'Go and Hold are for the office and the job’s superintendent.'
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Go, on their promise' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('Go and Hold are for the office and the job’s superintendent.')
+    expect(db.rows.decisions).toEqual([])
+    expect(card('top').querySelector('[data-start-check-decide]')).toBeTruthy()
+  })
+
+  it('a person who may not decide is offered the stage, and no Go or hold', async () => {
+    mayDecide = false
+    const db = seeded()
+    db.rows = { ...db.rows, marks: [...db.rows.marks, mark('m-t1', 't1', 'j1')] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    fireEvent.click(within(card('top')).getByRole('button', { name: 'Open' }))
+    expect(card('top').querySelector('[data-start-check-decide]')).toBeNull()
+    expect(within(card('top')).queryByRole('button', { name: 'Go or hold' })).toBeNull()
   })
 
   it('a near site reads two days of notice by default', async () => {

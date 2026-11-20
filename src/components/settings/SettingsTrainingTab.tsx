@@ -6,6 +6,7 @@ import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { ROLES } from '../../lib/userRoles'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadTrainingCatalog, loadTrainingStandings, loadTrainingTakenCount, saveTrainingPolicy, type TrainingStandingRow } from '../../lib/training/trainingIo'
+import { courseSizeWords } from '../../lib/training/courseFacts'
 import { ymdWords, type TrainingColour, type TrainingPolicy } from '../../lib/training/trainingState'
 import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flowSwitch } from './flows/flowStyles'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -157,7 +158,7 @@ export function SettingsTrainingTab() {
                 {p.on ? 'On' : 'Off'}
               </button>
               <span style={flowNote}>
-                {facts ? `${facts.lessons} lessons and a final check · about ${Math.round(facts.minutes / 60)} h · ships with the app` : 'ships with the app'}
+                {[courseSizeWords(facts), 'ships with the app'].filter(Boolean).join(' · ')}
               </span>
               <Link to={`/training/${p.slug}`} style={{ fontSize: '0.85rem', fontWeight: 600 }} data-training-preview>
                 Preview the course

@@ -274,7 +274,7 @@ Press a chip a second time to take the kind off. The dot goes back to its plain 
 
 Type a name and press no chip, and the dot keeps its plain number.
 
-Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you. Your phone is read once, on that press, and is not followed.
+Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you when your phone is sure enough. Your phone is read once, on that press, and is not followed.
 
 A line under the press says how that reading did.
 

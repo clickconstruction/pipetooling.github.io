@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -158,6 +158,12 @@ missed line draw the step too. The fix also covers a third face the walk's photo
 computer the step opened in the footer, below the paper's pages, so the press looked dead from the
 months card. Opening the step now unfolds a phone's footer and takes a computer's pane to its last
 section. The fragment is `docs/recent-features/v2.8026.md`.
+
+**And v2.8027, on Grace's yes of 2026-11-20.** The live walk of v2.8026 showed the step's Apply had
+no month to tick on a missed notice, since the step was handed the notice's own months, empty there.
+A missed notice with no month still due now offers its closed months to tick, so a paper already on
+record can stand for one. The step's checks and its reason still rule. The fragment is
+`docs/recent-features/v2.8027.md`.
 
 ## How to verify
 

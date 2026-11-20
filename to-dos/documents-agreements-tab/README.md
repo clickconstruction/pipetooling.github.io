@@ -181,6 +181,9 @@ and the roles whose rows the list would hold. An estimator, a primary and a supe
 an old link to it lands on Estimates. If a role without the tab ever asked the view directly, the database
 would still answer only what that role's policies allow.
 
+Changed 2026-11-20 by card #403's call 8: the tab will open to an estimator too, for the lines their role
+reads, in that card's step 4. Nothing of that is built.
+
 ### The words
 
 The tab is **Agreements**. *Contract* under a job on the Jobs tab, in the job window's Documents tab and
@@ -289,7 +292,7 @@ He took all seven picks as the mock-up draws them.
    a line shows the paper's name and state only. Not taken: off the list until the Staff and subs chip is
    pressed, or left on People alone.
 3. **Who sees the tab.** The office's four roles, as with Sent copies. Not taken: the estimator too, with
-   work orders only.
+   work orders only. He took the estimator on 2026-11-20, on card #403's call 8.
 4. **One list or sections.** One list, newest first, with chips for kind and state. Not taken: a section
    per kind.
 5. **The word.** The tab is Agreements, and Contract under a job stays. Not taken: Contracts.

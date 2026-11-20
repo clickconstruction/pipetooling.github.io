@@ -42,7 +42,7 @@ Every trip has a number on its site. The first trip is Trip 1. The next trip is 
 
 The app hands out the number when you save a new trip. Nobody types the number, and nobody can change it.
 
-A trip keeps its number for good. You can change its days, its people and its words, and the number stays.
+A trip keeps its number for good. You can change its days, its people and its words, and the number stays. A job combine can move a trip to another site. The trip then takes a new number when its own is taken there.
 
 A number is never given to another trip. Delete Trip 5 and the next trip is still Trip 6.
 

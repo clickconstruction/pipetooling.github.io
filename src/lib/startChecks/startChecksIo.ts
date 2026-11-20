@@ -33,7 +33,8 @@ export const START_CHECK_PHOTOS_BUCKET = 'start-check-photos'
 export type StartWho = { userId: string | null; name: string }
 
 export type NewBullet = { fixtureId: string; jobId: string; order: number; words: string; on: 'them' | 'us'; wantsPhoto: boolean; reads: UsReads | null; templateId: string | null }
-export type BulletPatch = Partial<{ words: string; wantsPhoto: boolean; shownToGc: boolean; byDay: string | null }>
+/** `reads` is a bullet of ours alone: where the app reads it from, or `hand` for a tick. */
+export type BulletPatch = Partial<{ words: string; wantsPhoto: boolean; shownToGc: boolean; byDay: string | null; reads: UsReads }>
 export type NewYes = { id?: string; bulletId: string; jobId: string; know: Know; who: string; how: string; day: string; photo?: StartPhoto | null }
 export type YesPatch = Partial<{ know: Know; who: string; how: string; day: string }>
 export type StartPhoto = { path: string; fileName: string; bytes: number; takenAt: string }
@@ -65,6 +66,10 @@ export interface StartChecksIo {
   giveTheirDay: (day: { jobId: string; fixtureId: string; readyDay: string; saidOn: string; who: string; how: string }, who: StartWho) => Promise<void>
   /** Every ask is kept: the day and how. One press is one batch, however many stages it covers. */
   keepAsk: (ask: NewAsk, who: StartWho) => Promise<void>
+  /** Go or Hold, through the one door that keeps the name. A Hold moves our window to the day picked, its length kept. */
+  decide: (fixtureId: string, kind: 'go' | 'hold', openThen: readonly string[], holdUntil: string | null) => Promise<void>
+  /** Take a Go or a Hold back. The decision stays as a row. */
+  takeBackDecision: (decisionId: string) => Promise<void>
   /** The days of notice on a site's row or a job's own. Null puts the default back. */
   setNotice: (home: { developmentId: string } | { jobId: string }, days: number | null, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
@@ -180,6 +185,11 @@ export const supabaseStartChecksIo: StartChecksIo = {
     if (patch.wantsPhoto !== undefined) row.wants_photo = patch.wantsPhoto
     if (patch.shownToGc !== undefined) row.shown_to_gc = patch.shownToGc
     if (patch.byDay !== undefined) row.by_day = patch.byDay
+    if (patch.reads !== undefined) {
+      row.reads = patch.reads
+      // A hand tick belongs to a bullet that reads hand alone: one that turns to the app drops its tick.
+      if (patch.reads !== 'hand') Object.assign(row, { hand_ok: false, hand_ok_at: null, hand_ok_by: null, hand_ok_by_name: '' })
+    }
     const result = await db.from('start_check_bullets').update(row).eq('id', id)
     checkSupabaseError(result, 'change the bullet')
   },
@@ -255,6 +265,16 @@ export const supabaseStartChecksIo: StartChecksIo = {
       ask.rows.map((r) => ({ batch_id: batchId, job_id: r.jobId, fixture_id: r.fixtureId, bullet_id: r.bulletId, kind: ask.kind, how: ask.how, to_name: ask.to.trim().slice(0, 120), asked_on: ask.day, by_user: who.userId, by_name: who.name.slice(0, 120) })),
     )
     checkSupabaseError(result, 'keep the ask')
+  },
+
+  decide: async (fixtureId, kind, openThen, holdUntil) => {
+    const result = await db.rpc('start_check_decide', { p_fixture_id: fixtureId, p_kind: kind, p_open_then: [...openThen], p_hold_until: holdUntil })
+    checkSupabaseError(result, kind === 'go' ? 'press Go' : 'hold the stage')
+  },
+
+  takeBackDecision: async (decisionId) => {
+    const result = await db.rpc('start_check_take_back', { p_decision_id: decisionId })
+    checkSupabaseError(result, 'take the decision back')
   },
 
   setNotice: async (home, days, who) => {

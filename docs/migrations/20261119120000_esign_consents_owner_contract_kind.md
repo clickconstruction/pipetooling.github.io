@@ -62,3 +62,5 @@ Not expected. To undo, add the check again with the ten kinds of `20261030030000
 ## Status
 
 Prepared 2026-11-19. Pushed from the main checkout after the merge (`supabase db push`). The old client has nothing to misread, and no types change.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since a check constraint is not in the types.

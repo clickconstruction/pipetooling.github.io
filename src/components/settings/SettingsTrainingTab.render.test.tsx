@@ -65,7 +65,7 @@ describe('SettingsTrainingTab', () => {
     await open()
     const s = section()
     expect(within(s).getByText('On')).toBeTruthy()
-    expect(within(s).getByText(/30 lessons and a final check/)).toBeTruthy()
+    expect(within(s).getByText(/30 short lessons, about 3 hours/)).toBeTruthy()
     expect((within(s).getByText('✓ Helpers') as HTMLButtonElement).getAttribute('aria-pressed')).toBe('true')
     expect((within(s).getByText('Masters') as HTMLButtonElement).getAttribute('aria-pressed')).toBe('false')
     expect((within(s).getByLabelText('Months a pass is good for') as HTMLInputElement).value).toBe('12')
@@ -109,7 +109,7 @@ describe('SettingsTrainingTab', () => {
     io.retakeFrom = '2026-10-16'
     await open()
     expect((section().querySelector('[data-training-preview]') as HTMLAnchorElement).getAttribute('href')).toBe('/training/osha-30-refresher')
-    expect(within(section()).getByText(/30 lessons and a final check · about 3 h · ships with the app/)).toBeTruthy()
+    expect(within(section()).getByText('30 short lessons, about 3 hours · ships with the app')).toBeTruthy()
     expect(section().textContent).not.toContain('abcdef01')
     expect(within(section()).getByText(/Everyone takes it again from/)).toBeTruthy()
     fireEvent.click(section().querySelector('[data-training-retake-clear]') as HTMLButtonElement)

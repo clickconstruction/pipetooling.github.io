@@ -9,15 +9,18 @@
  * The rules are `startChecks.ts`, the rows `startCheckRows.ts`, and every value is drawn in place (`ValuesInPlace`).
  */
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import {
+  DECIDE_WORDS,
   KNOW_WORDS,
   addDays,
   bulletIsYes,
   countWords,
   daysBetween,
+  decisionWords,
   goNoGoDay,
   inDaysWords,
   lastAsk,
@@ -37,6 +40,7 @@ import {
   type Stage,
   type ThemBullet,
   type UsBullet,
+  type UsReads,
 } from '../../lib/startChecks/startChecks'
 import {
   MOVE_AFTER_THEIRS_DAYS,
@@ -44,6 +48,7 @@ import {
   START_CHECK_WORDS as W,
   liveMarkOf,
   nextBulletOrder,
+  standingDecisionOf,
   starterFor,
   starterWords,
   whoseTag,
@@ -54,8 +59,10 @@ import {
   type StartTemplateRow,
 } from '../../lib/startChecks/startCheckRows'
 import type { StartChecksIo, StartWho } from '../../lib/startChecks/startChecksIo'
-import { ChangeableValue, ValueLine, ValueLines, ValuesLegend, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { READS_CHOICES, readsLabel } from '../../lib/startChecks/startCheckReaders'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence, ValuesLegend, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { StartCheckAskPanel, type AskMessagesDoor } from './StartCheckAskPanel'
+import { StartCheckDecidePanel } from './StartCheckDecidePanel'
 
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const cap: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -83,21 +90,28 @@ export interface StartCheckStageProps {
     notice: boolean
     /** May write the company's lists: the office. */
     company: boolean
+    /** May press Go or Hold: the office and the job's superintendent. */
+    decide?: boolean
   }
   /** Run a write, then read again. A failure is thrown. */
   press: (write: (io: StartChecksIo) => Promise<void>) => Promise<void>
   io: StartChecksIo
   /** Where an ask goes out from Messages: the job it is tied to and the customer's thread. Absent, the stage offers no ask. */
   ask?: AskMessagesDoor
+  /** Open on the ask or on Go or hold, when the press that opened the stage named one. */
+  startOn?: 'ask' | 'decide' | null
 }
 
-export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, today, me, kind, templates, can, press, io, ask }: StartCheckStageProps) {
+export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, today, me, kind, templates, can, press, io, ask, startOn = null }: StartCheckStageProps) {
   const { showToast } = useToastContext()
   const [words, setWords] = useState('')
   const [on, setOn] = useState<'them' | 'us'>('them')
   const [writing, setWriting] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [asking, setAsking] = useState(false)
+  const [asking, setAsking] = useState(startOn === 'ask')
+  const [deciding, setDeciding] = useState(startOn === 'decide')
+  // The note of a hold that just landed, to send from Messages or another way.
+  const [holdNote, setHoldNote] = useState<string | null>(null)
 
   /** A press on a row: the row waits, and a failure says why in a toast. */
   const act = async (what: string, write: (io: StartChecksIo) => Promise<void>) => {
@@ -193,6 +207,7 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
   const len = window ? Math.max(0, daysBetween(window[0], window[1])) : 0
   const setWindow = (start: string, end: string) => press((w) => w.setWindow({ jobId: line.jobId, fixtureId: line.fixtureId }, start, end, me))
   const noticeHome = notice.home
+  const standing = standingDecisionOf(rows, line.fixtureId)
   const keepNotice = (days: number | null) => press((w) => w.setNotice(noticeKey, days, me))
   const locked = can.window ? undefined : W.officeOnly
 
@@ -299,14 +314,46 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
         </div>
       ) : null}
       {addRow}
-      {ask && openOnThem(stage).length ? (
-        <div style={{ marginTop: 12 }}>
-          <button type="button" className="scPress" style={bluePress} aria-expanded={asking} onClick={() => setAsking(!asking)}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }} data-start-check-foot>
+        {ask && openOnThem(stage).length ? (
+          <button type="button" className="scPress" style={bluePress} aria-expanded={asking} onClick={() => (setAsking(!asking), setDeciding(false))}>
             Ask {site.contact} about {openOnThem(stage).length}
           </button>
-        </div>
-      ) : null}
+        ) : null}
+        {standing ? (
+          <>
+            <span style={{ color: standing.kind === 'go' ? 'var(--text-green-700)' : 'var(--text-amber-800)', fontWeight: 600 }} data-start-check-decision={standing.kind}>
+              <ValueSentence text={decisionWords({ kind: standing.kind, by: standing.by_name, day: standing.decided_on, openThen: standing.open_then })} />
+            </span>
+            {can.decide ? (
+              <button type="button" className="scWord" disabled={busy} onClick={() => void act('It was not taken back.', (w) => w.takeBackDecision(standing.id))}>
+                {standing.kind === 'go' ? DECIDE_WORDS.takeBack : DECIDE_WORDS.takeHoldBack}
+              </button>
+            ) : null}
+          </>
+        ) : null}
+        {can.decide && standing?.kind !== 'go' ? (
+          <button type="button" className="scPress" style={plainPress} aria-expanded={deciding} onClick={() => (setDeciding(!deciding), setAsking(false))}>
+            Go or hold
+          </button>
+        ) : null}
+        {can.decide ? <span style={{ fontSize: '0.78125rem', ...muted }}>Your name goes on the decision.</span> : null}
+      </div>
       {ask && asking ? <StartCheckAskPanel stages={[{ stage, line }]} site={site} today={today} me={me} door={ask} press={press} onClose={() => setAsking(false)} /> : null}
+      {deciding ? (
+        <StartCheckDecidePanel
+          stage={stage}
+          site={site}
+          today={today}
+          press={press}
+          onClose={() => setDeciding(false)}
+          onHeld={(note) => {
+            setDeciding(false)
+            setHoldNote(note)
+          }}
+        />
+      ) : null}
+      {holdNote && ask ? <StartCheckAskPanel stages={[{ stage, line }]} site={site} today={today} me={me} door={ask} press={press} onClose={() => setHoldNote(null)} hold={{ text: holdNote }} /> : null}
     </div>
   )
 }
@@ -340,7 +387,7 @@ function rowShell(children: ReactNode, more: ReactNode, testId: string, standing
   )
 }
 
-function OursRow({ b, line, rows, me, kind, canCompany, busy, act }: RowProps & { b: UsBullet }) {
+function OursRow({ b, line, rows, me, kind, canCompany, busy, act, press }: RowProps & { b: UsBullet }) {
   const [more, setMore] = useState(false)
   const yes = bulletIsYes(b)
   return rowShell(
@@ -356,10 +403,18 @@ function OursRow({ b, line, rows, me, kind, canCompany, busy, act }: RowProps & 
             <button type="button" className="scWord" disabled={busy} onClick={() => void act('It was not marked.', (w) => w.tickByHand(b.id, !yes, me))}>
               {b.door}
             </button>
+          ) : b.href && b.door ? (
+            // A bullet read from the app is fixed on the screen that holds the fact: its press is a door there.
+            <Link className="scWord" to={b.href}>
+              {b.door}
+            </Link>
           ) : null}
         </div>
       </div>
-      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>{whoseTag(b, '')}</span>
+      {/* Whose it is, and where it is read from: a value a person can change, in place. */}
+      <span style={{ fontSize: '0.75rem', ...muted, whiteSpace: 'nowrap' }}>
+        ours, <ChangeableValue text={readsLabel(b.reads)} label="where this is read from" type="choice" value={b.reads} choices={READS_CHOICES} hint="where this is read from" onKeep={(v) => press((w) => w.changeBullet(b.id, { reads: v as UsReads }))} />
+      </span>
       <button type="button" className="scMore" aria-label={`More on: ${b.words}`} aria-expanded={more} onClick={() => setMore(!more)}>
         ⋯
       </button>

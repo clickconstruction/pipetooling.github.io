@@ -16,6 +16,8 @@ Job Mode turns the Dashboard into one big card built for working in the field. I
 
 Turning it **off** is remembered on that phone even if your role has it on by default. The same gear-menu row turns it back on. With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it. Then you see everything else for the rest of the visit. The next time you open the app you are back on the card.
 
+Job Mode, Dispatch Mode and Task Mode are [one at a time](/help/task-mode#one-mode-at-a-time). Turning Job Mode on takes you out of the other two. Turning it off puts you back in Dispatch Mode if you had that on.
+
 :::example A new phone
 Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} at the bottom of the screen — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
 :::
