@@ -106,7 +106,8 @@ export function ClauseEditWindow({
   const change = (): ClauseChange => {
     if (mode === 'retire') return { kind: 'retire', clauseId: clause?.id ?? '' }
     const scope: ClauseScope = forEveryone ? 'all' : picked
-    const tied = tie()
+    // A paper with no settings list ties nothing, and its change reads as it always did.
+    const tied = def ? tie() : {}
     return mode === 'new' ? { kind: 'new', en, es, scope, ...tied } : { kind: 'edit', clauseId: clause?.id ?? '', en, es, scope, ...tied }
   }
 

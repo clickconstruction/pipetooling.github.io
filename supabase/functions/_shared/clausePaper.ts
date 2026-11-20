@@ -59,6 +59,18 @@ export interface ClauseTarget {
 /** What the accept says when the paper moved on after the page was opened. */
 export const PAPER_CHANGED = 'The paper changed since you opened it. Reload to read the new version.'
 
+/**
+ * A paper built from settings (punch list #389) goes only with a job's settings. Nothing carries them yet, so these
+ * reads refuse such a paper outright. It is thrown, never answered as null: a null here means *not built from
+ * clauses*, and a sign path then signs the copy's body.
+ */
+export const SETTINGS_PAPER_BARE = 'This paper is built from settings. It goes with its settings.'
+
+/** True for the refusal above, so a sign path can stop in its words and never fall through to the body. */
+export function isSettingsPaperBare(e: unknown): boolean {
+  return e instanceof Error && e.message === SETTINGS_PAPER_BARE
+}
+
 /** A copy whose paper may be built from clauses. */
 export interface ClauseDoc {
   applied_contract_template_document_id: string | null
@@ -110,11 +122,14 @@ export function readSignedClauses(json: unknown): SignedClauses | null {
 /**
  * The paper as it reads today for this copy, in this language. Null when the copy is not built from clauses: no library
  * document, a fillable form, nothing published yet, or no clause live. A read that fails throws, so a signing fails closed
- * rather than freezing nothing.
+ * rather than freezing nothing. A paper built from settings throws `SETTINGS_PAPER_BARE`, which a sign path must not
+ * treat as a failed read.
  */
 export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
   const paperId = doc.applied_contract_template_document_id
-  if (!paperId || doc.form_template_id) return null
+  if (!paperId) return null
+  await refuseSettingsPaper(admin, paperId)
+  if (doc.form_template_id) return null
   if (!(await builtFromClauses(admin, paperId))) return null
   let trades: string[] = []
   let companyName: string | null = null
@@ -131,10 +146,12 @@ export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: C
 /**
  * A portal's paper as it reads today, in this language: a statement of work's or our contract's. Null when it is not
  * built from clauses: no library document, nothing published yet, or no clause live. A read that fails throws, as
- * `clausePaperFor` does.
+ * `clausePaperFor` does, and so does a paper built from settings.
  */
 export async function clausePaperOf(admin: ClauseAdmin, target: ClauseTarget, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
-  if (!target.paperId || !(await builtFromClauses(admin, target.paperId))) return null
+  if (!target.paperId) return null
+  await refuseSettingsPaper(admin, target.paperId)
+  if (!(await builtFromClauses(admin, target.paperId))) return null
   return assembled(admin, { ...target, paperId: target.paperId }, lang)
 }
 
@@ -146,6 +163,13 @@ export async function clausePaperOf(admin: ClauseAdmin, target: ClauseTarget, la
 export async function clausePaperPair(admin: ClauseAdmin, target: ClauseTarget): Promise<ClausePaperPair | null> {
   const [en, es] = await Promise.all([clausePaperOf(admin, target, 'en'), clausePaperOf(admin, target, 'es')])
   return en && es && en.revision === es.revision ? { revision: en.revision, en, es } : null
+}
+
+/** A paper with a settings list is refused before anything else is asked of it. */
+async function refuseSettingsPaper(admin: ClauseAdmin, paperId: string): Promise<void> {
+  const paper = await admin.from('contract_template_documents').select('settings_def').eq('id', paperId).maybeSingle()
+  if (paper.error) throw new Error('could not read the paper')
+  if ((paper.data as { settings_def?: unknown } | null)?.settings_def != null) throw new Error(SETTINGS_PAPER_BARE)
 }
 
 /** Most library documents have no clauses: one small read settles it, and nothing more runs for them. */

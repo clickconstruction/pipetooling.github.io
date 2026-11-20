@@ -8,7 +8,7 @@ import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorag
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
-import { clauseFreeze, clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
+import { SETTINGS_PAPER_BARE, clauseFreeze, clausePaperFor, isSettingsPaperBare, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 import { statedByWords, statedDaysFromFormValues } from '../_shared/hoursStatementForm.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
@@ -199,6 +199,14 @@ serve(async (req) => {
         paper = await clausePaperFor(admin as unknown as ClauseAdmin, doc, body.paperLang === 'es' ? 'es' : 'en')
       } catch (e) {
         console.error('clause paper', e)
+        // A paper built from settings (#389) is never signed bare, whatever the page showed. The database refuses the
+        // signed copy too (contract_copy_refuses_bare_settings); this says so before anything is stored.
+        if (isSettingsPaperBare(e)) {
+          return new Response(JSON.stringify({ error: SETTINGS_PAPER_BARE, code: 'settings_paper_bare' }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
         if (body.paperRevision !== undefined) {
           return new Response(JSON.stringify({ error: 'Could not read the paper. Try again.' }), {
             status: 500,
