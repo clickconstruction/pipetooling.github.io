@@ -150,4 +150,5 @@ job-finish-calls
 salaried-week
 primary-scope-reports
 primary-scope-job-photos
+paper-party
 start-checks

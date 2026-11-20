@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · nothing built
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979), with no screen changed · Google's terms read at that step, and a sixth call added from them
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -11,9 +11,9 @@ summary: >
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
-next: The owner's word to build and a look at the Google billing console, then step 1, the kernel.
+next: Step 2, a Google canvas for looking, built to a green PR and merged on the owner's read of the month's count of maps opened in the Google billing console. Before step 3, the owner's word on call 6.
 size: L as a train of five (S · M · L · S · S)
-blocker: The owner's word, and one look only the owner can take. Google bills by the map opened and `/way` counts every outside reader, so the month's count against the free allowance is read before step 2.
+blocker: One look only the owner can take, and one call. Google bills by the map opened and `/way` counts every outside reader, so the month's count against the free allowance is read before step 2 merges. Step 3 waits on call 6, drawing by hand over Google's photograph.
 opinion: build, after the billing look — the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
 mockup: not required — the presses and the tools stay where they are and only the map under them changes, and Google's own tiles cannot be drawn in a mock-up without the live key
 ---
@@ -90,6 +90,17 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
    every outside reader's open counts.
 5. **The magnifying glass.** One small Google map made when the window opens and kept, never one per
    drag. Whether Google counts it as its own map opened is read at that step.
+   Read on 2026-11-19: Google's pages name what it bills a successful map load and do not say whether a second map on one page is a second one, so the plan counts the glass as one more.
+
+6. **Drawing by hand over Google's photograph.** Found at step 1, when the terms were read (v2.7979).
+   Google's terms (3.2.3 (c)) forbid making content from its content, and the first example is tracing roads, building outlines and utility posts from the satellite view.
+   A line drawn by hand along the road in the photograph is close to that example, and so is a meter, a shutoff or a cleanout dragged onto its spot.
+   The app then keeps the line, shows it on maps that are not Google's, prints it and sends it out as a file.
+   My pick: read painted maps on Google and keep drawing by hand on Esri's photograph, which is steps 2, 4 and 5 without step 3.
+   The other choice is the owner's own reading, or a lawyer's, that marking a way in is not tracing, and then step 3 as planned.
+   A walked line comes from the phone's readings and not from the photograph, so it reads differently and could move to Google by itself.
+   The kernel keeps `drawing` and `placing` off Google until this is settled, and a test holds the line.
+   This is a reading and not legal advice.
 
 ## Risks said plainly
 
@@ -98,8 +109,9 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
   print still made from Esri's. Not measured.
 - **Sharper is not promised.** Which photograph is newer or sharper varies by place.
 - **Cost.** #345 read Google's free count as 10,000 opens of the basic map a month since March 2025,
-  billed past it. The app's seven Google maps already draw on that count. The real numbers are in the
-  billing console, which no session can see.
+  billed past it. Read again on Google's pricing page on 2026-11-19: 10,000 free a month for Dynamic Maps,
+  then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
+  draw on that count. The real numbers are in the billing console, which no session can see.
 - **Old maps.** Every painted map already saved was drawn over Esri's photograph. They will open on
   Google's with the same small shift.
 
@@ -107,11 +119,12 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 
 1. **The kernel** (S). Which map the painting canvas draws on, from the key, a failure on the page
    and the screen it is on. The picture's own rule. Tests. No screen changes.
+   Built 2026-11-19 (v2.7979): `src/lib/paintedMap/paintedMapProvider.ts`. Its reach is empty, so every answer is still Leaflet, and each step below adds its own word to it.
 2. **A Google canvas for looking** (M). Lines, places, the person's dot, the first view and refit.
    Mounted in the painting window when nothing is being drawn, with the Leaflet canvas as the fall
    back. Guide `paint-a-map`, release note, fragment, the Glossary's entry amended.
 3. **Drawing by hand on Google** (L). Corners, the held press, the catch, the magnifying glass and
-   the walk. After this the window is on Google from start to Save.
+   the walk. After this the window is on Google from start to Save. Waits on call 6.
 4. **The public page** (S). `/way` on the same canvas, once the billing look says yes.
 5. **The person's task map** (S). `TaskPlacesMapCard` on the shared Google canvas, as v2.7686 did for
    the team's.

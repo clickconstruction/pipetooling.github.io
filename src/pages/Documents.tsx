@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isOwnerOrDev } from '../lib/doorRoles'
@@ -25,6 +25,8 @@ import { type DocumentsPageTab, parseDocumentsPageTabFromSearch, shownDocumentsP
 import { canReadSentCopies } from '../lib/sent/sentCopies'
 import { DocumentsAgreementsTab } from '../components/documents/DocumentsAgreementsTab'
 import { canSeeAgreements } from '../lib/documents/agreementsLedger'
+import { canUseDocumentBuilder } from '../lib/documentBuilder/access'
+import { BUILDER_PARAM } from '../lib/documentBuilder/builders'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
 import { DocumentsPaintedMapsTab } from '../components/documents/DocumentsPaintedMapsTab'
@@ -1773,13 +1775,18 @@ function DocumentsUnifiedSearchTab() {
   )
 }
 
+/** The Document builder (punch list #404) is a dev's and rarely opened, so its flow and its made-up paper ride in their own chunk. */
+const DocumentsBuilderTab = lazy(() => import('../components/documents/DocumentsBuilderTab'))
+
 export default function Documents() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role: documentsAuthRole } = useAuth()
   /** Agreements (punch list #376) is the office's to read, as the tables' own row security has it: hide the tab for other roles. */
   const agreementsTabVisible = canSeeAgreements(documentsAuthRole)
-  const documentsTab = shownDocumentsPageTab(parseDocumentsPageTabFromSearch(location.search), { agreements: agreementsTabVisible })
+  /** The Document builder (punch list #404) is a dev's for now: hide the tab for every other role. */
+  const builderTabVisible = canUseDocumentBuilder(documentsAuthRole)
+  const documentsTab = shownDocumentsPageTab(parseDocumentsPageTabFromSearch(location.search), { agreements: agreementsTabVisible, builder: builderTabVisible })
   /** Company docs are office-only (matches company_documents RLS) — hide the tab for other roles. */
   const companyTabVisible =
     documentsAuthRole === 'dev' ||
@@ -1797,6 +1804,8 @@ export default function Documents() {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('tab', next)
     nextParams.delete('ledger')
+    // A builder left open belongs to the Document builder tab alone.
+    nextParams.delete(BUILDER_PARAM)
     setSearchParams(nextParams, { replace: true })
   }
 
@@ -1852,6 +1861,11 @@ export default function Documents() {
             Where files go
           </button>
         ) : null}
+        {builderTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'builder')} onClick={() => setDocumentsTab('builder')}>
+            Document builder
+          </button>
+        ) : null}
       </div>
 
       {documentsTab === 'company' && companyTabVisible ? (
@@ -1877,6 +1891,11 @@ export default function Documents() {
       {documentsTab === 'where-files-go' && whereFilesGoVisible ? <DocumentsWhereFilesGo /> : null}
       {documentsTab === 'photos' ? <DocumentsPhotosTab /> : null}
       {documentsTab === 'painted-maps' ? <DocumentsPaintedMapsTab /> : null}
+      {documentsTab === 'builder' && builderTabVisible ? (
+        <Suspense fallback={null}>
+          <DocumentsBuilderTab />
+        </Suspense>
+      ) : null}
     </div>
   )
 }

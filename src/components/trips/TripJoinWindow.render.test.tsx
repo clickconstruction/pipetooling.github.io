@@ -89,6 +89,7 @@ describe('TripJoinWindow', () => {
   it('says where a line ends up: it moves from the next trip, or stays with this one', () => {
     draw({ lines: { here: false, next: true } })
     expect(notes()).toContain('Trip 8 is on a bill. Its line moves to the joined trip.')
+    expect(notes()).toContain('The line keeps its name. Change the name on the job’s Bill tab if it should show the joined trip.')
     cleanup()
     draw({ lines: { here: true, next: false } })
     expect(notes()).toContain('Trip 7 is on a bill. Its line stays with it.')

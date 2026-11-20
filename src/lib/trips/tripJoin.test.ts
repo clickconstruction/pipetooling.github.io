@@ -13,6 +13,7 @@ import {
   TRIP_JOIN_BACK_NOTE,
   TRIP_JOIN_CONFIRM_LABEL,
   TRIP_JOIN_LABEL,
+  TRIP_JOIN_LINE_NAME_NOTE,
   tripJoinDoneWords,
   tripJoinNotes,
   tripJoinParts,
@@ -202,9 +203,17 @@ describe('the window’s words', () => {
       'Trip 7 keeps its number and its words.',
       'The joined trip takes the billing Trip 8 said: Extra.',
       'Trip 8 is on a bill. Its line moves to the joined trip.',
+      'The line keeps its name. Change the name on the job’s Bill tab if it should show the joined trip.',
       'Trip 8 goes, and its number is not used again. It waits under Deleted trips, marked as joined.',
     ])
     expect(tripJoinNotes(FIRST, SECOND, { here: true, next: false })).toContain('Trip 7 is on a bill. Its line stays with it.')
+  })
+
+  it('says the line keeps its name whenever one trip holds a line, and only then', () => {
+    expect(tripJoinNotes(FIRST, SECOND, { here: true, next: false })).toContain(TRIP_JOIN_LINE_NAME_NOTE)
+    expect(tripJoinNotes(FIRST, SECOND, { here: false, next: true })).toContain(TRIP_JOIN_LINE_NAME_NOTE)
+    expect(tripJoinNotes(FIRST, SECOND, { here: false, next: false })).not.toContain(TRIP_JOIN_LINE_NAME_NOTE)
+    expect(tripJoinNotes(FIRST, SECOND, { here: true, next: true })).not.toContain(TRIP_JOIN_LINE_NAME_NOTE)
   })
 
   it('reads well for trips made before numbers', () => {

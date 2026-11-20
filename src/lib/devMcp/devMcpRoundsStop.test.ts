@@ -172,7 +172,7 @@ describe('the rounds stopped and started from the dev seat (v2.7970)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     const from = SERVER.indexOf("case 'plan_rounds_stop':")
-    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_pay_setup':", from))
+    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_twin_seat':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     expect(branch).toContain("await restGet(session, 'users', `select=${ROUNDS_TWIN_SELECT}&${twinRefQuery(p.twin)}&limit=1`)")
     expect(branch).toContain("await restGet(session, 'twin_credentials', `select=${ROUNDS_KEY_SELECT}&twin_user_id=eq.${twinRow.id}&revoked_at=is.null&order=created_at.desc&limit=1000`)")
@@ -186,7 +186,7 @@ describe('the rounds stopped and started from the dev seat (v2.7970)', () => {
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.116.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.117.0'")
     expect(SERVER).toContain('plan_rounds_stop → apply_rounds_stop (the rounds stopped on a twin\'s key or started again')
     expect(README).toContain('| `plan_rounds_stop(rounds)` · `apply_rounds_stop(rounds, plan_hash)` |')
   })

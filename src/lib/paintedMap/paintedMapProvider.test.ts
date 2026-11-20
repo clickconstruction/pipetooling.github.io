@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest'
+import { pictureTileUrl, PICTURE_ATTRIBUTION } from './paintedMapPicture'
+import {
+  PAINTED_GOOGLE_REACH,
+  PAINTED_PICTURE_PROVIDER,
+  paintedWindowUse,
+  resolvePaintedMapProvider,
+  type PaintedGoogleReach,
+  type PaintedMapProviderAsk,
+  type PaintedMapScreen,
+  type PaintedMapUse,
+  type PaintedWindowMode,
+} from './paintedMapProvider'
+
+const SCREENS: PaintedMapScreen[] = ['window', 'way']
+const USES: PaintedMapUse[] = ['looking', 'drawing', 'placing', 'walking']
+/** The train finished: every screen and every use on Google. */
+const EVERYWHERE: PaintedGoogleReach = { screens: SCREENS, uses: USES }
+/** After the second step: the painting window, for looking. */
+const WINDOW_LOOKING: PaintedGoogleReach = { screens: ['window'], uses: ['looking'] }
+
+/** A made-up key. The rule reads only whether there is one. */
+const KEY = 'made-up-key'
+const ask = (over: Partial<PaintedMapProviderAsk> = {}): PaintedMapProviderAsk => ({ key: KEY, googleFailed: false, screen: 'window', use: 'looking', ...over })
+
+describe('resolvePaintedMapProvider', () => {
+  it('draws on Google with a key, no failure, and a screen and a use within reach', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }), EVERYWHERE)).toBe('google')
+  })
+
+  it('keeps the app’s own rule first: no key is Leaflet, on every screen and for every use', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ key: '', screen, use }), EVERYWHERE)).toBe('osm')
+  })
+
+  it('falls back once Google has failed on the page, and stays there', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ googleFailed: true, screen, use }), EVERYWHERE)).toBe('osm')
+  })
+
+  it('leaves a screen outside Google’s reach on Leaflet however good the key is', () => {
+    expect(resolvePaintedMapProvider(ask({ screen: 'window' }), WINDOW_LOOKING)).toBe('google')
+    expect(resolvePaintedMapProvider(ask({ screen: 'way' }), WINDOW_LOOKING)).toBe('osm')
+  })
+
+  it('leaves a use the Google canvas does not carry yet on Leaflet', () => {
+    expect(resolvePaintedMapProvider(ask({ use: 'looking' }), WINDOW_LOOKING)).toBe('google')
+    for (const use of ['drawing', 'placing', 'walking'] as const) expect(resolvePaintedMapProvider(ask({ use }), WINDOW_LOOKING)).toBe('osm')
+  })
+
+  it('takes the Google canvas down while Time is on: the archive is Esri’s', () => {
+    expect(resolvePaintedMapProvider(ask({ timeOn: true }), EVERYWHERE)).toBe('osm')
+    expect(resolvePaintedMapProvider(ask({ timeOn: false }), EVERYWHERE)).toBe('google')
+  })
+
+  it('takes the Google canvas down while a picture of the map is on the screen: the picture is Esri’s', () => {
+    expect(resolvePaintedMapProvider(ask({ pictureUp: true }), EVERYWHERE)).toBe('osm')
+    expect(resolvePaintedMapProvider(ask({ pictureUp: false }), EVERYWHERE)).toBe('google')
+  })
+
+  it('reads today’s reach when it is handed none', () => {
+    expect(resolvePaintedMapProvider(ask())).toBe(resolvePaintedMapProvider(ask(), PAINTED_GOOGLE_REACH))
+  })
+})
+
+describe('PAINTED_GOOGLE_REACH, today', () => {
+  it('puts no painted map on Google yet: this step changes no screen', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe('osm')
+  })
+
+  it('keeps the public page off Google until the owner’s look at the billing console says yes', () => {
+    // Every outside reader's open counts. This line comes out with his yes, and with nothing else.
+    expect(PAINTED_GOOGLE_REACH.screens).not.toContain('way')
+  })
+
+  it('keeps drawing by hand off Google until Google’s terms on content made from its imagery are read', () => {
+    // 3.2.3 (c). This line comes out with the owner's word on that reading, and with nothing else.
+    expect(PAINTED_GOOGLE_REACH.uses).not.toContain('drawing')
+    expect(PAINTED_GOOGLE_REACH.uses).not.toContain('placing')
+  })
+})
+
+describe('paintedWindowUse', () => {
+  it('names each of the window’s modes', () => {
+    const want: Record<PaintedWindowMode, PaintedMapUse> = { view: 'looking', review: 'looking', draw: 'drawing', place: 'placing', walk: 'walking' }
+    for (const mode of Object.keys(want) as PaintedWindowMode[]) expect(paintedWindowUse(mode)).toBe(want[mode])
+  })
+
+  it('keeps a walk on one map from its first reading to Done, paused or not', () => {
+    // The mode is `walk` either way, so the answer cannot change at a pause.
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('walk') }), WINDOW_LOOKING)).toBe('osm')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('walk') }), EVERYWHERE)).toBe('google')
+  })
+
+  it('reads a saved map and a walk being looked over on Google once looking is within reach', () => {
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('view') }), WINDOW_LOOKING)).toBe('google')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('review') }), WINDOW_LOOKING)).toBe('google')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('draw') }), WINDOW_LOOKING)).toBe('osm')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('place') }), WINDOW_LOOKING)).toBe('osm')
+  })
+})
+
+describe('the picture’s own rule', () => {
+  it('is Esri’s photograph whatever the canvas draws on', () => {
+    expect(PAINTED_PICTURE_PROVIDER.google).toBe('esri')
+    expect(PAINTED_PICTURE_PROVIDER.osm).toBe('esri')
+  })
+
+  it('is the rule the picture’s own tiles follow', () => {
+    // The picture and the print both stitch these. A tile from Google here would break its terms.
+    expect(new URL(pictureTileUrl({ z: 18, x: 60000, y: 100000 })).hostname).toBe('server.arcgisonline.com')
+    expect(PICTURE_ATTRIBUTION).toContain('Esri')
+  })
+})

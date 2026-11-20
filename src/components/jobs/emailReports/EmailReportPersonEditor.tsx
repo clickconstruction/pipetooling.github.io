@@ -12,7 +12,7 @@ import {
   type SubscriptionWithAuthors,
 } from '../../../lib/reportEmailSubscriptions'
 import { ACTIVITY_SCOPE_UI, describeScheduleWhen, type ActivityScope } from '../../../lib/reports/digestScheduleFields'
-import { digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites, type EmailReportPerson, type PersonDigestDraft, type RosterUser } from '../../../lib/reports/emailReportPeople'
+import { digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites, sendNowWords, type EmailReportPerson, type PersonDigestDraft, type RosterUser, type SendNowAnswer } from '../../../lib/reports/emailReportPeople'
 import type { ScheduleRow } from './useEmailReportsData'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 
@@ -176,12 +176,8 @@ export function EmailReportPersonEditor({
     try {
       const { data, error: e } = await supabase.functions.invoke('send-report-email', { body: { mode: 'manual', subscription_id: id } })
       if (e) throw e
-      const answer = data as { sent?: number; skippedTestJobs?: number } | null
-      const sent = answer?.sent ?? 0
-      // A report on a ZZ test job is left out by the function (v2.6127); say so, so the count reads honest.
-      const leftOut = answer?.skippedTestJobs ?? 0
-      const leftOutWords = leftOut === 0 ? '' : leftOut === 1 ? ' 1 report on a ZZ test job was left out.' : ` ${leftOut} reports on ZZ test jobs were left out.`
-      setSendResult((sent === 0 ? 'No new reports to send (already up to date).' : `Emailed ${sent} report${sent === 1 ? '' : 's'}.`) + leftOutWords)
+      // The function leaves out a report on a ZZ test job (v2.6127) and one a primary may not read; the words say so.
+      setSendResult(sendNowWords(data as SendNowAnswer | null))
     } catch (e) {
       setError(formatErrorMessage(e, 'Could not send.'))
     } finally {

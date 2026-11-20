@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -245,7 +245,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and forty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and forty-five since v2.7970, whose archive pair is the Digital twins panel's own update of `revoked_at` on a twin's live `twin_credentials` rows under the table's dev-only RLS and then `archive-user` or `restore-user` called as the dev, each keeping its own role check, and whose rounds pair is the Rounds card's own `robot_rounds_stop`, which takes a dev or the master, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and forty-seven verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and forty-seven since v2.7974, whose seat pair is `ct-bridge` and `tt-bridge` called as the dev, each a devs-only door, and the Digital twins panel's own update of `counttooling_user_id` on a twin's `users` row under the table's dev update policy, with no new role and no new policy;
+one hundred and forty-five since v2.7970, whose archive pair is the Digital twins panel's own update of `revoked_at` on a twin's live `twin_credentials` rows under the table's dev-only RLS and then `archive-user` or `restore-user` called as the dev, each keeping its own role check, and whose rounds pair is the Rounds card's own `robot_rounds_stop`, which takes a dev or the master, with no new role and no new policy;
 one hundred and forty-one since v2.7958, whose price matrix pair is the Price it with the robot window's own insert on `bid_price_matrix_requests` and its Take it back, under that table's pricing-sharers RLS, with no new role and no new policy;
 one hundred and thirty-nine since v2.7909, whose receipt take-off is the receipt press's own update of `sends` on the filed affidavit's `job_lien_filings` row under the table's own update policy, never the day served, with the file then sent to Drive's trash through `drive-link`'s own trash door, no new role and no new policy;
 one hundred and thirty-seven since v2.7939, whose robot book pair is the Pricing tab's own update of an entry's prices on `price_book_entries` under that table's RLS, held to an entry of a book that is `is_robot` with no bid, with no new role and no new policy;
@@ -418,6 +419,7 @@ Each lane adds to its own line below, never to the paragraph above, so two lanes
   empty for anyone else;
   Building's door widens it to the schedule's team;
   the board's loader reads it since v2.5192, so an estimator's board has the papers too);
+  since v2.7977 an estimator also reads a company's agreement row itself, and still only the states of its W-9 and its certificate (punch list #403, under *Agreements* below);
   `gc_paper_sends`, `gc_send_paper`, `gc_company_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
   The company window's **Documents** tab (B6-b-ii) lists the papers for anyone who opens the window, under those policies, and its **Send a paper** and **Record their insurance** are the Board's writes (`canUseGcBoardWrites`, a dev today), as the four functions are.
   Start (B6-c-i, `20261010061000_gc_start_project.sql`): `gc_start_project` refuses anyone but a dev in words before any write until award's door, though `gc_projects` is the office's table, and refuses a training account and a digital twin first.
@@ -894,8 +896,13 @@ The Documents tab's *Sent from this job* and the Documents page's **Sent copies*
 `primary` and `estimator` open both places without them.
 Pay stubs are never filed here.
 
+**Document builder** (v2.7980, the Documents page's **Document builder** tab, punch list #404): the tab shows to a dev alone (`canUseDocumentBuilder`, one list, `DOCUMENT_BUILDER_TEAM` in `src/lib/documentBuilder/access.ts`).
+It is the owner's call of 2026-11-19 that the builders are a dev's for now.
+Every other role opens `/documents` without the tab, and a link to `?tab=builder` shows them Estimates.
+The tab reads and writes no table yet: the Sub NDA's flow runs on a made-up paper in the client.
+
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
-The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
@@ -903,6 +910,12 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
+Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a row of the kind `agreement` that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
+It opens no paper filed under a person, no W-9, certificate or other kind, and no party on no list, and a digital twin reads none.
+It is a read alone: the four roles still write, and the estimator has no screen that lists these papers until the party's own page is built.
+A signed form's PDF still opens through `open-contract-form-pdf` for a dev, the controller and a pay-approved master alone, so the estimator opens none.
+`paper_party_contact` finds a party's contact, and makes one when the record has none, for the four roles that send a paper: a training account and a digital twin find one and never make one.
+`contacts_fold_papers` moves a party's papers when two contacts fold, as a definer that moves nothing for a caller off the office team, a training account, a digital twin or an archived account.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
@@ -2840,7 +2853,10 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   Since v2.7936 (punch list #400) the same rule, with the crew's claim beside it (`helper_on_job`: on the job's team, or on its schedule this week or last), holds a primary's read of `job_photo_notes` and their files, of a first look tied to a job (`first_looks_select_job_team`, and through it `first_look_files` and the `first-look-files` bucket), of every column of `list_job_crew_position` and of the `job-photos` edge function.
   The stage checklist tables and `list_job_stage_progress` stay open to a primary on any job, because the photo checklist of a field report reads them before it writes them.
   `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
-  The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
+  The two office-picked email streams (`report_email`, `report_digest`) and the push on a new report follow the same rule since v2.7914: each asks `reports_open_to_user(user, report ids)` about the recipient it names (service role only, `20261119060000_primary_reports_named_user.sql`), so a primary the office subscribes is sent only the reports they read in the app.
+  An outside address is narrowed only when it is a primary's own account address (`reports_open_to_address`).
+  The digest's crew time (hours, clock notes, optional cost) goes to a primary only for the jobs whose reports they read, as account manager or listed superintendent (`report_jobs_open_to_user`).
+  The rule's one body is `primary_user_can_read_report(user, job, project, bid, author)`, which `primary_can_read_report` asks about `auth.uid()`.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
   the Jobs tab adds an explicit Account-Man filter.
 - Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).
