@@ -26,23 +26,36 @@
  * circle and the map's own lines and places all show, and the first spot after it brings the map in
  * to the person. The rule is `marginFrame.ts`, which any other canvas asks the same way. The canvas
  * counts no time: its caller holds a rough reading back for the wait before calling it an area.
+ *
+ * **Google** (punch list #387): a caller that says where the canvas is and what it is for (`google`)
+ * may get Google's map under the painted map in place of this one. `paintedMapProvider.ts` decides,
+ * and this file mounts the answer: its own Leaflet map, or `PaintedMapGoogleCanvas`. The view, the
+ * two presses and Time are held here, above both, so a change of map keeps them. Today Google draws
+ * only a map that is being read. A caller that hands no `google` gets the Leaflet map, as before.
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { legMiddles } from '../../lib/paintedMap/draftLine'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { PAINTED_SNAP_METERS, type NumberedPlace, type PaintedLineHow } from '../../lib/paintedMap/paintedMap'
-import { PAINT_COLOR } from './paintedMapLook'
+import { PAINT_COLOR, PAINT_INK, PAINT_ME_BLUE, PAINT_PAPER } from './paintedMapLook'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useMapTime } from '../../hooks/useMapTime'
-import type { MapLayerChoice } from '../../lib/map/googleMapType'
+import { googleMapsBrowserKey } from '../../lib/dashboardJobsMap'
+import { googleMapTypeForLayer, type MapLayerChoice } from '../../lib/map/googleMapType'
+import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
 import { MapTimeRow } from '../map/MapTimeRow'
 import { MapViewControl } from '../map/MapViewControl'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
 import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
+import { notePaintedGoogleFailed, paintedGoogleFailedOnPage } from '../../lib/paintedMap/paintedGooglePage'
+import { paintedMapKeepsLeaflet, resolvePaintedMapProvider, type PaintedMapProvider, type PaintedMapScreen, type PaintedMapUse } from '../../lib/paintedMap/paintedMapProvider'
+import { clampView, type PaintedMapView } from '../../lib/paintedMap/paintedMapView'
+
+const PaintedMapGoogleCanvasLazy = lazy(() => import('./PaintedMapGoogleCanvas'))
 
 export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow }
 /**
@@ -69,6 +82,14 @@ export type PaintedCanvasDot = {
   label: string
   targets?: ReadonlyArray<SnapTarget>
   onMove: (p: PaintedPoint) => void
+}
+
+/** Where the canvas is and what it is being used for, for the rule that picks the map under a painted map (punch list #387). */
+export type PaintedCanvasGoogleAsk = {
+  screen: PaintedMapScreen
+  use: PaintedMapUse
+  /** A picture of the map is on the screen: Esri's photograph, which Google's map does not sit beside. */
+  pictureUp?: boolean
 }
 
 type Props = {
@@ -105,6 +126,8 @@ type Props = {
   onView?: (center: PaintedPoint) => void
   /** What the glass is showing, for the caller's readout: the spot under the finger and what it caught. */
   onGlass?: (state: { point: PaintedPoint; caught: SnapTarget | null } | null) => void
+  /** Says where the canvas is and what it is for, so the map under it may be Google's. Absent, it is the Leaflet map. */
+  google?: PaintedCanvasGoogleAsk | null
 }
 
 // The same pictures the box map draws (`OnSiteMap`).
@@ -116,11 +139,12 @@ const MAX_ZOOM = 21
 /** The middle of the lower 48: nobody's place, only somewhere to start a drag. */
 const WIDE_START: PaintedPoint = { lat: 39.5, lng: -98.35 }
 
-const INK = '#111827'
-const PAPER = '#ffffff'
+// One set of colours for both canvases (`paintedMapLook.ts`), so a map reads the same on Google's photograph.
+const INK = PAINT_INK
+const PAPER = PAINT_PAPER
 const PICKED = '#7c3aed'
 const CAUGHT = '#16a34a'
-const ME_BLUE = '#2563eb'
+const ME_BLUE = PAINT_ME_BLUE
 
 const GLASS_SIZE = 132
 const GLASS_ZOOM_IN = 2
@@ -311,11 +335,33 @@ function ViewTracker({ onView }: { onView: (center: PaintedPoint) => void }) {
   return null
 }
 
-function FlyTo({ to }: { to: PaintedPoint | null | undefined }) {
+/**
+ * `held` is the place the map was already taken to before this map came up in place of Google's. The view was
+ * carried over, so it is not flown to a second time. A map that opens first has none, and flies as it always did.
+ */
+function FlyTo({ to, held }: { to: PaintedPoint | null | undefined; held?: PaintedPoint | null }) {
   const map = useMap()
+  const flown = useRef(held ?? null)
   useEffect(() => {
-    if (to) map.setView([to.lat, to.lng], 18, { animate: false })
+    if (!to || flown.current === to) return
+    flown.current = to
+    map.setView([to.lat, to.lng], 18, { animate: false })
   }, [map, to])
+  return null
+}
+
+/** Says where the map is looking and how close, each time it settles: what Google's map opens on when it takes this one's place. */
+function CameraTracker({ onCamera }: { onCamera: (view: PaintedMapView) => void }) {
+  const say = () => {
+    const c = map.getCenter()
+    onCamera({ center: { lat: c.lat, lng: c.lng }, zoom: map.getZoom() })
+  }
+  const map = useMapEvents({ moveend: say, zoomend: say })
+  useEffect(() => {
+    say()
+    // Once, when the map is up. `say` reads the map itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map])
   return null
 }
 
@@ -632,7 +678,7 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, frameMargin, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, frameMargin, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView, google: googleAsk }: Props) {
   const isMobile = useIsMobile()
   const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
@@ -678,13 +724,55 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
     timeOff()
     setLayer(next)
   }
+  // Which map is under the painted map (punch list #387). A failure of Google is kept for the page, and a screen that
+  // left Google's map to make something keeps this map until it closes.
+  const [googleFailed, setGoogleFailed] = useState(() => paintedGoogleFailedOnPage())
+  const [keptOnLeaflet, setKeptOnLeaflet] = useState(false)
+  const googleKey = googleAsk ? googleMapsBrowserKey() : ''
+  const pictureUp = googleAsk?.pictureUp === true
+  const provider: PaintedMapProvider = googleAsk
+    ? resolvePaintedMapProvider({ key: googleKey, googleFailed, screen: googleAsk.screen, use: googleAsk.use, timeOn: inTime, pictureUp, keptOnLeaflet, still: still === true })
+    : 'osm'
+  const keepsNow = googleAsk ? paintedMapKeepsLeaflet(keptOnLeaflet, { provider, use: googleAsk.use, pictureUp }) : false
+  useEffect(() => {
+    if (keepsNow) setKeptOnLeaflet(true)
+  }, [keepsNow])
+  const googleUnavailable = useCallback((reason: string) => {
+    console.warn(`[painted map] Google Maps unavailable, using OpenStreetMap: ${reason}`)
+    notePaintedGoogleFailed()
+    setGoogleFailed(true)
+  }, [])
+  // The last view either map was on. The other opens on it, so a change of map keeps the painter's spot.
+  const camera = useRef<PaintedMapView | null>(null)
+  const onCamera = useCallback((view: PaintedMapView) => {
+    camera.current = view
+  }, [])
+  const flyToNow = useRef(flyTo ?? null)
+  flyToNow.current = flyTo ?? null
+  // What this map opens on when it comes up in place of Google's: read once each time the map under the painted map
+  // changes, and never while this one is being moved. The first time there is nothing to carry, and it frames what is
+  // painted as it always did. Held in a ref and not a memo: a memo may be worked out again, and a view that appeared
+  // a moment after the map opened would take its first framing away.
+  const carriedFor = useRef<{ provider: PaintedMapProvider; value: { view: PaintedMapView; fly: PaintedPoint | null } | null } | null>(null)
+  if (carriedFor.current?.provider !== provider) {
+    carriedFor.current = { provider, value: provider === 'osm' && camera.current ? { view: clampView(camera.current), fly: flyToNow.current } : null }
+  }
+  const carried = carriedFor.current.value
   // A height in words fills its parent, so the row takes its room from the map. A height in pixels is the map's own.
   const fills = typeof height !== 'number'
 
   return (
     <div data-painted-map-frame style={fills ? { height, display: 'flex', flexDirection: 'column' } : undefined}>
-    <div ref={setHost} data-painted-map-canvas data-map-provider={inTime ? 'archive' : 'osm'} className={shownLayer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', overflow: 'hidden', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none', ...(fills ? { flex: '1 1 0', minHeight: 0 } : { height }) }}>
-      <MapContainer center={ll(centre)} zoom={first ? 18 : 4} maxZoom={MAX_ZOOM} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still && !draft && !dot} touchZoom={!still} boxZoom={false} keyboard={!still}>
+    <div ref={setHost} data-painted-map-canvas data-map-provider={inTime ? 'archive' : provider} className={provider === 'osm' && shownLayer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', overflow: 'hidden', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none', ...(fills ? { flex: '1 1 0', minHeight: 0 } : { height }) }}>
+      {provider === 'google' ? (
+        // The boundary is out here as well as in the canvas: a file that does not arrive on a weak signal falls back too.
+        <GoogleCanvasBoundary onUnavailable={googleUnavailable}>
+          <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
+            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} frameMargin={frameMargin} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
+          </Suspense>
+        </GoogleCanvasBoundary>
+      ) : (
+      <MapContainer center={carried ? ll(carried.view.center) : ll(centre)} zoom={carried ? carried.view.zoom : first ? 18 : 4} maxZoom={MAX_ZOOM} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still && !draft && !dot} touchZoom={!still} boxZoom={false} keyboard={!still}>
         <TileLayer
           // Keyed by its address: a new date is a new layer, and the old tiles do not linger under it.
           key={tiles.url}
@@ -704,8 +792,9 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
           }}
         />
         <SizeFix />
-        <FitOnce points={framed} />
-        <FlyTo to={flyTo} />
+        {carried ? null : <FitOnce points={framed} />}
+        <FlyTo to={flyTo} held={carried?.fly} />
+        {googleAsk ? <CameraTracker onCamera={onCamera} /> : null}
         {onView ? <ViewTracker onView={onView} /> : null}
         {follow && me && !me.area ? <Follow me={me} /> : null}
         {frameMargin ? <FrameMargin me={me ?? null} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
@@ -737,6 +826,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
           </GlassSpot>
         ) : null}
       </MapContainer>
+      )}
       {still ? null : <MapViewControl layer={layer} onLayer={pickLayer} time={canTime ? time : null} isMobile={isMobile} satelliteLabel="From above" style={{ zIndex: 500 }} />}
       {live?.caught ? (
         <div role="status" data-painted-caught style={{ position: 'absolute', left: 8, right: 8, top: 48, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>

@@ -41,10 +41,10 @@ const PLACE = (over: Partial<NumberedPlace> = {}): NumberedPlace => ({ id: 'p1',
 const MAP = { id: 'm1', name: 'The way in for deliveries', words: 'Start at the truck gate.', jobId: 'j1' as string | null }
 
 /** The sheet over a map, as the map's window opens it. `held` says this device already holds a link. */
-const draw = (io: PaintedMapCopiesIo, over: { map?: typeof MAP; lines?: PaintedLine[]; places?: NumberedPlace[]; held?: boolean } = {}) => {
+const draw = (io: PaintedMapCopiesIo, over: { map?: typeof MAP; lines?: PaintedLine[]; places?: NumberedPlace[]; held?: boolean; onPictureShown?: (shown: boolean) => void } = {}) => {
   link.held = over.held ?? false
   const map = over.map ?? MAP
-  return render(<PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map, lines: over.lines ?? [LINE], places: over.places ?? [] }} origin="https://example.test" phone openMessages={async () => true} copiesIo={io} onClose={() => {}} />)
+  return render(<PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map, lines: over.lines ?? [LINE], places: over.places ?? [] }} origin="https://example.test" phone openMessages={async () => true} copiesIo={io} onPictureShown={over.onPictureShown} onClose={() => {}} />)
 }
 const openFold = () => fireEvent.click(screen.getByRole('button', { name: 'Print or a file' }))
 
@@ -151,6 +151,20 @@ describe('a copy of a painted map, on the Share sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
     expect(io.drew).toHaveLength(1)
+  })
+
+  it('says when the picture comes onto the screen and when it leaves, for a window whose map is Google’s (punch list #387)', async () => {
+    const io = fake()
+    const shown: boolean[] = []
+    draw(io, { held: true, onPictureShown: (s) => shown.push(s) })
+    // Nothing is on show when the sheet opens, and nothing while the picture is being drawn.
+    expect(shown).toEqual([false])
+    fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
+    await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
+    expect(shown).toEqual([false, true])
+    fireEvent.click(screen.getByRole('button', { name: /Every way to share/ }))
+    expect(document.querySelector('[data-painted-picture]')).toBeNull()
+    expect(shown).toEqual([false, true, false])
   })
 
   it('hands the picture to the phone\'s share sheet on a press of its own', async () => {

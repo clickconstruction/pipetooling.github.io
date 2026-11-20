@@ -3,6 +3,7 @@ import { pictureTileUrl, PICTURE_ATTRIBUTION } from './paintedMapPicture'
 import {
   PAINTED_GOOGLE_REACH,
   PAINTED_PICTURE_PROVIDER,
+  paintedMapKeepsLeaflet,
   paintedWindowUse,
   resolvePaintedMapProvider,
   type PaintedGoogleReach,
@@ -56,14 +57,23 @@ describe('resolvePaintedMapProvider', () => {
     expect(resolvePaintedMapProvider(ask({ pictureUp: false }), EVERYWHERE)).toBe('google')
   })
 
+  it('keeps the Leaflet canvas on a screen that has left Google’s map to make something', () => {
+    expect(resolvePaintedMapProvider(ask({ keptOnLeaflet: true }), EVERYWHERE)).toBe('osm')
+    expect(resolvePaintedMapProvider(ask({ keptOnLeaflet: false }), EVERYWHERE)).toBe('google')
+  })
+
+  it('draws a still on the Leaflet canvas, the only one that draws one', () => {
+    expect(resolvePaintedMapProvider(ask({ still: true }), EVERYWHERE)).toBe('osm')
+  })
+
   it('reads today’s reach when it is handed none', () => {
     expect(resolvePaintedMapProvider(ask())).toBe(resolvePaintedMapProvider(ask(), PAINTED_GOOGLE_REACH))
   })
 })
 
 describe('PAINTED_GOOGLE_REACH, today', () => {
-  it('puts no painted map on Google yet: this step changes no screen', () => {
-    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe('osm')
+  it('puts the painting window on Google for looking, and nothing else', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(screen === 'window' && use === 'looking' ? 'google' : 'osm')
   })
 
   it('keeps the public page off Google until the owner’s look at the billing console says yes', () => {
@@ -78,10 +88,58 @@ describe('PAINTED_GOOGLE_REACH, today', () => {
   })
 })
 
+describe('paintedMapKeepsLeaflet', () => {
+  it('starts keeping when a line, a place or a walk is made on the Leaflet canvas', () => {
+    for (const use of ['drawing', 'placing', 'walking'] as const) expect(paintedMapKeepsLeaflet(false, { provider: 'osm', use })).toBe(true)
+  })
+
+  it('starts keeping when a picture of the map is shown', () => {
+    expect(paintedMapKeepsLeaflet(false, { provider: 'osm', use: 'looking', pictureUp: true })).toBe(true)
+  })
+
+  it('never lets go: back to looking, the screen is still on Leaflet', () => {
+    expect(paintedMapKeepsLeaflet(true, { provider: 'osm', use: 'looking' })).toBe(true)
+    expect(paintedMapKeepsLeaflet(true, { provider: 'google', use: 'looking' })).toBe(true)
+  })
+
+  it('does not keep for Time, or for a map that is only being read on Leaflet', () => {
+    // Time puts the canvas on Leaflet while the map is still only being looked at.
+    expect(paintedMapKeepsLeaflet(false, { provider: 'osm', use: 'looking' })).toBe(false)
+  })
+
+  it('does not keep when the making is on Google', () => {
+    // After the step that draws on Google there is nothing to keep away from.
+    for (const use of ['drawing', 'placing', 'walking'] as const) expect(paintedMapKeepsLeaflet(false, { provider: 'google', use })).toBe(false)
+  })
+
+  it('holds a painter on one photograph from the first corner to the window’s close', () => {
+    // Read, draw, save and read again, in the window as it is today.
+    let kept = false
+    const seen: string[] = []
+    for (const mode of ['view', 'draw', 'view', 'place', 'view'] as const) {
+      const use = paintedWindowUse(mode)
+      const provider = resolvePaintedMapProvider(ask({ use, keptOnLeaflet: kept }))
+      seen.push(provider)
+      kept = paintedMapKeepsLeaflet(kept, { provider, use })
+    }
+    expect(seen).toEqual(['google', 'osm', 'osm', 'osm', 'osm'])
+  })
+})
+
 describe('paintedWindowUse', () => {
   it('names each of the window’s modes', () => {
     const want: Record<PaintedWindowMode, PaintedMapUse> = { view: 'looking', review: 'looking', draw: 'drawing', place: 'placing', walk: 'walking' }
     for (const mode of Object.keys(want) as PaintedWindowMode[]) expect(paintedWindowUse(mode)).toBe(want[mode])
+  })
+
+  it('is placing already in a window opened to add a place, before its panel is up', () => {
+    expect(paintedWindowUse('view', true)).toBe('placing')
+    // So Google's map is never made only to be taken down a moment later.
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('view', true) }))).toBe('osm')
+    // Only the wait is placing. Every other mode says what it is.
+    expect(paintedWindowUse('review', true)).toBe('looking')
+    expect(paintedWindowUse('draw', true)).toBe('drawing')
+    expect(paintedWindowUse('walk', true)).toBe('walking')
   })
 
   it('keeps a walk on one map from its first reading to Done, paused or not', () => {
