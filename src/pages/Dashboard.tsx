@@ -16,7 +16,7 @@ import { getCurrentUserName as getCurrentUserNameById } from '../lib/getCurrentU
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
-import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
+import { usePageMode } from '../hooks/usePageMode'
 import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
@@ -57,7 +57,6 @@ import { DashboardLienMonthCard } from '../components/dashboard/DashboardLienMon
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { PhoneFold } from '../components/dashboard/PhoneFold'
 import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
 import { canHaveShortDashboard, isShortDashboardHomePress, SHORT_DASHBOARD_WORDS } from '../lib/dashboard/shortDashboard'
@@ -490,7 +489,10 @@ export default function Dashboard() {
   const [turnawayJob, setTurnawayJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   // Role-aware (v2.2877, journey-map Tier-2 #26): absent key ⇒ ON for sub-like roles
   // (subcontractor, helpers), OFF otherwise; a stored value wins; ineligible roles never.
-  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
+  // Read through the page mode (`pageMode.ts`), so this page is Job Mode only when the menu ticks it.
+  const pageMode = usePageMode(authUser?.id ?? null, role)
+  const jobModeEnabled = pageMode.mode === 'job'
+  const setPageMode = pageMode.set
   // `job_mode_enabled{source}` — once per session, on the first render with Job Mode active.
   useEffect(() => {
     if (!jobModeEnabled || !authUser?.id) return
@@ -1182,7 +1184,7 @@ export default function Dashboard() {
   const [crewDaySummary, setCrewDaySummary] = useState<{ people: number; jobs: number; flags: number } | null>(null)
   const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
-  const [dispatchModeOn] = useDispatchModeEnabled(authUser?.id ?? null, isAssistantLike(role) || role === 'master_technician')
+  const dispatchModeOn = pageMode.mode === 'dispatch'
   const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, failed: subScheduleError != null && subScheduleKeptAt == null, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
   /** Write up a change (v2.4047): the wizard's door is on each My Schedule block, not a header button.
       Job Mode's focused view never mounts the wizard, so it gets no opener. */
@@ -1578,7 +1580,7 @@ export default function Dashboard() {
         userId={authUser?.id}
         role={role}
         onEnable={() => {
-          setJobModeEnabled(true, 'card')
+          setPageMode('job', true, 'card')
           setJobModeShowFullDashboard(false)
         }}
       />

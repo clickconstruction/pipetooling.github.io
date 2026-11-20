@@ -20,10 +20,14 @@ export type MemoryStart = {
   calls: string[]
   /** The next write fails with this reason, once. */
   failNext: string | null
+  /** Who the one door says pressed Go or Hold. */
+  decider: string
+  /** The day the one door stamps. */
+  today: string
 }
 
 export function memoryStart(over: Partial<MemoryStart> = {}): MemoryStart {
-  return { lines: [], rows: { ...NO_START_ROWS }, site: null, job: null, templates: [], gcContact: 'Ray Ortiz', onDesk: true, calls: [], failNext: null, ...over }
+  return { lines: [], rows: { ...NO_START_ROWS }, site: null, job: null, templates: [], gcContact: 'Ray Ortiz', onDesk: true, calls: [], failNext: null, decider: 'Dana', today: '2026-11-17', ...over }
 }
 
 let seq = 0
@@ -63,7 +67,7 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
     },
     changeBullet: async (bulletId, patch) => {
       write('changeBullet')
-      put({ bullets: db.rows.bullets.map((b) => (b.id === bulletId ? { ...b, ...(patch.words !== undefined ? { words: patch.words } : {}), ...(patch.wantsPhoto !== undefined ? { wants_photo: patch.wantsPhoto } : {}), ...(patch.shownToGc !== undefined ? { shown_to_gc: patch.shownToGc } : {}), ...(patch.byDay !== undefined ? { by_day: patch.byDay } : {}) } : b)) })
+      put({ bullets: db.rows.bullets.map((b) => (b.id === bulletId ? { ...b, ...(patch.words !== undefined ? { words: patch.words } : {}), ...(patch.wantsPhoto !== undefined ? { wants_photo: patch.wantsPhoto } : {}), ...(patch.shownToGc !== undefined ? { shown_to_gc: patch.shownToGc } : {}), ...(patch.byDay !== undefined ? { by_day: patch.byDay } : {}), ...(patch.reads !== undefined ? { reads: patch.reads, ...(patch.reads !== 'hand' ? { hand_ok: false, hand_ok_at: null, hand_ok_by_name: '' } : {}) } : {}) } : b)) })
     },
     removeBullet: async (bulletId) => {
       write('removeBullet')
@@ -94,6 +98,21 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       write('keepAsk')
       const batch = id('batch')
       put({ asks: [...db.rows.asks, ...ask.rows.map((r) => ({ id: id('k'), batch_id: batch, job_id: r.jobId, fixture_id: r.fixtureId, bullet_id: r.bulletId, kind: ask.kind, how: ask.how, to_name: ask.to, asked_on: ask.day, created_at: now() }))] })
+    },
+    decide: async (fixtureId, kind, openThen, holdUntil) => {
+      write('decide')
+      const line = db.lines.find((l) => l.fixtureId === fixtureId)
+      if (kind === 'hold' && !line?.window) throw new Error('Plan our days for this stage first. A hold moves them.')
+      put({ decisions: [...db.rows.decisions, { id: id('g'), job_id: line?.jobId ?? '', fixture_id: fixtureId, kind, decided_on: db.today, open_then: [...openThen], start_then: line?.window?.[0] ?? null, hold_until: holdUntil, by_name: db.decider, taken_back_at: null, created_at: now() }] })
+      if (kind === 'hold' && holdUntil && line?.window) {
+        const len = Math.round((Date.parse(`${line.window[1]}T12:00:00Z`) - Date.parse(`${line.window[0]}T12:00:00Z`)) / 864e5)
+        const end = new Date(Date.parse(`${holdUntil}T12:00:00Z`) + len * 864e5).toISOString().slice(0, 10)
+        db.lines = db.lines.map((l) => (l.fixtureId === fixtureId ? { ...l, window: [holdUntil, end] } : l))
+      }
+    },
+    takeBackDecision: async (decisionId) => {
+      write('takeBackDecision')
+      put({ decisions: db.rows.decisions.map((d) => (d.id === decisionId && !d.taken_back_at ? { ...d, taken_back_at: now() } : d)) })
     },
     setNotice: async (home, days) => {
       write('setNotice')

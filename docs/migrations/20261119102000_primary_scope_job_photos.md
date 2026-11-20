@@ -21,3 +21,5 @@ A primary reads the photo notes, the first looks and the crew's position of the 
 ## Verify
 
 Read-only on prod after the push, as the dev: `select count(*) from pg_policies where policyname = 'primary_scope_job_photo_notes'` reads 1, and `select pg_get_functiondef('public.list_job_crew_position(uuid[],date)'::regprocedure) like '%primary_can_read_job_reports(x.id)%'` reads true. The SQL bed `npm run test:pg:primary-scope-job-photos` (`supabase/tests/primary_scope_job_photos/20_scenario.sql`) reads every door as three primaries, the assistant and a helper, and has a primary on nothing add a shot on a job that is not theirs. CI runs it from `scripts/sql-beds.txt`.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no new name in `database.ts`, since `list_job_crew_position` is replaced under its own name.

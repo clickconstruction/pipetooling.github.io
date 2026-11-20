@@ -7,7 +7,7 @@
  * markdown as code and fail; only `?raw` globs touch the lessons, and only in the course page's lazy chunk.
  */
 import { parseHelpGuideFrontmatter } from '../helpGuides'
-import { courseFileFromGlobPath } from './courseContent'
+import { FINAL_CHECK_MINUTES, courseFileFromGlobPath } from './courseContent'
 
 export type CourseFacts = { slug: string; title: string; lessons: number; minutes: number }
 
@@ -33,11 +33,21 @@ function build(): Record<string, CourseFacts> {
 
 export const TRAINING_COURSE_FACTS: Record<string, CourseFacts> = build()
 
-/** "30 lessons of about five minutes · about 3 hours in all" */
-export function courseSizeWords(f: CourseFacts | undefined): string | null {
-  if (!f || f.lessons === 0) return null
+/** A lesson of this many minutes or fewer reads *short*; a longer one is a plain lesson. */
+export const SHORT_LESSON_MINUTES = 7
+
+/**
+ * How big a course is, in one short line: *30 short lessons, about 3 hours*. The one sentence for a course's size,
+ * wherever the app says it (the Dashboard card before the first press, Settings → Training). It fits beside the
+ * press on a phone and holds to `plainWords.ts`: a comma, no dot list. v2.5575 wrote *30 lessons of about five
+ * minutes · about 3 hours in all*, which wrapped to two lines at 390 px.
+ */
+export function courseSizeWords(f: Pick<CourseFacts, 'lessons' | 'minutes'> | undefined): string | null {
+  if (!f || f.lessons <= 0) return null
+  const noun = `lesson${f.lessons === 1 ? '' : 's'}`
+  if (f.minutes <= 0) return `${f.lessons} ${noun}`
+  const each = Math.round((f.minutes - FINAL_CHECK_MINUTES) / f.lessons)
+  const short = each > 0 && each <= SHORT_LESSON_MINUTES
   const hours = Math.max(1, Math.round(f.minutes / 60))
-  const each = f.lessons > 0 && f.minutes > 0 ? Math.round((f.minutes - 15) / f.lessons) : 0
-  const eachWords = each >= 4 && each <= 6 ? 'about five minutes' : each > 0 ? `about ${each} minutes` : ''
-  return `${f.lessons} lessons${eachWords ? ` of ${eachWords}` : ''} · about ${hours} hour${hours === 1 ? '' : 's'} in all`
+  return `${f.lessons} ${short ? 'short ' : ''}${noun}, about ${hours} hour${hours === 1 ? '' : 's'}`
 }

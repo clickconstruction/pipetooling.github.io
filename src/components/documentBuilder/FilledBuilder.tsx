@@ -56,15 +56,18 @@ import { sameContents, type BuilderRecord } from '../../lib/documentBuilder/stan
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { BUILDER_LINK_CARD_IO, BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 import { SheetPaperEdit, SheetPaperRead } from './SheetPaper'
 
 /** The reads and writes the builder makes. A smoke hands its own in. */
 export type FilledBuilderIo = Pick<typeof defaultIo, 'readGcJobs' | 'readBuilderSheets' | 'saveBuilderDraft' | 'publishBuilder' | 'markBuilderRead' | 'startSheet' | 'saveSheetDraft' | 'publishSheet'> & {
   /** Prints a page and files the copy. False when the print window was blocked. */
   print: typeof printAndFile
+  /** The link card's own reads and presses. */
+  link: BuilderLinkCardIo
 }
 
-const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile }
+const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile, link: BUILDER_LINK_CARD_IO }
 
 type Props = {
   entry: DocumentBuilderEntry
@@ -597,6 +600,18 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   )
                 })}
               </div>
+              <BuilderLinkCard
+                builderKey={entry.id}
+                sheetId={jobState.id}
+                published={jobState.revision > 0 && jobState.id != null}
+                io={io.link}
+                words={{
+                  title: "This sheet's link",
+                  notPublished: "Publish this job's sheet first. A link then opens it.",
+                  on: 'Anyone with the link can read and print this one sheet. A sub sends it on to their insurance agent.',
+                  off: 'The link is off. Nobody can open this sheet by link. A sub you sent it to still finds it on their page.',
+                }}
+              />
               <div style={CARD}>
                 <h3 style={CARD_TITLE}>Print this job's sheet</h3>
                 {pageNow ? (

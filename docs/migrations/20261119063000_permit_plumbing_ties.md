@@ -59,3 +59,5 @@ Counted on 2026-11-19 from every row of `permits` in the five cities, with the o
 ## Release order
 
 Merge, then `supabase db push` from a main checkout. The client reads the same names with the same arguments, so it works before and after the push and the order against the client deploy does not matter. Then time the three reads signed in: they took 49 to 68 ms before.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); `permit_address_plumbing_counts` reached `database.ts` in #8921.

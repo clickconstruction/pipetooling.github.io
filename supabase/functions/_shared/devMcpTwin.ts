@@ -100,7 +100,7 @@ export function twinDryRun(p: TwinPayload, world: TwinWorld): TwinDryRun {
       twin: { email: seat.email, name: seat.name, seat: seat.n, kind: p.kind, role: 'estimator', rung: rungWords(true), flags: twinFlagPatch(p.kind), roster_row: 'none: a twin is not a person' },
       seats: bidRobot ? { counttooling: ctTwinSeatEmail(seat.email), takeofftooling: ttTwinSeatEmail(seat.email) } : 'none: the pricing robot prices quotes and holds no bids',
       fleet: { live: live.map(twinFacts), archived: world.fleet.filter((t) => t.archived_at).map((t) => t.email) },
-      then: `apply makes the login through create-user as you, with a password nobody is told, then sets the twin flags on its row${bidRobot ? ', then makes its CountTooling seat through ct-bridge and stores the join key, then its TakeoffTooling seat through tt-bridge' : ''}. Each step is reported done or held, and what landed stays. No key is made: mint_twin_setup_code { label, twin: "${seat.email}" } is the next call. The twin stays read-only: plan_twin_rung moves its rung, plan_twin_key_revoke cuts a key off, and Archive is a press at ${TWIN_PANEL_DOOR}.`,
+      then: `apply makes the login through create-user as you, with a password nobody is told, then sets the twin flags on its row${bidRobot ? ', then makes its CountTooling seat through ct-bridge and stores the join key, then its TakeoffTooling seat through tt-bridge' : ''}. Each step is reported done or held, and what landed stays. No key is made: mint_twin_setup_code { label, twin: "${seat.email}" } is the next call. The twin stays read-only: plan_twin_rung moves its rung, plan_twin_key_revoke cuts a key off, and plan_twin_archive takes it out of the fleet, or brings it back with restore: true.${bidRobot ? ' plan_twin_seat makes a held seat again.' : ''} Each is also a press at ${TWIN_PANEL_DOOR}.`,
     },
   }
 }
@@ -116,5 +116,5 @@ export function twinAppliedWords(steps: readonly TwinStep[], seat: TwinSeat): st
   }
   const next = `Next: mint_twin_setup_code { label, twin: "${seat.email}" } for its key. It is read-only until plan_twin_rung moves it to rung 2.`
   if (held.length === 0) return `Made: ${seat.name} (${seat.email}) stands in the fleet${seat.kind === 'estimator' ? ' with its CountTooling and TakeoffTooling seats' : ', a pricing robot with no seat in the other apps'}. ${next}`
-  return `Made: ${seat.name} (${seat.email}) stands in the fleet. Held: ${held.map((s) => `${s.step.replace(/_/g, ' ')} (${s.words})`).join('; ')}. The link button on the twin's row at ${TWIN_PANEL_DOOR} makes a held seat again. ${next}`
+  return `Made: ${seat.name} (${seat.email}) stands in the fleet. Held: ${held.map((s) => `${s.step.replace(/_/g, ' ')} (${s.words})`).join('; ')}. plan_twin_seat { seat: { twin: "${seat.email}" } } makes a held seat again, as the link button on the twin's row at ${TWIN_PANEL_DOOR} does. ${next}`
 }

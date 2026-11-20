@@ -232,7 +232,7 @@ The record lands on every one of those jobs, and the desk stops asking for them.
 
 Sometimes the paper that went is already on record. One paper went for several jobs at a property. The paper was recorded on some of those jobs and not on this one. Or the desk moved this job's money to a later month after the paper went. The desk then keeps asking this job for a notice. Do not print and mail a second one. Press **Already mailed? Record it…** on the notice.
 
-When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job.
+When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job. On a missed notice with no month still due, the closed months are there to tick.
 
 The desk checks the paper against the job. A green line says the owner of record and the contractor match. A red line stops the record and says why. A paper that went before the month began is one. An amber line is a warning. The month may not be printed on the paper. The copy to the contractor may not be on record. With a warning, type why the paper stands for the month. The reason stays on the record with your name and the day.
 
