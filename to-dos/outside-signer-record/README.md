@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, and call 7, a sub's company is the trade company record the app already keeps · the mock-up's sub screens redrawn for call 3 · nothing is built · three calls are left, and none of them holds PR 1
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, and call 5, sending stays on both People and Documents · the mock-up's sub screens redrawn for call 3 · nothing is built · two calls are left, and neither holds PR 1
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Nothing is built, and three calls are left at the foot.
-next: The owner's word to build PR 1, the ground, which no open call holds. Beside it his three calls that are left: 5 and 6, which shape step 3, and 8, which shapes step 4.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. Nothing is built, and two calls are left at the foot.
+next: The owner's word to build PR 1, the ground, which no open call holds. Beside it his two calls that are left: 6, which shapes step 3, and 8, which shapes step 4.
 size: L as a train of six (M · S · M · S · M · M)
-blocker: None for PR 1 and PR 2. Calls 5 and 6 before step 3. Call 8 before step 4.
+blocker: None for PR 1 and PR 2. Call 6 before step 3. Call 8 before step 4.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -246,7 +246,7 @@ Each step is one PR with its release note and fragment. Nothing is built until t
    the row for every paper, staff and sub papers too. The Send for signature window gains **Signer name**
    and **Title (optional)**. This is the column the reminders and the signer's copy in #376 wait on.
 3. **Who is it with? (M).** The second window of **Send a paper** searches people and companies, as the
-   mock-up draws. **Keep … with …** adds the typed person to the customer or the supply house. The
+   mock-up draws. People → Contracts keeps its own send to a person on the roster, untouched (call 5). **Keep … with …** adds the typed person to the customer or the supply house. The
    Agreements tab gains the **Outside companies** chip and the line's second row. The guide *find an
    agreement we sent or signed* is updated.
 4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
@@ -357,9 +357,10 @@ Each is one question. The session's pick is first.
      this reading on 2026-11-19 and can turn it down.
    - It is reading only. Sending stays with the four roles.
    - An estimator has no Agreements tab today, by #376's call 3. That is call 8.
-5. **Does sending stay on both People and Documents?** This is #389's wider call 5.
-   **Both. People sends to a person on the roster. Documents sends to anyone, and an outside company's
-   paper is sent only from Documents or from its own page.** Or sending moves to Documents alone.
+5. **Does sending stay on both People and Documents?** This is #389's wider call 5. **Settled
+   2026-11-19: both.** He answered "Yes, both". People sends to a person on the roster, as today.
+   Documents sends to anyone. An outside company's paper is sent only from Documents or from its own
+   page. Not taken: sending moves to Documents alone.
 6. **May a paper go to someone who is in no list?**
    **No. The office adds them as a customer, a supply house or a person first.** Or yes, with a typed
    name and email and no record behind them.
@@ -375,9 +376,9 @@ Each is one question. The session's pick is first.
 ## Where it stands
 
 Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled five calls on 2026-11-19. Call 1: the record lives on the contact.
+pick and was redrawn once. The owner settled six calls on 2026-11-19. Call 1: the record lives on the contact.
 Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
 own, which was not the session's pick, and which added call 7. Call 4: the four roles and the estimator
 read an outside party's paper, which was not the session's pick either, and which added call 8. Call 7:
-a sub's company is the trade company record the app already keeps. Calls 5, 6 and 8 are open. No open
+a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Calls 6 and 8 are open. No open
 call holds PR 1 or PR 2. They wait on his word to build.
