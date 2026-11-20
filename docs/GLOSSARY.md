@@ -377,6 +377,8 @@ The company's one cold-call deck for companies we want something from, one card 
 the Hiring board is the fourth top tab (next entry) and **Permits** the fifth (v2.6782, punch list #292: the permit ledger, opening since v2.6830 (punch list #302) on a skim of one permit at a time with Investigate or Pass, five cities since v2.6861, open to the office and every estimator, named Research until v2.6787;
 guide *research the permits a city issues and find work to bid*).
 A city on Permits is **quiet** (v2.7880, `permitQuiet.ts`) when its newest permit day is more than 7 days back, 10 for San Antonio, while our own pull ran clean inside two days: the city picker then reads *quiet since* that day, and never when the pull itself stopped.
+**Market** (v2.7978, punch list #405, `permitMarket.ts`) is the Permits view beside Builders that says what the permits mean for us: every **company we bid** in two years beside the commercial permits its names pulled in twelve months, each row reading *Builds, and we win*, *Builds, we never win*, too early to say or *No permit on record*, and **the clock**, the middle wait between two dates on a city's permits.
+A **company we bid** there is a bid's customer or the old builders list's name on it, keyed as permits are, with practice bids and a bid platform's catch-all customer left out.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
 `company_role`, and `customer_id` when they are a customer already) and **Subs** (a company that does a trade we buy out;

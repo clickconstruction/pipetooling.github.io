@@ -15,7 +15,7 @@ covers:
   - src/lib/prospects/ (the kernels: prospectKinds, prospectRow, prospectFormat, prospectCopyTemplates, prospectTimerSums, prospectTimerIo, prospectWeekReportIo, subsDeckOrder, benchRead, callingLockIo, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones, gcNeeds, pagePadding)
 mapped_at: 82094de18b
 audience: Developers, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 sections: What this surface is; Master summary table; Shared substrate; Per-tab dossiers; TeamProspectsTab sub-decomposition; Page-level windows; URL / navigation router; Test coverage by region; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order; Hazards
 ---
 
@@ -363,11 +363,11 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 - **Render location:** page 1372: `<ProspectsResearchTab authUserId={authUser.id} />`. The key was `research` until v2.6787, and the old key still opens the tab and is rewritten.
 - **In the parent:** `canResearch` (110), the `?tab=` branch 278–295, `openResearchTab` 429–438 (it drops the tab's own address keys through `permitsLinkCleared`, so the tab's name opens on Skim), and the estimator's landing (322).
-- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (814 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
+- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (814 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitMarket`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
   - Its views: Skim, Investigating, Pursuing, Closed, the second look, Find, Builders, the ledger and the map. On a phone their strip scrolls sideways, and `useLitPillInView` keeps the lit step in view by its `aria-pressed`.
   - Its four verdicts (`VERDICT_WORDS`): **Pursue**, **Investigate**, **Pass**, **Has a plumber**. Pursue makes a lead on the Customers deck or on Jobs to GC (`approachFromPermit`: a `prospects` row, and a `prospect_jobs` row for a lead), which is the tab's one write into this page's tables.
   - Its cities come from `RESEARCH_CITIES`; the feeds are read by the edge functions `permit-pull` and `permit-lookup`. The city picker's rows come from `usePermitCityQuiet` over `permitQuiet.ts`: each city's newest permit day, or *quiet since* that day.
-  - Its address keys (`view=builders`, `looks=1`, `city=`) are read and written through `src/lib/research/permitsLink.ts`.
+  - Its address keys (`view=builders` or `view=market`, `looks=1`, `city=`) are read and written through `src/lib/research/permitsLink.ts`.
 - **Extraction status:** **Done.** `PROJECT_DOCUMENTATION.md` §17 holds the tab's flows. At 814 lines it is under the map threshold; it gets its own map if it passes 1,500.
 
 ## TeamProspectsTab sub-decomposition
@@ -511,7 +511,7 @@ All of this stays in the parent (playbook rule), except the keys the two extract
 | Activity | `prospectTeamActivity` (4), `prospectWeekReport` (9), `prospectTeamActivityChartData` (2, Quickfill's, whose date keys the tab reuses) | the smoke: a week, a caller's week, an empty week, Source success | — |
 | New / Edit windows | `companyOwner` (4), `companyDouble` (9), `windowLeave` (7), `personBlock` (9), `mapsShareText` (4), `prospectKinds` (21) | `ProspectPersonForm` (3), the smoke: both leave questions, New Prospect by kind, the empty lane's press, Edit's warmth and Delete | — |
 | Guard | `src/lib/unsentQueries.test.ts` (3): no source file builds a supabase query and drops it unsent | — | — |
-| Permits (`ProspectsResearchTab`) | the kernels under `lib/research/` | `ProspectsResearchTab` (44), `PermitBuilders` (13) | outside covers |
+| Permits (`ProspectsResearchTab`) | the kernels under `lib/research/` | `ProspectsResearchTab` (53), `PermitBuilders` (15), `PermitMarket` (12) | outside covers |
 | TPT Screen | `teamProspectRanking` (23), `teamProspectSourceSummary` (16, incl. an `it.each` matrix), `candidateHygiene` (8), `columnShares` (7), `sharedHiringTab` (4) | share chip + column menu; share-holder trimmed board | `parseCandidateLinks`/`serializeCandidateLinks`; `mergeDuplicate` merge rules 1096–1122; `handleDragEnd` wiring |
 | TPT Interview | — | — | review draft ↔ row mapping (1242–1251) |
 | TPT Try-out | `helperTrial` (6), `trialTally` (13) | 3 cases (helper-column gating, trial card dated by the company calendar, tally + nudge + Keep trying) | — |
