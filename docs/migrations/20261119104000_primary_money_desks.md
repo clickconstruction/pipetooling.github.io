@@ -24,3 +24,5 @@ The card proposed closing the whole of "who pays when" and said the build must f
 ## Verify
 
 Read-only on prod after the push, as the dev: `select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('list_mercury_transactions_for_bank_payments', 'list_ar_return_cases', 'get_pay_speed_transactions', 'gc_review_week_status', 'set_mercury_transaction_ar_closed') and pg_get_functiondef(p.oid) like '%primary%'` reads 0. The SQL bed `npm run test:pg:primary-money-desks` (`supabase/tests/primary_money_desks/20_scenario.sql`) asks every door as two primaries, the assistant, the controller and the master, and pins the Bill tab's reads as still open. CI runs it from `scripts/sql-beds.txt`.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no new name in `database.ts`, since its functions are replaced under their own names.

@@ -81,3 +81,5 @@ select p.oid::regprocedure, p.proacl from pg_proc p where p.proname in ('primary
 ```
 
 Two restrictive policies, and two functions with `authenticated` and `service_role` and no `anon`. Then open the Dashboard with View as, Sample primary: the Recent Reports card lists none, since the sample account is on no job.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); types regenerated in #8913.

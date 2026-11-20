@@ -53,3 +53,5 @@ Either order is safe. The client names nothing this file creates. Before the pus
 - **By hand.** With a live record the office is refused (42501).
 
 No Postgres or Docker on the machine that wrote it, so the bed ran on GitHub before the PR was opened, alone on two throwaway branches (since deleted). SQL beds run 44489667929, with both migrations, passed with all 55 `ok:` lines. Run 44489673323, with this file emptied, failed on the first notice assertion: the paper read *sent*, tied, with its sent day, where approved was wanted.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since both are trigger functions.
