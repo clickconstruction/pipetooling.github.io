@@ -2,7 +2,7 @@
 title: change a contract clause
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: clause, clauses, contract, contracts and clauses, settings list, setting, choice, only when, built from settings, blank, level, read by an attorney, revision, preview with settings, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
+keywords: clause, clauses, contract, contracts and clauses, settings list, setting, choice, only when, built from settings, blank, level, read by an attorney, revision, preview with settings, summary, level, sample, print the sample, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
 where: /settings?tab=settings-clauses
 order: 99
 ---
@@ -118,6 +118,10 @@ The mark belongs to that revision. Any later change makes the paper unread again
 3. Type a value for a blank that no choice fills.
 
 The paper changes as you pick. A line above it says what stops the paper, in words.
+
+Press **Summary** to read the same picks in plain words. The first line names the level. The summary is not the contract.
+
+Press {{button:outline|Print the sample}} to print the paper for a made-up company. SAMPLE lies across every page. A paper that cannot go has no sample.
 
 A paper built from settings goes to nobody yet. It will go from a job, with the job's settings.
 

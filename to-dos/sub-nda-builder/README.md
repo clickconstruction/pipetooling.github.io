@@ -510,7 +510,9 @@ Sizes for this card's own steps are the train's above.
 
 ## Where it stands
 
-**Step 1 is built** (v2.8014, the migration and the kernel; v2.8019, the screens). A Book entry takes a
+**Steps 1 and 2 are built.** Step 2 (v2.8020) put **Summary** beside **Paper** in the Book's preview, with
+the level in words and **Print the sample**. Step 3, settings on the job, is next and needs card #403's
+*Signing for* line. Step 1 (v2.8014, the migration and the kernel; v2.8019, the screens): A Book entry takes a
 settings list, a clause takes an *Only when* and a place, the preview puts the paper together for any
 mix, a revision can be marked as read by an attorney, and a paper built from settings is refused
 everywhere a copy could be made or signed until a job carries its settings. The clause screens are
