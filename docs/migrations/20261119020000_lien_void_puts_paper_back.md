@@ -66,3 +66,5 @@ Either order is safe. The client names nothing this file creates. Before the pus
 - **As shipped.** Nobody may call the trigger's function, and the trigger is on.
 
 No Postgres or Docker on the machine that wrote it, so the bed ran on GitHub before the PR was opened, alone on two throwaway branches (since deleted). SQL beds run 44466627243, with the migration, passed with all 40 `ok:` lines. Run 44466631093, with the migration emptied, failed on the fifth assertion with the paper still `sent` and tied.
+
+**Applied** to prod by 2026-11-20: the dev seat's `check_migration_ledger` read 1,410 versions applied against 1,410 local files, this version among them (read in the docs pass after #8832); no change to `database.ts`, since both are trigger functions.

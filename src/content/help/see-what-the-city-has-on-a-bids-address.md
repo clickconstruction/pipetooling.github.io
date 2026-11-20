@@ -152,4 +152,4 @@ The name must be the same as the one on the permit. A name that is only close do
 
 ## Who sees it
 
-The office and estimators see the two blocks, the strip and the chips. They are the same people who see **Prospects → Permits**. Only the owner and a dev see the card in Settings.
+The office and estimators see the two blocks, Permit news and the chips. They are the same people who see **Prospects → Permits**. Only the owner and a dev see the card in Settings.

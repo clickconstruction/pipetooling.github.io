@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-10-23
+last_updated: 2026-11-20
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -80,7 +80,8 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   `apply_twin` on the dev seat, v2.7879), tokens (listed and revoked from the dev seat too,
   `read_twin_keys` and `plan_twin_key_revoke`, v2.7900), rungs (moved from the dev seat too,
   `plan_twin_rung`, v2.7918),
-  CT/TT-seat status, the calibration standard (set from the dev seat too,
+  CT/TT-seat status (a held seat made again from the dev seat too, `plan_twin_seat`, v2.7974),
+  Archive (also `plan_twin_archive`, v2.7970), the calibration standard (set from the dev seat too,
   `plan_calibration_standard`, v2.7934); the fresh-key card carries **Copy Desktop
   setup command**. Running and watching moved to Bids → 🤖 Robots → **Console** (v2.3224).
 - **Robot fixtures, the ground (v2.6180, punch list #221, PR 1 of five)**: after `paste_counts` a
