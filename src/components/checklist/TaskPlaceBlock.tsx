@@ -16,13 +16,12 @@ import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import {
   TASK_PLACE_NO_MAP_WORDS,
   TASK_PLACE_PRIVACY_WORDS,
-  TASK_PLACE_WORK_COLOR,
-  taskPlaceDotColor,
   taskPlaceHowFarWords,
   taskPlaceNoFixWords,
   taskPlacedByWords,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_WORK_COLOR, taskPlaceDotColor } from '../../lib/tasks/taskPlaceColors'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
 
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))

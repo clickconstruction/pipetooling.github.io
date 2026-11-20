@@ -9,8 +9,6 @@ import { MAP_CORNER_PRESS_BOTTOM_PX, MAP_CORNER_PRESS_SIDE_PX, MAP_CORNER_PRESS_
 import { mapTimeSpotFromPins } from '../../lib/map/mapTime'
 import {
   TASK_PLACE_PRIVACY_WORDS,
-  TASK_PLACE_RING_COLOR,
-  taskPlaceDotColor,
   taskPlaceDotGroups,
   taskPlaceDots,
   taskPlaceNoFixWords,
@@ -19,6 +17,7 @@ import {
   tasksWithoutPlaceWords,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_RING_COLOR, taskPlaceDotColor } from '../../lib/tasks/taskPlaceColors'
 import { taskPlaceWhereIAmPress } from '../../lib/tasks/taskPlaceMapPress'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 import { isRoughFix } from '../../lib/paintedMap/paintedTrack'

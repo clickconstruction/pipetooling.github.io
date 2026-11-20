@@ -117,7 +117,7 @@ type ChecklistInstanceCardProps = {
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumber?: number | null
   placeOverdue?: boolean
-  /** The dot is amber: an older task that is not late (punch list #369). */
+  /** An older task that is not late (punch list #369). Its dot is the work colour since v2.8045, as any open task's. */
   placeOld?: boolean
   /** How far the place is, once the person asked where they are on the map above: `250 ft north-east`. */
   placeFar?: string | null

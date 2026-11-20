@@ -7,7 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { TASK_PLACE_LATE_COLOR, TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
+import type { TaskPlace } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_LATE_COLOR, TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR } from '../../lib/tasks/taskPlaceColors'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
 const phone = vi.hoisted(() => ({ asked: 0, why: null as null | 'refused' | 'none' | 'failed', fix: { lat: 29.5, lng: -98.3, accuracyM: 9 }, held: null as null | (() => void), hold: false }))

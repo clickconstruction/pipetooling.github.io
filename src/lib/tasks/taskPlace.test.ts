@@ -4,18 +4,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import { directionsUrlForPoint } from '../directionsUrl'
-import { contrastRatio } from '../lens/lensAudit'
-import { hexToRgba } from '../lens/lensTokens'
-import { pinLabelInkHex } from '../map/pinLabelInk'
-import { ORANGE_UNDER_WORDS } from '../orangeUnderWords'
 import {
-  TASK_PLACE_LATE_COLOR,
-  TASK_PLACE_RING_COLOR,
-  TASK_PLACE_WORK_COLOR,
+  TASK_PLACE_PERSON_COLORS,
   TASK_PLACE_UNNAMED,
   openTasksWithoutPlaceWords,
-  taskPlaceDotColor,
-  taskPlaceTeamDotLabel,
+  taskPlacePersonColor,
   taskPlaceTeamDots,
   taskTitlePlain,
   cleanTaskPlaceName,
@@ -360,44 +353,11 @@ describe('the leader\'s map (PR 7)', () => {
     expect(openTasksWithoutPlaceWords(0, 6)).toBeNull()
   })
 
-  it('one person\'s dot wears their initials, and a dot people share wears its count of tasks', () => {
-    const initialsOf = (id: string) => ({ theo: 'T', imani: 'IO' })[id] ?? '?'
-    expect(taskPlaceTeamDotLabel({ personIds: ['theo'], tasks: [{ id: 'd', title: 'Fix the latch', personId: 'theo' }] }, initialsOf)).toBe('T')
-    // Two tasks of one person at one place are still that person's dot.
-    expect(taskPlaceTeamDotLabel({ personIds: ['imani'], tasks: [{ id: 'a', title: 'A', personId: 'imani' }, { id: 'b', title: 'B', personId: 'imani' }] }, initialsOf)).toBe('IO')
-    expect(taskPlaceTeamDotLabel({ personIds: ['theo', 'imani'], tasks: [{ id: 'a', title: 'A', personId: 'theo' }, { id: 'b', title: 'B', personId: 'imani' }, { id: 'e', title: 'E', personId: 'theo' }] }, initialsOf)).toBe('3')
-    expect(taskPlaceTeamDotLabel({ personIds: ['nobody'], tasks: [{ id: 'z', title: 'Z', personId: 'nobody' }] }, initialsOf)).toBe('?')
-  })
-})
-
-describe('the colour of work on the Checklist\'s maps (v2.8045)', () => {
-  it('is the Clock In bar\'s safety orange, the shade white words read on', () => {
-    expect(TASK_PLACE_WORK_COLOR).toBe(ORANGE_UNDER_WORDS)
-    expect(pinLabelInkHex(TASK_PLACE_WORK_COLOR)).toBe('#ffffff')
-    expect(contrastRatio(hexToRgba('#ffffff'), hexToRgba(TASK_PLACE_WORK_COLOR))).toBeGreaterThanOrEqual(4.5)
-  })
-
-  it('is no blue: the dark blue the owner saw on the leader\'s map is gone', () => {
-    const { r, g, b } = hexToRgba(TASK_PLACE_WORK_COLOR)
-    expect(r).toBeGreaterThan(g)
-    expect(g).toBeGreaterThan(b)
-  })
-
-  it('a dot is red when a task there is late and the work colour otherwise, an older task too', () => {
-    expect(taskPlaceDotColor({ overdue: true })).toBe(TASK_PLACE_LATE_COLOR)
-    expect(taskPlaceDotColor({ overdue: false })).toBe(TASK_PLACE_WORK_COLOR)
-    const { dots } = taskPlaceDots([
-      { id: 'late', place: { name: 'Gate', lat: 29.556, lng: -98.3, accuracyM: null, setBy: null, setAt: null }, overdue: true },
-      { id: 'old', place: { name: 'Pump house', lat: 29.55, lng: -98.3, accuracyM: null, setBy: null, setAt: null }, old: true },
-      { id: 'today', place: { name: 'Barn', lat: 29.54, lng: -98.3, accuracyM: null, setBy: null, setAt: null } },
-    ])
-    expect(taskPlaceDotGroups(dots).map(taskPlaceDotColor)).toEqual([TASK_PLACE_LATE_COLOR, TASK_PLACE_WORK_COLOR, TASK_PLACE_WORK_COLOR])
-  })
-
-  it('late and work stand apart, and each stands apart from the white ring every dot wears', () => {
-    expect(TASK_PLACE_LATE_COLOR).not.toBe(TASK_PLACE_WORK_COLOR)
-    expect(TASK_PLACE_RING_COLOR).toBe('#ffffff')
-    for (const fill of [TASK_PLACE_WORK_COLOR, TASK_PLACE_LATE_COLOR]) expect(contrastRatio(hexToRgba(TASK_PLACE_RING_COLOR), hexToRgba(fill))).toBeGreaterThanOrEqual(4.5)
+  it('a colour a person by their place in the list, and a ninth person shares the first\'s', () => {
+    expect(taskPlacePersonColor(0)).toBe(TASK_PLACE_PERSON_COLORS[0])
+    expect(taskPlacePersonColor(7)).toBe(TASK_PLACE_PERSON_COLORS[7])
+    expect(taskPlacePersonColor(8)).toBe(TASK_PLACE_PERSON_COLORS[0])
+    expect(new Set(TASK_PLACE_PERSON_COLORS).size).toBe(8)
   })
 })
 

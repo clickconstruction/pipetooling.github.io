@@ -7,7 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
+import type { TaskPlace } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR } from '../../lib/tasks/taskPlaceColors'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 const opened = vi.hoisted(() => [] as string[])

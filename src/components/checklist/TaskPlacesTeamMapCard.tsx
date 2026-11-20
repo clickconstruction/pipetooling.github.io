@@ -6,15 +6,13 @@ import type { MapCanvasPin } from '../../lib/map/mapCanvasTypes'
 import { initialsFor } from '../../lib/checklistTeamBoard'
 import { pinLabelInk } from '../../lib/map/pinLabelInk'
 import {
-  TASK_PLACE_RING_COLOR,
-  TASK_PLACE_WORK_COLOR,
   openTasksWithoutPlaceWords,
-  taskPlaceTeamDotLabel,
   taskPlaceTeamDots,
   taskPlacesCountWords,
   taskPlacesDefaultLayer,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
+import { TASK_PLACE_RING_COLOR, TASK_PLACE_WORK_COLOR, taskPlaceTeamDotLabel } from '../../lib/tasks/taskPlaceColors'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 
 const HIDDEN_KEY = 'task_places_team_map_hidden'
