@@ -16,6 +16,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import JobWindowMaterialsPanel from './JobWindowMaterialsPanel'
+import { opensMaterialsDesk } from '../../lib/materials/materialsJobDoor'
 import { LegendButton } from '../help/LegendButton'
 import { DeskLegendCard } from '../help/LegendCard'
 import { JOB_WINDOW_LEGEND } from '../../lib/jobs/jobWindowLegend'
@@ -733,7 +734,7 @@ export function JobWindowModal({
           {/* Materials pane (punch list 209): the site's summary, one press to the page. */}
           {tab === 'materials' ? (
             <div role="tabpanel" aria-label="Materials">
-              <JobWindowMaterialsPanel jobId={jobId} onBeforeNavigate={requestClose} />
+              <JobWindowMaterialsPanel jobId={jobId} onBeforeNavigate={requestClose} door={opensMaterialsDesk(authRole) ? 'desk' : 'tally'} />
             </div>
           ) : null}
 

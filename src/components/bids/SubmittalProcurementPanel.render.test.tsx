@@ -79,6 +79,18 @@ const pickOf = (label: string) => screen.getByLabelText(label).parentElement!.qu
 describe('SubmittalProcurementPanel', () => {
   // These read the log in tag order; the To order lens (2026-10-01) has its own case below.
   beforeEach(() => localStorage.setItem('submittals_procure_lens', 'by_tag'))
+  it('an estimator’s On site door opens the Tally’s On site tab, since Jobs → Materials is not theirs to open', async () => {
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} viewerRole="estimator" />)
+    const door = await screen.findByTestId('procurement-on-site-door')
+    expect(within(door).getByRole('link', { name: 'Materials on site' }).getAttribute('href')).toBe('/tally?tab=on-site&job=j1')
+  })
+
+  it('the office’s On site door stays on Jobs → Materials', async () => {
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} viewerRole="assistant" />)
+    const door = await screen.findByTestId('procurement-on-site-door')
+    expect(within(door).getByRole('link', { name: 'Materials on site' }).getAttribute('href')).toBe('/jobs?tab=materials&job=j1')
+  })
+
   it('builds the log from the rows, the records and the job, derives the float, and records an update with its changes', async () => {
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
     // v2.4581 · four steps, every line counted once: WH-1 is approved and not ordered, BFP-1 is on order and late.

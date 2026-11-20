@@ -2,17 +2,17 @@
 name: "Materials on site: a better door on the Job Mode card"
 number: 407
 group: close
-status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · walked on the dev server at phone width on 2026-11-20 · not yet looked at on a crew's phone
+status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · the three doors that turned people away are fixed, v2.8060 · both walked on the dev server on 2026-11-20 · not yet looked at on a crew's phone
 summary: >
   On the Job Mode card a small underlined link, Materials on site, sat alone between the day's stops
   and the pace card, on every job. Almost no job has material left on site. The owner asked for a whole
   look at where the door belongs. The assessment found the doors each role has, checked his 99% on the
   live data and drew three ways on a phone mock-up. He picked the second: the door stays on every job
   as a proper press beside Job calendar, and it shows a count when the job's site holds boxes.
-next: Look at the press on a crew's phone on the one site that holds boxes. Then decide whether the three doors that send a primary, an estimator or a superintendent to a page that turns them away are worth a fix.
+next: Look at the press on a crew's phone on the one site that holds boxes.
 size: S (one client-only PR)
 blocker: None.
-ver: v2.8050
+ver: v2.8050, v2.8060
 opinion: build — built; the press costs no line on the card and now says when a site holds something
 ---
 
@@ -93,6 +93,12 @@ a card that names no job. The detail is in [`docs/recent-features/v2.8050.md`](.
 
 - **A look on a crew's phone.** The walk was on the dev server with a made-up stop on the ZZ test job.
 - **Which boxes are due a count** is not on the press. A head count cannot say it.
-- **Three doors that may turn a person away**, found by a code sweep and not checked by hand: the
-  search's box rows, the Procure step's link and the job window's *Open the materials page* all point
-  at Jobs → Materials, which sends an estimator, a primary and a superintendent elsewhere.
+- **A real estimator's read.** The walk of v2.8060 kept the dev's sign-in, so every job was readable.
+
+## The three doors (v2.8060)
+
+The owner, 2026-11-20: *let's look at the three doors that may turn people away*. Walked by hand as each
+role, the fault was real. The search's box rows, the Procure step's link and the job window's *Open the
+materials page* all opened Jobs → Materials, which sent a primary and a superintendent to Reports and an
+estimator to the Bid Board. Each now opens the Tally's On site tab on the job for everyone but the office.
+The detail is in [`docs/recent-features/v2.8060.md`](../../docs/recent-features/v2.8060.md).

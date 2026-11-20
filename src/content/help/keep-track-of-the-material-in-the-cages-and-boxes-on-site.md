@@ -11,6 +11,8 @@ On a big job the material lives in stencilled cages and boxes left on the site. 
 
 Open **Tally**. The Tally opens on **On site**, the first tab. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site** beside **Job calendar**. Tap **Materials on site** and the tab opens on the job the card names. The number on the press counts the cages and boxes on that job's site.
 
+The search box at the top of the app finds a box too. Type the stencil, a part or a place. Press the box's row and the box opens.
+
 ## Find the job
 
 Tap the job at the top and the **Choose job** sheet opens. The search box sits on top. It is not focused, so the keyboard stays down until you tap it.

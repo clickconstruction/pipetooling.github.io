@@ -50,6 +50,7 @@ import {
   type ProcurementStage,
   type StageDates,
 } from '../../lib/submittals/procurementLog'
+import { materialsJobDoorHref } from '../../lib/materials/materialsJobDoor'
 import { blockersPress, onSiteDoor, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
 import { calendarAxis, groupMark, type CalendarAxis, type CalendarMark } from '../../lib/submittals/procurementCalendar'
 import { groupDateWords, orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
@@ -65,6 +66,8 @@ type Props = {
   /** The room's identified reviewers — the default "To". */
   reviewerNames: ReadonlyArray<string>
   currentUser: { id: string | null; name: string }
+  /** The reader's role: the On site step's door opens the Tally for everyone but the office. Left out, the door is the office's. */
+  viewerRole?: string | null
   /** The sheet's company block (v2.4122) — the test report's settings; null prints the name alone. */
   letterhead?: Omit<ProcurementSheetLetterhead, 'logoDataUrl'> | null
   projectAddress?: string | null
@@ -224,7 +227,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged, onEnterApproval, draftRev = null }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, viewerRole = null, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged, onEnterApproval, draftRev = null }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -1107,7 +1110,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             const door = onSiteDoor(jobId, steps[3]?.count ?? 0)
             return door ? (
               <div style={smallMuted} data-testid="procurement-on-site-door">
-                {door.words} <Link to={door.href} style={link}>{door.press}</Link>
+                {door.words} <Link to={viewerRole && jobId ? materialsJobDoorHref(viewerRole, jobId) : door.href} style={link}>{door.press}</Link>
               </div>
             ) : null
           })()}
