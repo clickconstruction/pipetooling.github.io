@@ -222,6 +222,14 @@
   .ladder.flat { border-top: 0; padding-top: 0; }
   .rungbtn { width: 100%; text-align: left; border: 1px solid transparent; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; min-height: 44px; }
   .rungbtn[aria-pressed="true"] { background: var(--bg-muted); border-color: var(--border); }
+  /* The grid: every box the flow shows, on one page. Four boxes a topic, side by side when there is room. */
+  .grid-sec { margin-top: 26px; display: grid; gap: 10px; }
+  .gt { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); color: var(--text-base); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+  .gt h3 { margin: 0; font-size: 15px; color: var(--text-strong); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+  .gcells { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: 10px; }
+  .gcell { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--tone, var(--border)); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; font-size: 13px; min-width: 0; }
+  .gcell .k { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+  .gcell ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; }
   /* The Contract Book */
   .book { margin-top: 26px; display: grid; gap: 8px; }
   .book .screens { margin-top: 6px; }
@@ -246,7 +254,7 @@
   <header class="top">
     <p class="eyebrow">Mock-up · a first drawing, not the final look · nothing is built · every name is made up</p>
     <h1>Sub NDA builder</h1>
-    <p>The flow is first: a disclaimer, the basis, a page on the site, then a page a topic. The settled levels are next. Then the Contract Book, the office's page, the GC's page and the sample. One set of settings drives every view: change one anywhere and the rest follow. Presses work. No clause wording is shown anywhere here.</p>
+    <p>The flow is first: a disclaimer, the basis, a page on the site, then a page a topic. Under it is the grid of every topic by level. The settled levels are next. Then the Contract Book, the office's page, the GC's page and the sample. One set of settings drives every view: change one anywhere and the rest follow. Presses work. No clause wording is shown anywhere here.</p>
   </header>
 
   <section class="flow" id="flow" aria-labelledby="cap-flow">
@@ -258,6 +266,23 @@
       <div class="flow-foot" id="flow-foot"></div>
     </div>
     <p class="muted">The disclaimer, the breach lines, the site lines and the meanings are placeholders. The clause is drawn as grey bars. No clause wording is on this page.</p>
+  </section>
+
+  <section class="grid-sec" id="grid-sec" aria-labelledby="cap-grid">
+    <div class="cap" id="cap-grid">Next · The grid: seven topics by four levels</div>
+    <p class="say">Every box the flow shows, on one page. Each box has the rule, what puts a person in breach, and what the site must have. Every line is a placeholder. Tell me which boxes are wrong, and which two levels should say the same thing.</p>
+    <div id="grid" style="display:grid;gap:12px"></div>
+    <div class="gt">
+      <h3>The same in every paper today</h3>
+      <p class="muted">These do not move with the level yet. The chip is this session's suggestion, for you to overrule.</p>
+      <div>
+        <div class="brow"><div><div class="name">What counts as secret</div><div class="muted">Everything about the job, including that it exists.</div></div><span class="chip level">Could move with the level</span></div>
+        <div class="brow"><div><div class="name">What happens after a breach</div><div class="muted">The same at every level.</div></div><span class="chip level">Could move with the level</span></div>
+        <div class="brow"><div><div class="name">Publicity</div><div class="muted">None, at every level.</div></div><span class="chip wait">Keep the same</span></div>
+        <div class="brow"><div><div class="name">A sub's business answers for its people</div><div class="muted">Yes, at every level.</div></div><span class="chip wait">Keep the same</span></div>
+        <div class="brow"><div><div class="name">What the paper never stops</div><div class="muted">Disclosure the law requires, lien and bond notices, permits and inspections.</div></div><span class="chip ok">Must stay the same</span></div>
+      </div>
+    </div>
   </section>
 
   <section class="r2" aria-labelledby="cap-r2">
@@ -1177,6 +1202,34 @@
     if (F.step === LAST) f.appendChild(el('p', 'muted', F.done ? $('confirm-note').textContent : S.off ? 'Secrecy is off on ' + JOB + '.' : 'Nothing reaches a signer until this press.'));
   }
 
+  // The grid: every box the flow shows, on one page, for the owner to correct.
+  function drawGrid() {
+    var host = $('grid'); host.textContent = '';
+    function bullets(lines) { var ul = el('ul'); lines.forEach(function (line) { ul.appendChild(el('li', null, line)); }); return ul; }
+    TOPICS.forEach(function (x) {
+      var blk = el('div', 'gt'), h = el('h3', null, x.label + ' ');
+      h.appendChild(el('span', 'chip q', x.q));
+      h.appendChild(el('span', 'chip wait', x.lock ? 'In every paper' : 'Can be Off'));
+      blk.appendChild(h);
+      var cells = el('div', 'gcells');
+      ON.forEach(function (v, i) {
+        var c = el('div', 'gcell'); c.style.setProperty('--tone', tone(v));
+        var top = el('div', 'basisline'); top.appendChild(el('span', 'chip ' + chipKind(v), word(v)));
+        if (!S.off && S.t[x.key] === v) top.appendChild(el('span', 'chip q', 'Set now'));
+        if (i > 0 && x.says[v] === x.says[ON[i - 1]]) top.appendChild(el('span', 'chip wait', 'Same as ' + word(ON[i - 1])));
+        c.appendChild(top);
+        c.appendChild(el('div', null, x.says[v]));
+        c.appendChild(el('div', 'k', 'In breach'));
+        c.appendChild(bullets(BREACH[x.key][v]));
+        c.appendChild(el('div', 'k', 'The site must have'));
+        var site = needs(x.key, v);
+        c.appendChild(site.length ? bullets(site) : el('div', 'muted', 'Nothing.'));
+        cells.appendChild(c);
+      });
+      blk.appendChild(cells); host.appendChild(blk);
+    });
+  }
+
   // `live` is a redraw while a flow slider is being dragged: the slider under the thumb is left alone.
   function drawFlow(live) {
     if (shut(F.step)) F.step = S.off && F.ack && !flowBlocked() ? BASIS_AT : 0;
@@ -1185,7 +1238,7 @@
 
   function draw(live) {
     if (!S.off && level() !== 'custom') S.basis = level();
-    drawRound(); drawBook(); drawOffice(); drawGc(); drawSheet('sheet', true); drawFlow(live);
+    drawRound(); drawBook(); drawOffice(); drawGc(); drawSheet('sheet', true); drawGrid(); drawFlow(live);
   }
 
   $('other').addEventListener('input', function () { S.other = $('other').value; draw(); });
