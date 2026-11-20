@@ -172,3 +172,13 @@ What the question changed: no score, since a number hides its reasons; the bid t
 
 - Whether an agent may look up the top names once (step three).
 - Whether Austin follows San Antonio now or waits for more months of records.
+- Whether a name that reads as a builder should lead the call list, as built. On the order this card proposed, most of San Antonio's first five were permit services, design firms or one person.
+- How long an answer keeps a name off the list. As built, a pursued name may come back after 90 days and a passed one after a year.
+
+## Seen while building, not done
+
+Each is a change of its own, noted here for whoever picks it up.
+
+- **One Austin builder on the list is many companies.** Austin's feed writes a `**MAIN**` mark after a contractor's name. When the name has a comma, as in `Name, Inc.**MAIN**`, the name splitter `contactParts` takes the marked tail as the company. The key it makes is `main`, the same for every such contractor. So one row on Austin's Builders list and call list stands for many companies. No other city has the mark. The splitter also writes `permits.builder_key` in `permit-pull`, so the fix re-keys Austin's permits: a backfill and a redeploy.
+- **Austin's clock runs to a job's newest plumbing permit.** The read keeps one plumbing day per job. Running to the first one needs a column on `research_permits_v3`.
+- **San Antonio's clock reads short.** An application still waiting for its permit has no second day, so it is left out. The longest waits are the ones missing.
