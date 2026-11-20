@@ -85,9 +85,11 @@ describe('HeaderGlobalSearch — guides and the punch list', () => {
   it('# finds a to-do for the owner and the developers, and nothing for an assistant', async () => {
     renderWithProviders(<Box />)
     await openAndType('# quick')
-    const todos = await screen.findByTestId('go-anywhere-group-todo')
+    // The punch list is a lazy module the box loads in an idle moment, so its row can land a beat after the group's
+    // heading on a loaded CI runner: wait for the row itself, not only the group.
+    const row = await screen.findByTestId('go-anywhere-door-todo:126', {}, { timeout: 4000 })
+    const todos = screen.getByTestId('go-anywhere-group-todo')
     expect(todos.textContent).toContain('Punch list')
-    const row = screen.getByTestId('go-anywhere-door-todo:126')
     expect(row.textContent).toContain('#126 Quick replies by keyboard')
     fireEvent.click(row)
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/punch-list#n126'))
