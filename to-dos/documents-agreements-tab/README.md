@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · left: the owner’s own look, and his calls on the four things written under What is left
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · 2026-11-19 night: the first two things under What is left built on branches on four picks, not opened as PRs, since the Fable limit ran out and on Opus a built piece waits for the owner · left: the owner’s own look, and his calls on the four things written under What is left
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,7 +12,7 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The owner opens Documents → Agreements, presses Send a paper, Send again and Contract library, and types a name on the Search tab. Then his calls on What is left. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
+next: The owner opens Documents → Agreements, presses Send a paper, Send again and Contract library, and types a name on the Search tab. Then his calls on What is left: the first two rows are built and wait on his four calls, and the row says what each pick was. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S), then M as a second train of three (M · M · S)
 blocker: None.
 ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932 · v2.7937 · v2.7938
@@ -246,14 +246,16 @@ there is no migration.
 
 ### What is left
 
-None of these is built. Each waits on the owner's call, and each is sized as its own piece of work.
+The first two are built on branches and wait on the owner's calls. Nothing of them is on main. The other two are not built. Each waits on his call, and each is sized as its own piece of work.
 
 | What | Today | What it takes | Size |
 |---|---|---|---|
-| **Reminders by email** for a staff or sub paper | Only a prompt on the person's Dashboard. A job contract already gets three reminders, three days apart (`remind-job-contracts`) | The send does not keep the signer's address, so a migration adds it with a reminder count and a last-reminded day. Then a timed function like the job contract's, an email in the catalog, and an off switch on the line. His calls: how many, how far apart, and who may turn them off | M |
-| **A copy to the signer, and a PDF of a plain paper** | Nobody is emailed once a person signs. A form makes a PDF. A paper of plain words or clauses makes none | A PDF of the signed page, kept in storage beside the forms', and an email to the signer with it. It needs the signer's address on the row, the same column as the reminders, so the two ship best together. His calls: whether the office gets a copy too, and whether old signed papers get a PDF | M |
+| **Reminders by email** for a staff or sub paper | Only a prompt on the person's Dashboard. A job contract already gets three reminders, three days apart (`remind-job-contracts`) | **Built 2026-11-19, not on main.** Branch `claude/376-paper-reminders`, v2.8013. Migration `20261120060000_person_paper_reminders.sql`, not pushed. A new timed function, `remind-person-papers`, not deployed. Built on two picks. One: three reminders, three days apart, as a job contract gets. Two: the four roles that send a paper turn them off for one paper on its line, and one Settings switch for all, the owner's and a dev's, ships off. A paper sent while the switch is off is never reminded, so turning it on reaches no paper already out. Each reminder carries a new signing link and ends the one before it, since a link is kept only as a hash. His calls: how many, how far apart, and who may turn them off | M, built |
+| **A copy to the signer, and a PDF of a plain paper** | Nobody is emailed once a person signs. A form makes a PDF. A paper of plain words or clauses makes none | **Built 2026-11-19, not on main.** Branch `claude/376-signer-copy`, v2.8016, on top of the reminders. Migration `20261120061000_person_paper_signed_copy.sql`, not pushed. `accept-contract` changed and a new `person-paper-pdf`, neither deployed. Built on two picks. Three: the office gets no copy by email, since the signed paper is on this tab and the signer's email is kept as a sent copy. Four: an old signed paper gets its PDF the first time someone opens it, and nobody is emailed about an old paper. An hours statement, a W-9 and a certificate are never emailed. His calls: whether the office gets a copy too, and whether old signed papers get a PDF | M, built |
 | **An outside party as a record** | Moved to its own card, #403 | Card #403 weighs the options, picks one and lists the owner's calls | L |
 | **The company's own signature** | Our side signs nowhere, save the office half of a two-party form | Who signs for the company, a signature on file, a countersign step after the other side signs, and both names on the record and the PDF. His calls: who may sign, and whether every paper needs it or only some | M to L |
+
+**When he answers the four calls.** Both branches sit on card #403's step 3, so each opens as a PR once that step is on main. A session changes a pick he changed, opens the PR with its first line naming his calls, and he arms it. Then the migration is pushed and the functions deployed, the switch for reminders still off until he turns it on. Neither piece has run yet: this Mac has no Deno, so the functions link but were never run. The walk emails only the mail service's test address, on a ZZ Test person.
 
 Smaller things the tab still leaves to People, each S, none asked for yet:
 
