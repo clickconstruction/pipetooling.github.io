@@ -51,9 +51,6 @@ const looksName = (n: number): string => `${COUNT_WORDS[n] ?? n} looks`
 /** The tell for the looks a site has, counted and named from its own list. */
 const reviewTell = (order: readonly DevelopmentStripKey[]): string => `${looksName(order.length)} at the site, top to bottom: ${order.map((k) => TELL_NAME[k]).join(', ')}. The filled number is where you are.`
 
-export const REVIEW_TELL = reviewTell(SIX)
-/** The tell on a site that has the Trips look too. */
-export const REVIEW_TELL_WITH_TRIPS = reviewTell([...SIX, 'trips'])
 
 /**
  * What a look says of itself: `count` the plain count with its noun (*0 new*, *23*, *1 set*), `need`
