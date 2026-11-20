@@ -19,6 +19,9 @@ export function ScrollableTabStrip({
   ariaLabel,
   fadeColor = 'var(--bg-page)',
   gap = '0.25rem',
+  align = 'center',
+  role,
+  fadeSlack = 2,
 }: {
   children: ReactNode
   /** When set, the element with a matching `data-tabkey` is kept in view. */
@@ -27,6 +30,12 @@ export function ScrollableTabStrip({
   /** Background the edge fades blend into (default: the page background). */
   fadeColor?: string
   gap?: string
+  /** `start` keeps a short row at the left edge, where a wrapping row would have put it (the Job updates pills). */
+  align?: 'center' | 'start'
+  /** The scroller's role, with `ariaLabel` as its name: `tablist` for a row of filter pills. */
+  role?: string
+  /** How many pixels may hide past an edge before that edge's fade is drawn (default 2). */
+  fadeSlack?: number
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [fade, setFade] = useState({ left: false, right: false })
@@ -36,10 +45,10 @@ export function ScrollableTabStrip({
     if (!el) return
     const max = el.scrollWidth - el.clientWidth
     setFade((prev) => {
-      const next = { left: el.scrollLeft > 2, right: el.scrollLeft < max - 2 }
+      const next = { left: el.scrollLeft > fadeSlack, right: el.scrollLeft < max - fadeSlack }
       return next.left === prev.left && next.right === prev.right ? prev : next
     })
-  }, [])
+  }, [fadeSlack])
 
   useEffect(() => {
     syncFades()
@@ -55,7 +64,8 @@ export function ScrollableTabStrip({
 
   useEffect(() => {
     if (!activeKey) return
-    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-tabkey="${CSS.escape(activeKey)}"]`)
+    const tabs = scrollRef.current?.querySelectorAll<HTMLElement>('[data-tabkey]') ?? []
+    const el = Array.from(tabs).find((t) => t.dataset.tabkey === activeKey)
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     syncFades()
   }, [activeKey, syncFades])
@@ -74,6 +84,7 @@ export function ScrollableTabStrip({
     <div style={{ position: 'relative', minWidth: 0 }}>
       <div
         ref={scrollRef}
+        role={role}
         aria-label={ariaLabel}
         className="tab-strip-scroll"
         style={{ display: 'flex', overflowX: 'auto', scrollbarWidth: 'none' }}
@@ -86,7 +97,7 @@ export function ScrollableTabStrip({
             flexWrap: 'nowrap',
             whiteSpace: 'nowrap',
             flexShrink: 0,
-            marginLeft: 'auto',
+            marginLeft: align === 'start' ? 0 : 'auto',
             marginRight: 'auto',
           }}
         >
