@@ -7,6 +7,7 @@
  */
 import { answersOwed, countWords, stagesToAsk, type Site } from '../startChecks/startChecks'
 import { contactName, noticeFor, stageFromRows, type StageLine, type StartCheckRows, type StartSettingsRow } from '../startChecks/startCheckRows'
+import { isZzTestJob } from '../jobs/zzTestJobSweep'
 
 /** A job that holds an open bullet on them, as the read hands it. */
 export type StartOwedJob = { id: string; label: string; name: string; developmentId: string | null; developmentName: string | null; address: string | null; gcContact: string | null; gcName: string | null; customerName: string | null }
@@ -31,6 +32,15 @@ export type StartOwedSite = {
 }
 
 export type StartAnswersOwed = { sites: StartOwedSite[]; answers: number; stages: number }
+
+/**
+ * The sources without ZZ test jobs, for every seat that hides them (punch list #61): a walk's test job owes the office
+ * nothing. The rule is the Pipeline's own, the job's name or its customer's. The same object when there is none.
+ */
+export function withoutZzTestStartJobs(sources: StartOwedSources): StartOwedSources {
+  const isZz = (j: StartOwedJob) => isZzTestJob({ job_name: j.name, customer_name: j.customerName })
+  return sources.jobs.some(isZz) ? { ...sources, jobs: sources.jobs.filter((j) => !isZz(j)) } : sources
+}
 
 /** A site's key: its development, or the job itself when it is on none. */
 export const startOwedSiteKey = (job: Pick<StartOwedJob, 'id' | 'developmentId'>): string => job.developmentId ?? `job:${job.id}`
