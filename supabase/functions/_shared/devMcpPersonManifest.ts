@@ -17,7 +17,7 @@ export const HR_READING_RULES: readonly string[] = [
   'Find, do not read through. search_case searches the entries, the evidence titles and memos, the documents, the matter and the files the index has read. It does not search papers, licenses, write-ups, hours statements, attendance or field reports: read those with get_person_file { source }.',
   'Counsel-only items are counted here and marked in every list. Open one (a record\'s files, a document\'s sections) only when the owner names that item and says to, and say in your report which you opened.',
   'A line or record marked standing: corrected is not the latest word. Read its latest_word.',
-  'Reading writes nothing. A change is a plan_ verb first, then its apply_ only on the owner\'s word for that change.',
+  'Reading writes nothing. A change is a plan_ verb first, then its apply_ only on the owner\'s word for that change. A plan that waits for his word is kept with keep: true and words, and list_kept_plans reads the ones that wait.',
   'The file is private. Nothing from it goes into the repository, a commit, a pull request, a card, a memory note or an outside service. Speak of its contents only to the owner, and no more than the question needs.',
 ]
 
@@ -161,7 +161,7 @@ export function buildPersonManifest(m: PersonManifestInput): { note: string; par
   else parts.push({ part: 'case_items', count: m.caseItems.count, open_items: m.caseItems.open, log_lines: isHeld(m.caseLog) ? null : m.caseLog, open: itemsOpen })
   const standingOpen = 'read_rows on person_engagements, person_id eq: each stretch as employee or subcontractor, with where the fact comes from'
   parts.push(isHeld(m.standing) ? held('standing', m.standing.held, standingOpen) : { part: 'standing', count: m.standing, open: standingOpen })
-  const plansOpen = 'read_rows on dev_seat_kept_plans, person_id eq (select id,verb,state,words,kept_at): plans an agent kept for the owner\'s yes'
+  const plansOpen = 'list_kept_plans { person }: the plans an agent kept for the owner\'s yes, with their words; one whole with id. Apply a waiting one only on his yes for that plan'
   parts.push(isHeld(m.keptPlans) ? held('kept_plans', m.keptPlans.held, plansOpen) : { part: 'kept_plans', count: m.keptPlans.count, waiting: m.keptPlans.waiting, open: plansOpen })
   const mailOpen = 'read_rows on email_tag_threads, person_id eq: conversations tagged onto the file, whose mails are entries (entries.from_mail); read_mail reads one back by its Gmail id'
   parts.push(isHeld(m.mailConversations) ? held('mail', m.mailConversations.held, mailOpen) : { part: 'mail', count: m.mailConversations, open: mailOpen })

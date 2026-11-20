@@ -452,7 +452,7 @@ describe('the seat, its docs and the migration carry the pair and the reads', ()
       expect(SERVER).toContain(`case '${v}':`)
       expect(SERVER).toContain(`name: '${v}',`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.118.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.119.0'")
     expect(SERVER).toContain('plan_case → apply_case (a person\'s case: its open items, each numbered by the file')
     expect(SERVER).toContain("exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target)))")
     expect(SERVER).toContain("readerAs(jwt).rpc('person_file_next_exhibit_no', { p_person_id: personId })")
