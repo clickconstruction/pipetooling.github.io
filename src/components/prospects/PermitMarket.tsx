@@ -4,11 +4,16 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { PermitChip } from '../bids/PermitChip'
 import { FindNamesSheet } from '../bids/FindNamesSheet'
 import { BuilderSheet } from './PermitBuilders'
+import { PermitCallList } from './PermitCallList'
+import { HowMuchIsBuilt, WhoHoldsTheWork } from './PermitMarketShape'
+import type { Researcher } from './PermitSkimDeck'
 import { useBuilderAnswers } from '../../hooks/useBuilderAnswers'
 import { usePermitMarket } from '../../hooks/usePermitMarket'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
-import { recordsReach } from '../../lib/research/permitReach'
+import { reachDay, reachWords, recordsReach } from '../../lib/research/permitReach'
 import { cityNamesPlumbers, type BuilderRow } from '../../lib/research/permitBuilders'
+import { callChips, callRows, callRowsShowing, callTiles, foldCallAnswers, trendKnown, valuesReliable } from '../../lib/research/permitCallList'
+import { builderTies, noValueBandsWords, permitsByKind, permitsByMonth, plumbersByJobs, valueBands, valueBandsWords } from '../../lib/research/permitMarketShape'
 import { withAnsweredBids } from '../../lib/research/builderAnswers'
 import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
 import type { ResearchPermitRow } from '../../lib/research/permitResearch'
@@ -34,16 +39,18 @@ import {
 } from '../../lib/research/permitMarket'
 
 /**
- * Permits, Market (punch list #405, step one): the opinion beside Builders. Builders is where a
- * name is looked up. Market says what the permits mean for us: whether the companies we price
- * for build in the cities we read, and how long there is to call once a city shows a job.
+ * Permits, Market (punch list #405): the opinion beside Builders. Builders is where a name is
+ * looked up. Market says what the permits mean for us: who to call, whether the companies we
+ * price for build in the cities we read, and how long there is to call once a city shows a job.
  *
- * Two parts in this step. **Do the companies we bid build here?** lists every company we priced
- * a job for in two years beside the permits its names pulled, with what that reads as. A name on
- * the row opens the builder's sheet, the one Builders opens. A company with no permit on record
+ * Five parts, in order. **Call this week** ([`PermitCallList`]) is five builders with their
+ * reasons as tags. **Do the companies we bid build here?** lists every company we priced a job
+ * for in two years beside the permits its names pulled, with what that reads as. A name on the
+ * row opens the builder's sheet, the one Builders opens. A company with no permit on record
  * offers **Tie a name**, since it may file under a person or another name. **The clock** draws
- * the quarter marks of the days between two dates on the city's permits. The call list, who
- * holds the work and how much is being built are step two.
+ * the quarter marks of the days between two dates on the city's permits. **Who holds the work**
+ * is drawn only where the permits name plumbers. **How much is being built** counts the city's
+ * commercial permits by month, kind and size. Four tiles sit over them.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
 const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
@@ -67,17 +74,23 @@ export function PermitMarket({
   isMobile,
   rows,
   rowsLoading,
+  researchers,
   onChanged,
+  onOpenPermit,
 }: {
   city: string
   authUserId: string
   todayYmd: string
   isMobile: boolean
-  /** Every permit the tab holds for the city, with the plumbing permit that counts for each. The clock reads them. */
+  /** Every permit the tab holds for the city, with the plumbing permit that counts for each. The open jobs, the plumbers and the plumber clock read them. */
   rows: readonly ResearchPermitRow[]
   rowsLoading: boolean
-  /** A mark or a kind changed on a builder's sheet: the deck's rows carry them, so they read again. */
+  /** The people a pursue can be handed to. */
+  researchers: readonly Researcher[]
+  /** A mark, a kind or a verdict changed: the deck's rows carry them, so they read again. */
   onChanged: () => void
+  /** A job open now was pressed: the tab opens The building on it. */
+  onOpenPermit: (row: ResearchPermitRow) => void
 }) {
   const market = usePermitMarket(city, todayYmd)
   const answers = useBuilderAnswers()
@@ -89,10 +102,35 @@ export function PermitMarket({
   const companies = useMemo(() => (market.ground ? bidCompanies({ bids: market.ground.bids, builders: market.ground.builders, book: ground?.book ?? null, todayYmd }) : []), [market.ground, ground, todayYmd])
   const counts = useMemo(() => bidCompanyChipCounts(companies), [companies])
   const list = useMemo(() => bidCompaniesShowing(companies, showing), [companies, showing])
-  const cityBuilders = useMemo(() => market.ground?.builders.find((c) => c.city === city)?.rows ?? [], [market.ground, city])
+  // The city's Builders rows with the bids a tie adds, as Builders shows them.
+  const cityBuilders = useMemo(() => {
+    const raw = market.ground?.builders.find((c) => c.city === city)?.rows ?? []
+    return ground ? withAnsweredBids(raw, ground.book, ground.bids) : [...raw]
+  }, [market.ground, city, ground])
   const namesPlumbers = useMemo(() => cityNamesPlumbers(cityBuilders), [cityBuilders])
-  const clocks = useMemo(() => marketClocks({ city, applications: market.applications ?? [], rows, namesPlumbers, todayYmd }), [city, market.applications, rows, namesPlumbers, todayYmd])
+  const permits = market.permits
+  const clocks = useMemo(() => marketClocks({ city, applications: permits ?? [], rows, namesPlumbers, todayYmd }), [city, permits, rows, namesPlumbers, todayYmd])
   const scale = clockScaleDays(clocks)
+
+  // How far back the city's counts can see, and whether two ninety-day halves fit inside that.
+  const recordsStart = usePermitRecordsStart(city)
+  const reachSays = useMemo(() => reachWords(recordsReach(recordsStart, todayYmd), todayYmd), [recordsStart, todayYmd])
+  const known = trendKnown(recordsStart, todayYmd)
+  const hasApplications = useMemo(() => (permits ?? []).some((p) => p.stage === 'applied'), [permits])
+  const reliable = useMemo(() => valuesReliable(permits ?? []), [permits])
+  const standings = useMemo(() => foldCallAnswers(market.answers ?? [], todayYmd), [market.answers, todayYmd])
+  // The open jobs come off the tab's rows, so the list waits for them: an order that shifts under the reader is worse than a wait.
+  const callLoading = (permits == null && !market.permitsError) || market.answers == null || rowsLoading
+  const callList = useMemo(() => (permits ? callRows({ builders: cityBuilders, permits, rows, standings, recordsStartYmd: recordsStart, todayYmd }) : []), [permits, cityBuilders, rows, standings, recordsStart, todayYmd])
+  const chips = useMemo(() => callChips({ trendKnown: known, hasApplications, valuesReliable: reliable }), [known, hasApplications, reliable])
+  const board = useMemo(() => plumbersByJobs(rows, todayYmd), [rows, todayYmd])
+  const ties = useMemo(() => builderTies(rows, todayYmd), [rows, todayYmd])
+  const months = useMemo(() => permitsByMonth(permits ?? [], todayYmd, recordsStart), [permits, todayYmd, recordsStart])
+  const kinds = useMemo(() => permitsByKind(permits ?? []), [permits])
+  const sizeWords = useMemo(() => {
+    const bands = valueBands(permits ?? [])
+    return bands ? valueBandsWords(bands) : noValueBandsWords(city, permits ?? [])
+  }, [permits, city])
 
   /** A name on a company's row: the builder's sheet, with the bids a tie adds, as Builders opens it. */
   const openSource = (s: BidCompanyPermits) => {
@@ -113,7 +151,7 @@ export function PermitMarket({
     )
   }
 
-  const tiles = [builtTile(companies), clockTile(clocks)].filter((t): t is { value: string; words: string } => t != null)
+  const tiles = [...(callLoading ? [] : callTiles(callRowsShowing(callList, 'week'))), builtTile(companies), clockTile(clocks)].filter((t): t is { value: string; words: string } => t != null)
   const whereLine = (c: BidCompany) =>
     c.sources.length === 0 ? null : (
       <span style={muted}>
@@ -153,6 +191,29 @@ export function PermitMarket({
           </div>
         ))}
       </div>
+
+      <PermitCallList
+        city={city}
+        authUserId={authUserId}
+        todayYmd={todayYmd}
+        isMobile={isMobile}
+        list={callList}
+        chips={chips}
+        builders={cityBuilders}
+        standings={standings}
+        rows={rows}
+        loading={callLoading}
+        error={market.permitsError ?? market.answersError}
+        reach={reachSays}
+        trendKnown={known}
+        hasApplications={hasApplications}
+        recordsStart={recordsStart ? reachDay(recordsStart, todayYmd) : null}
+        researchers={researchers}
+        onAnswered={market.reloadAnswers}
+        onChanged={onChanged}
+        onOpenBuilder={(row) => setOpened({ city, row })}
+        onOpenPermit={onOpenPermit}
+      />
 
       <section aria-labelledby="market-bid-table" style={section}>
         <div>
@@ -238,23 +299,38 @@ export function PermitMarket({
         </div>
       </section>
 
-      <section aria-labelledby="market-clock" style={section}>
-        <div>
-          <h3 id="market-clock" style={heading}>
-            The clock
-          </h3>
-          <div style={muted}>How long you have, from the day the city first shows a job.</div>
-        </div>
-        {clocks.length === 0 ? (
-          <div style={muted}>{rowsLoading || market.applications == null ? 'Reading the permits…' : `${city}’s permits carry too few pairs of dates to draw a clock yet.`}</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-            {clocks.map((c) => (
-              <ClockBar key={c.kind} clock={c} scale={scale} />
-            ))}
+      <div style={{ ...section, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
+        <section aria-labelledby="market-clock" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+          <div>
+            <h3 id="market-clock" style={heading}>
+              The clock
+            </h3>
+            <div style={muted}>How long you have, from the day the city first shows a job.</div>
           </div>
+          {clocks.length === 0 ? (
+            <div style={muted}>{rowsLoading || (permits == null && !market.permitsError) ? 'Reading the permits…' : `${city}’s permits carry too few pairs of dates to draw a clock yet.`}</div>
+          ) : (
+            clocks.map((c) => <ClockBar key={c.kind} clock={c} scale={scale} />)
+          )}
+        </section>
+        {namesPlumbers && board.jobs > 0 && (
+          <WhoHoldsTheWork
+            city={city}
+            board={board}
+            ties={ties}
+            onOpenBuilder={(key) => {
+              const row = cityBuilders.find((b) => b.key === key)
+              if (row) setOpened({ city, row })
+            }}
+          />
         )}
-      </section>
+      </div>
+
+      {permits != null && permits.length > 0 && (
+        <div style={{ ...section, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
+          <HowMuchIsBuilt city={city} months={months} kinds={kinds} sizeWords={sizeWords} />
+        </div>
+      )}
 
       {opened && (
         <MarketBuilderSheet

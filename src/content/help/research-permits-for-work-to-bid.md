@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: market, who builds, companies we bid, tie a name, clock, application to permit, quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: market, call list, call this week, who to call, picking up, new and busy, never bid, not for us, who holds the work, how much is being built, who builds, companies we bid, tie a name, clock, application to permit, quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -151,11 +151,35 @@ Sometimes a customer's name begins the name on the permit. The sheet then asks *
 
 Is the right customer not shown? Press **Tie to a customer** and search our customers. Then press **Same company** beside the right one. For a person the press reads **Works for them**.
 
+## Call five builders this week
+
+Press **Market** on the strip, beside **Builders**. Market says what the permits mean for us. The list on top is **Call this week**. Each name is a builder who keeps pulling commercial permits here.
+
+Each row says why the name is on the list.
+
+- {{chip:green|Picking up}} means two or more permits more in the last 90 days than in the 90 before.
+- {{chip:green|New and busy}} means three or more permits in the last 90 days and none before.
+- {{chip:blue|Never bid}} means we have never priced a job for them.
+- {{chip:yellow|2 jobs open now}} means two jobs applied for with no plumbing permit yet.
+- {{chip:red|We bid 4, won 0}} means we priced four of their jobs and won none.
+
+Five names show, so one person can call them all. A name that reads as a builder comes first. Then a job open now, then a name picking up or new, then a name never bid. No number is a score.
+
+{{chip:gray|May file for others}} marks a name that reads like a permit service or a design firm. {{chip:gray|Could be a person}} marks a name with no company in it. Those names wait behind the builders. Say what a name is on its builder's sheet to settle it.
+
+Press an address after **Open now** to open the building. Press **Open builder** to open the builder's sheet.
+
+Press {{button:blue|Pursue}} to go after a builder. Say what for, who follows up and what they are. The lead goes on a calling deck, as a pursue on the skim does. Press **Not for us** to pass on the name. Say why in one press, or leave it unsaid.
+
+Either answer takes the name off the list for everyone. The next name takes its place. A pursued name may come back after 90 days. A passed name may come back after a year. Press **Answered** under the list to see the answered names. Press **Put back** to undo one.
+
+The chips over the list filter it. Each chip shows its count. A chip is left out in a city whose records cannot fill it.
+
+**Ask for** says nobody looked the name up yet. Press **Google the builder** to search for who to ask for.
+
 ## See whether the companies we bid build here
 
-Press **Market** on the strip, beside **Builders**. Market says what the permits mean for us.
-
-The first table lists every company we priced a job for in two years. Each row shows our bids, our wins and the permits its names pulled. The permits are commercial ones from the last twelve months, in every city the app reads. A practice bid does not count. A customer named for a bid site does not count either.
+The table under the call list lists every company we priced a job for in two years. Each row shows our bids, our wins and the permits its names pulled. The permits are commercial ones from the last twelve months, in every city the app reads. A practice bid does not count. A customer named for a bid site does not count either.
 
 The last column says what the row reads as.
 
@@ -170,7 +194,7 @@ A company may file under a person or under another name. Press **Tie a name** on
 
 The small words under a company say where its permits are. Press one to open that builder's sheet.
 
-Two numbers sit over the table. The first says how many of the companies we bid pulled a permit. The second is the middle wait on the clock.
+Four numbers sit at the top of **Market**. The first two count the builders to call this week and their jobs open now. The third says how many of the companies we bid pulled a permit. The fourth is the middle wait on the clock.
 
 ## Read the clock
 
@@ -181,6 +205,22 @@ In San Antonio the clock runs from an application to its permit. The wait is wee
 In Austin the clock runs from the building permit to the plumber's permit. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
 
 A city with too few dated permits draws no clock.
+
+## See who holds the work
+
+**Who holds the work** sits beside the clock on **Market**. The box lists the plumbers named on the city's permits, by jobs.
+
+The line under the bars says how tied the builders are to one plumber. A builder is judged on three or more jobs with a named plumber. One plumber on three jobs in four means the builder uses one. One plumber on half means the builder leans to one. Fewer means the builder shops around.
+
+The builders that shop around are the open doors. Their names sit under the line. Press one to open the builder.
+
+San Antonio's permits never name a plumber. The box is not drawn there.
+
+## See how much is being built
+
+The last boxes on **Market** count the city's commercial permits. The bars show the permits in each whole month. This month is still filling, so the bars leave it out.
+
+The second box counts the permits by kind. An application is its own kind. The line under the bars says how big the jobs are. A city whose values repeat one figure draws no size.
 
 ## Read the count
 
