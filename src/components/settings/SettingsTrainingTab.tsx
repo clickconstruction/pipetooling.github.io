@@ -7,6 +7,11 @@ import { ROLES } from '../../lib/userRoles'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadTrainingCatalog, loadTrainingStandings, loadTrainingTakenCount, saveTrainingPolicy, type TrainingStandingRow } from '../../lib/training/trainingIo'
 import { ymdWords, type TrainingColour, type TrainingPolicy } from '../../lib/training/trainingState'
+import { DUE_COUNT_KINDS, dueChip, dueCounts, dueSplit, dueStripFromDates, type DueState } from '../../lib/training/trainingDueStrip'
+import { DueChipSpan, TrainingDueStrip } from '../training/TrainingDueStrip'
+import { TRAINING_DUE_STRIP_KEY } from '../dashboard/DashboardTrainingSection'
+import { ShapeSwitch, SideBySide } from '../prototypes/SideBySide'
+import { useShapeView } from '../prototypes/useShapeView'
 import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flowSwitch } from './flows/flowStyles'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -24,6 +29,12 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  *
  * v2.5610 (punch list #119): **Also open to · Everyone** on each course is the offered state: a role not in
  * Required for may take it with no colour and no clock, and the row says how many took it.
+ *
+ * The *Due strips* switch (punch list #217, field-11, v2.6152; a prototype, the same per-user switch as the
+ * Dashboard card's): *Where everyone stands* becomes four chips, current, due soon, lapsed and not done, each a
+ * press that filters See who to its people; each name in the list gets the chip with its days and a thin strip
+ * from the pass day to the due day (`trainingDueStrip.ts`, from `training_standings`' days, which carry no
+ * version); and the facts line names the course's current version so a dev can tell an older pass from it.
  */
 
 const ROLE_WORDS: Record<UserRole, string> = {
@@ -44,7 +55,7 @@ const CHIP: Record<TrainingColour, CSSProperties> = {
   green: { background: 'var(--bg-green-100)', color: 'var(--text-green-800)' },
 }
 
-type BundleFacts = { lessons: number; minutes: number }
+type BundleFacts = { lessons: number; minutes: number; contentVersion: string }
 
 /** Settings → Training's lede, rendered before the catalog loads. */
 export const TRAINING_LEDE =
@@ -61,9 +72,12 @@ export function SettingsTrainingTab() {
   const [standings, setStandings] = useState<Record<string, TrainingStandingRow[]>>({})
   const [taken, setTaken] = useState<Record<string, number>>({})
   const [seeWho, setSeeWho] = useState<string | null>(null)
+  /** With the strips on: the state See who is filtered to, per course; null is everyone. */
+  const [whoState, setWhoState] = useState<Record<string, DueState | null>>({})
   const [numbers, setNumbers] = useState<Record<string, { months: string; days: string }>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const today = todayYmdInAppTz()
+  const shape = useShapeView(TRAINING_DUE_STRIP_KEY)
 
   const load = useCallback(async () => {
     try {
@@ -90,7 +104,7 @@ export function SettingsTrainingTab() {
     void import('../../lib/training/courseRegistry')
       .then((m) => {
         const facts: Record<string, BundleFacts> = {}
-        for (const c of m.TRAINING_COURSES) facts[c.slug] = { lessons: c.lessons.length, minutes: c.minutes }
+        for (const c of m.TRAINING_COURSES) facts[c.slug] = { lessons: c.lessons.length, minutes: c.minutes, contentVersion: c.contentVersion }
         setBundle(facts)
       })
       .catch(() => setBundle({}))
@@ -130,8 +144,11 @@ export function SettingsTrainingTab() {
   if (missing) return <p style={flowNote}>Training is not switched on yet. Its tables arrive with the next update.</p>
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }} data-settings-training>
-      <p style={flowNote}>{TRAINING_LEDE}</p>
+    <div style={{ display: 'grid', gap: '1rem' }} data-settings-training data-training-shape={shape.sideBySide ? 'side-by-side' : shape.on ? 'strip' : 'words'}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+        <p style={flowNote}>{TRAINING_LEDE}</p>
+        <ShapeSwitch on={shape.on} onToggle={shape.toggle} label="Due strips" title="Draw where everyone stands as chips that filter See who, and each name's due day as a strip" />
+      </div>
       {policies.length === 0 && <p style={flowNote}>No course yet. A dev adds a course by adding its lessons to the app; it shows here, switched off.</p>}
       {policies.map((p) => {
         const facts = bundle[p.slug]
@@ -142,6 +159,111 @@ export function SettingsTrainingTab() {
         const numbersChanged = n.months !== String(p.goodForMonths) || n.days !== String(p.dueSoonDays)
         const monthsOk = /^\d{1,3}$/.test(n.months) && Number(n.months) <= 120
         const daysOk = /^\d{1,3}$/.test(n.days) && Number(n.days) <= 365
+        const states = rows.map((r) => dueSplit({ colour: r.colour, daysToDue: r.days_to_due }, p.dueSoonDays))
+        const split = dueCounts(states)
+        const filter = whoState[p.slug] ?? null
+        const whoRows = seeWho === p.slug ? rows.filter((_, i) => filter == null || states[i] === filter) : []
+        /** Where everyone stands and See who, as the three counts (today) or as four chips that filter and a strip per name. */
+        const standsBlock = (withStrip: boolean) => (
+          <div data-training-stands={withStrip ? 'strip' : 'words'} style={{ display: 'grid', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span style={{ ...flowHead, width: 110 }}>Where everyone stands</span>
+              {!p.on ? (
+                <span style={flowNote}>Off: nobody is counted until it is on.</span>
+              ) : withStrip ? (
+                <>
+                  {DUE_COUNT_KINDS.map((k) => {
+                    const on = seeWho === p.slug && filter === k.state
+                    return (
+                      <button
+                        key={k.key}
+                        type="button"
+                        aria-pressed={on}
+                        data-count={k.key}
+                        disabled={split[k.key] === 0}
+                        onClick={() => {
+                          setSeeWho(p.slug)
+                          setWhoState((prev) => ({ ...prev, [p.slug]: on ? null : k.state }))
+                        }}
+                        style={{
+                          ...CHIP[k.tone],
+                          borderRadius: 999,
+                          padding: '0.1rem 0.6rem',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          font: 'inherit',
+                          cursor: split[k.key] === 0 ? 'default' : 'pointer',
+                          border: on ? '2px solid currentColor' : '2px solid transparent',
+                          opacity: split[k.key] === 0 ? 0.55 : 1,
+                        }}
+                      >
+                        {k.word} {split[k.key]}
+                      </button>
+                    )
+                  })}
+                  {rows.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSeeWho((s) => (s === p.slug ? null : p.slug))
+                        setWhoState((prev) => ({ ...prev, [p.slug]: null }))
+                      }}
+                      style={flowQuiet}
+                    >
+                      {seeWho === p.slug ? 'Hide who' : 'See who'}
+                    </button>
+                  )}
+                  {facts ? <span style={{ ...flowNote, fontSize: '0.78rem' }}>current words: version {facts.contentVersion}</span> : null}
+                </>
+              ) : (
+                <>
+                  <span style={{ ...CHIP.green, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="current">
+                    {c.current} current
+                  </span>
+                  <span style={{ ...CHIP.amber, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="lapsed">
+                    {c.lapsed} lapsed
+                  </span>
+                  <span style={{ ...CHIP.red, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="notDone">
+                    {c.notDone} not done
+                  </span>
+                  {rows.length > 0 && (
+                    <button type="button" onClick={() => setSeeWho((s) => (s === p.slug ? null : p.slug))} style={flowQuiet}>
+                      {seeWho === p.slug ? 'Hide who' : 'See who'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            {seeWho === p.slug && rows.length > 0 && !withStrip && (
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', columns: 2, fontSize: '0.85rem' }} data-training-who>
+                {rows.map((r) => (
+                  <li key={r.user_id} style={{ breakInside: 'avoid' }}>
+                    {r.name ?? 'Someone'}{' '}
+                    <span style={{ ...CHIP[r.colour], borderRadius: 999, padding: '0 0.45rem', fontSize: '0.72rem', fontWeight: 600 }}>
+                      {r.colour === 'green' ? `done ${r.passed_on ? ymdWords(r.passed_on, today) : ''}` : r.colour === 'amber' ? `due ${r.due_on ? ymdWords(r.due_on, today) : ''}` : 'not done'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {seeWho === p.slug && rows.length > 0 && withStrip && (
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }} data-training-who data-training-who-state={filter ?? 'all'}>
+                {whoRows.length === 0 && <li style={flowNote}>Nobody {filter === 'not-done' ? 'not done' : filter === 'due-soon' ? 'due soon' : (filter ?? 'listed')}.</li>}
+                {whoRows.map((r) => {
+                  const state = dueSplit({ colour: r.colour, daysToDue: r.days_to_due }, p.dueSoonDays)
+                  const strip = dueStripFromDates({ slug: p.slug, title: r.name ?? 'Someone', passedOn: r.passed_on, dueOn: r.due_on, dueSoonDays: p.dueSoonDays, todayYmd: today })
+                  return (
+                    <li key={r.user_id} data-training-who-row={state} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1fr) auto minmax(120px, 220px)', gap: '0.6rem', alignItems: 'center' }}>
+                      <span>{r.name ?? 'Someone'}</span>
+                      <DueChipSpan chip={dueChip(state, r.days_to_due)} small />
+                      <TrainingDueStrip strip={strip} compact />
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )
         return (
           <section key={p.slug} data-training-policy={p.slug} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.85rem 1rem 1rem', display: 'grid', gap: '0.6rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -258,41 +380,7 @@ export function SettingsTrainingTab() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <span style={{ ...flowHead, width: 110 }}>Where everyone stands</span>
-              {p.on ? (
-                <>
-                  <span style={{ ...CHIP.green, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="current">
-                    {c.current} current
-                  </span>
-                  <span style={{ ...CHIP.amber, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="lapsed">
-                    {c.lapsed} lapsed
-                  </span>
-                  <span style={{ ...CHIP.red, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }} data-count="notDone">
-                    {c.notDone} not done
-                  </span>
-                  {rows.length > 0 && (
-                    <button type="button" onClick={() => setSeeWho((s) => (s === p.slug ? null : p.slug))} style={flowQuiet}>
-                      {seeWho === p.slug ? 'Hide who' : 'See who'}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <span style={flowNote}>Off: nobody is counted until it is on.</span>
-              )}
-            </div>
-            {seeWho === p.slug && rows.length > 0 && (
-              <ul style={{ margin: 0, paddingLeft: '1.1rem', columns: 2, fontSize: '0.85rem' }} data-training-who>
-                {rows.map((r) => (
-                  <li key={r.user_id} style={{ breakInside: 'avoid' }}>
-                    {r.name ?? 'Someone'}{' '}
-                    <span style={{ ...CHIP[r.colour], borderRadius: 999, padding: '0 0.45rem', fontSize: '0.72rem', fontWeight: 600 }}>
-                      {r.colour === 'green' ? `done ${r.passed_on ? ymdWords(r.passed_on, today) : ''}` : r.colour === 'amber' ? `due ${r.due_on ? ymdWords(r.due_on, today) : ''}` : 'not done'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {shape.sideBySide ? <SideBySide today={standsBlock(false)} shape={standsBlock(true)} /> : standsBlock(shape.on)}
 
             {p.retakeFrom && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-training-retake-chip>

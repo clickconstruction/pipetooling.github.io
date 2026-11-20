@@ -41,7 +41,9 @@ vi.mock('../../lib/training/trainingIo', () => ({
   saveTrainingPolicy: io.save,
 }))
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
+import { shapeViewStorageKey } from '../prototypes/useShapeView'
+import { TRAINING_DUE_STRIP_KEY } from '../dashboard/DashboardTrainingSection'
 import { SettingsTrainingTab } from './SettingsTrainingTab'
 
 async function open() {
@@ -52,6 +54,7 @@ const section = () => document.querySelector('[data-training-policy="osha-30-ref
 
 beforeEach(() => {
   cleanup()
+  localStorage.clear()
   io.missing = false
   io.enabled = true
   io.offered = false
@@ -119,6 +122,42 @@ describe('SettingsTrainingTab', () => {
     io.retakeFrom = null
     await open()
     expect(section().querySelector('[data-training-retake-chip]')).toBeNull()
+  })
+
+  it('Due strips (punch list #217, field-11): the counts become chips that filter See who, each name with its chip and strip, and the current version is named', async () => {
+    localStorage.setItem(shapeViewStorageKey(TRAINING_DUE_STRIP_KEY, SMOKE_AUTH_USER_ID), '1')
+    await open()
+    const s = section()
+    const sw = screen.getByTestId('shape-switch') as HTMLButtonElement
+    expect(sw.getAttribute('aria-pressed')).toBe('true')
+    expect(sw.textContent).toBe('✓ Due strips')
+    const chip = (key: string) => s.querySelector(`[data-count="${key}"]`) as HTMLButtonElement
+    expect(chip('current').textContent).toBe('current 1')
+    expect(chip('dueSoon').textContent).toBe('due soon 0')
+    expect(chip('dueSoon').disabled).toBe(true)
+    expect(chip('lapsed').textContent).toBe('lapsed 1')
+    expect(chip('notDone').textContent).toBe('not done 1')
+    expect(within(s).getByText(/current words: version abcdef01/)).toBeTruthy()
+    fireEvent.click(chip('lapsed'))
+    let who = s.querySelector('[data-training-who]') as HTMLElement
+    expect(who.getAttribute('data-training-who-state')).toBe('lapsed')
+    expect(who.textContent).toContain('Luis M')
+    expect(who.textContent).not.toContain('Priya K')
+    expect(within(who).getByTestId('training-due-chip').textContent).toBe('lapsed · 12 days')
+    expect(within(who).getByTestId('training-due-strip').getAttribute('data-state')).toBe('lapsed')
+    fireEvent.click(chip('current'))
+    who = s.querySelector('[data-training-who]') as HTMLElement
+    expect(who.textContent).toContain('Priya K')
+    expect(who.textContent).not.toContain('Luis M')
+    expect(within(who).getByTestId('training-due-chip').textContent).toBe('current')
+    // The same chip again lifts the filter; See who still lists everyone, not done with no strip.
+    fireEvent.click(chip('current'))
+    who = s.querySelector('[data-training-who]') as HTMLElement
+    expect(who.getAttribute('data-training-who-state')).toBe('all')
+    expect(who.querySelectorAll('[data-training-who-row]').length).toBe(3)
+    expect(within(who).getAllByTestId('training-due-strip').length).toBe(2)
+    fireEvent.click(within(s).getByText('Hide who'))
+    expect(s.querySelector('[data-training-who]')).toBeNull()
   })
 
   it('says so before the tables exist, and that an off course counts nobody', async () => {
