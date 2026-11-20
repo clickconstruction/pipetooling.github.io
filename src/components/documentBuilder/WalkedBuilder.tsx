@@ -29,7 +29,7 @@ export type WalkedBuilderIo = Pick<typeof defaultIo, 'saveBuilderDraft' | 'publi
 type Props = {
   entry: DocumentBuilderEntry
   rec: BuilderRecord
-  /** The draft, read as a paper. The tab draws what is wrong with a draft that does not read. */
+  /** The draft, shaped like a paper. It may break a rule of the paper: the Publish press lists that. The tab draws what is wrong with a draft that has no such shape. */
   def: PaperDef
   onBack: () => void
   onRecord: (rec: BuilderRecord) => void
