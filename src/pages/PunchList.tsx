@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useRoleGate } from '../hooks/useRoleGate'
 import { usePunchListPicks } from '../hooks/usePunchListPicks'
+import { usePunchListTicks } from '../hooks/usePunchListTicks'
+import { isImpersonationSessionActive } from '../lib/impersonationSession'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
+import { TICKED_FILTER_LABEL, TICKS_READ_FAILED_REST, TICK_BLURB } from '../lib/todos/punchListTicks'
 import {
   FLAGGED_BLURB,
   GROUP_BLURBS,
@@ -31,6 +34,8 @@ import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } fr
 import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
 import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
+import { PunchListTick } from '../components/punchList/PunchListTick'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import {
   ORDER_KEY,
   ORDER_PARAM,
@@ -78,6 +83,12 @@ import board from 'virtual:punch-list'
  * One search field beside the View choice (v2.7263) narrows the cards in both views as the person
  * types: the number, the name, the summary, the Next line, the shipped versions and the group's
  * name (`lib/todos/punchListSearch.ts`). The address carries it as `?q=`, the device does not.
+ *
+ * A checkbox beside every card means "I am working on this" (Taunya's ask of 2026-11-21). A tick is
+ * the person's own row in `punch_list_ticks`, so it is on their phone and their desk and nobody else
+ * sees it. It shows only while the card is in the section it was ticked in, so a card that moves to
+ * another section loses its tick (`lib/todos/punchListTicks.ts`, `usePunchListTicks`). The
+ * **Working on** pill narrows both views to the ticked cards and carries their count.
  */
 /** The board's history as the build replayed it from git; the burndown reads it. */
 const history = unpackHistory(packedHistory)
@@ -96,8 +107,18 @@ export default function PunchList() {
   }, [authLoading, role, allowed, bounce, navigate, location.pathname, location.search])
 
   const { picks, shared, save } = usePunchListPicks(allowed)
+  // The person's own ticks. A stale row is deleted with no press only on the built site (a branch's board on a dev
+  // server can be behind main) and never under View as, where a look writes nothing by itself.
+  const ticks = usePunchListTicks({
+    enabled: allowed,
+    userId: authUser?.id,
+    cards: board.items,
+    boardVersion: board.validated.version,
+    mayClear: import.meta.env.PROD && !isImpersonationSessionActive(),
+  })
   const [filter, setFilter] = useState<PunchFilter>('all')
   const [waitingOnly, setWaitingOnly] = useState(false)
+  const [tickedOnly, setTickedOnly] = useState(false)
   // The view and the sort: the address first, then the last press on this device, then the groups.
   const [remembered, setRemembered] = useState(() => ({ view: readChoice(VIEW_KEY), order: readChoice(ORDER_KEY) }))
   const params = new URLSearchParams(location.search)
@@ -114,8 +135,14 @@ export default function PunchList() {
   const setQuery = (next: string) =>
     navigate({ pathname: location.pathname, search: withSearch(location.search, next), hash: location.hash }, { replace: true })
   const clearSearch = () => setQuery('')
-  // One rule for both views: the Show filter, the mock-up toggle, then the search.
-  const visible = (it: BoardItem) => rowVisible(it, picks, filter, waitingOnly) && cardMatchesSearch(it, query)
+  // One rule for both views: the Show filter, the mock-up toggle, the person's ticks, then the search.
+  const visible = (it: BoardItem) =>
+    rowVisible(it, picks, filter, waitingOnly) && (!tickedOnly || ticks.ticked.has(it.number)) && cardMatchesSearch(it, query)
+  const clearFilters = () => {
+    setFilter('all')
+    setWaitingOnly(false)
+    setTickedOnly(false)
+  }
   const anyVisible = board.items.some(visible)
   const waitingCount = useMemo(() => waitingOnMockupCount(board.items), [])
 
@@ -142,6 +169,8 @@ export default function PunchList() {
       <style>{`
         .punch-row { display: grid; grid-template-columns: 6px 3.75rem minmax(0, 1fr) minmax(160px, 200px) minmax(220px, 260px); }
         .punch-num { border-right: 1px solid var(--border); padding: 0.9rem 0.5rem 0.9rem 0.7rem; }
+        /* The tick under the number: the label takes the cell's whole width, 44 px tall, for a thumb. */
+        .punch-num .punch-tick { width: calc(100% + 1.2rem); margin: 0.3rem -0.5rem -0.5rem -0.7rem; }
         .punch-meta, .punch-act { border-left: 1px solid var(--border); }
         @media (max-width: 860px) {
           .punch-row { grid-template-columns: 6px 3.75rem minmax(0, 1fr); }
@@ -210,6 +239,17 @@ export default function PunchList() {
           : 'Picks stay on this device until the database catches up with this deploy.'}
         {' '}To change a row, change its to-do file in the repo — this page is rendered from them.
       </p>
+      {/* The ticks are the person's own. A failed read says so here and leaves every card on the page. */}
+      <p data-testid="punch-tick-blurb" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, border: '1.5px solid var(--border-strong)', flexShrink: 0 }} />
+        {TICK_BLURB}
+      </p>
+      {ticks.failure ? (
+        <div data-testid="punch-ticks-failed" style={{ marginTop: '0.5rem' }}>
+          <OfflineRetryPanel failure={ticks.failure} onRetry={ticks.reload} surface="punch-list-ticks" idempotent busy={ticks.loading} />
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{TICKS_READ_FAILED_REST}</p>
+        </div>
+      ) : null}
 
       {/* The burndown: the open cards hour by hour, replayed from the folder's own history, and when the list clears. */}
       <PunchListBurndown history={history} items={board.items} />
@@ -311,6 +351,20 @@ export default function PunchList() {
         >
           ▢ Waiting on a mock-up <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{waitingCount}</span>
         </button>
+        {/* The person's own ticks: the count stands apart from the words, and the press narrows both views to those cards. */}
+        <button
+          type="button"
+          onClick={() => setTickedOnly((v) => !v)}
+          aria-pressed={tickedOnly}
+          title="Only the cards you ticked as working on"
+          data-testid="punch-ticked-only"
+          style={pillStyle(tickedOnly)}
+        >
+          ☑ {TICKED_FILTER_LABEL}{' '}
+          <b data-testid="punch-ticked-count" style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>
+            {ticks.ticked.size}
+          </b>
+        </button>
       </div>
 
       {/* By number: every card in one list, the highest number first. It stands in for the Shortlist and the groups. */}
@@ -322,10 +376,9 @@ export default function PunchList() {
           onClearSearch={clearSearch}
           order={order}
           onFlip={() => choose('number', flipOrder(order))}
-          onClearFilters={() => {
-            setFilter('all')
-            setWaitingOnly(false)
-          }}
+          onClearFilters={clearFilters}
+          renderTick={(it) => <PunchListTick item={it} ticked={ticks.ticked.has(it.number)} onToggle={ticks.toggle} />}
+          // The opened card draws no box of its own: the row above it carries the card's one.
           renderCard={(it) => <Row item={it} group={it.group} picks={picks} onSave={save} first anchor={false} />}
         />
       ) : !anyVisible ? (
@@ -335,10 +388,7 @@ export default function PunchList() {
             {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'cards', query }), {
               onPress: () => {
                 if (query) clearSearch()
-                else {
-                  setFilter('all')
-                  setWaitingOnly(false)
-                }
+                else clearFilters()
               },
             })}
           />
@@ -366,7 +416,7 @@ export default function PunchList() {
             </div>
             <div style={{ border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
               {shown.map((it, i) => (
-                <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} />
+                <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle }} />
               ))}
             </div>
           </section>
@@ -392,7 +442,7 @@ export default function PunchList() {
             </div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
               {shown.map((it, i) => (
-                <Row key={it.slug} item={it} group={g.group} picks={picks} onSave={save} first={i === 0} />
+                <Row key={it.slug} item={it} group={g.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle }} />
               ))}
             </div>
           </section>
@@ -418,6 +468,7 @@ function Row({
   onSave,
   first,
   anchor = true,
+  tick,
 }: {
   item: BoardItem
   group: BoardGroup
@@ -426,6 +477,8 @@ function Row({
   first: boolean
   /** False under a By number row, which carries the `#n<N>` anchor itself. */
   anchor?: boolean
+  /** The person's "working on it" box under the number; left out under a By number row, which carries the box itself. */
+  tick?: { ticked: boolean; onToggle: (item: Pick<BoardItem, 'number' | 'group'>, next: boolean) => void | Promise<void> }
 }) {
   const pick = pickOf(picks, item.slug)
   const note = picks[item.slug]?.note ?? ''
@@ -456,6 +509,7 @@ function Row({
             ⚑
           </span>
         ) : null}
+        {tick ? <PunchListTick item={item} ticked={tick.ticked} onToggle={tick.onToggle} className="punch-tick" /> : null}
       </div>
       <div className="punch-main" style={{ padding: '0.9rem 1rem', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: '0.98rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>

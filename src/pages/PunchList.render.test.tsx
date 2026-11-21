@@ -51,6 +51,10 @@ vi.mock('../hooks/useAuth', async () => {
 vi.mock('../hooks/usePunchListPicks', () => ({
   usePunchListPicks: () => ({ picks: {}, shared: true, save: async () => {} }),
 }))
+// The ticks have a smoke of their own (PunchList.ticks.render.test.tsx); here nobody has ticked a card.
+vi.mock('../hooks/usePunchListTicks', () => ({
+  usePunchListTicks: () => ({ ticked: new Set<number>(), failure: null, loading: false, reload: async () => {}, toggle: async () => {} }),
+}))
 
 import PunchList from './PunchList'
 
