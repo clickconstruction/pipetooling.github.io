@@ -4,7 +4,8 @@
  * a stage's lists: this one for before we start, that one for at the stage. Each stage is a line with its ready bar,
  * and opens to the four lines and the two lists (`StartCheckStage`). A bullet of ours says where it is read from: a
  * hand tick, or the order log, Trips or the city's permits (PR 8). A person who is not on the job's desk sees no
- * section. Nothing here reaches the GC, and nothing blocks a stage.
+ * section. A desk check that fails draws the heading with the reason and Retry. Nothing here reaches the GC, and
+ * nothing blocks a stage.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -68,8 +69,25 @@ export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayY
     if (needsFar) setWantsFar(true)
   }, [needsFar])
 
+  const heading = (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+      <h3 id="job-documents-start-checks" style={documentsHeading}>
+        {W.heading}
+      </h3>
+      <span style={muted}>{W.lead}</span>
+    </div>
+  )
   // Not on this job's desk: no section. The database decides, so the screen never offers a press it would refuse.
-  if (read.onDesk !== true) return null
+  // A desk check that failed is not a no: the heading stands with the reason, and Retry asks again.
+  if (read.onDesk !== true) {
+    if (read.onDesk === false || !read.failure) return null
+    return (
+      <section aria-labelledby="job-documents-start-checks" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="job-documents-start-checks">
+        {heading}
+        <OfflineRetryPanel failure={read.failure} onRetry={read.reload} surface="job-documents-start-checks" idempotent busy={read.loading} />
+      </section>
+    )
+  }
 
   const office = isOfficeRole(role)
   // Go and Hold are the office's and the job's superintendent's (the owner's call 3, on its default). The database decides.
@@ -79,12 +97,7 @@ export function JobDocumentsStartChecks({ job, io, readers, onRequestTab, todayY
 
   return (
     <section aria-labelledby="job-documents-start-checks" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="job-documents-start-checks">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <h3 id="job-documents-start-checks" style={documentsHeading}>
-          {W.heading}
-        </h3>
-        <span style={muted}>{W.lead}</span>
-      </div>
+      {heading}
       {/* The job's second switch (PR 9), as a value in place. Off by default, and their page needs the first switch too. */}
       {job.hasGc && office ? (
         <p style={{ ...muted, margin: 0 }} data-start-check-gc-page={showsOnPage ? 'on' : 'off'}>

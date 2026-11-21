@@ -19,6 +19,8 @@ export type MemoryStart = {
   arrived?: { fixtureId: string; notAsTold: string[] }
   /** When set, the desk covers these jobs alone. */
   deskJobs?: string[]
+  /** The next desk check fails with this error, once. */
+  failDesk?: unknown
   /** Every write, by name, in the order it was made. */
   calls: string[]
   /** The next write fails with this reason, once. */
@@ -50,7 +52,14 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
     db.rows = { ...db.rows, ...rows }
   }
   return {
-    onDesk: async (jobId) => db.onDesk && (!db.deskJobs || db.deskJobs.includes(jobId)),
+    onDesk: async (jobId) => {
+      if (db.failDesk) {
+        const why = db.failDesk
+        db.failDesk = null
+        throw why
+      }
+      return db.onDesk && (!db.deskJobs || db.deskJobs.includes(jobId))
+    },
     readLines: async (jobId) => db.lines.filter((l) => l.jobId === jobId).map((l) => ({ ...l })),
     readRows: async (jobIds) => {
       const mine = <T extends { job_id: string }>(list: T[]) => list.filter((r) => jobIds.includes(r.job_id))

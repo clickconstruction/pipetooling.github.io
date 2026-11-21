@@ -49,7 +49,8 @@ export function useSiteStartChecks(args: { developmentId: string; jobs: readonly
 
   const read = useCallback(async (): Promise<Loaded> => {
     const ids = jobKey ? jobKey.split(',') : []
-    const desk = await Promise.all(ids.map((id) => io.onDesk(id).catch(() => false)))
+    // A desk check that fails fails the read: a job left out without a word would make the banner count short.
+    const desk = await Promise.all(ids.map((id) => io.onDesk(id)))
     const deskJobIds = ids.filter((_, i) => desk[i])
     if (!deskJobIds.length) return { key: `${developmentId}|${jobKey}`, deskJobIds, lines: [], rows: NO_START_ROWS, site: null, templates: [] }
     const [lineLists, rows, settings, templates] = await Promise.all([
