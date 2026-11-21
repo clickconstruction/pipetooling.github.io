@@ -51,6 +51,7 @@ import {
   type JobSheetState,
 } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
+import { publishUsualToJobs } from '../../lib/documentBuilder/sheetsIo'
 import type { GcJob, SheetRecord } from '../../lib/documentBuilder/sheetsIo'
 import { MOVED_ON_USUAL, movedOnJobName, movedOnWords } from '../../lib/documentBuilder/movedOn'
 import { isBuilderRead, sameContents, type BuilderRecord } from '../../lib/documentBuilder/standing'
@@ -400,7 +401,9 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   }
 
   const usualDirty = rec.revision === 0 || !sameContents(usual, rec.published)
-  const plan = usualPlanFor(jobs, sheets)
+  /** What this page holds for a job beyond its sheet as read: a choice not yet made, or words typed and not saved. */
+  const heldHere = (projectId: string) => (holdsRef.current.has(projectId) ? ('moved' as const) : unsaved.current.has(projectId) ? ('own-changes' as const) : null)
+  const plan = usualPlanFor(jobs, sheets, (projectId) => (holds.has(projectId) ? 'moved' : null))
   const press = mode === 'usual' ? usualPublishPress(usual, rec, plan) : jobState ? jobPublishPress(jobState, { def: under, revision: rec.revision }) : { label: 'Nothing to publish', dead: true, why: [] }
   const read = readPress(entry, rec)
   const differs = jobState ? sheetDiffers(under, jobState.own) : []
@@ -438,7 +441,6 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     setOutcome(null)
     await flush()
     const def = usualRef.current ?? usual
-    const going = usualPlanFor(jobs, sheetsRef.current)
     const res = await io.publishBuilder(entry.id, recRef.current.revision, def, usualNo.current)
     if (!res.ok) {
       setBusy(false)
@@ -447,26 +449,25 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     }
     usualNo.current = res.value.draftNo
     onRecord(res.value)
-    // The usual goes to every job that is ready. One that fails is named, and the rest still go.
-    const failed: Array<{ name: string; why: string }> = []
-    let done = 0
-    let next = new Map(sheetsRef.current)
-    for (const row of going) {
-      const s = next.get(row.id)
-      if (!row.gets || !s?.id || !s.published) continue
-      const own = pruneJobSheet(def, s.published)
-      const out = await io.publishSheet(s.id, s.revision, own, layOver(def, own), res.value.revision, s.draftNo)
-      if (out.ok) {
-        done += 1
-        next = new Map(next).set(row.id, stateFrom(out.value))
-      } else failed.push({ name: row.name, why: out.error })
-    }
+    // The usual goes to every job that is ready, each read as it stands now and never as this page loaded it. A job
+    // this page holds words for, typed and not saved or waiting on a choice, is held. One that fails is named, and
+    // the rest still go.
+    const out = await publishUsualToJobs(io, { builderKey: entry.id, def, usualRevision: res.value.revision, jobs, heldHere })
     if (!here.current) return
-    setSheets(next)
     setBusy(false)
+    if (!out.ok) {
+      setOutcome({ line: 'Published your usual. It went to no job yet.', tone: 'warning', head: `${out.error} Publish each job to bring it up.`, failed: [] })
+      return
+    }
+    const { done, failed, held } = out.value
+    // The page takes each job's sheet as it now stands, but for a job it holds words of its own for. The rows of
+    // where the change goes are drawn from them, so each held job reads there with its reason.
+    const next = new Map(sheetsRef.current)
+    for (const [projectId, s] of out.value.sheets) if (heldHere(projectId) == null) next.set(projectId, stateFrom(s))
+    setSheets(next)
     const words = batchOutcomeWords({ verb: 'publish', past: 'published to', done, failed: failed.length, noun: 'job' })
-    const held = going.filter((r) => !r.gets).length
-    setOutcome({ line: done + failed.length === 0 ? 'Published your usual.' : `${words.line}${held > 0 ? ` Held ${held}.` : ''}`, tone: done + failed.length === 0 ? 'success' : words.tone, head: words.head, failed })
+    const went = done + failed.length === 0 ? 'Published your usual.' : words.line
+    setOutcome({ line: `${went}${held.length > 0 ? ` Held ${held.length}.` : ''}`, tone: done + failed.length === 0 ? 'success' : words.tone, head: words.head, failed })
   }
 
   const markRead = async () => {
@@ -495,7 +496,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
 
   const stamp = sheetStamp(mode, jobState && job ? { ...jobState, name: job.name } : null, rec.revision)
   /** The thing on the screen moved on somewhere else: its publish waits for the person's choice. */
-  const heldHere = holds.has(mode === 'usual' ? USUAL_KEY : (job?.projectId ?? ''))
+  const heldOnScreen = holds.has(mode === 'usual' ? USUAL_KEY : (job?.projectId ?? ''))
 
   return (
     <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
@@ -516,7 +517,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
         <span style={saveState === 'failed' ? { ...FINE, fontWeight: 600, color: 'var(--text-red-700)' } : FINE} aria-live="polite">
           {SAVE_WORDS[saveState]}
         </span>
-        <button type="button" disabled={press.dead || busy || heldHere} style={mainPress(press.dead || busy || heldHere)} onClick={() => void (mode === 'usual' ? publishUsual() : publishJob())}>
+        <button type="button" disabled={press.dead || busy || heldOnScreen} style={mainPress(press.dead || busy || heldOnScreen)} onClick={() => void (mode === 'usual' ? publishUsual() : publishJob())}>
           {press.label}
         </button>
       </Bar>

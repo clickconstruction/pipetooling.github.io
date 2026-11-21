@@ -409,6 +409,26 @@ describe('the usual’s publish', () => {
   it('says why a job is held', () => {
     expect(usualHeldWords('no-sheet')).toBe('Held. It has no sheet yet.')
     expect(usualHeldWords('own-changes')).toBe('Held. It has changes of its own waiting.')
+    expect(usualHeldWords('moved')).toBe('Held. It changed somewhere else. Choose on its panel first.')
+    for (const why of ['no-sheet', 'own-changes', 'moved'] as const) expect(plainWordsFailures(usualHeldWords(why))).toEqual([])
+  })
+
+  it('holds a job the page has words of its own for, though its sheet as read has none waiting', () => {
+    expect(
+      usualPublishPlan([
+        { id: 'cedar', name: 'Cedar Park Medical Office', revision: 2, changed: false, here: 'own-changes' },
+        { id: 'mesa', name: 'Mesa Verde Retail Shell', revision: 1, changed: false, here: 'moved' },
+        { id: 'pike', name: 'Pike Street Clinic', revision: 1, changed: true, here: 'moved' },
+        { id: 'oak', name: 'Oak Hollow Offices', revision: 0, changed: false, here: 'moved' },
+        { id: 'elm', name: 'Elm Street Lofts', revision: 4, changed: false, here: null },
+      ]),
+    ).toEqual([
+      { id: 'cedar', name: 'Cedar Park Medical Office', gets: false, why: 'own-changes' },
+      { id: 'mesa', name: 'Mesa Verde Retail Shell', gets: false, why: 'moved' },
+      { id: 'pike', name: 'Pike Street Clinic', gets: false, why: 'moved' },
+      { id: 'oak', name: 'Oak Hollow Offices', gets: false, why: 'no-sheet' },
+      { id: 'elm', name: 'Elm Street Lofts', gets: true, asRevision: 5 },
+    ])
   })
 })
 

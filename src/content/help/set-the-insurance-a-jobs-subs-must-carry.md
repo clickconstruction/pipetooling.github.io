@@ -47,6 +47,8 @@ A list **Before this can be published** shows while something is missing. Fix ea
 - {{chip:green|Gets it, as revision 2}} means that job's sheet is published again with the change.
 - A held job keeps its sheet as it is. Its chip says why.
 - A job with changes of its own that are not published is held. Publish that job to bring it up.
+- Each job is read again when you press. A change a teammate saved a moment ago is kept, and that job is held.
+- After the press, the card counts the jobs held. Each held job's row says why.
 
 A field a job has changed keeps the job's own words.
 

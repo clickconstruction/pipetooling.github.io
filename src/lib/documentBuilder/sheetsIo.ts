@@ -16,7 +16,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, WRITE_GONE, guardedWrite, type Landed } from './documentBuildersIo'
-import { parseJobSheet, type JobSheet, type ResolvedSheet } from './sheet'
+import { layOver, parseJobSheet, pruneJobSheet, usualHeldWords, type JobSheet, type ResolvedSheet, type SheetDef, type UsualPublishRow } from './sheet'
+import { usualPlanFor } from './sheetScreen'
 import { DOCUMENT_BUILDERS_TABLE, DOCUMENT_BUILDER_SELECT, builderRecordFromRow, sameContents, type BuilderRecord } from './standing'
 
 const db = supabase as unknown as SupabaseClient
@@ -205,4 +206,68 @@ export function publishSheet(id: string, fromRevision: number, own: JobSheet, pa
     fallback: 'The publish did not go through.',
     moved: MOVED_ON_PUBLISH,
   })
+}
+
+/** How the usual's publish to every job went. */
+export type UsualToJobs = {
+  /** Where the usual went and what was held, from each job's sheet as it read at that moment. */
+  plan: UsualPublishRow[]
+  /** How many jobs it was published to. */
+  done: number
+  /** The jobs it was to go to and did not reach, each with the reason. */
+  failed: Array<{ name: string; why: string }>
+  /** The jobs it held, each with the reason in words. */
+  held: Array<{ name: string; why: string }>
+  /** Every job's sheet as it now stands: as read at the publish, and the ones that went as published. */
+  sheets: Map<string, SheetRecord>
+}
+
+/**
+ * The usual, just published, sent on to every job that is ready. Each job's sheet is read at this moment, never taken
+ * from the page as it was loaded: a draft a teammate saved since makes the job one with changes of its own waiting,
+ * which is held, and a sheet a teammate published since goes out from that newer copy. Each job's publish names the
+ * draft's number just read, so a change that lands between the read and the write is refused and named, and the
+ * teammate's draft stands.
+ *
+ * It follows the batch rule: it goes to every job that is ready, holds the rest with the reason, and keeps going past
+ * one that fails. `heldHere` says what the page holds for a job beyond what the database does: words typed and not
+ * saved, or a choice not yet made. The reads and writes are handed in, so a screen's smoke can hand in its own.
+ */
+export async function publishUsualToJobs(
+  io: { readBuilderSheets: typeof readBuilderSheets; publishSheet: typeof publishSheet },
+  ask: {
+    builderKey: string
+    /** The usual as it was just published, and the revision it went out as. */
+    def: SheetDef
+    usualRevision: number
+    jobs: ReadonlyArray<{ projectId: string; name: string }>
+    heldHere?: (projectId: string) => 'own-changes' | 'moved' | null
+  },
+): Promise<Landed<UsualToJobs>> {
+  let sheets: Map<string, SheetRecord>
+  try {
+    sheets = new Map(await io.readBuilderSheets(ask.builderKey))
+  } catch (e) {
+    return fail(e, "The jobs' sheets did not read.")
+  }
+  const states = new Map([...sheets].map(([projectId, s]) => [projectId, { id: s.id, own: s.draft, published: s.published, revision: s.revision, usualRevision: s.usualRevision }]))
+  const plan = usualPlanFor(ask.jobs, states, ask.heldHere)
+  const failed: Array<{ name: string; why: string }> = []
+  let done = 0
+  for (const row of plan) {
+    const s = sheets.get(row.id)
+    if (!row.gets || !s?.published) continue
+    const own = pruneJobSheet(ask.def, s.published)
+    const out = await io.publishSheet(s.id, s.revision, own, layOver(ask.def, own), ask.usualRevision, s.draftNo)
+    if (out.ok) {
+      done += 1
+      sheets.set(row.id, out.value)
+    } else {
+      failed.push({ name: row.name, why: out.error })
+      // A sheet that moved on between the read and the write is the page's to show as it now reads.
+      if (out.movedOn) sheets.set(row.id, out.movedOn)
+    }
+  }
+  const held = plan.flatMap((row) => (row.gets ? [] : [{ name: row.name, why: usualHeldWords(row.why) }]))
+  return { ok: true, value: { plan, done, failed, held, sheets } }
 }

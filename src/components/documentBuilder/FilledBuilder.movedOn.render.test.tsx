@@ -199,3 +199,50 @@ describe('FilledBuilder, when a job’s sheet moved on somewhere else', () => {
     expect(vi.mocked(io.saveSheetDraft).mock.calls.map((c) => c[2])).toEqual([2, 3])
   })
 })
+
+describe('FilledBuilder, the usual published to every job', () => {
+  it('reads each job as it stands at the press: a draft a teammate saved since this page loaded is kept, and the job is held with the reason', async () => {
+    // The page loads with Cedar Park's sheet out and nothing waiting. A teammate then changes its place.
+    const readBuilderSheets = vi
+      .fn(async () => new Map([['cedar', newerSheet()]]))
+      .mockResolvedValueOnce(new Map([['cedar', sheetRow()]]))
+    const { io } = await openOnUsual({ readBuilderSheets })
+    type(FOOT, 'A new foot line.')
+    expect(publish().textContent).toBe('Publish to 1 job')
+    fireEvent.click(publish())
+    expect(await screen.findByText('Published your usual. Held 1.', undefined, { timeout: 3000 })).toBeTruthy()
+    expect(io.publishBuilder).toHaveBeenCalledTimes(1)
+    // The job's draft is not written from this page's old copy of it.
+    expect(io.publishSheet).not.toHaveBeenCalled()
+    // Its row says why it was held, read from the sheet as it now stands.
+    expect(screen.getByText('Held. It has changes of its own waiting.')).toBeTruthy()
+    // The page now shows the job as the teammate left it.
+    fireEvent.click(screen.getByRole('button', { name: 'This job' }))
+    await waitFor(() => expect(words('The place')).toBe('414 Sample Street, Cedar Park, TX 78613'))
+    expect(screen.getByText('Your usual changed since this sheet was published. Publish to bring it up.')).toBeTruthy()
+  })
+
+  it('names the number it just read on each job’s publish, not the one the page loaded', async () => {
+    const readBuilderSheets = vi
+      .fn(async () => new Map([['cedar', sheetRow({ draftNo: 9 })]]))
+      .mockResolvedValueOnce(new Map([['cedar', sheetRow()]]))
+    const { io } = await openOnUsual({ readBuilderSheets })
+    type(FOOT, 'A new foot line.')
+    fireEvent.click(publish())
+    expect(await screen.findByText('Published to 1 job.', undefined, { timeout: 3000 })).toBeTruthy()
+    const usual = withUsualWords(USUAL, fieldPath('foot'), 'A new foot line.')
+    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, CEDAR_OWN(), layOver(usual, CEDAR_OWN()), 2, 9)
+  })
+
+  it('says the usual went to no job when the jobs did not read, and why', async () => {
+    const readBuilderSheets = vi
+      .fn(async (): Promise<Map<string, SheetRecord>> => Promise.reject(new Error('The network is down.')))
+      .mockResolvedValueOnce(new Map([['cedar', sheetRow()]]))
+    const { io } = await openOnUsual({ readBuilderSheets })
+    type(FOOT, 'A new foot line.')
+    fireEvent.click(publish())
+    expect(await screen.findByText('Published your usual. It went to no job yet.', undefined, { timeout: 3000 })).toBeTruthy()
+    expect(screen.getByText('The network is down. Publish each job to bring it up.')).toBeTruthy()
+    expect(io.publishSheet).not.toHaveBeenCalled()
+  })
+})

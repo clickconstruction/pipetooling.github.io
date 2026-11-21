@@ -58,7 +58,9 @@ vi.mock('../supabase', () => ({ supabase: db.client }))
 
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, WRITE_GONE } from './documentBuildersIo'
 import { startJobSheet, type JobSheet } from './sheet'
-import { markBuilderRead, publishBuilder, publishSheet, readBuilder, readBuilderSheets, saveBuilderDraft, saveSheetDraft, startSheet } from './sheetsIo'
+import { INSURANCE_SHEET_FIXTURE } from './insuranceSheet.fixture'
+import { layOver, withUsualWords, fieldPath, type SheetDef } from './sheet'
+import { markBuilderRead, publishBuilder, publishSheet, publishUsualToJobs, readBuilder, readBuilderSheets, saveBuilderDraft, saveSheetDraft, startSheet } from './sheetsIo'
 import type { BuilderRecord } from './standing'
 
 const USUAL = { fields: { title: 'A made-up sheet' } }
@@ -156,5 +158,88 @@ describe('a job’s sheet, saved from two pages', () => {
     const other = await startSheet('insurance', 'cedar', CEDAR('Typed on another page'))
     expect(other).toMatchObject({ ok: false, error: MOVED_ON_SAVE, movedOn: { draft: { place: '410 Sample Street' } } })
     expect(db.tables.document_builder_sheets).toHaveLength(1)
+  })
+})
+
+describe('the usual, published to every job', () => {
+  const OLD_USUAL: SheetDef = { ...INSURANCE_SHEET_FIXTURE, cover: INSURANCE_SHEET_FIXTURE.cover.map((c, i) => ({ ...c, limit: `Made-up amount ${i + 1}` })) }
+  const NEW_USUAL = withUsualWords(OLD_USUAL, fieldPath('foot'), 'A new foot line.')
+  const MESA = (place = '77 Placeholder Parkway'): JobSheet => startJobSheet({ name: 'Mesa Verde Retail Shell', place, insured: ['Mesa Verde Partners, LLC'] })
+  const JOBS = [
+    { projectId: 'cedar', name: 'Cedar Park Medical Office' },
+    { projectId: 'mesa', name: 'Mesa Verde Retail Shell' },
+    { projectId: 'oak', name: 'Oak Hollow Offices' },
+  ]
+  const io = { readBuilderSheets, publishSheet }
+  const ask = { builderKey: 'insurance', def: NEW_USUAL, usualRevision: 2, jobs: JOBS }
+  /** Two jobs with a sheet out on the old usual and nothing of their own waiting. The third has no sheet. */
+  const seed = () => {
+    const out = (id: string, projectId: string, own: JobSheet) => ({ id, builder_key: 'insurance', project_id: projectId, draft: own, published: own, published_sheet: layOver(OLD_USUAL, own), revision: 1, usual_revision: 1, draft_no: 3 })
+    db.tables.document_builder_sheets = [out('sheet-cedar', 'cedar', CEDAR()), out('sheet-mesa', 'mesa', MESA())]
+  }
+
+  it('goes to each job that is ready as its next revision, and holds the job with no sheet', async () => {
+    seed()
+    const went = await publishUsualToJobs(io, ask)
+    expect(went.ok && { done: went.value.done, failed: went.value.failed, held: went.value.held }).toEqual({ done: 2, failed: [], held: [{ name: 'Oak Hollow Offices', why: 'Held. It has no sheet yet.' }] })
+    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 2, usual_revision: 2, published_sheet: { foot: 'A new foot line.' } })
+    expect(went.ok && went.value.sheets.get('mesa')?.revision).toBe(2)
+  })
+
+  it('reads each job as it stands at that moment: a draft a teammate saved since the page loaded is kept, and the job is held', async () => {
+    seed()
+    // The page loaded here. Then a teammate changed Cedar Park's place, and did not publish.
+    await saveSheetDraft('sheet-cedar', CEDAR('414 Sample Street'), 3)
+    const went = await publishUsualToJobs(io, ask)
+    expect(went.ok && { done: went.value.done, failed: went.value.failed }).toEqual({ done: 1, failed: [] })
+    expect(went.ok && went.value.held).toContainEqual({ name: 'Cedar Park Medical Office', why: 'Held. It has changes of its own waiting.' })
+    // The teammate's draft stands, and subs still read revision 1 of that job.
+    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1, draft: { place: '414 Sample Street' }, published: { place: '410 Sample Street' } })
+    // The page takes the job as it now reads, the teammate's draft with it.
+    expect(went.ok && went.value.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
+    expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 2 })
+  })
+
+  it('goes out from the copy a teammate published since the page loaded', async () => {
+    seed()
+    await publishSheet('sheet-mesa', 1, MESA('79 Placeholder Parkway'), layOver(OLD_USUAL, MESA('79 Placeholder Parkway')), 1, 3)
+    const went = await publishUsualToJobs(io, ask)
+    expect(went.ok && went.value.done).toBe(2)
+    expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 3, published: { place: '79 Placeholder Parkway' }, published_sheet: { place: '79 Placeholder Parkway', foot: 'A new foot line.' } })
+  })
+
+  it('refuses a job whose draft moved between the read and the write, names it, and still goes to the rest', async () => {
+    seed()
+    const racing: typeof publishSheet = async (id, ...rest) => {
+      // A teammate's save lands after the read, just ahead of this job's publish.
+      if (id === 'sheet-cedar') await saveSheetDraft('sheet-cedar', CEDAR('414 Sample Street'), 3)
+      return publishSheet(id, ...rest)
+    }
+    const went = await publishUsualToJobs({ readBuilderSheets, publishSheet: racing }, ask)
+    expect(went.ok && { done: went.value.done, failed: went.value.failed }).toEqual({ done: 1, failed: [{ name: 'Cedar Park Medical Office', why: MOVED_ON_PUBLISH }] })
+    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1, draft: { place: '414 Sample Street' } })
+    expect(went.ok && went.value.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
+    expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 2 })
+  })
+
+  it('holds a job the page has words of its own for, with the reason', async () => {
+    seed()
+    const went = await publishUsualToJobs(io, { ...ask, heldHere: (projectId) => (projectId === 'cedar' ? 'moved' : projectId === 'mesa' ? 'own-changes' : null) })
+    expect(went.ok && { done: went.value.done, held: went.value.held }).toEqual({
+      done: 0,
+      held: [
+        { name: 'Cedar Park Medical Office', why: 'Held. It changed somewhere else. Choose on its panel first.' },
+        { name: 'Mesa Verde Retail Shell', why: 'Held. It has changes of its own waiting.' },
+        { name: 'Oak Hollow Offices', why: 'Held. It has no sheet yet.' },
+      ],
+    })
+    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1 })
+  })
+
+  it('says so when the jobs did not read, and publishes to none', async () => {
+    seed()
+    const went = await publishUsualToJobs({ readBuilderSheets: async () => Promise.reject(new Error('The network is down.')), publishSheet }, ask)
+    expect(went).toEqual({ ok: false, error: 'The network is down.' })
+    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1 })
   })
 })
