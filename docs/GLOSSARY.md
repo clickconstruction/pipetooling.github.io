@@ -6678,6 +6678,7 @@ A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with n
 A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
 A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
 Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
+A **send to a GC** (v2.8151) puts the published Sub NDA on the customer portal of a customer who is the GC on a job with us, **about** one job or all their jobs, with the day it went and the day they opened it ([`send.ts`](../src/lib/documentBuilder/send.ts), [`customerPageBuilders.ts`](../src/lib/documentBuilder/customerPageBuilders.ts)).
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.

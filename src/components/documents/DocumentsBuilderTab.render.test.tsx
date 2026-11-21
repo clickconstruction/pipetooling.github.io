@@ -155,6 +155,14 @@ describe('DocumentsBuilderTab', () => {
     expect(screen.getByRole('button', { name: 'Open Sub NDA' })).toBeTruthy()
   })
 
+  it('puts the send to GCs under the Sub NDA\u2019s map (step 9)', async () => {
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Sub NDA' }))
+    expect(await screen.findByRole('heading', { level: 3, name: 'Send it to a GC' })).toBeTruthy()
+    // The stub's database holds no job with a GC on it.
+    expect(screen.getByText('No customer is the GC on a job yet. A GC shows here once a job names them as its GC.')).toBeTruthy()
+  })
+
   it('opens straight onto a builder the address names, and onto the list for a name it does not know', async () => {
     open({ route: '/documents?tab=builder&builder=sub-nda' })
     expect(await screen.findByText('Step 1 of 11')).toBeTruthy()

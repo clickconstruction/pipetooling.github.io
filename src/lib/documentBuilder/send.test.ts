@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { firstName, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, firstName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
 const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
@@ -75,6 +75,47 @@ describe('who the second press goes to', () => {
       resendTo(party({ contacts: [], send: send({ contactEmail: '' }) })),
     ].map((r) => plainSentence(r?.words ?? '').replace(/\S+@\S+\.test/g, 'an address'))
     expect(lines.flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+})
+
+describe('what a send to a GC is about', () => {
+  const gc = party({ id: 'northgate', name: 'Northgate Builders', jobs: [{ id: 'j1', label: 'Pike Street clinic · Job 1180' }, { id: 'j2', label: 'Harbor annex · Job 1204' }] })
+
+  it('offers all their jobs first, then each job', () => {
+    expect(aboutChoices(gc)).toEqual([
+      { value: ABOUT_ALL_JOBS, label: 'All their jobs with you' },
+      { value: 'j1', label: 'Pike Street clinic · Job 1180' },
+      { value: 'j2', label: 'Harbor annex · Job 1204' },
+    ])
+    expect(aboutChoices(party())).toEqual([{ value: ABOUT_ALL_JOBS, label: 'All their jobs with you' }])
+  })
+
+  it('is all their jobs when nobody picks, and never a job that is not theirs', () => {
+    expect(aboutJobId(gc, ABOUT_ALL_JOBS)).toBeNull()
+    expect(aboutJobId(gc, 'j2')).toBe('j2')
+    expect(aboutJobId(gc, 'someone-elses-job')).toBeNull()
+  })
+})
+
+describe('the rows a long list shows', () => {
+  const many = Array.from({ length: SEND_LIST_FIRST_ROWS + 5 }, (_, i) => party({ id: `gc${i}`, name: `Made-up Builders ${i}` }))
+  const sent = party({ id: 'northgate', name: 'Northgate Builders', send: send() })
+
+  it('is everyone, with no find box', () => {
+    expect(shownParties([...many, sent], null)).toEqual({ rows: [...many, sent], more: 0 })
+  })
+
+  it('is who was sent to and the first few others until someone types, with how many more', () => {
+    const got = shownParties([...many, sent], '')
+    expect(got.rows[0]).toBe(sent)
+    expect(got.rows).toHaveLength(1 + SEND_LIST_FIRST_ROWS)
+    expect(got.more).toBe(5)
+  })
+
+  it('is every party whose name holds each word typed', () => {
+    expect(shownParties([...many, sent], ' north  build ').rows).toEqual([sent])
+    expect(shownParties([...many, sent], 'builders 16').rows.map((p) => p.id)).toEqual(['gc16'])
+    expect(shownParties([...many, sent], 'nobody at all')).toEqual({ rows: [], more: 0 })
   })
 })
 

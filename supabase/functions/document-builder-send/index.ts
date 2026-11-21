@@ -5,10 +5,17 @@ import { documentBuilderCaller } from '../_shared/documentBuilderCaller.ts'
 import { documentBuilderLinkUrl } from '../_shared/documentBuilderLink.ts'
 import { sheetLinkCodeFor } from '../_shared/documentBuilderLinkCode.ts'
 import {
+  BUILDER_SEND_SENT_KIND,
   DOCUMENT_BUILDER_SEND_REFUSALS as REFUSALS,
   SHEET_SEND_SENT_KIND,
+  builderSendEmail,
+  customerPageUrl,
+  gcJobLabel,
+  gcPageLink,
+  parseBuilderSend,
   parseSheetSend,
   resendGoesToWhoItWentTo,
+  sendAskKind,
   sheetSendEmail,
   sheetSendMessageKey,
   sheetWentOutChecked,
@@ -20,6 +27,7 @@ import { sentCopyKeptHtml } from '../_shared/sentCopyEmail.ts'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME, GC_TRADE_EMAIL_TEST_TYPE, newTradeToken, tradeEmailTestSubject, tradePortalLinkUrl, tradeTestLinkUrl } from '../_shared/gcTradeEmail.ts'
 import { resolveTradeLink, sha256Hex, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
@@ -40,6 +48,15 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
  *     used. A company that never had a page gets one. A page that was turned off stays off: the send is refused,
  *     since a send never turns a page back on. Then the sheet's own link (made when the sheet never had one), the
  *     email, and only after it went: the send's row, the message on the company's thread and the sent copy.
+ *   POST { action: 'send', builderKey, customerId, aboutJobId, contactEmail, note, why, anyway?, test? }   a dev, signed in
+ *       → the same answers, with `send.aboutJobId`
+ *     Step 9: a published builder goes to one person at a customer who is the GC on a job with us. The same order:
+ *     the caller, the builder (published), the read mark on its newest revision, the customer (the GC on a job, and
+ *     `aboutJobId` one of those jobs or null for all of them), the person (on the customer's record with that email,
+ *     and for a reminder the address the row went to), then their page (`customer_portal_links`, the GC's view or the
+ *     whole account's): on is used, never made gets one, turned off stays off. Then the email, and after it the
+ *     send's row and the sent copy. A reminder stays about what the first send was about.
+ *   POST { action: 'opened', portalToken, builderKey }   a GC's own page, by its link → { ok }
  *   POST { action: 'opened', token, sheetId }   a trade's own page, by its link
  *       → { ok }   The day and the revision they opened are kept on their send. A signed-in teammate's look and a
  *                  preview are not counted. A link that is off answers 404.
@@ -66,6 +83,9 @@ type Admin = any
 
 /** The kind whose rule hides a page's key in a filed copy (`sentCopyKeptHtml`): the trade email's, whose frame this email is. */
 const SENT_COPY_KEPT_AS = 'gc_trade_email'
+
+/** The email log's name for a builder sent to a GC (`EMAIL_CATALOG`). */
+const BUILDER_SEND_EMAIL_TYPE = 'document_builder_email'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SEND_COLUMNS = 'id, contact_name, contact_email, sent_at, sent_revision, times_sent, opened_at, opened_revision'
@@ -188,7 +208,136 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   return json({ ok: true, send: sendOut(row), page: 'on' })
 }
 
+type BuilderSendRow = SendRow & { about_job_id: string | null }
+const BUILDER_SEND_COLUMNS = `${SEND_COLUMNS}, about_job_id`
+
+/**
+ * A builder to a GC (step 9): a customer who is the GC on a job with us gets an email with one press to the page they
+ * already open, and the builder is then on that page, under the job it is about. The same order as a sheet's send.
+ */
+async function sendBuilderToGc(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
+  const caller = await documentBuilderCaller(req, admin, supabaseUrl, corsHeaders, (why) => refuse(why))
+  if (caller instanceof Response) return caller
+  const m = parseBuilderSend(body)
+  if (!m) return refuse('badRequest')
+
+  // The builder, as published. A draft is never sent.
+  const { data: builderRow } = await admin.from('document_builders').select('key, revision, read_revision, published').eq('key', m.builderKey).maybeSingle()
+  const builder = builderRow as { key: string; revision: number; read_revision: number | null; published: unknown } | null
+  if (!builder) return refuse('notFound')
+  if (builder.revision < 1 || !builder.published) return refuse('notPublished')
+  // A builder goes out as its newest published revision, so the mark is read on that one.
+  if (builder.read_revision !== builder.revision && !m.anyway) return refuse('unread')
+
+  // The customer is the GC on a job with us, and the person is on the customer's record.
+  const { data: customerRow } = await admin.from('customers').select('id, name, contact_info').eq('id', m.customerId).maybeSingle()
+  const customer = customerRow as { id: string; name: string | null; contact_info: unknown } | null
+  if (!customer) return refuse('notFound')
+  const { count: gcJobs } = await admin.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('gc_customer_id', m.customerId)
+  if (!gcJobs) return refuse('notAGc')
+  const { data: people } = await admin.from('customer_contact_persons').select('name, email').eq('customer_id', m.customerId)
+  const ownEmail = typeof customer.contact_info === 'object' && customer.contact_info !== null ? (customer.contact_info as Record<string, unknown>).email : null
+  const known = [{ name: String(customer.name ?? ''), email: typeof ownEmail === 'string' ? ownEmail : '' }, ...((people ?? []) as Array<{ name: string | null; email: string | null }>).map((p) => ({ name: String(p.name ?? ''), email: String(p.email ?? '') }))]
+  const contact = known.find((k) => k.email.trim().toLowerCase() === m.contactEmail)
+  if (!contact) return refuse('noSuchContact')
+  const contactName = contact.name.trim() || String(customer.name ?? '')
+
+  // The send that is on their page now, when there is one. A reminder goes to the address that row went to, and
+  // stays about what the first send was about.
+  const { data: liveRow } = await admin.from('document_builder_sends').select(BUILDER_SEND_COLUMNS).eq('builder_key', m.builderKey).is('sheet_id', null).eq('customer_id', m.customerId).is('taken_off_at', null).maybeSingle()
+  const live = liveRow as BuilderSendRow | null
+  if (!resendGoesToWhoItWentTo(m.why, live?.contact_email, m.contactEmail)) return refuse('notWhoItWentTo')
+  const aboutJobId = live && m.why !== 'first' ? live.about_job_id : m.aboutJobId
+  let aboutJob: string | null = null
+  if (aboutJobId) {
+    const { data: job } = await admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number').eq('id', aboutJobId).eq('gc_customer_id', m.customerId).maybeSingle()
+    // A first send names a job of theirs. A reminder about a job that has since left them still goes, and names no job.
+    if (!job && !(live && m.why !== 'first')) return refuse('notTheirJob')
+    aboutJob = job ? gcJobLabel(job as { job_name: string | null; hcp_number: string | null; click_number: string | null }) : null
+  }
+
+  // Their page: on is used, never made gets one, turned off stays off.
+  const { data: links } = await admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', m.customerId)
+  const page = gcPageLink((links ?? []) as Array<{ audience: string; token: string | null; revoked_at: string | null }>)
+  if (page.state === 'off') return refuse('pageOff')
+  let token = page.state === 'on' ? page.token : null
+
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) return refuse('noEmail')
+  const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+  const us = PORTAL_COMPANY.name
+  const replyTo = caller.email.trim() || undefined
+  const signer = (caller.name || us).trim()
+  const from = mailboxWithName(us, EMAIL_FROM)
+  const words = builderSendEmail({ company: us, aboutJob, note: m.note, why: m.why })
+
+  // A test copy: the same email to the caller's own address, with no page made, and nothing written.
+  if (m.test) {
+    if (!caller.email) return refuse('noSuchContact')
+    const email = buildGcTradeEmail({ lang: 'en', recipients: [contactName], company: String(customer.name ?? ''), subject: words.subject, lines: words.lines, linkUrl: tradeTestLinkUrl(origin), signer, gc: us })
+    const sent = await sendEmailViaResend(caller.email, tradeEmailTestSubject(email.subject), email.text, email.html, resendApiKey, { from, ...(replyTo ? { replyTo } : {}), emailType: GC_TRADE_EMAIL_TEST_TYPE })
+    if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
+    return json({ ok: true, test: true, email: caller.email, wouldGo: { name: contactName, email: contact.email } })
+  }
+
+  if (!token) {
+    // The customer never had a page: this send makes it, by mint_customer_portal_link's rules, as the whole account's.
+    const raw = newTradeToken()
+    const { error: mintError } = await admin.from('customer_portal_links').insert({ customer_id: m.customerId, audience: 'all', token: raw, token_hash: await sha256Hex(raw), created_by: caller.userId })
+    if (mintError) return refuse('failed', `The page was not made: ${mintError.message}`)
+    token = raw
+  }
+  const email = buildGcTradeEmail({ lang: 'en', recipients: [contactName], company: String(customer.name ?? ''), subject: words.subject, lines: words.lines, linkUrl: customerPageUrl(origin, token), signer, gc: us })
+  const sent = await sendEmailViaResend(contact.email.trim(), email.subject, email.text, email.html, resendApiKey, { from, ...(replyTo ? { replyTo } : {}), emailType: BUILDER_SEND_EMAIL_TYPE })
+  if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
+
+  // It went. Now the record: the send's own row, sent again on the same row while it is on their page.
+  const nowIso = new Date().toISOString()
+  const write = live
+    ? admin.from('document_builder_sends').update({ contact_name: contactName, contact_email: contact.email.trim(), about_job_id: aboutJobId, note: m.note, sent_revision: builder.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name, times_sent: live.times_sent + 1 }).eq('id', live.id)
+    : admin.from('document_builder_sends').insert({ builder_key: m.builderKey, customer_id: m.customerId, about_job_id: aboutJobId, contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: builder.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name })
+  const { data: written, error: writeError } = await write.select(BUILDER_SEND_COLUMNS).single()
+  if (writeError || !written) return refuse('failed', `Sent, but not recorded: ${writeError?.message ?? 'no row'}`)
+  const row = written as BuilderSendRow
+
+  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the customer's own page link,
+  // which is a key, so the copy keeps it cut short, as a sheet's does.
+  await fileSentEmailBestEffort(
+    { kind: BUILDER_SEND_SENT_KIND, title: email.subject, recipientName: String(customer.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
+    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html), resendEmailId: sent.resendEmailId ?? null },
+  )
+  console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, builder: m.builderKey, customer: m.customerId, about: aboutJobId, revision: builder.revision, why: m.why }))
+  return json({ ok: true, send: { ...sendOut(row), aboutJobId: row.about_job_id }, page: 'on' })
+}
+
+/** A GC's own page opened the builder: the day and the revision are kept on their live send. */
+async function openedByCustomer(req: Request, admin: Admin, body: Record<string, unknown>): Promise<Response> {
+  const token = typeof body.portalToken === 'string' ? body.portalToken.trim() : ''
+  const builderKey = typeof body.builderKey === 'string' ? body.builderKey.trim() : ''
+  if (token.length < 16 || token.length > 128 || !/^[a-z][a-z0-9-]{0,39}$/.test(builderKey)) return refuse('badRequest')
+  let { data: link } = await admin.from('customer_portal_links').select('customer_id, audience, revoked_at').eq('token', token).maybeSingle()
+  if (!link) link = (await admin.from('customer_portal_links').select('customer_id, audience, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()).data
+  const page = link as { customer_id: string; audience: string; revoked_at: string | null } | null
+  // A link that is off, and a link that shows only their own jobs, opens nothing here.
+  if (!page || page.revoked_at || (page.audience !== 'gc' && page.audience !== 'all')) return refuse('linkOff')
+  const { data: liveRow } = await admin.from('document_builder_sends').select('id, opened_revision').eq('builder_key', builderKey).is('sheet_id', null).eq('customer_id', page.customer_id).is('taken_off_at', null).maybeSingle()
+  const live = liveRow as { id: string; opened_revision: number | null } | null
+  if (!live) return refuse('notFound')
+  const { data: builderRow } = await admin.from('document_builders').select('revision').eq('key', builderKey).maybeSingle()
+  const revision = (builderRow as { revision: number } | null)?.revision ?? 0
+  if (revision < 1) return refuse('notFound')
+  // Who looked: someone outside is counted. A signed-in teammate and the office's preview are not.
+  const view = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+  if (view.count && live.opened_revision !== revision) {
+    const { error } = await admin.from('document_builder_sends').update({ opened_at: new Date().toISOString(), opened_revision: revision }).eq('id', live.id)
+    if (error) console.error('document-builder-send opened stamp', error.message)
+  }
+  console.log(JSON.stringify({ event: 'document_builder_send_opened', send: live.id, revision, viewer: view.viewer }))
+  return json({ ok: true })
+}
+
 async function opened(req: Request, admin: Admin, body: Record<string, unknown>): Promise<Response> {
+  if (typeof body.portalToken === 'string') return await openedByCustomer(req, admin, body)
   const token = typeof body.token === 'string' ? body.token.trim() : ''
   const sheetId = typeof body.sheetId === 'string' ? body.sheetId.toLowerCase() : ''
   if (token.length < 16 || token.length > 128 || !UUID_RE.test(sheetId)) return refuse('badRequest')
@@ -222,7 +371,7 @@ serve(async (req) => {
     const parsed: unknown = await req.json().catch(() => null)
     if (!parsed || typeof parsed !== 'object') return refuse('badRequest')
     const body = parsed as Record<string, unknown>
-    if (body.action === 'send') return await send(req, admin, supabaseUrl, body)
+    if (body.action === 'send') return sendAskKind(body) === 'builder' ? await sendBuilderToGc(req, admin, supabaseUrl, body) : await send(req, admin, supabaseUrl, body)
     if (body.action === 'opened') return await opened(req, admin, body)
     return refuse('badRequest')
   } catch (e) {

@@ -36,6 +36,9 @@ export type SendRecord = {
   openedRevision: number | null
 }
 
+/** A job a send to a GC can be about. */
+export type PartyJob = { id: string; label: string }
+
 export type SendParty = {
   id: string
   name: string
@@ -43,7 +46,40 @@ export type SendParty = {
   sub?: string
   page: PartyPage
   contacts: PartyContact[]
+  /** For a GC: their jobs with us, which a send can be about. */
+  jobs?: PartyJob[]
   send: SendRecord | null
+}
+
+/** How many rows a long list shows before anyone types in its find box, beyond the ones already sent to. */
+export const SEND_LIST_FIRST_ROWS = 12
+
+/**
+ * The rows a list with a find box shows. With words typed: every party whose name holds each word. With none: every
+ * party that was sent to, then the first few of the rest, and how many more the find box reaches. A list with no find
+ * box shows everyone.
+ */
+export function shownParties(parties: ReadonlyArray<SendParty>, query: string | null): { rows: SendParty[]; more: number } {
+  if (query == null) return { rows: [...parties], more: 0 }
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length > 0) return { rows: parties.filter((p) => words.every((w) => p.name.toLowerCase().includes(w))), more: 0 }
+  const sent = parties.filter((p) => p.send)
+  const rest = parties.filter((p) => !p.send)
+  return { rows: [...sent, ...rest.slice(0, SEND_LIST_FIRST_ROWS)], more: Math.max(0, rest.length - SEND_LIST_FIRST_ROWS) }
+}
+
+/** What a send to a GC is about when nobody picks: all their jobs. The owner's open call, on its default. */
+export const ABOUT_ALL_JOBS = ''
+export const ABOUT_ALL_JOBS_LABEL = 'All their jobs with you'
+
+/** The choices of what a send to a GC is about: all their jobs first, then each job. */
+export function aboutChoices(party: SendParty): Array<{ value: string; label: string }> {
+  return [{ value: ABOUT_ALL_JOBS, label: ABOUT_ALL_JOBS_LABEL }, ...(party.jobs ?? []).map((j) => ({ value: j.id, label: j.label }))]
+}
+
+/** The job a picked choice names, or null for all their jobs and for a job that is no longer one of theirs. */
+export function aboutJobId(party: SendParty, picked: string): string | null {
+  return (party.jobs ?? []).some((j) => j.id === picked) ? picked : null
 }
 
 export type SendStanding = 'not-sent' | 'sent' | 'opened' | 'changed'

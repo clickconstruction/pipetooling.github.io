@@ -111,6 +111,42 @@ The page the link opens is named *Secrecy on your jobs*. It shows the eleven ste
 
 A draft never shows on the link. A revision you publish later shows on the same link.
 
+## Send the Sub NDA to a GC
+
+A GC here is a customer who is the GC on a job with you. The card **Send it to a GC** lists each one. The card sits on the left side, under **This builder's link**.
+
+1. Publish the builder.
+2. Type a name in **Find a GC** when the list is long.
+3. Press {{button:outline-blue|Send it to them}} on the GC's row.
+4. Pick who at the GC gets the email.
+5. Pick what it is about. *All their jobs with you* is the choice it starts on.
+6. Read the note and change it if you want.
+7. Press the blue button. The button names the person, like {{button:blue|Send to Dana}}.
+
+The GC gets an email with a link to their own page. The builder is on that page. One about a job sits under that job's name. One about all their jobs sits at the top.
+
+A GC can look only. The GC walks the builder and reads each level. Nothing they pick comes back to you.
+
+- {{chip:gray|No page yet}} means the GC never had a page. Sending to that GC alone makes one.
+- {{chip:yellow|Their page is off}} means someone turned the page off. A send never turns a page back on.
+- A revision no attorney has read goes only after you tick **Send it anyway**.
+
+One button under the list sends to every GC whose page is on. The button asks first and says how many. Each of those sends is about all their jobs.
+
+## Read where a GC's send stands
+
+- {{chip:gray|Sent Nov 20 to Dana Whitlock}} names the day and the person.
+- {{chip:yellow|Not opened yet}} means they have not opened this revision.
+- {{chip:green|Opened Nov 21}} names the day they opened it.
+- {{chip:gray|All their jobs}} or a job's name says what the send is about.
+- {{chip:yellow|Changed since they opened it}} means you published a newer revision since.
+
+- {{button:outline-blue|Send it again}} sends a reminder to the same person.
+- {{button:outline-blue|Tell them it changed}} tells them of the new revision.
+- {{button:outline-blue|Take it off their page}} ends the send. The builder leaves their page.
+
+Each send is kept under [Sent copies](/documents?tab=sent) on Documents.
+
 ## Walk the Sub NDA
 
 The Sub NDA is a flow of eleven steps in one frame. The bar at the top has one dash for each step. Press a dash to open that step.

@@ -9,7 +9,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildGcTradeEmail } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { sentCopyKeptHtml } from '../../../supabase/functions/_shared/sentCopyEmail'
-import { SHEET_SEND_SENT_KIND, sheetSendEmail } from './sendWords'
+import { BUILDER_SEND_SENT_KIND, SHEET_SEND_SENT_KIND, builderSendEmail, customerPageUrl, sheetSendEmail } from './sendWords'
 
 const SOURCE = readFileSync(resolve(__dirname, '../../../supabase/functions/document-builder-send/index.ts'), 'utf8')
 
@@ -29,6 +29,17 @@ describe('the filed copy of a sheet\u2019s send', () => {
     expect(kept).not.toContain(token)
     expect(kept).toContain('href="https://app.example/t/\u2026"')
     expect(kept).toContain(sheetLink)
+  })
+
+  it('keeps a GC\u2019s page link out of the copy of a builder\u2019s send too: ?t=\u2026 and never the token', () => {
+    const page = 'b'.repeat(64)
+    const gcWords = builderSendEmail({ company: 'Made-up Plumbing', aboutJob: null, note: 'A made-up note.', why: 'first' })
+    const gc = buildGcTradeEmail({ lang: 'en', recipients: ['Dana Whitlock'], company: 'Northgate Builders', subject: gcWords.subject, lines: gcWords.lines, linkUrl: customerPageUrl('https://app.example', page), signer: 'A made-up sender', gc: 'Made-up Plumbing' })
+    expect(gc.html).toContain(page)
+    expect(sentCopyKeptHtml(BUILDER_SEND_SENT_KIND, gc.html)).toContain(page)
+    const kept = sentCopyKeptHtml('gc_trade_email', gc.html)
+    expect(kept).not.toContain(page)
+    expect(kept).toContain('href="https://app.example/portal?t=\u2026"')
   })
 
   it('is filed that way by the function', () => {
