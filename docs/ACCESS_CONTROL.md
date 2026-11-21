@@ -2635,6 +2635,9 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.7982 the same people may answer a builder Market's call list offers: `builder_call_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and **Put back** is one more insert (the list itself, v2.7993).
   Since v2.8118 what was looked up about a builder is kept in `builder_lookups`, read by `user_can_research_permits()` and inserted only by a dev account under its own name (`is_dev()`), with no update or delete.
   Since v2.8118 a press on a looked-up fact (**Checked**, **Wrong**, **Not right**, **Put back**) is one insert into `builder_lookup_checks` by anyone who reads permits, as oneself, with no update or delete (the Ask for block, v2.8121).
+  The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties` and `license_roll_left_off`.
+  A shared Hiring column does not open the State roll.
+  Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and its **Pull** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;
