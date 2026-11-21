@@ -1347,7 +1347,7 @@ export default function Dashboard() {
               setJobModeBands(on)
               window.scrollTo(0, 0)
             }}
-            style={{ fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 32, padding: '0.2rem 0.7rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: jobModeBands === on ? 'var(--text)' : 'var(--surface)', color: jobModeBands === on ? 'var(--surface)' : 'var(--text)' }}
+            style={{ fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 32, padding: '0.2rem 0.7rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: jobModeBands === on ? 'var(--text-base)' : 'var(--surface)', color: jobModeBands === on ? 'var(--surface)' : 'var(--text-base)' }}
           >
             {on ? 'After' : 'Before'}
           </button>
