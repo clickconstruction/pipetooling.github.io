@@ -586,6 +586,7 @@ Against the mock-up, the built steps still lack:
 - The tab's row has no *A sheet on N of M jobs* chip.
 - The Sub NDA has no **Edit** / **Share** switch. Its Share side comes with steps 8 and 9.
 - On a phone the map's column heads run together and its cells are bars, not the small squares.
+  **Fixed**, v2.8144: there a head is the level's bars and a cell is a 44 px square.
 - The card of changed pages has no counts and no legend, and the open cell has no outline.
 - A trade's row does not say where its certificate stands. That is step 6.
 - Most presses in the tab are under 44 px tall on a phone.
