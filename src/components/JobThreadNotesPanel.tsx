@@ -37,6 +37,7 @@ import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
 import { canTagInJobNotes } from '../lib/jobs/noteTags'
+import { noteComposerLook } from '../lib/jobs/noteComposerLook'
 import { useJobNoteTags } from '../hooks/useJobNoteTags'
 import { useNoteTagBox } from './jobs/NoteTagBox'
 import { TaggedNoteBody } from './jobs/TaggedNoteBody'
@@ -135,6 +136,12 @@ type JobThreadNotesPanelProps = {
    * office's surfaces, and anyone who reads no lines.
    */
   customerLines?: readonly JobActivityMessage[] | null
+  /**
+   * The host draws the card this panel sits in (the job window's Activity fold on a phone). On a phone the card is
+   * then the one box: the panel and the composer are flat and the note box runs the card's inner width
+   * (`noteComposerLook`). Left out, and at a desk, the panel keeps its own box.
+   */
+  hostCard?: boolean
 }
 
 const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -142,11 +149,15 @@ const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
 function JobThreadStampButtons({
   actions,
   submitting,
+  minHeight,
 }: {
   actions: JobThreadStampActions
   submitting: boolean
+  /** A thumb's height on a phone; left out at a desk. */
+  minHeight?: number
 }) {
   const base = {
+    ...(minHeight ? { minHeight } : null),
     padding: '0.35rem 0.65rem',
     fontSize: '0.8125rem',
     fontWeight: 600,
@@ -213,7 +224,12 @@ export function JobThreadNotesPanel({
   estimateAuthor = null,
   customerBox,
   customerLines,
+  hostCard = false,
 }: JobThreadNotesPanelProps) {
+  // The phone's look (2026-11-21): one box where the host draws the card, the short hint, 16 px words, a thumb's presses.
+  const narrow = useNarrowViewport640()
+  const look = noteComposerLook({ phone: narrow, hostCard })
+  const pressHeight = look.pressMinHeight != null ? { minHeight: look.pressMinHeight } : null
   const [boxKind, setBoxKind] = useState<JobBoxKind>('note')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -274,7 +290,7 @@ export function JobThreadNotesPanel({
   const viewerId = tagViewerId ?? null
   const tagging = Boolean(tagJobId && onSubmitTagged)
   const noteTags = useJobNoteTags(tagJobId, (activityProp ?? notes ?? []).length)
-  const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above' })
+  const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above', bigAt: look.pressMinHeight != null })
   const sendNote = () => {
     if (tagging && onSubmitTagged) {
       onSubmitTagged(tagBox.taggedIds(draft.trim()))
@@ -369,7 +385,7 @@ export function JobThreadNotesPanel({
   }, [loading, visibleEntries.length, activityTailKey])
 
   // The pills at 32 px on a phone (punch list #189, PR 3), the office's small chip at a desk.
-  const narrowForPills = useNarrowViewport640()
+  const narrowForPills = narrow
   const pillsOnOneRow = activityPillsOnOneRow({ narrow: narrowForPills, withCustomer })
   const pillStyle = pillsOnOneRow
     ? { ...activityPillStyle(narrowForPills), padding: ONE_ROW_PILLS.pill, flexShrink: 0 }
@@ -483,12 +499,18 @@ export function JobThreadNotesPanel({
 
   return (
     <div
-      style={{
-        padding: '0.75rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 6,
-      }}
+      data-note-panel={look.flat ? 'flat' : 'boxed'}
+      style={
+        look.flat
+          ? // The host's card is the box: no border, no fill and no side padding of the panel's own.
+            { padding: '0.25rem 0 0' }
+          : {
+              padding: '0.75rem',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+            }
+      }
     >
       {(teamMembers && teamMembers.length > 0) || showSectionTitle ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
@@ -541,10 +563,9 @@ export function JobThreadNotesPanel({
             maxHeight: ACTIVITY_LIST_MAX_HEIGHT,
             overflowY: 'auto',
             // A crisp edge under the list (v2.1768): without it a half-scrolled
-            // entry visually merged into the composer right below.
-            borderBottom: '1px solid var(--border)',
-            paddingBottom: '0.35rem',
-            marginBottom: '0.25rem',
+            // entry visually merged into the composer right below. A flat composer draws that one line itself,
+            // right on the list's foot, so it lies over the last entry's own rule instead of doubling it.
+            ...(look.flat ? null : { borderBottom: '1px solid var(--border)', paddingBottom: '0.35rem', marginBottom: '0.25rem' }),
             minHeight: 0,
           }}
         >
@@ -794,17 +815,23 @@ export function JobThreadNotesPanel({
       )}
       {canPost && (
         <div
+          data-note-composer=""
           style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '0.5rem',
-            marginTop: '0.5rem',
-            // The composer is its own quiet card (v2.1768) so it never reads
-            // as part of the feed's last entry.
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '0.6rem',
+            ...(look.flat
+              ? // One hairline above, and nothing else: the card around the panel is the box.
+                { marginTop: -1, borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }
+              : {
+                  marginTop: '0.5rem',
+                  // The composer is its own quiet card (v2.1768) so it never reads
+                  // as part of the feed's last entry.
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '0.6rem',
+                }),
           }}
         >
           {customerBox && (
@@ -817,7 +844,7 @@ export function JobThreadNotesPanel({
                   aria-checked={boxKind === k.kind}
                   title={k.tip}
                   onClick={() => setBoxKind(k.kind)}
-                  style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(boxKind === k.kind ? RING : null) }}
+                  style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...pressHeight, ...(pressHeight ? { minWidth: 56 } : null), ...(boxKind === k.kind ? RING : null) }}
                 >
                   {k.label}
                 </button>
@@ -894,13 +921,13 @@ export function JobThreadNotesPanel({
                   maxLength={2000}
                   placeholder={pctNoteRequired(pctDraft) ? 'Add a note (required)…' : 'Add a note (optional)…'}
                   aria-label="Note for percent change"
-                  style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.4rem 0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
+                  style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.4rem 0.5rem', fontSize: look.boxFontSize, border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box', ...pressHeight }}
                 />
                 <button
                   type="button"
                   onClick={cancelPctEditor}
                   disabled={pctSaving}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0, ...pressHeight }}
                 >
                   Cancel
                 </button>
@@ -908,7 +935,7 @@ export function JobThreadNotesPanel({
                   type="button"
                   onClick={commitPctEditor}
                   disabled={pctSaving}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? DEAD_PRESS_FILL : '#2563eb', color: pctSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? DEAD_PRESS_FILL : '#2563eb', color: pctSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0, ...pressHeight }}
                 >
                   {pctSaving ? 'Setting…' : `Set to ${pctDraft}%`}
                 </button>
@@ -947,14 +974,14 @@ export function JobThreadNotesPanel({
                 disabled={submitting}
                 maxLength={2000}
                 rows={1}
-                placeholder="Type a note… (Enter to post, Shift+Enter for new line)"
+                placeholder={look.placeholder}
                 style={{
                   width: '100%',
                   padding: '0.5rem 0.6rem',
                   // Room for descenders (v2.1768) — at rows=1 the placeholder's
-                  // g/p glyphs clipped against the border.
-                  minHeight: '2.4rem',
-                  fontSize: '0.875rem',
+                  // g/p glyphs clipped against the border. A thumb's height on a phone.
+                  minHeight: look.pressMinHeight ?? '2.4rem',
+                  fontSize: look.boxFontSize,
                   lineHeight: 1.4,
                   border: '1px solid var(--border-strong)',
                   borderRadius: 8,
@@ -981,7 +1008,7 @@ export function JobThreadNotesPanel({
                 }}
               >
                 {jobThreadStampActions ? (
-                  <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
+                  <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} minHeight={look.pressMinHeight ?? undefined} />
                 ) : null}
                 {canEditPct ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -992,7 +1019,7 @@ export function JobThreadNotesPanel({
                     <button
                       type="button"
                       onClick={openPctEditor}
-                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap', ...pressHeight }}
                     >
                       Set % complete
                     </button>
@@ -1013,6 +1040,8 @@ export function JobThreadNotesPanel({
                     cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
                     flexShrink: 0,
                     marginLeft: 'auto',
+                    whiteSpace: 'nowrap',
+                    ...pressHeight,
                   }}
                 >
                   {submitting ? 'Posting…' : 'Post note'}

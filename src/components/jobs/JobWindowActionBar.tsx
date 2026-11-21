@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import JobStatusStepper, { type JobStatusStepperJob } from './JobStatusStepper'
 import { PhoneSheet } from '../PhoneSheet'
+import { useNoteTagBox } from './NoteTagBox'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { JOB_WINDOW_BAR_MIN_HEIGHT, type JobWindowBarButton, type JobWindowBarKey, type JobWindowBarTone } from '../../lib/jobs/jobWindowBar'
 
@@ -37,17 +39,21 @@ const tone: Record<JobWindowBarTone, CSSProperties> = {
  * #189, PR 4): a non-scrolling row under the body drawn from what the kernel returns —
  * `tabbedJobWindowBar` (Status ▾ · the job's next verb · Note) or `crewJobWindowBar` (Arrived or
  * Leaving · Leave report · Note) — so the moves are on screen at any scroll depth. Every button
- * stands `JOB_WINDOW_BAR_MIN_HEIGHT` tall. Draws nothing for an empty row.
+ * stands `JOB_WINDOW_BAR_MIN_HEIGHT` tall. Draws nothing for an empty row. While one of the window's
+ * sheets is up the bar stands down (`jobWindowBarStandsDown`): it keeps its room and is not drawn.
  */
 export function JobWindowActionBar({
   buttons,
   onPress,
   safeAreaBottom = true,
+  standsDown = false,
 }: {
   buttons: readonly JobWindowBarButton[]
   onPress: (key: JobWindowBarKey) => void
   /** Pad the bar's foot by the home bar's inset — off inside a card whose overlay already does. */
   safeAreaBottom?: boolean
+  /** A sheet opened from the window is up: the bar keeps its room, is not drawn and takes no press. */
+  standsDown?: boolean
 }) {
   if (buttons.length === 0) return null
   const grows = buttons.some((b) => b.grow)
@@ -58,8 +64,12 @@ export function JobWindowActionBar({
       // v2.5904: each press on the bar writes one `ui_nav_clicks` row, named by the button, as the signed-in viewer.
       data-navtrack="job-window"
       data-navbuttons=""
+      data-stands-down={standsDown ? '' : undefined}
+      aria-hidden={standsDown || undefined}
       onClickCapture={recordViewerNavClick}
       style={{
+        // Hidden, not unmounted: the body above keeps its height, so nothing moves behind the sheet.
+        ...(standsDown ? { visibility: 'hidden' as const } : null),
         display: 'grid',
         gridTemplateColumns: buttons.map((b) => (b.grow ? 'minmax(0, 1fr)' : 'auto')).join(' '),
         ...(grows ? null : { justifyContent: 'space-between' }),
@@ -123,6 +133,15 @@ export function JobWindowStatusSheet({ open, job, authRole, onChanged, onClose }
  * keyboard for the same press) with Save beside it at the bar's height. Save posts the note
  * exactly as the composer's Post note does — the same draft, the same thread — and closes the
  * sheet once it lands; a failed post keeps the words and the sheet.
+ *
+ * The sheet is drawn at the top of the page, outside the window that opens it (2026-11-21). Inside
+ * the tabbed window it sat in the body that scrolls, and an iPhone cut it to that body's edge: the
+ * bar showed over the sheet's lower half, Save with it.
+ *
+ * With `tagJobId` and `canTag` the box tags a teammate as the Activity composer does (punch list
+ * #363), through the same `useNoteTagBox`: the same names, the same tint, the same Will tag line and
+ * the same Backspace. The row of names is in the sheet's own flow, above the box, so the sheet grows
+ * by it and the row stays above the keyboard. Save hands back the ids of the names still in the words.
  */
 export function JobWindowNoteSheet({
   open,
@@ -131,16 +150,24 @@ export function JobWindowNoteSheet({
   submitting,
   onSave,
   onClose,
+  tagJobId = null,
+  canTag = false,
 }: {
   open: boolean
   draft: string
   onDraftChange: (v: string) => void
   submitting: boolean
-  /** Resolves true once the note is on the thread. */
-  onSave: () => Promise<boolean>
+  /** Resolves true once the note is on the thread. Handed the tagged teammates' ids when the box can tag. */
+  onSave: (taggedUserIds?: string[]) => Promise<boolean>
   onClose: () => void
+  /** The Pipeline job the note belongs to. With it and `canTag` the box offers the row of names. */
+  tagJobId?: string | null
+  /** Whether this viewer is offered the @ button and the row (`canTagInJobNotes`). */
+  canTag?: boolean
 }) {
   const boxRef = useRef<HTMLTextAreaElement>(null)
+  const tagging = Boolean(tagJobId) && canTag
+  const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: boxRef, enabled: open && tagging, place: 'inline', bigAt: true })
   useLayoutEffect(() => {
     if (!open) return
     const el = boxRef.current
@@ -148,55 +175,77 @@ export function JobWindowNoteSheet({
     el.focus()
     el.setSelectionRange(el.value.length, el.value.length)
   }, [open])
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
   const empty = draft.trim().length === 0
   const save = () => {
     if (submitting || empty) return
-    void onSave().then((ok) => {
-      if (ok) onClose()
+    void onSave(tagging ? tagBox.taggedIds(draft.trim()) : undefined).then((ok) => {
+      if (!ok) return
+      tagBox.reset()
+      onClose()
     })
   }
-  return (
+  return createPortal(
     <PhoneSheet label="Note" title="Note" onClose={onClose}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'end', padding: '0.75rem 1rem 1rem' }}>
-        <textarea
-          ref={boxRef}
-          aria-label="Add a note"
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          disabled={submitting}
-          maxLength={2000}
-          rows={3}
-          placeholder="Write a note for the crew and the office…"
-          style={{
-            width: '100%',
-            minHeight: JOB_WINDOW_BAR_MIN_HEIGHT,
-            padding: '0.6rem 0.7rem',
-            // 16 px: iOS zooms the page into a smaller field on focus.
-            fontSize: '1rem',
-            lineHeight: 1.4,
-            border: '1px solid var(--border-strong)',
-            borderRadius: 10,
-            background: 'var(--surface)',
-            color: 'var(--text-strong)',
-            boxSizing: 'border-box',
-            resize: 'none',
-            maxHeight: '10rem',
-            overflowY: 'auto',
-          }}
-        />
-        <button
-          type="button"
-          onClick={save}
-          disabled={submitting || empty}
-          style={{
-            ...btn,
-            ...(submitting || empty ? { background: 'var(--bg-200)', borderColor: 'var(--bg-200)', color: 'var(--text-muted)', cursor: 'not-allowed' } : tone.blue),
-          }}
-        >
-          {submitting ? 'Saving…' : 'Save'}
-        </button>
+      {/* The body scrolls inside the sheet, so a long row of names never pushes Save under the keyboard. */}
+      <div style={{ display: 'grid', gap: '0.5rem', padding: '0.75rem 1rem 1rem', minHeight: 0, overflowY: 'auto' }}>
+        {tagBox.list}
+        {tagBox.chips}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'stretch' }}>
+          {/* The mark in the words is drawn under the box, so the box is see-through and this holds its background. */}
+          <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 10, minWidth: 0, display: 'flex' }}>
+            {tagBox.mark}
+            <textarea
+              ref={boxRef}
+              aria-label="Add a note"
+              value={draft}
+              onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+              onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
+              onKeyDown={(e) => {
+                // The row takes its own keys first: Enter picks a name, Backspace takes a whole tag off.
+                tagBox.onKeyDown(e)
+              }}
+              disabled={submitting}
+              maxLength={2000}
+              rows={3}
+              placeholder="Write a note for the crew and the office…"
+              style={{
+                width: '100%',
+                minHeight: JOB_WINDOW_BAR_MIN_HEIGHT,
+                padding: '0.6rem 0.7rem',
+                // 16 px: iOS zooms the page into a smaller field on focus.
+                fontSize: '1rem',
+                lineHeight: 1.4,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 10,
+                background: 'transparent',
+                color: 'var(--text-strong)',
+                boxSizing: 'border-box',
+                resize: 'none',
+                maxHeight: '10rem',
+                overflowY: 'auto',
+                position: 'relative',
+                display: 'block',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '0.375rem' }}>
+            {tagBox.atButton}
+            <button
+              type="button"
+              onClick={save}
+              disabled={submitting || empty}
+              style={{
+                ...btn,
+                ...(submitting || empty ? { background: 'var(--bg-200)', borderColor: 'var(--bg-200)', color: 'var(--text-muted)', cursor: 'not-allowed' } : tone.blue),
+              }}
+            >
+              {submitting ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
       </div>
-    </PhoneSheet>
+    </PhoneSheet>,
+    document.body,
   )
 }
