@@ -3442,6 +3442,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
+> **v2.8156 — a job's paper built from settings** (punch list #389, step 3): such a paper has no body, form or link of its own, since its words are the Contract Book's clauses. The person path now reads the row's `job_required_paper_id`, and for a row with nothing else to sign it asks `jobPaperBuiltFromSettings` (`_shared/contractSigningSend.ts`) whether that required paper carries `settings`. When it does the row goes out as any other, in email or link mode. Every other row takes no new read and is refused or sent as before, and the company branch is untouched. A read that fails answers 500, never the nothing-to-sign refusal. **Redeploy required**; until then the function refuses such a paper as having nothing to sign.
+
 > **v2.8101 — who may send**: the person path asks `signingCallerRefusal` (`_shared/contractSigningSend.ts`) before it reads the paper. It takes the four roles that write a paper (dev, master_technician, assistant, controller), and never a training account or a digital twin; anyone else gets a 403 in words with `code: 'forbidden'`. The archived check moved up beside it. The company branch keeps its own gate. **Redeploy required.**
 
 > **v2.8013 — reminders by email** (punch list #376): an emailed send of an agreement filed under a person starts `reminder_count` again and sets `next_reminder_at` three days out, only while `app_settings` `person_paper_reminders_v1` is `'1'` and the paper's own `reminders_enabled` is not off. `mode: 'link'` clears `next_reminder_at`: a link handed over ends the emailed one, so the robot stops. Any other paper writes neither column. The function now reads `doc_type` and `reminders_enabled`, so migration `20261120133000` is pushed before it is deployed. Rules: [`_shared/personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts) → `reminderPatchOnSend`; the timed half is [remind-person-papers](#remind-person-papers).
@@ -3573,6 +3575,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Identity**: Caller must match roster + auth the same way as **`list_my_contract_dashboard_prompts`** ( **`users.name`** equals **`person_name`**, or a non-archived **`people`** row with the same **`person_name`** and **`email`** as **`users.email`**).
 
 **A job's required paper** (v2.7652, papers before a job opens): a row with **`job_required_paper_id`** is signed from the job's prompt, so it does not need **`dashboard_prompt_after_clock_in`**. Its signer is the roster person it was made for, and that person is the caller only by **`people.account_user_id`**: never by a name or an email match. Anyone else gets **403** in words.
+
+**A job's paper built from settings** (v2.8156, punch list #389 step 3): a row with nothing of its own to sign is let through when the required paper it names carries **`settings`** (`jobPaperBuiltFromSettings`, `_shared/contractSigningSend.ts`), because its words are the Contract Book's clauses. Every other row is checked as before. **Redeploy required**; until then such a paper is refused as having nothing to sign.
 
 **Success** (**200** JSON): `{ "ok": true, "accept_url": string }`
 

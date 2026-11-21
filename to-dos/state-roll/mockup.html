@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospects · State roll: drawn before it is built</title>
+<style>
+  :root { --ink:#16283c; --muted:#5b6777; --line:#d5dae1; --bg:#f3f5f7; --card:#fff; --blue:#2563eb; --chip:#e6e9ee; --green:#166534; --green-bg:#e7f6ec; --amber-bg:#fff7e6; --amber-line:#f0c36d; --amber-ink:#7a4b00; --red-ink:#9b1c1c; --red-bg:#fdecec; --grey:#6b7686; --door:#f6f8fa; --tint:#eef4ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:34px 0 8px; } h3 { font-size:14.5px; margin:0 0 2px; }
+  .lede { color:var(--muted); margin:0 0 14px; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0 0 12px; }
+  .rec { border-left:4px solid var(--blue); }
+  .warn { border-left:4px solid var(--amber-line); background:var(--amber-bg); }
+  table { border-collapse:collapse; width:100%; font-size:14px; } th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap; } tr:last-child td { border-bottom:0; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .scroll { overflow-x:auto; } .no { white-space:nowrap; }
+  .cap { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 6px; }
+  .say { font-size:13px; color:var(--muted); margin:6px 2px 0; }
+  ul, ol { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+  .state { margin:0 0 18px; }
+
+  /* The page's own chrome. */
+  .pills, .views, .chips { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .pillbtn { border:1px solid var(--line); border-radius:999px; padding:5px 13px; font-size:13.5px; background:#fff; white-space:nowrap; }
+  .pillbtn.on { background:var(--ink); border-color:var(--ink); color:#fff; font-weight:600; }
+  .pillbtn.new { box-shadow:0 0 0 3px #c7d9ff; }
+  .views { margin-top:10px; border-bottom:1px solid var(--line); gap:0; }
+  .view { padding:7px 12px; font-size:13.5px; color:var(--muted); border-bottom:2px solid transparent; white-space:nowrap; }
+  .view.on { color:var(--ink); font-weight:700; border-bottom-color:var(--blue); }
+  .chips { margin-top:10px; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:2px 10px; font-size:12.5px; background:#fff; white-space:nowrap; }
+  .chip.on { background:var(--tint); border-color:#a9c2f5; color:#1d4ed8; font-weight:600; }
+  .chip.off { color:var(--grey); border-style:dashed; }
+  .chiplab { font-size:12px; color:var(--muted); margin-right:2px; }
+
+  .tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:12px 0; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .tile .n { font-size:22px; font-weight:700; line-height:1.15; } .tile .l { font-size:12px; color:var(--muted); }
+
+  .tag { display:inline-block; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:600; white-space:nowrap; margin:0 3px 3px 0; }
+  .tag.g { background:var(--green-bg); color:var(--green); } .tag.a { background:var(--amber-bg); color:var(--amber-ink); } .tag.b { background:#e8f0fe; color:#1d4ed8; } .tag.k { background:var(--chip); color:var(--ink); }
+  .tag.lk { background:transparent; color:var(--grey); border:1px dashed #9aa5b3; font-weight:500; }
+  .call { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; margin-bottom:8px; }
+  .call .name { font-weight:700; font-size:15px; }
+  .call .f { font-size:13px; margin-top:3px; }
+  .call .acts { display:flex; flex-direction:column; gap:6px; }
+  .btn { border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; background:#fff; white-space:nowrap; text-align:center; }
+  .btn.pri { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+  .btn.quiet { color:var(--muted); }
+
+  /* Values in place: a worked-out value is plain bold, a changeable one is underlined and tinted. */
+  .val { font-weight:700; }
+  .chg { font-weight:700; color:#1d4ed8; background:var(--tint); border-bottom:1.5px solid #1d4ed8; border-radius:3px 3px 0 0; padding:0 3px; }
+  .un { color:var(--grey); font-weight:400; }
+  .lines { display:grid; grid-template-columns:92px minmax(0,1fr); gap:3px 10px; font-size:13px; }
+  .lines .lab { color:var(--muted); }
+
+  .door { font-size:13px; margin-top:7px; padding:8px 10px; background:var(--door); border-radius:8px; }
+  .door .top { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:4px; }
+  .pill { display:inline-block; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .pill.not { background:transparent; color:var(--grey); border:1px dashed #9aa5b3; }
+  .pill.ok { background:var(--green-bg); color:var(--green); } .pill.bad { background:var(--red-bg); color:var(--red-ink); } .pill.am { background:var(--amber-bg); color:var(--amber-ink); }
+  .mini { display:inline-block; border:1px solid var(--line); border-radius:7px; padding:3px 9px; font-size:12.5px; background:#fff; white-space:nowrap; }
+  .mini.yes { border-color:#9bc7a8; color:var(--green); font-weight:600; }
+  .field { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .input { display:inline-block; border:1.5px solid var(--blue); border-radius:6px; padding:2px 8px; min-width:130px; background:#fff; }
+  .hist { font-size:13px; } .hist div { padding:4px 0; border-bottom:1px dashed var(--line); } .hist div:last-child { border-bottom:0; }
+  .hist .d { display:inline-block; width:98px; color:var(--muted); }
+  .phone { width:380px; max-width:100%; border:1px solid #9aa5b3; border-radius:22px; padding:14px 10px; background:var(--bg); margin:0 auto; }
+  .phone .call { grid-template-columns:minmax(0,1fr); } .phone .call .acts { flex-direction:row; flex-wrap:wrap; }
+  .phone .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .phone .views { overflow-x:auto; flex-wrap:nowrap; }
+  @media (max-width:640px) {
+    .call { grid-template-columns:minmax(0,1fr); } .call .acts { flex-direction:row; flex-wrap:wrap; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .views { overflow-x:auto; flex-wrap:nowrap; }
+    .lines { grid-template-columns:80px minmax(0,1fr); }
+  }
+</style></head><body><main>
+
+<h1>State roll: who holds a license near us, drawn before it is built</h1>
+<p class="lede">A new tab on Prospects, beside Hiring and Permits · nothing here is built yet · every person, license number, company, phone and day on this page is made up.</p>
+
+<div class="box rec"><b>What Taunya asked for, Nov 20.</b> <i>“I'm having an issue finding experienced plumbers and I really need these plumbers to be licensed … use that as a way to find people who were recently licensed or to find people whose licenses have just expired … collect the information of everybody who is licensed and then begin adding information to that.”</i> On Nov 21: build it, and put it all under a new tab.</div>
+
+<div class="box warn"><b>The one thing the state does not give.</b> Neither roll carries a phone, a street address or an email for a person. State law has kept those private since 2023. The tab says who to look for and where they live by county and ZIP. How to reach each one is added by the office, by hand, and every row says so.</div>
+
+<h2>1. Where it sits</h2>
+<div class="box">
+  <div class="pills">
+    <span class="pillbtn">Customers</span><span class="pillbtn">Hiring</span><span class="pillbtn">Permits</span><span class="pillbtn on new">State roll</span>
+  </div>
+  <div class="views">
+    <span class="view on">Call this week</span><span class="view">Everyone</span><span class="view">Our own</span><span class="view">Pulls</span>
+  </div>
+  <div class="chips">
+    <span class="chiplab">Trade</span><span class="chip on">Plumbing</span><span class="chip">Electrical</span><span class="chip">A/C</span>
+  </div>
+  <div class="chips">
+    <span class="chiplab">Lives in</span><span class="chip on">Bexar</span><span class="chip on">Travis</span><span class="chip on">Hays</span><span class="chip on">Comal</span><span class="chip on">Guadalupe</span><span class="chip">+ Add a county</span>
+  </div>
+</div>
+<p class="say">Four views under one tab. <b>Call this week</b> is the opinion. <b>Everyone</b> is the kept roll. <b>Our own</b> checks our people and subs against the state. <b>Pulls</b> says when the state's files were last read. The name <b>State roll</b> is a first pick: People already has a Licenses tab for our own team.</p>
+
+<h2>2. Call this week</h2>
+<div class="tiles">
+  <div class="tile"><div class="n">5</div><div class="l">newly licensed in our counties this week</div></div>
+  <div class="tile"><div class="n">1</div><div class="l">stepped up to master</div></div>
+  <div class="tile"><div class="n">7</div><div class="l">lapsed 3 to 12 months ago after 5 years or more</div></div>
+  <div class="tile"><div class="n">2 <span class="sub">of 8</span></div><div class="l">names here with a way to reach them</div></div>
+</div>
+<div class="chips" style="margin-bottom:10px">
+  <span class="chip on">This week · 8</span><span class="chip">New journeyman · 4</span><span class="chip">Stepped up · 1</span><span class="chip">Lapsed, long held · 7</span><span class="chip">Medical gas · 3</span><span class="chip">Worked here before · 1</span><span class="chip off">Apprentices · off</span>
+</div>
+
+<div class="state">
+  <p class="cap">A. Newly licensed · nobody has found a way to reach them yet</p>
+  <div class="call">
+    <div>
+      <div class="name">Marlon Fenwick</div>
+      <div><span class="tag g">New journeyman</span><span class="tag k">Comal County</span><span class="tag b">Medical gas</span></div>
+      <div class="f">Journeyman Plumber <span class="val">J-000412</span>, licensed <span class="val">Nov 12</span>, <span class="val">9 days</span> ago. Expires <span class="val">Aug 31, 2027</span>. Lives in <span class="val">78130</span>.</div>
+      <div class="door">
+        <div class="top"><b>Reach</b><span class="pill not">Nobody found a way yet</span></div>
+        <div class="lines">
+          <span class="lab">Cell</span><span><span class="chg">Add a number</span></span>
+          <span class="lab">OK to text</span><span><span class="un">Not asked</span></span>
+          <span class="lab">How we know</span><span><span class="chg">Add a note</span></span>
+        </div>
+        <div class="sub" style="margin-top:5px">The state's roll has no phone or address. Add one when someone here knows them.</div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+  <p class="say">The reasons are the tags, and there is no score. <b>Pursue</b> makes a card on the Hiring board with the license filled in. <b>Not for us</b> takes the name off the list. <b>Leave off</b> is for a person who asks not to be listed: the name never comes back, on any pull.</p>
+</div>
+
+<div class="state">
+  <p class="cap">B. Stepped up to master · the office added a number</p>
+  <div class="call">
+    <div>
+      <div class="name">Odalys Brandt</div>
+      <div><span class="tag g">Master this month</span><span class="tag k">Bexar County</span><span class="tag lk">Worked here before, not checked</span></div>
+      <div class="f">Master Plumber <span class="val">M-000087</span>, licensed <span class="val">Nov 5</span>. Journeyman since <span class="val">2015</span>, <span class="val">11 years</span>. Lives in <span class="val">78247</span>.</div>
+      <div class="door">
+        <div class="top"><b>Reach</b><span class="pill ok">A number on file</span></div>
+        <div class="lines">
+          <span class="lab">Cell</span><span><span class="chg">(210) 555-0163</span> <span class="sub">added by Renata, Nov 20</span></span>
+          <span class="lab">OK to text</span><span><span class="chg">Not asked</span> <span class="sub">no text goes out until this says yes</span></span>
+          <span class="lab">How we know</span><span><span class="chg">Ran service for us in 2021. Left on good terms.</span></span>
+        </div>
+      </div>
+      <div class="door">
+        <div class="top"><b>Worked here before</b><span class="pill not">A name match, not checked</span></div>
+        A teammate named <span class="un">Odalys Brandt</span> <span class="un">left in 2022</span>. <span class="mini yes">Same person</span> <span class="mini">Someone else</span>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+  <p class="say">A value the office can change is underlined and tinted. Press it and it becomes its own field with <b>Keep</b> and <b>Cancel</b>. A match the app worked out from a name alone stays grey and dashed until a person says <b>Same person</b>, the way a looked-up fact does on Market.</p>
+</div>
+
+<div class="state">
+  <p class="cap">C. Lapsed after a long time · the row says what a lapse does and does not mean</p>
+  <div class="call">
+    <div>
+      <div class="name">Teodoro Quill</div>
+      <div><span class="tag a">Lapsed 5 months</span><span class="tag k">Held 14 years</span><span class="tag k">Hays County</span></div>
+      <div class="f">Journeyman Plumber <span class="val">J-000209</span>, licensed <span class="val">2012</span>. Expired <span class="val">Jun 30</span>. Can still renew until <span class="val">Jun 30, 2028</span>.</div>
+      <div class="sub" style="margin-top:4px">A lapse is not a sign he is looking. He may have retired, moved, or just renewed late. Most people who lapse renew within three months, so the list waits three months before it shows one.</div>
+      <div class="door">
+        <div class="top"><b>Reach</b><span class="pill not">Nobody found a way yet</span></div>
+        <div class="lines"><span class="lab">Cell</span><span><span class="chg">Add a number</span></span></div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+</div>
+
+<div class="state">
+  <p class="cap">D. The field open · what a press on an underlined value does</p>
+  <div class="box">
+    <div class="lines">
+      <span class="lab">Cell</span>
+      <span class="field"><span class="input">(830) 555-01</span><span class="mini yes">Keep</span><span class="mini">Cancel</span></span>
+    </div>
+  </div>
+</div>
+
+<h2>3. Everyone</h2>
+<div class="box">
+  <div class="chips" style="margin-top:0">
+    <span class="chip on">Current · 5,687</span><span class="chip">Lapsed · 819</span><span class="chip">Master</span><span class="chip">Journeyman</span><span class="chip">Tradesman</span><span class="chip">Medical gas</span><span class="chip">Has our notes · 14</span>
+  </div>
+  <div class="scroll" style="margin-top:8px">
+  <table>
+    <tr><th>Name</th><th>License</th><th>Since</th><th>Expires</th><th>County</th><th>Ours</th></tr>
+    <tr><td><b>Bettina Roche</b></td><td>Journeyman <span class="sub no">J-000355</span></td><td>2019</td><td>Mar 31, 2027</td><td>Travis</td><td><span class="tag k">2 notes</span><span class="tag g">On Hiring</span></td></tr>
+    <tr><td><b>Calder Voss</b></td><td>Master <span class="sub no">M-000061</span><br><span class="tag b">Medical gas</span></td><td>2008</td><td>Feb 28, 2027</td><td>Bexar</td><td><span class="sub">Nothing yet</span></td></tr>
+    <tr><td><b>Ines Harrow</b></td><td>Tradesman <span class="sub no">T-000118</span></td><td>2024</td><td>Sep 30, 2027</td><td>Guadalupe</td><td><span class="tag k">Not for us, Oct 2</span></td></tr>
+    <tr><td><b>Marlon Fenwick</b></td><td>Journeyman <span class="sub no">J-000412</span><br><span class="tag b">Medical gas</span></td><td>Nov 12</td><td>Aug 31, 2027</td><td>Comal</td><td><span class="tag g">New this week</span></td></tr>
+  </table>
+  </div>
+</div>
+<p class="say">The kept roll for our counties, with a search box over it. The counts are made up. A row opens the person's sheet.</p>
+
+<div class="state">
+  <p class="cap">The person's sheet · the state's facts, what changed, and what we added</p>
+  <div class="box">
+    <h3>Bettina Roche</h3>
+    <div class="lines" style="margin-top:6px">
+      <span class="lab">License</span><span><span class="val">Journeyman Plumber</span></span>
+      <span class="lab">Number</span><span><span class="val">J-000355</span></span>
+      <span class="lab">Licensed</span><span><span class="val">Apr 9, 2019</span></span>
+      <span class="lab">Expires</span><span><span class="val">Mar 31, 2027</span></span>
+      <span class="lab">Lives in</span><span><span class="val">Travis County, 78748</span></span>
+      <span class="lab">Endorsements</span><span><span class="val">None</span></span>
+      <span class="lab">Cell</span><span><span class="chg">(512) 555-0138</span></span>
+      <span class="lab">OK to text</span><span><span class="chg">Yes</span> <span class="sub">asked on the call, Nov 14</span></span>
+    </div>
+    <p class="cap" style="margin-top:14px">What changed, as we saw it</p>
+    <div class="hist">
+      <div><span class="d">Mar 30, 2026</span>Renewed. Expires <span class="val">Mar 31, 2027</span>.</div>
+      <div><span class="d">Jan 12, 2026</span>Moved from <span class="val">Williamson</span> to <span class="val">Travis</span>.</div>
+      <div><span class="d">Nov 24, 2025</span>First seen on the roll, on our first pull.</div>
+    </div>
+    <p class="cap" style="margin-top:14px">Our notes</p>
+    <div class="hist">
+      <div><span class="d">Nov 14</span>Renata: Talked for ten minutes. Happy where she is. Call again in the spring.</div>
+      <div><span class="d">Oct 30</span>Dale: Met her at the supply house. Runs new construction.</div>
+    </div>
+    <div style="margin-top:10px"><span class="mini">Add a note</span> <span class="mini">Open her Hiring card</span> <span class="mini">Leave off</span></div>
+  </div>
+  <p class="say">The state keeps no history, so the line of history starts on the day of our first pull and grows from there. The state's facts are plain bold and cannot be changed here. Ours are underlined.</p>
+</div>
+
+<h2>4. Our own</h2>
+<div class="box">
+  <div class="chips" style="margin-top:0">
+    <span class="chip on">Needs a look · 3</span><span class="chip">Matches · 11</span><span class="chip">Teammates</span><span class="chip">Subs</span>
+  </div>
+  <div class="scroll" style="margin-top:8px">
+  <table>
+    <tr><th>Who</th><th>What we hold</th><th>The state says</th><th>Reads as</th></tr>
+    <tr><td><b>Silas Okafor</b><br><span class="sub">Teammate</span></td><td>Journeyman <span class="no">J-000277</span><br>expires <span class="val">Jan 31, 2026</span></td><td>Current<br>expires <span class="val">Jan 31, 2027</span></td><td><span class="pill am">The state has a later date</span><br><span class="mini yes" style="margin-top:4px">Use the state's date</span></td></tr>
+    <tr><td><b>Wren Castellan</b><br><span class="sub">Teammate</span></td><td>Tradesman <span class="no">T-000093</span><br>expires <span class="val">Dec 14</span></td><td>Current<br>expires <span class="val">Dec 14</span></td><td><span class="pill am">Lapses in 23 days</span></td></tr>
+    <tr><td><b>Harlan Pruett</b><br><span class="sub">Sub · Pruett Plumbing</span></td><td>Master <span class="no">M-000044</span></td><td>Current. Insurance on file with the board ends <span class="val">Dec 2</span></td><td><span class="pill bad">Insurance ends in 11 days</span></td></tr>
+    <tr><td><b>Joss Albrecht</b><br><span class="sub">Teammate</span></td><td>Journeyman <span class="no">J-000301</span><br>expires <span class="val">May 31, 2027</span></td><td>Current<br>expires <span class="val">May 31, 2027</span></td><td><span class="pill ok">Matches</span></td></tr>
+  </table>
+  </div>
+</div>
+<p class="say">This view contacts nobody. It reads the licenses already on People → Licenses and the subs' on the roster, and lines each up with the state by its number. Today a plumbing number has to be looked up by hand. This is the first piece to build.</p>
+
+<h2>5. Pulls</h2>
+<div class="box">
+  <div class="scroll">
+  <table>
+    <tr><th>File</th><th>Last read</th><th>Rows kept</th><th>What changed</th></tr>
+    <tr><td>Plumbing · journeyman</td><td>Mon Nov 16, 6:30 am</td><td>4,010</td><td><span class="val">4</span> new · <span class="val">31</span> renewed · <span class="val">9</span> lapsed</td></tr>
+    <tr><td>Plumbing · master</td><td>Mon Nov 16, 6:30 am</td><td>1,743</td><td><span class="val">1</span> new · <span class="val">12</span> renewed</td></tr>
+    <tr><td>Plumbing · tradesman</td><td>Mon Nov 16, 6:30 am</td><td>671</td><td><span class="val">2</span> new</td></tr>
+    <tr><td>Electrical · journeyman</td><td><span class="un">Not turned on</span></td><td></td><td></td></tr>
+    <tr><td>A/C · technician</td><td><span class="un">Not turned on</span></td><td></td><td></td></tr>
+  </table>
+  </div>
+  <div style="margin-top:8px"><span class="mini">Pull now</span> <span class="sub">Read every Monday. The state's files are free and public. Only our counties are kept.</span></div>
+</div>
+
+<h2>6. Electrical and A/C, when they are turned on</h2>
+<div class="state">
+  <div class="call">
+    <div>
+      <div class="name">Leocadia Marsh</div>
+      <div><span class="tag g">New on the roll</span><span class="tag k">Travis County</span></div>
+      <div class="f">Journeyman Electrician <span class="val">000731</span>. First seen on our pull of <span class="val">Nov 16</span>. Expires <span class="val">Nov 9, 2027</span>.</div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+  <div class="call">
+    <div>
+      <div class="name">Anselm Dorrit</div>
+      <div><span class="tag b">Class A</span><span class="tag b">Environmental</span><span class="tag b">Refrigeration</span><span class="tag k">Bexar County</span></div>
+      <div class="f">A/C Contractor <span class="val">TACLA000052</span>, Dorrit Air. Expires <span class="val">Apr 2, 2027</span>.</div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+  <p class="say">That state file gives no license date. <b>New on the roll</b> means the name was not there on our last pull, so it starts working from the second pull. The A/C class and endorsements show as tags. A technician reads Registered or Certified.</p>
+</div>
+
+<h2>7. On a phone</h2>
+<div class="phone">
+  <div class="views">
+    <span class="view on">Call this week</span><span class="view">Everyone</span><span class="view">Our own</span><span class="view">Pulls</span>
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="n">5</div><div class="l">newly licensed this week</div></div>
+    <div class="tile"><div class="n">2 <span class="sub">of 8</span></div><div class="l">with a way to reach them</div></div>
+  </div>
+  <div class="call">
+    <div>
+      <div class="name">Marlon Fenwick</div>
+      <div><span class="tag g">New journeyman</span><span class="tag k">Comal County</span><span class="tag b">Medical gas</span></div>
+      <div class="f">Journeyman Plumber <span class="val">J-000412</span>, licensed <span class="val">Nov 12</span>, <span class="val">9 days</span> ago.</div>
+      <div class="door">
+        <div class="top"><b>Reach</b><span class="pill not">Nobody found a way yet</span></div>
+        <div class="lines"><span class="lab">Cell</span><span><span class="chg">Add a number</span></span></div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn quiet">Leave off</span></div>
+  </div>
+</div>
+
+<h2>8. Still yours to say</h2>
+<div class="box">
+  <ul>
+    <li><b>The tab's name and place.</b> Drawn as <b>State roll</b> on Prospects. It could sit under People instead.</li>
+    <li><b>Who sees it.</b> Drawn for the people who hold the Hiring switch, and nobody else.</li>
+    <li><b>Apprentices.</b> Drawn off. The state's file gives no age, and an apprentice can be 16.</li>
+    <li><b>How anyone is contacted.</b> Drawn as a number a person adds and a call a person makes. No text goes out until OK to text says yes, the rule Prospects already keeps. A lawyer should answer before the first call.</li>
+    <li><b>Whether a person may be looked up.</b> On Market the answer was companies only. Nothing here looks a person up.</li>
+    <li><b>Counties.</b> Drawn as the five the permits cover.</li>
+  </ul>
+</div>
+
+<h2>9. The order to build it in</h2>
+<div class="box">
+  <ol>
+    <li><b>The pull and the table.</b> Plumbing, our counties, read every Monday. The Pulls view.</li>
+    <li><b>Our own.</b> Our people and subs against the state. Nobody is contacted.</li>
+    <li><b>Everyone and the person's sheet.</b> Search, the line of history, our notes, Leave off.</li>
+    <li><b>Call this week.</b> The tags, Pursue to Hiring, Not for us, the Reach block.</li>
+    <li><b>Electrical and A/C.</b> The same four views, turned on by trade.</li>
+  </ol>
+</div>
+
+</main></body></html>

@@ -561,7 +561,8 @@ Not walked on prod: the one press with more than one trade, *Tell them it change
 page, a page that is off, and the Sub NDA's **Publish** and its attorney's mark. On prod the Sub NDA
 is a draft that was never published, and the usual sheet is at revision 1 with no agent's check.
 
-Found and not fixed. No PR holds any of these.
+Found by the review, and not fixed in it. A line marked **Fixed** names the version that fixed it since. A line
+with no mark is still open, and no PR holds it.
 
 - **Fixed, v2.8143 (the database) and v2.8148 (the tab).** A tab left open could publish over a newer revision, in
   both builders. A draft save named no revision (`sheetsIo.ts`). A save and a publish now name the draft's number

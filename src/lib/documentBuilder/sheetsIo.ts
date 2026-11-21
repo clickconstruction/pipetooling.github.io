@@ -210,7 +210,7 @@ export function publishSheet(id: string, fromRevision: number, own: JobSheet, pa
 
 /** How the usual's publish to every job went. */
 export type UsualToJobs = {
-  /** Where the usual went and what was held, from each job's sheet as it read at that moment. */
+  /** Where the usual went and what was held, from each job's sheet as it was read for this publish. */
   plan: UsualPublishRow[]
   /** How many jobs it was published to. */
   done: number
@@ -218,40 +218,55 @@ export type UsualToJobs = {
   failed: Array<{ name: string; why: string }>
   /** The jobs it held, each with the reason in words. */
   held: Array<{ name: string; why: string }>
-  /** Every job's sheet as it now stands: as read at the publish, and the ones that went as published. */
+  /** Every job's sheet as it now stands: as read for the publish, and the ones that went as published. */
   sheets: Map<string, SheetRecord>
 }
 
+/** What the page holds for a job beyond what the database does: words typed and not saved, or a choice not yet made. */
+export type HeldHere = (projectId: string) => 'own-changes' | 'moved' | null
+
 /**
- * The usual, just published, sent on to every job that is ready. Each job's sheet is read at this moment, never taken
- * from the page as it was loaded: a draft a teammate saved since makes the job one with changes of its own waiting,
- * which is held, and a sheet a teammate published since goes out from that newer copy. Each job's publish names the
- * draft's number just read, so a change that lands between the read and the write is refused and named, and the
- * teammate's draft stands.
+ * Every job's sheet as it stands at this moment, for the usual's publish. It is read before anything is published:
+ * the plan made from it is held against what the press said, so the press does what its count says or does nothing.
+ */
+export async function readSheetsNow(io: { readBuilderSheets: typeof readBuilderSheets }, builderKey: string): Promise<Landed<Map<string, SheetRecord>>> {
+  try {
+    return { ok: true, value: new Map(await io.readBuilderSheets(builderKey)) }
+  } catch (e) {
+    return fail(e, "The jobs' sheets did not read.")
+  }
+}
+
+/** Where the usual goes, from the jobs' sheets as just read and what the page holds beyond them. */
+export function usualPlanOfSheets(jobs: ReadonlyArray<{ projectId: string; name: string }>, sheets: ReadonlyMap<string, SheetRecord>, heldHere?: HeldHere): UsualPublishRow[] {
+  const states = new Map([...sheets].map(([projectId, s]) => [projectId, { id: s.id, own: s.draft, published: s.published, revision: s.revision, usualRevision: s.usualRevision }]))
+  return usualPlanFor(jobs, states, heldHere)
+}
+
+/**
+ * The usual, just published, sent on to every job that is ready. Each job's sheet is the one read for this publish
+ * (`readSheetsNow`), never the page's copy from when it was loaded: a draft a teammate saved since makes the job one
+ * with changes of its own waiting, which is held, and a sheet a teammate published since goes out from that newer
+ * copy. Each job's publish names the draft's number just read, so a change that lands between the read and the write
+ * is refused and named, and the teammate's draft stands.
  *
  * It follows the batch rule: it goes to every job that is ready, holds the rest with the reason, and keeps going past
- * one that fails. `heldHere` says what the page holds for a job beyond what the database does: words typed and not
- * saved, or a choice not yet made. The reads and writes are handed in, so a screen's smoke can hand in its own.
+ * one that fails. The write is handed in, so a screen's smoke can hand in its own.
  */
 export async function publishUsualToJobs(
-  io: { readBuilderSheets: typeof readBuilderSheets; publishSheet: typeof publishSheet },
+  io: { publishSheet: typeof publishSheet },
   ask: {
-    builderKey: string
     /** The usual as it was just published, and the revision it went out as. */
     def: SheetDef
     usualRevision: number
     jobs: ReadonlyArray<{ projectId: string; name: string }>
-    heldHere?: (projectId: string) => 'own-changes' | 'moved' | null
+    /** The jobs' sheets as read for this publish. */
+    sheets: ReadonlyMap<string, SheetRecord>
+    heldHere?: HeldHere
   },
-): Promise<Landed<UsualToJobs>> {
-  let sheets: Map<string, SheetRecord>
-  try {
-    sheets = new Map(await io.readBuilderSheets(ask.builderKey))
-  } catch (e) {
-    return fail(e, "The jobs' sheets did not read.")
-  }
-  const states = new Map([...sheets].map(([projectId, s]) => [projectId, { id: s.id, own: s.draft, published: s.published, revision: s.revision, usualRevision: s.usualRevision }]))
-  const plan = usualPlanFor(ask.jobs, states, ask.heldHere)
+): Promise<UsualToJobs> {
+  const sheets = new Map(ask.sheets)
+  const plan = usualPlanOfSheets(ask.jobs, sheets, ask.heldHere)
   const failed: Array<{ name: string; why: string }> = []
   let done = 0
   for (const row of plan) {
@@ -269,5 +284,5 @@ export async function publishUsualToJobs(
     }
   }
   const held = plan.flatMap((row) => (row.gets ? [] : [{ name: row.name, why: usualHeldWords(row.why) }]))
-  return { ok: true, value: { plan, done, failed, held, sheets } }
+  return { plan, done, failed, held, sheets }
 }
