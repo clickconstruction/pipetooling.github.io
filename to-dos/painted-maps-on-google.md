@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after · the automatic check of the live site found to be most of the month's count and taken off Google the same day (v2.8049, #9056) · step 5, the person's task map, built the same day on the owner's own word (v2.8032, #9037) · audited the same day on a made-up map on the local server, both maps side by side at 320, 390 and 1400 px: two mends opened (#9089, #9090) and two things left for the owner (*The audit*, below)
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after · the automatic check of the live site found to be most of the month's count and taken off Google the same day (v2.8049, #9056) · step 5, the person's task map, built the same day on the owner's own word (v2.8032, #9037) · audited the same day on a made-up map on the local server, both maps side by side at 320, 390 and 1400 px: two mends merged the same day (v2.8076, #9089 and v2.8078, #9090) and the rest left for the owner (*The audit*, below)
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -13,7 +13,7 @@ summary: >
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
 next: Before step 3, the owner's word on call 6. Step 4 is not started, and the count is looked at again before it, since every outside reader's open counts. Step 5 is built (v2.8032), and its count is worth a look about a week after. Three things are the owner's call, each below. Google's own place labels over the photograph. A map that is not Google's on the page behind the window. The ten seconds a slow phone waits before the fall back.
 size: L as a train of five (S · M · L · S · S)
-ver: v2.7979 · v2.7981 · v2.7990 · v2.8032 · v2.8049
+ver: v2.7979 · v2.7981 · v2.7990 · v2.8032 · v2.8049 · v2.8076 · v2.8078
 blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
 opinion: build — the count read 2026-11-20 leaves room under the free 10,000, and the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
 mockup: not required — the presses and the tools stay where they are and only the map under them changes, and Google's own tiles cannot be drawn in a mock-up without the live key
@@ -158,10 +158,10 @@ What held:
 - **The changes of map.** **Time** took Google down and gave it back with no new request to Google. So did closing the window and opening the map again. **Draw a line** and **Make a picture** each brought the Leaflet canvas up on the same spot, and the window kept it.
 - **A refused key and a blocked script.** The Leaflet canvas came up with every line and place, within a second of Google's canvas for a refused key, and 0.3 s after the window opened for a script that failed outright.
 
-Two mends, each its own pull request:
+Two mends, each its own pull request, both merged the same day:
 
-- **A key refused earlier on the page** (#9089). Google says no once for a page. A painted map opened after a page's own map had fallen back waited eight seconds on an empty frame.
-- **A blank frame while Google loads** (#9090). With the script slow, the frame was a white box with no word for up to ten seconds. It now says *Loading the map…*.
+- **A key refused earlier on the page** (v2.8076, #9089). Google says no once for a page. A painted map opened after a page's own map had fallen back waited eight seconds on an empty frame.
+- **A blank frame while Google loads** (v2.8078, #9090). With the script slow, the frame was a white box with no word for up to ten seconds. It now says *Loading the map…*.
 
 Left for the owner:
 
