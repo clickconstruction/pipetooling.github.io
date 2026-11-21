@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { byTrouble, type Site, type Stage } from './startChecks'
-import { TIME_LINE_WORDS, movedSheet, timeLine } from './timeLine'
+import { TIME_LINE_WORDS, movedSheet, movedSlide, timeLine } from './timeLine'
 
 // Every site, person and day here is made up.
 const SITE: Site = { noticeDays: 10, contact: 'Ray' }
@@ -28,8 +28,8 @@ describe('the Schedule look on a line of time', () => {
     expect((row?.before[0] ?? 0) < (row?.said ?? 0)).toBe(true)
     expect((row?.said ?? 0) < (row?.bar?.from ?? 0)).toBe(true)
     expect(row?.moved).toBe(3)
-    // One stage fills its line to the right edge, so the red words go before the row's first mark, the day we decide.
-    expect(row?.movedAt).toEqual({ at: row?.decide, side: 'before' })
+    // The red words are anchored on the day they say now, the mark that moved.
+    expect(row?.movedAt).toBe(row?.said)
     expect(row?.words).toBe('Top Out, J2101: Dec 1 to 5. They say ready Nov 28. We decide by Nov 21. They have moved 3 days.')
     expect(line.ticks.every((t) => t.at >= 0 && t.at <= 100)).toBe(true)
     expect(line.ticks.length).toBeLessThanOrEqual(9)
@@ -50,24 +50,32 @@ describe('the Schedule look on a line of time', () => {
     expect(TIME_LINE_WORDS.moved(4)).toBe('moved 4 days')
   })
 
-  it('writes the moved days clear of every mark: after the last, before the first when the row ends at the edge, and nowhere when nothing moved', () => {
+  it('anchors the moved words on the day they say now, inside the line on every row, and nowhere when nothing moved', () => {
     const early = stage({ id: 'early', theirDays: [said('2026-11-25', '2026-11-10'), said('2026-11-28', '2026-11-14')] })
-    // The last stage on the line ends at its right edge, so there is no room after it.
+    // The last stage on the line ends at its right edge.
     const last = stage({ id: 'last', name: 'Trim Set', window: ['2027-01-11', '2027-01-15'], theirDays: [said('2027-01-04', '2026-11-12'), said('2027-01-08', '2026-11-14')] })
     const still = stage({ id: 'still', name: 'Rough In', window: ['2026-12-08', '2026-12-10'], theirDays: [said('2026-12-01', '2026-11-12')] })
-    const line = timeLine([early, last, still], SITE, TODAY)
+    // A row that runs the whole line: the first day they gave is already past, and the newest is after our days at
+    // the far edge. Words written before its first mark ran off the left of a phone, and read 2 days for 32.
+    const whole = stage({ id: 'whole', window: ['2027-01-11', '2027-01-15'], theirDays: [said('2026-11-12', '2026-11-01'), said('2027-01-16', '2026-11-14')] })
+    const line = timeLine([early, last, still, whole], SITE, TODAY)
     const row = (id: string) => line?.rows.find((r) => r.id === id)
-    expect(row('early')?.movedAt?.side).toBe('after')
-    expect(row('last')?.movedAt?.side).toBe('before')
-    // Before the first mark means before the day we decide, the day before theirs and our days alike.
-    const marks = [row('last')?.decide ?? 100, ...(row('last')?.before ?? []), row('last')?.said ?? 100, row('last')?.bar?.from ?? 100]
-    expect(row('last')?.movedAt?.at).toBe(Math.min(...marks))
+    for (const id of ['early', 'last', 'whole']) {
+      expect(row(id)?.movedAt).toBe(row(id)?.said)
+      expect(row(id)?.movedAt).toBeGreaterThanOrEqual(0)
+      expect(row(id)?.movedAt).toBeLessThanOrEqual(100)
+    }
+    expect(row('whole')?.before[0]).toBeLessThan(line?.today ?? 0)
+    expect(row('whole')?.moved).toBe(65)
     expect(row('still')?.moved).toBe(0)
     expect(row('still')?.movedAt).toBeNull()
-    // A stage with their day after our days: the words follow their day, the last mark on the row.
-    const late = stage({ id: 'late', theirDays: [said('2026-12-06', '2026-11-10'), said('2026-12-09', '2026-11-14')] })
-    const lateRow = timeLine([late, last], SITE, TODAY)?.rows.find((r) => r.id === 'late')
-    expect(lateRow?.movedAt).toEqual({ at: lateRow?.said, side: 'after' })
+  })
+
+  it('slides the moved words back by the share they are anchored at, so no place on the line puts them off the row', () => {
+    // Left edge on the track's at 0, right edge on the track's at 100, under the mark between.
+    expect(movedSlide(0)).toEqual({ left: '0%', transform: 'translateX(-0%)' })
+    expect(movedSlide(57.1)).toEqual({ left: '57.1%', transform: 'translateX(-57.1%)' })
+    expect(movedSlide(100)).toEqual({ left: '100%', transform: 'translateX(-100%)' })
   })
 
   it('names today in the legend, beside the four marks', () => {
