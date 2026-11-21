@@ -232,14 +232,16 @@ export type BookPaperRow = QuickSendBookRow & { audience?: string | null; flow_k
  * A paper built from settings is required with a job's settings (`job_papers_require`'s third name, punch list #389
  * step 3). The page that sets them is step 4, so until then the picker shows the paper and holds it, in these words.
  */
-export const BUILT_FROM_SETTINGS_HELD = 'Built from settings. A job takes it with its settings, on a page still to come.'
+export const BUILT_FROM_SETTINGS_PICK = 'Built from settings. Pick it to set this job’s settings.'
 
 export interface PickablePaper {
   bookDocumentId: string
   paperName: string
   isForm: boolean
-  /** A paper with no body, no form and no link cannot be required: the database refuses it. So is one built from settings, here. */
+  /** A paper with no body, no form and no link cannot be required: the database refuses it. A paper built from settings has its clauses for words. */
   hasWords: boolean
+  /** Built from settings (#389): picking it opens the job's settings page, and the paper is required from there. */
+  built: boolean
   /** The small words after the name. */
   from: string
 }
@@ -261,13 +263,14 @@ export function pickablePapers(book: readonly BookPaperRow[], live: readonly Job
     .map(({ row, documentName }) => {
       const isForm = Boolean(row.form_template_id)
       const built = row.settings_def != null
-      const hasWords = !built && (isForm || Boolean(row.book_body_html?.trim()) || Boolean(row.canonical_document_url?.trim()))
+      const hasWords = built || isForm || Boolean(row.book_body_html?.trim()) || Boolean(row.canonical_document_url?.trim())
       return {
         bookDocumentId: row.id,
         paperName: documentName,
         isForm,
         hasWords,
-        from: built ? BUILT_FROM_SETTINGS_HELD : !hasWords ? 'No words yet. Write it in the Contract Book first.' : isForm ? 'A form from the Contract Book' : 'From the Contract Book',
+        built,
+        from: built ? BUILT_FROM_SETTINGS_PICK : !hasWords ? 'No words yet. Write it in the Contract Book first.' : isForm ? 'A form from the Contract Book' : 'From the Contract Book',
       }
     })
 }

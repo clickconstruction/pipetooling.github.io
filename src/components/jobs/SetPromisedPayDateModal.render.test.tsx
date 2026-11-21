@@ -64,6 +64,22 @@ describe('SetPromisedPayDateModal — Write down their word', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(onClose).toHaveBeenCalled()
   })
+  it('an amount, a name and a note left empty are left off the call, so the function’s own defaults stand', async () => {
+    const { onSaved } = mount()
+    await settle()
+    fireEvent.click(screen.getByRole('radio', { name: 'They say they paid…' }))
+    await settle()
+    fireEvent.click(screen.getByRole('radio', { name: 'Bank transfer' }))
+    fireEvent.change(screen.getByLabelText('The day they say they paid'), { target: { value: '2026-10-20' } })
+    fireEvent.change(screen.getByLabelText('Who said it'), { target: { value: '   ' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Text' }))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Write it down' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    const call = rpc.mock.calls.find((c) => c[0] === 'add_job_payment_claim')!
+    // What goes over the wire: the request's JSON drops an undefined, and never carries a null the types refuse.
+    expect(JSON.parse(JSON.stringify(call[1]))).toEqual({ p_job_id: 'j1', p_date: '2026-10-20', p_method: 'bank_transfer', p_channel: 'text' })
+  })
   it('parseClaimAmount: blank is all of it, a figure is a figure, anything else holds', () => {
     expect(parseClaimAmount('')).toBeNull()
     expect(parseClaimAmount('  ')).toBeNull()

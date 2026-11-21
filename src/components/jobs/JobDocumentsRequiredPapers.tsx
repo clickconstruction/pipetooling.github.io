@@ -25,11 +25,13 @@ import {
   signingLinksText,
 } from '../../lib/jobs/jobPapers'
 import { supabaseJobPapersIo, type JobPapersIo } from '../../lib/jobs/jobPapersIo'
+import { supabaseJobPaperSettingsIo, type JobPaperSettingsIo, type JobSettingsPaper } from '../../lib/jobs/jobPaperSettingsIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { documentsHeading, documentsQuietButton, documentsTd, documentsTh } from './jobDocumentsStyles'
+import { JobPaperSettingsWindow, type JobPaperSettingsTarget } from './JobPaperSettingsWindow'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const paperRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.6rem', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)' }
@@ -48,7 +50,18 @@ type Busy = 'save' | `remove:${string}` | `links:${string}` | null
  * that copies their signing links to text them. Whoever saves owes the papers too: the job's prompt asks them at once
  * (`JobPapersGateModal`). Taking a paper off keeps every signature. Office only: the caller draws it for an office role.
  */
-export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOverlayOpenChange }: { job: { id: string }; io?: JobPapersIo; onOverlayOpenChange?: (open: boolean) => void }) {
+export function JobDocumentsRequiredPapers({
+  job,
+  io = supabaseJobPapersIo,
+  settingsIo = supabaseJobPaperSettingsIo,
+  onOverlayOpenChange,
+}: {
+  job: { id: string }
+  io?: JobPapersIo
+  /** The reads and writes of a paper built from settings (#389 step 4). */
+  settingsIo?: JobPaperSettingsIo
+  onOverlayOpenChange?: (open: boolean) => void
+}) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -62,6 +75,9 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState<string | null>(null)
   const [held, setHeld] = useState<{ head: string; lines: string[] } | null>(null)
+  // Papers built from settings (#389 step 4): what this job set on each, and the window that sets them.
+  const [settingsPapers, setSettingsPapers] = useState<JobSettingsPaper[]>([])
+  const [settingsTarget, setSettingsTarget] = useState<JobPaperSettingsTarget | null>(null)
   const live = useRef(true)
   useEffect(() => {
     live.current = true
@@ -77,16 +93,29 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
       if (!live.current) return
       setRoster(next)
       setFailure(null)
+      // Only a job with papers can hold one built from settings, so a job with none takes no second read.
+      const built = next.papers.length > 0 ? await settingsIo.readSettingsPapers(job.id) : []
+      if (live.current) setSettingsPapers(built)
     } catch (e) {
       if (live.current) setFailure(recoveryFailureFromError(e, 'Couldn’t read this job’s papers'))
     } finally {
       if (live.current) setLoading(false)
     }
-  }, [io, job.id])
+  }, [io, settingsIo, job.id])
 
   useEffect(() => {
     void reload()
   }, [reload])
+
+  const openSettings = (target: JobPaperSettingsTarget) => {
+    setError(null)
+    setSettingsTarget(target)
+    onOverlayOpenChange?.(true)
+  }
+  const closeSettings = () => {
+    setSettingsTarget(null)
+    onOverlayOpenChange?.(false)
+  }
 
   // A paper signed in another tab shows when the office comes back to this one.
   const hasPapers = (roster?.papers.length ?? 0) > 0
@@ -232,15 +261,23 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
             <EmptyState compact main={NO_PAPERS_WORDS.main} next={{ label: NO_PAPERS_WORDS.next, onPress: openPicker }} tail={NO_PAPERS_WORDS.tail} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {papers.map((p) => (
+              {papers.map((p) => {
+                const set = settingsPapers.find((x) => x.requiredPaperId === p.id)
+                return (
                 <div key={p.id} style={paperRow} data-job-paper="live">
                   <b style={{ color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
-                  <span style={muted}>{p.isForm ? 'A form from the Contract Book' : 'From the Contract Book'}</span>
-                  <button type="button" style={{ ...linkPress, marginLeft: 'auto', color: 'var(--text-muted)', fontWeight: 500 }} disabled={busy != null} onClick={() => void remove(p)} aria-label={`Take ${p.paperName} off`}>
+                  <span style={muted}>{set ? 'Built from this job’s settings' : p.isForm ? 'A form from the Contract Book' : 'From the Contract Book'}</span>
+                  {set ? (
+                    <button type="button" style={{ ...linkPress, marginLeft: 'auto' }} disabled={busy != null} onClick={() => openSettings({ kind: 'change', paper: set, paperName: p.paperName })} aria-label={`Settings of ${p.paperName}`}>
+                      Settings
+                    </button>
+                  ) : null}
+                  <button type="button" style={{ ...linkPress, marginLeft: set ? 0 : 'auto', color: 'var(--text-muted)', fontWeight: 500 }} disabled={busy != null} onClick={() => void remove(p)} aria-label={`Take ${p.paperName} off`}>
                     {busy === `remove:${p.id}` ? 'Taking off…' : 'Take off'}
                   </button>
                 </div>
-              ))}
+                )
+              })}
               {pending.map((p) => (
                 <div key={p.bookDocumentId} style={{ ...paperRow, borderStyle: 'dashed' }} data-job-paper="pending">
                   <b style={{ color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
@@ -272,7 +309,7 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
                           <button
                             type="button"
                             disabled={!p.hasWords}
-                            onClick={() => setPending((cur) => [...cur, p])}
+                            onClick={() => (p.built ? openSettings({ kind: 'first', bookDocumentId: p.bookDocumentId, paperName: p.paperName }) : setPending((cur) => [...cur, p]))}
                             style={{ ...paperRow, width: '100%', textAlign: 'left', cursor: p.hasWords ? 'pointer' : 'not-allowed', font: 'inherit', ...(p.hasWords ? {} : { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT }) }}
                           >
                             <b style={{ color: p.hasWords ? 'var(--text-strong)' : DEAD_PRESS_TEXT, fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
@@ -310,6 +347,20 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
             <p style={{ ...muted, color: 'var(--text-red-700)' }} role="alert">
               {error}
             </p>
+          ) : null}
+          {settingsTarget ? (
+            <JobPaperSettingsWindow
+              job={job}
+              target={settingsTarget}
+              io={settingsIo}
+              onClose={closeSettings}
+              onDone={() => {
+                closeSettings()
+                setAdding(false)
+                told()
+                void reload()
+              }}
+            />
           ) : null}
           {held ? (
             <div role="alert" style={{ ...muted, color: 'var(--text-red-700)' }}>

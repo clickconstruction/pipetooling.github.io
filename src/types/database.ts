@@ -10765,12 +10765,64 @@ export type Database = {
           },
         ]
       }
+      document_builder_link_opens: {
+        Row: {
+          client_ip: string | null
+          device: Json
+          id: string
+          link_id: string
+          opened_at: string
+          revision: number | null
+          user_agent: string | null
+          user_id: string | null
+          viewer: string
+        }
+        Insert: {
+          client_ip?: string | null
+          device?: Json
+          id?: string
+          link_id: string
+          opened_at?: string
+          revision?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+          viewer: string
+        }
+        Update: {
+          client_ip?: string | null
+          device?: Json
+          id?: string
+          link_id?: string
+          opened_at?: string
+          revision?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+          viewer?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builder_link_opens_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "document_builder_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_link_opens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_builder_links: {
         Row: {
           builder_key: string
           code_hash: string
           ended_at: string | null
           ended_by: string | null
+          ended_why: string | null
           id: string
           last_opened_at: string | null
           made_at: string
@@ -10785,6 +10837,7 @@ export type Database = {
           code_hash: string
           ended_at?: string | null
           ended_by?: string | null
+          ended_why?: string | null
           id?: string
           last_opened_at?: string | null
           made_at?: string
@@ -10799,6 +10852,7 @@ export type Database = {
           code_hash?: string
           ended_at?: string | null
           ended_by?: string | null
+          ended_why?: string | null
           id?: string
           last_opened_at?: string | null
           made_at?: string
@@ -23562,6 +23616,7 @@ export type Database = {
       }
       job_required_papers: {
         Row: {
+          basis: string | null
           body_format: string
           body_html: string | null
           book_document_id: string | null
@@ -23571,6 +23626,8 @@ export type Database = {
           form_template_id: string | null
           id: string
           job_id: string
+          notice_read_at: string | null
+          notice_read_by: string | null
           paper_name: string
           removed_at: string | null
           removed_by: string | null
@@ -23583,6 +23640,7 @@ export type Database = {
           settings_set_by: string | null
         }
         Insert: {
+          basis?: string | null
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
@@ -23592,6 +23650,8 @@ export type Database = {
           form_template_id?: string | null
           id?: string
           job_id: string
+          notice_read_at?: string | null
+          notice_read_by?: string | null
           paper_name: string
           removed_at?: string | null
           removed_by?: string | null
@@ -23604,6 +23664,7 @@ export type Database = {
           settings_set_by?: string | null
         }
         Update: {
+          basis?: string | null
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
@@ -23613,6 +23674,8 @@ export type Database = {
           form_template_id?: string | null
           id?: string
           job_id?: string
+          notice_read_at?: string | null
+          notice_read_by?: string | null
           paper_name?: string
           removed_at?: string | null
           removed_by?: string | null
@@ -23644,6 +23707,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_notice_read_by_fkey"
+            columns: ["notice_read_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -27008,6 +27078,258 @@ export type Database = {
           {
             foreignKeyName: "legal_themes_retired_by_fkey"
             columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll: {
+        Row: {
+          company: string
+          county: string
+          created_at: string
+          endorsements: string[]
+          expires_on: string | null
+          first_name: string
+          first_seen_on: string
+          gone_on: string | null
+          id: string
+          insurance_ends_on: string | null
+          last_name: string
+          last_seen_on: string
+          license_class: string
+          license_number: string
+          licensed_on: string | null
+          middle_name: string
+          name_key: string
+          ours: boolean
+          source: string
+          status: string
+          suffix: string
+          trade: string
+          updated_at: string
+          zip: string
+        }
+        Insert: {
+          company?: string
+          county?: string
+          created_at?: string
+          endorsements?: string[]
+          expires_on?: string | null
+          first_name?: string
+          first_seen_on: string
+          gone_on?: string | null
+          id?: string
+          insurance_ends_on?: string | null
+          last_name?: string
+          last_seen_on: string
+          license_class: string
+          license_number: string
+          licensed_on?: string | null
+          middle_name?: string
+          name_key: string
+          ours?: boolean
+          source: string
+          status: string
+          suffix?: string
+          trade: string
+          updated_at?: string
+          zip?: string
+        }
+        Update: {
+          company?: string
+          county?: string
+          created_at?: string
+          endorsements?: string[]
+          expires_on?: string | null
+          first_name?: string
+          first_seen_on?: string
+          gone_on?: string | null
+          id?: string
+          insurance_ends_on?: string | null
+          last_name?: string
+          last_seen_on?: string
+          license_class?: string
+          license_number?: string
+          licensed_on?: string | null
+          middle_name?: string
+          name_key?: string
+          ours?: boolean
+          source?: string
+          status?: string
+          suffix?: string
+          trade?: string
+          updated_at?: string
+          zip?: string
+        }
+        Relationships: []
+      }
+      license_roll_changes: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          now_is: Json
+          pull_id: string | null
+          roll_id: string
+          seen_on: string
+          was: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          now_is?: Json
+          pull_id?: string | null
+          roll_id: string
+          seen_on: string
+          was?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          now_is?: Json
+          pull_id?: string | null
+          roll_id?: string
+          seen_on?: string
+          was?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_changes_pull_id_fkey"
+            columns: ["pull_id"]
+            isOneToOne: false
+            referencedRelation: "license_roll_pulls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "license_roll_changes_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "license_roll"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_counties: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          county: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          county: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          county?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_counties_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_left_off: {
+        Row: {
+          id: string
+          license_class: string | null
+          license_number: string | null
+          name_key: string | null
+          note: string
+          noted_at: string
+          noted_by: string | null
+          source: string | null
+        }
+        Insert: {
+          id?: string
+          license_class?: string | null
+          license_number?: string | null
+          name_key?: string | null
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          source?: string | null
+        }
+        Update: {
+          id?: string
+          license_class?: string | null
+          license_number?: string | null
+          name_key?: string | null
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_left_off_noted_by_fkey"
+            columns: ["noted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_pulls: {
+        Row: {
+          added: number
+          changed: number
+          error: string
+          file: string
+          finished_at: string | null
+          gone: number
+          id: string
+          pulled_by: string | null
+          rows_kept: number
+          rows_seen: number
+          source: string
+          started_at: string
+          trade: string
+        }
+        Insert: {
+          added?: number
+          changed?: number
+          error?: string
+          file: string
+          finished_at?: string | null
+          gone?: number
+          id?: string
+          pulled_by?: string | null
+          rows_kept?: number
+          rows_seen?: number
+          source: string
+          started_at?: string
+          trade: string
+        }
+        Update: {
+          added?: number
+          changed?: number
+          error?: string
+          file?: string
+          finished_at?: string | null
+          gone?: number
+          id?: string
+          pulled_by?: string | null
+          rows_kept?: number
+          rows_seen?: number
+          source?: string
+          started_at?: string
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_pulls_pulled_by_fkey"
+            columns: ["pulled_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -33134,7 +33456,9 @@ export type Database = {
           id: string
           job_id: string | null
           job_required_paper_id: string | null
+          last_reminded_at: string | null
           lineage_version: number
+          next_reminder_at: string | null
           note: string | null
           office_attested_at: string | null
           office_completed_at: string | null
@@ -33149,6 +33473,8 @@ export type Database = {
           person_name: string
           public_token_expires_at: string | null
           public_token_hash: string | null
+          reminder_count: number
+          reminders_enabled: boolean
           sent_at: string | null
           sign_by: string | null
           signed_at: string | null
@@ -33191,7 +33517,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_required_paper_id?: string | null
+          last_reminded_at?: string | null
           lineage_version?: number
+          next_reminder_at?: string | null
           note?: string | null
           office_attested_at?: string | null
           office_completed_at?: string | null
@@ -33206,6 +33534,8 @@ export type Database = {
           person_name: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
@@ -33248,7 +33578,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_required_paper_id?: string | null
+          last_reminded_at?: string | null
           lineage_version?: number
+          next_reminder_at?: string | null
           note?: string | null
           office_attested_at?: string | null
           office_completed_at?: string | null
@@ -33263,6 +33595,8 @@ export type Database = {
           person_name?: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
@@ -35454,6 +35788,38 @@ export type Database = {
           {
             foreignKeyName: "punch_list_picks_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      punch_list_ticks: {
+        Row: {
+          board_version: string
+          card_number: number
+          section: string
+          ticked_at: string
+          user_id: string
+        }
+        Insert: {
+          board_version?: string
+          card_number: number
+          section: string
+          ticked_at?: string
+          user_id?: string
+        }
+        Update: {
+          board_version?: string
+          card_number?: number
+          section?: string
+          ticked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "punch_list_ticks_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -46459,6 +46825,12 @@ export type Database = {
         Args: { p_def: Json; p_lang: string; p_picks: Json; p_typed: Json }
         Returns: Json
       }
+      contract_paper_has_notice: { Args: { p_def: Json }; Returns: boolean }
+      contract_paper_lines_bad: {
+        Args: { p_lines: Json; p_max: number }
+        Returns: boolean
+      }
+      contract_paper_note_bad: { Args: { p_note: Json }; Returns: boolean }
       contract_paper_picks_change: {
         Args: { p_def: Json; p_from: Json; p_to: Json }
         Returns: string
@@ -48744,6 +49116,10 @@ export type Database = {
         Args: { p_note_id: string; p_tagged: string[] }
         Returns: number
       }
+      job_paper_basis_clean: {
+        Args: { p_basis: string; p_def: Json }
+        Returns: string
+      }
       job_paper_clauses: {
         Args: { p_lang?: string; p_required_paper_id: string }
         Returns: Json
@@ -48764,6 +49140,10 @@ export type Database = {
       job_paper_remove: {
         Args: { p_required_paper_id: string }
         Returns: undefined
+      }
+      job_paper_set_basis: {
+        Args: { p_basis: string; p_required_paper_id: string }
+        Returns: string
       }
       job_paper_set_settings: {
         Args: { p_fields?: Json; p_required_paper_id: string; p_settings: Json }
@@ -53334,6 +53714,7 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: boolean
       }
+      user_can_read_license_roll: { Args: never; Returns: boolean }
       user_can_research_permits: { Args: never; Returns: boolean }
       user_can_work_team_prospect: {
         Args: { p_prospect_id: string }

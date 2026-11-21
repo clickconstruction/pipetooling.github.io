@@ -44,6 +44,7 @@ import { jobToHandOn, newProjectSeedFromLead } from '../lib/prospects/gcLeadLane
 import { setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
+import { StateRollTab } from '../components/prospects/StateRollTab'
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
@@ -82,7 +83,7 @@ import { formatErrorMessage } from '../utils/errorHandling'
 import { releaseCallingLock } from '../lib/prospects/callingLockIo'
 import { type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
-type ProspectsTopTab = 'customers' | 'team' | 'research'
+type ProspectsTopTab = 'customers' | 'team' | 'research' | 'roll'
 
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
@@ -109,6 +110,9 @@ export default function Prospects() {
   const canOpenHiring = teamProspectsAccess || myHiringShares.length > 0
   // Research (punch list #292): the permit ledger opens to the office and every estimator, flagged or not.
   const canResearch = canResearchPermits(authRole)
+  // State roll (punch list #411): the kept roll of state licenses opens to the Hiring switch itself, as its tables do
+  // (`user_can_read_license_roll()`). A shared Hiring column does not open it.
+  const canReadRoll = teamProspectsAccess
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -296,6 +300,19 @@ export default function Prospects() {
         setTopTab('customers')
         setActiveTab('follow-up')
       }
+    } else if (tab === 'roll') {
+      // The State roll tab (punch list #411): the Hiring switch opens it; anyone else goes to the deck.
+      if (canReadRoll) {
+        setTopTab('roll')
+      } else {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'follow-up')
+          return next
+        }, { replace: true })
+        setTopTab('customers')
+        setActiveTab('follow-up')
+      }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
       if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer') || (tab === 'board' && urlKind !== 'sub')) {
         setSearchParams((p) => {
@@ -327,7 +344,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, canResearch, kind])
+  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, canResearch, canReadRoll, kind])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -433,6 +450,17 @@ export default function Prospects() {
       // The tab's name opens it on Skim: what Builders left on the address from an earlier visit is dropped.
       const next = permitsLinkCleared(p)
       next.set('tab', 'permits')
+      next.delete('prospect_id')
+      return next
+    })
+  }
+
+  const openRollTab = () => {
+    setTopTab('roll')
+    setSearchParams((p) => {
+      // What Permits left on the address from an earlier visit is dropped.
+      const next = permitsLinkCleared(p)
+      next.set('tab', 'roll')
       next.delete('prospect_id')
       return next
     })
@@ -1261,7 +1289,7 @@ export default function Prospects() {
   // The pills scroll sideways on a phone, and the lit one can sit past the edge (v2.7878): the row
   // moves to show it when the page opens, when the tab changes and when a pill comes or goes.
   const pillRowRef = useRef<HTMLDivElement>(null)
-  useLitPillInView(pillRowRef, [topTab, kind, canAccessFollowUp, canOpenHiring, canResearch, authLoading, isMobile].join(':'))
+  useLitPillInView(pillRowRef, [topTab, kind, canAccessFollowUp, canOpenHiring, canResearch, canReadRoll, authLoading, isMobile].join(':'))
 
   if (authLoading) {
     return (
@@ -1303,6 +1331,11 @@ export default function Prospects() {
             {canResearch && (
               <button type="button" aria-current={topTab === 'research' ? 'true' : undefined} onClick={openResearchTab} style={pageTabStyle(topTab === 'research')}>
                 Permits
+              </button>
+            )}
+            {canReadRoll && (
+              <button type="button" aria-current={topTab === 'roll' ? 'true' : undefined} onClick={openRollTab} style={pageTabStyle(topTab === 'roll')}>
+                State roll
               </button>
             )}
           </div>
@@ -1376,6 +1409,7 @@ export default function Prospects() {
       )}
 
       {topTab === 'research' && canResearch && authUser?.id && <ProspectsResearchTab authUserId={authUser.id} />}
+      {topTab === 'roll' && canReadRoll && authUser?.id && <StateRollTab />}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <ProspectsFollowUpTab

@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and its ground was built (v2.8182) · steps 4 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and step 4 was built in three parts: its ground, the Book's lines and the office's settings page on a job (v2.8182, v2.8183, v2.8184) · steps 5 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: Step 4's second part, the Contract Book holding a choice's breach and site lines, then its third, the office's settings page on a job. Its four calls were answered on 2026-11-21 and its ground is built (v2.8182). The rest of the look is open still. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*.
+next: The real wording into the Contract Book's entry, with its breach and site lines, and counsel's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then step 5, the GC's page, read-only. Steps 1 to 4 are built (step 4 in v2.8182, v2.8183 and v2.8184). The rest of the look is open still. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -339,9 +339,11 @@ paper until an entry has a settings list, and the first one is a test entry.
    - **The ground. Built, v2.8182.** `20261121150000_settings_page_ground.sql`: any change after a
      signature, the basis and the notice's tick on the job's row (`job_paper_set_basis`), and the
      database's stop on the shape of a choice's breach and site lines, a notice and a site note.
-   - **The Book holds the lines.** The settings list window takes a choice's breach and site lines, the
-     notice and the site note. The kernel turns a Book entry into the flow's paper.
-   - **The page.** The flow for a first setting and the list for a change, on a job's Documents tab.
+   - **The Book holds the lines. Built, v2.8183.** The settings list window takes a choice's breach and
+     site lines, the notice and the site note (`paperSettings.ts`, `PaperSettingsWindow.tsx`).
+   - **The page. Built, v2.8184.** The flow for a first setting and one page for a change, on a job's
+     Documents tab (`JobPaperSettingsWindow.tsx` over `jobPaperFlow.ts`, which turns a Book entry into
+     the flow's paper). Its presses and sliders were sized for a finger at Taunya's ask.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -521,7 +523,7 @@ Sizes for this card's own steps are the train's above.
 | 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Its first four PRs are done, v2.7977 to v2.7998. Its steps 4 to 6 are left, and step 5 fills *signing for* from a sub's company. |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
-| 11 | Steps 3 to 7 here | M · M · M · M · S | Step 3 is **done**, v2.8145, v2.8154 and v2.8156. The look for step 4. Counsel before a real job. |
+| 11 | Steps 3 to 7 here | M · M · M · M · S | Step 3 is **done**, v2.8145, v2.8154 and v2.8156. Step 4 is **done**, v2.8182, v2.8183 and v2.8184. The look for step 4. Counsel before a real job. |
 | 12 | The company's own signature on a paper | M | Wider call 4 |
 | 13 | Step 8 here, the company's own secrecy paper to a vendor or partner | M | Rows 8 and 12, and its own clause set from counsel |
 | 14 | The gate's leftovers: the six unchecked list functions, the Spanish read of the sub's card | S | Nothing |
@@ -557,10 +559,15 @@ it keeps the settings, their plain words and a SHA-256 seal of the words. The si
 **The job's settings when this was signed** and says whether the seal still holds. A job with no
 settings behaves as before, and the bed proves it (`supabase/tests/job_paper_settings`).
 
-Step 3 has no screen that sets a job's settings: that is step 4. Its four calls were answered on
-2026-11-21 and its ground is built (v2.8182). Two parts are left: the Contract Book holding a choice's
-breach and site lines, then the page on a job. Until the page a job takes such a paper only through
-the database's function.
+**Step 4 is built**, in three parts, to Taunya's four answers of 2026-11-21 (settled 10 to 13). Its
+ground (v2.8182) lets a change after a signature loosen as well as tighten, and keeps the basis and
+the notice's tick on the job's row. The Contract Book's settings list holds a choice's breach lines
+and site lines, a notice and a site note (v2.8183). On a job's Documents tab a paper built from
+settings is picked in **Add a paper** and walked: the notice, the basis, the real site, a page a
+topic and the review, whose press requires it. **Settings** on its row opens one page for a later
+change, and its button says who signs again (v2.8184).
+What it still needs before a real job: the real settings list and wording in the Book's entry, and an
+attorney's read of that revision. Until then only a ZZ Test job takes the paper.
 The sign path's functions, `accept-contract` and `get-contract-for-signer`, were deployed on
 2026-11-21 on Taunya's go, with `gc-trade-portal`. A ZZ Test paper was then signed on prod, on a ZZ
 Test job: read in both languages, signed only at the seal the page showed, frozen with its settings,

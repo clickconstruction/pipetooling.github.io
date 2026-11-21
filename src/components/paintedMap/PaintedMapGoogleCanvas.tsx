@@ -14,9 +14,15 @@
  *   `frameMargin` the view is moved by the one rule the Leaflet canvas asks, `marginFrame.ts`.
  * - **The view** is worked out here and not by Google's fit (`paintedMapView.ts`), so a short line
  *   opens no closer than its photograph is sharp, and a view carried from the other canvas is kept.
+ * - **A reader and the line together** (`frameMe`, step 4): on the public page a reader who asked to
+ *   be shown is framed with the whole map, by the Leaflet canvas's own rule (`frameMe.ts`).
+ * - **A light page.** The public page is light whatever the app's theme, so `light` holds Google's
+ *   map and its buttons light too.
  * - **One map, kept.** Google bills by the map made. `reuseMaps` puts the map away when this canvas
  *   leaves and brings the same one back, so going to Time and back, or closing a painted map and
  *   opening another, makes no new one for as long as the page is open.
+ * - **The wait.** While Google's script is on its way the lines and the places are drawn at once as a plain drawing,
+ *   on the pixels the map will put them (`PaintedWaitSketch`), so a reader on a weak signal is not left with words alone.
  *
  * Its doors to Leaflet are the pins canvas's own (`useGoogleCanvasDoors`). Lazy-load this file: it
  * pulls in the Maps library.
@@ -25,7 +31,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps'
 import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanvasDoors'
 import { googleColorSchemeForTheme } from '../../lib/dashboardJobsMap'
+import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
+import { frameMeStep } from '../../lib/paintedMap/frameMe'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
 import { lineRuns, type PaintedPoint } from '../../lib/paintedMap/paintedLine'
@@ -35,6 +43,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
 import type { PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import { PAINT_COLOR, PAINT_INK, PAINT_ME_BLUE, PAINT_PAPER } from './paintedMapLook'
+import { PaintedWaitSketch } from './PaintedWaitSketch'
 
 export type PaintedMapGoogleCanvasProps = {
   apiKey: string
@@ -56,6 +65,10 @@ export type PaintedMapGoogleCanvasProps = {
   me?: PaintedCanvasMe | null
   /** Frame by how sure the phone is (`marginFrame.ts`), as the Leaflet canvas does. */
   frameMargin?: boolean
+  /** Keep the person and the whole map in the picture together (`frameMe.ts`): for a reader finding the line. Never for an area. */
+  frameMe?: boolean
+  /** The screen is light whatever the app's theme (the public page): Google's map is light too. */
+  light?: boolean
   /** Frame everything on the map again each time this number changes. */
   refit?: number
   onPlaceTap?: (id: string) => void
@@ -226,6 +239,30 @@ function FrameMargin({ me, points }: { me: PaintedCanvasMe | null; points: Reado
   return null
 }
 
+/**
+ * Keeps a reader and the whole map in the picture together. The rule is `frameMe.ts`, the Leaflet canvas's own: the
+ * first reading frames everything with the reader, and after that only a dot at the edge of the picture moves it.
+ */
+function FrameMe({ me, points }: { me: PaintedPoint; points: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const framed = useRef(false)
+  const latest = useRef(points)
+  latest.current = points
+  const { lat, lng } = me
+  useEffect(() => {
+    if (!map) return
+    // The box as it is now, never the one the map last measured: the page's words above the map can change its place.
+    const div = map.getDiv()
+    const box = { width: div.clientWidth, height: div.clientHeight }
+    const c = map.getCenter()
+    const z = map.getZoom()
+    const step = frameMeStep({ framed: framed.current, me: { lat, lng }, points: latest.current, view: c && z != null ? { center: { lat: c.lat(), lng: c.lng() }, zoom: z } : null, box })
+    framed.current = step.framed
+    if (step.move) map.moveCamera(step.move)
+  }, [map, lat, lng])
+  return null
+}
+
 /** Moves the map when the caller asks, and says where it is looking each time it settles. */
 function Camera({ flyTo, held, refit, points, onView, onCamera }: { flyTo?: PaintedPoint | null; held: PaintedPoint | null; refit?: number; points: ReadonlyArray<PaintedPoint>; onView?: (center: PaintedPoint) => void; onCamera?: (view: PaintedMapView) => void }) {
   const map = useMap()
@@ -267,7 +304,7 @@ function Camera({ flyTo, held, refit, points, onView, onCamera }: { flyTo?: Pain
   return null
 }
 
-export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, refit, onPlaceTap, onView, onCamera }: PaintedMapGoogleCanvasProps) {
+export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, frameMe, light, refit, onPlaceTap, onView, onCamera }: PaintedMapGoogleCanvasProps) {
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -291,12 +328,15 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
         {/* Until Google's script is in, the frame holds nothing: no map, no line, no place. On a weak signal that can
             last the whole load timeout, so the frame says what it is doing, in the words the window uses before it. */}
         {loaded ? null : (
-          // In the middle of the frame: at 320 px the view presses run across its top and would cover a line set there.
-          <p data-painted-google-loading role="status" style={{ position: 'absolute', inset: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', pointerEvents: 'none' }}>
+          // In the middle of an empty frame: at 320 px the view presses run across its top and would cover a line set there.
+          // With lines or places drawn for the wait (`PaintedWaitSketch`) it sits at the bottom, in the room the first view keeps clear, and never on a line.
+          <p data-painted-google-loading role="status" style={{ position: 'absolute', inset: 0, zIndex: 2, margin: 0, display: 'flex', alignItems: everything.length > 0 ? 'flex-end' : 'center', justifyContent: 'center', padding: everything.length > 0 ? '0.5rem 1rem' : '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', pointerEvents: 'none' }}>
             {PAINTED_GOOGLE_LOADING_WORDS}
           </p>
         )}
         <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${formatErrorMessage(e)}`)}>
+          {/* The lines and places at once, as a plain drawing, until Google's map has drawn them itself. It makes no map. */}
+          <PaintedWaitSketch view={first} loaded={loaded} lines={lines} places={places} onPlaceTap={onPlaceTap} />
           {first ? (
             <GoogleMap
               style={{ width: '100%', height: '100%' }}
@@ -305,18 +345,20 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
               mapTypeId={mapTypeId}
               // A photograph is held flat: zoomed in, Google tilts to its 45° view where it has one, and a line would sit off its ground.
               {...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {})}
-              colorScheme={googleColorSchemeForTheme(theme)}
+              colorScheme={googleColorSchemeForTheme(light ? 'light' : theme)}
               // The map is the screen's own, not a card in a page that scrolls: one finger moves it, as on the Leaflet canvas.
               gestureHandling="greedy"
               disableDefaultUI
               zoomControl
               clickableIcons={false}
+              styles={GOOGLE_MAP_STYLES}
               reuseMaps
             >
               <Camera flyTo={flyTo} held={held} refit={refit} points={everything} onView={onView} onCamera={onCamera} />
               <Lines lines={lines} />
               <Places places={places} onPlaceTap={onPlaceTap} />
               {frameMargin ? <FrameMargin me={me ?? null} points={everything} /> : null}
+              {frameMe && me && !me.area ? <FrameMe me={me} points={everything} /> : null}
               {me ? <Me me={me} /> : null}
             </GoogleMap>
           ) : null}

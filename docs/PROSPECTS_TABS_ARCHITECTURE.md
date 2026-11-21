@@ -77,13 +77,13 @@ Out before the cuts, each in `src/components/prospects/` unless named: `SubsBoar
 The page switches on **four levels of state**:
 
 ```
-topTab:    'customers' | 'team' | 'research'                              (ProspectsTopTab 84; 'research' is the Permits tab, ?tab=permits)
+topTab:    'customers' | 'team' | 'research' | 'roll'                     (ProspectsTopTab; 'research' is the Permits tab, ?tab=permits; 'roll' is State roll, ?tab=roll)
 kind:      'customer' | 'gc_lead' | 'sub'                                 (ProspectKind, lib/prospects/prospectKinds.ts; state 121; only under 'customers')
 activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 86, PROSPECTS_TABS 88; only under 'customers')
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review'          (TeamProspectsTab 806; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-The top row (1290–1311) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299) and **Permits** (1304). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
+The top row (1290–1311) draws six pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299), **Permits** (1304) and **State roll** (punch list #411: [`StateRollTab`](../src/components/prospects/StateRollTab.tsx), shown to `teamProspectsAccess` alone, its lines in [`rollPulls.ts`](../src/lib/licenseRoll/rollPulls.ts) and its reads in `rollPullsIo.ts`). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
 
 | Tab | Shows on | Owns |
 |---|---|---|

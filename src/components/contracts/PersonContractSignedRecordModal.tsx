@@ -230,6 +230,31 @@ export function PersonContractSignedRecordModal({
     }
   }
 
+  // The PDF of a paper of plain words or clauses (punch list #376). One signed since then has it already; an older
+  // one gets it made the first time someone opens it. A form opens its own PDF below.
+  async function openPaperPdf() {
+    if (!row) return
+    setPdfBusy(true)
+    setPdfError(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) throw new Error('Not signed in.')
+      const res = await fetch(`${supabaseUrl}/functions/v1/person-paper-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: anonKey },
+        body: JSON.stringify({ person_contract_document_id: row.id }),
+      })
+      const json = (await res.json()) as { ok?: boolean; url?: string; error?: string }
+      if (!res.ok || !json.url) throw new Error(json.error || 'Could not open the PDF.')
+      window.open(json.url, '_blank', 'noopener')
+    } catch (e) {
+      setPdfError(formatErrorMessage(e, 'Could not open the PDF.'))
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   const isForm = Boolean(row?.form_template_id)
   const twoParty = Boolean(formSchema && hasOfficeBoxes(formSchema))
   const facts = row && formSchema ? formFacts(formSchema, row.form_values ?? null, row.form_hints ?? null) : []
@@ -428,6 +453,19 @@ export function PersonContractSignedRecordModal({
                   }}
                 >
                   <ContractBodyDisplay format={row.signing_body_format} bodyHtml={row.signing_body_html} />
+                </div>
+              ) : null}
+
+              {!isForm && (signedClauses || hasRenderableSigningBody) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }} data-testid="signed-paper-pdf">
+                  <button type="button" onClick={() => void openPaperPdf()} disabled={pdfBusy} style={{ padding: '0.35rem 0.8rem', fontWeight: 600, fontSize: '0.8125rem' }}>
+                    {pdfBusy ? 'Opening…' : 'Open the PDF'}
+                  </button>
+                  {pdfError ? (
+                    <span style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem' }} role="alert">
+                      {pdfError}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
 

@@ -48,6 +48,8 @@ import {
   sheetNote,
   sheetStamp,
   jobIsBehind,
+  jobPickLabel,
+  listedJobs,
   jobsOnUsual,
   usualJobsHead,
   usualPlanChip,
@@ -165,6 +167,9 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
 
   const [usual, setUsualState] = useState<SheetDef | null>(draftParsed.ok ? draftParsed.def : null)
   const [jobs, setJobs] = useState<GcJob[] | null>(null)
+  /** Goes up when a send or a take-off may have moved a sheet's link, so the link card reads it again. */
+  const [linkTick, setLinkTick] = useState(0)
+  const linkMayHaveMoved = useCallback(() => setLinkTick((n) => n + 1), [])
   const [sheets, setSheetsState] = useState<Map<string, LocalSheet>>(new Map())
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(true)
@@ -212,12 +217,13 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     void Promise.all([io.readGcJobs(), io.readBuilderSheets(entry.id)])
       .then(([gotJobs, gotSheets]) => {
         if (cancelled) return
-        setJobs(gotJobs)
+        const listed = listedJobs(gotJobs, (projectId) => gotSheets.get(projectId)?.revision ?? 0)
+        setJobs(listed)
         const next = new Map<string, LocalSheet>()
         for (const [projectId, s] of gotSheets) next.set(projectId, stateFrom(s))
         sheetsRef.current = next
         setSheetsState(next)
-        setJobId((was) => was ?? gotJobs[0]?.projectId ?? null)
+        setJobId((was) => was ?? listed[0]?.projectId ?? null)
         setFailure(null)
       })
       .catch((e: unknown) => {
@@ -523,7 +529,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   const printSheet = () => {
     if (!job || !jobState || !pageNow) return
     const stamp = `Revision ${jobState.revision} · ${job.name}`
-    const ok = io.print(sheetPrintHtml(pageNow, stamp), { kind: SHEET_SENT_KIND, title: sheetPrintTitle(pageNow), source: jobState.id ? { table: 'document_builder_sheets', id: jobState.id } : undefined })
+    const ok = io.print(sheetPrintHtml(pageNow, stamp), { kind: SHEET_SENT_KIND, title: sheetPrintTitle(pageNow), ...(job.billingJobId ? { jobIds: [job.billingJobId] } : null), source: jobState.id ? { table: 'document_builder_sheets', id: jobState.id } : undefined })
     if (!ok) setRefusal('The print window was blocked. Allow pop-ups for this site, then print again.')
   }
 
@@ -610,7 +616,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
               {jobs.length === 0 ? <option value="">No job you run as the GC yet</option> : null}
               {jobs.map((j) => (
                 <option key={j.projectId} value={j.projectId}>
-                  {`${j.name}${(sheets.get(j.projectId)?.revision ?? 0) > 0 ? '' : ', no sheet yet'}`}
+                  {jobPickLabel(j, sheets.get(j.projectId)?.revision ?? 0)}
                 </option>
               ))}
             </select>
@@ -747,6 +753,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                 builderKey={entry.id}
                 sheetId={jobState.id}
                 published={jobState.revision > 0 && jobState.id != null}
+                refresh={linkTick}
                 io={io.link}
                 words={{
                   title: "This sheet's link",
@@ -770,7 +777,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   <p style={MUTED}>Publish this job's sheet first. It then prints as subs see it.</p>
                 )}
               </div>
-              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
+              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} onLinkMayHaveMoved={linkMayHaveMoved} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
             </>
           ) : (
             <div style={CARD}>

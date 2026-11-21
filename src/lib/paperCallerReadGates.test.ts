@@ -26,6 +26,8 @@ const SERVICE_CLIENT = 'admin'
 const GATES: Record<string, string> = {
   'complete-contract-form-office': 'ALLOWED_ROLES.has(role)',
   'open-contract-form-pdf': 'formPdfRefusal(caller, facts)',
+  // Punch list #376: the four roles that send a paper, or an estimator on an outside company's paper, before the row is read.
+  'person-paper-pdf': 'paperPdfRefusal(caller, facts)',
   'send-contract-for-signature': 'signingCallerRefusal(',
 }
 

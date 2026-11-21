@@ -54,6 +54,7 @@ export const IMPORTERS = [
   'gmail-mine',
   'gmail-sync',
   'legal-portal',
+  'license-roll-pull',
   'mercury-webhook',
   'messages-email',
   'messages-notify',

@@ -13,7 +13,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import type { DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
+import type { DocumentBuilderLinkOpen, DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
 import { BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 
 afterEach(cleanup)
@@ -51,6 +51,64 @@ describe('BuilderLinkCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy the link' }))
     expect(await screen.findByText('Copied')).toBeTruthy()
     expect(io.copy).toHaveBeenCalledWith(`${window.location.origin}/d/abcdefgh23456789`)
+  })
+
+  it('says so when the link is on and its address cannot be shown, and still offers a new one', async () => {
+    const io = open({ read: vi.fn(async () => landed({ on: true, code: null, madeAt: '2026-11-20T15:00:00Z', opened: 2, lastOpenedAt: '2026-11-21T15:00:00Z' })) })
+    expect(await screen.findByText(/its address can no longer be shown here\. It still opens for anyone who has it\./)).toBeTruthy()
+    expect(screen.queryByTestId('builder-link-url')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy the link' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Switch the link off' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }))
+    fireEvent.click(last(await screen.findAllByRole('button', { name: /Make a new link/ })))
+    await waitFor(() => expect(io.make).toHaveBeenCalledWith('insurance', 'sheet-cedar'))
+    expect((await screen.findByTestId('builder-link-url')).textContent).toBe(`${window.location.origin}/d/zyxwvuts98765432`)
+  })
+
+  it('says when and why a link is off: it closed with the last trade, or someone switched it off', async () => {
+    open({ read: vi.fn(async () => landed({ on: false, endedAt: '2026-11-21T18:00:00Z', endedWhy: 'last_send_off' })) })
+    expect(await screen.findByText(/^The link is off\. It closed on Nov 21, when the sheet came off the last trade's page\. The next send switches it on again\.$/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Switch the link on' })).toBeTruthy()
+    cleanup()
+    open({ read: vi.fn(async () => landed({ on: false, endedAt: '2026-11-21T18:00:00Z', endedWhy: 'off' })) })
+    expect(await screen.findByText('The link is off. It was switched off on Nov 21.')).toBeTruthy()
+    cleanup()
+    open({ read: vi.fn(async () => landed({ on: false })) })
+    expect(await screen.findByText('The link is off.')).toBeTruthy()
+  })
+
+  it('lists who opened it: an account by name, someone with none by where the open came from', async () => {
+    const opens: DocumentBuilderLinkOpen[] = [
+      { at: '2026-11-21T18:30:00Z', viewer: 'outside' as const, name: null, ip: '203.0.113.7', agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', device: { timeZone: 'America/Phoenix' } },
+      { at: '2026-11-21T17:00:00Z', viewer: 'staff' as const, name: 'Dana Whitlock', ip: null, agent: null, device: {} },
+    ]
+    open({ read: vi.fn(async () => landed({ ...ON('abcdefgh23456789', 1), opens, opensTotal: 31 })) })
+    const list = await screen.findByTestId('builder-link-opens')
+    expect(list.textContent).toContain('Who opened it: 31 in all, the newest 2 below')
+    expect(list.textContent).toContain('Someone with no account · 203.0.113.7 · Safari on iPhone · America/Phoenix')
+    expect(list.textContent).toContain('Dana Whitlock · Has an account')
+    expect(list.querySelectorAll('.vipLineLabel')).toHaveLength(2)
+  })
+
+  it('shows no list when nobody opened it, or when the function says nothing of opens', async () => {
+    open({ read: vi.fn(async () => landed({ ...ON(), opens: [], opensTotal: 0 })) })
+    await screen.findByTestId('builder-link-url')
+    expect(screen.queryByTestId('builder-link-opens')).toBeNull()
+    cleanup()
+    open()
+    await screen.findByTestId('builder-link-url')
+    expect(screen.queryByTestId('builder-link-opens')).toBeNull()
+  })
+
+  it('reads the link again when told something outside the card may have moved it', async () => {
+    const read = vi.fn(async () => landed(ON()))
+    const io = { read, make: vi.fn(), end: vi.fn(), copy: vi.fn() } as unknown as BuilderLinkCardIo
+    const view = renderWithProviders(<BuilderLinkCard builderKey="insurance" sheetId="sheet-cedar" published words={WORDS} refresh={0} io={io} />)
+    await screen.findByTestId('builder-link-url')
+    read.mockImplementation(async () => landed({ on: false, endedAt: '2026-11-21T18:00:00Z', endedWhy: 'last_send_off' }))
+    view.rerender(<BuilderLinkCard builderKey="insurance" sheetId="sheet-cedar" published words={WORDS} refresh={1} io={io} />)
+    expect(await screen.findByText(/It closed on Nov 21, when the sheet came off the last trade's page\./)).toBeTruthy()
+    expect(read).toHaveBeenCalledTimes(2)
   })
 
   it('says how often someone outside opened it', async () => {

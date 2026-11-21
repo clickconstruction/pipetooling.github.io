@@ -32,8 +32,8 @@ afterEach(cleanup)
 const INSURANCE = documentBuilderById('insurance') as DocumentBuilderEntry
 const USUAL: SheetDef = { ...INSURANCE_SHEET_FIXTURE, cover: INSURANCE_SHEET_FIXTURE.cover.map((c, i) => ({ ...c, limit: `Made-up amount ${i + 1}` })) }
 const JOBS: GcJob[] = [
-  { projectId: 'cedar', name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', ownerName: 'Pecan Ridge Holdings, Ltd.', stage: 'building' },
-  { projectId: 'mesa', name: 'Mesa Verde Retail Shell', place: '77 Placeholder Parkway, Round Rock, TX 78664', ownerName: '', stage: 'buyout' },
+  { projectId: 'cedar', name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', ownerName: 'Pecan Ridge Holdings, Ltd.', stage: 'building', over: null, billingJobId: null },
+  { projectId: 'mesa', name: 'Mesa Verde Retail Shell', place: '77 Placeholder Parkway, Round Rock, TX 78664', ownerName: '', stage: 'buyout', over: null, billingJobId: null },
 ]
 const CEDAR_OWN = (): JobSheet => startJobSheet({ name: JOBS[0]!.name, place: JOBS[0]!.place, insured: [JOBS[0]!.ownerName] })
 
@@ -302,6 +302,28 @@ describe('FilledBuilder', () => {
     expect(screen.getByText('Revision 1, behind your usual')).toBeTruthy()
     expect(screen.getByText('Revision 2')).toBeTruthy()
     expect(publish().textContent).toBe('Nothing to publish')
+  })
+
+  it('lists a job being bid, leaves out a lost or closed one, and keeps one whose sheet went out', async () => {
+    const job = (projectId: string, name: string, over: GcJob['over'], stage = 'building'): GcJob => ({ projectId, name, place: 'A made-up place', ownerName: 'A made-up owner', stage, over, billingJobId: null })
+    const jobs = [job('alder', 'Alder Row Shops', null, 'bidding'), job('birch', 'Birch Hall', 'lost', 'bidding'), job('cedar', JOBS[0]!.name, 'closed', 'closed'), job('dune', 'Dune Street Annex', 'closed', 'closed')]
+    const { io, onRecord } = open({ jobs, sheets: [sheetRow()] })
+    const pick = (await screen.findByRole('combobox', { name: 'Job' })) as HTMLSelectElement
+    expect([...pick.options].map((o) => o.text)).toEqual(['Alder Row Shops, no sheet yet', 'Cedar Park Medical Office, closed'])
+    fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
+    expect(screen.getByText('Held. This job is closed.')).toBeTruthy()
+    expect(screen.queryByText('Birch Hall')).toBeNull()
+    type('The line at the foot', 'A new foot line.')
+    expect(publish().textContent).toBe('Publish your usual')
+    // The draft's save lands and is drawn before the test ends, so nothing is drawn after the screen is gone.
+    await waitFor(() => expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(onRecord).toHaveBeenCalledTimes(1))
+  })
+
+  it('files a printed sheet under the job its project bills through', async () => {
+    const { io } = open({ jobs: [{ ...JOBS[0]!, billingJobId: 'job-cedar' }], sheets: [sheetRow()] })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print the sheet' }))
+    expect((io.print.mock.calls[0] as [string, { jobIds?: string[] }])[1].jobIds).toEqual(['job-cedar'])
   })
 
   it('keeps going past a job that fails, and names it with its reason', async () => {

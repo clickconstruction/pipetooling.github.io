@@ -50,7 +50,7 @@ export function contactsOf(company: { contact_name: string | null; email: string
 
 /**
  * The trades on a job, as the send's rows: every company asked on one of the job's trades and not passed, the awarded
- * ones first, each with who can be sent to, where its page stands and its send of this sheet. Throws with the reason.
+ * ones first and the rest marked to be sent to alone, each with who can be sent to, where its page stands and its send of this sheet. Throws with the reason.
  */
 export async function readSheetParties(projectId: string, sheetId: string | null): Promise<SendParty[]> {
   const packages = ((await withSupabaseRetry<unknown[]>(() => db.from('gc_trade_packages').select('id, trade, awarded_invite_id').eq('project_id', projectId), 'read the trades')) ?? []) as Array<{ id: string; trade: string | null; awarded_invite_id: string | null }>
@@ -79,6 +79,7 @@ export async function readSheetParties(projectId: string, sheetId: string | null
         sub: [trades.join(', '), isAwarded ? 'awarded' : 'asked, not awarded'].filter(Boolean).join(' · '),
         page: pageFromLinks(((links ?? []) as Array<{ company_id: string; revoked_at: string | null }>).filter((l) => l.company_id === c.id)),
         contacts: contactsOf(c, ((people ?? []) as Array<{ company_id: string; name: string | null; email: string | null; role: string | null }>).filter((p) => p.company_id === c.id)),
+        ...(isAwarded ? null : { alone: true }),
         send: send ? sendRecordFromRow(send) : null,
         awarded: isAwarded,
       }

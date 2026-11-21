@@ -152,6 +152,11 @@ import { GasSmellStrip } from './GasSmellStrip'
 import { CutLineSetStrip } from './CutLineSetStrip'
 import { StartsAloneStrip } from './StartsAloneStrip'
 import { AtticStrip } from './AtticStrip'
+import { LicenceLine } from './LicenceLine'
+import { SixTouchPoints } from './SixTouchPoints'
+import { RoughSetStart } from './RoughSetStart'
+import { InspectorMechanical } from './InspectorMechanical'
+import { HvacMistakes } from './HvacMistakes'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -289,4 +294,9 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'cut-line-set-strip': CutLineSetStrip,
   'starts-alone-strip': StartsAloneStrip,
   'attic-strip': AtticStrip,
+  'licence-line': LicenceLine,
+  'six-touch-points': SixTouchPoints,
+  'rough-set-start': RoughSetStart,
+  'inspector-mechanical': InspectorMechanical,
+  'hvac-mistakes': HvacMistakes,
 }

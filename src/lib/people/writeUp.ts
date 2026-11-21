@@ -10,6 +10,7 @@
  */
 import type { VoiceState } from '../reports/voiceNote'
 import { clock, seconds } from '../reports/voiceNote'
+import { photoCountWords, photosKeptWords, type WriteUpDraftPhoto } from './writeUpPhotos'
 
 // ---------------------------------------------------------------------------
 // Who may
@@ -331,6 +332,8 @@ export interface WriteUpDraft {
   talked: boolean | null
   /** The earlier write-up this one adds to. */
   addsTo: string | null
+  /** The photos taken for it (PR 5). Their bytes stay in the page until Send. */
+  photos: WriteUpDraftPhoto[]
 }
 
 export const WRITE_UP_MAX_WORDS = 4000
@@ -346,13 +349,56 @@ export function newWriteUpDraft(person: WriteUpPerson, list: Pick<WriteUpList, '
     const mine = list.jobs.find((j) => j.last_day === list.today)
     if (mine) job = { id: mine.job_id, label: writeUpJobLabel(mine) }
   }
-  return { person, kind: null, date: now.ymd, time: now.hhmm, job, words: '', sawIt: true, seenBy: [], talked: null, addsTo: null }
+  return { person, kind: null, date: now.ymd, time: now.hhmm, job, words: '', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
 }
 
 /** A draft that adds to a write-up already sent: the same person and kind, now. */
 export function additionDraft(parent: { id: string; kind: string | null }, person: WriteUpPerson, list: Pick<WriteUpList, 'today' | 'jobs'>, now: { ymd: string; hhmm: string }): WriteUpDraft {
   return { ...newWriteUpDraft(person, list, now), kind: isWriteUpKind(parent.kind) ? parent.kind : 'other', addsTo: parent.id }
 }
+
+/**
+ * A draft as the tab keeps it across a reload (the app's own *A new version is ready* toast offers one mid-form): the
+ * words and the picks, without the photos, whose bytes cannot be kept this way.
+ */
+export function draftToKeep(draft: WriteUpDraft): string {
+  return JSON.stringify({ ...draft, photos: [] })
+}
+
+/** A kept draft read back with care. Anything that is not a whole draft is no draft. */
+export function draftFromKept(raw: string | null | undefined): WriteUpDraft | null {
+  if (!raw) return null
+  let o: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    o = parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const person = parseWriteUpList({ people: [o.person] }).people[0]
+  if (!person || typeof o.date !== 'string' || typeof o.words !== 'string') return null
+  const job = o.job && typeof o.job === 'object' ? (o.job as Record<string, unknown>) : null
+  const seen = Array.isArray(o.seenBy) ? o.seenBy : []
+  return {
+    person,
+    kind: isWriteUpKind(o.kind) ? o.kind : null,
+    date: o.date,
+    time: typeof o.time === 'string' ? o.time : '',
+    job: job && typeof job.id === 'string' && typeof job.label === 'string' ? { id: job.id, label: job.label } : null,
+    words: o.words,
+    sawIt: o.sawIt !== false,
+    seenBy: seen
+      .filter((s): s is Record<string, unknown> => s != null && typeof s === 'object' && typeof (s as { name?: unknown }).name === 'string')
+      .map((s) => (typeof s.person_id === 'string' ? { person_id: s.person_id, name: s.name as string } : { name: s.name as string })),
+    talked: typeof o.talked === 'boolean' ? o.talked : null,
+    addsTo: typeof o.addsTo === 'string' ? o.addsTo : null,
+    photos: [],
+  }
+}
+
+/** Where the tab keeps a person's unfinished write-up. */
+export const keptDraftKey = (userId: string): string => `write-up-draft:${userId}`
 
 /** What the button says while the draft cannot be read back, or null when it can. */
 export function writeUpMissing(draft: Pick<WriteUpDraft, 'kind' | 'words'>): string | null {
@@ -395,6 +441,7 @@ export function writeUpReadBack(draft: WriteUpDraft): ReadBackLine[] {
     { label: 'Seen by', value: seen.length > 0 ? seen.join(', ') : 'You were told about it' },
   ]
   if (draft.talked != null) lines.push({ label: `Talked to ${firstName(draft.person.name)}`, value: draft.talked ? TALKED_CHOICES.yes : TALKED_CHOICES.notYet })
+  if (draft.photos.length > 0) lines.push({ label: 'Photos', value: photoCountWords(draft.photos.length) })
   return lines
 }
 
@@ -516,6 +563,8 @@ export interface KeptWriteUp {
   job_label: string | null
   pressedAt: number
   reason: string | null
+  /** How many photos ride with it. */
+  photos: number
 }
 
 /** The writer's write-ups still on the phone, newest press first. A sent press is the server's row by then. */
@@ -535,6 +584,7 @@ export function keptWriteUps(presses: ReadonlyArray<KeptPressLike>, userId: stri
       job_label: text(fields.job_label),
       pressedAt: p.pressedAt,
       reason: p.state === 'refused' ? (p.refusal?.message ?? null) : null,
+      photos: Array.isArray((p.payload as { photos?: unknown } | null)?.photos) ? ((p.payload as { photos: unknown[] }).photos.length) : 0,
     })
   }
   return out.sort((a, b) => b.pressedAt - a.pressedAt)
@@ -543,10 +593,12 @@ export function keptWriteUps(presses: ReadonlyArray<KeptPressLike>, userId: stri
 export const KEPT_WRITE_UP_STATE_WORDS: Record<KeptWriteUp['state'], string> = { waiting: 'Waiting for signal', refused: 'Not sent' }
 
 /** "Safety · Fri, Nov 20 · Cedar Hollow Lot 14" for a kept write-up. */
-export function keptWriteUpLine(kept: Pick<KeptWriteUp, 'kind' | 'occurred_date' | 'job_label'>): string {
+export function keptWriteUpLine(kept: Pick<KeptWriteUp, 'kind' | 'occurred_date' | 'job_label'> & { photos?: number }): string {
   const parts = [writeUpKindLabel(kept.kind)]
   if (kept.occurred_date) parts.push(dayWords(kept.occurred_date))
   if (kept.job_label) parts.push(kept.job_label)
+  const photos = photosKeptWords(kept.photos ?? 0)
+  if (photos) parts.push(photos)
   return parts.join(' · ')
 }
 

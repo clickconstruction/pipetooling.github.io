@@ -5,24 +5,12 @@
  * citations, the heading a number names, and the entries that cite each section.
  */
 import type { HrDocHeading } from './hrDocMarkdown'
+// v2.8197: the parse of a citation lives in the shared kernel, so the dev seat counts the entries that cite a section
+// with the tab's own rule (`get_person_document { freshness: true }`).
+import { SECTION_CITE_RE as CITE_RE, parseSectionCitations, type SectionCitation } from './sectionFreshness'
 
-export type SectionCitation = { raw: string; section: number }
-
-/** `N§16`, `N §16`, `§16` — a section of the narrative; the number is 1 to 999. */
-const CITE_RE = /(?:\bN\s?)?§\s?(\d{1,3})\b/g
-
-/** The citations in a line's words, in order, each once. */
-export function parseSectionCitations(text: string): SectionCitation[] {
-  const out: SectionCitation[] = []
-  const seen = new Set<number>()
-  for (const m of text.matchAll(CITE_RE)) {
-    const n = Number(m[1])
-    if (!Number.isFinite(n) || n <= 0 || seen.has(n)) continue
-    seen.add(n)
-    out.push({ raw: m[0], section: n })
-  }
-  return out
-}
+export { parseSectionCitations }
+export type { SectionCitation }
 
 export type CitationPart = { kind: 'text'; text: string } | { kind: 'cite'; raw: string; section: number }
 

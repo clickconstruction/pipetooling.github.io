@@ -16,6 +16,8 @@
  * - A sent notice's folded grey chip (*Sent Oct 14 ›*) stays and goes back to the top. Its months chip reads the
  *   months the notice named (*Jul + Aug ›*), off the fold, since the pane picks none on a paper that went (v2.8167).
  *   A sent notice whose record keeps no month reads *No month named ›*, never *No month picked ›*, which asks for a tick.
+ * - A missed notice that can no longer go folds the same way (v2.8206): a grey *Window closed Aug 15 ›* back to the top,
+ *   then the months whose window closed (*May ›*). It read a red *No month picked ›* over months nobody could tick.
  * - Every chip ends in › so it reads as a door.
  */
 import { lienGateShortWords, type LienGate, type LienGateKey } from './lienDeskGates'
@@ -47,8 +49,12 @@ export interface LienStripChipsInput {
   claimByHand: boolean
   /** The wording-diff line ("2 lines edited by Taunya"); '' when the notice carries the job's wording. */
   wordingWords: string
-  /** A sent notice with nothing due: the gates folded to their one line (`lienSentGatesFold`), else null. `months` is the fold's own, the months the notice named. */
-  fold: { head: string; months: string } | null
+  /**
+   * The gates folded to their one line, else null: a sent notice with nothing due (`lienSentGatesFold`), or a missed
+   * notice that can no longer go (`lienClosedGatesFold`, `kind: 'closed'`). `months` is the fold's own: the months the
+   * notice named, or the months whose window closed.
+   */
+  fold: { head: string; months: string; kind?: 'sent' | 'closed' } | null
 }
 
 const DOOR = ' ›'
@@ -67,7 +73,10 @@ export function lienStripChips(input: LienStripChipsInput): LienStripChip[] {
   const blockers = input.fold ? [] : input.gates.filter((g) => g.tone === 'blocker')
   const checks = input.fold ? [] : input.gates.filter((g) => g.tone === 'check')
 
-  if (input.fold) {
+  const closed = input.fold?.kind === 'closed'
+  if (input.fold && closed) {
+    chips.push({ key: 'closed', words: `${input.fold.head}${DOOR}`, tone: 'quiet', act: 'top', title: 'The window closed with nothing sent. Back up to the day it closed and the facts as they stand.' })
+  } else if (input.fold) {
     chips.push({ key: 'sent', words: `${input.fold.head}${DOOR}`, tone: 'quiet', act: 'top', title: 'The notice went out. Back up to the day it went and the gates as they stood.' })
   } else if (blockers.length) {
     for (const g of blockers) chips.push({ key: `gate:${g.key}`, words: `${capital(lienGateShortWords(g))}${DOOR}`, tone: 'red', act: `gate:${g.key}`, title: g.title })
@@ -78,7 +87,7 @@ export function lienStripChips(input: LienStripChipsInput): LienStripChip[] {
 
   // The months, unless the months gate is already a red chip. A notice that went reads its own months off the fold.
   if (input.fold) {
-    chips.push({ key: 'months', words: `${capital(input.fold.months)}${DOOR}`, tone: 'quiet', act: 'months', title: 'The months the notice named when it went. Down to Months on this job.' })
+    chips.push({ key: 'months', words: `${capital(input.fold.months)}${DOOR}`, tone: 'quiet', act: 'months', title: closed ? 'The months whose window closed. Down to Months on this job.' : 'The months the notice named when it went. Down to Months on this job.' })
   } else if (!blockers.some((g) => g.key === 'months')) {
     chips.push({ key: 'months', words: `${input.monthWords || 'No month picked'}${DOOR}`, tone: 'quiet', act: 'months', title: 'Months on this job' })
   }

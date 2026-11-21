@@ -1,9 +1,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DOCUMENT_BUILDER_LINK_WORDS as WORDS, documentBuilderLinkCodeFrom, documentBuilderLinkOpen, type DocumentBuilderLinkAnswer, type DocumentBuilderLinkState } from '../_shared/documentBuilderLink.ts'
+import {
+  DOCUMENT_BUILDER_LINK_OPENS_SHOWN as OPENS_SHOWN,
+  DOCUMENT_BUILDER_LINK_WORDS as WORDS,
+  documentBuilderLinkCodeFrom,
+  documentBuilderLinkDevice,
+  documentBuilderLinkEndedWhy,
+  documentBuilderLinkOpen,
+  documentBuilderLinkOpenRow,
+  type DocumentBuilderLinkAnswer,
+  type DocumentBuilderLinkOpen,
+  type DocumentBuilderLinkState,
+} from '../_shared/documentBuilderLink.ts'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import {
   DOCUMENT_BUILDER_LINK_COLUMNS as LINK_COLUMNS,
-  documentBuilderLinkCodeOf as codeOf,
+  documentBuilderLinkCodeOfRow as codeOfRow,
   documentBuilderSha256 as sha256,
   mintDocumentBuilderLink,
   type DocumentBuilderLinkRow as LinkRow,
@@ -21,7 +33,7 @@ import { publicViewDecision } from '../_shared/publicViewCounting.ts'
  * The code is made again from the row and a secret this side holds (`_shared/documentBuilderLinkCode.ts`), so the
  * function can hand the same link to a dev who opens the tab on another day, and the database alone cannot.
  *
- *   POST { action: 'open', code }                → { kind: 'sheet', revision, sheet, job } | { kind: 'builder', revision, builder, contents }
+ *   POST { action: 'open', code, device? }       → { kind: 'sheet', revision, sheet, job } | { kind: 'builder', revision, builder, contents }
  *       No login. What the link opens, as published: never a draft. A wrong code, a link switched off and a link a
  *       new one replaced all answer the same 404 { error: 'gone', words }. A link to something with nothing
  *       published answers 404 { error: 'nothing', words }. An open by someone outside is counted on the link; a
@@ -81,17 +93,55 @@ function sheetOf(body: Record<string, unknown>): { builderKey: string; sheetId: 
   return typeof body.sheetId === 'string' && UUID_RE.test(body.sheetId) ? { builderKey, sheetId: body.sheetId.toLowerCase() } : null
 }
 
-async function liveLink(admin: Admin, target: { builderKey: string; sheetId: string | null }): Promise<LinkRow | null> {
-  let q = admin.from('document_builder_links').select(LINK_COLUMNS).eq('builder_key', target.builderKey).is('ended_at', null)
+/** The newest link of a sheet or a builder: the one that is on, or the last one that ended. */
+async function newestLink(admin: Admin, target: { builderKey: string; sheetId: string | null }): Promise<LinkRow | null> {
+  let q = admin.from('document_builder_links').select(LINK_COLUMNS).eq('builder_key', target.builderKey)
   q = target.sheetId ? q.eq('sheet_id', target.sheetId) : q.is('sheet_id', null)
-  const { data, error } = await q.maybeSingle()
+  const { data, error } = await q.order('made_at', { ascending: false }).limit(5)
   if (error) throw new Error(`the link: ${error.message}`)
-  return data as LinkRow | null
+  const rows = (data ?? []) as LinkRow[]
+  return rows.find((r) => r.ended_at == null) ?? rows[0] ?? null
 }
 
-async function stateOf(row: LinkRow | null): Promise<DocumentBuilderLinkState> {
+/**
+ * Who opened a link: its newest opens and how many there are in all. An account is named. Someone with no account is
+ * kept by where the open came from, the browser and the device. A read that fails says nothing, never a wrong list.
+ */
+async function opensOf(admin: Admin, linkId: string): Promise<{ opens: DocumentBuilderLinkOpen[]; opensTotal: number }> {
+  const { data, error, count } = await admin
+    .from('document_builder_link_opens')
+    .select('opened_at, viewer, user_id, client_ip, user_agent, device', { count: 'exact' })
+    .eq('link_id', linkId)
+    .order('opened_at', { ascending: false })
+    .limit(OPENS_SHOWN)
+  if (error) {
+    console.error('document-builder-link opens', error.message)
+    return { opens: [], opensTotal: 0 }
+  }
+  const rows = (data ?? []) as Array<{ opened_at: string; viewer: string; user_id: string | null; client_ip: string | null; user_agent: string | null; device: unknown }>
+  const ids = [...new Set(rows.map((r) => r.user_id).filter((id): id is string => id != null))]
+  const names = new Map<string, string>()
+  if (ids.length > 0) {
+    const { data: users } = await admin.from('users').select('id, name').in('id', ids)
+    for (const u of (users ?? []) as Array<{ id: string; name: string | null }>) names.set(u.id, (u.name ?? '').trim())
+  }
+  const opens = rows.map((r): DocumentBuilderLinkOpen => ({
+    at: r.opened_at,
+    viewer: r.viewer === 'staff' || r.viewer === 'preview' ? r.viewer : 'outside',
+    name: r.user_id ? names.get(r.user_id) || null : null,
+    ip: r.client_ip,
+    agent: r.user_agent,
+    device: documentBuilderLinkDevice(r.device),
+  }))
+  return { opens, opensTotal: typeof count === 'number' ? count : opens.length }
+}
+
+/** A link as the tab shows it: on with its address, or off with when and why it ended, each with who opened it. */
+async function stateOf(admin: Admin, row: LinkRow | null): Promise<DocumentBuilderLinkState> {
   if (!row) return { on: false }
-  return { on: true, code: await codeOf(row.id, row.nonce), madeAt: row.made_at, opened: row.open_count, lastOpenedAt: row.last_opened_at }
+  const history = await opensOf(admin, row.id)
+  if (row.ended_at != null) return { on: false, endedAt: row.ended_at, endedWhy: documentBuilderLinkEndedWhy(row.ended_why), ...history }
+  return { on: true, code: await codeOfRow(row), madeAt: row.made_at, opened: row.open_count, lastOpenedAt: row.last_opened_at, ...history }
 }
 
 /** What a link opens, as published, or null when nothing is published. Never a draft. */
@@ -132,6 +182,11 @@ async function open(req: Request, admin: Admin, body: Record<string, unknown>): 
       .eq('id', link.id)
     if (stampError) console.error('document-builder-link open stamp', stampError.message)
   }
+  // Every open is kept, with who it was: an account by its id, someone with no account by what the open carried.
+  const { error: openError } = await admin
+    .from('document_builder_link_opens')
+    .insert(documentBuilderLinkOpenRow({ linkId: link.id, viewer: view.viewer, userId: view.staffUserId, revision: answer.revision, ip: clientIpFromEdgeRequest(req), agent: req.headers.get('user-agent'), device: body.device }))
+  if (openError) console.error('document-builder-link open row', openError.message)
   console.log(JSON.stringify({ event: 'document_builder_link_open', link: link.id, kind: answer.kind, revision: answer.revision, viewer: view.viewer }))
   return json(answer)
 }
@@ -143,15 +198,15 @@ async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   if (caller instanceof Response) return caller
   const nowIso = new Date().toISOString()
 
-  if (body.action === 'desk.state') return json({ link: await stateOf(await liveLink(admin, target)) })
+  if (body.action === 'desk.state') return json({ link: await stateOf(admin, await newestLink(admin, target)) })
 
   if (body.action === 'desk.end') {
-    let q = admin.from('document_builder_links').update({ ended_at: nowIso, ended_by: caller.userId }).eq('builder_key', target.builderKey).is('ended_at', null)
+    let q = admin.from('document_builder_links').update({ ended_at: nowIso, ended_by: caller.userId, ended_why: 'off' }).eq('builder_key', target.builderKey).is('ended_at', null)
     q = target.sheetId ? q.eq('sheet_id', target.sheetId) : q.is('sheet_id', null)
     const { error } = await q
     if (error) throw new Error(`ending the link: ${error.message}`)
     console.log(JSON.stringify({ event: 'document_builder_link_end', builder: target.builderKey, sheet: target.sheetId }))
-    return json({ link: { on: false } })
+    return json({ link: await stateOf(admin, await newestLink(admin, target)) })
   }
 
   // desk.mint. A link opens only what is published, so one is made only once there is something to open.
@@ -160,7 +215,7 @@ async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   // A new link stops the old one.
   const made = await mintDocumentBuilderLink(admin, target, caller.userId)
   console.log(JSON.stringify({ event: 'document_builder_link_mint', link: made.row.id, builder: target.builderKey, sheet: target.sheetId }))
-  return json({ link: await stateOf(made.row) })
+  return json({ link: await stateOf(admin, made.row) })
 }
 
 serve(async (req) => {

@@ -95,7 +95,7 @@ export default function SetPromisedPayDateModal({
     try {
       // The job's own read (v2.5646): the job's people read it where the company-wide one answers them nothing.
       // Before the push the per-job function is not there, so the company-wide read filtered here stands in.
-      const perJob = await supabase.rpc('list_job_payment_promises_for' as never, { p_job_id: jobId } as never)
+      const perJob = await supabase.rpc('list_job_payment_promises_for', { p_job_id: jobId })
       const { data } = perJob.error && isMissingRpc(perJob.error) ? await supabase.rpc('list_job_payment_promises' as never) : perJob
       setOnRecord(promisesOnJob(parsePaymentPromisesRpc(data as unknown), jobId))
     } catch {
@@ -174,15 +174,16 @@ export default function SetPromisedPayDateModal({
     if (!claimReady) return
     setSaving(true)
     try {
-      const { error } = await supabase.rpc('add_job_payment_claim' as never, {
+      // An amount, a name or a note left empty is left off the call, and the function's own default (NULL) stands.
+      const { error } = await supabase.rpc('add_job_payment_claim', {
         p_job_id: jobId,
         p_date: paidYmd,
         p_method: method,
-        p_amount: amount,
-        p_said_by: saidBy.trim() || null,
+        p_amount: amount ?? undefined,
+        p_said_by: saidBy.trim() || undefined,
         p_channel: channel,
-        p_note: note.trim() || null,
-      } as never)
+        p_note: note.trim() || undefined,
+      })
       if (error) throw error
       showToast('Written down. The job stays billed until the money lands.', 'success')
       onSaved()

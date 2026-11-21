@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
+import { documentBuilderLinkWithSendsWords } from '../../lib/documentBuilder/link'
 import type { SendParty } from '../../lib/documentBuilder/send'
 import { readSheetParties, sendSheet, takeSendOff } from '../../lib/documentBuilder/sendIo'
 import { SHEET_SEND_NOTE } from '../../lib/documentBuilder/sendWords'
@@ -42,12 +43,14 @@ type Props = {
   revision: number
   /** Why the sheet goes only with *Send it anyway*: nobody checked the revision of the usual it went out on (`sheetUnreadWords`). An empty string once someone did. */
   unread: string
+  /** Told after a press that may have moved the sheet's link: a send can switch it on, and the last take-off closes it. */
+  onLinkMayHaveMoved?: () => void
   io?: SheetSendIo
 }
 
 const MUTED: CSSProperties = { margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }
 
-export function SheetSendCard({ builderKey, projectId, sheetId, revision, unread, io = SHEET_SEND_IO }: Props) {
+export function SheetSendCard({ builderKey, projectId, sheetId, revision, unread, onLinkMayHaveMoved, io = SHEET_SEND_IO }: Props) {
   const [parties, setParties] = useState<SendParty[] | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(true)
@@ -80,25 +83,42 @@ export function SheetSendCard({ builderKey, projectId, sheetId, revision, unread
     if (res.ok) setTries((n) => n + 1)
     return res
   }, [])
+  /** The same, for a press that may also move the sheet's link. */
+  const thenLink = useCallback(
+    async <T,>(act: Promise<Landed<T>>): Promise<Landed<T>> => {
+      const res = await then(act)
+      if (res.ok) onLinkMayHaveMoved?.()
+      return res
+    },
+    [then, onLinkMayHaveMoved],
+  )
 
   if (failure) return <OfflineRetryPanel failure={failure} onRetry={() => setTries((n) => n + 1)} surface="documents-builder-sends" idempotent busy={reading} />
   if (!parties) return <p style={MUTED}>Reading this job's trades…</p>
 
+  const linkLine = documentBuilderLinkWithSendsWords(parties.filter((p) => p.send).length)
   return (
-    <BuilderSendList
-      title="Send the sheet to this job's trades"
-      lead="A trade you send it to gets an email with the ask for a certificate. They also find the sheet on their own page."
-      parties={parties}
-      revision={revision}
-      published={revision > 0 && sheetId != null}
-      unpublishedWords="Publish this job's sheet first."
-      unread={unread}
-      noun="trade"
-      defaultNote={SHEET_SEND_NOTE}
-      emptyWords="No trade is on this job yet. A trade shows here once it is asked to quote on the GC projects page."
-      onSend={(party, to, note, why, anyway) => (sheetId ? then(io.send({ builderKey, sheetId, companyId: party.id, contactEmail: to.email, note, why, anyway })) : Promise.resolve({ ok: false as const, error: "Publish this job's sheet first." }))}
-      onTakeOff={(party) => (party.send ? then(io.takeOff(party.send.id)) : Promise.resolve({ ok: true as const, value: true }))}
-      onTurnPageOn={(party) => then(io.turnPageOn(party.id))}
-    />
+    <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+      <BuilderSendList
+        title="Send the sheet to this job's trades"
+        lead="A trade you send it to gets an email with the ask for a certificate. They also find the sheet on their own page."
+        parties={parties}
+        revision={revision}
+        published={revision > 0 && sheetId != null}
+        unpublishedWords="Publish this job's sheet first."
+        unread={unread}
+        noun="trade"
+        defaultNote={SHEET_SEND_NOTE}
+        emptyWords="No trade is on this job yet. A trade shows here once it is asked to quote on the GC projects page."
+        onSend={(party, to, note, why, anyway) => (sheetId ? thenLink(io.send({ builderKey, sheetId, companyId: party.id, contactEmail: to.email, note, why, anyway })) : Promise.resolve({ ok: false as const, error: "Publish this job's sheet first." }))}
+        onTakeOff={(party) => (party.send ? thenLink(io.takeOff(party.send.id)) : Promise.resolve({ ok: true as const, value: true }))}
+        onTurnPageOn={(party) => then(io.turnPageOn(party.id))}
+      />
+      {linkLine ? (
+        <p style={MUTED} data-testid="sheet-link-with-sends">
+          {linkLine}
+        </p>
+      ) : null}
+    </div>
   )
 }

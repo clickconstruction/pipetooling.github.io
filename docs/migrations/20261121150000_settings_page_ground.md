@@ -34,3 +34,5 @@ Two beds apply step 3's file a second time, which puts its `job_paper_set_settin
 ## Tested
 
 `supabase/tests/job_paper_settings/20_scenario.sql` (`npm run test:pg:job-paper-settings`), 123 assertions. The two looser changes after a signature are each taken and rolled back, so the rest of the bed stands on the stricter one as before. A new section walks the ground: the stop on the shape of the lines, a list with none of the new keys reading as before, the notice's box, the basis kept and moved, who may move it, and a looser change that keeps the basis and the first tick.
+
+**Applied** to prod on 2026-11-21, about 19:10 UTC, by `scripts/db-push.sh` from a checkout at `origin/main`, with this file the only one pushed: a sibling's pending file was set aside for the push and put back. The dev seat's `check_migration_ledger` read 1,425 versions applied with this one newest, the drift check read 1,425 local files against 1,425 remote versions, and a read through the dev seat returned the three new columns. The SQL beds workflow passed all four legs on the whole schema in #9230. Types folded for these names alone in v2.8184.

@@ -855,6 +855,13 @@ It is `SECURITY DEFINER` over `email_send_log`, a dev's and since v2.6762 the ow
 no delete policy (a cleared pick is `''`).
 Read-only training mode and the twin write fence apply.
 
+### Punch list ticks — one person's "working on it" marks (v2.8196, `20261121193000_punch_list_ticks.sql`)
+
+`punch_list_ticks` (one row per person and card number: the section the card was in when ticked, the build's newest version, `ticked_at` stamped by trigger): select / insert / update / delete each ask for `user_id = auth.uid()` and `is_master_or_dev()`.
+A person reads and writes only their own ticks, and nobody reads another person's, a dev included.
+`anon` has nothing.
+Read-only training mode, the twin write fence and the archived read fence apply.
+
 ### Test reports — the job's certified test paper (v2.3298, `20260911175738_job_test_reports.sql`)
 
 `job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary;
@@ -913,6 +920,8 @@ Every other role opens `/documents` without the tab, and a link to `?tab=builder
 Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and `20261120034225_document_builder_sheets.sql`): `document_builders`, `document_builder_sheets`, `document_builder_links` and `document_builder_sends` each read by `is_dev()` alone, with no grant to `anon`.
 A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
+Since v2.8187 taking a sheet off the last trade's page also ends that sheet's link, through the definer trigger `document_builder_sends_close_link`: the one change a signed-in press makes to a link, and only to end it.
+`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
@@ -954,6 +963,10 @@ Since v2.7998 **Add to a list** says what such a contact is through `name_contac
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
 `remind-person-papers` runs as the service role behind the cron secret and has no caller.
+Since v2.8016 `person-paper-pdf` opens the PDF of a signed paper of plain words or clauses for the four roles that send a paper, and only for a row the caller's own policy reads: an archived account is refused.
+An estimator who is not a digital twin opens it too when the paper is with an outside company (`estimator_reads_paper`, asked as the caller), Taunya's call of 2026-11-21, as calls 10 and 11 give them such a company's signed form.
+`open-contract-form-pdf` keeps its own gate for a form's PDF: a dev, the controller and a pay-approved master.
+The signer's copy is emailed by `accept-contract` as the service role, to the address the paper kept, and to nobody else.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
@@ -2065,6 +2078,7 @@ A job's settings for a paper built from settings (v2.8145) are the office's to s
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
 The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).
 `job_paper_set_basis` moves a required paper's basis in place: the office alone, never a digital twin, an archived account or a training account.
+The job's settings page (v2.8184) is drawn for whoever sees **Papers before this job opens**, and every press on it is one of these functions, so the database decides who may set a job's settings.
 Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
 The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
 A login tied to no roster person reads as owing and cannot start a paper.
@@ -2636,6 +2650,9 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.7982 the same people may answer a builder Market's call list offers: `builder_call_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and **Put back** is one more insert (the list itself, v2.7993).
   Since v2.8118 what was looked up about a builder is kept in `builder_lookups`, read by `user_can_research_permits()` and inserted only by a dev account under its own name (`is_dev()`), with no update or delete.
   Since v2.8118 a press on a looked-up fact (**Checked**, **Wrong**, **Not right**, **Put back**) is one insert into `builder_lookup_checks` by anyone who reads permits, as oneself, with no update or delete (the Ask for block, v2.8121).
+  The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties` and `license_roll_left_off`.
+  A shared Hiring column does not open the State roll.
+  Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and its **Pull** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;

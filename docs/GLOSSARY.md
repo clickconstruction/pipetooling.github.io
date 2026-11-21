@@ -902,6 +902,17 @@ Created from templates or built from scratch.
 
 **Relationship**: One per project (1:1)
 
+### State roll (Prospects, v2.8198)
+
+The state's public roll of licensed tradespeople, kept for our counties, and the Prospects tab that shows it (`/prospects?tab=roll`, punch list #411).
+A **pull** is one read of one of the state's files by `license-roll-pull`, logged in `license_roll_pulls`.
+**Kept** means a row's county is in `license_roll_counties`.
+**Gone** means the state's file no longer has the row.
+A gone row is taken off 28 days later.
+**Left off** means a person asked not to be listed, and no pull keeps them.
+The roll holds no phone, street address or email, since the state gives none for a person.
+It is not People → Licenses, which holds our own team's licenses.
+
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
 Can be assigned to people, have start/complete dates, and track status (pending, in_progress, completed, approved, rejected).
@@ -1043,6 +1054,7 @@ That row is **locked** at its first signature: any change after it, tighter or l
 Until v2.8182 such a change could only make the paper stricter.
 The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
 A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
+The **job's settings page** (v2.8184) is `JobPaperSettingsWindow` on a job's Documents tab: the Document builder's walked flow the first time, fed from the Book entry's settings list (`jobPaperFlow.ts`), and one page of sliders for a later change.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -2310,6 +2322,8 @@ The second course is **Intro to plumbing** (v2.5610–v2.5613, punch list #119;
 ten more drawings v2.5619), how water comes in under pressure and leaves by gravity, a drawing in every lesson;
 the third is **Intro to electrical** (v2.5614–v2.5618, punch list #120;
 four more drawings v2.5620), how a house's electrical system works for the plumbers who work beside it, understanding and not doing, offered to every role and required of nobody, with a content rule that no lesson instructs.
+The fourth is **Intro to HVAC** (v2.8158–v2.8169), how a house is cooled and heated, written as the company's own trade so its lessons instruct, offered to every role and required of nobody, with a content rule that work on a refrigerant loop names the carded technician (`cardWorkFailures`).
+Its `from:` lines say which facts were read at a 2024 code section or an agency's page and which are trade knowledge still to be checked, and it stays off until a licensed HVAC reader has read it.
 Every course is held to **plain words a fourteen-year-old reads** (v2.5621 the plumbing course;
 v2.5622 the electrical, its fifty-five words on its own list since v2.5623;
 v2.5624 the OSHA refresher, seventy-seven of OSHA's own words in `COURSE_TRADE_TERMS`): a **trade word** on the short list in `src/lib/training/tradeTerms.ts` is first met in a Must know or Why it matters sentence that says what it is, never first in a Traps item, a Numbers label, a caption or a Check yourself ask or option, and `courseContent.test.ts` holds every course on disk to it;
@@ -2321,8 +2335,10 @@ Distinct from *Read-only (training) mode* above, the account flag.
 
 **Database**: `training_courses`, `training_lesson_passes`, `training_passes`, `training_office()`, `training_pass_lesson()`, `training_finish_course()`, `training_state_for()`, `training_standings()` (`20261015060000`;
 `training_courses.offered` and the second seed row `20261018010000`, the third seed row `20261018020000`)
+The fourth seed row is `20261121074500`.
 
 **See**: `to-dos/training/README.md` (the plan), `to-dos/intro-plumbing/README.md` and `to-dos/intro-electrical/README.md` (the two courses' outlines and what each still waits on), `ACCESS_CONTROL.md` → Training
+Intro to HVAC has no card: its criteria, its sources and what it waits on are in `docs/recent-features/v2.8158.md` to `v2.8169.md`.
 
 ### Deleted-records archive & restore
 Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) snapshots deleted rows from high-value tables (jobs, bids, reports, customers→projects trees, people roster + cascades) into **`public.deleted_records_archive`**, grouped by the top-level record with `deleted_by`/`deleted_at`;
@@ -2410,6 +2426,8 @@ The third is **Read it back**, and the fourth is **Your write-ups**.
 Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
 The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
+The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
 guide `write-someone-up`.
@@ -3216,8 +3234,10 @@ gate `painted_map_can_touch` (→ `ACCESS_CONTROL.md`, *Painted maps*).
 The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
+Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
 Drawing a line, placing a dot, a walk, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
 The public page `/way`, the picture and the printed page are not on Google.
+Since v2.8208 the page is one word from it: it hands the rule its own ask (`screen: 'way'`), Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`) and stays light on the page's paper, and `PAINTED_GOOGLE_REACH` still answers Leaflet for the page until the look at Google's billing says yes.
 It has no page of its own and no header button: it is one line wherever the app shows an address.
 The header's search is its door with no job open (since v2.7227): **Paint a map** starts one, on a job picked in the sheet or on no job, and every map the reader can open is found by its name under *Painted maps* (`paintedMapSearch.ts`).
 A map on no job is its maker's and the office's until **Put it on a job…**.
@@ -6741,6 +6761,8 @@ A paper with an outside company is a line tagged *Customer*, *Supply house* or *
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8013 a waiting staff, sub or partner line says how many **reminders by email** went and when the next one is, and carries **Turn reminders off** or **Turn reminders on**: up to three, three days apart, each with a new signing link that ends the one before it ([`personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts)).
 The reminders are behind one switch that ships off, **Settings → People & teams → Paper reminders by email**, and a paper sent while it is off is never reminded.
+Since v2.8016 a person who signs an agreement the office emailed gets their **signed copy** by email as a PDF, and a paper of plain words or clauses has a PDF, opened with **Open the PDF** on its signed record ([`personPaperPdf.ts`](../supabase/functions/_shared/personPaperPdf.ts)).
+An older signed paper's PDF is made the first time someone opens it, and an hours statement, a W-9 and a certificate are never emailed.
 
 ### Party and signer (of a paper)
 
