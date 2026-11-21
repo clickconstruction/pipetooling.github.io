@@ -7,6 +7,29 @@ import { useEffect, type CSSProperties, type ReactNode } from 'react'
 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 
+/** The box screen's bar for a press (punch list #398): 48 high or more. */
+export const SHEET_TOUCH_MIN = 48
+/** What the × stood before the phone walk of 2026-11-21 read it at 39 by 38 on a box's More sheet. */
+const CLOSE_DRAWN = { width: 39, height: 38 }
+
+/**
+ * The sheet's ×: 48 by 48, the bar every other press on a box's screen already met. The margins give back what it
+ * grew by, so the title row is as tall as it was and the × is drawn where it was.
+ */
+export const SHEET_CLOSE_STYLE: CSSProperties = {
+  marginLeft: 'auto',
+  background: 'none',
+  border: 'none',
+  fontSize: '1.25rem',
+  cursor: 'pointer',
+  color: 'var(--text-muted)',
+  minHeight: SHEET_TOUCH_MIN,
+  minWidth: SHEET_TOUCH_MIN,
+  marginTop: -(SHEET_TOUCH_MIN - CLOSE_DRAWN.height) / 2,
+  marginBottom: -(SHEET_TOUCH_MIN - CLOSE_DRAWN.height) / 2,
+  marginRight: -(SHEET_TOUCH_MIN - CLOSE_DRAWN.width) / 2,
+}
+
 export function Sheet({ title, sub, children, onClose, footer, fill }: { title: string; sub?: string; children: ReactNode; onClose: () => void; /** Buttons that stay on screen under the body, whatever the body does with a drag or a wheel. */ footer?: ReactNode; /** The body fills the sheet and the sheet fills the screen: for a map, which eats the scroll. */ fill?: boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -20,7 +43,7 @@ export function Sheet({ title, sub, children, onClose, footer, fill }: { title: 
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto' }} />
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', minHeight: 36, minWidth: 36 }}>×</button>
+            <button type="button" onClick={onClose} aria-label="Close" style={SHEET_CLOSE_STYLE}>×</button>
           </div>
           {sub ? <p style={{ ...muted, margin: '-0.2rem 0 0' }}>{sub}</p> : null}
         </div>
