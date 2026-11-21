@@ -29,6 +29,7 @@ import {
 } from './paintedMap'
 import type { PaintedPoint } from './paintedLine'
 import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
+import { cleanPlaceWords } from './paintedPlaceWords'
 import type { PaintedMapSearchRow } from './paintedMapSearch'
 import { PAINTED_MAP_PHOTOS_BUCKET, isPaintedPlacePhotoPath, paintedPlacePhotoPath } from './paintedPlacePhoto'
 
@@ -363,7 +364,7 @@ export async function savePaintedPlace(
 ): Promise<Landed<PaintedPlace>> {
   const cols: Record<string, unknown> = {}
   if (change.name !== undefined) cols.name = change.name
-  if (change.words !== undefined) cols.words = change.words
+  if (change.words !== undefined) cols.words = cleanPlaceWords(change.words)
   if (change.lat !== undefined && change.lng !== undefined) {
     cols.lat = change.lat
     cols.lng = change.lng

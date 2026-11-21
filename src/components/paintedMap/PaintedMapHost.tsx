@@ -15,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { readKeptWalkRaw, writeKeptWalk } from '../../hooks/usePaintedWalk'
 import { onPaintedMapAsk, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import { paintedMapAskFromSearch, withoutPaintedMapAsk } from '../../lib/paintedMap/paintedMapSearch'
+import type { PaintedSpot } from '../../lib/paintedMap/paintedSpot'
 import { readKeptWalk, walkHasLine, type KeptWalk } from '../../lib/paintedMap/paintedWalk'
 import { keptWalkWords } from '../../lib/paintedMap/paintedWalkWords'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -34,7 +35,7 @@ export const PAINTED_MAP_WINDOWS = [PaintAMapStartSheet, PaintedMapWindow] as co
 type Open =
   | { kind: 'sheet'; home: PaintedMapHome }
   | { kind: 'new'; start: PaintedMapToStart; /** A caller that asked for this map by the door hears when its window closes. */ onClosed?: () => void }
-  | { kind: 'map'; mapId: string; address: string | null; add?: 'place' }
+  | { kind: 'map'; mapId: string; address: string | null; add?: 'place'; spot?: PaintedSpot }
   | { kind: 'kept'; kept: KeptWalk<KeptPaintedWalk> }
 
 const press: CSSProperties = { minHeight: 40, padding: '0 0.8rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }
@@ -60,7 +61,7 @@ function PaintedMapHostBody() {
       onPaintedMapAsk((ask) => {
         if (ask.kind === 'start') setOpen({ kind: 'sheet', home: ask.home })
         else if (ask.kind === 'paint') setOpen({ kind: 'new', start: ask.start, ...(ask.onClosed ? { onClosed: ask.onClosed } : {}) })
-        else setOpen({ kind: 'map', mapId: ask.mapId, address: ask.address ?? null, ...(ask.add ? { add: ask.add } : {}) })
+        else setOpen({ kind: 'map', mapId: ask.mapId, address: ask.address ?? null, ...(ask.add ? { add: ask.add } : {}), ...(ask.spot ? { spot: ask.spot } : {}) })
       }),
     [],
   )
@@ -102,6 +103,7 @@ function PaintedMapHostBody() {
         ask={{ start: open.start }}
         address={open.start.home.address ?? null}
         center={open.start.home.center ?? null}
+        spot={open.start.spot ?? null}
         onClose={() => {
           setOpen(null)
           onClosed?.()
@@ -109,7 +111,7 @@ function PaintedMapHostBody() {
       />
     )
   }
-  if (open?.kind === 'map') return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} openOn={open.add ?? null} onClose={() => setOpen(null)} />
+  if (open?.kind === 'map') return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} openOn={open.add ?? null} spot={open.spot ?? null} onClose={() => setOpen(null)} />
   if (open?.kind === 'kept') {
     const { map, state } = open.kept
     return <PaintedMapWindow key={`kept-${map.mapId}`} ask={map.start ? { start: map.start } : { mapId: map.mapId }} kept={{ state, pending: map.pending ?? [] }} address={map.address ?? null} onClose={() => setOpen(null)} />
