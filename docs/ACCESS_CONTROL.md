@@ -117,6 +117,7 @@ A dev **imitates** one to see the page they are on as that role — the real ses
 so RLS answers exactly what that role gets.
 Not read-only: a sample's writes are ordinary rows
 stamped with its own name.
+Two saves no press asks for are held while an imitation is on (v2.8176, `isImpersonationSessionActive()` read at each send): the app activity heartbeat (`bump_user_app_activity`, so the person's last seen time and app time stay their own) and the clock button's salary sync (`syncSalaryClockSessionsUnasked`), and Exit takes the flag off only after the session is the operator's again.
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
@@ -912,6 +913,8 @@ Every other role opens `/documents` without the tab, and a link to `?tab=builder
 Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and `20261120034225_document_builder_sheets.sql`): `document_builders`, `document_builder_sheets`, `document_builder_links` and `document_builder_sends` each read by `is_dev()` alone, with no grant to `anon`.
 A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
+Since v2.8187 taking a sheet off the last trade's page also ends that sheet's link, through the definer trigger `document_builder_sends_close_link`: the one change a signed-in press makes to a link, and only to end it.
+`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
@@ -1279,6 +1282,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The first reads the one stage whose days of ours have come with the bullets on them nobody of ours has seen, since the crew reads no stage window.
   The second keeps the arrival, a yes we saw for each bullet as told in the caller's own name, and on a No takes their word back and inserts one `dispatch_requests` row as a stage check.
   It refuses a training account, a digital twin and an archived caller itself, and a No on a bullet that is not on the list to look at.
+  It refuses a second answer at a stage in words that name who answered first (v2.8178, `docs/migrations/20261121150500_start_check_arrive_once.md`), so one person's **Yes, all as told** never replaces another's No.
   The crew holds no insert or update grant on any `start_check_*` table, so this function is the only way a crew member writes there.
 - **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
   It answers only for a job whose desk the caller is on, and nothing for an archived caller.

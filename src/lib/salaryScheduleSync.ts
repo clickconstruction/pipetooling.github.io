@@ -1,3 +1,4 @@
+import { isImpersonationSessionActive } from './impersonationSession'
 import { supabase } from './supabase'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import {
@@ -31,6 +32,23 @@ export async function syncSalaryClockSessionsForUserDay(
   } catch (e) {
     return { error: formatErrorMessage(e, 'Sync failed') }
   }
+}
+
+/**
+ * The clock button's own sync, the one no press asks for (on mount, then every 90 s). Held while
+ * View as is on: the call would run as the imitated person and write their clock rows from the
+ * dev's browser, and the server's own schedule fills those rows every few minutes anyway. The flag
+ * is read at each call, so a tick scheduled before an imitation began is held as well. A sync a
+ * person presses for (a saved workday, time off, a pay change) is `syncSalaryClockSessionsForUserDay`.
+ */
+export async function syncSalaryClockSessionsUnasked(
+  userId: string,
+  io: { viewingAs?: () => boolean; sync?: typeof syncSalaryClockSessionsForUserDay } = {},
+): Promise<{ error: string | null; held: boolean }> {
+  const viewingAs = io.viewingAs ?? isImpersonationSessionActive
+  if (viewingAs()) return { error: null, held: true }
+  const { error } = await (io.sync ?? syncSalaryClockSessionsForUserDay)(userId)
+  return { error, held: false }
 }
 
 /** Remove salary work schedule data and refresh sync so hourly pay config matches the clock strip. */

@@ -17,6 +17,7 @@ describe('courseSizeWords', () => {
     expect(courseSizeWords(TRAINING_COURSE_FACTS['osha-30-refresher'])).toBe('30 short lessons, about 3 hours')
     expect(courseSizeWords(TRAINING_COURSE_FACTS['intro-to-plumbing'])).toBe('30 short lessons, about 3 hours')
     expect(courseSizeWords(TRAINING_COURSE_FACTS['intro-electrical'])).toBe('30 short lessons, about 3 hours')
+    expect(courseSizeWords(TRAINING_COURSE_FACTS['intro-hvac'])).toBe('30 short lessons, about 3 hours')
   })
 
   it('every course on disk reads in one line on a phone and in plain words', () => {

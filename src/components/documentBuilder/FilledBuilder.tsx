@@ -48,6 +48,8 @@ import {
   sheetNote,
   sheetStamp,
   jobIsBehind,
+  jobPickLabel,
+  listedJobs,
   jobsOnUsual,
   usualJobsHead,
   usualPlanChip,
@@ -215,12 +217,13 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     void Promise.all([io.readGcJobs(), io.readBuilderSheets(entry.id)])
       .then(([gotJobs, gotSheets]) => {
         if (cancelled) return
-        setJobs(gotJobs)
+        const listed = listedJobs(gotJobs, (projectId) => gotSheets.get(projectId)?.revision ?? 0)
+        setJobs(listed)
         const next = new Map<string, LocalSheet>()
         for (const [projectId, s] of gotSheets) next.set(projectId, stateFrom(s))
         sheetsRef.current = next
         setSheetsState(next)
-        setJobId((was) => was ?? gotJobs[0]?.projectId ?? null)
+        setJobId((was) => was ?? listed[0]?.projectId ?? null)
         setFailure(null)
       })
       .catch((e: unknown) => {
@@ -526,7 +529,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   const printSheet = () => {
     if (!job || !jobState || !pageNow) return
     const stamp = `Revision ${jobState.revision} · ${job.name}`
-    const ok = io.print(sheetPrintHtml(pageNow, stamp), { kind: SHEET_SENT_KIND, title: sheetPrintTitle(pageNow), source: jobState.id ? { table: 'document_builder_sheets', id: jobState.id } : undefined })
+    const ok = io.print(sheetPrintHtml(pageNow, stamp), { kind: SHEET_SENT_KIND, title: sheetPrintTitle(pageNow), ...(job.billingJobId ? { jobIds: [job.billingJobId] } : null), source: jobState.id ? { table: 'document_builder_sheets', id: jobState.id } : undefined })
     if (!ok) setRefusal('The print window was blocked. Allow pop-ups for this site, then print again.')
   }
 
@@ -613,7 +616,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
               {jobs.length === 0 ? <option value="">No job you run as the GC yet</option> : null}
               {jobs.map((j) => (
                 <option key={j.projectId} value={j.projectId}>
-                  {`${j.name}${(sheets.get(j.projectId)?.revision ?? 0) > 0 ? '' : ', no sheet yet'}`}
+                  {jobPickLabel(j, sheets.get(j.projectId)?.revision ?? 0)}
                 </option>
               ))}
             </select>

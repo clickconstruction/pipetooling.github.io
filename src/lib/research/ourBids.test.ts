@@ -112,4 +112,11 @@ describe('the database’s copy of the rule', () => {
     expect(body).toContain('public.research_bid_party_key(c.name)')
     expect(body).toContain('public.research_bid_party_key(g.name)')
   })
+
+  it('research_contact_history, the skim card’s warm · cold · new name word, counts by both', () => {
+    const body = newest('research_contact_history')
+    expect(body).toContain('public.research_bid_counts(b.project_name, b.created_at)')
+    expect(body).toContain('public.research_bid_party_key(c.name)')
+    expect(body).toContain('public.research_bid_party_key(g.name)')
+  })
 })

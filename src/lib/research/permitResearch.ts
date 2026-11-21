@@ -381,7 +381,7 @@ export function contactKeys(contact: string | null | undefined): string[] {
   return [...keys]
 }
 
-/** One row of `research_contact_history`. */
+/** One row of `research_contact_history`. Its bids are the ones the one rule counts (`ourBids.ts`): two years, no practice bid. */
 export type ContactHistory = { key: string; bids: number; won: number; last_bid_on: string | null; on_deck: boolean }
 
 export type HintTone = 'warm' | 'cold' | 'new' | 'seen'
@@ -409,7 +409,7 @@ export function hintFor(contact: string | null | undefined, history: ReadonlyMap
   if (bids >= 3) return { tone: 'cold', word: 'cold', detail: `${bids} bids priced, nothing won${deck}` }
   if (bids > 0) return { tone: 'seen', word: 'seen', detail: `${bids} bid${bids === 1 ? '' : 's'} priced, none won yet${deck}` }
   if (onDeck) return { tone: 'seen', word: 'on the deck', detail: 'an open lead of this name is on a calling deck, Customers or Jobs to GC' }
-  return { tone: 'new', word: 'new name', detail: 'no bid to this name in our history' }
+  return { tone: 'new', word: 'new name', detail: 'no bid to this name in the last two years' }
 }
 
 /** Who wins what: the plumbers the window's taken rows name, most first. */

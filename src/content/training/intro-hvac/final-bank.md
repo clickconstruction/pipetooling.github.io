@@ -321,3 +321,35 @@ title: Final check bank
 - [ ] On the roof
 > right: The light's switch is at the opening, so nobody crosses a dark attic to find it.
 > wrong: The code puts the light's switch at the attic opening.
+
+41. Which class of licence covers a system of any size?
+- [x] Class A
+- [ ] Class B
+- [ ] Class C
+- [ ] Every class
+> right: A Class A licence covers a system of any size. Class B stops at 25 tons of cooling.
+> wrong: Class A covers any size. Class B covers cooling up to 25 tons.
+
+42. Who stays with a worker under 18 on a job?
+- [ ] Nobody
+- [ ] Any adult
+- [x] The contractor or a certified technician, at all times
+- [ ] The homeowner
+> right: A worker under 18 is with the contractor or a certified technician at all times on a job.
+> wrong: Under 18, a worker is never alone. The contractor or a certified technician is there at all times.
+
+43. When is the HVAC rough inspected?
+- [x] Before the walls close
+- [ ] After the paint
+- [ ] At start-up
+- [ ] A year later
+> right: The rough is inspected before the walls close, while a mistake is still easy to reach.
+> wrong: The rough is inspected before the drywall. After it, a mistake is a hole in a wall.
+
+44. What is emptied out of the loop at start-up before the refrigerant goes in?
+- [ ] Oil
+- [x] Air and water
+- [ ] Dust from the ducts
+- [ ] Nothing
+> right: The loop is tested for leaks and emptied of air and water first.
+> wrong: Air and water are emptied out of the loop before the refrigerant goes in.

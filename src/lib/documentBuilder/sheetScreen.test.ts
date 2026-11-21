@@ -10,7 +10,10 @@ import {
   filledRowChips,
   jobHasOwnChanges,
   jobHasSomethingToPublish,
+  gcJobOver,
   jobIsBehind,
+  jobPickLabel,
+  listedJobs,
   jobIsOnUsual,
   jobsOnUsual,
   jobPublishPress,
@@ -128,6 +131,42 @@ describe('the usual’s publish', () => {
     expect(usualPlanChip(plan[0]!, false, 1)).toEqual({ tone: 'ok', words: 'Revision 1' })
   })
 
+  it('lists a job that is bid, bought out or built, and one that is over only when its sheet went out', () => {
+    expect(gcJobOver({ stage: 'bidding', lostOn: null, closedOn: null })).toBeNull()
+    expect(gcJobOver({ stage: 'buyout', lostOn: null, closedOn: null })).toBeNull()
+    expect(gcJobOver({ stage: 'building', lostOn: null, closedOn: null })).toBeNull()
+    expect(gcJobOver({ stage: 'bidding', lostOn: '2026-11-02', closedOn: null })).toBe('lost')
+    expect(gcJobOver({ stage: 'closed', lostOn: '2026-11-02', closedOn: '2026-11-03' })).toBe('lost')
+    expect(gcJobOver({ stage: 'closed', lostOn: null, closedOn: null })).toBe('closed')
+    expect(gcJobOver({ stage: 'building', lostOn: null, closedOn: '2026-11-03' })).toBe('closed')
+    const all = [
+      { projectId: 'alder', over: null },
+      { projectId: 'birch', over: 'lost' as const },
+      { projectId: 'cedar', over: 'closed' as const },
+      { projectId: 'dune', over: 'lost' as const },
+    ]
+    const revision = (id: string) => ({ cedar: 2, dune: 0 })[id] ?? 0
+    expect(listedJobs(all, revision).map((j) => j.projectId)).toEqual(['alder', 'cedar'])
+    expect(jobPickLabel({ name: 'Alder Row Shops', over: null }, 0)).toBe('Alder Row Shops, no sheet yet')
+    expect(jobPickLabel({ name: 'Alder Row Shops' }, 1)).toBe('Alder Row Shops')
+    expect(jobPickLabel({ name: 'Cedar Park Medical Office', over: 'closed' }, 2)).toBe('Cedar Park Medical Office, closed')
+  })
+
+  it('holds a lost or closed job when the usual is published, whatever its sheet reads', () => {
+    const over = [{ ...jobs[0]!, over: 'closed' as const }, jobs[1]!, { ...jobs[2]!, over: 'lost' as const }]
+    const plan = usualPlanFor(over, sheets)
+    expect(plan).toEqual([
+      { id: 'cedar', name: 'Cedar Park Medical Office', gets: false, why: 'closed' },
+      { id: 'mesa', name: 'Mesa Verde Retail Shell', gets: false, why: 'no-sheet' },
+      { id: 'pike', name: 'Pike Street Clinic', gets: false, why: 'lost' },
+    ])
+    expect(usualPlanChip(plan[0]!, true, 1)).toEqual({ tone: 'wait', words: 'Held. This job is closed.' })
+    expect(usualPlanChip(plan[2]!, true, 1)).toEqual({ tone: 'wait', words: 'Held. This job was lost.' })
+    const changed = withUsualWords(USUAL, fieldPath('foot'), 'A new foot line.')
+    expect(usualPublishPress(changed, published(), plan).label).toBe('Publish your usual')
+    expect(['Held. This job is closed.', 'Held. This job was lost.'].flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+
   it('says a job is behind on its row when no change waits, and still says it gets a change that does', () => {
     const plan = usualPlanFor(jobs, sheets)
     expect(usualPlanChip(plan[0]!, false, 1, true)).toEqual({ tone: 'warn', words: 'Revision 1, behind your usual' })
@@ -237,7 +276,7 @@ describe('the printed page', () => {
     expect(html).not.toContain('<script')
     expect(sheetPrintTitle(sheet)).toBe('INSURANCE REQUIREMENTS For subcontractors on Cedar Park Medical Office')
     expect(SHEET_SENT_KIND).toMatch(/^[a-z][a-z0-9_]{1,60}$/)
-    expect(sentKindGroup(SHEET_SENT_KIND)).toBe('other')
+    expect(sentKindGroup(SHEET_SENT_KIND)).toBe('contracts')
   })
 
   it('escapes what a person typed', () => {

@@ -48,6 +48,11 @@ export type SendParty = {
   contacts: PartyContact[]
   /** For a GC: their jobs with us, which a send can be about. */
   jobs?: PartyJob[]
+  /**
+   * True for a trade that was asked for a price and not awarded (Taunya, 2026-11-21). The one press leaves it out.
+   * The press on its own row still sends to it.
+   */
+  alone?: boolean
   send: SendRecord | null
 }
 
@@ -187,16 +192,16 @@ export type SendBatch = {
 /**
  * The one press for everyone who is ready: every party not yet sent to whose page is on and who has someone to send
  * to. A party with no page is held, since sending to them alone is what makes one. A party whose page is off is held
- * too. The press says its count.
+ * too. So is a trade that was asked and not awarded: it is sent to alone, from its own row. The press says its count.
  */
 export function sendBatch(parties: ReadonlyArray<SendParty>, noun: BatchNoun, gate: { published: boolean; unread: string; anyway: boolean }): SendBatch {
   const waiting = parties.filter((p) => !p.send)
-  const ready = waiting.filter((p) => p.page.state === 'on' && p.contacts.length > 0)
+  const ready = waiting.filter((p) => !p.alone && p.page.state === 'on' && p.contacts.length > 0)
   const held = waiting
     .filter((p) => !ready.includes(p))
     .map((party) => ({
       party,
-      why: party.page.state === 'none' ? `Held: ${party.name} has no page yet. Send to them alone to make one.` : party.page.state === 'off' ? `Held: ${party.name}. Their page is off.` : `Held: ${party.name} has nobody with an email to send to.`,
+      why: party.alone ? `Held: ${party.name} was asked and not awarded. Send to them alone.` : party.page.state === 'none' ? `Held: ${party.name} has no page yet. Send to them alone to make one.` : party.page.state === 'off' ? `Held: ${party.name}. Their page is off.` : `Held: ${party.name} has nobody with an email to send to.`,
     }))
   const n = ready.length
   const label = n > 0 ? `Send to ${n} ${pluralNoun(noun, n)} who ${n === 1 ? 'is' : 'are'} ready` : 'Nothing to send'

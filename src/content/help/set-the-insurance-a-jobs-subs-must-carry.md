@@ -47,6 +47,7 @@ A list **Before this can be published** shows while something is missing. Fix ea
 - {{chip:green|Gets it, as revision 2}} means that job's sheet is published again with the change.
 - A held job keeps its sheet as it is. Its chip says why.
 - A job with changes of its own that are not published is held. Publish that job to bring it up.
+- A job that was lost or is closed is held. That job's sheet stays as the trades last saw it.
 - Each job is read again when you press. A change a teammate saved a moment ago is kept, and that job is held.
 - If a job changed since your page read it, nothing is published. The button then shows where your usual goes. Press it again.
 - After the press, the card counts the jobs held. Each held job's row says why.
@@ -68,6 +69,10 @@ A yellow panel may say the sheet changed somewhere else. See [When someone else 
 - **Add a name** adds one more name the sub's policy must list.
 - **Add a coverage line for this job** adds a line that only this job asks for.
 - The **×** beside a coverage line stops asking for it on this job.
+
+The **Job** list holds each job you are bidding, buying out or building. A job you lost or closed is left out.
+
+A lost or closed job stays in the list when its sheet was published. That job's name ends in *lost* or *closed*. You can still read the sheet, switch the link off and take the sheet off a trade's page.
 
 Publish your usual before the first job. A job's sheet goes out on the published usual.
 
@@ -173,7 +178,9 @@ The check is read on the revision of your usual that the job's sheet went out on
 
 One press under the list sends to every trade that is ready. The button says how many.
 
-A trade is ready when its page is on and someone there has an email. The rest are listed under the button, each with its reason. A trade that fails is named afterwards, and the others still go.
+A trade is ready when it was awarded, its page is on and someone there has an email. The rest are listed under the button, each with its reason.
+
+A trade that was asked for a price and not awarded is held from the one press. Press {{button:outline-blue|Send it to them}} on its own row to send to that trade alone. A trade that fails is named afterwards, and the others still go.
 
 ## Read where a send stands
 

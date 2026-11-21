@@ -59,19 +59,43 @@ export function usualPublishPress(draft: SheetDef, rec: BuilderRecord, plan: Rea
   return { label: ready > 0 ? countedLabel('Publish to', ready, 'job') : 'Publish your usual', dead: why.length > 0, why }
 }
 
+/** Why a job is over for a sheet: it was lost before it was won, or it is closed. Null while it is chased or run. */
+export type GcJobOver = 'lost' | 'closed'
+
+/** Where a GC project stands for the builder, from its row: lost wins, since a lost job may never have been closed. */
+export function gcJobOver(row: { stage: string | null; lostOn: string | null; closedOn: string | null }): GcJobOver | null {
+  if (row.lostOn) return 'lost'
+  if (row.stage === 'closed' || row.closedOn) return 'closed'
+  return null
+}
+
+/**
+ * The jobs the builder lists (Taunya, 2026-11-21): a job that is being bid, bought out or built. A job that was lost
+ * or is closed is left out, unless its sheet was published. That one stays, so its sheet can still be read, its link
+ * switched off and its sends taken off a trade's page. The usual's publish holds it.
+ */
+export function listedJobs<T extends { projectId: string; over: GcJobOver | null }>(jobs: ReadonlyArray<T>, sheetRevision: (projectId: string) => number): T[] {
+  return jobs.filter((j) => j.over == null || sheetRevision(j.projectId) > 0)
+}
+
+/** A job's line in the job list: its name, that it is lost or closed, and that it has no sheet yet. */
+export function jobPickLabel(job: { name: string; over?: GcJobOver | null }, sheetRevision: number): string {
+  return [job.name, job.over ?? '', sheetRevision > 0 ? '' : 'no sheet yet'].filter(Boolean).join(', ')
+}
+
 /**
  * The plan for the usual's publish, from every job the company runs as the GC. `heldHere` says what the page that
  * publishes holds for a job beyond its sheet as read: words typed and not saved, or a choice not yet made.
  */
 export function usualPlanFor(
-  jobs: ReadonlyArray<{ projectId: string; name: string }>,
+  jobs: ReadonlyArray<{ projectId: string; name: string; over?: GcJobOver | null }>,
   sheets: ReadonlyMap<string, JobSheetState>,
   heldHere: (projectId: string) => 'own-changes' | 'moved' | null = () => null,
 ): UsualPublishRow[] {
   return usualPublishPlan(
     jobs.map((j) => {
       const s = sheets.get(j.projectId)
-      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false, here: heldHere(j.projectId) }
+      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false, here: heldHere(j.projectId), over: j.over ?? null }
     }),
   )
 }
@@ -113,7 +137,7 @@ export function usualJobsHead(usualDirty: boolean, onUsual: number, jobs: number
  * usual's newest revision. With no change waiting its row says so, since nothing on this screen brings it up.
  */
 export function usualPlanChip(row: UsualPublishRow, usualDirty: boolean, revisionNow: number, behind = false): BuilderChip {
-  if (!row.gets) return { tone: row.why === 'no-sheet' ? 'wait' : 'warn', words: usualHeldWords(row.why) }
+  if (!row.gets) return { tone: row.why === 'no-sheet' || row.why === 'lost' || row.why === 'closed' ? 'wait' : 'warn', words: usualHeldWords(row.why) }
   if (usualDirty) return { tone: 'ok', words: `Gets it, as revision ${row.asRevision}` }
   return behind ? { tone: 'warn', words: `Revision ${revisionNow}, behind your usual` } : { tone: 'ok', words: `Revision ${revisionNow}` }
 }

@@ -40,10 +40,13 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
  * kept on the phone as a job's are and sent to the bid, each with its name, when the signal is back. `on-site-press`
  * (punch list #344, PR 1): a press on Materials on site, a use, a count, a move, a new box or a box photo's row, as the
  * rows it writes, each under an id minted on the phone, so a press made with no signal lands once when it is back.
+ * `person-report` (punch list #410, PR 4): a write-up about a person sent from the Dashboard's Write someone up sheet
+ * with no signal. It is words and facts, never money, and it lands through `land_person_report`, which counts a
+ * second arrival of the same press once.
  */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket' | 'bid-photos' | 'on-site-press'
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket' | 'bid-photos' | 'on-site-press' | 'person-report'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos', 'on-site-press']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos', 'on-site-press', 'person-report']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -61,6 +64,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'counter-ticket': 'Ticket photo',
   'bid-photos': 'Bid photos',
   'on-site-press': 'On site press',
+  'person-report': 'Write-up',
 }
 
 /**
@@ -290,6 +294,14 @@ export interface OnSitePressPayload {
   rowsStandAlone?: boolean
 }
 
+/**
+ * A write-up about a person (punch list #410, PR 4): what `land_person_report` takes, without the press id and the
+ * pressed time, which are the press's own. The words stay on the phone until the send lands, then go with the press.
+ */
+export interface PersonReportPayload {
+  fields: Record<string, unknown>
+}
+
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
   ? ClockInPayload
   : K extends 'clock-out'
@@ -308,7 +320,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
                 ? BidPhotosPayload
                 : K extends 'on-site-press'
                   ? OnSitePressPayload
-                  : FieldReportPayload
+                  : K extends 'person-report'
+                    ? PersonReportPayload
+                    : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
