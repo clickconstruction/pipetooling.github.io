@@ -57,14 +57,14 @@ All three are on frame 2 of the mock-up.
    a place's words at 200 characters and the app at 160 (`PAINTED_PLACE_WORDS_MAX` in
    `src/lib/paintedMap/paintedMap.ts`), so this is the one migration. A row, a mark's label, a
    printed page and a picture draw a short form of it, and the place draws it whole when opened.
-3. **That custom button, easy to click.** Read here as a press for anything not on the list. It is
-   **＋ Something else**, the full width of the phone and 56 px tall, under the kinds and again under
+3. **That custom button, easy to click.** A press for anything not on the list, which Taunya
+   confirmed the same day: *Yes, that one*. It is **＋ Something else**, the full width of the phone and 56 px tall, under the kinds and again under
    *What is buried?*. One press opens **What is it?** with the keyboard up. The place keeps the typed
    name and the plain dot, as a place with no kind does today. Every other press on the sheet grew
    with it: the kinds are two to a row and 56 px tall, where they were small chips.
 
-If *that custom button* meant something else, such as the **Photo of a spot** press itself, that
-press is 56 px tall and the full width too.
+The two doors, **Photo of a spot** and **Keep this spot on the job**, are 56 px tall and the full
+width too.
 
 ## The short answer
 
