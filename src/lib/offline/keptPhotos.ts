@@ -149,8 +149,12 @@ export type SendKeptTaskPhoto = (input: Omit<KeptTaskPhoto, 'sent' | 'bytes'> & 
 export type SendKeptTicketRow = (press: OutboxPress) => Promise<unknown>
 export type SendKeptTicketPage = (input: { ticketId: string; uploaderId: string; page: Omit<KeptTicketPage, 'sent' | 'bytes' | 'byName'> & { blob: Blob } }) => Promise<unknown>
 
+/** A write-up's photo (punch list #410, PR 5): sent to the person-report-photos bucket under the press's own id. */
+export type SendKeptWriteUpPhoto = (input: { id: string; pressId: string; blob: Blob; byUserId: string; takenAt: string; width: number; height: number }) => Promise<unknown>
+
 export interface SendKeptIo {
   bytes?: KeptPhotosStore
+  sendWriteUp?: SendKeptWriteUpPhoto
   send?: SendKeptPhoto
   sendTask?: SendKeptTaskPhoto
   sendTicketRow?: SendKeptTicketRow
@@ -187,8 +191,9 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
   const task = press.kind === 'task-photo'
   const ticket = press.kind === 'counter-ticket'
   const bid = press.kind === 'bid-photos'
+  const writeUp = press.kind === 'person-report'
   // What the shot belongs to: a task photo's card (punch list #273), a ticket's own id (punch list #295), a bid photos press's bid (punch list #306), else the job of a report or a job photos press.
-  const owner = task ? (press.payload as TaskPhotoPayload).instanceId : ticket ? (press.payload as CounterTicketPayload).ticketId : bid ? (press.payload as BidPhotosPayload).bidId : (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
+  const owner = writeUp ? press.id : task ? (press.payload as TaskPhotoPayload).instanceId : ticket ? (press.payload as CounterTicketPayload).ticketId : bid ? (press.payload as BidPhotosPayload).bidId : (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
   let current = press
   if (ticket && owner && unsentKeptPhotos(press).length > 0) {
     // The ticket's row goes first: a page joins only a ticket that is there. The same write on every try.
@@ -213,7 +218,11 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
     }
     try {
       const facts = { id: photo.id, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height }
-      if (ticket) {
+      if (writeUp) {
+        // A write-up's photo goes to its own private bucket and row (punch list #410), keyed to the press, before the write-up lands.
+        const sendWriteUp = io.sendWriteUp ?? (await import('../people/writeUpPhotosIo')).sendWriteUpPhoto
+        await sendWriteUp({ id: photo.id, pressId: owner, blob, byUserId: press.userId, takenAt: photo.takenAt, width: photo.width, height: photo.height })
+      } else if (ticket) {
         // A ticket's page goes to the counter-tickets bucket and its own row (punch list #295), under the kept id.
         const t = photo as KeptTicketPage
         const sendPage =

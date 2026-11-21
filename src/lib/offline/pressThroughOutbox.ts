@@ -50,6 +50,8 @@ export interface PressIo {
   forceQueue?: boolean
   /** The queue is off for this session (a twin, an impersonation): a failed send is handed back as it is today. */
   allowed?: boolean
+  /** The press's id, when the surface minted it first: a write-up's photos are named by it before the press is made (punch list #410). */
+  id?: string
 }
 
 export async function pressThroughOutbox<K extends OutboxKind>(args: PressArgs<K>, io: PressIo = {}): Promise<PressOutcome> {
@@ -58,7 +60,7 @@ export async function pressThroughOutbox<K extends OutboxKind>(args: PressArgs<K
   const online = io.online ?? browserOnline
   const now = io.now ?? Date.now
   const allowed = io.allowed ?? !isImpersonationSessionActive()
-  const press = newPress({ ...args, id: mintPressId(), seq: nextSeq(store.presses()) } as NewPressArgs<K>)
+  const press = newPress({ ...args, id: io.id ?? mintPressId(), seq: nextSeq(store.presses()) } as NewPressArgs<K>)
   if (allowed && (io.forceQueue || !online())) {
     store.put(press)
     return { kind: 'queued', press }

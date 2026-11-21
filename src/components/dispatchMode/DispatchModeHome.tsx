@@ -6,7 +6,7 @@ import { useDashboardSubSchedule } from '../../hooks/useDashboardSubSchedule'
 import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
 import { isSubcontractorLikeRole, isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { DashboardMyScheduleSection } from '../dashboard/DashboardMyScheduleSection'
-import { DashboardPersonReportCard } from '../dashboard/DashboardPersonReportCard'
+import { WriteSomeoneUpDoor } from '../writeUp/WriteSomeoneUpDoor'
 import DashboardFinancialsSection from '../DashboardFinancialsSection'
 import AdditionalReportModal from '../AdditionalReportModal'
 import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPicturesDispatchRequest'
@@ -297,8 +297,8 @@ export default function DispatchModeHome() {
         )}
       </section>
 
-      {/* HR Report intake (v2.2235) — same card and role gate as the main Dashboard. */}
-      <DashboardPersonReportCard visible={role === 'dev' || role === 'master_technician'} />
+      {/* Write someone up (punch list #410): the Dashboard's press, in place of the HR Report card that sat here until v2.8174. */}
+      <WriteSomeoneUpDoor userId={authUser?.id} role={role} surface="dispatch-mode" style={{ marginTop: '0.75rem' }} />
 
       {leaveReportJob ? (
         <AdditionalReportModal

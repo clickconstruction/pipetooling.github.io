@@ -20,7 +20,10 @@ import {
   summarizePendingReportAging,
   type PendingReportSeen,
 } from '../../lib/people/hrPendingReports'
-import { filePersonReport, PENDING_REPORT_COLUMNS } from '../../lib/people/hrPendingReportsIo'
+import { filedWords, filePersonReport, PENDING_REPORT_COLUMNS } from '../../lib/people/hrPendingReportsIo'
+import { loadReportPhotos, type ReportPhoto } from '../../lib/people/writeUpPhotosIo'
+import { photoCountWords } from '../../lib/people/writeUpPhotos'
+import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { writeUpKindLabel } from '../../lib/people/writeUp'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
@@ -62,6 +65,7 @@ export type PendingReport = {
   talked_to_person?: boolean | null
   adds_to?: string | null
   pressed_at?: string | null
+  press_id?: string | null
 }
 
 type YearRow = { id: string; author_user_id: string | null; subject_person_id: string; status: string }
@@ -87,6 +91,8 @@ export function HrPendingReportsSection({
   const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<PendingReport[] | null>(null)
   const [year, setYear] = useState<YearRow[]>([])
+  /** A write-up's photos by its press (PR 5): the dev looks at them here before filing. */
+  const [photos, setPhotos] = useState<Map<string, ReportPhoto[]>>(new Map())
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dismissId, setDismissId] = useState<string | null>(null)
   const [reason, setReason] = useState('')
@@ -101,7 +107,16 @@ export function HrPendingReportsSection({
       setRows([])
       return
     }
-    setRows(sortPendingReportsOldestFirst((data ?? []) as unknown as PendingReport[]))
+    const pending = sortPendingReportsOldestFirst((data ?? []) as unknown as PendingReport[])
+    setRows(pending)
+    // The photos are a help on the card, never a need: a read that fails leaves the cards without them.
+    void loadReportPhotos(pending.map((r) => r.press_id ?? ''))
+      .then((found) => {
+        const byPress = new Map<string, ReportPhoto[]>()
+        for (const p of found) byPress.set(p.press_id, [...(byPress.get(p.press_id) ?? []), p])
+        setPhotos(byPress)
+      })
+      .catch(() => setPhotos(new Map()))
     // This year's reports, for the one line that says how many the writer has sent and how many stand about the person.
     // The line is a help, never a need: a read that fails leaves the cards as they are, without it.
     try {
@@ -154,10 +169,10 @@ export function HrPendingReportsSection({
     const id = r.id
     setBusyId(id)
     // A write-up is filed with its facts ahead of the writer's words; an older report takes the function's own preamble.
-    const { error } = await filePersonReport(id, nameForPerson(r.subject_person_id), r)
-    if (error) showToast(formatErrorMessage(error, 'The report was not filed.'), 'error')
+    const filed = await filePersonReport(id, nameForPerson(r.subject_person_id), r, authUser?.id ?? null)
+    if (filed.error) showToast(formatErrorMessage(filed.error, 'The report was not filed.'), 'error')
     else {
-      showToast('Filed as a dated entry on their record.', 'success')
+      showToast(filedWords(filed, 'Filed as a dated entry on their record.'), filed.photos.kind === 'failed' ? 'error' : 'success')
       onFiled()
     }
     await load()
@@ -242,6 +257,20 @@ export function HrPendingReportsSection({
           <p style={{ fontSize: '0.85rem', color: 'var(--text-700)', margin: '0.45rem 0 0', whiteSpace: 'pre-wrap', borderLeft: '3px solid var(--border)', paddingLeft: '0.65rem' }}>
             {r.content}
           </p>
+          {(photos.get(r.press_id ?? '') ?? []).length > 0 ? (
+            <div data-report-photos style={{ marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{photoCountWords((photos.get(r.press_id ?? '') ?? []).length)}, taken on the writer’s phone</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {(photos.get(r.press_id ?? '') ?? []).map((p, i) =>
+                  p.url ? (
+                    <a key={p.id} href={p.url} target="_blank" rel="noreferrer" title={`Taken ${formatDenverTimeOnly(Date.parse(p.taken_at))}`} style={{ display: 'block', lineHeight: 0 }}>
+                      <img src={p.url} alt={`Photo ${i + 1} of the write-up`} style={{ width: 112, height: 112, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-strong)' }} />
+                    </a>
+                  ) : null,
+                )}
+              </div>
+            </div>
+          ) : null}
           {facts.length > 0 ? (
             <p data-report-counts style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.45rem 0 0' }}>
               {reportCountsLine({ id: r.id, author_user_id: r.author_user_id ?? null, subject_person_id: r.subject_person_id, author_name: r.author_name }, year, subject)}

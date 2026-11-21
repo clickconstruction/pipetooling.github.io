@@ -198,6 +198,8 @@ Since v2.8160 the door to all of it is **Write someone up**, a named line under 
 
 Since v2.8172 (migration `20261121143500`) a write-up's photos have a place: `person_report_photos`, one row a photo keyed to the write-up's `press_id`, and the private `person-report-photos` bucket, where an object sits under the writer's own folder. The writer adds and reads their own, a dev reads all, and nobody else reads a row or a file. A photo can be dropped until its write-up is sent.
 
+Since v2.8174 the sheet takes up to four photos (`src/lib/people/writeUpPhotos.ts`), sent ahead of the write-up or kept on the phone with it, and the queue's card shows them. Filing a write-up that has photos saves them as one evidence record on the person's file, tied to the new entry, through `savePersonEvidence`. The Dashboard's HR Report card is retired: **Write someone up** is the one door.
+
 ## Agent recipes
 
 - Everyone's freshness in one query: entries `select person_id, created_at` + files `select person_id, kind, updated_at` → run through `derivePersonFileFreshness` per person.

@@ -2,7 +2,7 @@
 title: write someone up from my dashboard
 category: Field Work
 roles: master_technician, superintendent, dev
-keywords: write up, write someone up, write-up, hr, report a person, late, no-show, safety, conduct, work quality, leader, superintendent, phone, read it back, take it back, add to it, no signal, kept on the phone, waiting for signal
+keywords: write up, write someone up, photo, take a photo, hr report, write-up, hr, report a person, late, no-show, safety, conduct, work quality, leader, superintendent, phone, read it back, take it back, add to it, no signal, kept on the phone, waiting for signal
 order: 22
 ---
 You saw something on a job that HR should know about. You can write it up on your phone while it is fresh.
@@ -27,8 +27,9 @@ The sheet fills in who it is about, when it happened and which job. Press the da
 1. Pick a kind under **What kind?**. The last kind is **Good work**, for something done well.
 2. Type what you saw under **What did you see?**. Give the times.
 3. Or press {{button:outline|Talk it through}} and say it. The phone types your words. No sound is kept.
-4. Press a name under **Who saw it?** for each person who saw it too. **I did** is already on.
-5. Answer whether you have talked to the person about it.
+4. Press {{button:outline|Take a photo}} under **Photos** when a picture shows it. A write-up carries up to four.
+5. Press a name under **Who saw it?** for each person who saw it too. **I did** is already on.
+6. Answer whether you have talked to the person about it.
 
 :::example Words that hold up
 "The trench by the east wall was open at lunch with no cones or tape. I found it at 12:20 pm. I told Dana at 12:30 pm and Dana taped it off."
@@ -50,7 +51,7 @@ Nothing is saved until you press **Send write-up to HR**. A stray press outside 
 
 ## What happens after
 
-HR reads your write-up before it goes on the person's file. Nobody else on the crew can see it. The app tells the person nothing.
+HR reads your write-up before it goes on the person's file. Nobody else on the crew can see it or its photos. The app tells the person nothing.
 
 The sheet shows **Your write-ups** with where each one stands.
 
@@ -68,6 +69,8 @@ You see only your own write-ups. You never see the rest of a person's file.
 You can send a write-up with no signal. The phone keeps it and sends it by itself when the signal is back.
 
 The sheet then reads *Kept on this phone*, with the time you pressed. **Your write-ups** lists it as {{chip:yellow|Waiting for signal}}. Closing the app loses nothing.
+
+Photos wait with it. The line under the name counts them, as in *1 photo kept*. The phone sends the photos first and the write-up after.
 
 The write-up keeps the time you pressed **Send write-up to HR**, not the time it arrived. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line at the top of the screen.
 

@@ -75,7 +75,6 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 | 16 | Projects (Assigned + Subscribed Stages) | [`DashboardProjectsCard`](../src/components/dashboard/DashboardProjectsCard.tsx) 1674–1688 | **extracted (v2.721)** | 0 (step data in `useDashboardBoot`) | low (boot outputs + `getCurrentUserName`; gates stay parent-side for the dock) | — | `dashboardProjectsCard` 13 | Done |
 | 16a | Partner ledger + partner jobs | `DashboardPartnerLedgerSection` 1692, `DashboardPartnerJobsSection` 1696 | extracted (born external, self-gating, fail-soft) | 0 | none | — | `DashboardPartnerLedgerSection` smoke | Done |
 | 16b | Sub money ("Your money" card) | [`DashboardSubMoneySection`](../src/components/dashboard/DashboardSubMoneySection.tsx) 1700 | **extracted from birth (v2.1212)** | 0 (sole prop `visible={isSubcontractorLikeRole(role)}`) | none | — | none | Done |
-| 16c | HR report card (v2.2235) | `dash-hr-report` anchor 1705–1707 + `DashboardPersonReportCard` 1708 | extracted (born external) | 0 (`visible` = dev/master) | none | — | none | Done |
 | 17 | My Team | lazy `DashboardMyTeamSection` 1710–1719 | extracted | 1: `isPayApprovedMaster` 173 (effect 174–186) → `canApproveHours` derived 187, read only here; hook in parent | high (shares `myTeam` with strip cluster) | n/a | none | Done; `myTeam` hook stays in parent; v2.3616: roster = the crew the viewer supervised this week (`supervisedMembershipEnabled`), `canApprove` gates the approval UI |
 | 17b | My crew (v2.3613 Supervision) | lazy [`DashboardSupervisorSection`](../src/components/dashboard/DashboardSupervisorSection.tsx) 1720–1724 | **extracted from birth** | 0 (`setLeaveReportJob` handed in as `onLeaveReport`) | none (own RPC `get_supervised_days_payload`; kernel `lib/people/supervisedDays.ts`) | n/a | smoke | Done |
 | 18 | Me / My Time | `dash-me` 1727 + `DashboardMyTimeSection` 1728–1734 (helpers' strip at 1726 sits above it) | extracted | 0 | low (`hoursDaysCorrectSet`, `dashboardSelfIsSalary` props) | n/a | none | Done |
@@ -125,7 +124,6 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | Projects: Subscribed Stages (`showSubscribed`) | ✓ | ✓ | ✓ | — | — | — | — |
 | Partner ledger / partner jobs | any role with a live partnership (self-gated) | | | | | | |
 | Sub money | — | — | — | — | — | — | ✓ |
-| HR report card | ✓ | ✓ | — | — | — | — | — |
 | My Team / My Time sections | any signed-in user | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | My crew (`DashboardSupervisorSection`, v2.3613; parent gate: `master_technician`, `helpers` or `subcontractor`) — job-days the viewer supervised: reports owed, crew hours read-only | — | ✓ if on a job-day they ran | — | — | — | — | ✓ only when the office marked them able to run a job |
 | Leave Report buttons (`canLeaveJobFieldReport`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (everyone but role=null) |
@@ -147,8 +145,8 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 1. Section dock
 
-- **Render location:** `dockSections` 1240–1279 + `<SectionDock>` 1343–1349 (renders when >1 entry; `onChipClick` → `recordNavClick(…, 'dock', '#id')`, v2.2334). 14 candidate entries: `dash-my-schedule`, `dash-notifications`, `dash-clocked-in`, `dash-crew-day`, `dash-my-inbox`, `dash-teams-inbox`, `dash-bids`, `dash-reports`, `dash-ready-to-bill`, `dash-assigned-jobs`, `dash-billing`, `dash-projects`, `dash-hr-report`, `dash-me`.
-- **Anchors:** the parent keeps five sibling anchor divs with `dockAnchorStyle` (`scrollMarginTop: 8`, 1238) — `dash-notifications` 1410, `dash-clocked-in` 1301 (inside `clockActivityStripBlock`), `dash-billing` 1648, `dash-hr-report` 1706, `dash-me` 1727. The rest are the child components' own `id`s (My Schedule, Crew Day, My Inbox, Teams Inbox, My Bids, Recent Reports, Team RTB, Assigned Jobs, Projects).
+- **Render location:** `dockSections` 1240–1279 + `<SectionDock>` 1343–1349 (renders when >1 entry; `onChipClick` → `recordNavClick(…, 'dock', '#id')`, v2.2334). 13 candidate entries: `dash-my-schedule`, `dash-notifications`, `dash-clocked-in`, `dash-crew-day`, `dash-my-inbox`, `dash-teams-inbox`, `dash-bids`, `dash-reports`, `dash-ready-to-bill`, `dash-assigned-jobs`, `dash-billing`, `dash-projects`, `dash-me`.
+- **Anchors:** the parent keeps four sibling anchor divs with `dockAnchorStyle` (`scrollMarginTop: 8`, 1238) — `dash-notifications` 1410, `dash-clocked-in` 1301 (inside `clockActivityStripBlock`), `dash-billing` 1648, `dash-me` 1727 (`dash-hr-report` went with the HR Report card in v2.8174). The rest are the child components' own `id`s (My Schedule, Crew Day, My Inbox, Teams Inbox, My Bids, Recent Reports, Team RTB, Assigned Jobs, Projects).
 - **Owned state:** none — each `visible` mirrors its section's render gate; two are data halves reported up by children (`myInboxDockVisible` 353 via `onVisibleChange`, `myBidsDockHasContent` 577 via `onContentVisibleChange`).
 - **Tests:** `dashboardSectionDock` 8 covers the dock's active-chip kernel (`pickActiveDashboardSection`, `clampedCenterScrollLeft`); the entry list/gates are untested.
 - **Extraction status + approach:** `SectionDock` is extracted. The config **must stay in the parent** (it reads every gate). Keep anchor `id`s stable across extractions.
@@ -326,7 +324,6 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | `DashboardPartnerLedgerSection` | 1692 | live partnership (self-gated, fail-soft) | `usePartnerLedger` hook | smoke |
 | `DashboardPartnerJobsSection` | 1696 | same | RPCs `get_my_partner_jobs` / `get_partner_jobs_as`, `get_my_partner_job_costing` / `get_partner_job_costing_as` | none |
 | `DashboardSubMoneySection` (v2.1212) | 1700 | `visible={isSubcontractorLikeRole(role)}` | `people_labor_jobs`, `people_labor_job_items`, `people_labor_job_payments`, `step_commitments`, `project_workflow_steps`; writes via RPC `respond_to_work_order` (accept/decline an offer); fail-soft | none |
-| `DashboardPersonReportCard` (v2.2235) | 1705–1708 (`dash-hr-report` anchor 1706) | `visible` = dev/master | `people`, `person_reports` (insert) | none |
 | `DashboardDevRejectedNotification` | 1530 | `(isDev \|\| pay-approved master) && authUser?.id` (v2.6758) | self | none |
 | `DashboardMyVehicleCard` (v2.1648) | 1737 | renders null unless the user holds a vehicle, or a read failed (then the Retry panel, `surface="my-vehicle"`, v2.5962) | self | smoke |
 

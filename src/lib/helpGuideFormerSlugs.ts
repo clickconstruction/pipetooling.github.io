@@ -20,6 +20,8 @@ export const HELP_GUIDE_FORMER_SLUGS: ReadonlyArray<readonly [former: string, cu
   ['share-job-with-supply-house', 'add-a-job-account-at-a-supply-house'],
   // The reminders ladder left To do with the Board (v2.7332): the guide now reads the Board.
   ['read-the-reminders-ladder-on-the-lien-desk', 'read-the-board-on-the-lien-desk'],
+  // The HR Report card became Write someone up (v2.8174, punch list #410): one press under the Dashboard's row of squares.
+  ['send-an-hr-report-about-someone', 'write-someone-up'],
 ]
 
 const CURRENT_BY_FORMER = new Map<string, string>(HELP_GUIDE_FORMER_SLUGS)
