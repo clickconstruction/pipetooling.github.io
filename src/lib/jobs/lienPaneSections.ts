@@ -42,15 +42,16 @@ export type LienPaneSectionsInput = {
   /** The timeline's next step, "Draft the Jul + Aug notice — 9 days."; null with no timeline. */
   nextWords: string | null
   /** The verdict; or, on a sent notice with nothing due (v2.6625), the day it went — the head reads *Sent Oct 14* and judges nothing. */
-  gates: { ready: boolean; headline: string; summary: string } | { sentOn: string } | null
+  gates: { ready: boolean; headline: string; summary: string } | { sentOn: string; /** The fold's own head and tail (v2.8206): *Window closed Aug 15* and *nothing sent* on a missed notice that can no longer go. Absent, the head reads *Sent <day>* and *as the notice went*. */ head?: string; tail?: string } | null
   /** The job's houses; null when it bought nothing (the section is not drawn). */
   houses: { count: number; housesOwed: number; owed: number; paid: number; asOf: string } | null
   /** 'YYYY-MM', the months on this notice. */
   months: readonly string[]
   /**
    * On a sent notice with nothing due, the months the notice named as its fold words them (`lienSentGatesFold`'s
-   * `months`: "Jul + Aug", or *no month named* when the record keeps none); null or absent on a notice still being
+   * `monthsHead`: "Jul + Aug", or *no month named* when the record keeps none); null or absent on a notice still being
    * drafted. The head reads these in place of the draft's months, which a paper that went does not have (v2.8167).
+   * On a missed notice that can no longer go, the closed fold's own (v2.8206): "May, closed".
    */
   sentMonths?: string | null
   /** "$27,199" — the claim as the strip says it. */
@@ -76,8 +77,8 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
   out.push({
     key: 'gates',
     label: 'The four gates',
-    fact: !i.gates ? '—' : 'sentOn' in i.gates ? `Sent ${i.gates.sentOn}` : `${i.gates.ready ? '✓' : '✗'} ${i.gates.headline}`,
-    tail: !i.gates ? '' : 'sentOn' in i.gates ? 'as the notice went' : i.gates.summary,
+    fact: !i.gates ? '—' : 'sentOn' in i.gates ? i.gates.head ?? `Sent ${i.gates.sentOn}` : `${i.gates.ready ? '✓' : '✗'} ${i.gates.headline}`,
+    tail: !i.gates ? '' : 'sentOn' in i.gates ? i.gates.tail ?? 'as the notice went' : i.gates.summary,
   })
   if (i.houses) {
     const h = i.houses

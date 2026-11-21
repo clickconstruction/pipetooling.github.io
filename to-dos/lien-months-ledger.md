@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (v2.8170). One more choice for Grace came from the live read: what the gates say on a missed notice that can no longer go, under Audited below.
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (v2.8170). The gates on a missed notice that can no longer go fold to one line since v2.8206, Taunya's pick of 2026-11-21, and the late footer's send stays on her word of the same day.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -237,11 +237,16 @@ reads *Sent Nov 16 ›* then *Jul + Aug ›* and the head *Jul + Aug* at 1,440 p
 and *Sep* at 390 px. The one notice in Missed has its affidavit's day behind it. It reads gone in its card, its footer
 and its head, with no send, as before.
 
-**One more, for Grace, not built.** That same notice in Missed can no longer go, and its pane still asks for a month.
-The strip's first chip is a red *No month picked ›*, gate 4 says to pick one, and the months head reads *no months*.
+**One more, built as v2.8206.** That same notice in Missed can no longer go, and its pane still asked for a month.
+The strip's first chip was a red *No month picked ›*, gate 4 said to pick one, and the months head read *no months*.
 No month can be picked there, since v2.8125 took the tick column off it. It is the fault v2.6625 fixed on a sent
-notice, on the other pile. What should the gates say on a missed notice that can no longer go? Fold them to one line,
-as on a sent notice, or say the window closed. Her choice.
+notice, on the other pile. The choice was to fold the gates to one line, as on a sent notice, or to say the window
+closed. Taunya picked the fold on 2026-11-21. The gates are now one line, *Window closed Aug 15 · the owner · the GC ·
+the kind · May*. The strip opens with *Window closed Aug 15 ›* and *May ›*, and the months head reads *May, closed*.
+A missed notice that can still go late keeps its four gates.
+
+**The late footer stays.** v2.8170 put *Ask the leader to approve* on a missed notice whose affidavit can still be
+filed. Taunya's answer of 2026-11-21: keep the send there.
 
 ## How to verify
 

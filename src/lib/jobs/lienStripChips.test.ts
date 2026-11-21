@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskGates, lienSentGatesFold, type LienDeskGatesInput } from './lienDeskGates'
+import { buildLienDeskGates, lienClosedGatesFold, lienSentGatesFold, type LienDeskGatesInput } from './lienDeskGates'
 import { lienStripChips, type LienStripChipsInput } from './lienStripChips'
 import { plainWordsFailures } from '../plainWords'
 
@@ -106,6 +106,26 @@ describe('lienStripChips', () => {
       ['claim', 'Claim $33,500 ›'],
     ])
     expect(chips.some((c) => c.words.includes('No month picked'))).toBe(false)
+  })
+
+  it('a missed notice that can no longer go: a grey Window closed chip back to the top and the closed months, never a red No month picked (v2.8206)', () => {
+    // The gates as the desk builds them there: a month on the job, none picked, so the months gate blocks.
+    const { gates } = buildLienDeskGates({ ...clear, pickedMonthsCount: 0, monthLabels: ['May'], monthsOnJob: 1 })
+    const next = { kind: 'lien_gone', words: 'Lien: gone. Money: still owed — chase it in Collections.', tone: 'red' as const }
+    // Without the fold this is what the strip read on the live desk: a red chip that asked for a month nobody could tick.
+    expect(lienStripChips({ ...base, gates, monthWords: '', next }).map((c) => [c.key, c.words, c.tone])[0]).toEqual(['gate:months', 'No month picked ›', 'red'])
+    const fold = lienClosedGatesFold({ closedOn: 'Aug 15', gates, closedMonths: ['2026-05'], monthShort: () => 'May' })
+    const chips = lienStripChips({ ...base, gates, monthWords: '', fold, next })
+    expect(chips.map((c) => [c.key, c.words, c.tone, c.act])).toEqual([
+      ['closed', 'Window closed Aug 15 ›', 'quiet', 'top'],
+      ['months', 'May ›', 'quiet', 'months'],
+      ['next', 'Lien: gone. Money: still owed — chase it in Collections ›', 'red', 'next'],
+      ['claim', 'Claim $33,500 ›', 'quiet', 'claim'],
+    ])
+    expect(chips.some((c) => c.words.includes('No month picked'))).toBe(false)
+    expect(chips.find((c) => c.key === 'closed')!.title).toBe('The window closed with nothing sent. Back up to the day it closed and the facts as they stand.')
+    expect(chips.find((c) => c.key === 'months')!.title).toBe('The months whose window closed. Down to Months on this job.')
+    for (const c of chips.filter((c) => c.key !== 'next')) expect(plainWordsFailures(c.title)).toEqual([])
   })
 
   it('a draft with no month ticked still reads No month picked, on the red chip or the quiet one', () => {
