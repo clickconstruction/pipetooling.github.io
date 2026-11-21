@@ -948,7 +948,8 @@ Since v2.7998 **Add to a list** says what such a contact is through `name_contac
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
 `remind-person-papers` runs as the service role behind the cron secret and has no caller.
-Since v2.8016 `person-paper-pdf` opens the PDF of a signed paper of plain words or clauses for the four roles that send a paper, and only for a row the caller's own policy reads: an estimator opens none, and an archived account is refused.
+Since v2.8016 `person-paper-pdf` opens the PDF of a signed paper of plain words or clauses for the four roles that send a paper, and only for a row the caller's own policy reads: an archived account is refused.
+An estimator who is not a digital twin opens it too when the paper is with an outside company (`estimator_reads_paper`, asked as the caller), Taunya's call of 2026-11-21, as calls 10 and 11 give them such a company's signed form.
 `open-contract-form-pdf` keeps its own gate for a form's PDF: a dev, the controller and a pay-approved master.
 The signer's copy is emailed by `accept-contract` as the service role, to the address the paper kept, and to nobody else.
 

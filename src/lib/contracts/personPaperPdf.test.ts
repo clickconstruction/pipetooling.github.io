@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import * as pdfLib from 'pdf-lib'
 import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
-import { buildPersonPaperPdf, paperAuditLine, paperMakesAPdf, paperParagraphs, paperPdfPath, paperPdfSafe } from '../../../supabase/functions/_shared/personPaperPdf'
+import { buildPersonPaperPdf, PAPER_PDF_REFUSALS, paperAuditLine, paperMakesAPdf, paperParagraphs, paperPdfOpener, paperPdfPath, paperPdfRefusal, paperPdfSafe } from '../../../supabase/functions/_shared/personPaperPdf'
 
 const lib = pdfLib as unknown as PdfLibLike
 const signature = { printedName: 'Dana Whitfield', signedLabel: 'Nov 20, 2026', auditLine: paperAuditLine({ drawn: false, consentedLabel: 'Nov 20, 2026, 9:14 AM CT', ip: '203.0.113.7' }) }
@@ -115,5 +115,35 @@ describe('the PDF', () => {
       signature: { ...signature, png: new Uint8Array([1, 2, 3]) },
     })
     expect((await pdfLib.PDFDocument.load(bytes)).getPageCount()).toBe(1)
+  })
+})
+
+describe('who opens a signed paper’s PDF', () => {
+  it('opens for each of the four roles that send a paper, whatever the paper', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(paperPdfOpener({ role }), role).toBe('office')
+      expect(paperPdfRefusal({ role }, {}), role).toBeNull()
+    }
+  })
+
+  it('opens for an estimator only on a paper the database says is an outside company’s', () => {
+    expect(paperPdfOpener({ role: 'estimator' })).toBe('estimator')
+    expect(paperPdfRefusal({ role: 'estimator' }, { estimatorReads: true })).toBeNull()
+    expect(paperPdfRefusal({ role: 'estimator' }, { estimatorReads: false })).toBe(PAPER_PDF_REFUSALS.estimator)
+    // No answer from the database is a refusal.
+    expect(paperPdfRefusal({ role: 'estimator' }, {})).toBe(PAPER_PDF_REFUSALS.estimator)
+  })
+
+  it('refuses a digital twin, which reads as an estimator, even on an outside company’s paper', () => {
+    const twin = { role: 'estimator', is_digital_twin: true }
+    expect(paperPdfOpener(twin)).toBe('none')
+    expect(paperPdfRefusal(twin, { estimatorReads: true })).toBe(PAPER_PDF_REFUSALS.twin)
+  })
+
+  it('refuses every other role and an account with no row', () => {
+    for (const role of ['subcontractor', 'helper', 'superintendent', 'primary', '']) {
+      expect(paperPdfRefusal({ role }, { estimatorReads: true }), role).toBe(PAPER_PDF_REFUSALS.role)
+    }
+    expect(paperPdfRefusal(null, { estimatorReads: true })).toBe(PAPER_PDF_REFUSALS.role)
   })
 })

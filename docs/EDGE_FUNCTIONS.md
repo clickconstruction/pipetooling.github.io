@@ -3494,7 +3494,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false`; the function reads the caller itself and refuses an archived account.
 
-**Behavior**: The caller must be a dev, the owner, an assistant or the controller, and must read the row through their own client. The paper must be signed, not a form, and have words of its own. A paper signed since v2.8016 has its PDF; an older one gets it drawn here and kept (`ensurePaperPdf`), the first time it is opened. Answers `{ ok, url, made }`: a 120-second link that downloads as `<document name> - <who> - signed.pdf`. It emails nobody.
+**Behavior**: The caller must be a dev, the owner, an assistant or the controller, or an estimator who is not a digital twin and whose paper `estimator_reads_paper`, asked as the caller, says is with an outside company (`paperPdfRefusal` in `_shared/personPaperPdf.ts`; Taunya's call of 2026-11-21). The caller must also read the row through their own client. The paper must be signed, not a form, and have words of its own. A paper signed since v2.8016 has its PDF; an older one gets it drawn here and kept (`ensurePaperPdf`), the first time it is opened. Answers `{ ok, url, made }`: a 120-second link that downloads as `<document name> - <who> - signed.pdf`. It emails nobody.
 
 ---
 

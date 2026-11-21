@@ -3,7 +3,10 @@
  * through `open-contract-form-pdf`, whose gate is its own; this is the door for a paper that had no PDF at all.
  *
  * The office presses Open the PDF on a signed paper's record. The caller must be one of the four roles that send a
- * paper, and must be able to read the row under its own policy. A paper signed since this shipped has its PDF already.
+ * paper, or an estimator on a paper with an outside company (Taunya's call of 2026-11-21, as #403's call 10 gives them
+ * such a company's signed form), and must be able to read the row under its own policy. The database says which papers
+ * are an outside company's: `estimator_reads_paper`, asked as the caller. A digital twin reads as an estimator and is
+ * refused. A paper signed since this shipped has its PDF already.
  * An older one gets it made here, the first time someone opens it, and kept beside the forms'. Nobody is emailed.
  * Answers a short-lived link that downloads under the paper's name.
  */
@@ -12,11 +15,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
-import { paperMakesAPdf } from '../_shared/personPaperPdf.ts'
+import { paperMakesAPdf, paperPdfOpener, paperPdfRefusal, type PaperPdfCaller } from '../_shared/personPaperPdf.ts'
 import { ensurePaperPdf, PAPER_PDF_BUCKET, paperPdfForWords, SIGNED_PAPER_COLUMNS, type SignedPaperRow } from '../_shared/personPaperSignedCopy.ts'
 
 const LINK_SECONDS = 120
-const ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,10 +55,18 @@ serve(async (req) => {
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
 
-    // The four roles that send a paper. An estimator reads some outside companies' rows and opens no file here.
-    const { data: me } = await admin.from('users').select('role').eq('id', user.id).maybeSingle()
-    const role = (me as { role?: string } | null)?.role ?? ''
-    if (!ROLES.includes(role)) return json({ error: 'Only the office opens a signed paper’s PDF.', code: 'forbidden' }, 403)
+    // Gate: the four roles that send a paper, or an estimator on a paper the database says is an outside company's.
+    // The estimator's read policy follows the same function, so the gate and the policy cannot come apart.
+    const { data: me } = await admin.from('users').select('role, is_digital_twin').eq('id', user.id).maybeSingle()
+    const caller = me as PaperPdfCaller | null
+    const facts: { estimatorReads?: boolean } = {}
+    if (paperPdfOpener(caller) === 'estimator') {
+      const { data: reads, error: readsErr } = await userClient.rpc('estimator_reads_paper', { p_paper_id: docId })
+      if (readsErr) console.error('estimator_reads_paper', readsErr)
+      facts.estimatorReads = reads === true
+    }
+    const refusal = paperPdfRefusal(caller, facts)
+    if (refusal) return json({ error: refusal, code: 'forbidden' }, 403)
 
     // The caller must also be able to read the row: their own client, so the table's policy answers.
     const { data: seen, error: seenErr } = await userClient.from('person_contract_documents').select('id').eq('id', docId).maybeSingle()

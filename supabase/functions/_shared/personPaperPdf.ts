@@ -101,6 +101,47 @@ export function paperMakesAPdf(row: PaperWordsRow & { status?: string | null; fo
   return paperParagraphs(row).length > 0
 }
 
+/** The caller's account row, as far as the PDF's gate reads it. */
+export interface PaperPdfCaller {
+  role?: string | null
+  is_digital_twin?: boolean | null
+}
+
+/**
+ * What the caller is to `person-paper-pdf`, from their account row alone. `office` is one of the four roles that send
+ * a paper. `estimator` needs the paper to be an outside company's (punch list #376, Taunya's call of 2026-11-21, as
+ * #403's call 10 gives them such a company's signed form). `none` is refused whatever the paper, a digital twin among
+ * them, which reads as an estimator.
+ */
+export type PaperPdfOpener = 'office' | 'estimator' | 'none'
+
+const PAPER_PDF_OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
+
+export const PAPER_PDF_REFUSALS = {
+  role: 'Only the office opens a signed paper’s PDF.',
+  twin: 'A digital twin cannot open a signed paper’s PDF.',
+  estimator: 'An estimator opens a signed paper of an outside company, and no other.',
+} as const
+
+export function paperPdfOpener(caller: PaperPdfCaller | null | undefined): PaperPdfOpener {
+  const role = caller?.role ?? ''
+  if (PAPER_PDF_OFFICE_ROLES.includes(role)) return 'office'
+  if (role === 'estimator' && !caller?.is_digital_twin) return 'estimator'
+  return 'none'
+}
+
+/**
+ * The refusal in the words the caller reads, or null when the PDF may open. `estimatorReads` is the database's answer
+ * for an estimator, `estimator_reads_paper` asked as the caller. An estimator's refusal says the same thing whether
+ * the paper is a person's or is not there, so it tells them nothing about a paper they cannot read.
+ */
+export function paperPdfRefusal(caller: PaperPdfCaller | null | undefined, facts: { estimatorReads?: boolean }): string | null {
+  const opener = paperPdfOpener(caller)
+  if (opener === 'office') return null
+  if (opener === 'none') return caller?.role === 'estimator' && caller?.is_digital_twin ? PAPER_PDF_REFUSALS.twin : PAPER_PDF_REFUSALS.role
+  return facts.estimatorReads === true ? null : PAPER_PDF_REFUSALS.estimator
+}
+
 /** Where a paper's PDF is kept, in the forms' bucket beside a form's `signed.pdf`. */
 export function paperPdfPath(documentId: string): string {
   return `${documentId}/signed-paper.pdf`
