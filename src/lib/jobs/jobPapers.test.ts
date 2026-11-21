@@ -18,7 +18,7 @@ import {
   parseMyJobPapers,
   personRoleLabel,
   pickablePapers,
-  BUILT_FROM_SETTINGS_HELD,
+  BUILT_FROM_SETTINGS_PICK,
   requireButton,
   requireFoot,
   requiredToast,
@@ -166,18 +166,19 @@ describe('pickablePapers', () => {
       { id: 'w9-shell', document_name: 'W-9', book_body_html: null, book_body_format: 'html', audience: 'sub', updated_at: '2026-11-10T00:00:00Z' },
       { id: 'w9-form', document_name: 'W-9', book_body_html: null, book_body_format: 'html', form_template_id: 'form-w9', audience: 'staff', updated_at: '2026-09-01T00:00:00Z' },
     ]
-    expect(pickablePapers(two, [])).toEqual([{ bookDocumentId: 'w9-form', paperName: 'W-9', isForm: true, hasWords: true, from: 'A form from the Contract Book' }])
+    expect(pickablePapers(two, [])).toEqual([{ bookDocumentId: 'w9-form', paperName: 'W-9', isForm: true, hasWords: true, built: false, from: 'A form from the Contract Book' }])
   })
-  it('holds a paper built from settings, with words of its own, whether or not it also has a body (punch list #389)', () => {
+  it('offers a paper built from settings to set its settings, whether or not it also has a body (punch list #389)', () => {
     const built: BookPaperRow[] = [
       { id: 'book-set', document_name: 'Sample secrecy paper', book_body_html: null, book_body_format: 'html', audience: 'sub', settings_def: { settings: [] } },
       { id: 'book-set-2', document_name: 'Sample secrecy paper, with a body', book_body_html: '<p>Placeholder.</p>', book_body_format: 'html', audience: 'sub', settings_def: { settings: [] } },
     ]
+    expect(pickablePapers(built, []).every((p) => p.built)).toBe(true)
     expect(pickablePapers(built, []).map((p) => `${p.paperName}|${p.hasWords}|${p.from}`)).toEqual([
-      `Sample secrecy paper|false|${BUILT_FROM_SETTINGS_HELD}`,
-      `Sample secrecy paper, with a body|false|${BUILT_FROM_SETTINGS_HELD}`,
+      `Sample secrecy paper|true|${BUILT_FROM_SETTINGS_PICK}`,
+      `Sample secrecy paper, with a body|true|${BUILT_FROM_SETTINGS_PICK}`,
     ])
-    expect(plainWordsFailures(BUILT_FROM_SETTINGS_HELD)).toEqual([])
+    expect(plainWordsFailures(BUILT_FROM_SETTINGS_PICK)).toEqual([])
   })
   it('leaves out what the job already requires and what is already picked', () => {
     expect(pickablePapers(book, roster.papers).map((p) => p.paperName)).toEqual(['Blank paper'])

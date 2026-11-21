@@ -1055,8 +1055,8 @@ Since v2.8145 a job carries them on its required paper's row (`job_required_pape
 That row is **locked** at its first signature: any change after it, tighter or looser, makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
 Until v2.8182 such a change could only make the paper stricter.
 The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
-A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page is to show beside each choice (v2.8183;
-until that page is built only **Settings list** reads and edits them, `choiceLines` in `paperSettings.ts`).
+A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
+The **job's settings page** (v2.8184) is `JobPaperSettingsWindow` on a job's Documents tab: the Document builder's walked flow the first time, fed from the Book entry's settings list (`jobPaperFlow.ts`), and one page of sliders for a later change.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -6732,7 +6732,7 @@ The insurance builder's read mark is **checked**, by an insurance agent, where t
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
 A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
-Taking a sheet off the last trade's page ends its link too (v2.8187, `document_builder_sends_close_link`), and the next send leaves it off until a dev switches it on.
+Taking a sheet off the last trade's page ends its link too (v2.8187, `document_builder_sends_close_link`), and since v2.8194 the next send makes a new one, while a link a dev switched off stays off (`documentBuilderLinkSendRemakes`).
 A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
 Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
 A **send to a GC** (v2.8151) puts the published Sub NDA on the customer portal of a customer who is the GC on a job with us, **about** one job or all their jobs, with the day it went and the day they opened it ([`send.ts`](../src/lib/documentBuilder/send.ts), [`customerPageBuilders.ts`](../src/lib/documentBuilder/customerPageBuilders.ts)).

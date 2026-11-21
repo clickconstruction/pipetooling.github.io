@@ -23616,6 +23616,7 @@ export type Database = {
       }
       job_required_papers: {
         Row: {
+          basis: string | null
           body_format: string
           body_html: string | null
           book_document_id: string | null
@@ -23625,6 +23626,8 @@ export type Database = {
           form_template_id: string | null
           id: string
           job_id: string
+          notice_read_at: string | null
+          notice_read_by: string | null
           paper_name: string
           removed_at: string | null
           removed_by: string | null
@@ -23637,6 +23640,7 @@ export type Database = {
           settings_set_by: string | null
         }
         Insert: {
+          basis?: string | null
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
@@ -23646,6 +23650,8 @@ export type Database = {
           form_template_id?: string | null
           id?: string
           job_id: string
+          notice_read_at?: string | null
+          notice_read_by?: string | null
           paper_name: string
           removed_at?: string | null
           removed_by?: string | null
@@ -23658,6 +23664,7 @@ export type Database = {
           settings_set_by?: string | null
         }
         Update: {
+          basis?: string | null
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
@@ -23667,6 +23674,8 @@ export type Database = {
           form_template_id?: string | null
           id?: string
           job_id?: string
+          notice_read_at?: string | null
+          notice_read_by?: string | null
           paper_name?: string
           removed_at?: string | null
           removed_by?: string | null
@@ -23698,6 +23707,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_notice_read_by_fkey"
+            columns: ["notice_read_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -46777,6 +46793,12 @@ export type Database = {
         Args: { p_def: Json; p_lang: string; p_picks: Json; p_typed: Json }
         Returns: Json
       }
+      contract_paper_has_notice: { Args: { p_def: Json }; Returns: boolean }
+      contract_paper_lines_bad: {
+        Args: { p_lines: Json; p_max: number }
+        Returns: boolean
+      }
+      contract_paper_note_bad: { Args: { p_note: Json }; Returns: boolean }
       contract_paper_picks_change: {
         Args: { p_def: Json; p_from: Json; p_to: Json }
         Returns: string
@@ -49062,6 +49084,10 @@ export type Database = {
         Args: { p_note_id: string; p_tagged: string[] }
         Returns: number
       }
+      job_paper_basis_clean: {
+        Args: { p_basis: string; p_def: Json }
+        Returns: string
+      }
       job_paper_clauses: {
         Args: { p_lang?: string; p_required_paper_id: string }
         Returns: Json
@@ -49082,6 +49108,10 @@ export type Database = {
       job_paper_remove: {
         Args: { p_required_paper_id: string }
         Returns: undefined
+      }
+      job_paper_set_basis: {
+        Args: { p_basis: string; p_required_paper_id: string }
+        Returns: string
       }
       job_paper_set_settings: {
         Args: { p_fields?: Json; p_required_paper_id: string; p_settings: Json }

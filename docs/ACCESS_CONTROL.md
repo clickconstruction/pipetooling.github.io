@@ -921,8 +921,8 @@ Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and 
 A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
 Since v2.8187 taking a sheet off the last trade's page also ends that sheet's link, through the definer trigger `document_builder_sends_close_link`: the one change a signed-in press makes to a link, and only to end it.
-`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and meant to be written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
-Nothing writes a row yet, and no screen reads one.
+`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
+Since v2.8194 the function writes one on every open and hands the newest twenty back to the builder's link card (`opens`).
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
@@ -2079,6 +2079,7 @@ A job's settings for a paper built from settings (v2.8145) are the office's to s
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
 The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).
 `job_paper_set_basis` moves a required paper's basis in place: the office alone, never a digital twin, an archived account or a training account.
+The job's settings page (v2.8184) is drawn for whoever sees **Papers before this job opens**, and every press on it is one of these functions, so the database decides who may set a job's settings.
 Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
 The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
 A login tied to no roster person reads as owing and cannot start a paper.

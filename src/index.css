@@ -7683,18 +7683,20 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
 .lienDeskTitleDoor:hover, .lienDeskTitleDoor:focus-visible { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; outline: none; }
 
 /* The document builder's level slider (punch list #404, the flow of #389). The track is drawn here and not by the
-   browser, which picks a dark track under an amber or red accent. The element is a 32 px band for a finger with a
-   6 px track painted in its middle. `--builder-tone` is the level's colour and `--builder-fill` is how far the handle
+   browser, which picks a dark track under an amber or red accent. The element is a 44 px band for a finger with an
+   8 px track painted in its middle, and a 30 px handle (punch list #389 step 4: Taunya asked for sliders big enough
+   to use; they were 32, 6 and 22). `--builder-tone` is the level's colour and `--builder-fill` is how far the handle
    sits along the track; both come from the element's own style. */
 .documentBuilderSlider {
   -webkit-appearance: none;
   appearance: none;
   display: block;
   width: 100%;
-  height: 32px;
+  height: 44px;
   margin: 0;
   padding: 0;
   cursor: pointer;
+  touch-action: pan-y;
   background: linear-gradient(
       to right,
       var(--builder-tone) 0,
@@ -7702,21 +7704,21 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
       var(--bg-200) var(--builder-fill),
       var(--bg-200) 100%
     )
-    center / 100% 6px no-repeat;
+    center / 100% 8px no-repeat;
   border-radius: 999px;
 }
 .documentBuilderSlider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--builder-tone);
   border: 3px solid var(--surface);
   box-shadow: 0 0 0 1px var(--builder-tone);
 }
 .documentBuilderSlider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--builder-tone);
   border: 3px solid var(--surface);

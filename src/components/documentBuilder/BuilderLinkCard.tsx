@@ -9,10 +9,11 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { DOCUMENT_BUILDER_LINK_ADDRESS_LOST, documentBuilderLinkUrl, type DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
+import { DOCUMENT_BUILDER_LINK_ADDRESS_LOST, documentBuilderLinkOffWords, documentBuilderLinkOpenWords, documentBuilderLinkUrl, type DocumentBuilderLinkOpen, type DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
 import { endBuilderLink, makeBuilderLink, readBuilderLink } from '../../lib/documentBuilder/linkIo'
 import { plural } from '../../lib/documentBuilder/sheet'
-import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
+import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../../utils/dateUtils'
+import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 export type BuilderLinkCardIo = {
   read: typeof readBuilderLink
@@ -41,6 +42,8 @@ type Props = {
   published: boolean
   /** The card's title and what a link opens, in the builder's own words. */
   words: { title: string; notPublished: string; on: string; off: string }
+  /** A number that goes up when something outside the card may have moved the link: the card reads it again. */
+  refresh?: number
   io?: BuilderLinkCardIo
 }
 
@@ -54,7 +57,34 @@ const SMALL_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', b
 const OK_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
 const BTNS: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }
 
-export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BUILDER_LINK_CARD_IO }: Props) {
+/**
+ * Who opened the link, newest first: when, who, and what is known of them. A person with an account is named.
+ * Someone with no account is shown by where the open came from and their browser.
+ */
+function LinkOpens({ opens, total }: { opens: ReadonlyArray<DocumentBuilderLinkOpen>; total: number }) {
+  if (opens.length === 0) return null
+  return (
+    <div style={{ display: 'grid', gap: 6, minWidth: 0 }} data-testid="builder-link-opens">
+      <p style={{ ...MUTED, fontWeight: 600, color: 'var(--text-strong)' }}>
+        Who opened it: <WorkedOutValue>{total}</WorkedOutValue>
+        {total > opens.length ? ` in all, the newest ${opens.length} below` : ''}
+      </p>
+      <ValueLines>
+        {opens.map((open, i) => {
+          const said = documentBuilderLinkOpenWords(open)
+          return (
+            <ValueLine key={`${open.at}-${i}`} label={formatDenverDateTimeShort(Date.parse(open.at))}>
+              <WorkedOutValue>{said.who}</WorkedOutValue>
+              {said.detail ? <span style={{ color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{` · ${said.detail}`}</span> : null}
+            </ValueLine>
+          )
+        })}
+      </ValueLines>
+    </div>
+  )
+}
+
+export function BuilderLinkCard({ builderKey, sheetId, published, words, refresh = 0, io = BUILDER_LINK_CARD_IO }: Props) {
   const confirmDialog = useConfirmDialog()
   const [link, setLink] = useState<DocumentBuilderLinkState | null>(null)
   const [refusal, setRefusal] = useState<string | null>(null)
@@ -77,7 +107,7 @@ export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BU
     return () => {
       cancelled = true
     }
-  }, [io, builderKey, sheetId, published])
+  }, [io, builderKey, sheetId, published, refresh])
 
   const run = async (act: () => Promise<Landed<DocumentBuilderLinkState>>) => {
     if (busy) return
@@ -148,7 +178,7 @@ export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BU
         </>
       ) : (
         <>
-          <p style={MUTED}>{words.off}</p>
+          <p style={MUTED}>{documentBuilderLinkOffWords(link, link.endedAt ? formatDenverCalendarDayShort(Date.parse(link.endedAt)) : '', words.off)}</p>
           <div style={BTNS}>
             <button type="button" disabled={busy} style={SECOND_PRESS} onClick={() => void run(() => io.make(builderKey, sheetId))}>
               Switch the link on
@@ -156,6 +186,7 @@ export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BU
           </div>
         </>
       )}
+      {published && link?.opens ? <LinkOpens opens={link.opens} total={link.opensTotal ?? link.opens.length} /> : null}
       {refusal ? (
         <p role="alert" style={REFUSAL}>
           {refusal}

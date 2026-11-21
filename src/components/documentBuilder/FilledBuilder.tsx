@@ -167,6 +167,9 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
 
   const [usual, setUsualState] = useState<SheetDef | null>(draftParsed.ok ? draftParsed.def : null)
   const [jobs, setJobs] = useState<GcJob[] | null>(null)
+  /** Goes up when a send or a take-off may have moved a sheet's link, so the link card reads it again. */
+  const [linkTick, setLinkTick] = useState(0)
+  const linkMayHaveMoved = useCallback(() => setLinkTick((n) => n + 1), [])
   const [sheets, setSheetsState] = useState<Map<string, LocalSheet>>(new Map())
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(true)
@@ -750,6 +753,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                 builderKey={entry.id}
                 sheetId={jobState.id}
                 published={jobState.revision > 0 && jobState.id != null}
+                refresh={linkTick}
                 io={io.link}
                 words={{
                   title: "This sheet's link",
@@ -773,7 +777,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   <p style={MUTED}>Publish this job's sheet first. It then prints as subs see it.</p>
                 )}
               </div>
-              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
+              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} onLinkMayHaveMoved={linkMayHaveMoved} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
             </>
           ) : (
             <div style={CARD}>

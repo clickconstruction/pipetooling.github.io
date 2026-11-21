@@ -134,6 +134,27 @@ The card says how often someone outside opened the link. Your own look is not co
 
 The card may say the link's address can no longer be shown. The link still opens for anyone who has it. Press **Make a new link** to get one you can copy.
 
+### Who opened the link
+
+The card lists each open under **Who opened it**, newest first. Each line gives the day and the time.
+
+- A person with an account is named. The line says **Has an account**.
+- Someone with no account is not named. The line shows where the open came from and their browser.
+
+The count beside the heading is every open. The list shows the newest twenty.
+
+### When the link closes by itself
+
+A sheet has one link. Every trade you send the sheet to gets that link in their email.
+
+- While more than one trade has the sheet, the link stays on.
+- Taking the sheet off the last trade's page switches the link off too.
+- The next send switches the link on again, as a new link.
+
+A line under the trades says which of these is true now. The card **This sheet's link** says the day the link closed and why.
+
+A link you switched off yourself stays off. A send does not switch that one on.
+
 ## Send a sheet to the job's trades
 
 The card **Send the sheet to this job's trades** lists every trade asked to quote on the job.
@@ -172,9 +193,7 @@ A trade that was asked for a price and not awarded is held from the one press. P
 
 - {{button:outline-blue|Send it again}} sends a reminder.
 - {{button:outline-blue|Tell them it changed}} tells them of the new revision.
-- {{button:outline-blue|Take it off their page}} ends the send. The sheet leaves their page.
-
-Taking the sheet off the last trade's page also switches the sheet's link off. Press **Switch the link on** on **This sheet's link** to open it again.
+- {{button:outline-blue|Take it off their page}} ends the send. The sheet leaves their page. On the last trade it also switches the sheet's link off. See [When the link closes by itself](#when-the-link-closes-by-itself).
 
 A reminder goes to the person the sheet was sent to. The line under the buttons names that person and their email.
 

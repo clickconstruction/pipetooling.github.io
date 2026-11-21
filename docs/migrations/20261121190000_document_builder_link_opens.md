@@ -18,3 +18,5 @@ The Document builder: who opened a link, punch list #404. Database only: the fun
 Checked before the push: section 3 (the why), section 7b (the last trade) and section 3b of `supabase/tests/document_builder_sheets/20_scenario.sql`, in the bed `document-builder-sheets`, with the fences in section 0, the readers in sections 5, 6 and 8, and the cascade in section 9. The bed's script applies this file a second time.
 
 Apply: `supabase db push` after the merge. Nothing reads or writes the table until the function that follows is deployed.
+
+**Applied** to prod on 2026-11-21, by `scripts/db-push.sh` from a checkout at `origin/main`. The dry-run listed this migration alone. The drift check read 1431 local files against 1431 remote versions, the dev seat's `check_migration_ledger` read this version as the newest, and `ended_why` read null on the three links prod holds, all of them ended before it. Types in #9267.
