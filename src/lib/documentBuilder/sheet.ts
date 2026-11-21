@@ -595,6 +595,15 @@ export function usualPublishPlan(jobs: ReadonlyArray<UsualPublishJob>): UsualPub
   })
 }
 
+/**
+ * True when two plans send the usual to the same jobs. The press says how many jobs get the change and the rows say
+ * which, from what the page knew. The publish reads the jobs again first, and goes ahead only when this still holds.
+ */
+export function sameJobsGetIt(said: ReadonlyArray<UsualPublishRow>, now: ReadonlyArray<UsualPublishRow>): boolean {
+  const ids = (plan: ReadonlyArray<UsualPublishRow>) => plan.flatMap((row) => (row.gets ? [row.id] : [])).sort().join('|')
+  return ids(said) === ids(now)
+}
+
 export function usualHeldWords(why: UsualHeldWhy): string {
   if (why === 'no-sheet') return 'Held. It has no sheet yet.'
   if (why === 'moved') return 'Held. It changed somewhere else. Choose on its panel first.'
