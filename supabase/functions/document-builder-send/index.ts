@@ -14,6 +14,7 @@ import {
 } from '../_shared/documentBuilderSend.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
+import { sentCopyKeptHtml } from '../_shared/sentCopyEmail.ts'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME, GC_TRADE_EMAIL_TEST_TYPE, newTradeToken, tradeEmailTestSubject, tradePortalLinkUrl, tradeTestLinkUrl } from '../_shared/gcTradeEmail.ts'
 import { resolveTradeLink, sha256Hex, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
@@ -59,6 +60,9 @@ const refuse = (key: DocumentBuilderSendRefusal, detail?: string) => json({ erro
 
 // deno-lint-ignore no-explicit-any
 type Admin = any
+
+/** The kind whose rule hides a page's key in a filed copy (`sentCopyKeptHtml`): the trade email's, whose frame this email is. */
+const SENT_COPY_KEPT_AS = 'gc_trade_email'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SEND_COLUMNS = 'id, contact_name, sent_at, sent_revision, times_sent, opened_at, opened_revision'
@@ -168,10 +172,11 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   })
   if (threadError) console.error('document-builder-send thread row', threadError.message)
 
-  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id.
+  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the company's own page link,
+  // which is a key, so the copy is kept as a trade email's is: `/t/…`, never the token. The sheet's own link stays.
   await fileSentEmailBestEffort(
     { kind: SHEET_SEND_SENT_KIND, title: email.subject, recipientName: String(company.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
-    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: email.html, resendEmailId: sent.resendEmailId ?? null },
+    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html), resendEmailId: sent.resendEmailId ?? null },
   )
   console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, sheet: sheet.id, company: m.companyId, revision: sheet.revision, why: m.why }))
   return json({ ok: true, send: sendOut(row), page: 'on' })
