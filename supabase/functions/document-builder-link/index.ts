@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DOCUMENT_BUILDER_LINK_WORDS as WORDS, documentBuilderLinkCodeFrom, documentBuilderLinkOpen, type DocumentBuilderLinkAnswer, type DocumentBuilderLinkState } from '../_shared/documentBuilderLink.ts'
 import {
   DOCUMENT_BUILDER_LINK_COLUMNS as LINK_COLUMNS,
-  documentBuilderLinkCodeOf as codeOf,
+  documentBuilderLinkCodeOfRow as codeOfRow,
   documentBuilderSha256 as sha256,
   mintDocumentBuilderLink,
   type DocumentBuilderLinkRow as LinkRow,
@@ -91,7 +91,7 @@ async function liveLink(admin: Admin, target: { builderKey: string; sheetId: str
 
 async function stateOf(row: LinkRow | null): Promise<DocumentBuilderLinkState> {
   if (!row) return { on: false }
-  return { on: true, code: await codeOf(row.id, row.nonce), madeAt: row.made_at, opened: row.open_count, lastOpenedAt: row.last_opened_at }
+  return { on: true, code: await codeOfRow(row), madeAt: row.made_at, opened: row.open_count, lastOpenedAt: row.last_opened_at }
 }
 
 /** What a link opens, as published, or null when nothing is published. Never a draft. */

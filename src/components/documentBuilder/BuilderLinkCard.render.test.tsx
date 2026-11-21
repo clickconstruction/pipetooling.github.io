@@ -53,6 +53,18 @@ describe('BuilderLinkCard', () => {
     expect(io.copy).toHaveBeenCalledWith(`${window.location.origin}/d/abcdefgh23456789`)
   })
 
+  it('says so when the link is on and its address cannot be shown, and still offers a new one', async () => {
+    const io = open({ read: vi.fn(async () => landed({ on: true, code: null, madeAt: '2026-11-20T15:00:00Z', opened: 2, lastOpenedAt: '2026-11-21T15:00:00Z' })) })
+    expect(await screen.findByText(/its address can no longer be shown here\. It still opens for anyone who has it\./)).toBeTruthy()
+    expect(screen.queryByTestId('builder-link-url')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy the link' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Switch the link off' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }))
+    fireEvent.click(last(await screen.findAllByRole('button', { name: /Make a new link/ })))
+    await waitFor(() => expect(io.make).toHaveBeenCalledWith('insurance', 'sheet-cedar'))
+    expect((await screen.findByTestId('builder-link-url')).textContent).toBe(`${window.location.origin}/d/zyxwvuts98765432`)
+  })
+
   it('says how often someone outside opened it', async () => {
     open({ read: vi.fn(async () => landed(ON('abcdefgh23456789', 3))) })
     expect(await screen.findByText(/Opened 3 times by someone outside, last on /)).toBeTruthy()
