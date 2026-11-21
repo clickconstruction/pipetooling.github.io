@@ -1,15 +1,15 @@
 /**
  * The party's own page (punch list #403, step 4): the papers that are with a customer or a supply house, listed where
  * the party lives. A supply house's window draws them as a section (`PartyPapersSection`). The Customer page's
- * Agreements card draws them beside the job contracts (`PartyPapersList` over `usePartyPapers`), and an estimator, who
- * has no job contracts there, gets them as a card of their own (`PartyPapersCard`).
+ * Agreements card draws them beside the job contracts (`PartyPapersList` over the hook in `usePartyPapers.ts`), and an
+ * estimator, who has no job contracts there, gets them as a card of their own (`PartyPapersCard`).
  *
  * Every kind and every state is listed: an agreement, a W-9, a certificate, and a paper that was made and never sent.
  * A signed paper's name opens its signed record, the window Documents → Agreements opens. Nothing here sends, changes
  * or removes a paper. The read is `lib/contracts/partyPapersIo.ts` under each table's own row security, and a read
  * that fails says so with Retry and never reads as an empty list. The rules are `lib/contracts/partyPapers.ts`.
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
@@ -20,65 +20,16 @@ import {
   partyPaperCountWords,
   partyPaperLines,
   partyPapersEmptyWords,
-  type PartyPaperRow,
   type PartyRecord,
 } from '../../lib/contracts/partyPapers'
-import { readPartyPapers } from '../../lib/contracts/partyPapersIo'
 import { emptyWordsWithPress } from '../../lib/emptyWords'
-import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { partyPapersQuiet, usePartyPapers, type PartyPapersRead } from './usePartyPapers'
 
 const PersonContractSignedRecordModal = lazy(() => import('./PersonContractSignedRecordModal').then((m) => ({ default: m.PersonContractSignedRecordModal })))
-
-/** What a party's papers read as: the rows once read, the failure when the read did not land, and the way to read again. */
-export type PartyPapersRead = { rows: PartyPaperRow[] | null; failure: OfflineRecoveryLastError | null; reading: boolean; retry: () => void }
-
-/** Read a party's papers. `party` null reads nothing, for a reader the list is not for. */
-export function usePartyPapers(party: PartyRecord | null): PartyPapersRead {
-  const kind = party?.kind ?? null
-  const id = party?.id ?? null
-  const [rows, setRows] = useState<PartyPaperRow[] | null>(null)
-  const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
-  const [reading, setReading] = useState(false)
-  const [tries, setTries] = useState(0)
-
-  useEffect(() => {
-    if (!kind || !id) {
-      setRows(null)
-      setFailure(null)
-      return
-    }
-    let cancelled = false
-    setReading(true)
-    void readPartyPapers({ kind, id })
-      .then((read) => {
-        if (cancelled) return
-        setRows(read)
-        setFailure(null)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setFailure(recoveryFailureFromError(e, 'The papers did not read.'))
-      })
-      .finally(() => {
-        if (!cancelled) setReading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [kind, id, tries])
-
-  const retry = useCallback(() => setTries((n) => n + 1), [])
-  return { rows, failure, reading, retry }
-}
-
-/** True while a read has nothing to show: not read yet, or read and empty, with no failure to say. */
-export function partyPapersQuiet(read: PartyPapersRead): boolean {
-  return read.failure == null && (read.rows == null || read.rows.length === 0)
-}
 
 const line: CSSProperties = {
   display: 'flex',

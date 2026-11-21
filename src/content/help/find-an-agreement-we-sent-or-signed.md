@@ -210,7 +210,7 @@ Nothing is sent from these lists. To send a paper, press **Send a paper** on the
 - A draft. A draft stays in the window that made it until it is sent.
 - A job with no contract. That list is the Contract sweep, under Tools on the [Pipeline](/jobs?tab=stages).
 - An accepted estimate. It is on the [Estimates](/documents?tab=estimates) tab.
-- A W-9, an insurance certificate or a licence. They are papers, not agreements. A person's stay on People, and an outside company's is on that company's own page.
+- A W-9, an insurance certificate or a licence. Those papers are not agreements. A person's papers stay on People. An outside company's papers are on that company's own page.
 - A lien waiver. It is under its job on the [Jobs](/documents?tab=jobs) tab.
 
 ## Who can see the tab

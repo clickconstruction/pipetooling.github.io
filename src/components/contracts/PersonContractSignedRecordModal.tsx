@@ -473,8 +473,12 @@ export function PersonContractSignedRecordModal({
                       {paperMissing.length > 0 ? ` Blank on the paper (required): ${paperMissing.map((m) => m.label).join(', ')}.` : ''}
                     </p>
                   ) : null}
-                  {facts.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : formSchemaAsked ? 'The form’s layout is the office’s to read, so its answers are not listed here. The PDF holds them.' : 'Loading the form’s layout…'}</p>
+                  {formSchemaAsked && !formSchema ? (
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }} data-testid="signed-record-layout-closed">
+                      The form’s layout did not read, so its answers are not listed here. The PDF holds them.
+                    </p>
+                  ) : facts.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : 'Loading the form’s layout…'}</p>
                   ) : (
                     <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, max-content) 1fr', gap: '0.25rem 0.9rem', margin: 0, fontSize: '0.875rem' }}>
                       {facts.map((f) => (
