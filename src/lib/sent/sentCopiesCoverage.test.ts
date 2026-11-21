@@ -25,6 +25,7 @@ const PRINTS_OWED: ReadonlyArray<string> = []
 
 /** Prints that are not a send, each with why. */
 const NOT_A_SEND: Readonly<Record<string, string>> = {
+  'components/developments/DevelopmentScheduleCard.tsx': 'the days they gave, the sheet the office prints for a site from the Schedule look, every day the customer gave for a stage to be ready (Before we start, punch list #382 PR 11, v2.8111): the office\'s own record, which its foot says is not sent to the customer, not a send',
   'components/materials/LabelsPrintModal.tsx': 'the box labels the office prints for its own cages on a job site, a Letter sheet or a strip of tape per box (Materials on site, #209; its own file since v2.6801, #294): paper for the crew, not a send',
   'components/machines/MachineLabelModal.tsx': 'the label the office prints to stick on a machine, its QR the door to the pre-use check (punch list #270, v2.6557): paper for the crew like the box label, not a send',
   'components/materials/PrintStickersModal.tsx': 'the run of reserved stickers the office prints on tape before the boxes exist (Stickers before boxes, punch list #329, v2.7272): paper for the crew like the box label, not a send',

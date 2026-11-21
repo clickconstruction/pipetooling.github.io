@@ -126,6 +126,35 @@ describe('the Schedule look', () => {
     expect(within(banner).getByText('3 answers').dataset.value).toBe('worked-out')
   })
 
+  it('shows the same stages on a line of time behind a link, each row with its sentence, and prints the days they gave', async () => {
+    const printed: string[] = []
+    const opened = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (html: string) => printed.push(html), close: () => {} }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    await mount(seeded())
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect(document.querySelector('[data-schedule-time-line]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show it on a line of time' }))
+    const rows = Array.from(document.querySelectorAll('[data-time-line-row]')) as HTMLElement[]
+    // One row a card, in the cards' own order.
+    expect(rows.map((r) => r.dataset.timeLineRow)).toEqual(cards().map((c) => c.dataset.scheduleStage))
+    const pictures = screen.getAllByRole('img').map((p) => p.getAttribute('aria-label') ?? '')
+    expect(pictures.some((w) => /They say ready .*\. We decide by .*\. They have moved \d+ days?\./.test(w))).toBe(true)
+    // The days they moved are written inside a row's own picture, beside its marks, never in the name that is cut short.
+    const moved = Array.from(document.querySelectorAll('[role="img"] [data-time-line-moved]')) as HTMLElement[]
+    expect(moved.length).toBeGreaterThan(0)
+    expect(moved.every((m) => /^moved \d+ days?$/.test(m.textContent ?? ''))).toBe(true)
+    expect(document.querySelector('.scLineName')?.textContent).not.toMatch(/moved/)
+    // Today is a line on every row, and the legend names it.
+    expect(document.querySelectorAll('[role="img"] .scLineToday').length).toBe(rows.length)
+    expect(document.querySelector('.scLineLegend')?.textContent).toContain('Today')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the line of time' }))
+    expect(document.querySelector('[data-schedule-time-line]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Print the days they gave' }))
+    expect(printed[0]).toContain('the days they gave')
+    expect(printed[0]).toContain('11 days moved across')
+    expect(printed[0]).toContain('It is not sent to the customer.')
+    opened.mockRestore()
+  })
+
   it('draws one card a stage ahead, sorted by trouble, and leaves a finished stage out', async () => {
     await mount(seeded())
     await waitFor(() => expect(cards().length).toBe(4))

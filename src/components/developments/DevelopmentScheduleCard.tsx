@@ -15,6 +15,10 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ReadyMarks } from '../startChecks/ReadyBar'
 import { StartCheckAskPanel } from '../startChecks/StartCheckAskPanel'
 import { StartCheckStage } from '../startChecks/StartCheckStage'
+import { ScheduleTimeLine } from '../startChecks/ScheduleTimeLine'
+import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { movedSheetHtml } from '../../lib/startChecks/movedSheetHtml'
+import { TIME_LINE_WORDS, movedSheet, timeLine } from '../../lib/startChecks/timeLine'
 import { ChangeableValue, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { Card, type CardFold } from './developmentPageBits'
 
@@ -46,6 +50,7 @@ export function DevelopmentScheduleCard({
   contactLine,
   askCustomerId,
   jobNameOf,
+  siteName,
 }: {
   anchorId: string
   developmentId: string
@@ -59,6 +64,8 @@ export function DevelopmentScheduleCard({
   /** The customer whose thread an ask opens in Messages, and each job's name for the box. Null: the site names no customer. */
   askCustomerId: string | null
   jobNameOf: (jobId: string) => string
+  /** The site's name, for the head of the printed sheet. */
+  siteName?: string
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [openOn, setOpenOn] = useState<'ask' | 'decide' | null>(null)
@@ -66,6 +73,10 @@ export function DevelopmentScheduleCard({
   const stages = useMemo(() => read.stages.map((s) => s.stage), [read.stages])
   const lineOf = useMemo(() => new Map(read.stages.map((s) => [s.stage.id, s.line])), [read.stages])
   const sorted = useMemo(() => byTrouble(stages, read.site, todayYmd), [stages, read.site, todayYmd])
+  // The same stages on a line of time, behind a link, and the days they gave as a sheet of paper for the office.
+  const [onLine, setOnLine] = useState(false)
+  const onTheLine = useMemo(() => (onLine ? timeLine(stages, read.site, todayYmd) : null), [onLine, stages, read.site, todayYmd])
+  const sheet = useMemo(() => movedSheet(stages), [stages])
   if (!read.shows) return null
   const words = scheduleLookWords(stages, read.site, todayYmd)
   const banner = siteBanner(stages, read.site, todayYmd)
@@ -104,6 +115,19 @@ export function DevelopmentScheduleCard({
           </div>
           {asking && toAsk[0] ? <StartCheckAskPanel stages={toAsk} site={read.site} today={todayYmd} me={me} door={doorFor(toAsk[0].line.jobId)} press={read.press} onClose={() => setAsking(false)} /> : null}
 
+          {/* The line of time is behind a link and shut until it is asked for: the sentences are the first screen, never a
+              chart. The link sits over the cards, where it is found on a site with many stages. */}
+          <div style={{ display: 'flex', gap: '4px 16px', flexWrap: 'wrap', marginTop: 10 }}>
+            <button type="button" className="scWord" aria-expanded={onLine} onClick={() => setOnLine(!onLine)}>
+              {onLine ? TIME_LINE_WORDS.hide : TIME_LINE_WORDS.show}
+            </button>
+            {can.notice && sheet.stages.length > 0 ? (
+              <button type="button" className="scWord" onClick={() => printHtmlInNewWindow(movedSheetHtml(sheet, { site: siteName ?? 'The site', contact: read.site.contact, printedOn: todayYmd, by: me.name }))}>
+                {TIME_LINE_WORDS.print}
+              </button>
+            ) : null}
+          </div>
+          {onLine && onTheLine ? <ScheduleTimeLine line={onTheLine} /> : null}
           <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
             {sorted.map((stage) => {
               const line = lineOf.get(stage.id)
