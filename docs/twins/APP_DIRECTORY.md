@@ -70,6 +70,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
 - A course open to everyone, with a drawing in every lesson of how water comes into a house and leaves it → `/training/intro-to-plumbing` (the **Available** row of the same Training card; guide `take-a-training-course`)
 - A course open to everyone on how a house's electrical system works, what is live and where plumbing work touches it, understanding and not doing → `/training/intro-electrical` (the **Available** row of the same Training card; guide `take-a-training-course`)
+- A course on how a house is cooled and heated, where the heat, the air and the water go, with a drawing in every lesson → `/training/intro-hvac` (the **Available** row of the same Training card once it is on; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Note a candidate's or a new sub's qualifications, a level from 0 to 3 in plumbing, electrical and HVAC, the license and where they drive in from → their thread on `/messages`, the flow's **Qualifications** step (a candidate's flow and a sub's coming-on lane since v2.5812; guide `see-where-a-person-stands-and-what-comes-next`)
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
@@ -192,6 +193,11 @@ The second course (punch list #119, v2.5610), the same page: how water comes int
 ### /training/intro-electrical — Training: Intro to electrical
 
 The third course (punch list #120, v2.5614), the same page: how a house's electrical system works, for the plumbing crew that works beside it, understanding and not doing. A conductor is one line in the ink for the hot, white for the neutral and amber for the ground, current an arrow along it, and the house red for one thing only, current where it should not be. Every lesson ends at what it does, how you know it is live, what you do not touch and who you call, and the content test refuses a Must know or Traps item that begins with a doing verb without naming who does it. Offered to every role and required of nobody, under the Training card's **Available** line; off until the owner's reader signs it off and a dev turns it on. Thirty lessons in four parts and a Start here (Power in, The devices, The two together as strips, On the job), a final check of twenty with fourteen to pass. Guide `take-a-training-course`.
+
+### /training/intro-hvac — Training: Intro to HVAC
+
+The fourth course (v2.8158), the same page: how a house is cooled and heated, for the people who work on it or beside it. HVAC is the company's trade, so the lessons instruct as Intro to plumbing's do; one line holds, that opening a refrigerant loop takes the EPA's Section 608 card, and the content test refuses a Must know or Traps line that begins with a loop verb and names no carded technician. Air is a block arrow, warm red or cooled blue, refrigerant a thin pipe in the same two tints, water the plumbing's. Offered to every role and required of nobody. Off until a licensed HVAC reader has read it and the owner or a dev turns it on; Start here and Heat out are built (v2.8158), ten lessons from *Heat only moves* to *The heat pump*. Every lesson's `from:` line says which facts were read at a code section and which are trade knowledge still to be checked.
+Roles: everyone signed in once it is on; the owner or a dev previews it while it is off.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick

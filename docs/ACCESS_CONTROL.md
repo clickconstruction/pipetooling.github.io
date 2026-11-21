@@ -936,7 +936,10 @@ Since v2.7726 a person's copy of a paper a job requires is in it with its job, u
 Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
 Since v2.8108 (`20261120080000_estimator_reads_outside_papers.sql`, the owner's call 9) that is every kind of such a paper, a W-9 and an insurance certificate among them, where v2.7977 opened an agreement alone, and the rule is the function `paper_is_outside_company`.
 It opens no paper filed under a person and no party on no list, and a digital twin reads none.
-It is a read alone: the four roles still write, and the estimator has no screen that lists these papers until the party's own page is built.
+It is a read alone: the four roles still write.
+Since v2.8162 the party's own page lists them: a supply house's window has a **Papers** section and the Customer page's **Agreements** card has *Papers with this customer*, each for the four roles and the estimator (`canReadPartyPapers`), and a primary or a superintendent is drawn no section and nothing is read for them.
+That list reads `person_contract_documents` itself, every kind and every state, under the reader's own policy, so it changes no policy and an estimator is answered an outside company's papers alone.
+An estimator opens a signed paper's record from its name there, where the form's layout (`contract_form_templates`) and the signature's image (the `contract-signer-signatures` bucket) stay the office's to read, and the window says so in words.
 Since v2.8108 (calls 10 and 11) an estimator also opens a signed form's PDF, and its scan, through `open-contract-form-pdf` when the paper is with an outside company, a signed W-9 with its whole tax number among them.
 That function asks `estimator_reads_paper`, the policy's own rule, as the caller, refuses a digital twin and a signed hours statement itself, and logs the open as every other.
 An assistant still reads the row and is refused the file, and a person's signed form opens for a dev, the controller and a pay-approved master alone, as before.
@@ -1667,6 +1670,7 @@ A tech reads only their own row;
   INSERT, UPDATE and DELETE behind `is_dev()` and, since v2.6762 (punch list #188 row 6, `20261109005500_dev_gates_settings_doors.sql`), `is_master_or_dev()`, the policy Settings → Training (v2.5569, a dev's tab) writes through.
   Anon revoked, authenticated granted, the service role everything.
   Seeded `osha-30-refresher`, off, required for helpers, subcontractor, primary, master_technician and superintendent, `intro-to-plumbing` (v2.5610), off, required for helpers, offered, good for 120 months, and `intro-electrical` (v2.5614, `20261018020000`), off, required of nobody, offered, good for 120 months.
+  Seeded `intro-hvac` too (v2.8158, `20261121074500`), off, required of nobody, offered, good for 120 months.
   The lessons are not in the database: they ship in the bundle under `src/content/training/<slug>/` (v2.5564).
   The course page `/training/<slug>` is on every listed role's allowed paths (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS` and `estimatorAllowedPaths`;
   the office roles pass every route) in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) since v2.5592 (before it, Layout's guard bounced a helper's Start back to the Dashboard);
@@ -3000,6 +3004,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
+- **Write someone up**: since v2.8157 (punch list #410) a superintendent sends a field report about a person through `land_person_report`, as a leader and a dev do, never about themselves, and reads only their own rows of `person_reports`, while the queue and the HR file stay a dev's.
 
 **Service Type Filtering**:
 - Devs can restrict a superintendent to specific service types via `superintendent_service_type_ids` on the user record (like `primary_service_type_ids`)

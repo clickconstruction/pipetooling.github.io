@@ -186,6 +186,8 @@ describe('lienSentGatesFold — the gates as one line on a sent notice (v2.6625,
     const { gates } = buildLienDeskGates({ ...clear, ownerName: 'Karrow Ulric', gcName: 'RLC- Dunmere Mallin', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
     const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: ['2026-07', '2026-08'], monthShort })
     expect(fold.head).toBe('Sent Oct 14')
+    // The months alone, for the strip's chip and the Months on this job head (v2.8167).
+    expect(fold.months).toBe('Jul + Aug')
     expect(fold.line).toBe('Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug')
     expect(fold.rows.map((r) => [r.n, r.label, r.value])).toEqual([
       [1, 'Owner of record', 'Karrow Ulric'],
@@ -198,6 +200,8 @@ describe('lienSentGatesFold — the gates as one line on a sent notice (v2.6625,
     const { gates } = buildLienDeskGates({ ...clear, ownerName: '', ownerMailingAddress: '', gcName: '', propertyKind: '', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
     const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: [], monthShort })
     expect(fold.line).toBe('Sent Oct 14 · owner not on file · no GC on the job · kind unknown · no month named')
+    // A record that keeps no month says so. It never says a month is still to pick (v2.8167).
+    expect(fold.months).toBe('no month named')
     expect(lienSentGatesFold({ sentOn: 'Oct 14', gates: buildLienDeskGates({ ...clear, ownerMailingAddress: '' }).gates, noticeMonths: ['2026-07'], monthShort }).rows[0]!.value).toBe('no mailing address')
   })
 })

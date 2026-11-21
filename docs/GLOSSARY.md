@@ -1580,6 +1580,7 @@ The short page's **Tomorrow** line and Your record's lines read the same way, an
 What a superintendent whose **Dashboard view** is **Short** sees with **Job Mode** on, in place of the long Job Mode page (v2.7752, punch list #384;
 `JobModeShortPage.tsx`, the rule and every word in `lib/jobMode/jobModeShort.ts`, `jobModeShortOn` over `shortPageFor`).
 Top to bottom: the job card's top as it is (next stop, today's stops, the press bar), **Open this job**, a fold in place over the card's lower half (`DashboardJobModeCard`'s `short` prop: the Materials on site link, which on the whole card is a press beside Job calendar since v2.8050, and `JobModeDetailsSection`), the pace line (`SuperintendentCard`'s `short`: the project's headline as one row, a press opens the card as it is), **Waiting on you** (Your record under that name), **Tomorrow** in one line (how many stops and when the first is, a press opens the Schedule tab) and one door, **Everything else**.
+Since v2.8173 (punch list #382) **Is it as told?** is drawn above **Open this job** and not behind it, since it is asked on arrival (`arrivalAbove` on `JobModeDetailsSection`).
 The door opens the full Dashboard for the visit, folded on a phone, with **Back to the short page** on top, and the Job Mode bar's **Dashboard** tab returns too.
 Since v2.8124 (the owner's pick 2026-11-20, punch list #409) the page opens on **Job Mode's day row**, the whole row as the long page draws it, handed in as `JobModeShortPage`'s `row`.
 The page has no hours card, so there the row reads the week itself and only while **This week** is drawn (`loadHours`, `loadTopRowWeekHours`), and **This week** opens the door and lands on **My Time** (`onHours`).
@@ -6718,6 +6719,9 @@ The two are kept apart because a rep leaves a supply house and the paper must st
 `party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
 The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 *Not on a list* is a party whose contact has no record yet.
+Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
+A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
+That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.
 
 ### Sent copies
 
@@ -7648,6 +7652,7 @@ A company truck with no insurance, registration, service or replacement value on
   and a `stage_check` request on *Questions on this job* wears the inbox's *Stage check* tag (`readRequestsWhere` selects `pending_action` on the Dispatch table alone, since the estimators' table has no such column);
   the guides *send a check to Dispatch*, *answer a check the crew sent* and *read the Pipeline's money view*.
   A **No on arrival** rides the same road with no check behind it (v2.8110, punch list #382): `question_id` is null and the payload carries `start_check_arrival_id`, so the row keeps the tag, the red wait line and the window, wears **Open the list** where a check has **Open the check**, and is closed by Dispatch or its sender since nothing closes it by itself.
+  Since v2.8161 its window's first line reads *sent on arrival* where a check's reads *sent from the sheet*.
 - **Draw** (Stage Plan) — an Order stage's invoice, numbered by its stage: *Draw 2 · Top-out*.
   Draws follow the stages: nothing bills out of order (a passed stage **waits** while the one above it is unbilled;
   a bill made by amount that covers it counts as billed);

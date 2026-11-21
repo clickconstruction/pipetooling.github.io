@@ -46995,6 +46995,7 @@ export type Database = {
           request_id: string
         }[]
       }
+      estimator_reads_paper: { Args: { p_paper_id: string }; Returns: boolean }
       evidence_is_counsel_only: {
         Args: { p_evidence_id: string }
         Returns: boolean
@@ -50972,6 +50973,15 @@ export type Database = {
         Returns: boolean
       }
       painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
+      paper_is_outside_company: {
+        Args: {
+          p_company_id: string
+          p_partnership_id: string
+          p_party_contact_id: string
+          p_person_id: string
+        }
+        Returns: boolean
+      }
       paper_party_contact: {
         Args: { p_record_id: string; p_record_table: string }
         Returns: string

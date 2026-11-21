@@ -25,6 +25,8 @@ const world = {
   saves: [] as Array<{ p: Row; dry: boolean }>,
   /** Every other write the server tried. None is expected. */
   writes: [] as Array<{ method: string; path: string }>,
+  /** Tables whose read answers 500, for a read that fails. */
+  broken: [] as string[],
   log: [] as Row[],
 }
 
@@ -42,8 +44,8 @@ function filtered(table: string, query: string): Row[] {
   const rows = (world.tables[table] ?? []).filter((r) => all.filter(([k]) => !RESERVED.includes(k)).every(([k, expr]) => matches(r, k, expr)))
   const order = all.find(([k]) => k === 'order')?.[1]
   if (order) {
-    const [col] = order.split(',')[0]!.split('.') as [string]
-    rows.sort((a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')))
+    const [col, way] = order.split(',')[0]!.split('.') as [string, string | undefined]
+    rows.sort((a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * (way === 'desc' ? -1 : 1))
   }
   const limit = Number(all.find(([k]) => k === 'limit')?.[1] ?? 1000)
   const page = rows.slice(0, limit)
@@ -58,6 +60,20 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
  * 20261118040000 it names the trip's number: the one a kept trip has, null on a dry run of a new one, and the next on
  * its site when one is added.
  */
+/**
+ * The trigger on trips as migration 20261120130000 writes it (trips_refuse_joined_back): a trip made again under the
+ * id of a trip that was joined into another is refused, in words, with code 22023. The words are written out here
+ * and not taken from the seat, so the plan's sentence is held to the database's and not to itself.
+ */
+function refusedAsJoined(id: string): Row | null {
+  const gone = (world.tables.deleted_records_archive ?? []).filter((a) => a.table_name === 'trips' && a.record_id === id && a.restored_at == null).sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at)))[0]
+  const data = (gone?.row_data ?? {}) as { trip_number?: number; joined_into?: { trip_id?: string; trip_number?: number } }
+  if (!data.joined_into?.trip_id) return null
+  const there = (world.tables.trips ?? []).some((t) => t.id === data.joined_into!.trip_id)
+  const head = `Trip ${data.trip_number} was joined into Trip ${data.joined_into.trip_number}, which holds its days.`
+  return { code: '22023', message: there ? `${head} To take the join back, press Split in two on Trip ${data.joined_into.trip_number}.` : `${head} Put Trip ${data.joined_into.trip_number} back, then press Split in two on it.`, details: null, hint: null }
+}
+
 function tripSave(p: Row, dry: boolean): Row {
   const people = (p.people as Array<{ name: string; person_id?: string; user_id?: string; days: Record<string, string> }>) ?? []
   const jobs = [...new Set((p.job_ids as string[]) ?? [])]
@@ -81,10 +97,17 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   const url = new URL(String(input))
   const method = (init?.method ?? 'GET').toUpperCase()
   const path = decodeURIComponent(url.pathname)
-  if (path.startsWith('/rest/v1/') && method === 'GET') return json(filtered(path.slice('/rest/v1/'.length), url.search.slice(1)))
+  if (path.startsWith('/rest/v1/') && method === 'GET') {
+    const table = path.slice('/rest/v1/'.length)
+    if (world.broken.includes(table)) return json({ code: 'XX000', message: 'the read failed', details: null, hint: null }, 500)
+    return json(filtered(table, url.search.slice(1)))
+  }
   if (path === '/rest/v1/rpc/trip_save' && method === 'POST') {
     const body = JSON.parse(String(init?.body)) as { p: Row; p_dry_run: boolean }
     world.saves.push({ p: body.p, dry: body.p_dry_run })
+    // The dry run writes nothing, so it never reaches the trigger: only the save itself is refused.
+    const refusal = !body.p_dry_run && !(world.tables.trips ?? []).some((t) => t.id === body.p.id) ? refusedAsJoined(String(body.p.id)) : null
+    if (refusal) return json(refusal, 400)
     return json(tripSave(body.p, body.p_dry_run))
   }
   world.writes.push({ method, path })
@@ -157,9 +180,11 @@ beforeEach(() => {
     trips: [],
     trip_people: [],
     trip_jobs: [],
+    deleted_records_archive: [],
   }
   world.saves = []
   world.writes = []
+  world.broken = []
   world.log = []
 })
 
@@ -323,6 +348,85 @@ describe('plan_trip → apply_trip, through the function', () => {
     expect((await call('plan_trip', { trip: { ...TRIP, development_id: 'aaaaaaaa-0000-4000-8000-000000000000' } })).text).toContain('no development has the id')
     expect((await call('plan_trip', { trip: { ...TRIP, people: [{ name: 'Dana', days: { '2026-02-30': 'site' } }] } })).text).toBe('plan_trip: Dana’s days: "2026-02-30" is not a real calendar day (YYYY-MM-DD).')
     expect(realSaves()).toEqual([])
+  })
+
+  describe('a trip that was joined into another', () => {
+    const SECOND: Row = { ...TRIP, purpose: 'Top out, building C', people: [{ name: 'Dana', days: [{ from: '2026-11-05', to: '2026-11-06', kind: 'site' }] }] }
+    /** Two trips kept, then Trip 2 joined into Trip 1 as the app's Join with next leaves it: gone, and marked in the archive. */
+    async function joined(): Promise<{ one: string; two: string; planOfTwo: string }> {
+      const first = await call('plan_trip', { trip: TRIP })
+      await call('apply_trip', { trip: TRIP, plan_hash: first.body!.plan_hash })
+      const second = await call('plan_trip', { trip: SECOND })
+      await call('apply_trip', { trip: SECOND, plan_hash: second.body!.plan_hash })
+      const one = String(first.body!.trip_id)
+      const two = String(second.body!.trip_id)
+      expect(world.tables.trips!.map((t) => [t.id, t.trip_number])).toEqual([[one, 1], [two, 2]])
+      world.tables.trips = world.tables.trips!.filter((t) => t.id !== two)
+      world.tables.trip_people = world.tables.trip_people!.filter((x) => x.trip_id !== two)
+      world.tables.trip_jobs = world.tables.trip_jobs!.filter((x) => x.trip_id !== two)
+      world.tables.deleted_records_archive = [{ id: 'archive-1', table_name: 'trips', record_id: two, deleted_at: '2026-11-17T17:00:00Z', restored_at: null, row_data: { id: two, trip_number: 2, development_id: SITE, joined_into: { trip_id: one, trip_number: 1 } } }]
+      world.saves = []
+      world.log = []
+      return { one, two, planOfTwo: String(second.body!.plan_hash) }
+    }
+    const SENTENCE = 'Trip 2 was joined into Trip 1, which holds its days. To take the join back, press Split in two on Trip 1.'
+
+    it('is refused at the plan in the words the save is refused with, and never reads add', async () => {
+      const { two, planOfTwo } = await joined()
+      const plan = await call('plan_trip', { trip: SECOND })
+      expect(plan.isError).toBe(true)
+      expect(plan.text).toBe(`plan_trip: this trip would not be saved. ${SENTENCE} The database refuses the save (22023), and apply_trip would be answered in the same words. Split in two is a press in the app, and this seat has no verb for it.`)
+      expect(plan.text).not.toContain('add')
+      expect(plan.text).not.toContain('plan_hash')
+      // The one call the database had was the dry run, and nothing was written.
+      expect(world.saves.map((s) => s.dry)).toEqual([true])
+      expect(world.writes).toEqual([])
+      expect(world.log[world.log.length - 1]).toMatchObject({ verb: 'plan_trip', status: 'refused', target: two })
+      // The same under the trip's own id, the way a deleted trip is put back.
+      expect((await call('plan_trip', { trip: { ...SECOND, id: two } })).text).toContain(SENTENCE)
+
+      // The apply of a plan made before the join is what the database answers: the same sentence, from the trigger.
+      const apply = await call('apply_trip', { trip: SECOND, plan_hash: planOfTwo })
+      expect(apply.isError).toBe(true)
+      expect(apply.text).toBe(`The app's API answered 400 (22023): ${SENTENCE}`)
+      expect(plan.text).toContain(apply.text.slice(apply.text.indexOf('Trip 2')))
+      expect(world.tables.trips!.map((t) => t.trip_number)).toEqual([1])
+    })
+
+    it('names the way back when the joined trip is deleted too', async () => {
+      const { one } = await joined()
+      world.tables.trips = world.tables.trips!.filter((t) => t.id !== one)
+      const plan = await call('plan_trip', { trip: SECOND })
+      expect(plan.isError).toBe(true)
+      expect(plan.text).toContain('Trip 2 was joined into Trip 1, which holds its days. Put Trip 1 back, then press Split in two on it.')
+      expect(realSaves()).toEqual([])
+    })
+
+    it('plans as before once the join is taken back, and for a trip somebody deleted', async () => {
+      const { two } = await joined()
+      // A trip somebody deleted carries no mark: its plan reads add, and that is how it is put back.
+      world.tables.deleted_records_archive = [{ id: 'archive-2', table_name: 'trips', record_id: two, deleted_at: '2026-11-17T17:30:00Z', restored_at: null, row_data: { id: two, trip_number: 2 } }]
+      const back = await call('plan_trip', { trip: { ...SECOND, id: two } })
+      expect(back.isError).toBe(false)
+      expect(back.body).toMatchObject({ would: 'add', trip_id: two })
+      expect(JSON.stringify(back.body)).not.toContain('could not check')
+      const done = await call('apply_trip', { trip: { ...SECOND, id: two }, plan_hash: back.body!.plan_hash })
+      expect(done.body).toMatchObject({ did: 'added', trip_id: two })
+    })
+
+    it('still plans when the archive does not read, and says it could not check', async () => {
+      await joined()
+      world.broken = ['deleted_records_archive']
+      const plan = await call('plan_trip', { trip: SECOND })
+      expect(plan.isError).toBe(false)
+      expect(plan.body).toMatchObject({ would: 'add' })
+      expect((plan.body!.notes as string[]).join(' ')).toContain('The deleted trips did not read, so this plan could not check whether the trip was joined into another. The database refuses that save itself.')
+      // The save itself is still refused, by the database.
+      const apply = await call('apply_trip', { trip: SECOND, plan_hash: plan.body!.plan_hash })
+      expect(apply.text).toBe(`The app's API answered 400 (22023): ${SENTENCE}`)
+      expect(realSaves()).toHaveLength(1)
+      expect(world.tables.trips).toHaveLength(1)
+    })
   })
 
   it('view_as never runs either write verb', async () => {

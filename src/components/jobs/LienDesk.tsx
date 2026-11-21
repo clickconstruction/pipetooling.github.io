@@ -106,7 +106,7 @@ import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaper
 import { type LienStopPaper } from './LienStopPaperWindow'
 import { affidavitStopPages, filingSnapshotPage, lienDeskAffidavitFieldsFor, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { LIEN_FILING_BATCH_WORDS, lienFilingDoorWords, lienFilingTargets } from '../../lib/jobs/lienFilingBatch'
-import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import { lienClosedNoticeStopNote, lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import LienDeskNextUp from './LienDeskNextUp'
@@ -132,7 +132,7 @@ import { lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark
 import { conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
 import { lienApplyMonthsOffered, lienApplyStartsBlank } from '../../lib/jobs/lienNoticeApply'
@@ -2232,7 +2232,7 @@ export default function LienDesk({
     if (kind === 'notice') {
       const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && !f.voided_at && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
       if (sent) return asSent(sent, filedWords('Mailed', sent.filed_at, sent.created_at), { envelope })
-      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      if (step.state === 'missed' || step.fold) return { ...none, note: lienClosedNoticeStopNote(timeline?.next) }
       const onDraft = step.monthKey ? months.has(step.monthKey) : false
       if (!onDraft) return { ...none, note: `${workMonthLabel(step.monthKey ?? '')} is not on the notice being drafted. Tick it under Months on this job and it joins the paper.` }
       const pages = [
@@ -2277,12 +2277,14 @@ export default function LienDesk({
         gates: gatesFold ? { sentOn: gatesFold.sentOn } : { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
         houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
         months: monthsList,
+        // A notice that went names its own months (v2.8167): the pane picks none on it, so the head read *no months* over a paper sent for two.
+        sentMonths: gatesFold?.months ?? null,
         claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
         pages: pageTotal,
         gcEmail: Boolean(gc?.email),
         monthShort: workMonthShort,
         money: formatUsdNoCents,
-        foot: footInPane ? lienNoticeFootHead({ pile: selected.pile, signed: Boolean(paneSigned), signerFirst: (leaderName.trim().split(/\s+/)[0] ?? ''), dueMonths: selected.dueMonths.length }) : null,
+        foot: footInPane ? lienNoticeFootHead({ pile: selected.pile, signed: Boolean(paneSigned), signerFirst: (leaderName.trim().split(/\s+/)[0] ?? ''), dueMonths: selected.dueMonths.length, lateUntil }) : null,
       })
     : []
   // The heads' wiring is shared with the affidavit and retainage panes since v2.7320 (`useLienPaneHeads`): which section is lit from the pane's scroll, the press that lands a section under its own head, and the head itself. The strip's height is v2.4726's `stripH`, 0 while it is not pinned.
@@ -2799,7 +2801,7 @@ export default function LienDesk({
     ) : null
     // What the footers read (`LienNoticeFooterContext`, v2.7593): the four that wait on the leader are `LienDeskLeaderFooters.tsx`.
     const footCtx: LienNoticeFooterContext = { selected, monthsList, monthsWord, todayYmd, authRole, authName, leader, office, otherScreen, busy, leaderName, leaderNameFor, gc, codeSigner, promise, claimGate, counts, runCount, simpleApprove, detailsOpen, notYetOpen, setNotYetOpen, holdOpen, setHoldOpen, rulePick, wordOpen, setWordOpen, wordNote, setWordNote, wordChannel, setWordChannel, wordPreview, offerProblem, signLine, offerBox, offerSwitch, byHandPane, penPane, approve, signOnly, sendOnWord, pullBack, saveOffer, hold, backToReady, signAgain, setByHandOpen, setPenOpen, setRunOpen, openRunOnOne, monthlyRunNotices, run }
-    if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
+    if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && lienMissedNoticeStillGoes({ dueMonths: selected.dueMonths.length, lateUntil }))) {
       // The draft footer (v2.3776): `LienDeskDraftFooter` over the footers' context and the draft's own (v2.7594).
       const draftCtx: LienDraftFooterContext = { ...footCtx, askReason, codeReady, draftFields, draftSave, draftSignWay, ensureDraft, gates, offer, paneRef, pickGate, readiness, ready, ruleLive, sendToLeader, setPenDraft, setSignWay, signItem, signRef, draftSignLine, first, lt, courtesyUnrecordedBand, courtesyDoor, letterTwoDoor }
       footer = <LienDeskDraftFooter ctx={draftCtx} />

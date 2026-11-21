@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { isOfficeRole } from '../lib/doorRoles'
 import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
+import { PartyPapersSection } from './contracts/PartyPapers'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
@@ -301,7 +302,11 @@ export function SupplyHouseForm({
           </FieldRow>
         ) : null}
         {editingSupplyHouse ? (
-          <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
+          <>
+            <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
+            {/* Punch list #403, step 4: the papers that are with this house or one of its reps. The section gates itself by role. */}
+            <PartyPapersSection party={{ kind: 'supply_house', id: editingSupplyHouse.id }} />
+          </>
         ) : (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
             Save the house, then add its contacts — who price requests go to, and who opens job accounts.

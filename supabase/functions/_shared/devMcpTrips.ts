@@ -443,9 +443,92 @@ export async function prepareTripWrite(verb: TripVerb, args: Json, reader: Reade
   return { ok: true, args: { ...args, trip: p }, p, idWas: asked.id ? 'given' : 'made', home, jobs, people: filled.fits, overlaps }
 }
 
+// ── a trip joined into another stays joined ──────────────────────────────────────────────────────────────────────
+//
+// `trip_join` deletes the trip that went and marks its archive row `joined_into`. A trigger on `trips`,
+// `trips_refuse_joined_back` (migration 20261120130000), refuses that trip made again, in words. `trip_save`'s dry
+// run writes nothing, so it never reaches the trigger and says add. The plan therefore reads what the trigger reads,
+// as the dev (the archive is the dev's alone to read), and refuses in the trigger's own sentence, so a plan and its
+// apply agree. The database stays the one that refuses the save: this is its answer said one call sooner. The rule
+// is here once, and `devMcpTrips.test.ts` holds each word of it to the migration's own text.
+
+/** The code the trigger refuses with. */
+export const TRIP_JOINED_BACK_CODE = '22023'
+
+/** What a trip's newest delete says of a join: the trip it went into, and both numbers as the mark kept them. */
+export type TripJoinedMark = { intoId: string; tripNumber: number | null; intoNumber: number | null }
+
+/** `NULLIF(x ->> 'trip_number', '')::integer`: null for none, the number, and undefined where the cast would fail. */
+function markNumber(v: unknown): number | null | undefined {
+  if (v == null || v === '') return null
+  if (typeof v === 'number') return Number.isInteger(v) ? v : undefined
+  return typeof v === 'string' && /^\s*[+-]?\d+\s*$/.test(v) ? Number(v) : undefined
+}
+
+/**
+ * The join mark on one archive row, read as the trigger reads it: `row_data.joined_into` an object with a `trip_id`,
+ * the trip's own number beside it. Null for a trip somebody deleted, which carries no mark, and for a mark the
+ * trigger could not read, which it lets through.
+ */
+export function tripJoinedMark(row: Row | null | undefined): TripJoinedMark | null {
+  const data = obj(row?.row_data)
+  const into = obj(data?.joined_into)
+  if (!data || !into || typeof into.trip_id !== 'string' || !UUID_RE.test(into.trip_id)) return null
+  const tripNumber = markNumber(data.trip_number)
+  const intoNumber = markNumber(into.trip_number)
+  if (tripNumber === undefined || intoNumber === undefined) return null
+  return { intoId: into.trip_id.toLowerCase(), tripNumber, intoNumber }
+}
+
+/**
+ * The trigger's sentence, word for word: both trips by number, as the Deleted trips fold names them, and the way
+ * back. `intoThere` is whether the trip that holds the days is still kept; a deleted one is put back first.
+ */
+export function tripJoinedBackWords(mark: Pick<TripJoinedMark, 'tripNumber' | 'intoNumber'>, intoThere: boolean): string {
+  const thisTrip = mark.tripNumber != null ? `Trip ${mark.tripNumber}` : 'That trip'
+  const that = mark.intoNumber != null ? `Trip ${mark.intoNumber}` : 'another trip'
+  const again = mark.intoNumber != null ? `Trip ${mark.intoNumber}` : 'that trip'
+  return intoThere
+    ? `${thisTrip} was joined into ${that}, which holds its days. To take the join back, press Split in two on ${again}.`
+    : `${thisTrip} was joined into ${that}, which holds its days. Put ${again} back, then press Split in two on it.`
+}
+
+/** The plan's refusal around the trigger's sentence: nothing would be saved, and what the apply would be told. */
+export function tripJoinedBackRefusal(words: string): string {
+  return `plan_trip: this trip would not be saved. ${words} The database refuses the save (${TRIP_JOINED_BACK_CODE}), and apply_trip would be answered in the same words. Split in two is a press in the app, and this seat has no verb for it.`
+}
+
+/** What the plan says when the archive did not read, so the join could not be checked. */
+export const TRIP_JOIN_UNREAD_NOTE = 'The deleted trips did not read, so this plan could not check whether the trip was joined into another. The database refuses that save itself.'
+
+/**
+ * Whether the save a plan describes would be refused as a joined trip made again. Asked only when the dry run says
+ * add, since the trigger runs before an insert and a change inserts no trip. It reads the newest delete of the id
+ * that nothing has put back, and, when that carries the mark, whether the joined trip is still kept. A read that
+ * fails answers `unread`: the trigger lets such a save through, and the plan says it could not check.
+ */
+export async function tripPlanJoinedBack(reader: Reader, prep: TripPrepared, reply: unknown): Promise<{ refused: string } | { unread: true } | null> {
+  const id = prep.p.id
+  if (!id || tripSaveWould(reply) !== 'add') return null
+  try {
+    const gone = await reader.rows('deleted_records_archive', {
+      select: 'record_id,deleted_at,row_data',
+      filters: [...by('table_name', 'trips'), ...by('record_id', id), { column: 'restored_at', op: 'is', value: null }],
+      order: [{ column: 'deleted_at', ascending: false }],
+      limit: 1,
+    })
+    const mark = tripJoinedMark(gone[0])
+    if (!mark) return null
+    const there = (await reader.rows('trips', { select: 'id', filters: by('id', mark.intoId), limit: 1 })).length > 0
+    return { refused: tripJoinedBackRefusal(tripJoinedBackWords(mark, there)) }
+  } catch {
+    return { unread: true }
+  }
+}
+
 // ── the words around the database's own reply ────────────────────────────────────────────────────────────────────
 
-const tripOf = (id: string, people: ReadonlyArray<{ name: string; person_id?: string | null; user_id?: string | null; days: Record<string, TripDayKind> }>, jobIds: ReadonlyArray<string>): Trip => ({
+const tripOf =(id: string, people: ReadonlyArray<{ name: string; person_id?: string | null; user_id?: string | null; days: Record<string, TripDayKind> }>, jobIds: ReadonlyArray<string>): Trip => ({
   id,
   people: people.map((x) => ({ personKey: x.person_id ?? x.user_id ?? nameKey(x.name), name: x.name, days: x.days })),
   jobIds,
@@ -472,9 +555,10 @@ export function tripSaveWould(reply: unknown): 'add' | 'change' | null {
  * What the plan adds for the person reading it, beside the database's own reply and never inside the hash: the site
  * or the job by name, the days from first to last, where the trip would stand today, each person with how they were
  * tied to the roster and their days by kind, what it was for, who asked, billing and the jobs. `today` is the
- * company's calendar day; it is in these words alone, so no clock is in the hash.
+ * company's calendar day; it is in these words alone, so no clock is in the hash. `joinUnread` adds the note for a
+ * plan that could not check the archive for a join (`tripPlanJoinedBack`).
  */
-export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: string): Json {
+export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: string, opts: { joinUnread?: boolean } = {}): Json {
   const p = prep.p
   const trip = tripOf(p.id ?? '', p.people, p.job_ids)
   const span = tripSpan(trip)
@@ -492,6 +576,7 @@ export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: stri
   for (const o of prep.overlaps) notes.push(`${o.name} already has ${o.days === 1 ? o.first_day : `${o.days} of these days (${o.first_day} to ${o.last_day})`} on another trip kept here, ${o.trip_number != null ? `Trip ${o.trip_number} (${o.trip_id})` : o.trip_id}. If this is that trip, pass its id; two trips should not claim one person’s day.`)
   if (kept != null) notes.push(`It is Trip ${kept} on its site, and a change keeps that number.`)
   else if (would === 'add') notes.push('The database hands the trip its number on its site when it is kept (Trip 1, Trip 2). Nobody types it, and the applied reply names it.')
+  if (opts.joinUnread) notes.push(TRIP_JOIN_UNREAD_NOTE)
   notes.push('A trip is a reading over the clock. It changes no clock row, bill or cost.')
   return {
     reads: `${lead} to ${homeWords(prep.home)}${span ? `, ${span.first === span.last ? span.first : `${span.first} to ${span.last}`}: ${plural(counts.days, 'day')} (${tripCountsWords(counts)})` : ''}, ${plural(p.people.length, 'person', 'people')}. Today (${todayYmd}) it would read ${TRIP_STANDING_LABEL[standing]}.`,
