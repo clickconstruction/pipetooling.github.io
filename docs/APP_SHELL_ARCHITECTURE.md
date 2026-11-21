@@ -227,7 +227,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### D. Session side-effects
 
-- `useAppActivityHeartbeat(authUser?.id, appActivityPageKey(…))` 139 → RPC `bump_user_app_activity`. `startDismissalSync`/`stopDismissalSync` 141–145 → `user_dismissals`. `loadAndApplyExtraJobAddressLocalities` + `loadAndApplyExtraTxCountyMappings` 168–172 → `app_settings`, once per user. `scheduleDashboardPrefetch` 358–365 (150 ms debounce on Dashboard-link `onPointerEnter`) + unmount cleanup 367–371.
+- `useAppActivityHeartbeat(authUser?.id, appActivityPageKey(…))` 139 → RPC `bump_user_app_activity`, never while View as is on (v2.8176). `startDismissalSync`/`stopDismissalSync` 141–145 → `user_dismissals`. `loadAndApplyExtraJobAddressLocalities` + `loadAndApplyExtraTxCountyMappings` 168–172 → `app_settings`, once per user. `scheduleDashboardPrefetch` 358–365 (150 ms debounce on Dashboard-link `onPointerEnter`) + unmount cleanup 367–371.
 - **Owned:** `dashboardPrefetchTimerRef` 319. **Tests:** `appActivityPage.test.ts` (6), `txCountySettings.test.ts` (3). `dismissalSync`, `dashboardPrefetch` and `jobAddressLocalitySettings` are untested.
 - **Approach:** optional `useShellSessionEffects(authUserId)` hook (Stage B, low). `scheduleDashboardPrefetch` must stay reachable by F and I.
 
