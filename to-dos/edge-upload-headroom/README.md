@@ -16,10 +16,9 @@ summary: >
   devMcpAffidavitDraft reaches the slim types through lienProperty for a type. The fix is to cut
   those chains, not to re-export less.
 next: Nothing to build now. Since v2.8117 dev-mcp deploys bundled from CI, and since v2.8126 it is held to 10 MB of raw source, not 4.5 MB; it stood at 4.49 MB on 2026-11-20, growing about 0.25 MB a day. Step 3 (the tool descriptions out of dev-mcp/index.ts and a catalog of only the tables and functions the verbs name, 0.84 MB between them) is due when `npm run check:edge-bundles` shows dev-mcp near 9.5 MB.
-next: After PR 7 merges, redeploy what check:edge-drift names (the fourteen barrel readers and messages-notify) and write Checked live into both fragments. Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.42 MB, under the 3.5 MB line, with 1.08 MB to the ceiling; a verb pair costs about 0.15 MB, so seven more fit before the next cut.
 size: S to read · S per cut, two or three cuts · M for the descriptions and the catalog if it comes to that
 blocker: none; it waits on dev-mcp's growth, so that a cut lands before the ceiling and not after a refused deploy
-opinion: cut the chains, never raise the ceiling, since the wall at 5 MB is Supabase's; the portals get the same cuts for free
+opinion: cut the chains before dev-mcp nears its 10 MB, and keep every function that uploads raw source under 4.5 MB, since Supabase refuses 5 MB of it; the portals get the same cuts for free
 mockup: not required — a refactor of imports and files with no screen
 ---
 
