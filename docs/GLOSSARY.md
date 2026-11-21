@@ -3240,8 +3240,8 @@ never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
 Drawing a line, placing a dot, a walk, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
-The public page `/way`, the picture and the printed page are not on Google.
-Since v2.8208 the page is one word from it: it hands the rule its own ask (`screen: 'way'`), Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`) and stays light on the page's paper, and `PAINTED_GOOGLE_REACH` still answers Leaflet for the page until the look at Google's billing says yes.
+The picture and the printed page are not on Google.
+The public page `/way` is on Google for its reader since v2.8210, on Taunya's yes of 2026-11-21: it hands the rule its own ask (`screen: 'way'`), and Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`, v2.8208) and stays light on the page's paper.
 It has no page of its own and no header button: it is one line wherever the app shows an address.
 The header's search is its door with no job open (since v2.7227): **Paint a map** starts one, on a job picked in the sheet or on no job, and every map the reader can open is found by its name under *Painted maps* (`paintedMapSearch.ts`).
 A map on no job is its maker's and the office's until **Put it on a job…**.
