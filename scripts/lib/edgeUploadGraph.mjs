@@ -86,11 +86,11 @@ export const UPLOAD_CEILING_BYTES = 4_500_000
  * source (v2.8117). Supabase holds a bundle to 20 MB where it holds raw files to 5 MB, so `dev-mcp` deploys from the
  * `dev-mcp-deploy.yml` job. On 2026-11-20 its 4.49 MB of raw source made a bundle the CLI printed as 3.46 MB
  * (compressed) and Supabase stores as 14.85 MB (unpacked, 3.31 times the source: the files, their JavaScript and their
- * source maps). Which of the two is held to 20 MB is not known, so the ceiling keeps the unpacked one under it:
- * 5.8 MB of source is about 19.2 MB unpacked. A deploy accepted past 20 MB unpacked would show the compressed size is
- * the one counted, and this number could then rise to about 12 MB.
+ * source maps). A one-time probe (v2.8123) then had a bundle of 14 MB of source accepted at 7.81 MB compressed and
+ * 28.80 MB unpacked, so the 20 MB is not on the unpacked size: it is on the compressed upload or on the raw source.
+ * 10 MB of source, about 7.7 MB compressed at the seat's 0.77, sits inside what the probe proved on both (v2.8126).
  */
-export const BUNDLED_UPLOAD_CEILINGS = { 'dev-mcp': 5_800_000 }
+export const BUNDLED_UPLOAD_CEILINGS = { 'dev-mcp': 10_000_000 }
 
 const mb = (bytes) => `${(bytes / 1e6).toFixed(2)} MB`
 
