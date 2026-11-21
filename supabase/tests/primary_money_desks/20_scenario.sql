@@ -3,6 +3,11 @@
 -- checks and disputes, the pay speed lines or the GC review week. The reads the Bill tab of a primary's own job
 -- draws from stay open to both, as before: the pay speeds, the promised dates, the promises and the returned-check
 -- payers. Rosa the assistant, Cal the controller and Mo the master pass every door as before.
+-- The second pass (migration *_primary_money_desk_verbs): the desk's two paying verbs, apply a deposit and add a
+-- tip, refuse both primaries, Luis on his own job included, and the three desk tables (returned checks, closed
+-- deposits, close-out labels) show them no row and take no write from them. Rosa and Mo read and write the tables
+-- and pay through both verbs as before. Cal reads and writes the tables and applies a deposit as before, and is
+-- still left out of the tip, which is where the controller stood before that migration.
 -- Everything rolls back. Raises on the first failed assertion; ends with "primary_money_desks PASSED". See
 -- scripts/pgtest-primary-money-desks.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -35,6 +40,19 @@ INSERT INTO public.job_payment_promises (job_id, promised_date) VALUES
   ('00000000-0000-0000-0000-0000000fcf03', current_date + 4);
 INSERT INTO public.ar_stripe_cases (kind, stripe_object_id, amount) VALUES ('dispute', 'dp_money_desks_bed', 50);
 INSERT INTO public.ar_unbanked_check_cases (payment_id, amount) VALUES ('00000000-0000-0000-0000-0000000fcd03', 100);
+-- The second pass's rows. J4 is the office's too and takes the tips, so a tip's new revenue never crowds J3's bill.
+-- Three deposits: D1 a check the bank sent back, D2 closed out as bank interest with its books label, D3 untouched.
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status, account_manager_user_id, account_manager_relationship) VALUES
+  ('00000000-0000-0000-0000-0000000fcf04', '00000000-0000-0000-0000-0000000fca07', '00000000-0000-0000-0000-0000000fcb01', '6104', 'Hose bib swap', 'Dana Whitfield', '00000000-0000-0000-0000-0000000fcc01', 'customer', 0, 0, 'billed', NULL, NULL);
+INSERT INTO public.mercury_transactions (id, mercury_account_id, mercury_id, amount, created_at, status, kind) VALUES
+  ('00000000-0000-0000-0000-0000000fce01', '00000000-0000-0000-0000-0000000fce0a', '00000000-0000-0000-0000-0000000fce11', 300, now(), 'sent', 'checkDeposit'),
+  ('00000000-0000-0000-0000-0000000fce02', '00000000-0000-0000-0000-0000000fce0a', '00000000-0000-0000-0000-0000000fce12', 40, now(), 'sent', 'other'),
+  ('00000000-0000-0000-0000-0000000fce03', '00000000-0000-0000-0000-0000000fce0a', '00000000-0000-0000-0000-0000000fce13', 250, now(), 'sent', 'checkDeposit');
+INSERT INTO public.mercury_transaction_ar_returned (mercury_transaction_id, returned, source) VALUES ('00000000-0000-0000-0000-0000000fce01', true, 'hand')
+  ON CONFLICT (mercury_transaction_id) DO UPDATE SET returned = true;
+INSERT INTO public.mercury_transaction_ar_closed (mercury_transaction_id, reason) VALUES ('00000000-0000-0000-0000-0000000fce02', 'bank_interest');
+INSERT INTO public.mercury_drag_sort_labels (id, name) VALUES ('00000000-0000-0000-0000-0000000fce21', 'Money Desks Bed Interest');
+INSERT INTO public.mercury_transaction_ar_close_labels (mercury_transaction_id, label_id, source) VALUES ('00000000-0000-0000-0000-0000000fce02', '00000000-0000-0000-0000-0000000fce21', 'close_out');
 
 CREATE SCHEMA pmd;
 CREATE FUNCTION pmd.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -114,6 +132,53 @@ $$;
 CREATE FUNCTION pmd.promise_on(p_job uuid) RETURNS text LANGUAGE sql AS $$
   SELECT CASE WHEN public.list_job_payment_promises_for(p_job) IS NULL THEN 'null' ELSE jsonb_array_length(public.list_job_payment_promises_for(p_job))::text || ' promise' END
 $$;
+-- The desk's two paying verbs, asked with the real untouched deposit D3: ten dollars applied to p_apply_job and a
+-- five dollar tip on p_tip_job. Each answers "ok" or its own refusal's words.
+CREATE FUNCTION pmd.pay_verbs(p_apply_job uuid, p_tip_job uuid) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE a jsonb; t jsonb;
+BEGIN
+  a := public.apply_mercury_bank_payment_allocations('00000000-0000-0000-0000-0000000fce03', current_date, 'Check', 'bed',
+         jsonb_build_array(jsonb_build_object('job_id', p_apply_job, 'amount', 10)), false);
+  t := public.record_job_tip_from_deposit('00000000-0000-0000-0000-0000000fce03', p_tip_job, 5, NULL, NULL);
+  RETURN 'apply ' || coalesce(a->>'error', CASE WHEN (a->>'ok')::boolean THEN 'ok' END, 'nothing')
+      || ' · tip ' || coalesce(t->>'error', CASE WHEN (t->>'ok')::boolean THEN 'ok' END, 'nothing');
+END $$;
+-- The three desk tables, read and written straight at the table as the caller. The writes run inside a block that
+-- always undoes itself, so each caller meets the same rows: a returned row for D1, a closed row and a label for D2.
+CREATE FUNCTION pmd.desk_tables() RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  d1 constant uuid := '00000000-0000-0000-0000-0000000fce01';
+  d2 constant uuid := '00000000-0000-0000-0000-0000000fce02';
+  d3 constant uuid := '00000000-0000-0000-0000-0000000fce03';
+  reads text; n int; w text := '';
+BEGIN
+  reads := 'returned rows ' || (SELECT count(*) FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = d1)
+        || ' · closed rows ' || (SELECT count(*) FROM public.mercury_transaction_ar_closed WHERE mercury_transaction_id = d2)
+        || ' · close labels ' || (SELECT count(*) FROM public.mercury_transaction_ar_close_labels WHERE mercury_transaction_id = d2);
+  BEGIN
+    UPDATE public.mercury_transaction_ar_returned SET returned = false WHERE mercury_transaction_id = d1;
+    GET DIAGNOSTICS n = ROW_COUNT; w := w || ' · returned: update ' || n;
+    BEGIN
+      INSERT INTO public.mercury_transaction_ar_returned (mercury_transaction_id, returned, source) VALUES (d3, true, 'hand');
+      w := w || ', insert open';
+    EXCEPTION WHEN insufficient_privilege THEN w := w || ', insert shut';
+    END;
+    DELETE FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = d1;
+    GET DIAGNOSTICS n = ROW_COUNT; w := w || ', delete ' || n;
+    UPDATE public.mercury_transaction_ar_closed SET note = 'bed' WHERE mercury_transaction_id = d2;
+    GET DIAGNOSTICS n = ROW_COUNT; w := w || ' · closed: update ' || n;
+    BEGIN
+      INSERT INTO public.mercury_transaction_ar_closed (mercury_transaction_id, reason) VALUES (d3, 'other');
+      w := w || ', insert open';
+    EXCEPTION WHEN insufficient_privilege THEN w := w || ', insert shut';
+    END;
+    DELETE FROM public.mercury_transaction_ar_closed WHERE mercury_transaction_id = d2;
+    GET DIAGNOSTICS n = ROW_COUNT; w := w || ', delete ' || n;
+    RAISE EXCEPTION USING ERRCODE = 'P0999', MESSAGE = w;
+  EXCEPTION WHEN SQLSTATE 'P0999' THEN w := SQLERRM;
+  END;
+  RETURN reads || w;
+END $$;
 GRANT USAGE ON SCHEMA pmd TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pmd TO anon, authenticated, service_role;
 
@@ -129,24 +194,36 @@ SET LOCAL ROLE authenticated;
 SELECT pmd.as_user('00000000-0000-0000-0000-0000000fca05');
 SELECT pmd.same('every desk door is shut to Pat', pmd.desk_doors(), (SELECT shut FROM pmd_want));
 SELECT pmd.same('Pat keeps the Bill tab''s reads and loses the desks', pmd.quiet_doors(), 'promise gate true · pay speeds open · pay speed lines null · promised dates open · promises open · promise records open · returned check payers open · unlinked payments 0 · stripe cases 0 · check cases 0');
+SELECT pmd.same('Pat is refused at both paying verbs', pmd.pay_verbs('00000000-0000-0000-0000-0000000fcf03', '00000000-0000-0000-0000-0000000fcf04'), 'apply Not authorized · tip Not authorized');
+SELECT pmd.same('the three desk tables show Pat no row and take no write', pmd.desk_tables(), 'returned rows 0 · closed rows 0 · close labels 0 · returned: update 0, insert shut, delete 0 · closed: update 0, insert shut, delete 0');
 
 -- 2 · Luis, a primary with a job: the desks are shut to him too, and he reads the promise on his own job as before.
 SELECT pmd.as_user('00000000-0000-0000-0000-0000000fca04');
 SELECT pmd.same('every desk door is shut to Luis', pmd.desk_doors(), (SELECT shut FROM pmd_want));
 SELECT pmd.same('Luis keeps the Bill tab''s reads and loses the desks', pmd.quiet_doors(), 'promise gate true · pay speeds open · pay speed lines null · promised dates open · promises open · promise records open · returned check payers open · unlinked payments 0 · stripe cases 0 · check cases 0');
 SELECT pmd.same('Luis reads the promise on his own job', pmd.promise_on('00000000-0000-0000-0000-0000000fcf01'), '1 promise');
+SELECT pmd.same('Luis is refused at both paying verbs on his own job', pmd.pay_verbs('00000000-0000-0000-0000-0000000fcf01', '00000000-0000-0000-0000-0000000fcf01'), 'apply Not authorized · tip Not authorized');
+SELECT pmd.same('the three desk tables show Luis no row and take no write', pmd.desk_tables(), 'returned rows 0 · closed rows 0 · close labels 0 · returned: update 0, insert shut, delete 0 · closed: update 0, insert shut, delete 0');
 
 -- 3 · The office passes every door, as before.
 SELECT pmd.as_user('00000000-0000-0000-0000-0000000fca03');
 SELECT pmd.same('every desk door is open to Rosa', pmd.desk_doors(), (SELECT open FROM pmd_want));
 SELECT pmd.same('the quiet doors answer Rosa', pmd.quiet_doors(), 'promise gate true · pay speeds open · pay speed lines open · promised dates open · promises open · promise records open · returned check payers open · unlinked payments 1 · stripe cases 1 · check cases 1');
 SELECT pmd.same('Rosa reads the promise on the office''s job', pmd.promise_on('00000000-0000-0000-0000-0000000fcf03'), '1 promise');
+SELECT pmd.same('Rosa reads and writes the three desk tables', pmd.desk_tables(), 'returned rows 1 · closed rows 1 · close labels 1 · returned: update 1, insert open, delete 1 · closed: update 1, insert open, delete 1');
+SELECT pmd.same('Rosa applies a deposit and adds a tip', pmd.pay_verbs('00000000-0000-0000-0000-0000000fcf03', '00000000-0000-0000-0000-0000000fcf04'), 'apply ok · tip ok');
 SELECT pmd.as_user('00000000-0000-0000-0000-0000000fca06');
 SELECT pmd.same('every desk door is open to Cal', pmd.desk_doors(), (SELECT open FROM pmd_want));
 SELECT pmd.same('the quiet doors answer Cal', pmd.quiet_doors(), 'promise gate true · pay speeds open · pay speed lines open · promised dates open · promises open · promise records open · returned check payers open · unlinked payments 1 · stripe cases 1 · check cases 1');
+-- The controller, where the role stood before the second pass: the apply verb takes Cal and the tip does not. The
+-- three tables' policies name office staff, which the controller is.
+SELECT pmd.same('Cal applies a deposit, and the tip leaves the controller out as before', pmd.pay_verbs('00000000-0000-0000-0000-0000000fcf03', '00000000-0000-0000-0000-0000000fcf04'), 'apply ok · tip Not authorized');
+SELECT pmd.same('Cal reads and writes the three desk tables', pmd.desk_tables(), 'returned rows 1 · closed rows 1 · close labels 1 · returned: update 1, insert open, delete 1 · closed: update 1, insert open, delete 1');
 SELECT pmd.as_user('00000000-0000-0000-0000-0000000fca07');
 SELECT pmd.same('every desk door is open to Mo', pmd.desk_doors(), (SELECT open FROM pmd_want));
 SELECT pmd.same('the quiet doors answer Mo', pmd.quiet_doors(), 'promise gate true · pay speeds open · pay speed lines open · promised dates open · promises open · promise records open · returned check payers open · unlinked payments 1 · stripe cases 1 · check cases 1');
+SELECT pmd.same('Mo reads and writes the three desk tables', pmd.desk_tables(), 'returned rows 1 · closed rows 1 · close labels 1 · returned: update 1, insert open, delete 1 · closed: update 1, insert open, delete 1');
+SELECT pmd.same('Mo applies a deposit and adds a tip', pmd.pay_verbs('00000000-0000-0000-0000-0000000fcf03', '00000000-0000-0000-0000-0000000fcf04'), 'apply ok · tip ok');
 
 DO $$ BEGIN RAISE NOTICE 'primary_money_desks PASSED'; END $$;
 ROLLBACK;
