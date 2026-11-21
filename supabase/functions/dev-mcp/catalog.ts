@@ -543,7 +543,7 @@ export const CATALOG_TABLES: Record<string, CatalogTable> = {
   "person_license_cost_lines": {"kind":"table","columns":{"amount":"number","created_at":"string | null","date":"string","id":"string","note":"string | null","person_license_id":"string"}},
   "person_licenses": {"kind":"table","columns":{"created_at":"string | null","date_of_expiry":"string","expiry_dispatch_notified_at":"string | null","id":"string","license_type":"string","note":"string | null","person_name":"string"}},
   "person_offsets": {"kind":"table","columns":{"amount":"number","created_at":"string | null","description":"string | null","id":"string","job_id":"string | null","occurred_date":"string","pay_stub_id":"string | null","person_id":"string | null","person_name":"string","reversal_of_offset_id":"string | null","type":"string"}},
-  "person_reports": {"kind":"table","columns":{"author_name":"string","author_user_id":"string | null","content":"string","created_at":"string","filed_entry_id":"string | null","id":"string","occurred_date":"string","resolution_note":"string | null","resolved_at":"string | null","resolved_by":"string | null","status":"string","subject_person_id":"string"}},
+  "person_reports": {"kind":"table","columns":{"adds_to":"string | null","author_name":"string","author_on_job":"boolean | null","author_role":"string | null","author_saw_it":"boolean | null","author_user_id":"string | null","content":"string","created_at":"string","filed_entry_id":"string | null","id":"string","job_label":"string | null","job_ledger_id":"string | null","kind":"string | null","occurred_date":"string","occurred_time":"string | null","press_id":"string | null","pressed_at":"string | null","resolution_note":"string | null","resolved_at":"string | null","resolved_by":"string | null","seen_by":"Json","status":"string","subject_person_id":"string","talked_to_person":"boolean | null"}},
   "person_watch_notices": {"kind":"table","columns":{"body":"string","day":"string","id":"string","key":"string","kind":"string","sent_at":"string","title":"string","told":"string[]","watch_id":"string"}},
   "person_watches": {"kind":"table","columns":{"id":"string","lifted_at":"string | null","lifted_by":"string | null","lifted_by_name":"string","lifted_why":"string","set_at":"string","set_by":"string | null","set_by_name":"string","tell_user_ids":"string[]","user_id":"string","why":"string"}},
   "photo_saves": {"kind":"table","columns":{"bid_id":"string | null","id":"string","jobs_ledger_id":"string | null","on_since":"string | null","project_id":"string | null","set_at":"string","set_by":"string | null"}},
@@ -1422,6 +1422,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "keep_job_baseline": [{"args":{"p_job_id":"string","p_kept_by":"string","p_kept_on":"string"},"returns":"boolean"}],
   "keep_job_baseline_now": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "land_field_press": [{"args":{"p_id":"string","p_kind":"string","p_payload":"Json","p_pressed_at":"string"},"returns":"Json"}],
+  "land_person_report": [{"args":{"p":"Json"},"returns":"Json"}],
   "latest_bid_cell_history": [{"args":{"p_bid_id":"string"},"returns":"{ cell_key: string changed_at: string changed_by_name: string column_name: string kind: string label: string name_key: string rank: number total: number value: …"}],
   "leader_replace_clock_session_cluster_mixed": [{"args":{"p_segments":"Json","p_session_ids":"string[]"},"returns":"{ error_message: string inserted_ids: string[] }[]"}],
   "leader_split_clock_session_cluster": [{"args":{"p_segments":"Json","p_session_ids":"string[]"},"returns":"{ error_message: string inserted_ids: string[] }[]"}],
@@ -2093,7 +2094,9 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "walk_setting_json": [{"args":{"p_key":"string"},"returns":"Json"}],
   "walk_setup": [{"args":{"p_app_from":"string","p_phone?":"string","p_shared_phone_ok?":"boolean","p_tester":"string"},"returns":"Json"}],
   "week_card_data": [{"args":{"p_user_id":"string"},"returns":"Json"}],
+  "withdraw_person_report": [{"args":{"p_reason":"string","p_report_id":"string"},"returns":"Json"}],
   "write_down": [{"args":{"p_kind":"string","p_message_id":"string","p_writes?":"string"},"returns":"undefined"}],
+  "write_up_people": [{"args":{},"returns":"Json"}],
 }
 
 export const EDGE_FUNCTIONS: string[] = [
