@@ -550,6 +550,19 @@ of it. The same day he said to build it.
 | 9 · Send it to a GC | Not built. Step 5's `BuilderSendList` pointed at GCs, and a block on the customer portal placed by job. Card #382's PR 9 changed `customer-portal`, `submit-portal-request` and `CustomerPortal.tsx` too, and it merged first (v2.8018), so this step starts from those files as they are now. |
 | 10 · Send their picks | Not built. The default for *What a GC can do with the Sub NDA at first* is look only, so it waits on the owner's yes. |
 
+**Step 9 is built on a branch and not merged**, as of 2026-11-20: `claude/404-sub-nda-to-a-gc-5197d0`, pushed, with
+no PR yet. On it: the send pointed at GCs with the job it is about, a find box for the long list, the function's
+side of both, the customer portal's answer and its block, both guides and the tests. It waits on three things.
+
+- Step 8's look-only flow. Without it a GC's last step would show the review's own press.
+- The two send fixes it is stacked on: PR #9173, and the agent's-check fix that follows it.
+- Two deploys after its merge, each on Taunya's go by name: `document-builder-send`, then `customer-portal`.
+
+Still to do on it after those: rebase onto `main`, hand the block step 8's look-only flow, the lines in
+`docs/DOCUMENTS_PAGE_ARCHITECTURE.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md`, this table's row, and a walk
+on prod with a `ZZ Test` customer. It adds two things the drawing does not have: the one press on the GC list asks
+first by its count, and the list shows the first twelve GCs until someone types in **Find a GC**.
+
 ### What the review of 2026-11-20 left
 
 A review read all six built steps and walked them on prod with test records only. Both migrations
