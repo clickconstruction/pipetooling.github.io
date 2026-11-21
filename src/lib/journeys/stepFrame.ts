@@ -10,11 +10,20 @@ export type SampleEmails = Record<string, { subject: string; html: string; text:
 
 export type StepFrame = { key: string; attrs: { src?: string; srcDoc?: string; sandbox?: string; title: string } }
 
-export function stepFrameProps(step: JourneyStep, emails: SampleEmails | null, papers: Partial<Record<string, PaperSample>>, origin: string, reloadNonce: number): StepFrame | null {
+export function stepFrameProps(
+  step: JourneyStep,
+  emails: SampleEmails | null,
+  papers: Partial<Record<string, PaperSample>>,
+  origin: string,
+  reloadNonce: number,
+  /** Punch list #217: with `sideBySide`, a paper that has one frames today's look over the shape (`PaperSample.sideBySideHtml`). */
+  opts: { sideBySide?: boolean } = {},
+): StepFrame | null {
   if (step.render.kind === 'paper') {
     const p = papers[step.render.paper]
     if (!p) return null
-    return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
+    const sbs = opts.sideBySide === true && !!p.sideBySideHtml
+    return { key: `${step.id}-${reloadNonce}${sbs ? '-sbs' : ''}`, attrs: { srcDoc: sbs ? p.sideBySideHtml! : p.html, sandbox: '', title: step.label } }
   }
   if (step.render.kind === 'page') {
     const base = step.render.absolute ? step.render.path : `${origin}${step.render.path}`

@@ -92,6 +92,10 @@ A GC can look only. Nothing they pick is sent to you. Opening it tells you the d
 
 Sending it is in [use the document builder](/help/use-the-document-builder#send-the-sub-nda-to-a-gc).
 
+## The GC customer's Money tab, as one bar
+
+The owner of a job we build as the GC reads a Money tab. Its head says the paid share of the sum. We are trying a new head there. One bar draws the whole sum in parts. Paid is green. A bill with the architect is pale amber. A certified bill is full amber. Our guess at the next bill is hatched and named as a guess. The rest is grey. The six lines of the statement sit under it as the legend. *34% built* becomes *34% paid*. See it on [What customers see](/help/see-what-customers-see#open-a-step-large) with {{button:outline|Side by side}}.
+
 ## More on the portal
 
 - The link, the gear and whether they have looked are in [share a customer their portal](/help/share-a-customer-their-portal).
