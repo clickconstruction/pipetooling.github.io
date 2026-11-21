@@ -11,12 +11,21 @@ export const CONTRACT_LINK_GONE_WORDS = 'This link no longer works. A newer link
 export const CONTRACT_LINK_EXPIRED_WORDS = 'This link has expired. Ask the office for a new link.'
 
 /**
- * The page's own words for a link that did not load: a dead link (404) or an expired one (`code: 'expired'`).
+ * A job's paper built from settings that cannot be put together now (`code: 'paper_not_ready'`, punch list #389 step 3):
+ * taken off the job, waiting on an attorney's read, or missing a wording. The signer cannot fix any of it, so the words
+ * send them to the office. `_shared/clausePaper.ts` says the same sentence.
+ */
+export const CONTRACT_PAPER_NOT_READY_WORDS = 'This paper is not ready to sign yet. Ask the office that sent it.'
+
+/**
+ * The page's own words for a link that did not load: a dead link (404), an expired one (`code: 'expired'`) or a paper
+ * that is not ready (`code: 'paper_not_ready'`).
  * Anything else is null, and the page reads the failure's class or the function's own known sentence
  * (`lib/portal/portalFailure.ts`, v2.5965), never other server text.
  */
 export function contractLinkErrorWords(status: number, code?: string | null): string | null {
   if (status === 404) return CONTRACT_LINK_GONE_WORDS
   if (code === 'expired') return CONTRACT_LINK_EXPIRED_WORDS
+  if (code === 'paper_not_ready') return CONTRACT_PAPER_NOT_READY_WORDS
   return null
 }
