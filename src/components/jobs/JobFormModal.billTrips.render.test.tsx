@@ -99,4 +99,23 @@ describe('Extra trips on the Job window’s Bill tab', () => {
     expect(within(card).getByTestId('bill-picked').textContent).toContain('Bill the 1 picked')
     expect(within(card).getByTestId('bill-picked').textContent).toContain('6,800')
   })
+
+  it('stops looking for the Bill press when the window closes, so no look outlives the page', async () => {
+    await open()
+    db.job = clubhouse({}, true)
+    fireEvent.click(screen.getByTestId('strip-adds-a-line'))
+    await screen.findByDisplayValue('Trip 3, crew of 2, Nov 9 to 11')
+    const card = await screen.findByTestId('money-card')
+    await waitFor(() => expect(within(card).getByTestId('bill-picked').textContent).toContain('Bill the 1 picked'))
+    // The page here draws nothing with a height, so the looking is still running: it is what once outlived this test.
+    const looks = vi.spyOn(document, 'querySelector')
+    const lookingFor = () => looks.mock.calls.filter((c) => c[0] === '.jobMoneyPickedBtn').length
+    await new Promise((r) => setTimeout(r, 250))
+    expect(lookingFor()).toBeGreaterThan(0)
+    cleanup()
+    const whenClosed = lookingFor()
+    await new Promise((r) => setTimeout(r, 350))
+    expect(lookingFor()).toBe(whenClosed)
+    looks.mockRestore()
+  })
 })
