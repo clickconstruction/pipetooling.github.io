@@ -48,6 +48,38 @@ ALTER TABLE public.document_builder_links ADD CONSTRAINT document_builder_links_
   CHECK (ended_why IS NULL OR (ended_at IS NOT NULL AND ended_why IN ('off', 'replaced', 'last_send_off')));
 COMMENT ON COLUMN public.document_builder_links.ended_why IS 'Why the link ended: off (a dev switched it off), replaced (a new link was made), last_send_off (the last send of its sheet was taken off a page). Null on a live link and on one that ended before the column.';
 
+-- A sheet's link closes with the last trade (Taunya, 2026-11-21). A sheet has one link, and it is in every trade's
+-- email. While any trade still has the sheet on their page the link stays. When the sheet is taken off the last
+-- trade's page, the link ends too, with its why, so nothing outside still opens a sheet no trade was left with.
+-- The row lock on the sheet makes two take-offs at once wait their turn, so the second one sees the first.
+-- A builder's link is not touched: a GC's email carries their own page, never the builder's link.
+CREATE OR REPLACE FUNCTION public.document_builder_sends_close_link()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF NEW.sheet_id IS NULL OR NEW.taken_off_at IS NULL OR OLD.taken_off_at IS NOT NULL THEN
+    RETURN NULL;
+  END IF;
+  PERFORM 1 FROM public.document_builder_sheets WHERE id = NEW.sheet_id FOR UPDATE;
+  IF NOT EXISTS (SELECT 1 FROM public.document_builder_sends s WHERE s.sheet_id = NEW.sheet_id AND s.taken_off_at IS NULL AND s.id <> NEW.id) THEN
+    UPDATE public.document_builder_links
+       SET ended_at = now(), ended_by = auth.uid(), ended_why = 'last_send_off'
+     WHERE sheet_id = NEW.sheet_id AND ended_at IS NULL;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.document_builder_sends_close_link() FROM PUBLIC, anon, authenticated;
+COMMENT ON FUNCTION public.document_builder_sends_close_link() IS 'After a sheet''s send is taken off a page: when no live send of that sheet is left, its live link ends with ended_why last_send_off (punch list #404).';
+
+DROP TRIGGER IF EXISTS document_builder_sends_close_link ON public.document_builder_sends;
+CREATE TRIGGER document_builder_sends_close_link
+  AFTER UPDATE OF taken_off_at ON public.document_builder_sends
+  FOR EACH ROW EXECUTE FUNCTION public.document_builder_sends_close_link();
+
 -- The four fences every CREATE TABLE migration closes with (CLAUDE.md, DB migrations).
 SELECT public.apply_read_only_write_blocks();
 SELECT public.apply_read_only_stmt_blocks();

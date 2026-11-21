@@ -284,6 +284,23 @@ SELECT dsb.same('and starts no sheet', dsb.touched($q$INSERT INTO public.documen
 RESET ROLE;
 SELECT dsb.same('the sheet and the live send are as they were left', dsb.past($q$SELECT (SELECT draft::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0') || ' ' || (SELECT (taken_off_at IS NULL)::text FROM document_builder_sends WHERE id = '00000000-0000-0000-0000-000000404321')$q$), '{"name": "Cedar Park Medical Office", "place": "412 Sample Street"} true');
 
+-- 7b · A sheet's link closes with the last trade. A second trade is sent the sheet. Taking it off the first trade's
+-- page leaves the link on. Taking it off the last one ends the link, with its why and who did it.
+SELECT dsb.as_nobody();
+INSERT INTO public.gc_companies (id, name, trades) VALUES ('00000000-0000-0000-0000-0000004043e2', 'Lone Mesa Excavation', ARRAY['Earthwork']);
+INSERT INTO public.document_builder_sends (id, builder_key, sheet_id, company_id, contact_name, contact_email, sent_revision)
+  VALUES ('00000000-0000-0000-0000-000000404323', 'insurance', '00000000-0000-0000-0000-0000004043a0', '00000000-0000-0000-0000-0000004043e2', 'Ben Winters', 'ben@lonemesa.test', 1);
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('a dev takes the sheet off the first trade''s page', dsb.touched($q$UPDATE public.document_builder_sends SET taken_off_at = now() WHERE id = '00000000-0000-0000-0000-000000404321'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('the link stays while a trade still has the sheet', dsb.past($q$SELECT count(*)::text FROM document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0' AND ended_at IS NULL$q$), '1');
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('and off the last trade''s page', dsb.touched($q$UPDATE public.document_builder_sends SET taken_off_at = now() WHERE id = '00000000-0000-0000-0000-000000404323'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('the link ended with the last trade, by the one who took it off', dsb.past($q$SELECT count(*) FILTER (WHERE ended_at IS NULL)::text || ' ' || count(*) FILTER (WHERE ended_why = 'last_send_off' AND ended_by = '00000000-0000-0000-0000-0000004043a1')::text FROM document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0'$q$), '0 1');
+SELECT dsb.same('a builder''s link is left alone', dsb.past($q$SELECT count(*)::text FROM document_builder_links WHERE sheet_id IS NULL AND ended_at IS NULL$q$), '1');
+SELECT dsb.same('nobody signed in may run the rule by hand', (SELECT has_function_privilege('authenticated', 'public.document_builder_sends_close_link()', 'EXECUTE')::text), 'false');
+
 -- 8 · Someone not signed in holds no grant at all.
 SET LOCAL ROLE anon;
 SELECT dsb.refused('someone not signed in reading a sheet', $q$SELECT count(*) FROM public.document_builder_sheets$q$, 'permission denied');
