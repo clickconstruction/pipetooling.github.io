@@ -23416,7 +23416,10 @@ export type Database = {
           original_bytes: number
           stage_name: string
           storage_path: string | null
+          taken_accuracy_m: number | null
           taken_at: string
+          taken_lat: number | null
+          taken_lng: number | null
           width: number
         }
         Insert: {
@@ -23437,7 +23440,10 @@ export type Database = {
           original_bytes?: number
           stage_name?: string
           storage_path?: string | null
+          taken_accuracy_m?: number | null
           taken_at?: string
+          taken_lat?: number | null
+          taken_lng?: number | null
           width?: number
         }
         Update: {
@@ -23458,7 +23464,10 @@ export type Database = {
           original_bytes?: number
           stage_name?: string
           storage_path?: string | null
+          taken_accuracy_m?: number | null
           taken_at?: string
+          taken_lat?: number | null
+          taken_lng?: number | null
           width?: number
         }
         Relationships: [
@@ -31280,10 +31289,14 @@ export type Database = {
           accuracy_m: number | null
           id: string
           kind: string | null
+          last_opened_at: string | null
           lat: number
+          line_id: string | null
           lng: number
           map_id: string
+          more_photos: Json
           name: string
+          opened_count: number
           photo_path: string | null
           set_at: string
           set_by: string | null
@@ -31293,10 +31306,14 @@ export type Database = {
           accuracy_m?: number | null
           id?: string
           kind?: string | null
+          last_opened_at?: string | null
           lat: number
+          line_id?: string | null
           lng: number
           map_id: string
+          more_photos?: Json
           name: string
+          opened_count?: number
           photo_path?: string | null
           set_at?: string
           set_by?: string | null
@@ -31306,16 +31323,27 @@ export type Database = {
           accuracy_m?: number | null
           id?: string
           kind?: string | null
+          last_opened_at?: string | null
           lat?: number
+          line_id?: string | null
           lng?: number
           map_id?: string
+          more_photos?: Json
           name?: string
+          opened_count?: number
           photo_path?: string | null
           set_at?: string
           set_by?: string | null
           words?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "painted_map_places_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "painted_map_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "painted_map_places_map_id_fkey"
             columns: ["map_id"]
@@ -36938,7 +36966,10 @@ export type Database = {
           report_id: string | null
           stage_name: string
           storage_path: string | null
+          taken_accuracy_m: number | null
           taken_at: string
+          taken_lat: number | null
+          taken_lng: number | null
           width: number
         }
         Insert: {
@@ -36958,7 +36989,10 @@ export type Database = {
           report_id?: string | null
           stage_name?: string
           storage_path?: string | null
+          taken_accuracy_m?: number | null
           taken_at?: string
+          taken_lat?: number | null
+          taken_lng?: number | null
           width?: number
         }
         Update: {
@@ -36978,7 +37012,10 @@ export type Database = {
           report_id?: string | null
           stage_name?: string
           storage_path?: string | null
+          taken_accuracy_m?: number | null
           taken_at?: string
+          taken_lat?: number | null
+          taken_lng?: number | null
           width?: number
         }
         Relationships: [
@@ -49018,6 +49055,14 @@ export type Database = {
         Returns: string
       }
       job_activity_send_words: { Args: { p_method: string }; Returns: string }
+      job_address_place_lists: {
+        Args: { p_job_id: string }
+        Returns: {
+          created_at: string
+          job_id: string
+          map_id: string
+        }[]
+      }
       job_baseline_rates: {
         Args: never
         Returns: {
@@ -51244,6 +51289,10 @@ export type Database = {
         Returns: string
       }
       next_work_order_record_id: { Args: { p_job_id: string }; Returns: string }
+      note_painted_place_opened: {
+        Args: { p_place_id: string }
+        Returns: undefined
+      }
       note_tags_count: { Args: never; Returns: number }
       note_tags_mine: {
         Args: never
@@ -51432,6 +51481,15 @@ export type Database = {
         Args: { p_contact_id: string; p_message_id: string }
         Returns: undefined
       }
+      painted_address_jobs_of: { Args: { p_job_id: string }; Returns: string[] }
+      painted_list_address_jobs: {
+        Args: { p_map_id: string }
+        Returns: string[]
+      }
+      painted_map_at_my_address: {
+        Args: { p_map_id: string }
+        Returns: boolean
+      }
       painted_map_can_touch: {
         Args: {
           p_created_by: string
@@ -51449,6 +51507,10 @@ export type Database = {
         Returns: boolean
       }
       painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
+      painted_place_opened_bump: {
+        Args: { p_place_id: string }
+        Returns: undefined
+      }
       paper_is_outside_company: {
         Args: {
           p_company_id: string
