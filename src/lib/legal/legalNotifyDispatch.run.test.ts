@@ -4,9 +4,15 @@
  * It proves the "now" lane stamps each person only on success, retries the rest each tick up to
  * twelve times, never re-sends to someone already sent, mints each person's stop link once, and
  * checks the cron secret. Nothing here reaches a real database or a mail service.
+ *
+ * v2.8228: the claim. The two claim functions are stood in for over the same in-memory rows, by the rule
+ * the kernel states (`legalClaimFree`, `legalClaimLease`) and the migration's bed proved against Postgres.
+ * `fake.claims` says which database the run meets: `live` (after the push, the default here), `missing`
+ * (before it: PostgREST's PGRST202) or `failing` (the claim cannot be asked).
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LEGAL_NOTIFY_MAX_TRIES } from './legalNotifyLedger'
+import { LEGAL_NOTIFY_LEASE_SECONDS, legalClaimFree, legalClaimLease } from '../../../supabase/functions/_shared/legalNotifyClaim'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 type Handler = (req: Request) => Promise<Response>
@@ -15,7 +21,31 @@ const box: { handler: Handler | null } = { handler: null }
 const db: { tables: Record<string, Row[]>; writes: string[] } = { tables: {}, writes: [] }
 const sent: Array<{ to: string; subject: string; html: string }> = []
 const failFor = new Set<string>()
-const fake: { ledgerWriteFails: boolean; failSelect: string | null } = { ledgerWriteFails: false, failSelect: null }
+const throwFor = new Set<string>()
+const fake: { ledgerWriteFails: boolean; failSelect: string | null; claims: 'live' | 'missing' | 'failing' } = { ledgerWriteFails: false, failSelect: null, claims: 'live' }
+
+/** The database's functions. The two claims answer by `fake.claims`; every other function is missing, as `legal_portal_link_token` was before its migration. */
+async function rpc(fn: string, args: Row): Promise<{ data: unknown; error: { code?: string; message: string } | null }> {
+  const missing = { data: null, error: { code: 'PGRST202', message: `Could not find the function public.${fn} in the schema cache` } }
+  if (fn !== 'legal_notify_claim_events' && fn !== 'legal_notify_claim_digest') return missing
+  if (fake.claims === 'missing') return missing
+  if (fake.claims === 'failing') return { data: null, error: { code: '57014', message: 'canceling statement due to statement timeout' } }
+  const nowIso = new Date().toISOString()
+  const lease = legalClaimLease(nowIso, args.p_lease_seconds as number)
+  if (fn === 'legal_notify_claim_events') {
+    const due = (db.tables.legal_notification_queue ?? [])
+      .filter((r) => r.firm_id === args.p_firm_id && (r.sent_now_at ?? null) === null && legalClaimFree(r.claimed_until as string | null, nowIso))
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .slice(0, args.p_limit as number)
+    for (const r of due) r.claimed_until = lease
+    // An update's answer comes back in no promised order: newest first here, so the run must put them in order itself.
+    return { data: structuredClone(due).reverse(), error: null }
+  }
+  const r = (db.tables.legal_firm_recipients ?? []).find((x) => x.id === args.p_recipient_id)
+  if (!r || !legalClaimFree(r.digest_claimed_until as string | null, nowIso) || (r.last_digest_at ?? null) !== (args.p_last_digest_at ?? null)) return { data: false, error: null }
+  r.digest_claimed_until = lease
+  return { data: true, error: null }
+}
 
 type Chain = { [method: string]: (...args: unknown[]) => unknown }
 function table(name: string): Chain {
@@ -52,10 +82,10 @@ function table(name: string): Chain {
 }
 
 vi.mock('https://deno.land/std@0.168.0/http/server.ts', () => ({ serve: (h: Handler) => void (box.handler = h) }))
-// `rpc` answers like a missing function: item 22 (#4639) adds `admin.rpc('legal_portal_link_token')` to the dispatcher, so this mock survives either merge order.
-vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({ from: (name: string) => table(name), rpc: async () => ({ data: null, error: { message: 'missing' } }) }) }))
+vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({ from: (name: string) => table(name), rpc }) }))
 vi.mock('../../../supabase/functions/_shared/resendSendEmail.ts', () => ({
   sendEmailViaResend: async (to: string, subject: string, _text: string, html: string) => {
+    if (throwFor.has(to)) throw new Error('the mail service hung up')
     sent.push({ to, subject, html })
     return failFor.has(to) ? { success: false, error: 'The to address is invalid' } : { success: true, resendEmailId: 'r' }
   },
@@ -76,8 +106,10 @@ const event = (id: string, extra: Row = {}): Row => ({ id, firm_id: 'f1', matter
 beforeEach(() => {
   sent.length = 0
   failFor.clear()
+  throwFor.clear()
   fake.ledgerWriteFails = false
   fake.failSelect = null
+  fake.claims = 'live'
   db.writes = []
   db.tables = {
     legal_firms: [{ id: 'f1', name: 'Sample & Partner', paused_at: null, active: true }],
@@ -161,6 +193,7 @@ describe('legal-notify-dispatch · the now lane per person (v2.4662)', () => {
   })
 
   it('a queue without the per-person column (a deploy ahead of the migration) stamps after one pass, as before', async () => {
+    fake.claims = 'missing'
     failFor.add('bo@firm.test')
     db.tables.legal_notification_queue = [event('e1')]
     delete T('legal_notification_queue')[0]!.sent_to
@@ -242,5 +275,170 @@ describe('legal-notify-dispatch · the digest lane (v2.6283)', () => {
     fake.failSelect = null
     expect((await tick()).body).toMatchObject({ digests: 1 })
     expect(sent.map((s) => s.to)).toEqual(['dee@firm.test'])
+  })
+})
+
+/** v2.8228 (punch list #85, a review residual): a run claims before it sends, so two runs that overlap cannot send the same email twice. */
+describe('legal-notify-dispatch · the claim (v2.8228)', () => {
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
+  const todayWeekday = ({ Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as Record<string, number>)[new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short' }).format(new Date())] ?? 1
+  const digestPerson = (): Row => ({ ...person('dee', 'dee@firm.test'), mode: 'digest', digest_weekday: todayWeekday, digest_time: '00:00', confirmed_at: ago(7) })
+  const twoRuns = () => Promise.all([tick(), tick()])
+
+  it('two runs that overlap send each person the event once', async () => {
+    T('legal_notification_queue').push(event('e2', { created_at: '2026-10-05T15:01:00Z' }))
+    const [a, b] = await twoRuns()
+    expect(sent.map((s) => s.to).sort()).toEqual(['ann@firm.test', 'ann@firm.test', 'bo@firm.test', 'bo@firm.test'])
+    expect(Number(a.body.now) + Number(b.body.now)).toBe(4)
+    for (const id of ['e1', 'e2']) {
+      expect(q(id).sent_now_at).toEqual(expect.any(String))
+      expect(q(id).claimed_until).toBeNull()
+    }
+  })
+
+  it('the same two runs before the claim existed sent it twice, which is what the claim ends', async () => {
+    fake.claims = 'missing'
+    await twoRuns()
+    expect(sent.map((s) => s.to).sort()).toEqual(['ann@firm.test', 'ann@firm.test', 'bo@firm.test', 'bo@firm.test'])
+  })
+
+  it('a failed send lets its claim go with its try counted, so the next tick takes it and the lease is not waited out', async () => {
+    failFor.add('bo@firm.test')
+    await tick()
+    expect(q('e1').claimed_until).toBeNull()
+    expect(q('e1').sent_now_at).toBeNull()
+    expect(q('e1').sent_to).toMatchObject({ ann: { at: expect.any(String) }, bo: { tries: 1 } })
+    expect(db.writes).toContain('update legal_notification_queue claimed_until,sent_to')
+    failFor.clear()
+    sent.length = 0
+    expect((await tick()).body).toMatchObject({ now: 1 })
+    expect(sent.map((s) => s.to)).toEqual(['bo@firm.test'])
+    expect(q('e1').sent_now_at).toEqual(expect.any(String))
+  })
+
+  it('an event another run holds is left alone, and is tried again once that run’s lease is past', async () => {
+    q('e1').claimed_until = legalClaimLease(new Date().toISOString())
+    await tick()
+    expect(sent).toEqual([])
+    expect(q('e1').sent_now_at).toBeNull()
+    // The run that held it died: its lease is behind us.
+    q('e1').claimed_until = new Date(Date.now() - 1000).toISOString()
+    await tick()
+    expect(sent.map((s) => s.to)).toEqual(['ann@firm.test', 'bo@firm.test'])
+    expect(q('e1').sent_now_at).toEqual(expect.any(String))
+  })
+
+  it('a lease outlives any run: ten minutes', () => {
+    expect(LEGAL_NOTIFY_LEASE_SECONDS).toBe(600)
+  })
+
+  it('a run that stops part way lets go of every claim it still holds', async () => {
+    T('legal_notification_queue').push(event('e2', { created_at: '2026-10-05T15:01:00Z' }))
+    throwFor.add('ann@firm.test')
+    const stopped = await tick()
+    expect(stopped.status).toBe(500)
+    expect(sent).toEqual([])
+    for (const id of ['e1', 'e2']) {
+      expect(q(id).claimed_until).toBeNull()
+      expect(q(id).sent_now_at).toBeNull()
+    }
+    throwFor.clear()
+    expect((await tick()).body).toMatchObject({ now: 4 })
+  })
+
+  it('claimed events are sent oldest first, whatever order the claim answers in', async () => {
+    T('legal_notification_queue').push(event('e2', { created_at: '2026-10-05T15:01:00Z', trigger: 'pulled' }))
+    await tick()
+    expect(sent.filter((s) => s.to === 'ann@firm.test').map((s) => s.subject)).toEqual([expect.stringMatching(/referred/i), expect.not.stringMatching(/referred/i)])
+  })
+
+  it('a claim that cannot be asked sends nothing and says so; the rows wait', async () => {
+    fake.claims = 'failing'
+    const first = await tick()
+    expect(first.status).toBe(200)
+    expect(sent).toEqual([])
+    expect(first.body.errors).toEqual(['Sample & Partner: could not claim the queue (canceling statement due to statement timeout); nothing sent, tried again next tick'])
+    expect(q('e1').sent_now_at).toBeNull()
+    fake.claims = 'live'
+    expect((await tick()).body).toMatchObject({ now: 2 })
+  })
+
+  it('before the migration is pushed the run sends as it did, and no write names a column that is not there yet', async () => {
+    fake.claims = 'missing'
+    failFor.add('bo@firm.test')
+    expect((await tick()).body).toMatchObject({ ok: true, now: 1, retrying: 1 })
+    throwFor.add('bo@firm.test')
+    expect((await tick()).status).toBe(500)
+    expect(db.writes.filter((w) => /claimed_until/.test(w))).toEqual([])
+    expect(db.writes).toContain('update legal_notification_queue sent_to')
+  })
+
+  describe('the digest', () => {
+    beforeEach(() => {
+      db.tables.legal_firm_recipients = [digestPerson()]
+      db.tables.legal_notification_queue = [event('s1', { trigger: 'note', payload: { payer: 'Sample Contracting', body: 'The GC called.' }, created_at: ago(3), sent_now_at: ago(3) })]
+    })
+
+    it('two runs that overlap send one digest', async () => {
+      const [a, b] = await twoRuns()
+      expect(sent.map((s) => s.to)).toEqual(['dee@firm.test'])
+      expect(Number(a.body.digests) + Number(b.body.digests)).toBe(1)
+      expect(Number(a.body.elsewhere) + Number(b.body.elsewhere)).toBe(1)
+      expect(rec('dee').last_digest_at).toEqual(expect.any(String))
+      expect(rec('dee').digest_claimed_until).toBeNull()
+    })
+
+    it('the same two runs before the claim existed sent two', async () => {
+      fake.claims = 'missing'
+      await twoRuns()
+      expect(sent.map((s) => s.to)).toEqual(['dee@firm.test', 'dee@firm.test'])
+      expect(db.writes.filter((w) => /claimed_until/.test(w))).toEqual([])
+    })
+
+    it('a run that read the list before another run stamped the digest is refused the claim', async () => {
+      // What the second run still holds in memory: the person as they were, last digest a week back. The row has moved on.
+      const stale = ago(7)
+      rec('dee').last_digest_at = stale
+      expect(await rpc('legal_notify_claim_digest', { p_recipient_id: 'dee', p_last_digest_at: stale, p_lease_seconds: 600 })).toMatchObject({ data: true })
+      rec('dee').last_digest_at = new Date().toISOString()
+      rec('dee').digest_claimed_until = null
+      expect(await rpc('legal_notify_claim_digest', { p_recipient_id: 'dee', p_last_digest_at: stale, p_lease_seconds: 600 })).toMatchObject({ data: false })
+    })
+
+    it('a digest whose send fails lets its claim go, and the next tick sends it', async () => {
+      failFor.add('dee@firm.test')
+      expect((await tick()).body).toMatchObject({ digests: 0 })
+      expect(rec('dee').last_digest_at).toBeNull()
+      expect(rec('dee').digest_claimed_until).toBeNull()
+      failFor.clear()
+      sent.length = 0
+      expect((await tick()).body).toMatchObject({ digests: 1 })
+      expect(sent.map((s) => s.to)).toEqual(['dee@firm.test'])
+    })
+
+    it('a digest whose lines cannot be read lets its claim go too', async () => {
+      db.tables.legal_matter_entries = [{ id: 'x1', kind: 'note', voided_at: null }]
+      T('legal_notification_queue')[0]!.payload = { payer: 'Sample Contracting', body: 'The GC called.', entryId: 'x1' }
+      fake.failSelect = 'legal_matter_entries'
+      await tick()
+      expect(sent).toEqual([])
+      expect(rec('dee').digest_claimed_until).toBeNull()
+      fake.failSelect = null
+      expect((await tick()).body).toMatchObject({ digests: 1 })
+    })
+
+    it('a digest another run holds is left alone and counted', async () => {
+      rec('dee').digest_claimed_until = legalClaimLease(new Date().toISOString())
+      expect((await tick()).body).toMatchObject({ digests: 0, elsewhere: 1 })
+      expect(sent).toEqual([])
+    })
+
+    it('a claim that cannot be asked sends no digest and says so', async () => {
+      fake.claims = 'failing'
+      const first = await tick()
+      expect(sent).toEqual([])
+      expect(first.body.errors).toContain('dee@firm.test: could not claim the digest (canceling statement due to statement timeout); nothing sent, tried again next tick')
+      expect(rec('dee').last_digest_at).toBeNull()
+    })
   })
 })

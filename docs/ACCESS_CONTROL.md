@@ -4120,6 +4120,7 @@ the firm cannot mark anything paid or touch a job.
 **The firm's emails** (v2.3325;
 every office event since v2.4649): `legal_firm_recipients` and `legal_notification_queue` are office-read, and the queue is written only by triggers, which since v2.6283 queue every office act and only while the firm has the matter (`released_at` set;
 a pull-back clears it), the dispatcher reading each digest line's source again so the firm reads nothing the portal hides (`legalDigestShows`);
+since v2.8228 the dispatcher claims its rows before it sends through `legal_notify_claim_events` and `legal_notify_claim_digest`, which only the service role may call;
 the firm manages its people through `submit-legal-portal` (service role);
 confirm and unsubscribe are public token links on `legal-notify-dispatch`.
 The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.
