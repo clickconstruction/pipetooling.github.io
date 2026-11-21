@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isImpersonationSessionActive } from '../lib/impersonationSession'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
@@ -8,8 +9,16 @@ const MIN_FLUSH_MS = 5_000
 /** Throttle the instant "seen" bump so rapid tab switching / navigation can't spam the RPC. */
 const INSTANT_BUMP_MIN_GAP_MS = 60_000
 
-/** Best-effort, non-retrying bump (the 2026-06-04 522 burst was dominated by this heartbeat retrying). */
+/**
+ * Best-effort, non-retrying bump (the 2026-06-04 522 burst was dominated by this heartbeat retrying).
+ *
+ * Held while View as is on: the session is the imitated person's, so the bump would set their
+ * last seen time and add to their app time from the dev's browser. Every path of the hook sends
+ * through here and the flag is read at each send, so a minute already scheduled when an imitation
+ * starts is held too.
+ */
 function bumpActivity(seconds: number, page: string | null): void {
+  if (isImpersonationSessionActive()) return
   void withSupabaseRetry(
     () =>
       supabase.rpc(
@@ -34,6 +43,8 @@ function bumpActivity(seconds: number, page: string | null): void {
  * - The effect is keyed on `pageKey`, so in-app navigation flushes the old page's partial
  *   segment (>= 5s) via cleanup and restarts the clock on the new page — mid-minute navigation
  *   attributes time correctly. Hide / pagehide / unmount flush the same way.
+ * - None of it is sent while View as is on (`bumpActivity`): a dev looking as a teammate leaves
+ *   that teammate's activity as their own use made it.
  */
 export function useAppActivityHeartbeat(userId: string | undefined, pageKey: string): void {
   const lastInstantBumpRef = useRef(0)

@@ -22,7 +22,8 @@ import Layout from './Layout'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import { DailyGoalsGateProvider } from '../contexts/DailyGoalsGateContext'
 import { PersonDeskProvider } from '../contexts/PersonDeskContext'
-import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../lib/impersonationSession'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY, isImpersonationSessionActive } from '../lib/impersonationSession'
+import { supabase } from '../lib/supabase'
 import { IMPERSONATION_EXIT_ARIA_LABEL } from '../lib/impersonationUiLabels'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 
@@ -140,5 +141,29 @@ describe('Layout: the way back from View as', () => {
     expect(localStorage.getItem(IMPERSONATION_ORIGINAL_STORAGE_KEY)).toBeNull()
     expect(container.querySelector('.appViewAsStrip')).toBeNull()
     expect(exitButtons()).toHaveLength(0)
+  })
+
+  it('keeps View as flagged until the session is the dev’s own again', async () => {
+    setScreen(true)
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r', returnTo: '/#back' }))
+    // The session swap is a network call: hold it open and read the flag while it is.
+    let swapped: () => void = () => {}
+    const auth = supabase.auth as unknown as { setSession?: (tokens: { access_token: string; refresh_token: string }) => Promise<unknown> }
+    const setSession = vi.fn(() => new Promise<unknown>((resolve) => (swapped = () => resolve({ data: { session: null }, error: null }))))
+    auth.setSession = setSession
+    try {
+      await renderShell()
+
+      fireEvent.click(exitButtons()[0]!)
+      await waitFor(() => expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' }))
+      // Still signed in as the person: the background saves held while View as is on stay held.
+      expect(isImpersonationSessionActive()).toBe(true)
+
+      swapped()
+      await waitFor(() => expect(window.location.hash).toBe('#back'))
+      expect(isImpersonationSessionActive()).toBe(false)
+    } finally {
+      delete auth.setSession
+    }
   })
 })
