@@ -9,6 +9,10 @@ const stage = (over: Partial<Stage>): Stage => ({ id: 's1', part: '', job: 'J210
 const said = (day: string, on: string) => ({ day, said: on, who: 'Ray', how: 'by phone' })
 
 describe('the Schedule look on a line of time', () => {
+  it('has words for a line with nothing to draw: what is missing, and what will draw a row', () => {
+    expect(TIME_LINE_WORDS.nothing).toEqual({ main: 'No stage here has a day to draw yet.', tail: 'Plan our days on a stage below, and its row shows here.' })
+  })
+
   it('draws nothing with no stage ahead that has a day', () => {
     expect(timeLine([], SITE, TODAY)).toBeNull()
     expect(timeLine([stage({ window: null })], SITE, TODAY)).toBeNull()

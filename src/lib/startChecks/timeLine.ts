@@ -42,6 +42,8 @@ export const TIME_LINE_WORDS = {
   legend: ['Our days', 'The day they say ready', 'A day they gave before', 'The day we decide', 'Today'],
   moved: (n: number) => `moved ${countWords(n, 'day', 'days')}`,
   print: 'Print the days they gave',
+  /** A site where no stage ahead has a day of ours or of theirs: the line has nothing to draw, and says what will. */
+  nothing: { main: 'No stage here has a day to draw yet.', tail: 'Plan our days on a stage below, and its row shows here.' },
 } as const
 
 /** The stages ahead on one line, in the look's own order. Null when no stage ahead has a day to draw. */
