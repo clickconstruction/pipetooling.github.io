@@ -35,17 +35,24 @@ export type MintedSubPaper = { number: string; revision: number; reused: boolean
 export type SubPaperRegister = {
   /** Each sheet's live work statement: not replaced, not void. */
   bySheet: Map<string, PaperRegisterRow & { issuedOn: string }>
-  /** The last statement of account made for this person, by the day it ended. Null before one has been made. */
+  /**
+   * The last statement of account made for this person, by the day it ended. Null before one has been made. With
+   * `today` handed in it is the last one that ended before today: *Since the last statement* starts the day after
+   * it, and a statement that ended today would start that period tomorrow, after its own end.
+   */
   lastStatement: { number: string; endedOn: string } | null
+  /** The newest statement that ended today, when `today` is handed in. It does not move the period. Null when none. */
+  statementToday: { number: string } | null
 }
 
 /**
  * The register's rows for one person, as the papers read them. `dayOf` turns `issued_at` into the app's calendar
  * day: a statement of account made to date has no `period_to`, and it ended the day it was made.
  */
-export function subPaperRegister(rows: readonly SubPaperRow[], dayOf: (iso: string) => string): SubPaperRegister {
+export function subPaperRegister(rows: readonly SubPaperRow[], dayOf: (iso: string) => string, today?: string): SubPaperRegister {
   const bySheet: SubPaperRegister['bySheet'] = new Map()
   let last: { number: string; endedOn: string; at: string } | null = null
+  let madeToday: { number: string; at: string } | null = null
   for (const r of rows) {
     if (r.voided_at) continue
     if (r.kind === 'work_statement' && r.labor_job_id && !r.replaced_by) {
@@ -54,10 +61,15 @@ export function subPaperRegister(rows: readonly SubPaperRow[], dayOf: (iso: stri
     }
     if (r.kind === 'statement_of_account' && r.number) {
       const endedOn = (r.period_to ?? '').slice(0, 10) || dayOf(r.issued_at)
+      // A statement that ended today is set apart: the day is not over, so nothing can start after it yet.
+      if (today && endedOn >= today) {
+        if (!madeToday || r.issued_at > madeToday.at) madeToday = { number: r.number, at: r.issued_at }
+        continue
+      }
       if (endedOn && (!last || endedOn > last.endedOn || (endedOn === last.endedOn && r.issued_at > last.at))) last = { number: r.number, endedOn, at: r.issued_at }
     }
   }
-  return { bySheet, lastStatement: last ? { number: last.number, endedOn: last.endedOn } : null }
+  return { bySheet, lastStatement: last ? { number: last.number, endedOn: last.endedOn } : null, statementToday: madeToday ? { number: madeToday.number } : null }
 }
 
 /** The arguments `mint_sub_paper` takes for one paper. The snapshot is the paper as drawn, before its number. */

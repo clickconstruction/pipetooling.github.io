@@ -381,6 +381,18 @@ export function clockAt(days: number, scaleDays: number): number {
 }
 
 /**
+ * Under this far along the bar, the middle's days cannot sit under their mark: they would run into
+ * the word at the bar's start (*issued*, *applied*). A phone's bar is about 270 px wide, the word
+ * about 50 and the days up to 80.
+ */
+export const CLOCK_MIDDLE_NEAR_START = 34
+
+/** Whether the middle's days are drawn beside the bar's first word and not under their mark. */
+export function clockMiddleNearStart(at: number): boolean {
+  return at < CLOCK_MIDDLE_NEAR_START
+}
+
+/**
  * The clocks a city's page draws. Application to permit where the city's applications carry an
  * issued day. Building permit to the plumber's permit only where the city's permits name
  * plumbers: where they never do, nothing is drawn about plumbers.

@@ -9,7 +9,7 @@ import { getPersonFile, resolvePerson } from '../_shared/devMcpPersonFile.ts'
 import { getCaseBrief } from '../_shared/devMcpCaseBrief.ts'
 import { caseArgsForLog, exhibitAppliedWords, exhibitNoOf, exhibitPlanWords, isCaseVerb } from '../_shared/devMcpCase.ts'
 import { engagementArgsForLog, isEngagementVerb } from '../_shared/devMcpEngagement.ts'
-import { decideBody, keepAsk, keepBody, keptPlanByHashQuery, keptPlanPersonOfArgs, keptPlanVerbOfApply, keptPlanWholeQuery, keptPlanWholeReply, keptPlansInput, keptPlansListQuery, keptPlansListReply, keptWords, notKeptWords, settledWords, staleCandidates, staleSentence, type KeepAsk, type KeptPlanRead } from '../_shared/devMcpKeptPlans.ts'
+import { decideBody, hrEntryReplacedKinds, keepAsk, keepBody, keptPlanByHashQuery, keptPlanOffQuery, keptPlanOffWords, keptPlanPersonOfArgs, keptPlanVerbOfApply, keptPlanWholeQuery, keptPlanWholeReply, keptPlansInput, keptPlansListQuery, keptPlansListReply, keptWords, notKeptWords, settledWords, staleCandidates, staleSentence, withReplaces, type KeepAsk, type KeptPlanRead } from '../_shared/devMcpKeptPlans.ts'
 import { getDocumentHistory } from '../_shared/devMcpDocHistory.ts'
 import { getPersonDocument } from '../_shared/devMcpDocRead.ts'
 import { getMatterDocument } from '../_shared/devMcpMatterDocRead.ts'
@@ -141,7 +141,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.121.0'
+const SERVER_VERSION = '0.122.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -282,7 +282,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_hr_entry',
-    description: "Dry-run an HR file entry (docs/HR_FILES.md): entries to append to a person's file, and/or a summary or narrative rewrite. Validates like the real write and unwinds it; replies with the person, what would be filed, and a plan_hash. You are named as the author, whatever the payload says. A correction is a new entry that names what it corrects (punch list #315): corrects or completes on the entry takes an entry id, { kind: 'hr_evidence', id } or a list of them, and the older thing then reads as corrected on the Timeline and in get_person_file, get_case_brief and search_case; amendments links two things already on the file, from the newer one, and withdraw_amendments takes a wrong link off with its reason. The plan names each link by its two ends." + KEEP_NOTE,
+    description: "Dry-run an HR file entry (docs/HR_FILES.md): entries to append to a person's file, and/or a summary or narrative rewrite. Validates like the real write and unwinds it; replies with the person, what would be filed, and a plan_hash. You are named as the author, whatever the payload says. A correction is a new entry that names what it corrects (punch list #315): corrects or completes on the entry takes an entry id, { kind: 'hr_evidence', id } or a list of them, and the older thing then reads as corrected on the Timeline and in get_person_file, get_case_brief and search_case; amendments links two things already on the file, from the newer one, and withdraw_amendments takes a wrong link off with its reason. The plan names each link by its two ends. Since 0.122.0 a summary or narrative rewrite answers replaces, when that document last changed: saved since by anyone, the apply is refused." + KEEP_NOTE,
     inputSchema: { type: 'object', properties: { entry: { type: 'object', description: "hr_agent_write's payload: { person_id (find_person), entries?: [{ entry_date, content, source?, corrects?, completes? }], amendments?: [{ from_id, to_id, how: corrects | completes, from_kind?, to_kind? }], withdraw_amendments?: [{ id, why }], summary?, narrative? | narrative_append?, covered_through? }" }, ...KEEP_PROPS }, required: ['entry'] },
   },
   {
@@ -1573,6 +1573,7 @@ async function settleKeptPlan(session: string, applyVerb: string, args: Record<s
   if (!query) return {}
   try {
     const found = await restGet(session, 'dev_seat_kept_plans', query)
+    if (!found.ok && outcome === 'applied') return { kept: { note: 'The kept plans could not be read, so a plan kept with these arguments may still read waiting: list_kept_plans, then drop_kept_plan.' } }
     const rows = found.ok && Array.isArray(found.body) ? (found.body as { id: string; args?: unknown }[]) : []
     const ids = outcome === 'applied' ? rows.map((r) => r.id) : staleCandidates(rows, args)
     if (ids.length === 0) return {}
@@ -1586,6 +1587,31 @@ async function settleKeptPlan(session: string, applyVerb: string, args: Record<s
   } catch {
     return {}
   }
+}
+
+/**
+ * v2.8102: a plan kept for a yes and then dropped, or gone stale, is refused before anything is written. The words of
+ * the refusal, or null. A read that fails refuses too: the drop is the owner's no.
+ */
+async function keptPlanOff(session: string, applyVerb: string, args: Record<string, unknown>, hash: string): Promise<string | null> {
+  const planVerb = keptPlanVerbOfApply(applyVerb)
+  const query = planVerb ? keptPlanOffQuery(planVerb, hash) : null
+  if (!query) return null
+  const found = await restGet(session, 'dev_seat_kept_plans', query)
+  if (!found.ok || !Array.isArray(found.body)) return `Nothing written: the kept plans could not be read, so this plan is not known to still stand (${restError(found.status, found.body)}). Try again.`
+  return keptPlanOffWords(found.body as { args?: unknown; state: string }[], args)
+}
+
+/**
+ * v2.8102: an HR entry plan that replaces the summary or the narrative, or adds to the narrative, commits to when that
+ * document last changed, so a plan applied later never writes over a newer text. The reply gains `replaces`.
+ */
+async function hrEntryReply(session: string, name: string, p: unknown, reply: unknown): Promise<unknown> {
+  const kinds = name === 'plan_hr_entry' || name === 'apply_hr_entry' ? hrEntryReplacedKinds(p) : []
+  if (kinds.length === 0) return reply
+  const read = await restGet(session, 'person_files', `select=kind,updated_at&person_id=eq.${String((p as { person_id?: unknown }).person_id)}&kind=in.(${kinds.join(',')})`)
+  if (!read.ok || !Array.isArray(read.body)) throw new Error(`the document this plan replaces could not be read: ${restError(read.status, read.body)}`)
+  return withReplaces(reply, kinds, read.body as { kind?: unknown; updated_at?: unknown }[])
 }
 
 function evidenceDriveNext(drive: Record<string, unknown>): string {
@@ -1658,7 +1684,8 @@ async function logCall(admin: Admin, dev: ResolvedDev, startedMs: number, log: C
 /** Args as logged: whole when small, else a marked preview — the log is for tracing, not replay. */
 function loggableArgs(args: Record<string, unknown>): Record<string, unknown> {
   const text = JSON.stringify(args ?? {})
-  return text.length <= 4000 ? (args ?? {}) : { truncated: true, preview: text.slice(0, 3900) }
+  // v2.8102: the cut row keeps the plan_hash, which the one-apply rule reads; without it a long plan could land twice.
+  return text.length <= 4000 ? (args ?? {}) : { truncated: true, ...(typeof args.plan_hash === 'string' ? { plan_hash: args.plan_hash.trim().toLowerCase() } : {}), preview: text.slice(0, 3900) }
 }
 
 function rowCountOf(body: unknown): number | null {
@@ -6041,6 +6068,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (built.step === 'plan') {
         const res = await restPost(session, rpcPath, built.body)
         if (!res.ok) return fail(res.status, res.body)
+        res.body = await hrEntryReply(session, name, built.body.p, res.body)
         // #297: the move's photo words say what the apply now does with a file already in Drive; the hash is of the database's own reply.
         const planned = planReply(name, name === 'plan_materials_move' ? moveReplyWithRefileWords(redactSecrets(res.body)) : redactSecrets(res.body), await planHash(name, built.body.p, res.body))
         // v2.7670: a trip's plan reads in words beside the database's own reply; the hash above is of the payload and that reply alone.
@@ -6061,6 +6089,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (built.step === 'apply') {
         const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
         if (!dry.ok) return fail(dry.status, dry.body)
+        dry.body = await hrEntryReply(session, name, built.body.p, dry.body)
         const fresh = await planHash(name, built.body.p, dry.body)
         if (fresh !== built.planHash) {
           const mismatch = planMismatch(name, built.planHash ?? '', fresh)
@@ -6071,6 +6100,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         }
         // One apply per plan (v2.3730): a payload with no before-state hashes the same after it lands.
         // Materials on site's plans commit to the state their write changes, so the wrapper refuses a replay itself (v2.6367).
+        const off = await keptPlanOff(session, name, args, fresh)
+        if (off) return refused(off, { target: built.target })
         const prior = stateGuarded(name) ? null : await hooks.priorApply(name, fresh)
         if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
         if (file && !('error' in file)) {
@@ -6225,7 +6256,8 @@ async function resolveViewAsTarget(admin: Admin, args: Record<string, unknown>):
  * batch that was wrong can be reverted and the same plan applied again on purpose.
  */
 async function priorApply(admin: Admin, verb: string, hash: string): Promise<{ target: string | null; at: string | null } | null> {
-  const { data } = await admin.from('dev_mcp_calls').select('target, created_at').eq('verb', verb).eq('status', 'ok').eq('args->>plan_hash', hash).order('created_at', { ascending: false }).limit(5)
+  const { data, error } = await admin.from('dev_mcp_calls').select('target, created_at').eq('verb', verb).eq('status', 'ok').eq('args->>plan_hash', hash).order('created_at', { ascending: false }).limit(5)
+  if (error) throw new Error(`nothing written: the call log could not be read, so whether this plan was already applied is not known (${error.message}). Try again.`)
   const rows = (data ?? []) as { target: string | null; created_at: string }[]
   for (const row of rows) {
     if (verb === 'apply_cost_batch' && row.target) {

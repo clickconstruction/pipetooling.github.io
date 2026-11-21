@@ -195,7 +195,7 @@ export async function loadPaintedMapVisits(mapId: string): Promise<{ ok: true; v
   try {
     const res = (await supabase
       .from('painted_map_link_visits' as never)
-      .select('id, visitor_name, user_id, device_words, last_opened_at, open_count, first_lat, first_lng, first_located_at, last_lat, last_lng, last_located_at' as '*')
+      .select('id, visitor_name, user_id, device_words, last_opened_at, open_count, first_lat, first_lng, first_located_at, first_accuracy_m, last_lat, last_lng, last_located_at, last_accuracy_m' as '*')
       .eq('map_id' as never, mapId)
       .order('last_opened_at' as never, { ascending: false })
       .limit(PAINTED_MAP_VISITS_MAX)) as unknown as { data: PaintedMapVisitRow[] | null; error: unknown }

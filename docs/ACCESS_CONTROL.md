@@ -924,6 +924,7 @@ The view is `security_invoker` and has no policy of its own, so each branch answ
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
+Since v2.8101 that function also says who may send before it reads the paper: the four roles that write one, never a training account or a digital twin.
 Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' quick send does, under `person_contract_documents`' own write policy, and reads the Contract Book and the roster under theirs.
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
@@ -1234,6 +1235,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   an ended link, an expired one and a wrong code read the same on the page.
   Since v2.7414 the page asks a signed-out reader's name before the map and says what is kept;
   **Show where I am** says the company will see where the reader is, and sends the first point and then the latest to `painted_map_link_visits` through the function.
+  Since v2.8105 a rough reading still being waited on is sent to nobody, an area is sent with its margin, and the page then says the company sees only that area.
   The sample page sends nothing.
 - **On screen** (v2.7211): the line under the address in the job window's top band, on the Job Mode card and on the On my way sheet (`JobPaintedMapsStrip`), and under a development's address (`DevelopmentPaintedMapsStrip`), reads the maps under this gate, for every role that can open the job or the development.
   It has no role check of its own: a caller the gate turns away gets an empty list and sees only **＋ Paint a map**, and a save they may not make is refused by the database in words.

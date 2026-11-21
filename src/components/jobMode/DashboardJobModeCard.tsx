@@ -64,8 +64,9 @@ import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import SuperintendentCard from './SuperintendentCard'
 import { useKeptRead } from '../../hooks/useKeptRead'
-import { useSiteBoxCount } from '../../hooks/useSiteBoxCount'
-import { siteBoxDoorHref, siteBoxDoorWords } from '../../lib/materials/siteBoxCount'
+import { useSiteDoorFacts } from '../../hooks/useSiteDoorFacts'
+import { siteBoxDoorHref, siteBoxDoorWords, siteDoorNews } from '../../lib/materials/siteBoxCount'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { KeptReadStamp } from '../KeptReadStamp'
 import {
@@ -291,6 +292,18 @@ const jobDoorPress: CSSProperties = {
 }
 
 const jobDoorPressPhone: CSSProperties = { ...jobDoorPress, minHeight: 36 }
+
+/** The line under the job's doors: what on the site wants a hand. Small, centred, and drawn only when there is news. */
+const jobDoorNews: CSSProperties = {
+  margin: '-0.3rem 0 0',
+  textAlign: 'center',
+  fontSize: '0.75rem',
+  color: 'var(--text-muted)',
+  lineHeight: 1.35,
+}
+
+/** Boxes due a count read amber, as they do on the office's page. */
+const jobDoorNewsDue: CSSProperties = { color: 'var(--text-amber-800)' }
 
 /** The count on the Materials on site press: how many cages and boxes stand on the job's site. */
 const jobDoorCount: CSSProperties = {
@@ -930,7 +943,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   })()
   // Materials on site (the owner's pick of 2026-11-20): one press beside Job calendar on the job the card names,
   // with the count of the cages and boxes on that job's site when there are any.
-  const siteBoxWords = siteBoxDoorWords(useSiteBoxCount(jobCalendarTarget?.id))
+  const siteDoorFacts = useSiteDoorFacts(jobCalendarTarget?.id)
+  const siteBoxWords = siteBoxDoorWords(siteDoorFacts?.boxes)
+  // What on the site wants a hand (v2.8103): the boxes due a count and the printed stickers waiting. Null when nothing does.
+  const siteNews = siteDoorNews(siteDoorFacts)
 
   // The day's press (the right button): its six states are the kernel's (`pickJobModeDayPress`),
   // read once here for the desktop grid and the phone's press bar alike.
@@ -1178,6 +1194,22 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               {siteBoxCountPill}
             </button>
           )}
+        </div>
+      ) : null}
+      {/* One line under the press, only where the site has news (v2.8103): boxes due a count, stickers waiting for a box. */}
+      {dayOnScreen && jobCalendarTarget && siteNews && !(short && shortDetailsTarget) ? (
+        <div style={jobDoorNews} aria-label={`Materials on site: ${siteNews.plain}`} data-testid="job-mode-materials-news">
+          {siteNews.due ? (
+            <span style={jobDoorNewsDue} data-testid="job-mode-materials-due">
+              <ValueSentence text={siteNews.due} />
+            </span>
+          ) : null}
+          {siteNews.due && siteNews.stickers ? <span aria-hidden> · </span> : null}
+          {siteNews.stickers ? (
+            <span data-testid="job-mode-materials-stickers">
+              <ValueSentence text={siteNews.stickers} />
+            </span>
+          ) : null}
         </div>
       ) : null}
       {jobCalendarOpen && jobCalendarTarget ? (

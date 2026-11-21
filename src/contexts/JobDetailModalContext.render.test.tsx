@@ -50,9 +50,12 @@ vi.mock('../lib/navClickTelemetry', () => ({
   recordNavClick: (...args: unknown[]) => recordNavClick(...args),
 }))
 
-beforeAll(() => {
+beforeAll(async () => {
   vi.stubGlobal('scrollTo', vi.fn())
-})
+  // The provider loads its two windows on demand (`lazyWindow`). Loading them here is the app's own warm-up:
+  // an open then finds the window ready, inside the queries' one second.
+  await Promise.all([import('../components/jobs/JobWindowModal'), import('../components/jobs/DetailJobModal')])
+}, 120_000)
 
 function Opener() {
   const ctx = useJobDetailModal()

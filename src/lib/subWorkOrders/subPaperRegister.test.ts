@@ -31,7 +31,28 @@ describe('subPaperRegister: what the window reads back', () => {
       dayOf,
     )
     expect(r.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10' })
-    expect(subPaperRegister([], dayOf)).toEqual({ bySheet: new Map(), lastStatement: null })
+    expect(subPaperRegister([], dayOf)).toEqual({ bySheet: new Map(), lastStatement: null, statementToday: null })
+  })
+
+  it('a statement that ended today is set apart: the last statement is the one from before today', () => {
+    const rows = [
+      row({ kind: 'statement_of_account', number: 'SA-0001', labor_job_id: null, period_to: '2026-10-31', issued_at: '2026-11-01T15:00:00Z' }),
+      row({ kind: 'statement_of_account', number: 'SA-0002', labor_job_id: null, period_to: null, issued_at: '2026-11-10T15:00:00Z' }),
+      row({ kind: 'statement_of_account', number: 'SA-0004', labor_job_id: null, period_to: '2026-11-20', issued_at: '2026-11-20T16:00:00Z' }),
+      row({ kind: 'statement_of_account', number: 'SA-0005', labor_job_id: null, period_to: null, issued_at: '2026-11-20T19:00:00Z' }),
+    ]
+    // On the day they were made, the two of today do not count: the period would start tomorrow, after its own end.
+    const today = subPaperRegister(rows, dayOf, '2026-11-20')
+    expect(today.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10' })
+    expect(today.statementToday).toEqual({ number: 'SA-0005' })
+    // The next day they are the last statement, as before.
+    const tomorrow = subPaperRegister(rows, dayOf, '2026-11-21')
+    expect(tomorrow.lastStatement).toEqual({ number: 'SA-0005', endedOn: '2026-11-20' })
+    expect(tomorrow.statementToday).toBeNull()
+    // A first statement made today leaves no last statement: the next one runs to date as well.
+    const first = subPaperRegister(rows.slice(3), dayOf, '2026-11-20')
+    expect(first.lastStatement).toBeNull()
+    expect(first.statementToday).toEqual({ number: 'SA-0005' })
   })
 })
 

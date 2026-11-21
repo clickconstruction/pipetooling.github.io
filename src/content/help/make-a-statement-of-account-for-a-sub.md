@@ -30,7 +30,7 @@ The paper presses are for a dev, a master technician, an assistant and a control
 
 A statement of account covers a period. Five chips set it.
 
-- {{chip:gray|Since the last statement}} starts the day after the last statement ended. The window opens on this chip once a statement has been made for the sub.
+- {{chip:gray|Since the last statement}} starts the day after the last statement ended. The window opens on this chip once a statement has been made for the sub. A statement made today does not move this period. It still starts after the last statement from before today.
 - {{chip:gray|To date}} covers everything up to today. The first statement for a sub opens on this chip.
 - {{chip:gray|This month}} starts on the first of the month and ends today.
 - {{chip:gray|This year}} starts on January 1 and ends today.
