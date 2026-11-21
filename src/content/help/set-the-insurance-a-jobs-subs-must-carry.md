@@ -132,6 +132,8 @@ The link always shows the published revision. It never shows a draft.
 
 The card says how often someone outside opened the link. Your own look is not counted.
 
+The card may say the link's address can no longer be shown. The link still opens for anyone who has it. Press **Make a new link** to get one you can copy.
+
 ## Send a sheet to the job's trades
 
 The card **Send the sheet to this job's trades** lists every trade asked to quote on the job.
@@ -171,6 +173,8 @@ A trade that was asked for a price and not awarded is held from the one press. P
 - {{button:outline-blue|Send it again}} sends a reminder.
 - {{button:outline-blue|Tell them it changed}} tells them of the new revision.
 - {{button:outline-blue|Take it off their page}} ends the send. The sheet leaves their page.
+
+Taking the sheet off the last trade's page also switches the sheet's link off. Press **Switch the link on** on **This sheet's link** to open it again.
 
 A reminder goes to the person the sheet was sent to. The line under the buttons names that person and their email.
 

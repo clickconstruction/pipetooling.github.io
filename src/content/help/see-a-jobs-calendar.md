@@ -39,7 +39,7 @@ Expand a job. The same green **NEXT** summary is pinned at the top of the **Job 
 It also opens from two other places:
 
 - **A job's Detail window** has the calendar icon at the top right of the header.
-- **Job Mode** has the small **Job calendar** link under the job header. It shows the plan for the job you are on, view only.
+- **Job Mode** has a **Job calendar** press under the job's address, beside **Materials on site**. It shows the plan for the job you are on, view only.
 
 ## Read the calendar
 

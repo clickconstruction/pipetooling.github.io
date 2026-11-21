@@ -134,6 +134,8 @@ Press **Resend email** there to send it again. **Void & redo** starts it over. *
 
 Nothing is saved until you press **Send email**. The new line then shows at the top of the list.
 
+If the window cannot send, it says why right above **Send email**.
+
 A person who already has the paper out gets the same copy again. The window says so.
 
 ## Send a paper to an outside company
@@ -145,6 +147,8 @@ Type a name to find a customer or a supply house. Press **Supply houses** to lis
 - A person on file at a company signs for that company. Pick them and their name fills in.
 - A company picked alone has no signer yet. You name the signer in the next window.
 - **Someone not in any list** is the last row. You type their name, their email and their company.
+
+If the customers cannot be read, the window says so. Your team and the supply houses still show. When it offers **Retry**, press it to read them again.
 
 The next window shows what the paper will say. It reads *Lena Park, Branch manager, signing for Tallgrass Supply Co.*
 

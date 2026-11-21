@@ -34,3 +34,7 @@ After the first run no Austin contact matches the pattern, so the second run upd
 ## Locks
 
 Row locks on the matched rows only, taken and released in one short statement. `SET lock_timeout = '3s'` heads the file.
+
+## Applied
+
+On the prod ledger, read on 2026-11-21 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

@@ -91,7 +91,7 @@ While you are clocked into a job, the card keeps going below the buttons:
 - **Customer** shows the customer's name with tap-to-call phone and tap-to-email links. So reaching them is one tap.
 - You tap {{button:outline|Job detail}}. The job's window opens right over the card. On a phone the window carries a bar at the bottom. See [the job window on a phone](#the-job-window-on-a-phone).
 - A **Street View photo** of the job address. You tap it to open Street View in Google Maps.
-- **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card. The pills over it show only the kinds of lines you can read. A helper sees All, Notes, Status and Crew.
+- **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card. The pills over it show only the kinds of lines you can read. A helper sees All, Notes, Status, Crew and Customer. On a phone the pills stay on one row. When the row is too long, slide it sideways to see the rest.
 
 ## The job window on a phone
 
