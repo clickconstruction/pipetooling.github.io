@@ -3163,7 +3163,7 @@ Google counts as failed on the page in four cases: its script has not loaded in 
 Every Google canvas shares these checks (`useGoogleCanvasDoors`), and the frame keeps a failure for the page.
 Since v2.7981 Google's one global for a refused key is set once by `googleAuthFailure.ts`, so every Google map on the screen hears the refusal.
 Since v2.7876 the 8 s clock waits while the map is scrolled off screen (`paintClock.ts`, `useFrameInView`), since Google builds no map far below the window.
-Since v2.7809 *Where my tasks are* draws in it too, on its Leaflet half, where Time looks at a task's place and never at the person's own dot.
+Since v2.7809 *Where my tasks are* draws in it too, where Time looks at a task's place and never at the person's own dot, on its Leaflet half until v2.8032 put it on Google with a switch.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
 **Today** is the right end of that row and is today's photograph of the same ground, so a date and Today are one tile layer apart and the map does not move between them.

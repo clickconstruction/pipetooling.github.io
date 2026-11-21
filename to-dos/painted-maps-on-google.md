@@ -5,14 +5,15 @@ group: ready
 status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft until the count was read · the month's count read 2026-11-20 in the Google console, from Grace's Chrome: 4,269 Dynamic Maps loads for November 1 to 20 against the 10,000 free, 3,871 in October, nothing billed · step 2 rebased over #402's four PRs and armed on Grace's number the same day · merged the same day and walked on clicktooling.com on a made-up map on no job: drawn on Esri's photograph and saved, opened again on Google's photograph with the street names, then **Streets**, **Time** and **Draw a line**, each as built, and the map thrown away after · the automatic check of the live site found to be most of the month's count and taken off Google the same day (v2.8049, #9056) · step 5, the person's task map, built the same day on the owner's own word (v2.8032, #9037) · audited the same day on a made-up map on the local server, both maps side by side at 320, 390 and 1400 px: two mends merged the same day (v2.8076, #9089 and v2.8078, #9090) and the rest left for the owner (*The audit*, below)
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
-  Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
+  Since v2.7990 a saved map opened to be read draws on Google. Painting still draws on Leaflet, where
+  *From above* is Esri's photograph and *Streets* is OpenStreetMap. The app
   already draws seven other maps on Google through one browser key, with Leaflet as the fall back, so
   no new key is needed. The work is the painting canvas itself: the line drawn by hand, its corners,
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
 next: Before step 3, the owner's word on call 6. Step 4 is not started, and the count is looked at again before it, since every outside reader's open counts. Step 5 is built (v2.8032), and its count is worth a look about a week after. Three things are the owner's call, each below. Google's own place labels over the photograph. A map that is not Google's on the page behind the window. The ten seconds a slow phone waits before the fall back.
-size: L as a train of five (S · M · L · S · S)
+size: L as a train of five (S · M · L · S to M · S)
 ver: v2.7979 · v2.7981 · v2.7990 · v2.8032 · v2.8049 · v2.8076 · v2.8078
 blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
 opinion: build — the count read 2026-11-20 leaves room under the free 10,000, and the key, the fall back rule and a shared Google canvas already exist, so the cost is the drawing tools, not the plumbing
@@ -40,13 +41,16 @@ He picked it to build first the same evening, then changed his mind:
 
 - **From above** is Esri's World Imagery. **Streets** is OpenStreetMap. Both are free tiles on Leaflet.
   So moving to Google swaps both pictures, not only the streets.
+  Since v2.7990 (step 2) a saved map opened to be read draws on Google. A line, a place or a walk
+  being made, **Time** and `/way` are still on Leaflet.
 - **One canvas, two screens.** `src/components/paintedMap/PaintedMapCanvas.tsx` is mounted by the
   painting window (`PaintedMapWindow.tsx`) and by the public page (`src/pages/PaintedWay.tsx`).
 - **A layer on two other maps.** `PaintedMapsLayer.tsx` lays painted maps over the Map page
   (`MapPageView.tsx`) and Materials on site (`OnSiteMap.tsx`). Both of those are whole Leaflet maps,
   and the Map page's drawing tool is Leaflet's own.
-- **A person's task map.** `TaskPlacesMapCard` draws on `TaskPlacesMapCanvas`, Leaflet. The team's
-  map on Checklist → Review moved to Google in v2.7686, and that note left this one as a follow-up.
+- **A person's task map.** `TaskPlacesMapCard` draws in the shared `PinsMapFrame`, on Google since
+  v2.8032 (step 5), with a press that switches to the OpenStreetMap map. The team's map on
+  Checklist → Review moved to Google in v2.7686.
 - **The picture and the print.** `src/lib/paintedMap/paintedMapPicture.ts` and
   `paintedMapPictureIo.ts` load Esri's tiles and paint them into one image.
 
@@ -138,7 +142,8 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
    Google bills by the map made, and the canvas keeps one map for the whole visit, so going to Time and back or opening a second painted map makes no new one.
 3. **Drawing by hand on Google** (L). Corners, the held press, the catch, the magnifying glass and
    the walk. After this the window is on Google from start to Save. Waits on call 6.
-4. **The public page** (S). `/way` on the same canvas, once the billing look says yes.
+4. **The public page** (S to M). `/way` on the same canvas, once the billing look says yes.
+   The Google canvas does not yet keep a reader and the line in view together (`frameMe`), which `/way` asks for, so this step adds it.
 5. **The person's task map** (S). `TaskPlacesMapCard` on the shared Google canvas, as v2.7686 did for
    the team's.
    The count read on 2026-11-20 leaves room for it, but it opens a Google map on Today for everyone with task places, so the count is worth a second look when it is built.
