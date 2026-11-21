@@ -307,6 +307,8 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
                 title={s.name}
                 aria-label={`Step ${i + 1}: ${s.name}`}
                 aria-current={now ? 'step' : undefined}
+                // A dash is the paper's shape and not a 44 px press: `index.css` leaves this class out of the tab's rule.
+                className="documentBuilderStep"
                 onClick={() => go(i)}
                 style={{ flex: '1 1 0', minWidth: 0, height: 24, border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
               >

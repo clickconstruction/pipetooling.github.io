@@ -92,6 +92,64 @@ describe('JobModeArrivalCheck', () => {
     expect((screen.getByRole('button', { name: 'Yes, all as told' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('a send refused because one of the crew answered first says why, reads again, and the card leaves', async () => {
+    // Two of ours had the card open. The other one answered Yes, all as told: nothing is left to look at, the door's
+    // own words for it, and the stage is asked about once, so this card is over.
+    let answered = false
+    const readArrival = vi.fn(async () => (answered ? null : ASK))
+    const arrive = vi.fn(async () => {
+      answered = true
+      throw new Error('There is nothing left to look at on this stage.')
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive }} />)
+    await screen.findByRole('region', { name: 'Is it as told?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, all as told' }))
+    expect(await screen.findByText('There is nothing left to look at on this stage.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull())
+    expect(readArrival).toHaveBeenCalledTimes(2)
+    expect(arrive).toHaveBeenCalledTimes(1)
+  })
+
+  it('a send refused because the list changed reads again and shows the list as it is now, with a No kept on a bullet still there', async () => {
+    let changed = false
+    const NOW: ArrivalAsk = { ...ASK, bullets: [{ id: 'b1', words: 'The slab is poured.' }, { id: 'b3', words: 'Power is on.' }] }
+    const readArrival = vi.fn(async () => (changed ? NOW : ASK))
+    const arrive = vi.fn(async () => {
+      changed = true
+      throw new Error('The list has changed. Open it again.')
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive }} />)
+    await screen.findByRole('region', { name: 'Is it as told?' })
+    fireEvent.click(screen.getByRole('button', { name: 'No: The slab is poured.' }))
+    fireEvent.click(screen.getByRole('button', { name: 'No: The trench is open.' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tell Dispatch: 2 things not as told' }))
+    expect(await screen.findByText('The list has changed. Open it again.')).toBeTruthy()
+    await screen.findByRole('button', { name: 'No: Power is on.' })
+    expect(screen.queryByRole('button', { name: 'No: The trench is open.' })).toBeNull()
+    // The No on the slab is still pressed, and the send counts only what is on the card.
+    expect(screen.getByRole('button', { name: 'No: The slab is poured.' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Tell Dispatch: 1 thing not as told' })).toBeTruthy()
+  })
+
+  it('a later read that fails keeps the card that is up, with its Nos', async () => {
+    let fail = false
+    const readArrival = vi.fn(async () => {
+      if (fail) throw new Error('no signal')
+      return ASK
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    await screen.findByRole('region', { name: 'Is it as told?' })
+    fireEvent.click(screen.getByRole('button', { name: 'No: The slab is poured.' }))
+    fail = true
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    await waitFor(() => expect(readArrival).toHaveBeenCalledTimes(2))
+    await settle()
+    expect(screen.getByRole('region', { name: 'Is it as told?' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'No: The slab is poured.' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('a read that failed with no signal reads again when the signal comes back', async () => {
     let fail = true
     const readArrival = vi.fn(async () => {

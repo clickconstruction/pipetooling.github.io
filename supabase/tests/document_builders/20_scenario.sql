@@ -1,7 +1,9 @@
 -- The Document builder's table (punch list #404 step 2, migration *_document_builders): a dev alone reads and
 -- writes a builder. A builder starts as a draft whatever the client sent, a revision goes up one at a time and only
 -- with its published copy, a published copy changes only with its revision, only the published revision can be
--- marked as read, and who made, published and marked it is the caller. A dev in training, a dev's twin and a dev who
+-- marked as read, and who made, published and marked it is the caller. A draft has a number that goes up with the
+-- draft and with the revision, whatever the client sent, so a save or a publish from a page that fell behind lands on
+-- no row (migration *_document_builder_draft_no). A dev in training, a dev's twin and a dev who
 -- left are held by the fences. Every name and every word here is made up, and no line is clause wording.
 -- Everything rolls back. Raises on the first failed assertion; ends with "document_builders PASSED". See
 -- scripts/pgtest-document-builders.sh. Never against prod.
@@ -95,6 +97,7 @@ BEGIN
     WHEN 'updated_by' THEN coalesce(r.updated_by::text, 'null')
     WHEN 'read' THEN coalesce(r.read_revision::text, 'null') || '|' || r.read_by_name || '|' || coalesce(r.read_on::text, 'null')
     WHEN 'read_marked_by' THEN coalesce(r.read_marked_by::text, 'null')
+    WHEN 'draft_no' THEN r.draft_no::text
     ELSE 'unknown fact'
   END;
 END $$;
@@ -115,10 +118,11 @@ SELECT dbb.same('nobody signed in may call the stamp', has_function_privilege('a
 -- 1 · Dana, a dev, loads a first draft. It starts as a draft whatever she sent.
 SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authenticated;
 SELECT dbb.same('a dev loads a first draft',
-  dbb.touched($q$INSERT INTO public.document_builders (key, kind, draft, published, revision, published_by, read_revision, read_by_name, read_on, created_by)
-    VALUES ('sub-nda', 'walked', '{"title": "A made-up paper"}', '{"title": "Sent as published"}', 5, '00000000-0000-0000-0000-0000004040a2', 5, 'Nobody', '2026-11-01', '00000000-0000-0000-0000-0000004040a2')$q$), '1');
+  dbb.touched($q$INSERT INTO public.document_builders (key, kind, draft, published, revision, published_by, read_revision, read_by_name, read_on, created_by, draft_no)
+    VALUES ('sub-nda', 'walked', '{"title": "A made-up paper"}', '{"title": "Sent as published"}', 5, '00000000-0000-0000-0000-0000004040a2', 5, 'Nobody', '2026-11-01', '00000000-0000-0000-0000-0000004040a2', 7)$q$), '1');
 RESET ROLE;
 SELECT dbb.same('it starts on revision 0', dbb.fact('sub-nda', 'revision'), '0');
+SELECT dbb.same('and its draft is number 0, whatever was sent', dbb.fact('sub-nda', 'draft_no'), '0');
 SELECT dbb.same('with nothing published', dbb.fact('sub-nda', 'published'), 'null');
 SELECT dbb.same('and nobody has read it', dbb.fact('sub-nda', 'read'), 'null||null');
 SELECT dbb.same('who made it is the caller', dbb.fact('sub-nda', 'created_by'), '00000000-0000-0000-0000-0000004040a1');
@@ -177,6 +181,34 @@ SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authe
 SELECT dbb.same('a builder''s name and kind do not change', dbb.touched($q$UPDATE public.document_builders SET key = 'renamed', kind = 'filled' WHERE key = 'sub-nda'$q$), '1');
 RESET ROLE;
 SELECT dbb.same('it is still the Sub NDA, walked', dbb.fact('sub-nda', 'kind'), 'walked');
+
+-- 4b · The draft has a number. Two tabs read the builder at the same number, and only the first write lands.
+SELECT dbb.fact('sub-nda', 'draft_no') AS n \gset
+SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authenticated;
+SELECT dbb.same('a save that names the number its page read lands',
+  dbb.touched(format($q$UPDATE public.document_builders SET draft = '{"title": "A made-up paper, from the first tab"}' WHERE key = 'sub-nda' AND draft_no = %s$q$, :n)), '1');
+SELECT dbb.same('a save from the tab that fell behind lands on no row',
+  dbb.touched(format($q$UPDATE public.document_builders SET draft = '{"title": "A made-up paper, from the tab left open"}' WHERE key = 'sub-nda' AND draft_no = %s$q$, :n)), '0');
+SELECT dbb.same('and so does a publish from it, though the revision it names still stands',
+  dbb.touched(format($q$UPDATE public.document_builders SET draft = '{"title": "A made-up paper, from the tab left open"}', published = '{"title": "A made-up paper, from the tab left open"}', revision = 3 WHERE key = 'sub-nda' AND revision = 2 AND draft_no = %s$q$, :n)), '0');
+RESET ROLE;
+SELECT dbb.same('the first tab''s words stand', dbb.fact('sub-nda', 'draft'), '{"title": "A made-up paper, from the first tab"}');
+SELECT dbb.same('the number went up one with the save', (dbb.fact('sub-nda', 'draft_no')::int - :n)::text, '1');
+SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authenticated;
+SELECT dbb.same('a number sent by the client is taken as a write', dbb.touched($q$UPDATE public.document_builders SET draft_no = 900 WHERE key = 'sub-nda'$q$), '1');
+SELECT dbb.same('a draft saved as it already reads is taken too', dbb.touched($q$UPDATE public.document_builders SET draft = '{"title": "A made-up paper, from the first tab"}' WHERE key = 'sub-nda'$q$), '1');
+SELECT dbb.same('and so are a read mark and its taking off',
+  dbb.touched($q$UPDATE public.document_builders SET read_revision = 2, read_by_name = 'Avery Stone', read_on = '2026-11-20' WHERE key = 'sub-nda'$q$) || dbb.touched($q$UPDATE public.document_builders SET read_revision = NULL WHERE key = 'sub-nda'$q$), '11');
+RESET ROLE;
+SELECT dbb.same('none of the four moved the number: it is the row''s own, and only the draft or the revision moves it', (dbb.fact('sub-nda', 'draft_no')::int - :n)::text, '1');
+SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authenticated;
+SELECT dbb.same('a publish that names the number as it now stands lands',
+  dbb.touched(format($q$UPDATE public.document_builders SET published = draft, revision = 3 WHERE key = 'sub-nda' AND revision = 2 AND draft_no = %s$q$, :n + 1)), '1');
+RESET ROLE;
+SELECT dbb.same('a publish moves the number, though the draft reads the same', (dbb.fact('sub-nda', 'draft_no')::int - :n)::text || ' on revision ' || dbb.fact('sub-nda', 'revision'), '2 on revision 3');
+SELECT dbb.as_user('00000000-0000-0000-0000-0000004040a1'); SET LOCAL ROLE authenticated;
+SELECT dbb.same('the draft goes back to where the next steps read it', dbb.touched($q$UPDATE public.document_builders SET draft = '{"title": "A made-up paper, third pass"}' WHERE key = 'sub-nda'$q$), '1');
+RESET ROLE;
 
 -- 5 · Every other role: reads nothing, and no write lands.
 DO $$

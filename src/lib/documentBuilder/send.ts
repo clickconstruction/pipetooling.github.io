@@ -12,6 +12,7 @@
  */
 import { pluralNoun, type BatchNoun } from '../batchWords'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { val } from '../valuesInPlace'
 import type { BuilderChip } from './builders'
 
 /** A party's own page: on, never made, or turned off on purpose. */
@@ -24,6 +25,8 @@ export type PartyContact = { name: string; email: string; role?: string }
 export type SendRecord = {
   id: string
   contactName: string
+  /** The address it went to. This, never the name, says who a reminder goes to: two people at one party can share a name. Empty on a row that kept none. */
+  contactEmail: string
   /** For a GC: the job it is about, by name. Null means all their jobs. */
   about: string | null
   sentOn: string
@@ -78,6 +81,37 @@ export function sendChips(party: SendParty, revision: number, opts: { showAbout:
 export type ResendWhy = 'again' | 'changed'
 export function resendPress(send: SendRecord, revision: number): { why: ResendWhy; label: string } {
   return sendStanding(send, revision) === 'changed' ? { why: 'changed', label: 'Tell them it changed' } : { why: 'again', label: 'Send it again' }
+}
+
+/** Who the second press on a sent row goes to, and the line under it that says so. `to` is null when it cannot go. */
+export type ResendTo = { to: PartyContact | null; words: string }
+
+const sameWords = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Who *Send it again* and *Tell them it changed* go to: the person the send went to, found by the address on the
+ * send's own row. A name never picks, since two people at one party can share one, and nobody else stands in for a
+ * person who has left the record: the press is dead and the line says the way out. A row that kept no address goes by
+ * name only when one person alone carries it. The values are marked with `val`, for `ValueSentence`. Null with no send.
+ */
+export function resendTo(party: SendParty): ResendTo | null {
+  const send = party.send
+  if (!send) return null
+  const goes = (c: PartyContact): ResendTo => ({ to: c, words: sameWords(c.name, c.email) ? `It goes to ${val('email', c.email)}.` : `It goes to ${val('who', c.name)} at ${val('email', c.email)}.` })
+  const wayOut = 'Take it off their page, then send it to someone who is.'
+  const named = send.contactName.trim()
+  const address = send.contactEmail.trim()
+  if (address) {
+    const person = party.contacts.find((c) => sameWords(c.email, address))
+    if (person) return goes(person)
+    const who = named && !sameWords(named, address) ? `${val('who', named)} at ${val('email', address)}` : val('email', address)
+    return { to: null, words: `${who} is no longer on the record of ${party.name}. ${wayOut}` }
+  }
+  const namesakes = party.contacts.filter((c) => sameWords(c.name, named))
+  const only = namesakes.length === 1 ? namesakes[0] : undefined
+  if (only) return goes(only)
+  if (namesakes.length === 0) return { to: null, words: `${val('who', named || 'The person it went to')} is no longer on the record of ${party.name}. ${wayOut}` }
+  return { to: null, words: `${val('count', String(namesakes.length))} people at ${party.name} are named ${val('who', named)}, and this send does not say which. Take it off their page, then send it to the one you mean.` }
 }
 
 /** A person's first name, for the press: *Send to Dana*. A contact is *Dana Whitlock*, with their role kept apart. */

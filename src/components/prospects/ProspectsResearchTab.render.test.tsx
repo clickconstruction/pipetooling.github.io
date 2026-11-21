@@ -762,7 +762,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
         )
         fireEvent.click(await screen.findByRole('button', { name: 'Market' }))
         expect(await screen.findByRole('heading', { name: 'Do the companies we bid build here?' })).toBeTruthy()
-        expect(await screen.findByRole('button', { name: 'Builds here 1' })).toBeTruthy()
+        expect(await screen.findByRole('button', { name: 'Builds 1' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'Market' }).getAttribute('aria-pressed')).toBe('true')
         await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits&view=market'))
         // Another view takes Market off the address.

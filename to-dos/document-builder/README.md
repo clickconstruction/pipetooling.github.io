@@ -550,6 +550,19 @@ of it. The same day he said to build it.
 | 9 · Send it to a GC | Not built. Step 5's `BuilderSendList` pointed at GCs, and a block on the customer portal placed by job. Card #382's PR 9 changed `customer-portal`, `submit-portal-request` and `CustomerPortal.tsx` too, and it merged first (v2.8018), so this step starts from those files as they are now. |
 | 10 · Send their picks | Not built. The default for *What a GC can do with the Sub NDA at first* is look only, so it waits on the owner's yes. |
 
+**Step 9 is built on a branch and not merged**, as of 2026-11-20: `claude/404-sub-nda-to-a-gc-5197d0`, pushed, with
+no PR yet. On it: the send pointed at GCs with the job it is about, a find box for the long list, the function's
+side of both, the customer portal's answer and its block, both guides and the tests. It waits on three things.
+
+- Step 8's look-only flow. Without it a GC's last step would show the review's own press.
+- The two send fixes it is stacked on: PR #9173, and the agent's-check fix that follows it.
+- Two deploys after its merge, each on Taunya's go by name: `document-builder-send`, then `customer-portal`.
+
+Still to do on it after those: rebase onto `main`, hand the block step 8's look-only flow, the lines in
+`docs/DOCUMENTS_PAGE_ARCHITECTURE.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md`, this table's row, and a walk
+on prod with a `ZZ Test` customer. It adds two things the drawing does not have: the one press on the GC list asks
+first by its count, and the list shows the first twelve GCs until someone types in **Find a GC**.
+
 ### What the review of 2026-11-20 left
 
 A review read all six built steps and walked them on prod with test records only. Both migrations
@@ -576,6 +589,7 @@ Found and not fixed. No PR holds any of these.
   usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
 - **Send it again** picks the contact by name and does not say who.
+  **Fixed**, v2.8131: it goes to the address on the send's own row, and a line under it names the person.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
   key would leave a link that does not open.
 - A sent sheet's copy carries no job, and Sent copies files it under *Other*.
@@ -590,7 +604,8 @@ Against the mock-up, the built steps still lack:
   **Fixed**, v2.8144: there a head is the level's bars and a cell is a 44 px square.
 - The card of changed pages has no counts and no legend, and the open cell has no outline.
 - A trade's row does not say where its certificate stands. That is step 6.
-- Most presses in the tab are under 44 px tall on a phone.
+- Most presses in the tab are under 44 px tall on a phone. **Fixed**, v2.8146: one rule makes every
+  press in the tab 44 px there. The step bar's dashes stay 24 px.
 
 Two things the review asks the owner: whether **Take it off their page** should also close the
 sheet's link, which is in the email, and whether the one press should reach a trade that was asked
