@@ -178,7 +178,7 @@ Leaving for the settings pauses the painting, as any other app does. Press {{but
 
 Is the switch on already? Then your phone may only be hearing a cell tower. Step into the open and wait a moment.
 
-You can press {{button:blue|Draw it by hand instead}} at any time.
+You can press {{button:blue|Draw it by hand instead}} at any time. The map then goes back to the job.
 
 ## Look it over, then save
 
@@ -283,6 +283,8 @@ A line under the press says how that reading did.
 - *Precise Location looks off.* means the dot was not moved. Your phone gave only an area, and its middle can be miles away.
 
 When the dot was not moved, drag it onto the spot by hand. Or turn the switch on and press again. [When Precise Location looks off](#when-precise-location-looks-off) has the steps.
+
+Sometimes your phone gives no reading at all. An amber box under the press then says why, and the dot was not moved. Drag the dot onto the spot, or press again.
 
 Never type a gate code or a lock code on a place. Anyone the map is shared with would read it.
 
@@ -532,6 +534,8 @@ When a phone gives only an area, the page lists the steps to turn on **Precise L
 
 The map pulls back to a dashed circle when that area is near the map. The reader is somewhere in the circle.
 
+The company is then sent the area and how wide it is. The page says so under the steps.
+
 ### See who opened it
 
 Open **Share** on the map again. Under the presses, **Who opened it** lists each reader.
@@ -539,6 +543,8 @@ Open **Share** on the map again. Under the presses, **Who opened it** lists each
 A row says the name they gave, their phone or computer, when they opened it and how many times. A teammate's row says **signed in**.
 
 A reader who pressed **Show where I am** has one more line. Press **See that place** to open it in a map app.
+
+A reader whose phone gave only an area reads *Showed only the area they were in*, with how wide it was. An area has no place to open.
 
 Only the office and whoever painted the map see this list.
 

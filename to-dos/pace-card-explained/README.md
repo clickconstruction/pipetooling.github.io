@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · left: the owner's look on a phone, and three calls
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · left: the owner's look on a phone, and three calls
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -134,6 +134,25 @@ Each is built on its default. Each is one small change either way.
   real superintendent, as #396 left it.
 - The office's board still calls a pace in days. The crew's card says hours. They agree on which jobs are
   ahead of the work on hours, and differ only where money leads alone.
+
+## The Still press, walked in place (2026-11-20)
+
+After both PRs were live, as the Sample superintendent through View as, Job Mode on, clocked onto the ZZ test
+project, on the dev server at `main` against live data.
+
+- The test project is on track, so the card does not offer **Still** there. For the walk, two made-up days of
+  9 hours were added to that job's read in the browser only, through a temporary hook that was never
+  committed. Nothing made up was written anywhere.
+- The card then read amber, *Is 25% still right?*, 27 of 70 hours against 25%, *set 12 days ago*, and *The
+  crew has put in 18 hours since.*
+- **Still 25%** was pressed. The press went grey while it saved. The card turned red, *Hours are ahead of the
+  work.*, *set today*, *The gap is about 10 hours.*, with **Set the %** and the finish presses under it.
+- The press wrote one Status Report on the test project in the sample account's name: 25%, with the note
+  *Still 25%. Said on the Job pace card.* A report on a ZZ test record reaches no phone and no inbox.
+- After a full reload the card still read red and *set today*, from the server's own read.
+
+Left on the test project, on purpose: that Status Report, and two clock sessions of a few minutes in the
+sample account's name. Job Mode on the sample account is off again.
 
 ## How to verify
 

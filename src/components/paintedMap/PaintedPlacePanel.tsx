@@ -8,15 +8,17 @@
  *
  * Under **Put the dot where I am** the Precise Location line says how that one reading did (punch
  * list #402): on, a weak signal, or a rough area. A rough reading does not move the dot, and the
- * line then shows the way to the switch.
+ * line then shows the way to the switch. A press that got no reading at all says why in the same
+ * place, in an amber box that stands in for the line until the next press answers.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import type { MyFixFailure } from '../../lib/materials/myLocation'
 import { PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
 import { PAINTED_PLACE_KINDS, PLACE_KIND_HINT_WORDS, PLACE_WARN_COLOR, pressPlaceKindChip, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
-import { PLACE_DOT_WEAK_NOTE_WORDS, placeDotRoughNoteWords } from '../../lib/paintedMap/paintedPlaceDot'
+import { PLACE_DOT_WEAK_NOTE_WORDS, placeDotNoFixWords, placeDotRoughNoteWords } from '../../lib/paintedMap/paintedPlaceDot'
 import { PAINTED_PLACE_NO_CODES_WORDS } from '../../lib/paintedMap/paintedPlacePhoto'
 import { PlaceGlyphDrawing } from './PaintedPlaceMark'
 import { PreciseLocationLine } from './PreciseLocationLine'
@@ -36,6 +38,8 @@ type Props = {
   accuracyM: number | null
   /** The last press got a rough reading: the phone gave an area, and the dot was left where it was. Its margin. */
   roughAccuracyM?: number | null
+  /** The last press got no reading at all: the phone said no, ran out of time, or has none to give. The dot was left where it was. */
+  noFix?: MyFixFailure | null
   /** A reading was taken and the dot was then moved off it. */
   movedOffReading: boolean
   finding: boolean
@@ -54,6 +58,8 @@ const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap:
 const chipOn: CSSProperties = { ...chip, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%' }
 const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }
+/** The amber box of the Precise Location line, for the press's own answer when there is no reading to draw a line for. */
+const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
 const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32 }
 
 /** A device held in the hand: its press on the photo opens the camera. A desk opens the file picker. */
@@ -65,7 +71,7 @@ function handHeld(): boolean {
   }
 }
 
-export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
+export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
@@ -85,6 +91,12 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
   useEffect(() => {
     if (roughAccuracyM != null) roughRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
   }, [roughAccuracyM])
+  // No reading moves nothing either. Its words come into view when the press answers, and again on each press that
+  // fails the same way: the press was made twice, and is seen to answer twice.
+  const noFixRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (noFix && !finding) noFixRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [noFix, finding])
   const preview = shot?.previewUrl ?? (keepSaved ? photoUrl : null)
   const hasPhoto = Boolean(shot) || keepSaved
   const waiting = busy || shrinking
@@ -189,7 +201,12 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
         <button type="button" style={finding ? deadPress : press} disabled={finding} onClick={onUseWhereIAm}>
           {finding ? 'Finding you…' : 'Put the dot where I am'}
         </button>
-        {roughAccuracyM != null ? (
+        {noFix ? (
+          // No reading came. The reason stands in for the line: an older reading's line here would read as this press's answer.
+          <p ref={noFixRef} role="alert" data-painted-place-fix="no-reading" data-painted-place-no-fix={noFix} style={amberBox}>
+            {placeDotNoFixWords(noFix)}
+          </p>
+        ) : roughAccuracyM != null ? (
           // One reading, asked for by the press: there is no better one to wait for, so it is called rough at once.
           <div ref={roughRef} data-painted-place-fix="rough">
             <PreciseLocationLine accuracyM={roughAccuracyM} kind={phoneKind} roughHeld roughNote={placeDotRoughNoteWords(phoneKind)} />

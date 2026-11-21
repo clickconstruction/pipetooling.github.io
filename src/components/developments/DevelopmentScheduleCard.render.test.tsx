@@ -150,6 +150,17 @@ describe('the Schedule look', () => {
     expect(within(card('rough')).getByRole('button', { name: 'Open' })).toBeTruthy()
   })
 
+  it('the one press has words when what comes next is a bullet of ours with no press of its own', async () => {
+    // Every bullet on them has a yes. The one bullet of ours reads the order log, and the app holds nothing to open for it.
+    const db = seeded()
+    db.rows = { ...db.rows, bullets: [...db.rows.bullets, bullet('o1', 'j1', 'top', { words: 'Our material lands before day one.', waits_on: 'us', shown_to_gc: false, reads: 'order_log' })], marks: [...db.rows.marks, mark('m-t1', 't1', 'j1')] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Ray is done. 1 thing of ours is not ready. We decide by Sat Nov 21, in 4 days.')
+    expect(within(card('top')).getByRole('button', { name: 'Open' }).getAttribute('aria-expanded')).toBe('false')
+    for (const c of cards()) for (const b of within(c).getAllByRole('button')) expect((b.textContent ?? '').trim() || b.getAttribute('aria-label') || '').not.toBe('')
+  })
+
   it('draws the values in a sentence in place: our first day and their day change where they sit, the rest are bold', async () => {
     const db = seeded()
     await mount(db)
@@ -183,6 +194,46 @@ describe('the Schedule look', () => {
     expect(document.querySelector('[data-ready-list]')).toBeNull()
     // A stage with no list has no bar.
     expect(card('trim').querySelector('.scReady')).toBeNull()
+  })
+
+  it('a tap on a phone opens the ready bar’s list and leaves it open, and the next press shuts it', async () => {
+    await mount(seeded())
+    await waitFor(() => expect(cards().length).toBe(4))
+    const bar = within(card('top')).getByRole('button', { name: '50% ready, 1 of 2. Press to see what it takes to start.' })
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+    try {
+      // One tap is three events in a row: the finger enters, the press takes focus, then it clicks.
+      fireEvent.mouseEnter(bar)
+      fireEvent.focus(bar)
+      fireEvent.click(bar)
+      expect(document.querySelector('[data-ready-list]')).not.toBeNull()
+      // A later press is its own: it shuts the list.
+      now.mockReturnValue(1_002_000)
+      fireEvent.click(bar)
+      expect(document.querySelector('[data-ready-list]')).toBeNull()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it('the ready bar’s list is pulled back from the right edge of a narrow screen', async () => {
+    await mount(seeded())
+    await waitFor(() => expect(cards().length).toBe(4))
+    const bar = within(card('top')).getByRole('button', { name: '50% ready, 1 of 2. Press to see what it takes to start.' })
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      // The bar sits mid-line on a 390 px phone, so a 312 px list hung from it would end at 491.
+      return (this.hasAttribute('data-ready-list') ? { left: 179, right: 491, top: 0, bottom: 200, width: 312, height: 200, x: 179, y: 0 } : { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 }) as DOMRect
+    })
+    const width = vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(390)
+    try {
+      fireEvent.click(bar)
+      const list = document.querySelector('[data-ready-list]') as HTMLElement
+      // 491 less the screen's 390, with 8 px of room: the list moves 109 px left.
+      expect(list.style.left).toBe('-109px')
+    } finally {
+      rect.mockRestore()
+      width.mockRestore()
+    }
   })
 
   it('the one press opens the stage to its four lines and its lists, and a tick there moves the card', async () => {

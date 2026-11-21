@@ -115,7 +115,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     void loadRegister()
   }, [loadRegister])
 
-  const register = useMemo(() => subPaperRegister(rows ?? [], (iso) => calendarYmdInAppTzFromIso(iso).slice(0, 10)), [rows])
+  // Today is handed in, so a statement made today does not start *Since the last statement* tomorrow.
+  const register = useMemo(() => subPaperRegister(rows ?? [], (iso) => calendarYmdInAppTzFromIso(iso).slice(0, 10), todayYmdInAppTz()), [rows])
   const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: register.bySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, register])
   const ctx = useMemo<PaperContext | null>(() => (company ? { company, sub: { name, lines: [] }, today: todayYmdInAppTz(), preparedAt: paperPreparedAt(new Date(), APP_CALENDAR_TZ), zone: 'Central time' } : null), [company, name])
   const jobIdsOf = (paper: SubPaper): string[] => {
@@ -155,6 +156,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       ctx={ctx}
       contact={contact}
       lastStatement={rows === null ? undefined : register.lastStatement}
+      statementToday={rows === null ? undefined : register.statementToday}
       paymentRecords
       canSend={maySend}
       sendBy={SEND_BY}

@@ -573,7 +573,24 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
 
-      {view === 'market' && <PermitMarket city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} rowsLoading={allLoading} researchers={researchers} onChanged={() => void loadAll()} onOpenPermit={setDigRow} />}
+      {view === 'market' && (
+        <PermitMarket
+          city={city}
+          authUserId={authUserId}
+          todayYmd={todayYmd}
+          isMobile={isMobile}
+          rows={allRows}
+          rowsLoading={allLoading}
+          rowsError={allError}
+          onRetryRows={() => {
+            setAllLoading(true)
+            void loadAll()
+          }}
+          researchers={researchers}
+          onChanged={() => void loadAll()}
+          onOpenPermit={setDigRow}
+        />
+      )}
 
       {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
       {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} isMobile={isMobile} />}

@@ -24,9 +24,34 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
-/** The phone's one reading, stood in for: a test sets what the next Put the dot where I am gets. */
-const here = vi.hoisted(() => ({ fix: { lat: 29.6, lng: -98.3, accuracyM: 5 as number | null } }))
-vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: (ok: (p: unknown) => void) => ok({ ...here.fix }) }))
+/**
+ * The phone's one reading, stood in for: a test sets what the next Put the dot where I am gets. `answer` is how the
+ * phone takes the ask: it reads, the person said no, it ran out of time, or the device has no location to give.
+ */
+const here = vi.hoisted(() => ({ fix: { lat: 29.6, lng: -98.3, accuracyM: 5 as number | null }, answer: 'ok' as 'ok' | 'refused' | 'timeout' | 'none' }))
+/** The module is the real one, so its words and its reasons are the real ones. Only the phone under it is stood in, for the length of one ask. */
+vi.mock('../../lib/materials/myLocation', async (real) => {
+  const actual = await real<typeof import('../../lib/materials/myLocation')>()
+  const phone = {
+    getCurrentPosition: (ok: (pos: unknown) => void, fail: (err: unknown) => void) => {
+      if (here.answer === 'ok') ok({ coords: { latitude: here.fix.lat, longitude: here.fix.lng, accuracy: here.fix.accuracyM ?? Number.NaN } })
+      else fail({ code: here.answer === 'refused' ? 1 : 3 })
+    },
+  }
+  const withPhone = (ask: () => void) => {
+    if (here.answer !== 'none') Object.defineProperty(navigator, 'geolocation', { configurable: true, value: phone })
+    try {
+      ask()
+    } finally {
+      delete (navigator as unknown as { geolocation?: unknown }).geolocation
+    }
+  }
+  return {
+    ...actual,
+    requestMyFix: (...args: Parameters<typeof actual.requestMyFix>) => withPhone(() => actual.requestMyFix(...args)),
+    requestMyLocation: (...args: Parameters<typeof actual.requestMyLocation>) => withPhone(() => actual.requestMyLocation(...args)),
+  }
+})
 /** Which phone the page takes itself to be on, for the Precise Location line's words. */
 const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
 vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => browser.kind }))
@@ -151,6 +176,7 @@ afterEach(() => {
   auth.value = { user: { id: 'me' }, role: 'helpers' }
   device.phone = null
   here.fix = { lat: 29.6, lng: -98.3, accuracyM: 5 }
+  here.answer = 'ok'
   browser.kind = 'iphone-safari'
 })
 
@@ -704,6 +730,76 @@ describe('places on a map', () => {
     fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
     expect(screen.queryByRole('alert')).toBeNull()
     expect(document.querySelector('[data-precise]')).toBeNull()
+  })
+
+  it('says under the press why the phone gave no reading, in the panel’s own words (#402)', async () => {
+    const cases = [
+      ['timeout', 'failed', 'Your phone did not find you in time. The dot was not moved. Drag it onto the spot, or press Put the dot where I am again.'],
+      ['refused', 'refused', 'Location is off for this app. The dot was not moved. Drag it onto the spot, or allow location in the phone’s settings and press again.'],
+      ['none', 'none', 'This device gives no location. The dot was not moved. Drag it onto the spot by hand.'],
+    ] as const
+    for (const [answer, why, words] of cases) {
+      io.whole = { map: MAP, lines: [], places: [] }
+      render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+      fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+      here.answer = answer
+      fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+      const alert = await screen.findByRole('alert')
+      expect(alert.textContent, answer).toBe(words)
+      // Under the press, where the line is drawn, and not at the top of the panel above the chips.
+      expect(alert.getAttribute('data-painted-place-no-fix'), answer).toBe(why)
+      expect(alert.closest('[data-painted-place-panel]'), answer).not.toBeNull()
+      expect(document.querySelector('[data-painted-error]'), answer).toBeNull()
+      // Dragging the map places nothing here: the box map’s sentence is not this panel’s.
+      expect(document.body.textContent, answer).not.toMatch(/Drag the map/)
+      expect(screen.getByTestId('canvas').textContent, answer).toContain('dot:29.55,-98.25')
+      expect((screen.getByRole('button', { name: 'Put the dot where I am' }) as HTMLButtonElement).disabled, answer).toBe(false)
+      cleanup()
+      here.answer = 'ok'
+    }
+  })
+
+  it('a press that times out takes the place of an earlier press’s rough alert (#402)', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    // A weak reading first: the dot moves, and its line is drawn under the press.
+    here.fix = { lat: 29.6, lng: -98.3, accuracyM: 300 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(document.querySelector('[data-painted-place-fix="read"]')).not.toBeNull())
+    // Then a rough one: the alert with the steps.
+    here.fix = { lat: 29.9, lng: -98.9, accuracyM: 3200 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    expect((await screen.findByRole('alert')).querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    // The painter turns the switch on and presses again, and the phone does not answer in time.
+    here.answer = 'timeout'
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(screen.getByRole('alert').getAttribute('data-painted-place-no-fix')).toBe('failed'))
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('alert').textContent).toBe('Your phone did not find you in time. The dot was not moved. Drag it onto the spot, or press Put the dot where I am again.')
+    // The reason stands in for the line: the weak reading of two presses ago is not what the press is seen to answer.
+    expect(document.querySelector('[data-precise]')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/The signal is weak here|Precise Location looks off|Drag the map/)
+    // The dot is still on the last good reading, and its margin is still saved with the place.
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.6,-98.3')
+    // The next press that reads takes the reason away.
+    here.answer = 'ok'
+    here.fix = { lat: 29.61, lng: -98.31, accuracyM: 4.5 }
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(document.querySelector('[data-painted-place-fix="read"]')?.textContent).toBe('Precise Location is on. Sure within 15 ft.')
+  })
+
+  it('forgets why the phone gave no reading when the place panel closes', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    here.answer = 'refused'
+    fireEvent.click(screen.getByRole('button', { name: 'Put the dot where I am' }))
+    await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('sends a photo first and saves the place with it', async () => {

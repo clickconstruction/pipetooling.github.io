@@ -72,8 +72,9 @@ function ground(rows: NameAnswerRow[] = []) {
   return { book: answerBook(rows, CUSTOMERS), bids: [], me: 'u1', people: new Map([['u1', 'Eve'], ['u2', 'Sam']]) }
 }
 
-function draw(over: { city?: string; isMobile?: boolean; rows?: ResearchPermitRow[]; rowsLoading?: boolean } = {}) {
-  return renderWithProviders(<PermitMarket city={over.city ?? 'San Antonio'} authUserId="u1" todayYmd={TODAY} isMobile={over.isMobile ?? false} rows={over.rows ?? []} rowsLoading={over.rowsLoading ?? false} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
+const onRetryRows = vi.fn()
+function draw(over: { city?: string; isMobile?: boolean; rows?: ResearchPermitRow[]; rowsLoading?: boolean; rowsError?: string | null } = {}) {
+  return renderWithProviders(<PermitMarket city={over.city ?? 'San Antonio'} authUserId="u1" todayYmd={TODAY} isMobile={over.isMobile ?? false} rows={over.rows ?? []} rowsLoading={over.rowsLoading ?? false} rowsError={over.rowsError ?? null} onRetryRows={onRetryRows} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
 }
 const companyRows = () => [...document.querySelectorAll('[data-market-company]')].map((el) => el.getAttribute('data-market-company'))
 
@@ -197,6 +198,8 @@ describe('Market, the clock', () => {
     expect(await screen.findByText('San Antonio · application to permit')).toBeTruthy()
     const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
     expect(within(clock).getByText('45 days')).toBeTruthy()
+    // A middle well along the bar is said under its mark, apart from the bar's first word.
+    expect((clock.querySelector('[data-clock-start]') as HTMLElement).textContent).toBe('applied')
     expect(within(clock).getByText(/Half of the applications wait 45 days or more for the permit\./)).toBeTruthy()
     expect(marketIo.loadMarketPermits).toHaveBeenCalledWith('San Antonio', '2025-11-19')
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
@@ -208,7 +211,12 @@ describe('Market, the clock', () => {
     marketIo.loadMarketPermits.mockResolvedValue([])
     draw({ city: 'Austin', rows: AUSTIN_ROWS })
     expect(await screen.findByText('Austin · building permit to the plumber’s permit')).toBeTruthy()
-    expect(within(document.querySelector('[data-market-clock="plumber"]') as HTMLElement).getByText(/Read Austin for who builds\./)).toBeTruthy()
+    const plumber = document.querySelector('[data-market-clock="plumber"]') as HTMLElement
+    expect(within(plumber).getByText(/Read Austin for who builds\./)).toBeTruthy()
+    // The middle is days from the start, where the word issued is: the days are drawn beside the word, once, and not on top of it.
+    const start = plumber.querySelector('[data-clock-start]') as HTMLElement
+    expect(start.textContent).toMatch(/^issued(\d+ days?|the same day)$/)
+    expect(plumber.querySelectorAll('strong')).toHaveLength(1)
     expect(screen.getByText('from a building permit to the plumber’s permit')).toBeTruthy()
     expect(document.querySelector('[data-market-clock="application"]')).toBeNull()
   })
@@ -223,7 +231,7 @@ describe('Market, the clock', () => {
     const view = draw()
     await screen.findByText('San Antonio · application to permit')
     marketIo.loadMarketPermits.mockResolvedValue([])
-    view.rerender(<PermitMarket city="Austin" authUserId="u1" todayYmd={TODAY} isMobile={false} rows={AUSTIN_ROWS} rowsLoading={false} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
+    view.rerender(<PermitMarket city="Austin" authUserId="u1" todayYmd={TODAY} isMobile={false} rows={AUSTIN_ROWS} rowsLoading={false} rowsError={null} onRetryRows={() => {}} researchers={[]} onChanged={() => {}} onOpenPermit={() => {}} />)
     expect(await screen.findByText('Austin · building permit to the plumber’s permit')).toBeTruthy()
     expect(marketIo.loadMarketPermits).toHaveBeenCalledTimes(2)
     expect(marketIo.loadMarketBids).toHaveBeenCalledTimes(1)
@@ -274,5 +282,39 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
     expect(await screen.findByText(/the network is down/)).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'This week 2' })).toBeTruthy()
+    // The list says what the failed read costs, and Retry asks for the answers again.
+    expect(screen.getByText('A name already answered may be on this list until the answers load.')).toBeTruthy()
+    marketIo.loadCallAnswers.mockResolvedValue([])
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(screen.queryByText(/the network is down/)).toBeNull())
+    expect(marketIo.loadCallAnswers).toHaveBeenCalledTimes(2)
+  })
+
+  it('holds the call list when the year of permits cannot be read: no zero tile, no "all answered", no word on what the city shows', async () => {
+    marketIo.loadMarketPermits.mockRejectedValue(new Error('Couldn’t load the year of permits: the network is down'))
+    draw()
+    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByText(/the network is down/)).toBeTruthy()
+    expect(screen.getByText('The list needs this read, so it shows no name until the read comes back.')).toBeTruthy()
+    expect(screen.queryByText(/is answered/)).toBeNull()
+    expect(screen.queryByText(/shows only issued permits/)).toBeNull()
+    expect(screen.queryByText(/builders? to call this week/)).toBeNull()
+    expect(screen.queryByText(/too few pairs of dates/)).toBeNull()
+    expect(screen.getByText('The permits did not load, so no clock is drawn.')).toBeTruthy()
+    // Retry reads the year again, and the list draws.
+    marketIo.loadMarketPermits.mockResolvedValue(PERMITS)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('button', { name: 'This week 2' })).toBeTruthy()
+    expect(screen.queryByText(/the network is down/)).toBeNull()
+  })
+
+  it('holds the call list when the tab’s own rows cannot be read, since the open jobs come off them', async () => {
+    draw({ rowsError: 'Could not read the permits: the network is down' })
+    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByText(/the network is down/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
+    expect(screen.queryByText(/of their jobs/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetryRows).toHaveBeenCalledTimes(1)
   })
 })

@@ -8,7 +8,9 @@
  *
  * A reading that is only an area (punch list #402, call 8) pins nothing, measures nothing and moves no map. The
  * sheet then draws the Precise Location line with the way to the switch, in place of *Try again in the open*, which
- * would not help. **Use my location** draws the line in every state, as a task's Use where I am does.
+ * would not help. **Use my location** draws the line in every state, as a task's Use where I am does. When the map
+ * has nowhere to open and that press gets an area, a refusal or nothing, the map opens wide to be dragged, and
+ * **Put A7 here** waits until the ring has left the wide start (`boxMapStart.ts`).
  *
  * The words and the rules are `whereIsBox.ts`. Leaflet loads only when this is drawn.
  */
@@ -17,12 +19,13 @@ import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
 import { directionsUrlForAddress, directionsUrlForPoint } from '../../lib/directionsUrl'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { requestMyFix, type LatLng, type MyFix } from '../../lib/materials/myLocation'
+import { boxMapOpening, boxMapReading, boxPinReady } from '../../lib/materials/boxMapStart'
 import type { Container, ContainerMove, Movement, Place } from '../../lib/materials/onSite'
 import type { PhotoNote } from '../../lib/materials/photo'
 import { pinContainer } from '../../lib/materials/onSiteStore'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { taskPlaceNoFixWords, taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
-import { HOW_FAR_ROUGH_NOTE_WORDS, WHERE_I_AM_WEAK_NOTE_WORDS, whereIAmRoughNoteWords } from '../../lib/tasks/taskPlaceReading'
+import { HOW_FAR_ROUGH_NOTE_WORDS, WHERE_I_AM_WEAK_NOTE_WORDS, WHERE_I_AM_WIDE_WORDS, whereIAmRoughNoteWords, whereIAmRoughWideNoteWords } from '../../lib/tasks/taskPlaceReading'
 import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
 import { useRoughHeld } from '../../hooks/usePreciseLocation'
 import { PreciseReadingLine } from '../paintedMap/PreciseLocationLine'
@@ -203,29 +206,39 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   const [locating, setLocating] = useState<string | null>(null)
   // Use my location got an area and not a spot: its margin, for the line. The map was not moved.
   const [flyRoughM, setFlyRoughM] = useState<number | null>(null)
-  const startPlacing = () => { setPlacing(true); setCenter(null); setFly(null); setLocating(null); setFlyRoughM(null); setRefused(null); setRefusedRoughM(null) }
+  // Use my location got no spot. A map with nowhere to open then opens wide, so there is still a map to drag.
+  const [openWide, setOpenWide] = useState(false)
+  const startPlacing = () => { setPlacing(true); setCenter(null); setFly(null); setLocating(null); setFlyRoughM(null); setOpenWide(false); setRefused(null); setRefusedRoughM(null) }
   const useMyLocation = () => {
     setLocating('Finding you…')
     requestMyFix(
       (p) => {
         setLocating(null)
-        if (isRoughFix(p.accuracyM)) {
-          setFlyRoughM(p.accuracyM)
+        const read = boxMapReading(p)
+        if (read.kind === 'area') {
+          setFlyRoughM(read.roughM)
+          setOpenWide(true)
           return
         }
         setFlyRoughM(null)
-        setFly({ ...p })
+        setFly(read.fly)
       },
       (why) => {
         setFlyRoughM(null)
+        setOpenWide(true)
         setLocating(why === 'refused' ? 'Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.' : why === 'none' ? 'This device gives no location. Drag the map by hand.' : 'Could not find you. Drag the map by hand.')
       },
     )
   }
   // The margin belongs to the reading: the line speaks of the phone only while the ring still sits on it.
   const flyAccuracy = fly && center ? taskPlaceSheetAccuracy(fly, center) : null
+  const mapPins = whereMapPins(container, containers, today)
+  const mapFocusId = pinned ? container.id : null
+  const opening = boxMapOpening({ pins: mapPins, focusId: mapFocusId, center: jobCenter, painted, fly, openWide: placing && openWide })
+  // The wide view's own centre is nobody's place: the press waits for a drag.
+  const canPut = boxPinReady(center, opening.wide)
   const putHere = () => {
-    if (!center) return
+    if (!center || !canPut) return
     // The phone's margin stands only while the ring is still on the phone's reading; a drag makes it a person's word.
     pinContainer(container.id, center, { accuracyM: taskPlaceSheetAccuracy(fly, center), byName })
     setPlacing(false)
@@ -239,7 +252,6 @@ export default function WhereIsBox({ container, containers, places, moves, movem
     setAsked(false)
   }
 
-  const mapPins = whereMapPins(container, containers, today)
   const directions = pin ? directionsUrlForPoint(pin.lat, pin.lng) : directionsUrlForAddress(jobAddress)
   const directionsPress = directions ? <button type="button" style={btn} onClick={() => openInExternalBrowser(directions)}>{pin ? WHERE_DIRECTIONS_PRESS : WHERE_SITE_DIRECTIONS_PRESS}</button> : null
   const foundPress = (strong: boolean) => <button type="button" style={strong ? primary : btn} onClick={foundIt} aria-busy={finding}>{finding ? 'Finding you…' : WHERE_FOUND_PRESS}</button>
@@ -305,10 +317,11 @@ export default function WhereIsBox({ container, containers, places, moves, movem
       ) : null}
       <Suspense fallback={<p style={muted}>Loading the map…</p>}>
         <OnSiteMapLazy
-          center={jobCenter}
+          center={opening.center}
+          startZoom={opening.startZoom}
           pins={mapPins}
           height={placing ? (touch ? 320 : 380) : touch ? 240 : 300}
-          focusId={pinned ? container.id : null}
+          focusId={mapFocusId}
           painted={painted}
           me={placing ? null : meSpot}
           lineTo={placing ? null : pin}
@@ -322,17 +335,20 @@ export default function WhereIsBox({ container, containers, places, moves, movem
         <>
           <div style={two}>
             <button type="button" style={btn} onClick={useMyLocation}>Use my location</button>
-            <button type="button" style={center ? primary : { ...btn, background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' }} disabled={!center} onClick={putHere}>Put {label} here</button>
+            <button type="button" style={canPut ? primary : { ...btn, background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' }} disabled={!canPut} onClick={putHere}>Put {label} here</button>
           </div>
           {locating ? <p style={muted}>{locating}</p> : null}
           {flyRoughM != null ? (
             <div data-testid="where-is-box-fly-rough">
-              <PreciseReadingLine accuracyM={flyRoughM} roughNote={whereIAmRoughNoteWords} />
+              {/* A map that has just opened wide was not left where it was, so the sentence does not say so. */}
+              <PreciseReadingLine accuracyM={flyRoughM} roughNote={opening.wide ? whereIAmRoughWideNoteWords : whereIAmRoughNoteWords} />
             </div>
           ) : flyAccuracy != null ? (
             <div data-testid="where-is-box-fly-read">
               <PreciseReadingLine accuracyM={flyAccuracy} weakNote={WHERE_I_AM_WEAK_NOTE_WORDS} />
             </div>
+          ) : opening.wide && !canPut ? (
+            <p role="status" style={muted} data-testid="where-is-box-wide">{WHERE_I_AM_WIDE_WORDS}</p>
           ) : null}
           <button type="button" style={quiet} onClick={() => setPlacing(false)}>Back, leave the pin as it is</button>
           {pinned ? <button type="button" style={{ ...quiet, color: 'var(--text-muted)', fontSize: '0.85rem' }} onClick={removePin}>Remove the pin</button> : null}

@@ -156,6 +156,36 @@ describe('publishing', () => {
     expect(walkedPublishPress(empty, { revision: 0, published: null }).why).toEqual(['Photos and video at Standard does not say what it means.'])
   })
 
+  it('has nothing to publish once a changed page is put back, on a topic with no fact and one with no Off', () => {
+    const published = paper()
+    expect(published.topics.find((t) => t.key === 'photos')).not.toHaveProperty('fact')
+    expect(published.topics.find((t) => t.key === 'term')).not.toHaveProperty('offSays')
+
+    const renamed = withPaperWords(published, 'topic.photos.label', 'A made-up name')
+    expect(walkedPublishPress(renamed, { revision: 2, published })).toMatchObject({ label: 'Publish revision 3', dead: false })
+    const back = revertPage(renamed, published, 'topic:photos')
+    expect(changedPages(back, published)).toEqual([])
+    expect(walkedPublishPress(back, { revision: 2, published })).toEqual({ label: 'Nothing to publish', dead: true, why: [] })
+    expect(back.topics.find((t) => t.key === 'photos')).not.toHaveProperty('fact')
+
+    const offBack = revertPage(published, published, `topic:term:${PAPER_OFF}`)
+    expect(walkedPublishPress(offBack, { revision: 2, published })).toEqual({ label: 'Nothing to publish', dead: true, why: [] })
+    expect(offBack.topics.find((t) => t.key === 'term')).not.toHaveProperty('offSays')
+  })
+
+  it('puts a fact and an Off line back where the published revision has them, and takes away one it never had', () => {
+    const published = paper()
+    const fact = withPaperWords(published, 'topic.term.fact', 'A made-up fact')
+    expect(revertPage(fact, published, 'topic:term')).toEqual(published)
+    const off = withPaperWords(published, 'topic.photos.offSays', 'A made-up Off line.')
+    expect(revertPage(off, published, `topic:photos:${PAPER_OFF}`)).toEqual(published)
+
+    const stray: PaperDef = { ...published, topics: published.topics.map((t) => (t.key === 'photos' ? { ...t, fact: 'A made-up fact' } : t)) }
+    const cleared = revertPage(stray, published, 'topic:photos')
+    expect(cleared.topics.find((t) => t.key === 'photos')).not.toHaveProperty('fact')
+    expect(walkedPublishPress(cleared, { revision: 2, published })).toEqual({ label: 'Nothing to publish', dead: true, why: [] })
+  })
+
   it('says what someone outside sees now', () => {
     expect(walkedNote({ revision: 0 }, 0)).toBe('Nobody outside sees this until you publish.')
     expect(walkedNote({ revision: 2 }, 0)).toBe('Everyone outside sees revision 2, as you do.')

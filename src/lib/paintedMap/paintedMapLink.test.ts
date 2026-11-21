@@ -203,4 +203,27 @@ describe('a visit as the share sheet says it', () => {
     const moved = { ...first, last_lat: 30.3512, last_lng: -97.7521, last_located_at: '2026-11-15T21:05:00Z' }
     expect(visitLine(moved, whenOf)).toMatchObject({ where: 'Showed where they were, Nov 15, 3:05 PM.', whereUrl: 'https://www.google.com/maps/search/?api=1&query=30.351200,-97.752100' })
   })
+
+  it('says a reader showed only an area, and hands the office no pin on its middle (v2.8105)', async () => {
+    const { visitLine } = await import('./paintedMapLink')
+    // A phone with Precise Location off: the point is the middle of an area two miles to a side.
+    const area = { ...row, first_lat: 30.35, first_lng: -97.75, first_located_at: '2026-11-15T21:02:30Z', first_accuracy_m: 3200 }
+    expect(visitLine(area, whenOf)).toMatchObject({ where: 'Showed only the area they were in, 4 miles across, Nov 15, 3:02 PM.', whereUrl: null })
+    // Exactly 1,000 m is a weak spot and not an area: the edge is the walk's own.
+    expect(visitLine({ ...area, first_accuracy_m: 1000 }, whenOf)).toMatchObject({ where: 'Showed where they were, Nov 15, 3:02 PM.', whereUrl: 'https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000' })
+    // A row read with no margin, or kept before the phone said one, is taken as a spot, as it always was.
+    expect(visitLine({ ...area, first_accuracy_m: null }, whenOf).whereUrl).toBe('https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000')
+  })
+
+  it('speaks of a spot when either kept point is one, the latest first, and of an area only when neither is', async () => {
+    const { visitLine, visitPoint } = await import('./paintedMapLink')
+    const both = { ...row, first_lat: 30.35, first_lng: -97.75, first_located_at: '2026-11-15T21:02:30Z', first_accuracy_m: 8, last_lat: 30.4, last_lng: -97.8, last_located_at: '2026-11-15T21:05:00Z', last_accuracy_m: 5000 }
+    // The latest is an area, the first was a spot: the spot is where they were, at its own time.
+    expect(visitLine(both, whenOf)).toMatchObject({ where: 'Showed where they were, Nov 15, 3:02 PM.', whereUrl: 'https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000' })
+    // The first was an area off a cell tower, the latest is a spot: the latest.
+    expect(visitPoint({ ...both, first_accuracy_m: 1414, last_accuracy_m: 6 })).toMatchObject({ lat: 30.4, at: '2026-11-15T21:05:00Z' })
+    // Both are areas: the latest one, and no pin.
+    expect(visitLine({ ...both, first_accuracy_m: 3200 }, whenOf)).toMatchObject({ where: 'Showed only the area they were in, 7 miles across, Nov 15, 3:05 PM.', whereUrl: null })
+    expect(visitPoint(row)).toBeNull()
+  })
 })

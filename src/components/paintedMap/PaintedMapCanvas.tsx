@@ -45,6 +45,7 @@ import { PAINT_COLOR, PAINT_INK, PAINT_ME_BLUE, PAINT_PAPER } from './paintedMap
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useMapTime } from '../../hooks/useMapTime'
 import { googleMapsBrowserKey } from '../../lib/dashboardJobsMap'
+import { googleKeyRefusedOnPage } from '../../lib/map/googleAuthFailure'
 import { googleMapTypeForLayer, type MapLayerChoice } from '../../lib/map/googleMapType'
 import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
 import { MapTimeRow } from '../map/MapTimeRow'
@@ -726,7 +727,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
   }
   // Which map is under the painted map (punch list #387). A failure of Google is kept for the page, and a screen that
   // left Google's map to make something keeps this map until it closes.
-  const [googleFailed, setGoogleFailed] = useState(() => paintedGoogleFailedOnPage())
+  const [googleFailed, setGoogleFailed] = useState(() => paintedGoogleFailedOnPage() || googleKeyRefusedOnPage())
   const [keptOnLeaflet, setKeptOnLeaflet] = useState(false)
   const googleKey = googleAsk ? googleMapsBrowserKey() : ''
   const pictureUp = googleAsk?.pictureUp === true

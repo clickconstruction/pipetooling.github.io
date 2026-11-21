@@ -17,14 +17,24 @@ vi.mock('../../hooks/useAuth', async () => (await import('../../test/renderSmoke
 const opened: string[] = []
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => { opened.push(url) } }))
 vi.mock('./OnSiteMap', () => ({
-  default: function MapStub(p: { pins: Array<{ label: string; tone?: string }>; me?: unknown; lineTo?: unknown; placing?: { label: string } | null; flyTo?: { lat: number; lng: number } | null; onCenterChange?: (c: { lat: number; lng: number }) => void }) {
-    const { flyTo, onCenterChange } = p
+  default: function MapStub(p: { center?: { lat: number; lng: number } | null; startZoom?: number; pins: Array<{ label: string; tone?: string; lat: number; lng: number }>; me?: unknown; lineTo?: unknown; placing?: { label: string } | null; flyTo?: { lat: number; lng: number } | null; onCenterChange?: (c: { lat: number; lng: number }) => void }) {
+    const { flyTo, onCenterChange, startZoom } = p
+    // Where the real map opens: a pin, the job's address, or where it was flown. With none it draws an empty frame.
+    const start = p.pins[0] ?? p.center ?? flyTo ?? null
+    const lat = start?.lat ?? null
+    const lng = start?.lng ?? null
     // The real map says where its ring is each time it is flown somewhere.
     useEffect(() => {
       if (flyTo) onCenterChange?.({ lat: flyTo.lat, lng: flyTo.lng })
     }, [flyTo, onCenterChange])
+    // The real map says where its ring is as it opens too. This stand-in says so for a wide start alone, which is
+    // the one a pin press has to wait on.
+    useEffect(() => {
+      if (startZoom != null && lat != null && lng != null) onCenterChange?.({ lat, lng })
+    }, [startZoom, lat, lng, onCenterChange])
+    if (!start) return <div data-testid="map-empty" />
     return (
-      <div data-testid="map" data-pins={p.pins.map((x) => `${x.label}:${x.tone}`).join(',')} data-me={p.me ? 'yes' : 'no'} data-line={p.lineTo ? 'yes' : 'no'} data-placing={p.placing?.label ?? ''} data-fly={flyTo ? `${flyTo.lat},${flyTo.lng}` : ''}>
+      <div data-testid="map" data-at={`${start.lat},${start.lng}`} data-zoom={startZoom ?? ''} data-pins={p.pins.map((x) => `${x.label}:${x.tone}`).join(',')} data-me={p.me ? 'yes' : 'no'} data-line={p.lineTo ? 'yes' : 'no'} data-placing={p.placing?.label ?? ''} data-fly={flyTo ? `${flyTo.lat},${flyTo.lng}` : ''}>
         {p.onCenterChange ? <button type="button" onClick={() => p.onCenterChange?.({ lat: 29.7, lng: -98.6 })}>drag the map</button> : null}
       </div>
     )
@@ -46,6 +56,9 @@ const moves: ContainerMove[] = [{ id: 'm1', jobId: 'j1', containerId: 'a7', from
 const movements: Movement[] = [{ id: 'c1', jobId: 'j1', partId: null, partName: 'Elbow', manufacturer: null, quantity: 40, reason: 'counted', fromContainerId: 'a7', toContainerId: 'a7', note: '', byUserId: null, byName: 'Marcus Reyes', at: '2026-11-12T15:05:00Z', source: null, itemId: null }]
 const onMoveBox = vi.fn()
 const draw = (container: Container) => renderWithProviders(<WhereIsBox touch container={container} containers={[container, a3]} places={places} moves={moves} movements={movements} photos={[]} jobCenter={PIN} jobAddress="100 Made-up Way" byName="Priya Nair" onMoveBox={onMoveBox} now={NOW} />)
+
+/** A box nobody pinned, alone on a job with no address on the map and no painted map: the map has nowhere to open. */
+const drawNowhere = () => renderWithProviders(<WhereIsBox touch container={box()} containers={[box()]} places={places} moves={moves} movements={movements} photos={[]} jobCenter={null} jobAddress="" byName="Priya Nair" onMoveBox={onMoveBox} now={NOW} />)
 
 /** A phone that answers with this reading, once for a press and again for each watch. */
 function phoneAt(fix: { lat: number; lng: number; accuracy: number } | null, code = 2) {
@@ -230,6 +243,70 @@ describe('WhereIsBox', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     await waitFor(() => expect(screen.getByTestId('map').getAttribute('data-fly')).toBe('29.5004,-98.4003'))
     expect(screen.getByTestId('where-is-box-fly-read').textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft. Drag the map until the ring is on the spot.')
+  })
+
+  it('with nowhere to open, Use my location on a rough reading opens the map wide to be dragged, and the pin waits for the drag (#402)', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    drawNowhere()
+    fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
+    expect(await screen.findByTestId('map-empty')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    // The map has just opened, so the sheet does not say it was not moved.
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map opened wide. Zoom in and drag it until the ring is on the spot, or turn the switch on and press again.')
+    const map = await screen.findByTestId('map')
+    // Wide, on the task sheet's wide start, and never on the middle of the area.
+    expect(map.getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(map.getAttribute('data-zoom')).toBe('4')
+    expect(map.getAttribute('data-fly')).toBe('')
+    // The wide start is nobody's place: the press waits for a drag.
+    expect((screen.getByRole('button', { name: 'Put A7 here' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Put A7 here' }))
+    expect(pinContainer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    expect((screen.getByRole('button', { name: 'Put A7 here' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Put A7 here' }))
+    expect(pinContainer).toHaveBeenCalledWith('a7', { lat: 29.7, lng: -98.6 }, { accuracyM: null, byName: 'Priya Nair' })
+  })
+
+  it.each([
+    ['refuses', 1, 'Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.'],
+    ['cannot be found', 2, 'Could not find you. Drag the map by hand.'],
+  ])('with nowhere to open, a phone that %s still leaves a map to drag (#402)', async (_what, code, words) => {
+    phoneAt(null, code)
+    drawNowhere()
+    fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
+    expect(await screen.findByTestId('map-empty')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(await screen.findByText(words)).toBeTruthy()
+    const map = await screen.findByTestId('map')
+    expect(map.getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(map.getAttribute('data-zoom')).toBe('4')
+    expect(screen.getByTestId('where-is-box-wide').textContent).toBe('The map opened wide. Zoom in and drag it until the ring is on the spot.')
+    expect((screen.getByRole('button', { name: 'Put A7 here' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    // Dragged off the wide start: the words about it go, and the pin can be put.
+    expect(screen.queryByTestId('where-is-box-wide')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Put A7 here' }))
+    expect(pinContainer).toHaveBeenCalledWith('a7', { lat: 29.7, lng: -98.6 }, { accuracyM: null, byName: 'Priya Nair' })
+  })
+
+  it('with nowhere to open, a sure reading opens the map on it, and a rough one after that leaves it there (#402)', async () => {
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 5 })
+    drawNowhere()
+    fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))
+    await screen.findByTestId('map-empty')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const map = await screen.findByTestId('map')
+    expect(map.getAttribute('data-at')).toBe('29.5004,-98.4003')
+    expect(map.getAttribute('data-zoom')).toBe('')
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map was not moved. Drag it until the ring is on the spot, or turn the switch on and press again.')
+    expect(screen.getByTestId('map').getAttribute('data-at')).toBe('29.5004,-98.4003')
+    expect(screen.getByTestId('map').getAttribute('data-zoom')).toBe('')
   })
 
   it('a phone that cannot say where it is names the reason', async () => {

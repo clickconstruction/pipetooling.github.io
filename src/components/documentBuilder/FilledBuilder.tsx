@@ -84,6 +84,12 @@ type Props = {
 /** How long the typing rests before a draft is saved. */
 const SAVE_AFTER_MS = 700
 
+/** Where the drafts stand on the bar. `failed` holds from a save that did not land until a later one does. */
+type SaveState = 'saved' | 'saving' | 'failed'
+const SAVE_WORDS: Record<SaveState, string> = { saved: 'Draft saved', saving: 'Saving the draft…', failed: 'Draft not saved' }
+/** One draft's save. It answers whether the draft landed. */
+type Save = () => Promise<boolean>
+
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, minWidth: 0 }
 const CARD_TITLE: CSSProperties = { margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)' }
 const MUTED: CSSProperties = { margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }
@@ -150,7 +156,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   const [marks, setMarks] = useState(true)
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
+  const [saveState, setSaveState] = useState<SaveState>('saved')
   const [readOpen, setReadOpen] = useState(false)
   const [readName, setReadName] = useState('')
   const [outcome, setOutcome] = useState<{ line: string; tone: 'success' | 'warning' | 'error'; head: string | null; failed: Array<{ name: string; why: string }> } | null>(null)
@@ -196,10 +202,17 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
 
   // ---- Saving: a draft is saved a moment after the typing rests, one save after another for each thing saved.
   const here = useRef(true)
-  const pending = useRef(new Map<string, { timer: number; run: () => Promise<void> }>())
+  const pending = useRef(new Map<string, { timer: number; run: Save }>())
   const chains = useRef(new Map<string, Promise<void>>())
-  const enqueue = useCallback((key: string, run: () => Promise<void>) => {
-    const next = (chains.current.get(key) ?? Promise.resolve()).then(run)
+  /** The drafts whose last save did not land, with no save asked for since. Leaving the builder sends each again. */
+  const unsaved = useRef(new Map<string, Save>())
+  const enqueue = useCallback((key: string, run: Save) => {
+    unsaved.current.delete(key)
+    const next = (chains.current.get(key) ?? Promise.resolve()).then(async () => {
+      if (await run()) unsaved.current.delete(key)
+      else unsaved.current.set(key, run)
+      if (here.current) setSaveState(unsaved.current.size > 0 ? 'failed' : pending.current.size === 0 ? 'saved' : 'saving')
+    })
     chains.current.set(key, next)
     return next
   }, [])
@@ -209,13 +222,14 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
       pending.current.delete(key)
       void enqueue(key, p.run)
     }
+    for (const [key, run] of [...unsaved.current]) void enqueue(key, run)
     await Promise.all([...chains.current.values()])
   }, [enqueue])
   const queue = useCallback(
-    (key: string, run: () => Promise<void>) => {
+    (key: string, run: Save) => {
       const was = pending.current.get(key)
       if (was) window.clearTimeout(was.timer)
-      setSaveState('saving')
+      setSaveState((state) => (state === 'failed' ? state : 'saving'))
       const timer = window.setTimeout(() => {
         pending.current.delete(key)
         void enqueue(key, run)
@@ -233,32 +247,30 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     }
   }, [flush])
 
-  const settled = () => {
-    if (here.current && pending.current.size === 0) setSaveState('saved')
-  }
+  /** Says why a save did not land, and answers whether it did. The bar's words are set where the save was queued. */
   const said = (res: Landed<unknown>) => {
     if (!res.ok && here.current) setRefusal(res.error)
+    return res.ok
   }
 
   const saveUsual = async () => {
     const def = usualRef.current
-    if (!def) return
+    if (!def) return true
     const res = await io.saveBuilderDraft(entry.id, def)
+    // The saved row goes up to the tab even after the builder is left: the tab opens the builder from it next time.
     if (res.ok) onRecord(res.value)
-    said(res)
-    settled()
+    return said(res)
   }
   /** A job's own part saved. A job with no row yet gets its row here. */
   const saveJob = async (projectId: string) => {
     const s = sheetsRef.current.get(projectId)
-    if (!s) return
+    if (!s) return true
     const res = s.id ? await io.saveSheetDraft(s.id, s.own) : await io.startSheet(entry.id, projectId, s.own)
     if (res.ok && !s.id) {
       const now = sheetsRef.current.get(projectId)
       if (now) setSheets(new Map(sheetsRef.current).set(projectId, { ...now, id: res.value.id }))
     }
-    said(res)
-    settled()
+    return said(res)
   }
 
   const changeUsual = (next: SheetDef) => {
@@ -424,8 +436,8 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
           <Chip chip={{ tone: 'warn', words: read.words }} />
         )}
         <span style={{ flex: '1 1 auto' }} />
-        <span style={FINE} aria-live="polite">
-          {saveState === 'saving' ? 'Saving the draft…' : 'Draft saved'}
+        <span style={saveState === 'failed' ? { ...FINE, fontWeight: 600, color: 'var(--text-red-700)' } : FINE} aria-live="polite">
+          {SAVE_WORDS[saveState]}
         </span>
         <button type="button" disabled={press.dead || busy} style={mainPress(press.dead || busy)} onClick={() => void (mode === 'usual' ? publishUsual() : publishJob())}>
           {press.label}

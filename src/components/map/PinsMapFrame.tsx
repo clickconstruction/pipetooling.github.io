@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useState, type CSSProperties, type ReactNo
 import { Layers } from 'lucide-react'
 import { useMapTime } from '../../hooks/useMapTime'
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
+import { googleKeyRefusedOnPage } from '../../lib/map/googleAuthFailure'
 import { googleMapTypeForLayer, type MapLayerChoice } from '../../lib/map/googleMapType'
 import {
   MAP_CORNER_PRESS_BOTTOM_PX,
@@ -74,7 +75,8 @@ export type PinsMapFrameProps = PinsMapCanvasProps & {
 export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = false, providerSwitchKey, noTime = false, timeSpot, timeDotsWords, overlay, boxStyle, style, children, ...canvas }: PinsMapFrameProps) {
   const { pins, selectedId, height, isMobile } = canvas
   const [layerPick, setLayerPick] = useState<MapLayerChoice | null>(null)
-  const [googleFailed, setGoogleFailed] = useState(false)
+  // A key Google refused earlier on this page is refused for this map too: it opens on the other map at once.
+  const [googleFailed, setGoogleFailed] = useState(() => googleKeyRefusedOnPage())
   const layer = layerPick ?? defaultLayer
   const [providerPick, setProviderPick] = useState<MapProviderPick | null>(() => (providerSwitchKey ? readMapProviderPick(providerSwitchKey) : null))
   const key = googleMapsBrowserKey()

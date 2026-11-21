@@ -449,6 +449,15 @@ describe('PaintedMapShareSheet, a link that is out', () => {
     expect((screen.getByRole('link', { name: 'See that place' }) as HTMLAnchorElement).href).toBe('https://www.google.com/maps/search/?api=1&query=30.350000,-97.750000')
   })
 
+  it('says a reader showed only an area, with no place to open (v2.8105)', async () => {
+    io.links = [OPEN]
+    io.visits = [{ id: 'v1', visitor_name: 'Dana Reyes', user_id: null, device_words: 'iPhone · Safari', last_opened_at: '2026-11-15T21:02:00Z', open_count: 1, first_lat: 30.35, first_lng: -97.75, first_located_at: '2026-11-15T21:03:00Z', first_accuracy_m: 3200, last_lat: null, last_lng: null, last_located_at: null, last_accuracy_m: null }]
+    sheet()
+    await waitFor(() => expect(document.querySelectorAll('[data-painted-share-visit]')).toHaveLength(1))
+    expect(document.querySelector('[data-painted-share-visit-area]')?.textContent).toMatch(/^Showed only the area they were in, 4 miles across, .+\.$/)
+    expect(screen.queryByRole('link', { name: 'See that place' })).toBeNull()
+  })
+
   it('says nothing about who opened it to a reader the list is not for', async () => {
     io.links = [OPEN]
     io.visits = []

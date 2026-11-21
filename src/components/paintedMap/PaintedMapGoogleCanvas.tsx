@@ -66,6 +66,8 @@ export type PaintedMapGoogleCanvasProps = {
 }
 
 const LOOK = { ink: PAINT_INK, paint: PAINT_COLOR }
+/** What the frame says while Google's script is on its way. The window's own words for a map that is not up yet. */
+export const PAINTED_GOOGLE_LOADING_WORDS = 'Loading the map…'
 const PLACE_SIZE = 26
 /** The person's dot, as the Leaflet canvas draws it: smaller than the dot a finger drags. */
 const ME_BOX = 22
@@ -285,7 +287,15 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
 
   return (
     <GoogleCanvasBoundary onUnavailable={onUnavailable}>
-      <div ref={frameRef} data-painted-google-canvas data-map-type={mapTypeId} style={{ width: '100%', height: '100%' }}>
+      <div ref={frameRef} data-painted-google-canvas data-map-type={mapTypeId} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        {/* Until Google's script is in, the frame holds nothing: no map, no line, no place. On a weak signal that can
+            last the whole load timeout, so the frame says what it is doing, in the words the window uses before it. */}
+        {loaded ? null : (
+          // In the middle of the frame: at 320 px the view presses run across its top and would cover a line set there.
+          <p data-painted-google-loading role="status" style={{ position: 'absolute', inset: 0, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', pointerEvents: 'none' }}>
+            {PAINTED_GOOGLE_LOADING_WORDS}
+          </p>
+        )}
         <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${formatErrorMessage(e)}`)}>
           {first ? (
             <GoogleMap

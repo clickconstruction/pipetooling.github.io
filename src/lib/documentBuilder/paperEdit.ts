@@ -186,6 +186,17 @@ export function isPathChanged(draft: PaperDef, published: PaperDef | null, path:
   return published != null && paperWordsAt(draft, path) !== paperWordsAt(published, path)
 }
 
+/**
+ * A topic with one of its pieces that need not be there, as the published revision has it. Where the published topic
+ * has none, the key goes: a key left holding nothing is not what the stored copy holds.
+ */
+function withPieceAsWas(topic: PaperTopic, piece: 'fact' | 'offSays', was: string | undefined): PaperTopic {
+  const next = { ...topic }
+  if (was === undefined) delete next[piece]
+  else next[piece] = was
+  return next
+}
+
 /** The draft with one page put back as the published revision has it. */
 export function revertPage(draft: PaperDef, published: PaperDef, page: string): PaperDef {
   if (page === 'notice') return { ...draft, notice: published.notice }
@@ -197,8 +208,8 @@ export function revertPage(draft: PaperDef, published: PaperDef, page: string): 
   const [, key, level] = page.split(':')
   const was = topicAt(published, key)
   if (!was || key == null) return draft
-  if (level == null) return withTopic(draft, key, (t) => ({ ...t, label: was.label, section: was.section, fact: was.fact }))
-  if (level === PAPER_OFF) return withTopic(draft, key, (t) => ({ ...t, offSays: was.offSays }))
+  if (level == null) return withTopic(draft, key, (t) => withPieceAsWas({ ...t, label: was.label, section: was.section }, 'fact', was.fact))
+  if (level === PAPER_OFF) return withTopic(draft, key, (t) => withPieceAsWas(t, 'offSays', was.offSays))
   const wasLevel = was.levels[level]
   return wasLevel ? withTopic(draft, key, (t) => ({ ...t, levels: { ...t.levels, [level]: wasLevel } })) : draft
 }

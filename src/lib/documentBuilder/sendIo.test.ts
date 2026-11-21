@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../supabase', () => ({ supabase: {} }))
 
-import { contactsOf, pageFromLinks, sendRecordFromRow } from './sendIo'
+import { contactsOf, pageFromLinks, sendRecordFromRow, sendRefusalWords } from './sendIo'
 import { DOCUMENT_BUILDER_SEND_REFUSALS, parseSheetSend, sheetSendEmail, sheetSendMessageKey } from './sendWords'
 import { plainWordsFailures } from '../plainWords'
 
@@ -69,5 +69,24 @@ describe('the send’s shared rules', () => {
   it('reads in plain words', () => {
     const texts = [...Object.values(DOCUMENT_BUILDER_SEND_REFUSALS).map((r) => r.words), ...sheetSendEmail({ job: 'a job', note: '', why: 'first', sheetUrl: 'a link' }).lines, ...sheetSendEmail({ job: 'a job', note: '', why: 'changed', sheetUrl: null }).lines]
     expect(texts.flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+})
+
+describe('the words for a send the function refused', () => {
+  it('are the key’s own words with no reason beside them, and the fallback with no answer at all', () => {
+    expect(sendRefusalWords({ error: 'pageOff', words: DOCUMENT_BUILDER_SEND_REFUSALS.pageOff.words })).toBe(DOCUMENT_BUILDER_SEND_REFUSALS.pageOff.words)
+    expect(sendRefusalWords(null)).toBe(DOCUMENT_BUILDER_SEND_REFUSALS.failed.words)
+    expect(sendRefusalWords({ error: 'failed', words: '', detail: '  ' })).toBe(DOCUMENT_BUILDER_SEND_REFUSALS.failed.words)
+  })
+  it('never say Try again when the email went and only its record did not land', () => {
+    const words = sendRefusalWords({ error: 'failed', words: DOCUMENT_BUILDER_SEND_REFUSALS.failed.words, detail: 'Sent, but not recorded: a made-up reason' })
+    expect(words).toBe('The email went, but the send was not recorded here. Do not send it again. The reason: a made-up reason')
+    expect(words).not.toMatch(/try again/i)
+    expect(sendRefusalWords({ error: 'failed', words: 'x', detail: 'Sent, but not recorded: ' })).toBe('The email went, but the send was not recorded here. Do not send it again.')
+  })
+  it('name the reason the function gave for any other refusal', () => {
+    expect(sendRefusalWords({ error: 'sendFailed', words: DOCUMENT_BUILDER_SEND_REFUSALS.sendFailed.words, detail: 'a made-up answer from the mail service' })).toBe(
+      'The email did not go. Nothing was recorded. Try again. The reason: a made-up answer from the mail service',
+    )
   })
 })

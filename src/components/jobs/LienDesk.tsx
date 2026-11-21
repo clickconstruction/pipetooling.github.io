@@ -2105,7 +2105,8 @@ export default function LienDesk({
         filings: data.filingsByJob[selected.jobId] ?? [],
         allFilings: Object.values(data.filingsByJob).flat(),
         checked: months,
-        thisItem: item ?? null,
+        // On the Sent pile `selected.item` is the sent item, so the kernel leaves this notice out of the columns: it is among the papers.
+        thisItem: item ?? (selected.pile === 'sent' ? selected.item : null),
         thisPile: selected.pile,
         propertyKind: property.propertyKind ?? '',
         todayYmd,

@@ -26,7 +26,9 @@ failure modes needing opposite responses; your first job is telling them apart.
      time. Recommend `select pg_terminate_backend(<pid>);` (Dashboard → SQL
      editor — the user runs it; a single backend kill is data-safe, its
      transaction rolls back). Do NOT run DDL or restarts yourself.
-   - **Pooler returns `EAUTHQUERY` / `ECIRCUITBREAKER` (Mode B)** → Supavisor
+   - **Pooler returns `EAUTHQUERY` / `ECIRCUITBREAKER`, or the pooler and the
+     CLI time out connecting (`{:error, :timeout}`, `login role status 544`)
+     (Mode B)** → Supavisor
      cannot authenticate you against Postgres, so live forensics are blind and
      there is no blocker pid to find. Check https://status.supabase.com (its
      component list showed 100% green during a real 8-minute outage — trust

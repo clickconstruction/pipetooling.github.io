@@ -5,7 +5,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
-import { lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
+import { lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { lienNoticeOpensOn } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
@@ -125,7 +125,7 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
     return (
       <div className="lienMonthClosed">
         <span style={chip('var(--bg-muted)', 'var(--text-muted)')}>closed {formatYmdMonthDay(w.deadline)}</span>
-        <span className="lienMonthClosedTail lienLedgerFaint" title="named after the window — information">named after the window — information</span>
+        <span className="lienMonthClosedTail lienLedgerFaint" title={lienGridNoticedWords(r.cells)}>{lienGridNoticedWords(r.cells)}</span>
       </div>
     )
   }
@@ -133,7 +133,7 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
   return (
     <div className="lienMonthClosed">
       <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>
-      {w.noted ? <span className="lienLedgerFaint" style={{ whiteSpace: 'nowrap' }}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
+      {w.noted ? <span className="lienLedgerFaint lienLedgerNoted">noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
       {openWords ? <span className="lienMonthClosedTail lienLedgerFaint" title={openWords}>{w.noted ? '· ' : ''}{openWords}</span> : null}
       {!w.noted && onNoteMissed ? (
         <button type="button" onClick={() => onNoteMissed(r.month)} data-lien-desk-note-missed className="lienLedgerNoteMissed" title="Write the closed window down with your name — not a skip, just that it was seen">
@@ -192,6 +192,8 @@ export default function LienDeskMonths({
   const missed = grid.rows.filter(isMissed)
   const infoRows = grid.rows.filter((r) => r.thisNotice.info)
   const lateRows = grid.rows.filter((r) => r.thisNotice.late)
+  // A tick is asked for only where one can be made: a notice past editing, or one whose months are all closed, has none.
+  const canTick = grid.rows.some((r) => !r.thisNotice.locked)
 
   // The foot of this notice's column (v2.7430): the months it names and their count, under the total they make.
   const foot: ReactNode =
@@ -218,15 +220,15 @@ export default function LienDeskMonths({
         </div>
       ) : (
         <>
-          {thisPaper || filings.length > 0 ? (
+          {(thisPaper && canTick) || filings.length > 0 ? (
             <p className="lienLedgerLead" data-lien-ledger-lead>
-              {thisPaper ? 'Tick a month to put it on this notice.' : null}
-              {thisPaper && filings.length > 0 ? ' ' : null}
+              {thisPaper && canTick ? 'Tick a month to put it on this notice.' : null}
+              {thisPaper && canTick && filings.length > 0 ? ' ' : null}
               {filings.length > 0 ? 'A check is a paper that already names the month.' : null}
             </p>
           ) : null}
           <div className="lienLedgerGridFrame">
-            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)}>
+            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)} data-this={thisPaper ? 'yes' : 'no'}>
               <thead>
                 <tr>
                   <th data-col="month">Month</th>

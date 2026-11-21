@@ -9,6 +9,7 @@
  */
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { APIProvider, Map as GoogleMap } from '@vis.gl/react-google-maps'
+import { onGoogleAuthFailure } from '../../lib/map/googleAuthFailure'
 
 const LOAD_TIMEOUT_MS = 8000
 
@@ -35,18 +36,10 @@ export default function PermitSkimGoogleStill({ apiKey, lat, lng, zoom, onUnavai
     return () => window.clearTimeout(t)
   }, [loaded, onUnavailable])
 
-  // A rejected key does not fail the script load: Google paints a grey map and calls this global.
-  useEffect(() => {
-    const w = window as Window & { gm_authFailure?: () => void }
-    const prev = w.gm_authFailure
-    w.gm_authFailure = () => {
-      prev?.()
-      onUnavailable()
-    }
-    return () => {
-      w.gm_authFailure = prev
-    }
-  }, [onUnavailable])
+  // A rejected key does not fail the script load: Google paints a grey map and says so through one global, which every
+  // Google map on the page hears through one listener (`googleAuthFailure.ts`). This still used to put its own function
+  // on the global and put the old one back when it left, which could take the other maps' hearing away with it.
+  useEffect(() => onGoogleAuthFailure(onUnavailable), [onUnavailable])
 
   return (
     <StillBoundary onUnavailable={onUnavailable}>
