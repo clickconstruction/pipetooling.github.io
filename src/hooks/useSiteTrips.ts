@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { resolveOfficeAnchor } from '../lib/officeAddressSettings'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import { errorKindOf } from '../utils/errorHandling'
 import { readUserNames } from '../lib/developments/fetchDevelopmentPage'
 import type { LatLng } from '../lib/jobTravelEstimate'
 import type { PunchRow } from '../lib/trips/tripHourRows'
@@ -102,6 +103,10 @@ export type SiteTripsState = {
   /** Ask for the roster before the look shows: the sheet for a site's first trip needs it. */
   askRoster: () => void
   reload: () => void
+  /**
+   * Save the trip whole: Change, Put back and the Undo of a delete. A save the database refuses reads the site's trips
+   * and deleted trips again, since the screen may be older than somebody's join (v2.8127).
+   */
   save: (record: TripRecord) => Promise<void>
   remove: (id: string) => Promise<void>
   /** Split a trip in two at a day, then read the site's trips again. Null when the reply names no second trip. */
@@ -253,7 +258,16 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const askRoster = useCallback(() => setRosterWanted(true), [])
   const save = useCallback(
     async (record: TripRecord) => {
-      const number = await io.save(record)
+      let number: number | null | void
+      try {
+        number = await io.save(record)
+      } catch (e) {
+        // The database said no. This screen may be older than somebody's join or delete, so the site's trips and its
+        // deleted trips are read again: a trip joined away then shows under Deleted trips with no Put back. A lost
+        // signal reads nothing again, since there is nothing new to read.
+        if (errorKindOf(e) === 'server') reload()
+        throw e
+      }
       // The database hands out the number: a new trip wears it at once, and the read that follows agrees.
       const kept = typeof number === 'number' ? { ...record, tripNumber: number } : record
       setRead((prev) => (prev ? { key: prev.key, records: [...prev.records.filter((r) => r.id !== record.id), kept] } : prev))

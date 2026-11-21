@@ -25,6 +25,8 @@
 # An eighth file, 80_split.sql, holds Split in two (*_trip_split): one trip cut at a day into two, through the save.
 # A ninth, 90_join.sql, holds Join with the next (*_trip_join): a trip and the one that went out next made one trip,
 # the line's tie carried, and the trip that went kept as deleted with the trip it was joined into.
+# A tenth, 95_joined_back.sql, holds a joined trip staying joined (*_trip_joined_stays_gone): a stale screen's save of a
+# trip that was joined away refused in words, the dev's restore of it refused too, and a plain put back untouched.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration.
 # Never touches prod.
 set -euo pipefail
@@ -33,7 +35,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55829}"
 NAME="pgtest-trips"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql supabase/migrations/*_trip_line_tie.sql supabase/migrations/*_combine_carries_job_held_trip.sql supabase/migrations/*_trip_split.sql supabase/migrations/*_trip_join.sql)"
+WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql supabase/migrations/*_trip_line_tie.sql supabase/migrations/*_combine_carries_job_held_trip.sql supabase/migrations/*_trip_split.sql supabase/migrations/*_trip_join.sql supabase/migrations/*_trip_joined_stays_gone.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -89,5 +91,10 @@ grep -o "ok: .*" <<<"$out"
 # that went, a split joined back, the ended stamp, and the line's tie.
 out="$(psql_as postgres -f - < supabase/tests/trips/90_join.sql 2>&1 || true)"
 if ! grep -q "trips join PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# A joined trip stays joined (*_trip_joined_stays_gone): the save of a trip that was joined away, from a screen read
+# before the join, refused in words; the dev's restore of it; a plain put back; a split and a second join.
+out="$(psql_as postgres -f - < supabase/tests/trips/95_joined_back.sql 2>&1 || true)"
+if ! grep -q "trips joined back PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "trips bed ok"
