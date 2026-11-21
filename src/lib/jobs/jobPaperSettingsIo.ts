@@ -174,7 +174,7 @@ export const supabaseJobPaperSettingsIo: JobPaperSettingsIo = {
       : null
   },
   async readSettingsPapers(jobId) {
-    // `basis` is not in the generated types until the types fold that follows the push.
+    // The row is read loosely and checked by `parseJobSettingsPaper`.
     const rows = (await withSupabaseRetry(
       () =>
         supabase
