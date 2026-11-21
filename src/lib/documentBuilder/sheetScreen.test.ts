@@ -17,6 +17,7 @@ import {
   sheetCaption,
   sheetNote,
   sheetStamp,
+  USUAL_PRESS_MOVED,
   usualPlanChip,
   usualPlanFor,
   usualPublishPress,
@@ -107,6 +108,11 @@ describe('the usual’s publish', () => {
     const press = usualPublishPress(INSURANCE_SHEET_FIXTURE, rec({ draft: INSURANCE_SHEET_FIXTURE }), [])
     expect(press.dead).toBe(true)
     expect(press.why[0]).toBe('Commercial general liability has no amount yet.')
+  })
+
+  it('says in plain words that the jobs moved and nothing was published', () => {
+    expect(USUAL_PRESS_MOVED.line).toBe('Nothing was published yet.')
+    expect([USUAL_PRESS_MOVED.line, USUAL_PRESS_MOVED.why].flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 
   it('chips each job with where the change goes', () => {

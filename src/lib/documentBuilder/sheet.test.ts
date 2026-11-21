@@ -22,6 +22,7 @@ import {
   parseSheetDef,
   pathName,
   pruneJobSheet,
+  sameJobsGetIt,
   sheetAsks,
   sheetDefProblems,
   sheetDiffers,
@@ -477,6 +478,17 @@ describe('the usual’s publish', () => {
     expect(usualHeldWords('own-changes')).toBe('Held. It has changes of its own waiting.')
     expect(usualHeldWords('moved')).toBe('Held. It changed somewhere else. Choose on its panel first.')
     for (const why of ['no-sheet', 'own-changes', 'moved'] as const) expect(plainWordsFailures(usualHeldWords(why))).toEqual([])
+  })
+
+  it('tells when two plans send the usual to the same jobs, whatever the order and whatever the held ones are held for', () => {
+    const cedar = { id: 'cedar', name: 'Cedar Park Medical Office', gets: true as const, asRevision: 3 }
+    const mesa = { id: 'mesa', name: 'Mesa Verde Retail Shell', gets: true as const, asRevision: 2 }
+    const held = (why: 'no-sheet' | 'own-changes') => ({ id: 'pike', name: 'Pike Street Clinic', gets: false as const, why })
+    expect(sameJobsGetIt([cedar, mesa, held('no-sheet')], [mesa, { ...cedar, asRevision: 4 }, held('own-changes')])).toBe(true)
+    expect(sameJobsGetIt([cedar, mesa], [cedar])).toBe(false)
+    expect(sameJobsGetIt([cedar], [cedar, mesa])).toBe(false)
+    expect(sameJobsGetIt([cedar, held('no-sheet')], [{ id: 'cedar', name: cedar.name, gets: false, why: 'own-changes' }, { id: 'pike', name: 'Pike Street Clinic', gets: true, asRevision: 1 }])).toBe(false)
+    expect(sameJobsGetIt([], [])).toBe(true)
   })
 
   it('holds a job the page has words of its own for, though its sheet as read has none waiting', () => {

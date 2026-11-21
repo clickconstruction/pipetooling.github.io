@@ -7,7 +7,7 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
-import { personSigningSentCopy, signingCallerRefusal, signingDocRefusal, signingRequestRefusal, type SigningCaller, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
+import { personSigningSentCopy, signingCallerRefusal, signingDocRefusal, signingRequestRefusal, withJobPaperSettings, type JobPaperSettingsReader, type SigningCaller, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
 import { paperForWords, signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
 import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
@@ -300,7 +300,7 @@ serve(async (req) => {
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
-      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name')
+      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name, job_required_paper_id')
       .eq('id', person_contract_document_id)
       .single()
 
@@ -322,10 +322,13 @@ serve(async (req) => {
       form_template_id: string | null
       signer_name: string | null
       party_name: string | null
+      job_required_paper_id: string | null
     }
 
-    // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
-    const docRefusal = signingDocRefusal(doc)
+    // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main). A job's
+    // paper built from settings (#389 step 3) has no body of its own: its words are the Book's clauses, so the job's
+    // row is asked whether it carries settings, and only for a copy with nothing else to sign.
+    const docRefusal = signingDocRefusal(await withJobPaperSettings(admin as unknown as JobPaperSettingsReader, doc))
     if (docRefusal) {
       return new Response(JSON.stringify({ error: docRefusal.error }), {
         status: docRefusal.status,
