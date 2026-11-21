@@ -942,7 +942,7 @@ Every function that reads a paper as its caller and then acts with the service r
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
 Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 Since v2.7998 **Add to a list** says what such a contact is through `name_contact`, as the caller: a new customer is made in the app's own New customer form, a new supply house and a person kept with a company are written under their own tables' policies, and the paper follows through `contacts_fold_papers` when the contact folds.
-Since v2.8013 (punch list #376, `20261120060000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
+Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
 `remind-person-papers` runs as the service role behind the cron secret and has no caller.
 

@@ -46,7 +46,7 @@ describe('the Settings switch', () => {
   })
 
   it('is the key the migration seeds off', () => {
-    const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261120060000_person_paper_reminders.sql'), 'utf8')
+    const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261120133000_person_paper_reminders.sql'), 'utf8')
     expect(sql).toContain(`VALUES ('${PERSON_PAPER_REMINDERS_KEY}', '0')`)
     expect(sql).toContain(`reminder_count BETWEEN 0 AND ${PERSON_PAPER_MAX_REMINDERS}`)
   })

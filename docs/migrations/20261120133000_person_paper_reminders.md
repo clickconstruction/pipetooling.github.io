@@ -1,4 +1,4 @@
-# 20261120060000_person_paper_reminders.sql (2026-11-19, v2.8013)
+# 20261120133000_person_paper_reminders.sql (2026-11-19, v2.8013)
 
 Reminders by email for a staff or sub paper that waits on a signature (punch list #376, *What is left*, row 1). A job's contract has had three reminders, three days apart, since v2.2690. This is the ground for the same three on a person's paper.
 
