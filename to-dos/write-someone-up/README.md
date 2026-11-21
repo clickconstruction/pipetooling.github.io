@@ -2,7 +2,7 @@
 name: "Write someone up, from the Dashboard, on a phone"
 number: 410
 group: close
-status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired · left: a look on a leader's and a superintendent's own phone
+status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · left: a look on a leader's and a superintendent's own phone, and one send with no signal
 summary: >
   Taunya said writing someone up was not made easy enough for a leader or a superintendent from
   their Dashboard. A leader's only door was the HR Report card, 8.7 phone screens down the full
@@ -11,7 +11,7 @@ summary: >
   kind, what was seen, photos, who saw it, then a read-back and one press that sends. It lands in
   the Pending reports the office already reads, with the job, the time and the facts the record
   lacked. Seven PRs, built on the HR report queue and not on the Writeups forms.
-next: A leader and a superintendent each write one up on their own phone, with a photo and once with no signal. Then the card closes on Taunya's word.
+next: A leader and a superintendent each write one up on their own phone, with a photo, once with no signal and once from the short Dashboard. Then the card closes on Taunya's word.
 size: L as a train of seven (S · M · S · M · M · S · S); left: a look on a real phone (XS)
 ver: v2.8157, v2.8160, v2.8172, v2.8174
 blocker: A leader's and a superintendent's own phone. The person's side and a kept voice recording are set aside, see *Set aside*.
@@ -99,6 +99,8 @@ All were put to her with a pick on 2026-11-20. Her go kept every pick.
 4. **No signal (M).** Built, v2.8160. The write-up is kept on the phone and sent when the signal is back.
 5. **Photos (M).** Built, v2.8172 for the place and v2.8174 for the screens. Taken in the sheet, kept with no
    signal, shown on the office's card, one evidence record once filed. The old HR Report card went with v2.8174.
+   The same change keeps a draft's words across a reload, since the first live walk met the app's *Reload* toast
+   in the middle of one.
 6. **The office's card (S).** Built, v2.8160. Pending reports shows the facts, and a line shows the same day.
    **Start a Writeup from it** is not built: it waits for a word that it is wanted.
 7. **Add to it and Take it back (S).** Built, v2.8160.
@@ -109,7 +111,7 @@ alone to any use.
 ## Set aside
 
 - **The person's side.** The office presses *Show it to them* on one write-up, and the person reads it and
-  writes their side. It is Taunya's and the owner's call. Frame 10 of the mock-up draws it.
+  writes their side. It is Taunya's call. Frame 10 of the mock-up draws it.
 - **A kept voice recording.** It needs storage, a rule for who may play it, and a lawyer's answer before the
   app keeps sound of another person.
 
@@ -124,3 +126,17 @@ alone to any use.
 
 Kernel tests on made-up rows. A live walk on a `ZZ Test` person as a leader and as a superintendent, 375 px
 wide, with every row made deleted or named in the report. Never a write-up on a real person.
+
+Walked on clicktooling.com on 2026-11-21, on the roster's `ZZ Test Hand`, at phone width:
+
+- As a leader's sample account: the press on the first screen, the list, the search, the form, the read-back,
+  the send, **Your write-ups** and the office's card with its facts and counts.
+- As a dev seat, after v2.8174: a photo on the form, a reload that kept the words and dropped the photo, the
+  photo on the read-back and on the office's card, and **File**, which put the entry on the file with the photo
+  as its evidence record.
+
+Not walked: a superintendent's account, the short Dashboard and Job Mode, a send with no signal, and a real
+phone's camera. Those are the look that is left.
+
+Left on that test person's file, where entries append and never change: one filed field report with its
+photo, one waiting to be filed and one taken back. All three say they are tests.
