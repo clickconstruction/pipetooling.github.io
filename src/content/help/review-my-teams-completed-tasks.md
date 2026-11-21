@@ -50,7 +50,7 @@ Above **Outstanding by person** sits a map called **Where the open tasks are**. 
 - Tap a dot to read who has what there. {{button:blue|Directions}} takes you to the place.
 - A line under the map counts the open tasks with no place. They are still on the board below.
 
-The map is a Google map. **Satellite** shows the ground from above with the street names on it. **Streets** shows the road map.
+The map is a Google map. **Satellite** shows the ground from above with the street names on it. **Streets** shows the road map. Google's own shop and landmark labels are off, so nothing sits under a dot.
 
 Tap **Hide map** to fold the map away. Your device remembers, and **Show map** brings it back.
 

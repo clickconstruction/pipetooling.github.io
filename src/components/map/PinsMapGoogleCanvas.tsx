@@ -37,6 +37,7 @@ import {
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
+import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
@@ -288,6 +289,7 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
             // Spread, so a map that leaves the buttons where Google puts them never sends the option at all
             {...(zoomAtTopLeft ? { zoomControlOptions: { position: ControlPosition.LEFT_TOP } } : {})}
             clickableIcons={false}
+            styles={GOOGLE_MAP_STYLES}
             onClick={() => props.onSelect(null)}
           >
             <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
