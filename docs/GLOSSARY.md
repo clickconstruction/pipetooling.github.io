@@ -1340,7 +1340,7 @@ Guide: *combine two duplicate jobs into one*.
 ### Job window (Job · Edit · Bill)
 One modal per job (v2.1675;
 since v2.6539 760px wide on a computer, where a title row comes first — the number chip, the name, the status chip, then a quiet line with the development, the customer, the prior numbers and the kind chip — and the tabs follow as an underlined strip that scrolls sideways;
-on a phone since v2.7271, punch list #355, the name comes first too with ⋯ over ✕ stacked at its right, the seven pill tabs on one line that scrolls, the header scrolling away with the page and, since v2.7300, coming back on a scroll up with a 44 px ✕ at the tab strip's right (until then a ✕ floated over the page and took taps meant for what had scrolled under it), and every door of the icon row a row of the ⋯ sheet, `lib/jobs/jobWindowPhone.ts`;
+on a phone since v2.7271, punch list #355, the name comes first too with ⋯ over ✕ stacked at its right, the pill tabs on one line that scrolls (eight since v2.8204, with **Map** last), the header scrolling away with the page and, since v2.7300, coming back on a scroll up with a 44 px ✕ at the tab strip's right (until then a ✕ floated over the page and took taps meant for what had scrolled under it), and every door of the icon row a row of the ⋯ sheet, `lib/jobs/jobWindowPhone.ts`;
 since v2.7278 the Job tab under it reads Where · Photos · Who · What's happening · the thread · More on this job in titled sections, each row ending in its act as blue words, the rest in folds the phone remembers, `lib/jobs/jobWindowPhoneSections.ts`;
 the other tabs on a phone and the field roles' window are under *Job window on a phone*;
 on a computer since v2.7326 each icon of the head row carries its word under the glyph (`data-word`, drawn by the window's stylesheet above 640 px), **＋ Paint a map** is an ordinary press at the strip's left, the Where it stands card's empty line is plain muted words and, with nothing asked, the questions head's *none yet* and its two presses are the whole empty) with a single ✕ (and since v2.5908 a **?** before it that opens the card of what each tab holds, `lib/jobs/jobWindowLegend.ts`, punch list #187) — three tabs at first, seven now (Costs v2.3182, History, **Documents** v2.4491: the job's pay applications — since v2.4710 each with the workbooks that went out and who saved it — the job's folders;
@@ -1356,6 +1356,7 @@ Shell: [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx), owned 
 `openEditJob` delegates in via the opener bridge.
 Subcontractor-like roles keep the plain read-only Job Detail;
 **New Job** keeps the standalone form.
+The **Map** tab (v2.8204, punch list #413, `JobWindowMapTab`, `paintedJobMap.ts`) draws the lines of the job's painted maps, the places of its own list and the places an earlier job kept at its address on the old map, read only, and a press on a dot opens its place.
 
 ### Tell the customer
 The sheet that opens before a text goes to a customer, and the receipt after (punch list #115, v2.5593 on the schedule;
@@ -3254,6 +3255,7 @@ Since v2.8201 (step 3) a job photo and a report photo keep where the phone was w
 The phone is read once on the pick by the shot-tile engine's `keepPoint`, the reading is carried through the waiting queue, and an opened photo offers **Taken here** (`PhotoTakenHere`).
 Since v2.8203 (steps 6 and 7) a place holds up to twelve more photos after its first (`more_photos`, `PlacePhoto`, `usePlaceMorePhotos`, **＋ Another photo** on the place sheet), drawn under its words in the list.
 A buried place may run along a line (`line_id`): **＋ Walk this line** or **＋ Draw this line** paints a map of its own named for the place, its first line is tied to the place when that map closes (`paintLineForPlace`, `tiePlaceToNewLine`), the place's row then says the line's length, and the line draws in the place's locator color (`PaintedCanvasLine.color`).
+Since v2.8204 (step 8) the office's job window has a **Map** tab that draws all of it on one map → *Job window*.
 A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
 A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
 **Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
