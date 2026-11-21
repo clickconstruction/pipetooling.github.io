@@ -51,8 +51,13 @@ UPDATE public.permits SET first_seen_at = now() - interval '3 days' WHERE id = '
 -- companies does. Six count: under the customer, under the old builders list's name, and one under both, once. Four do
 -- not: two practice bids, one a day past two years, and none is lost to a name that only starts with ZZZ. Each is
 -- made at noon of its day on the company calendar, so the day never turns on the hour the bed runs.
+-- A customer's master is a master technician: Mo holds the customer, and Eve, the estimator, made the bids.
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000003020a4', 'mo@skim.test');
+INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin, archived_at) VALUES
+  ('00000000-0000-0000-0000-0000003020a4', 'mo@skim.test', 'Mo Master', 'master_technician', false, false, NULL)
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000003020f0', 'Skim Plumbing');
-INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000003020f1', 'Lime Build, Inc.', '00000000-0000-0000-0000-0000003020a1');
+INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000003020f1', 'Lime Build, Inc.', '00000000-0000-0000-0000-0000003020a4');
 INSERT INTO public.bids_gc_builders (id, name, created_by) VALUES ('00000000-0000-0000-0000-0000003020f2', 'Lime Build LLC', '00000000-0000-0000-0000-0000003020a1');
 INSERT INTO public.bids (id, created_by, service_type_id, project_name, customer_id, gc_builder_id, outcome, created_at)
 SELECT ('00000000-0000-0000-0000-0000003021' || lpad(b.n::text, 2, '0'))::uuid, '00000000-0000-0000-0000-0000003020a1', '00000000-0000-0000-0000-0000003020f0',
