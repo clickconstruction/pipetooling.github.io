@@ -1,8 +1,8 @@
 ---
 title: find an agreement we sent or signed
 category: Office
-roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer, w-9, certificate, papers section, papers with this customer, not sent
+roles: dev, master_technician, assistant, controller, estimator
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer, w-9, certificate, papers section, papers with this customer, not sent, estimator, read only
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders. It also holds a paper sent to a customer or a supply house.
@@ -213,9 +213,24 @@ Nothing is sent from these lists. To send a paper, press **Send a paper** on the
 - A W-9, an insurance certificate or a licence. Those papers are not agreements. A person's papers stay on People. An outside company's papers are on that company's own page.
 - A lien waiver. It is under its job on the [Jobs](/documents?tab=jobs) tab.
 
+## What an estimator sees
+
+An estimator has the tab to read.
+
+- The chips are **All**, **Outside companies** and **Work orders**.
+- The list holds agreements with a customer, a supply house or a trade company. It also holds sub work orders.
+- A staff paper, a sub's own paper and a job's contract are not on it.
+- A paper sent to someone on no list is not on it until the office adds them to a list.
+
+An estimator has no **Send a paper** and no **Contract library**. A line has no press.
+
+To open a signed paper, go to the company's own page. A W-9 and an insurance certificate are there too.
+
 ## Who can see the tab
 
 The office can. That is the leader, the assistants, the controller and a dev.
+
+An estimator can read it. The office sends, and an estimator does not.
 
 Other roles do not see the tab. Nobody reads a paper here that they could not already open.
 
