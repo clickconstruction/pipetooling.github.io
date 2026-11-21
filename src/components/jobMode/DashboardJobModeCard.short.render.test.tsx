@@ -3,6 +3,9 @@
  * The Job Mode card's `short` prop (punch list #384, the short Job Mode page). Without it the card is as it was:
  * the Materials on site press beside Job calendar and the job's details under the rail. With it the lower half sits behind one row,
  * **Open this job**, a fold in place over the same pieces, and the rail and the press bar do not move.
+ *
+ * **Is it as told?** is the one piece of the details the short page keeps over the fold (punch list #382): the card
+ * draws it above the row, and tells the details not to draw a second one.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -52,7 +55,9 @@ vi.mock('../../lib/supabase', () => {
 })
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: scenario.role, profileName: 'Luis Ortega' }) }))
 // The details are their own component with their own tests. Here only where they are drawn matters.
-vi.mock('./JobModeDetailsSection', () => ({ default: ({ jobId }: { jobId: string }) => <div data-testid="job-mode-details">{jobId}</div> }))
+vi.mock('./JobModeDetailsSection', () => ({ default: ({ jobId, arrivalAbove }: { jobId: string; arrivalAbove?: boolean }) => <div data-testid="job-mode-details" data-arrival-above={arrivalAbove ? 'yes' : 'no'}>{jobId}</div> }))
+// The look on arrival has its own tests too. Here only who draws it, and where, matters.
+vi.mock('./JobModeArrivalCheck', () => ({ JobModeArrivalCheck: ({ jobId }: { jobId: string }) => <div data-testid="arrival-above-the-fold">{jobId}</div> }))
 
 afterEach(() => {
   cleanup()
@@ -87,6 +92,9 @@ describe('DashboardJobModeCard — short', { timeout: 15_000 }, () => {
     // Nothing on this job's site: the press carries no count.
     expect(screen.queryByTestId('job-mode-materials-count')).toBeNull()
     expect(screen.queryByTestId('job-mode-short-open-job')).toBeNull()
+    // The whole card leaves Is it as told? to the details, which lead with it.
+    expect(screen.queryByTestId('arrival-above-the-fold')).toBeNull()
+    expect(screen.getByTestId('job-mode-details').getAttribute('data-arrival-above')).toBe('no')
   })
 
   it('a site with boxes puts its count on the press, and says what it counts', async () => {
@@ -141,6 +149,21 @@ describe('DashboardJobModeCard — short', { timeout: 15_000 }, () => {
     expect(screen.queryByTestId('job-mode-materials-on-site')).toBeNull()
     // The card's top is untouched: the day's press and Turnaway are still there.
     expect(screen.getByLabelText('Leave Report')).toBeTruthy()
+  })
+
+  it('with short Is it as told? stays over the fold, on the job the row opens, and is drawn once when the row is open', async () => {
+    await mount(true)
+    const row = await screen.findByTestId('job-mode-short-open-job')
+    // Folded: the look on arrival is on the first screen, right above the row, though the details are not drawn.
+    const asked = screen.getByTestId('arrival-above-the-fold')
+    expect(asked.textContent).toBe(JOB_C)
+    expect(asked.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByTestId('job-mode-details')).toBeNull()
+    // Open: still one, and the details are told the card has it.
+    fireEvent.click(row)
+    await waitFor(() => expect(screen.getByTestId('job-mode-details')).toBeTruthy())
+    expect(screen.getAllByTestId('arrival-above-the-fold')).toHaveLength(1)
+    expect(screen.getByTestId('job-mode-details').getAttribute('data-arrival-above')).toBe('yes')
   })
 
   it('a press opens the same pieces in place, and a second press folds them', async () => {
