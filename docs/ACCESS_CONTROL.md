@@ -929,10 +929,14 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
-Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a row of the kind `agreement` that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
-It opens no paper filed under a person, no W-9, certificate or other kind, and no party on no list, and a digital twin reads none.
+Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
+Since v2.8108 (`20261120080000_estimator_reads_outside_papers.sql`, the owner's call 9) that is every kind of such a paper, a W-9 and an insurance certificate among them, where v2.7977 opened an agreement alone, and the rule is the function `paper_is_outside_company`.
+It opens no paper filed under a person and no party on no list, and a digital twin reads none.
 It is a read alone: the four roles still write, and the estimator has no screen that lists these papers until the party's own page is built.
-A signed form's PDF still opens through `open-contract-form-pdf` for a dev, the controller and a pay-approved master alone, so the estimator opens none.
+Since v2.8108 (calls 10 and 11) an estimator also opens a signed form's PDF, and its scan, through `open-contract-form-pdf` when the paper is with an outside company, a signed W-9 with its whole tax number among them.
+That function asks `estimator_reads_paper`, the policy's own rule, as the caller, refuses a digital twin and a signed hours statement itself, and logs the open as every other.
+An assistant still reads the row and is refused the file, and a person's signed form opens for a dev, the controller and a pay-approved master alone, as before.
+Every function that reads a paper as its caller and then acts with the service role names the roles it takes first (`src/lib/paperCallerReadGates.test.ts`), so this read hands an estimator no send, no link and no write.
 `paper_party_contact` finds a party's contact, and makes one when the record has none, for the four roles that send a paper: a training account and a digital twin find one and never make one.
 `contacts_fold_papers` moves a party's papers when two contacts fold, as a definer that moves nothing for a caller off the office team, a training account, a digital twin or an archived account.
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
@@ -1998,7 +2002,8 @@ After signing, the flattened PDF in the private `contract-form-pdfs` bucket is t
 the row keeps `form_values` (non-sensitive) and `form_hints` (last four).
 The row stays readable to the contracts roles as before.
 **Opening the PDF** goes only through `open-contract-form-pdf`: `dev`, `controller`, or a `master_technician` present in `pay_approved_masters`;
-each open is logged in `contract_form_pdf_opens` (devs read).
+since v2.8108 an `estimator` too, for a paper that is with an outside company and no other (punch list #403, above under Documents → Agreements);
+each open is logged in `contract_form_pdf_opens`, which a dev and the controller read and nobody signed in can write, and since v2.8108 the link is handed over only once that line is kept.
 No client-side storage policy exists on that bucket.
 The template bucket `contract-form-templates` has one storage policy: devs manage;
 the signer page receives a 15-minute signed URL from `get-contract-for-signer`.

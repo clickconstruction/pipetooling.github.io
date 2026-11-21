@@ -3456,6 +3456,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### open-contract-form-pdf
 
+> **v2.8108 — an estimator opens an outside company's signed form** (punch list #403, step 4, the owner's calls 10 and 11 of 2026-11-20): an estimator opens the signed PDF, and the scan, of a form whose paper is with an outside company, a signed W-9 with its whole tax number among them. The function asks the database as the caller, `estimator_reads_paper` (migration [`20261120080000`](./migrations/20261120080000_estimator_reads_outside_papers.md)), the rule the estimator's read policy follows, and takes only a plain yes: no answer is a refusal, so the function may be deployed before that migration is pushed. A digital twin who is an estimator is refused by the function itself, and an estimator is refused a signed hours statement. An estimator's refusal reads the same for a person's paper and for a paper that is not there. The gate is the kernel [`_shared/contractFormPdfGate.ts`](../supabase/functions/_shared/contractFormPdfGate.ts) (`formPdfRefusal`), and every other caller is answered as before. The link is now handed over only once the open is written to `contract_form_pdf_opens`: a log that fails answers 500 and no link. **Redeploy required.**
+
 > **v2.7995 — a party's file is named by the party** (punch list #403, step 3): an outside party's signed form downloads as `<document_name> - <party name>.pdf`, never under its stored name (`partyFileWords`). The gate is unchanged: a dev, the controller and a pay-approved master. **Redeploy required.**
 
 > **v2.6450 — a signed hours statement is payroll data** (punch list #212, Diane's call of 2026-11-02): a signed statement's copy (`hours_statements.contract_document_id`) opens for a dev and the controller alone — the pay-approved master who opens every other signed form is refused on that row with `forbidden`, and v2.6411's assistant allowance below is gone with the rule (`can_touch_hours_statement` is `is_dev() OR is_controller()` since `20261103063000`). **Redeploy required.**
@@ -3470,9 +3472,9 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Body**: `{ "person_contract_document_id": string }`
 
-**Gate**: JWT validated in the body (`auth.getUser`; `verify_jwt = false` in `config.toml`). Caller must be `dev`, `controller`, or a `master_technician` with a `pay_approved_masters` row → else **403** `code: forbidden`. The row is then read through the caller's own client (contracts RLS) → **404** when unreadable, unsigned, or without `form_pdf_storage_path`.
+**Gate**: JWT validated in the body (`auth.getUser`; `verify_jwt = false` in `config.toml`). Caller must be `dev`, `controller`, a `master_technician` with a `pay_approved_masters` row, or (v2.8108) an `estimator` who is not a digital twin and whose paper `estimator_reads_paper` says is with an outside company → else **403** `code: forbidden`. The row is then read through the caller's own client (contracts RLS) → **404** when unreadable, unsigned, or without `form_pdf_storage_path`.
 
-**Success** (**200**): `{ "ok": true, "url": string, "expires_in": 300 }` — a 5-minute signed URL with a download filename `<document_name> - <person_name>.pdf`. Inserts `contract_form_pdf_opens (person_contract_document_id, opened_by)`; a logging failure is logged, not fatal.
+**Success** (**200**): `{ "ok": true, "url": string, "expires_in": 300 }` — a 5-minute signed URL with a download filename `<document_name> - <person_name>.pdf`. Inserts `contract_form_pdf_opens (person_contract_document_id, opened_by)` first; since v2.8108 a logging failure answers **500** and no link.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 

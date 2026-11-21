@@ -232,11 +232,13 @@ CREATE TEMP TABLE gpt_states_want ON COMMIT DROP AS
   FROM public.person_contract_documents d
   WHERE d.company_id IS NOT NULL AND d.doc_type IN ('agreement', 'w9', 'coi');
 GRANT SELECT ON gpt_states_want TO authenticated;
--- Since punch list #403 (migration *_paper_party, the owner's calls 4 and 7) an estimator reads a trade company's
--- agreement of the table itself: how many of those the fixture holds.
-CREATE TEMP TABLE gpt_agreements_want ON COMMIT DROP AS
-  SELECT count(*) AS n FROM public.person_contract_documents d WHERE d.company_id IS NOT NULL AND d.doc_type = 'agreement';
-GRANT SELECT ON gpt_agreements_want TO authenticated;
+-- Since punch list #403 an estimator reads a trade company's papers of the table itself: its agreement first (migration
+-- *_paper_party, the owner's calls 4 and 7), and every kind since migration *_estimator_reads_outside_papers (call 9).
+-- How many company papers the fixture holds, and how many of them are a W-9 or a certificate.
+CREATE TEMP TABLE gpt_company_want ON COMMIT DROP AS
+  SELECT count(*) AS n, count(*) FILTER (WHERE d.doc_type IN ('w9', 'coi')) AS tax_and_insurance
+  FROM public.person_contract_documents d WHERE d.company_id IS NOT NULL;
+GRANT SELECT ON gpt_company_want TO authenticated;
 CREATE FUNCTION gpt.states(p_company_ids uuid[] DEFAULT NULL) RETURNS text LANGUAGE sql AS $$
   SELECT md5(coalesce(string_agg(s.id || '|' || s.company_id || '|' || s.doc_type || '|' || s.status || '|' || coalesce(s.sent_at::text, '') || '|' || coalesce(s.signed_at::text, '') || '|' || coalesce(s.expires_at::text, '') || '|' || coalesce(s.created_at::text, ''), ',' ORDER BY s.company_id, s.created_at, s.id), ''))
   FROM public.gc_company_paper_states(p_company_ids) s;
@@ -260,11 +262,11 @@ SELECT gpt.same('the controller reads the same rows', gpt.states(), (SELECT rows
 RESET ROLE;
 SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d2');
 SET LOCAL ROLE authenticated;
--- Of the table itself an estimator reads a company's agreement and nothing else: no W-9, no certificate, no paper of any
--- other kind and no person's. The states of all three kinds still come through the function, below.
-SELECT gpt.same('an estimator reads a company''s agreements of the table itself, and nothing else of it', (
-  SELECT count(*)::text || ' ' || (count(*) > 0)::text || ' ' || count(*) FILTER (WHERE company_id IS NULL OR doc_type <> 'agreement')::text
-  FROM public.person_contract_documents), (SELECT n::text || ' true 0' FROM gpt_agreements_want));
+-- Of the table itself an estimator reads every kind of a company's paper, its W-9 and its certificate among them, and
+-- no person's. The states of the three kinds still come through the function, below.
+SELECT gpt.same('an estimator reads every company paper of the table itself, a W-9 and a certificate among them, and no person''s', (
+  SELECT count(*)::text || ' ' || count(*) FILTER (WHERE doc_type IN ('w9', 'coi'))::text || ' ' || (count(*) FILTER (WHERE doc_type IN ('w9', 'coi')) > 0)::text || ' ' || count(*) FILTER (WHERE company_id IS NULL)::text
+  FROM public.person_contract_documents), (SELECT n::text || ' ' || tax_and_insurance::text || ' true 0' FROM gpt_company_want));
 SELECT gpt.same('an estimator reads the same rows through the function', gpt.states(), (SELECT rows FROM gpt_states_want));
 SELECT gpt.same('never a person''s paper', (SELECT count(*)::text FROM public.gc_company_paper_states() s WHERE s.company_id IS NULL), '0');
 SELECT gpt.same('never another kind', (SELECT count(*)::text FROM public.gc_company_paper_states() s WHERE s.doc_type NOT IN ('agreement', 'w9', 'coi')), '0');

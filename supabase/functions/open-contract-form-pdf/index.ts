@@ -3,9 +3,10 @@
  * signed form PDF — the one place a form's sensitive answers exist — for a
  * staff member allowed to see it, and log the open.
  *
- * Gate: dev, controller, or a pay-approved master (the Person Desk pay gate).
- * Assistants and everyone else get 403 even though they can read the row.
- * Every successful mint inserts a `contract_form_pdf_opens` row.
+ * Gate (`_shared/contractFormPdfGate.ts`): dev, controller, or a pay-approved
+ * master (the Person Desk pay gate). Assistants and everyone else get 403 even
+ * though they can read the row. The link is handed over only once the open is
+ * written to `contract_form_pdf_opens`.
  *
  * `which: 'scan'` (Contract Forms PR 6) opens the paper scan a staff member
  * keyed the answers from instead of the flattened PDF — same gate, same log.
@@ -14,10 +15,17 @@
  * controller alone — payroll data, Diane's call of 2026-11-02 (v2.6450): the
  * pay-approved master who opens every other signed form is refused on that
  * row, and v2.6411's assistant allowance is gone.
+ *
+ * An estimator (punch list #403, the owner's calls 10 and 11 of 2026-11-20)
+ * opens a signed form whose paper is with an outside company, a signed W-9
+ * among them, and no other. The database says which papers those are:
+ * `estimator_reads_paper`, asked as the caller, the rule the estimator's read
+ * policy follows. A digital twin reads as an estimator and is refused here.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { paperForName } from '../_shared/companyPaper.ts'
+import { formPdfOpener, formPdfRefusal, type FormPdfCaller, type FormPdfFacts } from '../_shared/contractFormPdfGate.ts'
 import { partyFileWords } from '../_shared/paperSigner.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
@@ -64,21 +72,30 @@ serve(async (req) => {
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
 
-    // Gate: dev | controller | pay-approved master.
-    const { data: me } = await admin.from('users').select('role').eq('id', user.id).maybeSingle()
-    const role = (me as { role?: string } | null)?.role ?? ''
-    let allowed = role === 'dev' || role === 'controller'
-    if (!allowed && role === 'master_technician') {
+    // Gate: who the caller is, then the facts their kind of opener needs, each read only when it matters.
+    const { data: me } = await admin.from('users').select('role, is_digital_twin').eq('id', user.id).maybeSingle()
+    const caller = me as FormPdfCaller | null
+    const opener = formPdfOpener(caller)
+    const facts: FormPdfFacts = {}
+    if (opener === 'master') {
       const { data: pam } = await admin.from('pay_approved_masters').select('master_id').eq('master_id', user.id).maybeSingle()
-      allowed = Boolean(pam)
+      facts.payApprovedMaster = Boolean(pam)
     }
-    if (!allowed) return json({ error: 'Only a dev, controller, or pay-approved master can open a signed form.', code: 'forbidden' }, 403)
+    if (opener === 'estimator') {
+      // The database's own rule, asked as the caller: the paper is with an outside company (punch list #403). The read
+      // policy follows the same function, so the gate and the policy cannot come apart. No answer is a refusal.
+      const { data: reads, error: readsErr } = await userClient.rpc('estimator_reads_paper', { p_paper_id: docId })
+      if (readsErr) console.error('estimator_reads_paper', readsErr)
+      facts.estimatorReads = reads === true
+    }
     // A signed hours statement's copy (punch list #212, v2.6450) is payroll data: a dev and the controller alone, the
-    // table's own line (`can_touch_hours_statement`), so a pay-approved master is refused on that row.
-    if (role === 'master_technician') {
+    // table's own line (`can_touch_hours_statement`), so anyone else who got this far is refused on that row.
+    if ((opener === 'master' && facts.payApprovedMaster) || (opener === 'estimator' && facts.estimatorReads)) {
       const { data: hs } = await admin.from('hours_statements').select('id').eq('contract_document_id', docId).maybeSingle()
-      if (hs) return json({ error: 'A signed hours statement opens for a dev or the controller alone.', code: 'forbidden' }, 403)
+      facts.hoursStatement = Boolean(hs)
     }
+    const refusal = formPdfRefusal(caller, facts)
+    if (refusal) return json({ error: refusal.error, code: refusal.code }, refusal.status)
 
     // The caller must also be able to read the row (contracts RLS) — use their client.
     const { data: row, error: rowErr } = await userClient
@@ -105,8 +122,12 @@ serve(async (req) => {
       return json({ error: 'Could not open the PDF right now.' }, 500)
     }
 
+    // Every open is written down: who, which paper and when. A link is handed over only once its line is kept.
     const { error: logErr } = await admin.from('contract_form_pdf_opens').insert({ person_contract_document_id: r.id, opened_by: user.id })
-    if (logErr) console.error('form pdf open log', logErr)
+    if (logErr) {
+      console.error('form pdf open log', logErr)
+      return json({ error: 'Could not open the PDF right now.' }, 500)
+    }
 
     return json({ ok: true, url: signed.signedUrl, expires_in: LINK_SECONDS })
   } catch (e) {

@@ -5,12 +5,14 @@
 #   npm run test:pg:paper-party
 #
 # The same bed as scripts/pgtest-agreements-on-file.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order, then the ground's migration a second time, which must change nothing. The
-# scenario, inside one transaction that rolls back: the door finds or makes the contact of each kind of record a paper
-# can be with, for the four roles that send a paper; a party's paper is filed under a name no person can have and
-# keeps no roster person; Documents → Agreements lists it under one of four new kinds; each role reads what it read
-# before, but the estimator, who now reads an outside company's agreement and no person's paper, no tax form and
-# nobody on no list; the paper follows its contact through Who is this?, a fold and a deleted record; and the fold's
+# supabase/migrations applied in order, then the ground's migration a second time and the migration that widens the
+# estimator's read after it (*_estimator_reads_outside_papers, which restates the ground's policy), which must change
+# nothing. The scenario, inside one transaction that rolls back: the door finds or makes the contact of each kind of
+# record a paper can be with, for the four roles that send a paper; a party's paper is filed under a name no person can
+# have and keeps no roster person; Documents → Agreements lists it under one of four new kinds; each role reads what it
+# read before, but the estimator, who reads every kind of an outside company's paper and no person's paper and nobody
+# on no list; the signed form's gate is told yes for exactly those papers; the paper follows its contact through Who
+# is this?, a fold and a deleted record; and the fold's
 # helper moves nothing for a twin, a training account, an archived account or a primary. It raises on its first failed
 # assertion and ends with "paper_party PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds
 # workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
@@ -20,7 +22,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55903}"
 NAME="pgtest-paper-party"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_paper_party.sql)"
+# In order: the ground puts its own policy back, then the widening restates it, as on prod.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -38,8 +41,10 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: the columns, the index, the checks, the trigger, the helper, the door, the policy
-# and the view are there, and the audience check is put back as it stood.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# and the view are there, and the audience check is put back as it stood. Then the widening, a second time.
+for f in $WRITES; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/paper_party/20_scenario.sql 2>&1 || true)"
 if ! grep -q "paper_party PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
