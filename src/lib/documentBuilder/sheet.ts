@@ -569,7 +569,7 @@ export function asksOutdated(checked: ReadonlyArray<string>, now: ReadonlyArray<
 // ---------------------------------------------------------------------------
 
 /** Why the usual's publish holds a job. */
-export type UsualHeldWhy = 'no-sheet' | 'own-changes' | 'moved'
+export type UsualHeldWhy = 'no-sheet' | 'own-changes' | 'moved' | 'lost' | 'closed'
 
 /**
  * One job as the usual's publish sees it. `revision` 0 is a job with no published sheet. `changed` is read from the
@@ -577,7 +577,7 @@ export type UsualHeldWhy = 'no-sheet' | 'own-changes' | 'moved'
  * typed on it and not saved (`own-changes`), or a sheet that moved on somewhere else with the choice not yet made
  * (`moved`).
  */
-export type UsualPublishJob = { id: string; name: string; revision: number; changed: boolean; here?: 'own-changes' | 'moved' | null }
+export type UsualPublishJob = { id: string; name: string; revision: number; changed: boolean; here?: 'own-changes' | 'moved' | null; over?: 'lost' | 'closed' | null }
 
 export type UsualPublishRow = { id: string; name: string; gets: true; asRevision: number } | { id: string; name: string; gets: false; why: UsualHeldWhy }
 
@@ -585,10 +585,12 @@ export type UsualPublishRow = { id: string; name: string; gets: true; asRevision
  * Where a change to the usual goes. A job with a published sheet and no changes of its own waiting gets it, as its
  * next revision. A job with no sheet yet, or with changes of its own waiting, is held: its half-made changes must not
  * go out with the usual. So is a job whose sheet moved on somewhere else while the person has not chosen what to keep.
+ * A job that was lost or is closed (`over`) is held whatever its sheet reads: its sheet stays as the trades last saw it.
  */
 export function usualPublishPlan(jobs: ReadonlyArray<UsualPublishJob>): UsualPublishRow[] {
   return jobs.map((j): UsualPublishRow => {
     if (j.revision < 1) return { id: j.id, name: j.name, gets: false, why: 'no-sheet' }
+    if (j.over) return { id: j.id, name: j.name, gets: false, why: j.over }
     if (j.here === 'moved') return { id: j.id, name: j.name, gets: false, why: 'moved' }
     if (j.changed || j.here === 'own-changes') return { id: j.id, name: j.name, gets: false, why: 'own-changes' }
     return { id: j.id, name: j.name, gets: true, asRevision: j.revision + 1 }
@@ -606,6 +608,8 @@ export function sameJobsGetIt(said: ReadonlyArray<UsualPublishRow>, now: Readonl
 
 export function usualHeldWords(why: UsualHeldWhy): string {
   if (why === 'no-sheet') return 'Held. It has no sheet yet.'
+  if (why === 'lost') return 'Held. This job was lost.'
+  if (why === 'closed') return 'Held. This job is closed.'
   if (why === 'moved') return 'Held. It changed somewhere else. Choose on its panel first.'
   return 'Held. It has changes of its own waiting.'
 }

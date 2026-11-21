@@ -193,6 +193,18 @@ describe('the one press for everyone who is ready', () => {
     expect(batch.held.map((h) => h.why)).toEqual(['Held: Hilltop Electric has no page yet. Send to them alone to make one.', 'Held: Tollgate Mechanical. Their page is off.', 'Held: Quiet Glass has nobody with an email to send to.'])
   })
 
+  it('leaves a trade that was asked and not awarded out of the one press, and says to send to them alone', () => {
+    const asked = [...parties, party({ id: 'brazos', name: 'Brazos Fire Sprinkler', alone: true, contacts: [{ name: 'Lee Ortiz', email: 'lee@brazos.test' }] }), party({ id: 'caddo', name: 'Caddo Roofing', alone: true, page: { state: 'none' } })]
+    const batch = sendBatch(asked, 'trade', { published: true, unread: '', anyway: false })
+    expect(batch.ready.map((p) => p.id)).toEqual(['lonemesa', 'pecos'])
+    expect(batch.press.label).toBe('Send to 2 trades who are ready')
+    expect(batch.held.map((h) => h.why).slice(-2)).toEqual(['Held: Brazos Fire Sprinkler was asked and not awarded. Send to them alone.', 'Held: Caddo Roofing was asked and not awarded. Send to them alone.'])
+    // A job still being bid has no awarded trade: the one press is dead, and each row's own press still sends.
+    const bidding = sendBatch(asked.slice(-2), 'trade', { published: true, unread: '', anyway: false })
+    expect(bidding.press).toEqual({ label: 'Nothing to send', dead: true })
+    expect(sendBox(asked[asked.length - 2]!, asked[asked.length - 2]!.contacts[0]!, { published: true, unpublishedWords: '', unread: '', anyway: false }).press.dead).toBe(false)
+  })
+
   it('reads in the singular for one, and is dead with nobody ready', () => {
     expect(sendBatch(parties.slice(0, 2), 'trade', { published: true, unread: '', anyway: false }).press.label).toBe('Send to 1 trade who is ready')
     expect(sendBatch(parties.slice(0, 2), ['GC', 'GCs'], { published: true, unread: '', anyway: false }).press.label).toBe('Send to 1 GC who is ready')
