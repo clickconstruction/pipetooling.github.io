@@ -56,6 +56,14 @@ The **By customer** list leaves the bill out of that customer's open money. No r
 The bill is in no pile to collect and in no week of cash coming. The Bridge names it as scheduled in kind and not counted. The Monday email says the same.
 :::
 
+:::card The Billed awaiting payment email
+The email lists money owed only. Its totals and its aging chips leave the bill out. One line says how much is scheduled in kind.
+:::
+
+:::card A reminder to pay
+A residential customer is not reminded to pay that bill. Their **Paid** step waits with no due day. **Remind now** still sends one if you want it.
+:::
+
 :::
 
 A customer can have some jobs on the arrangement and some off it. The bills off it still read as money owed, and they still age.

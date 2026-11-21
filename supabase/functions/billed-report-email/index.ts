@@ -35,6 +35,8 @@ import {
   type BilledReportPayload,
 } from './render.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { stampInKindDeals } from '../_shared/inKindPayloadRows.ts'
+import { withInKindApart } from '../_shared/billedReportEmail.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
@@ -67,7 +69,10 @@ async function fetchPayload(admin: Admin): Promise<BilledReportPayload> {
   if (!data || typeof data !== 'object' || !(data as BilledReportPayload).totals) {
     throw new Error('Empty payload')
   }
-  return data as BilledReportPayload
+  // Punch list #301: the RPC lists every open billed row and does not say which job is on an in kind deal. The
+  // stamp reads the column for the payload's jobs, and the split takes those bills out of the list and the totals.
+  // A failed read throws, as in the money emails: a report that ages a credit as late is the wrong this stops.
+  return withInKindApart(await stampInKindDeals(admin, data as BilledReportPayload))
 }
 
 /** Caller JWT → active staff users row; a Response means the gate failed. */
