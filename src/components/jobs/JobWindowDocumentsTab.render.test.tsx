@@ -168,6 +168,12 @@ vi.mock('../../lib/jobs/jobPapersIo', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../lib/jobs/jobPapersIo')>()
   return { ...real, supabaseJobPapersIo: { ...real.supabaseJobPapersIo, readRoster: (jobId: string) => papersReadSpy(jobId) } }
 })
+// A job with papers also reads which of them are built from the job's own settings (punch list #389); none is.
+const settingsPapersReadSpy = vi.fn((_jobId: string) => Promise.resolve([]))
+vi.mock('../../lib/jobs/jobPaperSettingsIo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/jobs/jobPaperSettingsIo')>()
+  return { ...real, supabaseJobPaperSettingsIo: { ...real.supabaseJobPaperSettingsIo, readSettingsPapers: (jobId: string) => settingsPapersReadSpy(jobId) } }
+})
 
 let chargeStatements: ChargeStatementRow[] = []
 const chargeStatementsReadSpy = vi.fn((_jobId: string) => Promise.resolve(chargeStatements))
@@ -273,6 +279,7 @@ beforeEach(() => {
   plansReadSpy.mockClear()
   folderFilesReadSpy.mockClear()
   papersReadSpy.mockClear()
+  settingsPapersReadSpy.mockClear()
   chargeStatementsReadSpy.mockClear()
   materialLinesReadSpy.mockClear()
   photosReadSpy.mockClear()
@@ -763,7 +770,7 @@ describe('the five sections with a read of their own draw what the fake answers'
     // Photos: the count line.
     expect(await screen.findByRole('button', { name: '2 in Drive · 1 on its way · the newest Nov 1: open the job’s photos' })).toBeTruthy()
 
-    for (const spy of [plansReadSpy, papersReadSpy, chargeStatementsReadSpy, materialLinesReadSpy, folderFilesReadSpy, photosReadSpy]) {
+    for (const spy of [plansReadSpy, papersReadSpy, settingsPapersReadSpy, chargeStatementsReadSpy, materialLinesReadSpy, folderFilesReadSpy, photosReadSpy]) {
       expect(spy).toHaveBeenCalledTimes(1)
       expect(spy).toHaveBeenCalledWith('job-7')
     }

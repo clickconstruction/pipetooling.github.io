@@ -223,9 +223,33 @@ function EditLines({ edit, listPath, lines, label, tone }: { edit: FlowEdit; lis
 /** Look only, as someone holding a builder's link walks it: the last step has no press, and says this under Back. */
 export type FlowLook = { lastStep: string }
 
-export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook }) {
-  const [held, setHeld] = useState<Held>(() => ({ settings: startSettings(def), flow: startFlow() }))
+/**
+ * A host that acts on the flow's answer (punch list #389 step 4, a job's settings page). `start` is where the walk
+ * begins: settings to open on, the box already ticked, a step to open at. `onHeld` hears every change, so the host can
+ * work out what the answer means while the person walks. `onConfirm` is the review's press. `confirm` overrides that
+ * press while the host is busy or holds it, and `reviewExtra` is drawn under the review. Without a host the flow is as
+ * it was: its state lives here, and the review's press requires nothing of anyone.
+ */
+export type FlowHost = {
+  start?: { settings?: PaperSettings; ackAt?: string | null; step?: number }
+  onHeld?: (held: { settings: PaperSettings; ackAt: string | null }) => void
+  onConfirm?: (answer: { settings: PaperSettings; ackAt: string | null }) => void
+  confirm?: { label?: string; dead?: boolean; note?: string }
+  reviewExtra?: ReactNode
+}
+
+export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook; host?: FlowHost }) {
+  const [held, setHeld] = useState<Held>(() => {
+    const settings = host?.start?.settings ?? startSettings(def)
+    return { settings, flow: settleFlow(def, settings, { ...startFlow(), ackAt: host?.start?.ackAt ?? null, step: host?.start?.step ?? 0 }) }
+  })
   const { settings, flow } = held
+  const onHeld = host?.onHeld
+  useEffect(() => {
+    onHeld?.({ settings, ackAt: flow.ackAt })
+    // The host hears a change of the answer, not a new function of its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, flow.ackAt])
   const steps = flowSteps(def)
   const step = steps[flow.step] ?? steps[0]
   const last = steps.length - 1
@@ -268,7 +292,7 @@ export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: Pap
 
   const topic = step.kind === 'topic' ? topicOf(def, step.key) : undefined
   const at = topic ? (settings.topics[topic.key] ?? settings.basis) : PAPER_OFF
-  const confirm = confirmWords(def, settings, flow)
+  const confirm = { ...confirmWords(def, settings, flow), ...host?.confirm }
   const nextShut = isStepShut(def, settings, flow, nextStep(def, settings, flow))
 
   return (
@@ -314,7 +338,8 @@ export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: Pap
                 // A dash is the paper's shape and not a 44 px press: `index.css` leaves this class out of the tab's rule.
                 className="documentBuilderStep"
                 onClick={() => go(i)}
-                style={{ flex: '1 1 0', minWidth: 0, height: 24, border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
+                // The dash takes 24 px of the bar and a 44 px press: the press reaches 10 px over the title above and the bar's own foot.
+                style={{ flex: '1 1 0', minWidth: 0, height: 44, margin: '-10px 0', border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
               >
                 <span style={{ display: 'block', height: now ? 14 : 6, borderRadius: 999, background: fill, transition: 'height 160ms, background-color 220ms' }} />
               </button>
@@ -330,6 +355,7 @@ export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: Pap
           {step.kind === 'site' ? <SitePage def={def} settings={settings} edit={edit} /> : null}
           {topic ? <TopicPage def={def} topic={topic} settings={settings} edit={edit} /> : null}
           {step.kind === 'review' ? <ReviewPage def={def} settings={settings} flow={flow} edit={edit} onChange={(key) => go(steps.findIndex((s) => s.key === key))} /> : null}
+          {step.kind === 'review' ? (host?.reviewExtra ?? null) : null}
         </div>
       </div>
 
@@ -380,7 +406,15 @@ export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: Pap
               {nextLabel(def, settings, flow)}
             </button>
           ) : look ? null : (
-            <button type="button" disabled={confirm.dead} style={mainPress(confirm.dead)} onClick={() => change({ flow: { ...flow, done: true } })}>
+            <button
+              type="button"
+              disabled={confirm.dead}
+              style={mainPress(confirm.dead)}
+              onClick={() => {
+                if (host?.onConfirm) host.onConfirm({ settings, ackAt: flow.ackAt })
+                else change({ flow: { ...flow, done: true } })
+              }}
+            >
               {confirm.label}
             </button>
           )}
