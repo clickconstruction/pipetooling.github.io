@@ -1,4 +1,4 @@
-# 20261120061000_person_paper_signed_copy.sql (2026-11-19, v2.8016)
+# 20261120134000_person_paper_signed_copy.sql (2026-11-19, v2.8016)
 
 A copy to the signer, and a PDF of a plain paper (punch list #376, *What is left*, row 2). A form has made a PDF since the forms train. A paper of plain words or clauses made none, and nobody was emailed once a person signed.
 

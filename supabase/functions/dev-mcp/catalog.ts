@@ -2199,6 +2199,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "people-week-email",
   "permit-lookup",
   "permit-pull",
+  "person-paper-pdf",
   "photo-save",
   "plan-fetch",
   "plan-set-files",
