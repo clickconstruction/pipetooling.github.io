@@ -20,10 +20,10 @@ export function useMyMoney(enabled: boolean): { lens: MoneyLens | null; rollup: 
     let live = true
     void (async () => {
       try {
-        const res = await supabase.rpc('list_my_money_strip' as never)
+        const res = await supabase.rpc('list_my_money_strip')
         if (!live) return
         const today = todayYmd()
-        const got = res.error ? [] : parseBidMoneyStrip(res.data as unknown).map((e) => bidMoneyLine(e, today))
+        const got = res.error ? [] : parseBidMoneyStrip(res.data).map((e) => bidMoneyLine(e, today))
         setLines(got)
         setLens(buildMoneyLens({ lines: got, bids: [], authUserId: null, today, onlyMine: false }))
       } catch {
