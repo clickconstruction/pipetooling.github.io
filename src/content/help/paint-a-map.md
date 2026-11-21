@@ -464,7 +464,9 @@ Only a new place waits. A change to a saved place says it did not save. Press {{
 
 ### See the places on the job
 
-A job's window lists its places under the address. Each place is a row with its photo, its mark and the start of its words.
+A crew's job window lists the job's places under the address. Each place is a row with its photo, its mark and the start of its words.
+
+The office's job window shows them on its **Map** tab. Under the address it shows one line, **Places on this job**.
 
 Press a row. **Places on this job** opens on that place, with the map on its dot.
 
