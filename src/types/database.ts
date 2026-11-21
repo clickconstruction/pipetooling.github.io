@@ -10765,12 +10765,64 @@ export type Database = {
           },
         ]
       }
+      document_builder_link_opens: {
+        Row: {
+          client_ip: string | null
+          device: Json
+          id: string
+          link_id: string
+          opened_at: string
+          revision: number | null
+          user_agent: string | null
+          user_id: string | null
+          viewer: string
+        }
+        Insert: {
+          client_ip?: string | null
+          device?: Json
+          id?: string
+          link_id: string
+          opened_at?: string
+          revision?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+          viewer: string
+        }
+        Update: {
+          client_ip?: string | null
+          device?: Json
+          id?: string
+          link_id?: string
+          opened_at?: string
+          revision?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+          viewer?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_builder_link_opens_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "document_builder_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_builder_link_opens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_builder_links: {
         Row: {
           builder_key: string
           code_hash: string
           ended_at: string | null
           ended_by: string | null
+          ended_why: string | null
           id: string
           last_opened_at: string | null
           made_at: string
@@ -10785,6 +10837,7 @@ export type Database = {
           code_hash: string
           ended_at?: string | null
           ended_by?: string | null
+          ended_why?: string | null
           id?: string
           last_opened_at?: string | null
           made_at?: string
@@ -10799,6 +10852,7 @@ export type Database = {
           code_hash?: string
           ended_at?: string | null
           ended_by?: string | null
+          ended_why?: string | null
           id?: string
           last_opened_at?: string | null
           made_at?: string

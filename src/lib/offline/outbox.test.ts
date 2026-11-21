@@ -446,7 +446,7 @@ describe('the photos on the bar', () => {
     expect(photosWaitingLine([bidPhotos])).toEqual(['2 photos with it'])
     expect(pressLead(bidPhotos, () => '2:05 PM')).toBe('Bid photos from 2:05 PM')
     expect(parseOutboxPress(JSON.parse(JSON.stringify(bidPhotos)))).toEqual(bidPhotos)
-    expect(PHOTO_CARRYING_KINDS).toEqual(['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos'])
+    expect(PHOTO_CARRYING_KINDS).toEqual(['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos', 'person-report'])
     expect(keptPhotoCount([{ ...withPhotos('a', 2, 1), state: 'sent' }])).toBe(0)
     expect(keptPhotoCount([plain])).toBe(0)
   })

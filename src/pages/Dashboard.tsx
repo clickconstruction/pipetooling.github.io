@@ -94,7 +94,6 @@ import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsI
 import { DashboardProjectsCard } from '../components/dashboard/DashboardProjectsCard'
 import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
 import { DashboardOverheadCard } from '../components/dashboard/DashboardOverheadCard'
-import { DashboardPersonReportCard } from '../components/dashboard/DashboardPersonReportCard'
 import { WriteSomeoneUpDoor } from '../components/writeUp/WriteSomeoneUpDoor'
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
 import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
@@ -1507,7 +1506,6 @@ export default function Dashboard() {
       visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
     },
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
-    { id: 'dash-hr-report', label: 'HR', visible: role === 'dev' || role === 'master_technician' },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
     { id: 'dash-training', label: 'Training', visible: Boolean(authUser?.id) && trainingDockVisible },
   ].filter((sec) => sec.visible)
@@ -2005,13 +2003,7 @@ export default function Dashboard() {
           roles with data; fail-soft before the 3.1 RLS push. */}
       <DashboardSubMoneySection visible={isSubcontractorLikeRole(role)} />
 
-      {/* Field reports → HR (v2.2235): masters and devs capture an observation
-          while it's fresh; it queues on People → HR for filing. Placement:
-          the people cluster — directly above My Team. */}
-      {(role === 'dev' || role === 'master_technician') && (
-        <div id="dash-hr-report" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      <DashboardPersonReportCard visible={role === 'dev' || role === 'master_technician'} />
+      {/* The HR Report card (v2.2235) sat here until v2.8174: Write someone up, under the row of squares, is its door now (punch list #410). */}
 
       {authUser?.id && (
         <Suspense fallback={<MyTeamSectionSkeleton />}>

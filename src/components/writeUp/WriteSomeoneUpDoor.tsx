@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, type CSSProperties } from 'react'
-import { canWriteSomeoneUp, WRITE_UP_WORDS, type WriteUpDraft } from '../../lib/people/writeUp'
+import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { canWriteSomeoneUp, draftFromKept, draftToKeep, keptDraftKey, WRITE_UP_WORDS, type WriteUpDraft } from '../../lib/people/writeUp'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 
 const WriteUpSheet = lazy(() => import('./WriteUpSheet').then((m) => ({ default: m.WriteUpSheet })))
@@ -7,13 +7,46 @@ const WriteUpSheet = lazy(() => import('./WriteUpSheet').then((m) => ({ default:
 /**
  * Write someone up (punch list #410): the one press. A named line, the same words and the same look wherever a leader
  * or a superintendent lands: the full Dashboard, the short Dashboard and Job Mode. It opens the sheet and saves
- * nothing. A draft the writer left stays here while the sheet is closed, and the line says one is not finished. Draws
- * nothing for any other role.
+ * nothing. A draft the writer left stays here while the sheet is closed, and the line says one is not finished. The tab
+ * keeps the draft's words too, so a reload in the middle of one (the app offers *Reload* when a new version is ready)
+ * brings it back, without its photos. Draws nothing for any other role.
  */
+
+/** The tab's own store, which a private window may refuse: every read and write is tried, never trusted. */
+function readKept(userId: string): WriteUpDraft | null {
+  try {
+    return draftFromKept(window.sessionStorage.getItem(keptDraftKey(userId)))
+  } catch {
+    return null
+  }
+}
+function writeKept(userId: string, draft: WriteUpDraft | null): void {
+  try {
+    if (draft) window.sessionStorage.setItem(keptDraftKey(userId), draftToKeep(draft))
+    else window.sessionStorage.removeItem(keptDraftKey(userId))
+  } catch {
+    // the draft still lives in the page
+  }
+}
+
 export function WriteSomeoneUpDoor({ userId, role, surface, style }: { userId: string | null | undefined; role: string | null | undefined; /** Where the press sits, for the press record. */ surface: string; style?: CSSProperties }) {
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<WriteUpDraft | null>(null)
-  if (!userId || !canWriteSomeoneUp(role)) return null
+  const [draft, setDraftState] = useState<WriteUpDraft | null>(null)
+  const allowed = Boolean(userId) && canWriteSomeoneUp(role)
+  // A draft the tab kept from before a reload comes back once the person is known.
+  useEffect(() => {
+    if (!userId || !allowed) return
+    const kept = readKept(userId)
+    if (kept) setDraftState((now) => now ?? kept)
+  }, [userId, allowed])
+  const setDraft = useCallback(
+    (next: WriteUpDraft | null) => {
+      setDraftState(next)
+      if (userId) writeKept(userId, next)
+    },
+    [userId],
+  )
+  if (!userId || !allowed) return null
   return (
     <>
       <button
