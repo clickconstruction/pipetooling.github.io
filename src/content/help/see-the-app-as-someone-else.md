@@ -30,6 +30,17 @@ They live under Settings → System → **Digital twins & samples**. They are hi
 
 They are not read-only. A sample can press a button, save a note or advance a candidate. That write is stamped with the sample's own name. You turn on **training mode** on a sample if you want a look-only one.
 
+## What View as holds back
+
+Looking is not using. The app saves some things by itself while a page is open, with no press from anyone. View as holds two of them back.
+
+- The person's **last seen** time and their time in the app stay as their own use made them. People → Activity does not count your look.
+- A salaried person's clock is not synced from your browser. The server fills their day by its own schedule.
+
+Some pages still save small things by themselves. Opening a note or a bid request can mark it as seen for that person. So you open only the pages you came to check.
+
+Everything you press still saves as that person. A press saves for a real teammate just as it does for a sample. So you look, and you press nothing you would not want under their name.
+
 :::example Does an assistant see the Hiring pill?
 Settings → View as… → **Assistant**. You are *Sample assistant*; open Prospects: no Hiring pill, because the sample has no Hiring switch. Exit. Settings → System → **Digital twins & samples** → {{button:outline|Desk}} beside *Sample assistant* → tick **Hiring board**. View as → Assistant again, back to Prospects: the pill is there.
 :::

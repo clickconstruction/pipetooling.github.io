@@ -538,18 +538,21 @@ export default function Layout() {
 
   async function handleBackToMyAccount() {
     const raw = localStorage.getItem(IMPERSONATION_KEY)
-    localStorage.removeItem(IMPERSONATION_KEY)
     setImpersonating(false)
     if (!raw) return
     const stash = readImpersonationStash(raw)
+    // The flag comes off only after the session is the operator's again: until then the page is
+    // still signed in as the person, and what is held while View as is on stays held.
     try {
       if (stash?.access_token && stash.refresh_token) {
         await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
       }
     } catch {
+      localStorage.removeItem(IMPERSONATION_KEY)
       navigate('/sign-in', { replace: true })
       return
     }
+    localStorage.removeItem(IMPERSONATION_KEY)
     // v2.3606: Exit returns to the page the operator left (a full load, so every loader re-reads as them).
     window.location.assign(impersonationReturnPath(stash, window.location.origin))
   }

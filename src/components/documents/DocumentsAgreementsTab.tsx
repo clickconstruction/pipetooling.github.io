@@ -248,27 +248,6 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
   }, [rows])
 
-  // Reminders by email: read for the waiting staff and sub papers on the page. A read that fails leaves the lines as
-  // they were: the words are a help, never a gate on the list.
-  useEffect(() => {
-    const ids = (rows ?? []).filter(agreementMayHaveReminders).map((r) => r.source_id)
-    if (ids.length === 0) {
-      setReminders(NO_PAPER_REMINDERS)
-      return
-    }
-    let cancelled = false
-    void readPaperReminders(ids)
-      .then((read) => {
-        if (!cancelled) setReminders(read)
-      })
-      .catch(() => {
-        if (!cancelled) setReminders(NO_PAPER_REMINDERS)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [rows])
-
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
   // The Contract window says when a contract changed; the list reads again so its line follows.
