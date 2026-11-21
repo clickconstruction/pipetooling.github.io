@@ -6718,6 +6718,9 @@ The two are kept apart because a rep leaves a supply house and the paper must st
 `party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
 The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 *Not on a list* is a party whose contact has no record yet.
+Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
+A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
+That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.
 
 ### Sent copies
 
