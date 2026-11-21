@@ -3,7 +3,7 @@
  * company and address here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { ADD_TO_A_LIST_LABEL, addToListTitle, addedToListWords, listChoiceRefusal, listConfirmLabel, listOptions, listPlan, papersComeWords, type ListPerson } from './paperPartyList'
+import { ADD_TO_A_LIST_LABEL, addToListTitle, addedToListWords, listChoiceRefusal, listConfirmLabel, listMadeKey, listOptions, listPlan, papersComeWords, writeOnce, type ListPerson, type MadeRecord } from './paperPartyList'
 
 const noor: ListPerson = { name: 'Noor Haddad', email: 'noor@haddadeng.example', company: 'Haddad Engineering' }
 const alone: ListPerson = { name: 'Noor Haddad', email: 'noor@haddadeng.example', company: '' }
@@ -72,5 +72,54 @@ describe('a choice', () => {
     expect(addedToListWords(noor, 'Ridgeway Builders', 1)).toBe('Noor Haddad is with Ridgeway Builders now. Their paper came with them.')
     expect(addedToListWords(noor, 'Tallgrass Supply Co.', 3)).toBe('Noor Haddad is with Tallgrass Supply Co. now. Their papers came with them.')
     expect(addedToListWords(noor, 'the customers', 0)).toBe('Noor Haddad is with the customers now.')
+  })
+})
+
+// A press that fails after an earlier write landed leaves the window open. The next press finds that write and goes on
+// from it (the audit of punch list #403, finding 10).
+describe('a press after a failure', () => {
+  const house = listMadeKey('house', ['Haddad Engineering'])
+
+  it('knows a write by what it was for, trimmed and in any case', () => {
+    expect(listMadeKey('house', [' haddad ENGINEERING '])).toBe(house)
+    expect(listMadeKey('customer', ['Haddad Engineering'])).not.toBe(house)
+    expect(listMadeKey('house', ['Haddad Supply'])).not.toBe(house)
+    expect(listMadeKey('kept', ['customers', 'c1', 'Noor Haddad', 'noor@haddadeng.example'])).not.toBe(listMadeKey('kept', ['customers', 'c1', 'Noor Haddad', 'noor@elsewhere.example']))
+    expect(listMadeKey('kept', ['customers', 'c1', 'Noor Haddad', ''])).not.toBe(listMadeKey('kept', ['supply_houses', 'c1', 'Noor Haddad', '']))
+  })
+
+  it('keeps the parts apart, whatever they hold', () => {
+    expect(listMadeKey('kept', ['a|b', 'c'])).not.toBe(listMadeKey('kept', ['a', 'b|c']))
+    expect(listMadeKey('kept', ['a","b', 'c'])).not.toBe(listMadeKey('kept', ['a', 'b","c']))
+  })
+
+  it('writes on the first press and hands the same record back after, writing nothing', async () => {
+    const made = new Map<string, MadeRecord>()
+    let writes = 0
+    const write = async () => {
+      writes += 1
+      return { table: 'supply_houses', id: `h${writes}` }
+    }
+    expect(await writeOnce(made, house, write)).toEqual({ table: 'supply_houses', id: 'h1' })
+    expect(await writeOnce(made, house, write)).toEqual({ table: 'supply_houses', id: 'h1' })
+    expect(writes).toBe(1)
+  })
+
+  it('keeps nothing from a write that fails, so the next press writes again', async () => {
+    const made = new Map<string, MadeRecord>()
+    await expect(
+      writeOnce(made, house, async () => {
+        throw new Error('Failed to fetch')
+      }),
+    ).rejects.toThrow('Failed to fetch')
+    expect(made.size).toBe(0)
+    expect(await writeOnce(made, house, async () => ({ table: 'supply_houses', id: 'h2' }))).toEqual({ table: 'supply_houses', id: 'h2' })
+  })
+
+  it('writes again for something else', async () => {
+    const made = new Map<string, MadeRecord>()
+    await writeOnce(made, house, async () => ({ table: 'supply_houses', id: 'h1' }))
+    expect(await writeOnce(made, listMadeKey('house', ['Haddad Supply']), async () => ({ table: 'supply_houses', id: 'h2' }))).toEqual({ table: 'supply_houses', id: 'h2' })
+    expect(made.size).toBe(2)
   })
 })

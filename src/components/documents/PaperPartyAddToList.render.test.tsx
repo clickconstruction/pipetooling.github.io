@@ -19,6 +19,8 @@ const io = vi.hoisted(() => ({
   /** What a customer search and the short lists' read throw, when they fail. */
   failSearch: null as unknown,
   failLists: null as unknown,
+  /** How many customers the app's own form saved. */
+  customersMade: 0,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -57,7 +59,13 @@ vi.mock('../NewCustomerForm', () => ({
   default: (p: { initialValues?: { name?: string; email?: string }; onCreated?: (c: { id: string; name: string }) => void; onCancel?: () => void }) => (
     <div data-testid="new-customer-form">
       {`${p.initialValues?.name}|${p.initialValues?.email ?? ''}`}
-      <button type="button" onClick={() => p.onCreated?.({ id: 'c-new', name: p.initialValues?.name ?? '' })}>
+      <button
+        type="button"
+        onClick={() => {
+          io.customersMade += 1
+          p.onCreated?.({ id: 'c-new', name: p.initialValues?.name ?? '' })
+        }}
+      >
         fake save customer
       </button>
       <button type="button" onClick={() => p.onCancel?.()}>
@@ -75,6 +83,7 @@ beforeEach(() => {
   io.failRead = null
   io.failSearch = null
   io.failLists = null
+  io.customersMade = 0
 })
 afterEach(() => cleanup())
 
@@ -216,5 +225,63 @@ describe('PaperPartyAddToList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
     await waitFor(() => expect(onAdded).toHaveBeenCalled())
     expect(io.did).toEqual(['house Haddad Engineering', 'named k1 as supply_house supply_houses:h-new (Noor Haddad)'])
+  })
+
+  // A press that fails after an earlier write landed leaves the window open. Pressing again goes on from that write, so
+  // nothing is made twice (the audit of punch list #403, finding 10).
+  describe('a press after a failure', () => {
+    beforeEach(() => {
+      io.failName = new Error('Failed to fetch')
+    })
+
+    it('makes no second supply house and keeps the rep once', async () => {
+      const { onAdded } = await open()
+      fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+      await screen.findByRole('alert')
+      expect(io.did).toEqual(['house Haddad Engineering', 'kept Noor Haddad with supply_houses:h-new'])
+      io.failName = null
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+      await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Haddad Engineering now. Their paper came with them.'))
+      expect(io.did).toEqual(['house Haddad Engineering', 'kept Noor Haddad with supply_houses:h-new', 'named k1 as supply_house supply_house_contacts:p-new'])
+    })
+
+    it('keeps the customer the form saved: the form does not open again', async () => {
+      const { onAdded } = await open()
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a customer' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'fake save customer' }))
+      await screen.findByRole('alert')
+      io.failName = null
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a customer' }))
+      await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Haddad Engineering now. Their paper came with them.'))
+      expect(screen.queryByTestId('new-customer-form')).toBeNull()
+      expect(io.customersMade).toBe(1)
+      expect(io.did).toEqual(['kept Noor Haddad with customers:c-new', 'named k1 as customer customer_contact_persons:p-new'])
+    })
+
+    it('keeps the person once at a company the app already keeps', async () => {
+      const { onAdded } = await open()
+      fireEvent.click(screen.getByRole('radio', { name: /Someone at a company we already have/ }))
+      fireEvent.change(screen.getByLabelText('Find a customer or a supply house'), { target: { value: 'ridge' } })
+      fireEvent.click(await screen.findByRole('button', { name: /^Ridgeway Builders/ }, { timeout: 3000 }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add to Ridgeway Builders' }))
+      await screen.findByRole('alert')
+      io.failName = null
+      fireEvent.click(screen.getByRole('button', { name: 'Add to Ridgeway Builders' }))
+      await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Ridgeway Builders now. Their paper came with them.'))
+      expect(io.did).toEqual(['kept Noor Haddad with customers:c1', 'named k1 as customer customer_contact_persons:p-new'])
+    })
+
+    it('makes a new supply house when the name was changed between presses', async () => {
+      const { onAdded } = await open()
+      fireEvent.click(screen.getByRole('radio', { name: /A new supply house or vendor/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+      await screen.findByRole('alert')
+      io.failName = null
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Haddad Supply' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add as a supply house' }))
+      await waitFor(() => expect(onAdded).toHaveBeenCalledWith('Noor Haddad is with Haddad Supply now. Their paper came with them.'))
+      expect(io.did.filter((d) => d.startsWith('house '))).toEqual(['house Haddad Engineering', 'house Haddad Supply'])
+    })
   })
 })
