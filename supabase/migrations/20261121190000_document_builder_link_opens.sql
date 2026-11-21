@@ -39,6 +39,15 @@ GRANT ALL ON TABLE public.document_builder_link_opens TO service_role;
 DROP POLICY IF EXISTS document_builder_link_opens_select ON public.document_builder_link_opens;
 CREATE POLICY document_builder_link_opens_select ON public.document_builder_link_opens FOR SELECT TO authenticated USING (public.is_dev());
 
+-- Why a link ended. A link that a dev switched off stays off until a dev switches it on. A link that ended because
+-- the last trade's send was taken off the page is made again by the next send. The two were one and the same until
+-- now: `ended_at` alone. Null on a live link, and on a link that ended before this column.
+ALTER TABLE public.document_builder_links ADD COLUMN IF NOT EXISTS ended_why text;
+ALTER TABLE public.document_builder_links DROP CONSTRAINT IF EXISTS document_builder_links_ended_why_check;
+ALTER TABLE public.document_builder_links ADD CONSTRAINT document_builder_links_ended_why_check
+  CHECK (ended_why IS NULL OR (ended_at IS NOT NULL AND ended_why IN ('off', 'replaced', 'last_send_off')));
+COMMENT ON COLUMN public.document_builder_links.ended_why IS 'Why the link ended: off (a dev switched it off), replaced (a new link was made), last_send_off (the last send of its sheet was taken off a page). Null on a live link and on one that ended before the column.';
+
 -- The four fences every CREATE TABLE migration closes with (CLAUDE.md, DB migrations).
 SELECT public.apply_read_only_write_blocks();
 SELECT public.apply_read_only_stmt_blocks();

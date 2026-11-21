@@ -192,6 +192,9 @@ INSERT INTO public.document_builder_links (builder_key, sheet_id, nonce, code_ha
 INSERT INTO public.document_builder_links (builder_key, nonce, code_hash) VALUES ('sub-nda', repeat('e', 32), repeat('f', 64));
 SELECT dsb.refused('a second live link to one builder', $q$INSERT INTO public.document_builder_links (builder_key, nonce, code_hash) VALUES ('sub-nda', repeat('1', 32), repeat('2', 64))$q$, 'document_builder_links_live_key');
 SELECT dsb.refused('one code under two links', $q$INSERT INTO public.document_builder_links (builder_key, sheet_id, nonce, code_hash) VALUES ('insurance', NULL, repeat('3', 32), repeat('d', 64))$q$, 'document_builder_links_code_hash_key');
+SELECT dsb.refused('a why on a link that has not ended', $q$UPDATE public.document_builder_links SET ended_why = 'off' WHERE ended_at IS NULL$q$, 'document_builder_links_ended_why_check');
+SELECT dsb.refused('a why nobody wrote down', $q$UPDATE public.document_builder_links SET ended_why = 'lost' WHERE id = '00000000-0000-0000-0000-000000404311'$q$, 'document_builder_links_ended_why_check');
+UPDATE public.document_builder_links SET ended_why = 'replaced' WHERE id = '00000000-0000-0000-0000-000000404311';
 SELECT dsb.same('a new link stands beside the ended one', (SELECT count(*)::text || ' ' || count(*) FILTER (WHERE ended_at IS NULL)::text FROM public.document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0'), '2 1');
 
 -- 3b · An open of a link is the function's to write: an account by its id, someone outside by what the browser sent.

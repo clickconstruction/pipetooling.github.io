@@ -8,10 +8,11 @@ The Document builder: who opened a link, punch list #404. Database only: the fun
 - **A person with an account is kept by the account alone.** The function leaves the address, the browser and the device empty for them.
 - **`revision`** is the revision the open was shown.
 - **Who reads and writes.** Only the edge function writes, with the service role. A dev reads (`is_dev()`). Nobody outside reads it, and no client has insert, update or delete.
+- **`document_builder_links.ended_why`**: why a link ended. `off` is a dev's own press, `replaced` is a new link made over it, and `last_send_off` is the last send of its sheet taken off a page. It is null on a live link and on one that ended before the column, and a check refuses it on a link that has not ended. Nothing writes it yet. It is here so the next send can make a link again after `last_send_off`, and leave one a dev switched off alone.
 - A link that is deleted takes its opens with it (`ON DELETE CASCADE`). An account that is deleted leaves the open and empties its `user_id`.
 - No row is ever cleared by a job. How long an address is kept is Taunya's call and is not set here.
-- Additive and idempotent: `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and a policy dropped before it is made. It opens with the lock timeout and closes with the four fences.
+- Additive and idempotent: `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS` with no default, and a policy and a check each dropped before it is made. It opens with the lock timeout and closes with the four fences.
 
-Checked before the push: section 3b of `supabase/tests/document_builder_sheets/20_scenario.sql`, in the bed `document-builder-sheets`, with the fences in section 0, the readers in sections 5, 6 and 8, and the cascade in section 9. The bed's script applies this file a second time.
+Checked before the push: section 3 (the why) and section 3b of `supabase/tests/document_builder_sheets/20_scenario.sql`, in the bed `document-builder-sheets`, with the fences in section 0, the readers in sections 5, 6 and 8, and the cascade in section 9. The bed's script applies this file a second time.
 
 Apply: `supabase db push` after the merge. Nothing reads or writes the table until the function that follows is deployed.
