@@ -2,7 +2,7 @@
 title: take a training course
 category: Field Work
 roles: all
-keywords: training, course, OSHA 30, refresher, plumbing, lessons, check yourself, final check, caught up, lapsed, training due, take it again, available
+keywords: training, course, OSHA 30, refresher, plumbing, electrical, HVAC, air conditioning, heating, lessons, check yourself, final check, caught up, lapsed, training due, take it again, available
 where: /dashboard
 order: 80
 ---
@@ -15,7 +15,7 @@ Training is a card at the bottom of your Dashboard, under My Time. In Job Mode i
 3. Read the line under a course's name. The line says how big the course is, like *30 short lessons, about 3 hours*.
 4. Press {{button:blue|Start}} on a course. The course opens on its first lesson.
 
-The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course. The second is Intro to plumbing. It shows how water comes into a house and how it leaves, with a drawing in every lesson. The third is Intro to electrical. It shows how a house's electrical system works and where plumbing work touches it. It teaches understanding, not doing.
+The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course. The second is Intro to plumbing. It shows how water comes into a house and how it leaves, with a drawing in every lesson. The third is Intro to electrical. It shows how a house's electrical system works and where plumbing work touches it. It teaches understanding, not doing. The fourth is Intro to HVAC. It shows how a house is cooled and heated, and where the heat, the air and the water go.
 
 ## Read a lesson
 
