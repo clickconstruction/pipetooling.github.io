@@ -21,6 +21,7 @@ import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import type { BuilderRecord } from '../../lib/documentBuilder/standing'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DocumentBuilderFlow, type FlowEdit, type FlowOpen } from './DocumentBuilderFlow'
+import { LevelBars } from './DocumentBuilderSlider'
 import { levelTone } from './levelTone'
 
 /** The writes the builder makes. A smoke hands its own in. */
@@ -245,11 +246,15 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
         <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
           <div style={CARD}>
             <h3 style={CARD_TITLE}>The map: a row a topic, a column a level</h3>
-            <div role="table" aria-label="The map" style={{ display: 'grid', gridTemplateColumns: `minmax(72px, 1.1fr) repeat(${draft.levels.length}, minmax(0, 1fr))`, gap: 4, alignItems: 'stretch', fontSize: '0.72rem' }}>
+            {/* The grid's columns, a head's words or bars and a cell's shape are `index.css`'s: they differ on a phone. */}
+            <div role="table" aria-label="The map" className="documentBuilderMap" style={{ ['--map-levels' as string]: draft.levels.length, fontSize: '0.72rem' }}>
               <span />
               {draft.levels.map((l) => (
-                <span key={l.id} style={{ ...CAP, fontSize: '0.62rem', textAlign: 'center', color: levelTone(draft, l.id) }}>
-                  {l.shortName ?? l.name}
+                <span key={l.id} className="documentBuilderMapHead" title={l.name} style={{ ...CAP, fontSize: '0.62rem', color: levelTone(draft, l.id) }}>
+                  <span className="documentBuilderMapHeadWords">{l.shortName ?? l.name}</span>
+                  <span className="documentBuilderMapHeadBars">
+                    <LevelBars def={draft} stop={l.id} />
+                  </span>
                 </span>
               ))}
               {rows.map((row) => (
@@ -264,7 +269,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
                       aria-label={`${row.label}, ${cell.levelName}${cell.changed ? ', changed' : ''}`}
                       title={cell.says}
                       onClick={() => show(cell.page)}
-                      style={{ border: `1px solid ${cell.changed ? 'var(--text-amber-700)' : 'var(--border)'}`, background: cell.changed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 6, padding: '4px 5px', minHeight: 28, minWidth: 0, textAlign: 'left', fontFamily: 'inherit', fontSize: '0.7rem', lineHeight: 1.25, cursor: 'pointer', boxShadow: `inset 0 3px 0 ${levelTone(draft, cell.level)}` }}
+                      style={{ ['--tone' as string]: levelTone(draft, cell.level), border: `1px solid ${cell.changed ? 'var(--text-amber-700)' : 'var(--border)'}`, background: cell.changed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: 'var(--text-700)', minWidth: 0, textAlign: 'left', fontFamily: 'inherit', fontSize: '0.7rem', lineHeight: 1.25, cursor: 'pointer' }}
                     >
                       <span className="documentBuilderMapWords">{cell.says}</span>
                     </button>

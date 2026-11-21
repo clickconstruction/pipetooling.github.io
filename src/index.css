@@ -7782,8 +7782,29 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   color: var(--text-base);
 }
 
-/* The Document builder's map (punch list #404, step 7): a cell shows its words where there is room to read across a
-   row, and is a small square on a phone. */
+/* The Document builder's map (punch list #404, step 7): a row a topic, a column a level. Where there is room to read
+   across a row, a column's head is the level's name and a cell shows its words under a stripe of the level's colour.
+   On a phone four names do not fit side by side, so a head is the level's bars and a cell is a small square holding
+   a block of the level's colour, as the mock-up draws it. The square is 44 px, the size of a press on a phone. */
+.documentBuilderMap {
+  display: grid;
+  grid-template-columns: minmax(72px, 1.1fr) repeat(var(--map-levels, 4), minmax(0, 1fr));
+  gap: 4px;
+  align-items: stretch;
+}
+.documentBuilderMapHead {
+  text-align: center;
+  min-width: 0;
+}
+.documentBuilderMapHeadBars {
+  display: none;
+}
+.documentBuilderMapCell {
+  border-radius: 6px;
+  padding: 4px 5px;
+  min-height: 28px;
+  box-shadow: inset 0 3px 0 var(--tone);
+}
 .documentBuilderMapWords {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -7791,6 +7812,31 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   overflow: hidden;
 }
 @media (max-width: 720px) {
+  .documentBuilderMap {
+    grid-template-columns: minmax(0, 1fr) repeat(var(--map-levels, 4), 44px);
+    align-items: center;
+  }
+  .documentBuilderMapHeadWords {
+    display: none;
+  }
+  .documentBuilderMapHeadBars {
+    display: grid;
+    justify-items: center;
+  }
+  .documentBuilderMapCell {
+    position: relative;
+    height: 44px;
+    padding: 0;
+    border-radius: 7px;
+    box-shadow: none;
+  }
+  .documentBuilderMapCell::after {
+    content: '';
+    position: absolute;
+    inset: 12px 13px;
+    border-radius: 4px;
+    background: var(--tone);
+  }
   .documentBuilderMapWords {
     display: none;
   }
