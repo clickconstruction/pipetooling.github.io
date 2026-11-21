@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day built as v2.8115 (#9134), v2.8116 (#9130) and v2.8119 (#9133), live 2026-11-21 and walked read-only · the walk's one more dead tick column, on a missed notice with nothing due, fixed as v2.8125 (#9148) · the walk's two older oddities, a sent notice with no month in its strip and a late missed notice that said the lien right was gone, fixed 2026-11-21 (#9211, #9215)
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day built as v2.8115 (#9134), v2.8116 (#9130) and v2.8119 (#9133), live 2026-11-21 and walked read-only · the walk's one more dead tick column, on a missed notice with nothing due, fixed as v2.8125 (#9148) · the walk's two older oddities, a sent notice with no month in its strip and a late missed notice that said the lien right was gone, fixed 2026-11-21 as v2.8167 (#9211) and v2.8170 (#9215), live and read the same day
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,7 +10,7 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (PR #9215).
+next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (v2.8170). One more choice for Grace came from the live read: what the gates say on a missed notice that can no longer go, under Audited below.
 size: M, built as one client-only PR · left, the office's look (XS)
 ver: v2.7989
 blocker: None. The card is built. The office's look is all that is left.
@@ -221,7 +221,7 @@ own PR.
 1. *On a sent notice the strip read* No month picked › *and the months head* no months. Both read the months a draft
    names. A notice that went is no draft, so the list was empty on every sent notice. Both now read the months the
    notice named, off the sent record, like *Jul + Aug ›*. A sent record that keeps no month reads *no month named*,
-   which asks for nothing. None of the seventeen sent records on the desk is like that. PR #9211.
+   which asks for nothing. None of the seventeen sent records on the desk is like that. v2.8167 (#9211).
 2. *A missed notice in the late window (v2.4708) contradicted itself.* Confirmed on made-up rows: one work month, May,
    its window closed Aug 15 with nothing sent or noted, the affidavit not filed and its last day Sep 15, read on Sep 14.
    The months card said *a late notice can still go · the affidavit by Sep 15*. The footer under it said *the lien right
@@ -229,7 +229,19 @@ own PR.
    said gone too. v2.4708's rule says the card is right: the lien is gone only once the affidavit's window has closed
    too. So the footer there is now the draft's, with the send, and the stop says a late notice can still go. Past the
    affidavit's day everything reads gone, as before. No live notice is in the late window, so this was seen in tests
-   only. PR #9215.
+   only. v2.8170 (#9215).
+
+**Live, 2026-11-21, after both.** Read on clicktooling.com with every write refused. The sent notice of Nov 16 read
+*No month picked ›* and *no months* before the first deploy, so the first oddity was seen live. After it, the strip
+reads *Sent Nov 16 ›* then *Jul + Aug ›* and the head *Jul + Aug* at 1,440 px. The sent notice of Nov 17 reads *Sep ›*
+and *Sep* at 390 px. The one notice in Missed has its affidavit's day behind it. It reads gone in its card, its footer
+and its head, with no send, as before.
+
+**One more, for Grace, not built.** That same notice in Missed can no longer go, and its pane still asks for a month.
+The strip's first chip is a red *No month picked ›*, gate 4 says to pick one, and the months head reads *no months*.
+No month can be picked there, since v2.8125 took the tick column off it. It is the fault v2.6625 fixed on a sent
+notice, on the other pile. What should the gates say on a missed notice that can no longer go? Fold them to one line,
+as on a sent notice, or say the window closed. Her choice.
 
 ## How to verify
 
