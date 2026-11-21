@@ -10,7 +10,7 @@ import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
-import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalPlanDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { askLegalConfirmCap, firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalConfirmCapKeys, legalConfirmTwinMessage, legalPlanDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { counselReadDraftProblem, counselReadEntryBody, counselReadMetaForDb, counselReadMetaFromDraft, type CounselTries } from '../_shared/legalCounselRead.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
@@ -40,7 +40,8 @@ import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
  *
  * Guards: the link is the key, length caps, the matter must belong to the
  * firm and be in the with-firm set, 60 acts per matter per hour (#85 item 18; 30 per firm
- * before), twelve people. No honeypot (v2.4622): the page is behind a private link, and a
+ * before), twelve people, and a cap on confirmation emails (three to a person and twenty-four to a firm
+ * in an hour, `_shared/legalPortalActs.ts`). No honeypot (v2.4622): the page is behind a private link, and a
  * hidden box a password manager fills would have made a real act vanish behind "Saved".
  * Since item 18 every matter act may carry `occurredOn` (the date the firm sets,
  * not in the future), `clientId` (a uuid: a retry or double click saves once, the first
@@ -116,9 +117,15 @@ serve(async (req) => {
     // --- The firm's people and their email rules (PR 5) ---------------------
     if (RECIPIENT_KINDS.includes(kind)) {
       const nowIso = new Date().toISOString()
-      const sendConfirm = async (id: string, name: string, email: string): Promise<boolean> => {
+      // The cap on confirmation emails (#85): the portal's own throttle counts them, under a key for the person and one for the firm.
+      const countConfirms = async (key: string, record: boolean): Promise<number> => (await askGuessGate(admin, key, record)).misses
+      const sendConfirm = async (id: string, name: string, email: string, prevHash: string | null): Promise<boolean | 'twin'> => {
         const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
-        await admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
+        // The new link's hash is written only over the hash this call read. Of two presses in the same instant one
+        // writes and sends; the other is told one went, so a burst of presses is one email and the link in it works.
+        const swap = admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
+        const { data: won, error: swapErr } = await (prevHash ? swap.eq('confirm_token_hash', prevHash) : swap.is('confirm_token_hash', null)).select('id')
+        if (!swapErr && ((won ?? []) as unknown[]).length === 0) return 'twin'
         const key = Deno.env.get('RESEND_API_KEY')
         // v2.4662: a confirmation that does not go marks the person "not reaching" (send_failed_since), as the dispatcher does.
         const note = async (res: { success: boolean; error?: string }) => {
@@ -144,17 +151,23 @@ serve(async (req) => {
         if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonResponse({ error: 'A name and a working email, please.' }, 400)
         const { count: n } = await admin.from('legal_firm_recipients').select('id', { count: 'exact', head: true }).eq('firm_id', link.firm_id).is('removed_at', null)
         if ((n ?? 0) >= 12) return jsonResponse({ error: 'Twelve people is the limit — remove someone first.' }, 400)
+        // Before the row is written: a capped add leaves no person waiting on an email that was never sent.
+        const capped = await askLegalConfirmCap(countConfirms, link.firm_id, null, email)
+        if (capped) return jsonResponse({ error: capped }, 429)
         // v2.6278 (punch list #233): the add card carries the whole rule, so the digest's day and time land with the row; a missing or odd value keeps the column's default (Mon 07:00).
         const addWeekday = Number(body.digestWeekday)
         const addTime = str(body.digestTime, 5)
         const { data: ins, error } = await admin.from('legal_firm_recipients').insert({ firm_id: link.firm_id, name, email, role, added_via_portal: true, mode: str(body.mode, 10) === 'digest' ? 'digest' : 'now', scope: str(body.scope, 10) === 'mine' ? 'mine' : 'all', ...(Number.isInteger(addWeekday) && addWeekday >= 1 && addWeekday <= 7 ? { digest_weekday: addWeekday } : {}), ...(/^[0-2][0-9]:[0-5][0-9]$/.test(addTime) ? { digest_time: addTime } : {}) }).select('id').single()
         if (error) return jsonResponse({ error: error.message.includes('legal_firm_recipients_email_idx') ? 'That address is already on the list.' : 'Could not add them.' }, 400)
-        const sent = await sendConfirm((ins as { id: string }).id, name, email)
-        return jsonResponse({ ok: true, confirmationSent: sent })
+        const newId = (ins as { id: string }).id
+        // This email is the person's first of the hour.
+        await countConfirms(legalConfirmCapKeys(link.firm_id, newId).person!, true)
+        const sent = await sendConfirm(newId, name, email, null)
+        return jsonResponse({ ok: true, confirmationSent: sent !== false })
       }
       const rid = str(body.recipientId, 64)
-      const { data: rec } = await admin.from('legal_firm_recipients').select('id, name, email, firm_id, removed_at').eq('id', rid).maybeSingle()
-      const r = rec as { id: string; name: string; email: string; firm_id: string; removed_at: string | null } | null
+      const { data: rec } = await admin.from('legal_firm_recipients').select('id, name, email, firm_id, removed_at, confirm_token_hash').eq('id', rid).maybeSingle()
+      const r = rec as { id: string; name: string; email: string; firm_id: string; removed_at: string | null; confirm_token_hash: string | null } | null
       if (!r || r.firm_id !== link.firm_id || r.removed_at) return jsonResponse({ error: 'Not on your list.' }, 404)
       if (kind === 'recipient_rules') {
         const patch: Record<string, unknown> = { updated_at: nowIso }
@@ -182,7 +195,10 @@ serve(async (req) => {
         return jsonResponse({ ok: true })
       }
       // recipient_resend
-      const sent = await sendConfirm(r.id, r.name, r.email)
+      const capped = await askLegalConfirmCap(countConfirms, link.firm_id, r.id, r.email)
+      if (capped) return jsonResponse({ error: capped }, 429)
+      const sent = await sendConfirm(r.id, r.name, r.email, r.confirm_token_hash)
+      if (sent === 'twin') return jsonResponse({ error: legalConfirmTwinMessage(r.email) }, 409)
       return jsonResponse({ ok: true, confirmationSent: sent })
     }
 
