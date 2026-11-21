@@ -1,4 +1,4 @@
-# 20261120140000_start_check_arrive_once.sql (2026-11-20, v2.8133)
+# 20261121150500_start_check_arrive_once.sql (2026-11-21, v2.8178)
 
 Before we start, on arrival: a stage is answered once. Punch list #382, from the audit of PR 10. It replaces one function, `start_check_arrive`, with the same signature and the same grants. No table, so no closing calls.
 

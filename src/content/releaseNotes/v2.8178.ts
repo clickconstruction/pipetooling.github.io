@@ -1,8 +1,8 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.8133',
-  date: '2026-11-20',
+  version: 'v2.8178',
+  date: '2026-11-21',
   title: 'Before we start: a second answer on arrival cannot replace a No',
   kind: 'fix',
   highlights: [
