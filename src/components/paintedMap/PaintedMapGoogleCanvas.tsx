@@ -25,6 +25,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps'
 import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanvasDoors'
 import { googleColorSchemeForTheme } from '../../lib/dashboardJobsMap'
+import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
@@ -311,6 +312,7 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
               disableDefaultUI
               zoomControl
               clickableIcons={false}
+              styles={GOOGLE_MAP_STYLES}
               reuseMaps
             >
               <Camera flyTo={flyTo} held={held} refit={refit} points={everything} onView={onView} onCamera={onCamera} />

@@ -603,7 +603,7 @@ A file draws no mark. A place's kind is written in its name, such as *Hazard: Op
 
 Open a saved map to read it. The map under the lines is Google Maps.
 
-**From above** is Google's photograph, with the street names on it. **Streets** is Google's road map.
+**From above** is Google's photograph, with the street names on it. **Streets** is Google's road map. Google's own shop and landmark labels are off, so nothing sits under your line.
 
 Press {{button:blue|Draw a line}} or {{button:outline|＋ Place}} and the picture under the map changes. You draw on the view from above the app has always used.
 

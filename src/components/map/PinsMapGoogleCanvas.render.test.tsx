@@ -25,7 +25,7 @@ vi.mock('@vis.gl/react-google-maps', async () => {
       return <>{p.children}</>
     },
     // The map's own div. Google fills it with `.gm-style` when it paints; a case does that by hand.
-    Map: (p: { children?: ReactNode; zoomControlOptions?: { position: number } }) => <div data-testid="map-div" data-zoom-at={p.zoomControlOptions ? String(p.zoomControlOptions.position) : 'google’s own'}>{p.children}</div>,
+    Map: (p: { children?: ReactNode; zoomControlOptions?: { position: number }; styles?: unknown }) => <div data-testid="map-div" data-zoom-at={p.zoomControlOptions ? String(p.zoomControlOptions.position) : 'google’s own'} data-styles={p.styles ? JSON.stringify(p.styles) : 'google’s own'}>{p.children}</div>,
     // Google's own numbers for where a control sits.
     ControlPosition: { LEFT_TOP: 5, RIGHT_BOTTOM: 9 },
     Marker: forwardRef(() => null),
@@ -35,6 +35,7 @@ vi.mock('@vis.gl/react-google-maps', async () => {
   }
 })
 
+import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import PinsMapGoogleCanvas from './PinsMapGoogleCanvas'
 
 /** The window's observer, stood in: a case says when the frame comes into the window and leaves it. */
@@ -290,5 +291,20 @@ describe('where the zoom buttons sit (v2.8032)', () => {
     plain.view.unmount()
     const view = render(<PinsMapGoogleCanvas apiKey="test-key" onUnavailable={() => {}} pins={PINS} selectedId={null} onSelect={() => {}} fitSignal={0} height={300} isMobile={false} zoomAtTopLeft />)
     expect(view.container.querySelector('[data-testid="map-div"]')?.getAttribute('data-zoom-at')).toBe('5')
+  })
+})
+
+describe('Google’s own place labels (punch list #387)', () => {
+  it('every map of dots wears the app’s one look, so no shop or landmark sits under a dot', () => {
+    const { view } = mount()
+    expect(JSON.parse(view.container.querySelector('[data-testid="map-div"]')?.getAttribute('data-styles') ?? 'null')).toEqual(GOOGLE_MAP_STYLES)
+  })
+
+  it('the photograph and the road map wear it alike', () => {
+    for (const mapTypeId of ['hybrid', 'roadmap'] as const) {
+      const view = render(<PinsMapGoogleCanvas apiKey="test-key" onUnavailable={() => {}} pins={PINS} selectedId={null} onSelect={() => {}} fitSignal={0} height={300} isMobile mapTypeId={mapTypeId} />)
+      expect(JSON.parse(view.container.querySelector('[data-testid="map-div"]')?.getAttribute('data-styles') ?? 'null')).toEqual(GOOGLE_MAP_STYLES)
+      view.unmount()
+    }
   })
 })
