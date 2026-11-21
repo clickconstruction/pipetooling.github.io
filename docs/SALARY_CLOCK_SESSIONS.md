@@ -78,7 +78,9 @@ There is **no** stored salary amount: pay = `hourly_wage` × credited hours, and
 
 Pay staff manage all of this (pay flags, employment dates, workday template, paid/unpaid time
 off) from **People → Employment**; see `src/components/people/PeopleEmploymentTab.tsx` and the
-`manage-employment` help guide.
+`manage-employment` help guide. Its **Pay setup** card names the person's own set week beside **Salaried**
+(`salariedCreditSentence` in `src/lib/people/salariedWeekLine.ts`, v2.8029), and a week of another shape is set on the
+person's desk under **Edit pay setup**.
 
 ---
 

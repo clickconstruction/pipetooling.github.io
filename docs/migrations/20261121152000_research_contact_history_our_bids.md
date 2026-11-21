@@ -34,3 +34,7 @@ The words for **new name** changed with it in the client, in the same PR: *no bi
 `supabase/tests/permit_hint_decks` (`npm run test:pg:permit-hint-decks`, the SQL beds workflow): a made-up customer with two bids that count and two that do not, a practice bid and one made on the 731st day, both won so a miscount would show in the wins. A bid platform's bucket and a ZZ builder each hold a bid and read as no name. A name on the old builders list counts its bid, and a bid made late in the evening reads its company-calendar day. The bed's runner re-applies the two migrations that write the function in order, since the first alone would put the old body back.
 
 `src/lib/research/ourBids.test.ts` holds this file to the kernel: the newest migration that writes `research_contact_history` must count by both rule functions.
+
+## Applied
+
+On the prod ledger, read on 2026-11-21 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.
