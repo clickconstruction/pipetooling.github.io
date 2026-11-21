@@ -6,7 +6,7 @@
  * It is held on mount and on each tick, and the clock is still read.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, waitFor } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../lib/impersonationSession'
 import ClockInOutButton from './ClockInOutButton'
@@ -48,7 +48,13 @@ vi.mock('../contexts/LedgerDisplayPrefixContext', () => ({ useLedgerDisplayPrefi
 
 const SYNC = 'sync_salary_clock_sessions_for_user_day'
 const syncs = () => h.rpcs.filter((fn) => fn === SYNC).length
-/** A full CI run can starve a worker for seconds, so a wait on the mount gets the long limit. */
+/**
+ * A full CI run can starve a worker for seconds, so a wait on the mount gets the long limit.
+ * The waits are vitest's own (`vi.waitFor`), which polls on real timers. The testing library's `waitFor` polls with
+ * `setInterval`, which this file fakes, so it looked again only when the page changed: a sync recorded after the
+ * mount's last change to the page was never seen, and the wait ran out with "expected 0 to be 1".
+ * Each look of `vi.waitFor` moves the faked clock 50 ms, so the longest wait moves it 15 s, well short of a 90 s tick.
+ */
 const MOUNT_WAIT = { timeout: 15_000 }
 
 /** Let the salary probe answer and the effects it sets off run. */
@@ -83,7 +89,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
 
   it('as yourself syncs on mount and again every 90 seconds', async () => {
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
-    await waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
+    await vi.waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
     await tick90()
     expect(syncs()).toBe(2)
   })
@@ -92,7 +98,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
     localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
     // The salary probe has answered, so the effect that would sync has had its turn.
-    await waitFor(() => expect(h.probes).toBeGreaterThan(0), MOUNT_WAIT)
+    await vi.waitFor(() => expect(h.probes).toBeGreaterThan(0), MOUNT_WAIT)
     await settleEffects()
     const readsAfterMount = h.clockReads
     expect(readsAfterMount).toBeGreaterThan(0)
@@ -107,7 +113,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
 
   it('holds a tick scheduled before the imitation began', async () => {
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
-    await waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
+    await vi.waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
 
     localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
     await tick90()
