@@ -34,6 +34,7 @@ import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInK
 import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
 import PayCalendarLine from '../components/customers/PayCalendarLine'
 import CustomerAgreementsCard from '../components/customers/CustomerAgreementsCard'
+import { PartyPapersCard } from '../components/contracts/PartyPapers'
 import {
   buildCustomerActivityFeed,
   filterActivityFeed,
@@ -576,6 +577,8 @@ export default function CustomerDetail() {
 
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}
           {canSeeWhatCustomersSee(myRole) && customerId ? <CustomerAgreementsCard customerId={customerId} customerName={data.customer.name} /> : null}
+          {/* Punch list #403, step 4: an estimator has no Agreements card, so the papers that are with the customer get a card of their own. */}
+          {myRole === 'estimator' && customerId ? <PartyPapersCard party={{ kind: 'customer', id: customerId }} /> : null}
 
           {/* v2.6886: Names on permits — the names a city lists that are this customer's, and the press that finds more (punch list #307). The people who research permits. */}
           {canResearchPermits(myRole) && customerId ? <CustomerPermitNamesCard customerId={customerId} customerName={data.customer.name ?? ''} /> : null}

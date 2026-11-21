@@ -957,6 +957,9 @@ verify_jwt = false
 # Research (punch list #292, v2.6782): the nightly permit pull from a city's open-data feed; cron POST with X-Cron-Secret, or a signed-in researcher's JWT (the function checks user_can_research_permits() itself).
 [functions.permit-pull]
 verify_jwt = false
+# State roll (punch list #411, v2.8164): the weekly read of one of the plumbing board's free licensee files; cron POST with X-Cron-Secret, or a signed-in JWT of someone who holds the Hiring switch (the function checks user_can_read_license_roll() itself).
+[functions.license-roll-pull]
+verify_jwt = false
 # Research, Who pulled it (punch list #292, v2.6786): the card's two cached lookups (Google Places, the county's parcel layer); a researcher's JWT checked in-body (user_can_research_permits), the archived-caller guard.
 [functions.permit-lookup]
 verify_jwt = false
@@ -1075,6 +1078,11 @@ verify_jwt = false
 
 # bridge-weekly-sheet (v2.5883): the Monday cron's X-Cron-Secret, or the owner's or a dev's dry run checked in the function.
 [functions.bridge-weekly-sheet]
+verify_jwt = false
+
+# team-scores (v2.7365, punch list #360): the caller's session is checked in the function (getUser, REAL_ACCOUNT,
+# not archived, then the scoreboard's gate for the full and bids views); nothing is read before it.
+[functions.team-scores]
 verify_jwt = false
 
 # your-week-email (v2.6607, punch list #255): the Monday cron's X-Cron-Secret, or a signed-in account's dry run or test checked in the function.

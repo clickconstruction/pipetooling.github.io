@@ -33986,48 +33986,91 @@ export type Database = {
       }
       person_reports: {
         Row: {
+          adds_to: string | null
           author_name: string
+          author_on_job: boolean | null
+          author_role: string | null
+          author_saw_it: boolean | null
           author_user_id: string | null
           content: string
           created_at: string
           filed_entry_id: string | null
           id: string
+          job_label: string | null
+          job_ledger_id: string | null
+          kind: string | null
           occurred_date: string
+          occurred_time: string | null
+          press_id: string | null
+          pressed_at: string | null
           resolution_note: string | null
           resolved_at: string | null
           resolved_by: string | null
+          seen_by: Json
           status: string
           subject_person_id: string
+          talked_to_person: boolean | null
         }
         Insert: {
+          adds_to?: string | null
           author_name?: string
+          author_on_job?: boolean | null
+          author_role?: string | null
+          author_saw_it?: boolean | null
           author_user_id?: string | null
           content: string
           created_at?: string
           filed_entry_id?: string | null
           id?: string
+          job_label?: string | null
+          job_ledger_id?: string | null
+          kind?: string | null
           occurred_date: string
+          occurred_time?: string | null
+          press_id?: string | null
+          pressed_at?: string | null
           resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by?: Json
           status?: string
           subject_person_id: string
+          talked_to_person?: boolean | null
         }
         Update: {
+          adds_to?: string | null
           author_name?: string
+          author_on_job?: boolean | null
+          author_role?: string | null
+          author_saw_it?: boolean | null
           author_user_id?: string | null
           content?: string
           created_at?: string
           filed_entry_id?: string | null
           id?: string
+          job_label?: string | null
+          job_ledger_id?: string | null
+          kind?: string | null
           occurred_date?: string
+          occurred_time?: string | null
+          press_id?: string | null
+          pressed_at?: string | null
           resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by?: Json
           status?: string
           subject_person_id?: string
+          talked_to_person?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "person_reports_adds_to_fkey"
+            columns: ["adds_to"]
+            isOneToOne: false
+            referencedRelation: "person_reports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "person_reports_author_user_id_fkey"
             columns: ["author_user_id"]
@@ -34040,6 +34083,13 @@ export type Database = {
             columns: ["filed_entry_id"]
             isOneToOne: false
             referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_reports_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -46995,6 +47045,7 @@ export type Database = {
           request_id: string
         }[]
       }
+      estimator_reads_paper: { Args: { p_paper_id: string }; Returns: boolean }
       evidence_is_counsel_only: {
         Args: { p_evidence_id: string }
         Returns: boolean
@@ -48749,6 +48800,7 @@ export type Database = {
         }
         Returns: Json
       }
+      land_person_report: { Args: { p: Json }; Returns: Json }
       latest_bid_cell_history: {
         Args: { p_bid_id: string }
         Returns: {
@@ -50972,6 +51024,15 @@ export type Database = {
         Returns: boolean
       }
       painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
+      paper_is_outside_company: {
+        Args: {
+          p_company_id: string
+          p_partnership_id: string
+          p_party_contact_id: string
+          p_person_id: string
+        }
+        Returns: boolean
+      }
       paper_party_contact: {
         Args: { p_record_id: string; p_record_table: string }
         Returns: string
@@ -53329,10 +53390,15 @@ export type Database = {
         Returns: Json
       }
       week_card_data: { Args: { p_user_id: string }; Returns: Json }
+      withdraw_person_report: {
+        Args: { p_reason: string; p_report_id: string }
+        Returns: Json
+      }
       write_down: {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
         Returns: undefined
       }
+      write_up_people: { Args: never; Returns: Json }
     }
     Enums: {
       estimate_status:

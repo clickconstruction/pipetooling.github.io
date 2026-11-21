@@ -3,7 +3,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { ContractPaper } from '../../lib/contracts/assemble'
 import { savePaperSettings } from '../../lib/contracts/clausesIo'
-import { EMPTY_SETTINGS_DEF, keyFromLabel, moveChoice, newChoice, settingsDefProblems, type PaperSetting, type SettingChoice, type SettingsDef } from '../../lib/contracts/paperSettings'
+import { EMPTY_PAPER_NOTE, EMPTY_SETTINGS_DEF, keyFromLabel, moveChoice, newChoice, settingsDefProblems, type ChoiceLineKey, type PaperNote, type PaperSetting, type SettingChoice, type SettingsDef } from '../../lib/contracts/paperSettings'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseField, ClauseWindow } from './ClauseWindow'
@@ -34,12 +34,56 @@ function AddByName({ label, press, onAdd }: { label: string; press: string; onAd
   )
 }
 
+const linesBox: CSSProperties = { ...clauseInputStyle, minHeight: '3.4rem', resize: 'vertical', fontFamily: 'inherit' }
+
+/**
+ * A list of plain lines, typed one line each. The list keeps an empty line while the person types, so Enter starts a
+ * new one. `settingsDefJson` trims each line and leaves the empty ones out when the list is saved.
+ */
+function LinesField({ label, lines, onLines }: { label: string; lines: string[] | undefined; onLines: (lines: string[]) => void }) {
+  return (
+    <ClauseField label={label}>
+      <textarea aria-label={label} value={(lines ?? []).join('\n')} onChange={(e) => onLines(e.target.value === '' ? [] : e.target.value.split('\n'))} rows={2} style={linesBox} />
+    </ClauseField>
+  )
+}
+
+/** The notice or the site note: a title, a few words of its own, and its lines. */
+function NoteCard({ kind, note, spanish, onNote }: { kind: 'notice' | 'siteNote'; note: PaperNote | undefined; spanish: boolean; onNote: (note: PaperNote) => void }) {
+  const n = note ?? EMPTY_PAPER_NOTE
+  const name = kind === 'notice' ? 'the notice' : 'the site note'
+  const own = kind === 'notice' ? ({ key: 'tick', label: 'The words beside its box' } as const) : ({ key: 'lead', label: 'Its opening line' } as const)
+  const ownEs = kind === 'notice' ? 'tickEs' : 'leadEs'
+  return (
+    <div data-paper-note={kind} style={card}>
+      <div style={row}>
+        <input aria-label={`Title of ${name}`} placeholder="Title" value={n.title} onChange={(e) => onNote({ ...n, title: e.target.value })} style={{ ...field, fontWeight: 600 }} />
+        <input aria-label={`${own.label} of ${name}`} placeholder={own.label} value={n[own.key]} onChange={(e) => onNote({ ...n, [own.key]: e.target.value })} style={{ ...field, flexBasis: 240 }} />
+      </div>
+      <LinesField label={`Lines of ${name}, one line each`} lines={n.lines} onLines={(lines) => onNote({ ...n, lines })} />
+      {spanish && (
+        <>
+          <div style={row}>
+            <input aria-label={`Spanish title of ${name}`} placeholder="Title in Spanish" value={n.titleEs} onChange={(e) => onNote({ ...n, titleEs: e.target.value })} style={field} />
+            <input aria-label={`${own.label} of ${name}, in Spanish`} placeholder={`${own.label}, in Spanish`} value={n[ownEs]} onChange={(e) => onNote({ ...n, [ownEs]: e.target.value })} style={{ ...field, flexBasis: 240 }} />
+          </div>
+          <LinesField label={`Lines of ${name} in Spanish, one line each`} lines={n.linesEs} onLines={(linesEs) => onNote({ ...n, linesEs })} />
+        </>
+      )}
+    </div>
+  )
+}
+
 /**
  * Punch list #389, step 1: a paper's **settings list**, for a controller or a dev. Each setting with its choices from
  * loosest to strictest, the blanks a clause may hold, and the named levels. It holds names and the plain words a
  * summary says, never clause wording. A key is made from a name when the thing is added and never changes after,
  * since clauses are tied to it. The kernel names every gap before the save (`settingsDefProblems`), and the database
  * checks again and refuses a list that drops what a live clause is tied to.
+ *
+ * Step 4: the list also holds the words the office's settings page shows beside a choice, *What puts a person in
+ * breach* and *What the site must have*, and the notice and the site note that page opens on. They are plain lines
+ * about a choice, never clause wording. A choice that leaves the topic out has none.
  */
 export function PaperSettingsWindow({ paper, onClose, onSaved, save = savePaperSettings }: { paper: ContractPaper; onClose: () => void; onSaved: () => void; save?: typeof savePaperSettings }) {
   const { showToast } = useToastContext()
@@ -54,6 +98,7 @@ export function PaperSettingsWindow({ paper, onClose, onSaved, save = savePaperS
   const setSetting = (key: string, change: (s: PaperSetting) => PaperSetting) => setDef((d) => ({ ...d, settings: d.settings.map((s) => (s.key === key ? change(s) : s)) }))
   const setChoice = (settingKey: string, choiceKey: string, change: (c: SettingChoice) => SettingChoice) =>
     setSetting(settingKey, (s) => ({ ...s, choices: s.choices.map((c) => (c.key === choiceKey ? change(c) : c)) }))
+  const setLines = (settingKey: string, choiceKey: string, key: ChoiceLineKey, lines: string[]) => setChoice(settingKey, choiceKey, (c) => ({ ...c, [key]: lines }))
 
   const run = async (next: SettingsDef | null, toast: string) => {
     setBusy(true)
@@ -121,6 +166,18 @@ export function PaperSettingsWindow({ paper, onClose, onSaved, save = savePaperS
               <label style={{ ...row, fontSize: '0.82rem' }}>
                 <input type="checkbox" checked={c.out} onChange={(e) => setChoice(s.key, c.key, (x) => ({ ...x, out: e.target.checked }))} /> This choice leaves the topic out of the paper
               </label>
+              {!c.out && (
+                <>
+                  <LinesField label={`What puts a person in breach under ${c.label} of ${s.label}, one line each`} lines={c.breach} onLines={(lines) => setLines(s.key, c.key, 'breach', lines)} />
+                  <LinesField label={`What the site must have for ${c.label} of ${s.label}, one line each`} lines={c.site} onLines={(lines) => setLines(s.key, c.key, 'site', lines)} />
+                  {spanish && (
+                    <>
+                      <LinesField label={`What puts a person in breach under ${c.label} of ${s.label}, in Spanish`} lines={c.breachEs} onLines={(lines) => setLines(s.key, c.key, 'breachEs', lines)} />
+                      <LinesField label={`What the site must have for ${c.label} of ${s.label}, in Spanish`} lines={c.siteEs} onLines={(lines) => setLines(s.key, c.key, 'siteEs', lines)} />
+                    </>
+                  )}
+                </>
+              )}
               {def.fields.map((f) => (
                 <div key={f.key} style={row}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', flex: '0 0 auto' }}>Fills {f.label || f.key} with</span>
@@ -201,6 +258,14 @@ export function PaperSettingsWindow({ paper, onClose, onSaved, save = savePaperS
         </div>
       ))}
       <AddByName label="A new level" press="Add a level" onAdd={(name) => setDef((d) => ({ ...d, levels: [...d.levels, { key: keyFromLabel(name, d.levels.map((l) => l.key), 'level'), label: name, labelEs: '', alignedWith: '', alignedWithEs: '', picks: {} }] }))} />
+
+      <div style={head}>The notice a job's settings page opens on</div>
+      <p style={muted}>A few plain lines the office reads before it sets a job's settings, with a box to tick. Leave the lines empty for no notice.</p>
+      <NoteCard kind="notice" note={def.notice} spanish={spanish} onNote={(notice) => setDef((d) => ({ ...d, notice }))} />
+
+      <div style={head}>The note on matching the paper to the site</div>
+      <p style={muted}>What to weigh about the real site before a level is picked. Leave the lines empty for no note.</p>
+      <NoteCard kind="siteNote" note={def.siteNote} spanish={spanish} onNote={(siteNote) => setDef((d) => ({ ...d, siteNote }))} />
 
       {problems.length > 0 && (
         <div data-paper-settings-problems style={{ ...card, borderColor: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)' }}>

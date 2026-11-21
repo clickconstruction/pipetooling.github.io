@@ -81,7 +81,7 @@ import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofWindowTab, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 import { lienServeStage } from '../../lib/jobs/lienServeStage'
 import { readLienCopyPrints } from '../../lib/jobs/lienServePrintsIo'
-import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import { lienClosedNoticeStopNote, lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
@@ -951,7 +951,7 @@ export default function LienInstrumentsModal({
     if (kind === 'notice') {
       const sent = step.monthKey ? live.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
       if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`)
-      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      if (step.state === 'missed' || step.fold) return { ...none, note: lienClosedNoticeStopNote(timeline?.next) }
       return { ...none, act: tab('notice', 'Open the Notice tab ›'), note: 'The notice is drafted, approved and sent on the Lien desk. The Notice tab here prints it and records a mailing by hand.' }
     }
     if (kind === 'retainage') {

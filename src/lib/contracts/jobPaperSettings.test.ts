@@ -31,6 +31,7 @@ const DEF = parseSettingsDef({
 }) as SettingsDef
 const subtle = webcrypto.subtle as unknown as SubtleCrypto
 const MIGRATION = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261120163000_settings_on_the_job.sql'), 'utf8')
+const GROUND = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261121150000_settings_page_ground.sql'), 'utf8')
 
 describe('a paper is required with settings, or without', () => {
   it('takes settings on an entry built from them', () => {
@@ -78,9 +79,9 @@ describe('the lock at the first signature', () => {
   it('after a signature, a stricter change makes the next row and says who signs again', () => {
     expect(settingsChangePlan({ ...base, signed: 2, to: to({ photos: 'strict', term: 'long' }) })).toEqual({ kind: 'revised', change: 'stricter', signAgain: 2 })
   })
-  it('after a signature, a looser or a mixed change is refused, with the way to a looser paper', () => {
-    expect(settingsChangePlan({ ...base, signed: 1, to: to({ photos: 'off', term: 'short' }) })).toEqual({ kind: 'refused', change: 'looser', words: JOB_SETTINGS_WORDS.stricterOnly })
-    expect(settingsChangePlan({ ...base, signed: 1, to: to({ photos: 'strict', term: 'short' }), from: { ...base.from, picks: { photos: 'standard', term: 'long' } } }).kind).toBe('refused')
+  it('after a signature, a looser or a mixed change makes the next row too, and says which way it went', () => {
+    expect(settingsChangePlan({ ...base, signed: 1, to: to({ photos: 'off', term: 'short' }) })).toEqual({ kind: 'revised', change: 'looser', signAgain: 1 })
+    expect(settingsChangePlan({ ...base, signed: 3, to: to({ photos: 'strict', term: 'short' }), from: { ...base.from, picks: { photos: 'standard', term: 'long' } } })).toEqual({ kind: 'revised', change: 'mixed', signAgain: 3 })
   })
   it('after a signature, the same picks with new typed words or at a newer Book revision make the next row too', () => {
     expect(settingsChangePlan({ ...base, signed: 1, to: to(base.from.picks, { typed: { party: 'Ridgeway Sample Group' } }) })).toEqual({ kind: 'revised', change: 'same', signAgain: 1 })
@@ -164,14 +165,19 @@ describe('the seal', () => {
 
 describe('the words', () => {
   it('are the database’s own', () => {
-    for (const words of [JOB_SETTINGS_WORDS.nothingChanged, JOB_SETTINGS_WORDS.stricterOnly]) expect(MIGRATION).toContain(words)
+    expect(MIGRATION).toContain(JOB_SETTINGS_WORDS.nothingChanged)
+    expect(GROUND).toContain(JOB_SETTINGS_WORDS.nothingChanged)
+    expect(GROUND).toContain("'% opens on a notice. Tick its box before you require it.'")
+    expect(GROUND).toContain(JOB_SETTINGS_WORDS.notALevel.replace("'", "''"))
+    // The ground under step 4 took the stricter-only refusal out: any change after a signature is a new row.
+    expect(GROUND).not.toContain('can only make it stricter')
     expect(MIGRATION).toContain("'% is built from settings. Require it with its settings.'")
     expect(MIGRATION).toContain("'% is not built from settings. It takes none.'")
     expect(MIGRATION).toContain("' has not been read by an attorney as it reads today. Until it is, only a ZZ Test job takes it.'")
     expect(MIGRATION).toContain("' has no clause yet. Write it in Contracts and clauses first.'")
   })
   it('read plainly', () => {
-    for (const words of [JOB_SETTINGS_WORDS.needsSettings('Sample NDA'), JOB_SETTINGS_WORDS.takesNone('Site rules'), JOB_SETTINGS_WORDS.stricterOnly, JOB_SETTINGS_WORDS.unread('Sample NDA'), JOB_SETTINGS_WORDS.noClause('Sample NDA'), SEAL_WORDS.holds, SEAL_WORDS.broken]) {
+    for (const words of [JOB_SETTINGS_WORDS.needsSettings('Sample NDA'), JOB_SETTINGS_WORDS.takesNone('Site rules'), JOB_SETTINGS_WORDS.noticeUnticked('Sample NDA'), JOB_SETTINGS_WORDS.notALevel, JOB_SETTINGS_WORDS.unread('Sample NDA'), JOB_SETTINGS_WORDS.noClause('Sample NDA'), SEAL_WORDS.holds, SEAL_WORDS.broken]) {
       expect(plainWordsFailures(words)).toEqual([])
     }
   })

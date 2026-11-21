@@ -309,6 +309,9 @@ describe('a No on arrival in the Dispatch inbox (punch list #382)', () => {
     })
     expect(within(win).getByText('The slab is poured.')).toBeTruthy()
     expect(win.textContent).toContain('Ray Ortiz told us it was ready')
+    // It came from the crew's card on arrival, so the window never says a sheet sent it.
+    expect(win.textContent).toContain('sent on arrival')
+    expect(win.textContent).not.toContain('sent from the sheet')
     // The live read is the checklist's, and this line has no check: it is never made.
     expect(liveIo.questions).not.toHaveBeenCalled()
     expect(within(win).getByText('Close it once the site is as told, or the list has changed.')).toBeTruthy()

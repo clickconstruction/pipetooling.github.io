@@ -47,6 +47,9 @@ import {
   sheetCaption,
   sheetNote,
   sheetStamp,
+  jobIsBehind,
+  jobsOnUsual,
+  usualJobsHead,
   usualPlanChip,
   USUAL_PRESS_MOVED,
   usualPlanFor,
@@ -408,6 +411,11 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   /** What this page holds for a job beyond its sheet as read: a choice not yet made, or words typed and not saved. */
   const heldHere = (projectId: string) => (holdsRef.current.has(projectId) ? ('moved' as const) : unsaved.current.has(projectId) ? ('own-changes' as const) : null)
   const plan = usualPlanFor(jobs, sheets, (projectId) => (holds.has(projectId) ? 'moved' : null))
+  /** True for a job whose sheet went out before the usual's newest revision. */
+  const behindUsual = (projectId: string) => {
+    const sheet = sheets.get(projectId)
+    return sheet != null && jobIsBehind(sheet, rec.revision)
+  }
   const press = mode === 'usual' ? usualPublishPress(usual, rec, plan) : jobState ? jobPublishPress(jobState, { def: under, revision: rec.revision }) : { label: 'Nothing to publish', dead: true, why: [] }
   const read = readPress(entry, rec)
   const differs = jobState ? sheetDiffers(under, jobState.own) : []
@@ -634,13 +642,13 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                 />
               </div>
               <div style={CARD}>
-                <h3 style={CARD_TITLE}>{usualDirty ? 'Where this change goes' : 'Every job is on your usual'}</h3>
+                <h3 style={CARD_TITLE}>{usualJobsHead(usualDirty, jobsOnUsual(jobs, sheets, rec.revision), jobs.length)}</h3>
                 {plan.length === 0 ? <p style={MUTED}>No job you run as the GC yet. A job shows here once it is on the GC projects page.</p> : null}
                 <div>
                   {plan.map((row) => (
                     <div key={row.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(0, auto)', gap: '4px 10px', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)', fontSize: '0.84rem' }}>
                       <span>{row.name}</span>
-                      <Chip chip={usualPlanChip(row, usualDirty, sheets.get(row.id)?.revision ?? 0)} />
+                      <Chip chip={usualPlanChip(row, usualDirty, sheets.get(row.id)?.revision ?? 0, behindUsual(row.id))} />
                     </div>
                   ))}
                 </div>
@@ -653,7 +661,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                     ))}
                   </div>
                 ) : null}
-                <p style={FINE}>A field a job has changed keeps the job's own words. A held job gets your usual when you publish that job.</p>
+                <p style={FINE}>A field a job has changed keeps the job's own words. A job that is held or behind gets your usual when you publish that job.</p>
               </div>
             </>
           ) : jobState && job ? (

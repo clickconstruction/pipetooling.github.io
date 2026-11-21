@@ -91,7 +91,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     expect(isNoticeByHandVerb('plan_last_work_day')).toBe(false)
     expect(planVerbFor('apply_notice_by_hand')).toBe('plan_notice_by_hand')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(154)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.122.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.123.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-four verbs and nothing else:')
     expect(SERVER).toContain('plan_notice_by_hand → apply_notice_by_hand (a § 53.056 lien notice that already went out')
     expect(SERVER).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")

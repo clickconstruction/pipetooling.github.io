@@ -78,9 +78,28 @@ export const AGREEMENTS_SELECT =
 /** Rows read per step; Show more reads the next step. */
 export const AGREEMENTS_PAGE = 100
 
-/** The tab is the office's: the four roles the tables' own policies let read a job contract and a person's agreement. */
-export function canSeeAgreements(role: string | null | undefined): boolean {
+/**
+ * Who acts on the tab: the four roles the tables' own policies let write a paper. They send one, send one again, open
+ * the Contract library and press a line to open its window.
+ */
+export function canActOnAgreements(role: string | null | undefined): boolean {
   return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller'
+}
+
+/**
+ * Who has the tab: the four roles, and since punch list #403's call 8 an estimator, who reads it and acts on nothing.
+ * The list is whatever each table's own row security answers the reader.
+ */
+export function canSeeAgreements(role: string | null | undefined): boolean {
+  return canActOnAgreements(role) || role === 'estimator'
+}
+
+/** How a reader holds the tab: the office acts on it, and an estimator reads it. */
+export type AgreementsReader = 'office' | 'estimator'
+
+/** The reader a role is. Every role but the estimator reads as the office, which is how the tab was built. */
+export function agreementsReader(role: string | null | undefined): AgreementsReader {
+  return role === 'estimator' ? 'estimator' : 'office'
 }
 
 // ── The chips ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -125,9 +144,26 @@ export const AGREEMENT_STATE_CHIPS: ReadonlyArray<{ key: StatePick; label: strin
   { key: 'ended', label: 'Voided or ended' },
 ]
 
-/** The kinds a kind chip asks for, or null for every kind. */
-export function kindsOfPick(pick: KindPick): ReadonlyArray<string> | null {
-  return pick === 'all' ? null : AGREEMENT_GROUP_KINDS[pick]
+/**
+ * The chips an estimator has (punch list #403, call 8): the kinds their role reads and no other. An outside company is
+ * a customer, a supply house or a trade company, so a trade company's agreement sits under **Outside companies** for
+ * them, where the office finds it under **Staff and subs** or **GC projects**. A party on no list is closed to them.
+ */
+export const ESTIMATOR_GROUP_KINDS: Readonly<Partial<Record<AgreementGroup, ReadonlyArray<AgreementKind>>>> = {
+  outside: ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement'],
+  orders: ['work_order'],
+}
+
+/** The kind chips a reader is drawn: all of them for the office, and for an estimator only the kinds they read. */
+export function agreementKindChips(reader: AgreementsReader = 'office'): ReadonlyArray<{ key: KindPick; label: string }> {
+  if (reader === 'office') return AGREEMENT_KIND_CHIPS
+  return AGREEMENT_KIND_CHIPS.filter((c) => c.key === 'all' || ESTIMATOR_GROUP_KINDS[c.key] != null)
+}
+
+/** The kinds a kind chip asks for, or null for every kind. A chip a reader does not have asks for no kind at all. */
+export function kindsOfPick(pick: KindPick, reader: AgreementsReader = 'office'): ReadonlyArray<string> | null {
+  if (pick === 'all') return null
+  return reader === 'office' ? AGREEMENT_GROUP_KINDS[pick] : (ESTIMATOR_GROUP_KINDS[pick] ?? [])
 }
 
 /** The states a read asks for, or null for every state. */
@@ -174,6 +210,8 @@ export interface AgreementsQuery {
   state: StateAsk
   typed: string
   limit: number
+  /** Whose chips these are. Left out, the office's. */
+  reader?: AgreementsReader
 }
 
 /**
@@ -199,12 +237,24 @@ export function agreementsNarrowed(q: Pick<AgreementsQuery, 'kind' | 'state' | '
 /** Where the empty list's press goes: the Pipeline, where a contract is sent to sign. */
 export const AGREEMENTS_EMPTY_PAGE = { label: 'Pipeline', to: '/jobs?tab=stages', tail: 'is where a contract is sent to sign.' } as const
 
+/** What an estimator's empty list says after its first sentence: the office sends, and they read. */
+export const AGREEMENTS_READER_EMPTY_TAIL = 'The office sends a paper to an outside company from this tab.'
+
+/**
+ * Where an estimator opens a signed paper: the tab is theirs to read, and the press is on the company's own page.
+ */
+export const AGREEMENTS_READER_DOORS = 'This list is for reading. A signed paper, a W-9 or a certificate opens from the company’s own page.'
+
 /**
  * The empty list's words: nothing matches the search (*Clear the search*), nothing matches the chips (*Clear the
  * filters*), or nothing is on file at all, which names the page that fills it. The tab adds the press.
  */
-export function agreementsEmptyWords(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed'>): EmptyWords {
-  if (!agreementsNarrowed(q)) return emptyWords({ kind: 'data', noun: 'agreements', page: { label: AGREEMENTS_EMPTY_PAGE.label, tail: AGREEMENTS_EMPTY_PAGE.tail } })
+export function agreementsEmptyWords(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed'>, reader: AgreementsReader = 'office'): EmptyWords {
+  if (!agreementsNarrowed(q)) {
+    const office = emptyWords({ kind: 'data', noun: 'agreements', page: { label: AGREEMENTS_EMPTY_PAGE.label, tail: AGREEMENTS_EMPTY_PAGE.tail } })
+    // An estimator sends nothing, so their empty list names who does and offers no press.
+    return reader === 'office' ? office : { main: office.main, next: '', tail: AGREEMENTS_READER_EMPTY_TAIL }
+  }
   const query = agreementFindWords(q.typed).length > 0 ? q.typed.trim() : ''
   return emptyWords({ kind: 'filter', noun: 'agreements', query })
 }

@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -287,6 +287,7 @@ last_updated: 2026-11-20
 
 > **v2.7318 (the scrolled strip says less and every chip is a press, the owner's word of 2026-11-15 on JP372):** the strip that pins to a notice pane's top past `STRIP_COLLAPSE_PX` repeated the footer and the Next band in `<span>`s that did nothing.
 > [`lienStripChips.ts`](../src/lib/jobs/lienStripChips.ts) words it: one red chip per blocking gate in `lienGateShortWords`' words (*Owner of record missing ›*) and no *Can't go out yet*, one green *Ready to go out ›* with none, an amber chip for a check, the next step only when it is another paper or nothing blocks (a blocked notice's own step repeats the red chip), the months and the claim as quiet presses, a sent notice's *Sent Oct 14 ›* back to the top, every chip ending in ›.
+> Since **v2.8167** a sent notice's months chip reads the months the notice named, `lienSentGatesFold`'s `months` (*Jul + Aug ›*, or *No month named ›* when the record keeps none), and `lienPaneSections` takes the same words as `sentMonths` for the Months on this job head, because the pane's own months belong to a draft and are empty on a paper that went.
 > `LienDesk.tsx` draws them as `<button class="lienStripChip" data-lien-strip-chip={key} data-tone>` and `pressStripChip(act)` wires each to the door the gate box has: `gate:owner` → `setPaneFix` (the property window at the owner) for the office, `gate:gc` → Edit Job, `gate:kind` / `gate:billed` → `pickGate`, `months` → the grid, `claim` → the claim box, `wording` → the envelope line, `next` → `goToSection('path')`, `ready` → the footer's primary, `top` → the gates.
 > `data-lien-desk-strip` / `data-lien-desk-strip-next` / `data-lien-strip-sent` keep their places.
 
@@ -349,6 +350,9 @@ last_updated: 2026-11-20
 > only the slot element moved.
 > Since **v2.7422** (Taunya's ask of 2026-11-15) a monthly notice's footer is not that bar on a computer: it is the pane's last section, `sign`, under the one blue head (`lienNoticeFootHead`, `LienPaneSection.foot` in [`lienPaneSections.ts`](../src/lib/jobs/lienPaneSections.ts)), portalled into `data-lien-pane-body="sign"`, so the paper has the whole pane and the reader scrolls through it to sign.
 > The affidavit's and the retainage notice's footers are still the bar.
+> Since **v2.8170** a notice in the Missed pile draws the draft's footer, and its head reads *Sign and send*, while `lienMissedNoticeStillGoes` (`lienPaneSections.ts`) holds: a month is still due, or `lateUntil` is set, the affidavit's last day while every window closed unsent (v2.4708).
+> Past both, the footer keeps *The window closed on … with no notice — the lien right on that work is gone* under *Window closed · Nothing to sign*.
+> A closed notice stop's note is `lienClosedNoticeStopNote` (`lienStopPaper.ts`) in the three stop windows: *A late notice can still go, and the affidavit can follow it* while the timeline's next step is `late_notice`, else that the lien right on that work is gone.
 
 > **v2.7780 (the owner-records door leaves the title bar for the call window, the owner's ask of 2026-11-18):** *An owner asked for records ›* is the last row of `LienCallScriptModal`, the window ☎ opens (`onOwnerRecords`, words `CALL_SCRIPT_RECORDS_ASK` and `CALL_SCRIPT_RECORDS_DOOR` in `lienCallScript.ts`), and `onOpenOwnerRecords` is handed the job under the reader so the packet opens on its property.
 > The bar's tools are the four presses alone: `lienDeskTitleLineFit` answers `all` or `none`, `LienDeskTitleLineParts` and `LienDeskTitleBarLayout` have no door, `lienDeskTitleBarLayout` takes no `recordsDoor`, and off By paper a bar that holds the presses is one line.
@@ -698,7 +702,7 @@ last_updated: 2026-11-20
 > The fuller version is #235, the lien month.
 
 > **v2.6625 (the gates fold on a sent notice with nothing due, punch list #248 PR 2, the owner's rule A):** region E's gates judged a notice that had already gone — 890 read *Can't go out yet · 3 blockers* and gate 4 *No month picked* over an empty grid.
-> `lienSentGatesFold` (`lienDeskGates.ts`) → `{ sentOn, head, line, rows }`: *Sent Oct 14 · the owner · the GC · the kind · the months the notice named*, each gate's value in plain words with no tone, the four as rows for *Details ∨* (*More details ∨* / *Fewer details ∧* since v2.7423, `LIEN_GATES_FOLD_WORDS`, read by both drawings).
+> `lienSentGatesFold` (`lienDeskGates.ts`) → `{ sentOn, head, months, line, rows }`: *Sent Oct 14 · the owner · the GC · the kind · the months the notice named*, each gate's value in plain words with no tone, the four as rows for *Details ∨* (*More details ∨* / *Fewer details ∧* since v2.7423, `LIEN_GATES_FOLD_WORDS`, read by both drawings).
 > `LienDeskModal` computes `gatesFold` when `selected.pile === 'sent'`, `dueMonths` is empty and the entry's item is the sent record;
 > the pane body draws `LienGatesSentFold` (`LienDeskGates.tsx`, `data-lien-gates-sent`) instead of `LienDeskGates`, the sticky strip a quiet *Sent Oct 14* chip instead of the verdict and the blocker chips, `lienPaneSections` the head *Sent Oct 14 · as the notice went* (`gates: { sentOn }`), and the stop window's *before* list is empty.
 > A Sent row with months still due keeps the four gates on the next notice (rule C of the card's face two).

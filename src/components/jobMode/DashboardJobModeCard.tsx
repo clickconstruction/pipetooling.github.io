@@ -37,6 +37,7 @@ import { outbox } from '../../lib/offline/outboxState'
 import { pendingClockIn } from '../../hooks/useOutbox'
 import { isPressSessionId, pressSessionId } from '../../lib/offline/pendingSession'
 import JobModeDetailsSection from './JobModeDetailsSection'
+import { JobModeArrivalCheck } from './JobModeArrivalCheck'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
 import { canHandThePhone, goToSigningPage, handPhoneDoorText, handPhoneState, openInPersonSigning, type HandPhoneState } from '../../lib/jobs/jobContractInPerson'
@@ -1470,6 +1471,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
             updatesRev={jobUpdatesRev}
             onMessageCustomer={!loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? () => setMessageDoorRev((n) => n + 1) : undefined}
+            arrivalAbove={short}
           />
         )
         if (!short) {
@@ -1481,10 +1483,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           )
         }
         // The short page (punch list #384): the lower half behind one row, a fold in place, then the pace line.
+        // Is it as told? stays over the fold (punch list #382): it is asked on arrival, and it draws nothing on a day
+        // with nothing to ask, so the page is still one screen. The details are told not to draw a second one.
         const open = shortJobOpen === detailsTarget.id
         const w = JOB_MODE_SHORT_WORDS.openJob
         return (
           <>
+            <JobModeArrivalCheck key={`arrival-${detailsTarget.id}`} jobId={detailsTarget.id} />
             <JobModeShortRow testId="job-mode-short-open-job" title={open ? w.openTitle : w.title} note={open ? w.openNote : w.note} expanded={open} onPress={() => setShortJobOpen(open ? null : detailsTarget.id)} />
             {open ? (
               <div data-testid="job-mode-short-job" style={{ display: 'grid', gap: '0.5rem', minWidth: 0 }}>

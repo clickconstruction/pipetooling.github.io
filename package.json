@@ -202,6 +202,8 @@
     "test:pg:pay-calendar": "bash scripts/pgtest-pay-calendar.sh",
     "test:pg:person-file-numbers": "bash scripts/pgtest-person-file-numbers.sh",
     "test:pg:person-engagements": "bash scripts/pgtest-person-engagements.sh",
+    "test:pg:person-report-write-up": "bash scripts/pgtest-person-report-write-up.sh",
+    "test:pg:person-report-photos": "bash scripts/pgtest-person-report-photos.sh",
     "test:pg:dev-seat-kept-plans": "bash scripts/pgtest-dev-seat-kept-plans.sh",
     "test:pg:salaried-week": "bash scripts/pgtest-salaried-week.sh",
     "test:pg:primary-scope-reports": "bash scripts/pgtest-primary-scope-reports.sh",

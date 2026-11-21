@@ -127,6 +127,8 @@ person-file-amendments
 pay-calendar
 person-file-numbers
 person-engagements
+person-report-write-up
+person-report-photos
 dev-seat-kept-plans
 receipt-texts
 painted-maps

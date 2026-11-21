@@ -22,6 +22,7 @@ import {
   type Finding,
   type TodoDoc,
   type TodoParseError,
+  type TodoSource,
 } from '../../src/lib/todos/todoBoard'
 
 /** Every to-do on disk: a folder with a README.md, or a top-level .md. */
@@ -38,6 +39,11 @@ export function todoPaths(root: string): string[] {
     }
   }
   return out
+}
+
+/** Every to-do's own text, for the check that reads the lines rather than the parsed fields. */
+export function readTodoSources(root: string): TodoSource[] {
+  return todoPaths(root).map((file) => ({ file, markdown: readFileSync(join(root, file), 'utf8') }))
 }
 
 /** Repo-root paths of every file in the to-do's directory — the kernel picks the mock-ups out. */

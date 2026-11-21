@@ -192,6 +192,10 @@ showing the entry as it would be filed, the apply refused once the report is
 no longer waiting. Authors see their report's status flip on
 their Dashboard card, so don't leave pendings sitting.
 
+Since v2.8157 (punch list #410, migration `20261121131500`) a report can carry the facts of a write-up from a phone: `kind`, the job (`job_ledger_id`, `job_label`), `occurred_time`, `author_role`, `author_saw_it`, `author_on_job`, `seen_by`, `talked_to_person`, `adds_to`, `press_id` and `pressed_at`. A leader, a superintendent or a dev sends one through `land_person_report(p)`, never about themselves, and a press that arrives twice lands once. `write_up_people()` answers the list its sheet opens on. The writer takes a waiting one back with `withdraw_person_report(id, reason)`: it reads as dismissed with *Taken back by the writer:* and the reason, and keeps its words. An addition is a second report whose `adds_to` names the first.
+
+Since v2.8172 (migration `20261121143500`) a write-up's photos have a place: `person_report_photos`, one row a photo keyed to the write-up's `press_id`, and the private `person-report-photos` bucket, where an object sits under the writer's own folder. The writer adds and reads their own, a dev reads all, and nobody else reads a row or a file. A photo can be dropped until its write-up is sent.
+
 ## Agent recipes
 
 - Everyone's freshness in one query: entries `select person_id, created_at` + files `select person_id, kind, updated_at` → run through `derivePersonFileFreshness` per person.

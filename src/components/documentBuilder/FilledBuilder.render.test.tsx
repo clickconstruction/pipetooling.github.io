@@ -266,7 +266,7 @@ describe('FilledBuilder', () => {
     await screen.findByText('This job is on your usual sheet')
     fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
     expect(screen.getByText('You are changing your usual sheet. Every job starts on it.')).toBeTruthy()
-    expect(screen.getByText('Every job is on your usual')).toBeTruthy()
+    expect(screen.getByText('1 of 2 jobs is on your usual')).toBeTruthy()
     expect((screen.getByRole('combobox', { name: 'Job' }) as HTMLSelectElement).disabled).toBe(true)
     expect(screen.getByText("The property's owner, from each job")).toBeTruthy()
     expect(publish().textContent).toBe('Nothing to publish')
@@ -282,6 +282,26 @@ describe('FilledBuilder', () => {
     expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, CEDAR_OWN(), layOver(usual, CEDAR_OWN()), 2, 0)
     expect(await screen.findByText('Published to 1 job. Held 1.')).toBeTruthy()
     expect(screen.getByText('Your usual, revision 2')).toBeTruthy()
+  })
+
+  const mesaSheet = () => {
+    const own = startJobSheet({ name: JOBS[1]!.name, place: JOBS[1]!.place, insured: ['Mesa Verde Partners, LLC'] })
+    return sheetRow({ id: 'sheet-mesa', projectId: 'mesa', draft: own, published: own })
+  }
+
+  it('says every job is on the usual when every one is', async () => {
+    open({ sheets: [sheetRow(), mesaSheet()] })
+    fireEvent.click(await screen.findByRole('button', { name: 'The standing sheet' }))
+    expect(screen.getByText('Every job is on your usual')).toBeTruthy()
+  })
+
+  it('counts the jobs on the usual, and marks a job a publish left behind', async () => {
+    open({ rec: builder({ revision: 2 }), sheets: [sheetRow({ usualRevision: 2, revision: 2 }), mesaSheet()] })
+    fireEvent.click(await screen.findByRole('button', { name: 'The standing sheet' }))
+    expect(screen.getByText('1 of 2 jobs is on your usual')).toBeTruthy()
+    expect(screen.getByText('Revision 1, behind your usual')).toBeTruthy()
+    expect(screen.getByText('Revision 2')).toBeTruthy()
+    expect(publish().textContent).toBe('Nothing to publish')
   })
 
   it('keeps going past a job that fails, and names it with its reason', async () => {

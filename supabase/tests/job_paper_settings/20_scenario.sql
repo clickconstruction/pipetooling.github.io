@@ -4,8 +4,10 @@
 -- reads the JSON of jps.cases out of this file: which way a change of picks goes, the picks in plain words, and the
 -- seal. Then the presses: a job with no settings behaves as before; settings are taken on an entry built from them and
 -- refused on a plain one; the read-revision rule; who may set them; a copy is made for the job and never bare; a copy
--- is signed only with the paper frozen as the database reads it; the lock at the first signature; a change after it
--- only tightens and makes a new row; and a later clause edit leaves the signed words as they were. Every word is a
+-- is signed only with the paper frozen as the database reads it; the lock at the first signature; a change after it,
+-- tighter or looser, makes a new row that everyone signs again (migration *_settings_page_ground, the ground under
+-- step 4); a later clause edit leaves the signed words as they were; and the page's ground: the shape of a choice's
+-- breach and site lines, the notice's box ticked once for a paper on a job, and the basis. Every word is a
 -- made-up placeholder: no clause wording is here. Presses run as each user; the fixture is made as postgres;
 -- everything rolls back. Raises on the first failed assertion; ends with "job_paper_settings PASSED". See
 -- scripts/pgtest-job-paper-settings.sh. Never against prod.
@@ -177,13 +179,31 @@ INSERT INTO public.contract_template_documents (id, template_id, document_name, 
   (jps.id('c1'), jps.id('c0'), 'Settings bed paper (test)', 1, now(), (SELECT j -> 'def' FROM jps.cases));
 INSERT INTO public.contract_template_documents (id, template_id, document_name, book_body_html, book_body_format) VALUES
   (jps.id('c2'), jps.id('c0'), 'Site rules (test)', '<p>Placeholder rules.</p>', 'html');
+-- A second paper built from settings, for the page's ground: its list has levels, a choice with breach and site lines,
+-- a notice and a site note. Every word is a made-up placeholder.
+CREATE TABLE jps.notice_def AS SELECT $def${
+  "settings": [ { "key": "photos", "label": "Photos and video", "choices": [
+    { "key": "off", "label": "Off", "says": "Placeholder: no photo rule.", "out": true },
+    { "key": "standard", "label": "Standard", "says": "Placeholder: ask first.", "breach": ["Placeholder breach line one.", "Placeholder breach line two."], "site": ["Placeholder site line."] },
+    { "key": "elevated", "label": "Elevated", "says": "Placeholder: no photos.", "breach": ["Placeholder breach line three."], "site": [] } ] } ],
+  "fields": [],
+  "levels": [ { "key": "standard", "label": "Standard", "alignedWith": "Aligned with a placeholder place", "picks": { "photos": "standard" } },
+              { "key": "elevated", "label": "Elevated", "alignedWith": "Aligned with another placeholder place", "picks": { "photos": "elevated" } } ],
+  "notice": { "title": "Before you start", "lines": ["Placeholder notice line one.", "Placeholder notice line two."], "tick": "I have read this." },
+  "siteNote": { "title": "Match the paper to the site", "lead": "Placeholder lead.", "lines": ["Placeholder site note line."] }
+}$def$::jsonb AS d;
+INSERT INTO public.contract_template_documents (id, template_id, document_name, revision, published_at, settings_def) VALUES
+  (jps.id('c3'), jps.id('c0'), 'Notice bed paper (test)', 1, now(), (SELECT d FROM jps.notice_def));
 INSERT INTO public.contract_clauses (id, paper_id, sequence_order, text_en, text_es, scope, slot, when_opts) VALUES
   (jps.id('d1'), jps.id('c1'), 1, 'Fixed placeholder one.', '', ARRAY['all'], NULL, NULL),
   (jps.id('d2'), jps.id('c1'), 2, 'Photo placeholder A.', '', ARRAY['all'], 'photos', '{"photos":"standard"}'),
   (jps.id('d3'), jps.id('c1'), 3, 'Secrecy lasts {term_words}.', 'El secreto dura {term_words}.', ARRAY['all'], NULL, NULL),
   (jps.id('d4'), jps.id('c1'), 4, 'Enforce placeholder A, for {party}.', '', ARRAY['all'], 'enforce', '{"enforce":"yes"}'),
   (jps.id('d5'), jps.id('c1'), 5, 'Enforce placeholder B.', '', ARRAY['all'], 'enforce', '{"enforce":"no"}'),
-  (jps.id('d6'), jps.id('c1'), 6, 'Photo placeholder B.', '', ARRAY['all'], 'photos', '{"photos":"strict"}');
+  (jps.id('d6'), jps.id('c1'), 6, 'Photo placeholder B.', '', ARRAY['all'], 'photos', '{"photos":"strict"}'),
+  (jps.id('d7'), jps.id('c3'), 1, 'Notice paper, fixed placeholder.', '', ARRAY['all'], NULL, NULL),
+  (jps.id('d8'), jps.id('c3'), 2, 'Notice paper, photo placeholder A.', '', ARRAY['all'], 'photos', '{"photos":"standard"}'),
+  (jps.id('d9'), jps.id('c3'), 3, 'Notice paper, photo placeholder B.', '', ARRAY['all'], 'photos', '{"photos":"elevated"}');
 
 -- 1 · The cases, through the database.
 DO $$
@@ -327,16 +347,22 @@ SELECT jps.refused('a signed copy keeps the words it was signed with', format($q
 CREATE TEMP TABLE jps_first ON COMMIT DROP AS SELECT jps.row_of(jps.id('e1'), jps.id('c1')) AS id;
 GRANT SELECT ON jps_first TO authenticated, anon, service_role;
 
--- 8 · The lock. With one signature in, the row keeps its settings, whatever writes the table. A change may only
--- tighten, and it makes a new row that everyone signs again.
+-- 8 · The lock. With one signature in, the row keeps its settings, whatever writes the table. Any change after it,
+-- tighter or looser, makes a new row that everyone signs again (Taunya's call, 2026-11-21). Step 3 held it to
+-- stricter only. The two looser changes below are each tried and rolled back, so the rest of the bed stands on the
+-- stricter one as before.
 SELECT jps.refused('the row keeps its settings as signed, even from the database''s owner', format($q$UPDATE public.job_required_papers SET settings = '{"photos":"strict","term":"long","enforce":"no"}'::jsonb WHERE id = %L$q$, (SELECT id FROM jps_first)), 'People have signed this paper. Its settings stay as they signed them.');
 SELECT jps.refused('and its kind', format($q$UPDATE public.job_required_papers SET settings = NULL, fields = NULL, book_revision = NULL, settings_revision = NULL WHERE id = %L$q$, (SELECT id FROM jps_first)), 'A required paper keeps its kind.');
 UPDATE public.job_required_papers SET removed_at = now() WHERE id = (SELECT id FROM jps_first);
 UPDATE public.job_required_papers SET removed_at = NULL WHERE id = (SELECT id FROM jps_first);
 SELECT jps.as_user(jps.id('a2'));
 SET LOCAL ROLE authenticated;
-SELECT jps.refused('a looser change after a signature', format($q$SELECT public.job_paper_set_settings(%L, '{"photos":"off","term":"short","enforce":"no"}'::jsonb)$q$, (SELECT id FROM jps_first)), 'People have signed this paper. A change now can only make it stricter. To loosen it, take the paper off the job and require it again.');
-SELECT jps.refused('a change that tightens one setting and loosens another', format($q$SELECT public.job_paper_set_settings(%L, '{"photos":"strict","term":"short","enforce":"no"}'::jsonb)$q$, (SELECT id FROM jps_first)), 'A change now can only make it stricter.');
+SAVEPOINT jps_looser;
+SELECT jps.same('a looser change after a signature is taken, as a new row that everyone signs again', (SELECT (r ->> 'state') || '|' || (r ->> 'change') || '|' || (r ->> 'revision') || '|' || (r ->> 'sign_again') || '|' || (r ->> 'id' <> (SELECT id FROM jps_first)::text)::text FROM public.job_paper_set_settings((SELECT id FROM jps_first), '{"photos":"off","term":"short","enforce":"no"}'::jsonb) AS r), 'revised|looser|2|1|true');
+ROLLBACK TO SAVEPOINT jps_looser;
+SAVEPOINT jps_mixed;
+SELECT jps.same('and so is one that tightens one setting and loosens another', (SELECT (r ->> 'state') || '|' || (r ->> 'change') || '|' || (r ->> 'revision') || '|' || (r ->> 'sign_again') FROM public.job_paper_set_settings((SELECT id FROM jps_first), '{"photos":"strict","term":"short","enforce":"no"}'::jsonb) AS r), 'revised|mixed|2|1');
+ROLLBACK TO SAVEPOINT jps_mixed;
 SELECT jps.refused('nothing changed is still nothing changed', format($q$SELECT public.job_paper_set_settings(%L, '{"photos":"off","term":"long","enforce":"no"}'::jsonb)$q$, (SELECT id FROM jps_first)), 'Nothing changed.');
 CREATE TEMP TABLE jps_set2 ON COMMIT DROP AS SELECT public.job_paper_set_settings((SELECT id FROM jps_first), '{"photos":"standard","term":"long","enforce":"yes"}'::jsonb, '{"party":" Ridgeway Sample Holdings "}'::jsonb) AS r;
 SELECT jps.same('a stricter change after a signature makes the next row, and says who signs again', (SELECT (r ->> 'state') || '|' || (r ->> 'change') || '|' || (r ->> 'revision') || '|' || (r ->> 'sign_again') || '|' || (r ->> 'id' <> (SELECT id FROM jps_first)::text)::text || '|' || (r ->> 'id' = jps.row_of(jps.id('e1'), jps.id('c1'))::text)::text FROM jps_set2), 'revised|stricter|2|1|true|true');
@@ -459,19 +485,72 @@ RESET ROLE;
 SELECT jps.signed_out();
 
 -- 13 · What is in place.
+-- 12 · The ground under the office's settings page (migration *_settings_page_ground). A settings list may hold a
+-- choice's breach lines and site lines, a notice and a site note, and the database stops a shape that is not lines.
+-- A paper whose list opens on a notice is required only with its box ticked, once for the paper on the job. The
+-- basis marks the page and never the paper.
+RESET ROLE;
+SELECT jps.signed_out();
+SELECT jps.same('a list with lines, a notice and a site note reads', coalesce(public.contract_paper_settings_def_problem((SELECT d FROM jps.notice_def)), 'reads'), 'reads');
+SELECT jps.same('breach lines that are not a list do not', public.contract_paper_settings_def_problem(jsonb_set((SELECT d FROM jps.notice_def), '{settings,0,choices,1,breach}', '"one line"')),
+  'A choice''s breach lines and site lines are lists of plain lines: twenty at most, each with words and 400 characters at most.');
+SELECT jps.same('nor a site line with no words', public.contract_paper_settings_def_problem(jsonb_set((SELECT d FROM jps.notice_def), '{settings,0,choices,1,site}', '["  "]')),
+  'A choice''s breach lines and site lines are lists of plain lines: twenty at most, each with words and 400 characters at most.');
+SELECT jps.same('nor a notice whose lines are a sentence', public.contract_paper_settings_def_problem(jsonb_set((SELECT d FROM jps.notice_def), '{notice,lines}', '"Not legal advice."')),
+  'The notice and the site note are a title, twelve plain lines at most, and a few plain words.');
+SELECT jps.same('nor a site note that is a list', public.contract_paper_settings_def_problem(jsonb_set((SELECT d FROM jps.notice_def), '{siteNote}', '[]')),
+  'The notice and the site note are a title, twelve plain lines at most, and a few plain words.');
+SELECT jps.same('the first paper''s list, with none of the new keys, reads as before', coalesce(public.contract_paper_settings_def_problem((SELECT j -> 'def' FROM jps.cases)), 'reads'), 'reads');
+SELECT jps.as_user(jps.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jps.refused('a paper that opens on a notice is not required with its box unticked', format($q$SELECT public.job_papers_require(%L, ARRAY[%L::uuid], %L::jsonb)$q$, jps.id('e1'), jps.id('c3'),
+  jsonb_build_object(jps.id('c3')::text, '{"settings":{"photos":"standard"},"basis":"standard"}'::jsonb)), 'Notice bed paper (test) opens on a notice. Tick its box before you require it.');
+SELECT jps.same('ticked, Dana requires it with its basis', public.job_papers_require(jps.id('e1'), ARRAY[jps.id('c3')],
+  jsonb_build_object(jps.id('c3')::text, '{"settings":{"photos":"standard"},"basis":"standard","notice_read":true}'::jsonb))::text, '1');
+SELECT jps.refused('a level that is not on the list is no basis', format($q$SELECT public.job_paper_set_basis(%L, 'fortress')$q$, jps.row_of(jps.id('e1'), jps.id('c3'))), 'That level is not on this paper''s list.');
+SELECT jps.refused('a plain paper has no basis to set', format($q$SELECT public.job_paper_set_basis(%L, 'standard')$q$, jps.row_of(jps.id('e2'), jps.id('c2'))), 'That paper is not built from settings. It has none to set.');
+RESET ROLE;
+SELECT jps.same('the row keeps the basis, and who ticked the box and when',
+  (SELECT r.basis || '|' || (r.notice_read_by = jps.id('a2'))::text || '|' || (r.notice_read_at IS NOT NULL)::text FROM public.job_required_papers r WHERE r.id = jps.row_of(jps.id('e1'), jps.id('c3'))), 'standard|true|true');
+SELECT jps.same('the first paper, whose list has no notice, was required with no tick and kept none',
+  (SELECT bool_and(r.notice_read_by IS NULL AND r.notice_read_at IS NULL AND r.basis IS NULL)::text FROM public.job_required_papers r WHERE r.job_id = jps.id('e1') AND r.book_document_id = jps.id('c1')), 'true');
+SELECT jps.as_user(jps.id('a4'));
+SET LOCAL ROLE authenticated;
+SELECT jps.refused('a helper moves no basis', format($q$SELECT public.job_paper_set_basis(%L, 'elevated')$q$, jps.row_of(jps.id('e1'), jps.id('c3'))), 'Only the office sets the papers a job requires.');
+SELECT jps.same('Hector starts his copy of it', (public.job_paper_start(jps.row_of(jps.id('e1'), jps.id('c3'))) IS NOT NULL)::text, 'true');
+RESET ROLE;
+SELECT jps.signed_out();
+SELECT jps.sign(jps.copy_of(jps.row_of(jps.id('e1'), jps.id('c3')), jps.id('b4')), public.job_paper_clauses_now(jps.row_of(jps.id('e1'), jps.id('c3')), 'en'));
+CREATE TEMP TABLE jps_noticed ON COMMIT DROP AS SELECT jps.row_of(jps.id('e1'), jps.id('c3')) AS id;
+GRANT SELECT ON jps_noticed TO authenticated, anon, service_role;
+SELECT jps.as_user(jps.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jps.same('with a signature in, the basis still moves in place', public.job_paper_set_basis((SELECT id FROM jps_noticed), 'elevated') || '|' || (jps.row_of(jps.id('e1'), jps.id('c3')) = (SELECT id FROM jps_noticed))::text, 'elevated|true');
+SELECT jps.same('a looser change then makes the next row, with no second tick asked', (SELECT (r ->> 'state') || '|' || (r ->> 'change') || '|' || (r ->> 'revision') || '|' || (r ->> 'sign_again') FROM public.job_paper_set_settings((SELECT id FROM jps_noticed), '{"photos":"off"}'::jsonb) AS r), 'revised|looser|2|1');
+RESET ROLE;
+SELECT jps.same('the new row keeps the basis and the first tick',
+  (SELECT n.basis || '|' || (n.notice_read_by = jps.id('a2'))::text || '|' || (n.notice_read_at = o.notice_read_at)::text || '|' || (n.revision_of = o.id)::text || '|' || n.settings::text
+   FROM public.job_required_papers n JOIN public.job_required_papers o ON o.id = (SELECT id FROM jps_noticed) WHERE n.id = jps.row_of(jps.id('e1'), jps.id('c3'))), 'elevated|true|true|true|{"photos": "off"}');
+SELECT jps.as_user(jps.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jps.same('an empty basis clears it', coalesce(public.job_paper_set_basis(jps.row_of(jps.id('e1'), jps.id('c3')), ''), 'none'), 'none');
+RESET ROLE;
+SELECT jps.signed_out();
+
 SELECT jps.same('the lock is on the gate''s table, and the bare refusal still on the copies', (
   SELECT string_agg(c.relname || ':' || t.tgname, ' ' ORDER BY c.relname) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
   WHERE t.tgname IN ('job_paper_settings_locked', 'contract_copy_refuses_bare_settings')),
   'job_required_papers:job_paper_settings_locked person_contract_documents:contract_copy_refuses_bare_settings');
 SELECT jps.same('one job_papers_require, with three names', (
   SELECT string_agg(p.proname || '/' || p.pronargs, ' ' ORDER BY p.proname) FROM pg_proc p
-  WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_require', 'job_paper_set_settings', 'job_paper_clauses')),
-  'job_paper_clauses/2 job_paper_set_settings/3 job_papers_require/3');
+  WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_require', 'job_paper_set_settings', 'job_paper_clauses', 'job_paper_set_basis')),
+  'job_paper_clauses/2 job_paper_set_basis/2 job_paper_set_settings/3 job_papers_require/3');
 SELECT jps.same('who may call what', (
   SELECT string_agg(p.proname || ':' || has_function_privilege('authenticated', p.oid, 'EXECUTE') || '/' || has_function_privilege('anon', p.oid, 'EXECUTE'), ' ' ORDER BY p.proname)
   FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_require', 'job_paper_set_settings', 'job_paper_clauses', 'job_paper_clauses_now', 'job_paper_settings_check', 'job_paper_read_problem',
-    'job_paper_picks_clean', 'job_paper_typed_clean', 'job_is_zz_test', 'contract_paper_picks_change', 'contract_paper_said', 'contract_paper_seal', 'job_paper_settings_locked', 'contract_copy_refuses_bare_settings')),
-  'contract_copy_refuses_bare_settings:false/false contract_paper_picks_change:false/false contract_paper_said:false/false contract_paper_seal:false/false job_is_zz_test:false/false job_paper_clauses:true/false job_paper_clauses_now:false/false job_paper_picks_clean:false/false job_paper_read_problem:false/false job_paper_set_settings:true/false job_paper_settings_check:false/false job_paper_settings_locked:false/false job_paper_typed_clean:false/false job_papers_require:true/false');
+    'job_paper_picks_clean', 'job_paper_typed_clean', 'job_is_zz_test', 'contract_paper_picks_change', 'contract_paper_said', 'contract_paper_seal', 'job_paper_settings_locked', 'contract_copy_refuses_bare_settings',
+    'job_paper_set_basis', 'job_paper_basis_clean', 'contract_paper_lines_bad', 'contract_paper_note_bad', 'contract_paper_has_notice', 'contract_paper_settings_def_problem')),
+  'contract_copy_refuses_bare_settings:false/false contract_paper_has_notice:false/false contract_paper_lines_bad:false/false contract_paper_note_bad:false/false contract_paper_picks_change:false/false contract_paper_said:false/false contract_paper_seal:false/false contract_paper_settings_def_problem:false/false job_is_zz_test:false/false job_paper_basis_clean:false/false job_paper_clauses:true/false job_paper_clauses_now:false/false job_paper_picks_clean:false/false job_paper_read_problem:false/false job_paper_set_basis:true/false job_paper_set_settings:true/false job_paper_settings_check:false/false job_paper_settings_locked:false/false job_paper_typed_clean:false/false job_papers_require:true/false');
 
 DO $$ BEGIN RAISE NOTICE 'job_paper_settings PASSED'; END $$;
 ROLLBACK;

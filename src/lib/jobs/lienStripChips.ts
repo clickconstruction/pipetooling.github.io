@@ -13,7 +13,9 @@
  *   paper, or a notice with nothing blocking it (it adds the day), is kept.
  * - The months and the claim are quiet presses to their sections; the months chip is dropped when the months
  *   gate already blocks (*No month picked ›* is the press).
- * - A sent notice's folded grey chip (*Sent Oct 14 ›*) stays and goes back to the top.
+ * - A sent notice's folded grey chip (*Sent Oct 14 ›*) stays and goes back to the top. Its months chip reads the
+ *   months the notice named (*Jul + Aug ›*), off the fold, since the pane picks none on a paper that went (v2.8167).
+ *   A sent notice whose record keeps no month reads *No month named ›*, never *No month picked ›*, which asks for a tick.
  * - Every chip ends in › so it reads as a door.
  */
 import { lienGateShortWords, type LienGate, type LienGateKey } from './lienDeskGates'
@@ -45,8 +47,8 @@ export interface LienStripChipsInput {
   claimByHand: boolean
   /** The wording-diff line ("2 lines edited by Taunya"); '' when the notice carries the job's wording. */
   wordingWords: string
-  /** A sent notice with nothing due: the gates folded to their one line (`lienSentGatesFold`), else null. */
-  fold: { head: string } | null
+  /** A sent notice with nothing due: the gates folded to their one line (`lienSentGatesFold`), else null. `months` is the fold's own, the months the notice named. */
+  fold: { head: string; months: string } | null
 }
 
 const DOOR = ' ›'
@@ -74,8 +76,10 @@ export function lienStripChips(input: LienStripChipsInput): LienStripChip[] {
   }
   for (const g of checks) chips.push({ key: `gate:${g.key}`, words: `${capital(lienGateShortWords(g))}${DOOR}`, tone: 'amber', act: `gate:${g.key}`, title: g.title })
 
-  // The months, unless the months gate is already a red chip.
-  if (!blockers.some((g) => g.key === 'months')) {
+  // The months, unless the months gate is already a red chip. A notice that went reads its own months off the fold.
+  if (input.fold) {
+    chips.push({ key: 'months', words: `${capital(input.fold.months)}${DOOR}`, tone: 'quiet', act: 'months', title: 'The months the notice named when it went. Down to Months on this job.' })
+  } else if (!blockers.some((g) => g.key === 'months')) {
     chips.push({ key: 'months', words: `${input.monthWords || 'No month picked'}${DOOR}`, tone: 'quiet', act: 'months', title: 'Months on this job' })
   }
 
