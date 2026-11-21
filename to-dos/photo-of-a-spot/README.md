@@ -232,6 +232,10 @@ is never read when the photo sends. Setting a place must not need the map's pict
   It was the card's gate. Taunya's word to have it built makes it a thing to watch and not a thing
   to wait for.
 
+0b. **The ground for steps 3, 4, 6 and 7 (S, one migration, alone). Built in v2.8195.** A photo's point on
+   the job photo and report photo rows, a place's count of opens, its line and its other photos, and
+   the read rule that lets a job's list of places follow its customer address. One migration, so
+   each later screen ships with none of its own.
 0. **Room for a description (XS, one migration, alone). Built in v2.8186.** The check on `painted_map_places.words`
    goes from 200 characters to 4,000. No new column and no new table, so the four fences are not
    called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
