@@ -10,8 +10,11 @@
  * So the same idea shows as on the walked builder: a part that stays, a part that changes for one job, what differs
  * between them and the way back.
  *
- * Every piece of words on the sheet is a field with a path: `f.title`, `open.o2`, `cover.auto.limit`. Pure: no React,
- * no supabase, no clock.
+ * Every piece of words on the sheet is a field with a path: `f.title`, `open.o2`, `cover.auto.limit`. A line's key is
+ * its name for good: a job's change is kept against it, so a key is never given to a second line (`freshKey`).
+ *
+ * Pure: no React, no supabase, no clock. The one thing not worked out from what is handed in is the letters of a new
+ * line's key, which are made as a row's id is made, and a test hands its own maker in.
  */
 
 /** The standing sheet's own fields, in the order the page draws them. */
@@ -295,22 +298,38 @@ export function withUsualWords(def: SheetDef, path: string, words: string): Shee
   return def
 }
 
-/** A key no line of the list holds yet: `o1`, `o2`, and so on. */
-export function freshKey(taken: ReadonlyArray<string>, prefix: string): string {
-  for (let n = taken.length + 1; ; n++) {
-    const key = `${prefix}${n}`
+/** Makes the letters of a new key. */
+export type KeyMint = () => string
+
+/** Letters nobody was given before, made as a row's id is made. */
+export const mintKey: KeyMint = () => {
+  const c = globalThis.crypto
+  if (typeof c.randomUUID === 'function') return c.randomUUID()
+  // A page not served over https has no randomUUID. The same strength, from the same source.
+  return Array.from(c.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * A key for a new line: `c-` and letters of its own. It is never a key the sheet gave out before, also not one whose
+ * line was since removed. A key that counted the lines was given out again after a line was removed, and a job's
+ * change kept against the old line then landed on the new one. The list handed in holds the keys in use now, and the
+ * letters are made again while they match one.
+ */
+export function freshKey(taken: ReadonlyArray<string>, prefix: string, mint: KeyMint = mintKey): string {
+  for (;;) {
+    const key = `${prefix}-${mint()}`
     if (!taken.includes(key)) return key
   }
 }
 
-export function withUsualOpenLine(def: SheetDef): SheetDef {
-  return { ...def, open: [...def.open, { key: freshKey(def.open.map((l) => l.key), 'o'), text: SHEET_NEW.line }] }
+export function withUsualOpenLine(def: SheetDef, mint: KeyMint = mintKey): SheetDef {
+  return { ...def, open: [...def.open, { key: freshKey(def.open.map((l) => l.key), 'o', mint), text: SHEET_NEW.line }] }
 }
 export function withoutUsualOpenLine(def: SheetDef, lineKey: string): SheetDef {
   return { ...def, open: def.open.filter((l) => l.key !== lineKey) }
 }
-export function withUsualCover(def: SheetDef, line?: { label: string; limit: string }): SheetDef {
-  const key = freshKey(def.cover.map((c) => c.key), 'c')
+export function withUsualCover(def: SheetDef, line?: { label: string; limit: string }, mint: KeyMint = mintKey): SheetDef {
+  const key = freshKey(def.cover.map((c) => c.key), 'c', mint)
   return { ...def, cover: [...def.cover, { key, label: line?.label ?? SHEET_NEW.coverLabel, limit: line?.limit ?? SHEET_NEW.coverLimit }] }
 }
 export function withoutUsualCover(def: SheetDef, coverKey: string): SheetDef {
@@ -335,8 +354,8 @@ export function withJobCoverOff(job: JobSheet, coverKey: string, off: boolean): 
   const rest = job.off.filter((k) => k !== coverKey)
   return { ...job, off: off ? [...rest, coverKey] : rest }
 }
-export function withJobExtra(job: JobSheet): JobSheet {
-  return { ...job, extra: [...job.extra, { key: freshKey(job.extra.map((x) => x.key), 'x'), label: SHEET_NEW.coverLabel, limit: SHEET_NEW.coverLimit }] }
+export function withJobExtra(job: JobSheet, mint: KeyMint = mintKey): JobSheet {
+  return { ...job, extra: [...job.extra, { key: freshKey(job.extra.map((x) => x.key), 'x', mint), label: SHEET_NEW.coverLabel, limit: SHEET_NEW.coverLimit }] }
 }
 export function withJobExtraWords(job: JobSheet, extraKey: string, part: 'label' | 'limit', words: string): JobSheet {
   return { ...job, extra: job.extra.map((x) => (x.key === extraKey ? { ...x, [part]: words } : x)) }
@@ -373,25 +392,34 @@ export function usualOffer(def: SheetDef, job: JobSheet, path: string): UsualOff
   return { kind: 'offer' }
 }
 /** A line added for one job made a usual line: every job then asks for it, once the usual is published. */
-export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string): SheetDef {
+export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string, mint: KeyMint = mintKey): SheetDef {
   const line = job.extra.find((x) => x.key === extraKey)
   if (!line || usualHasCover(def, line)) return def
-  return withUsualCover(def, { label: line.label, limit: line.limit })
+  return withUsualCover(def, { label: line.label, limit: line.limit }, mint)
 }
 /** True when the standing sheet already asks for this coverage, word for word. */
 export function usualHasCover(def: SheetDef, line: { label: string; limit: string }): boolean {
   return def.cover.some((c) => c.label === line.label && c.limit === line.limit)
 }
 /**
- * A job's own part with everything let go that now reads as the usual: a field typed the same, and an added line the
- * usual asks for word for word. So a job keeps only what differs, also after the usual moves toward it.
+ * A job's own part as it is published, with everything let go that no longer differs from the usual it goes out on.
+ * A field typed the same as the usual, and an added line the usual asks for word for word, read as the usual. A
+ * change to a line the usual no longer has, and a line left off that the usual no longer asks for, have nothing left
+ * to differ from. So a job keeps only what differs, also after the usual moves toward it or drops a line.
  */
 export function pruneJobSheet(def: SheetDef, job: JobSheet): JobSheet {
-  const over = Object.fromEntries(Object.entries(job.over).filter(([path, words]) => usualWordsOn(def, job, path) !== words))
+  const over = Object.fromEntries(
+    Object.entries(job.over).filter(([path, words]) => {
+      const usual = usualWordsOn(def, job, path)
+      return usual != null && usual !== words
+    }),
+  )
+  const off = job.off.filter((key) => def.cover.some((c) => c.key === key))
   const extra = job.extra.filter((x) => !usualHasCover(def, x))
-  if (Object.keys(over).length === Object.keys(job.over).length && extra.length === job.extra.length) return job
-  return { ...job, over, extra }
+  if (Object.keys(over).length === Object.keys(job.over).length && off.length === job.off.length && extra.length === job.extra.length) return job
+  return { ...job, over, off, extra }
 }
+
 
 // ---------------------------------------------------------------------------
 // What differs

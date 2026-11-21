@@ -10961,6 +10961,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           draft: Json
+          draft_no: number
           id: string
           project_id: string
           published: Json | null
@@ -10977,6 +10978,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft: Json
+          draft_no?: number
           id?: string
           project_id: string
           published?: Json | null
@@ -10993,6 +10995,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft?: Json
+          draft_no?: number
           id?: string
           project_id?: string
           published?: Json | null
@@ -11047,6 +11050,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           draft: Json
+          draft_no: number
           key: string
           kind: string
           published: Json | null
@@ -11065,6 +11069,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft: Json
+          draft_no?: number
           key: string
           kind: string
           published?: Json | null
@@ -11083,6 +11088,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft?: Json
+          draft_no?: number
           key?: string
           kind?: string
           published?: Json | null
@@ -23559,7 +23565,9 @@ export type Database = {
           body_format: string
           body_html: string | null
           book_document_id: string | null
+          book_revision: number | null
           canonical_document_url: string | null
+          fields: Json | null
           form_template_id: string | null
           id: string
           job_id: string
@@ -23568,12 +23576,19 @@ export type Database = {
           removed_by: string | null
           required_at: string
           required_by: string | null
+          revision_of: string | null
+          settings: Json | null
+          settings_revision: number | null
+          settings_set_at: string | null
+          settings_set_by: string | null
         }
         Insert: {
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
+          book_revision?: number | null
           canonical_document_url?: string | null
+          fields?: Json | null
           form_template_id?: string | null
           id?: string
           job_id: string
@@ -23582,12 +23597,19 @@ export type Database = {
           removed_by?: string | null
           required_at?: string
           required_by?: string | null
+          revision_of?: string | null
+          settings?: Json | null
+          settings_revision?: number | null
+          settings_set_at?: string | null
+          settings_set_by?: string | null
         }
         Update: {
           body_format?: string
           body_html?: string | null
           book_document_id?: string | null
+          book_revision?: number | null
           canonical_document_url?: string | null
+          fields?: Json | null
           form_template_id?: string | null
           id?: string
           job_id?: string
@@ -23596,6 +23618,11 @@ export type Database = {
           removed_by?: string | null
           required_at?: string
           required_by?: string | null
+          revision_of?: string | null
+          settings?: Json | null
+          settings_revision?: number | null
+          settings_set_at?: string | null
+          settings_set_by?: string | null
         }
         Relationships: [
           {
@@ -23629,6 +23656,20 @@ export type Database = {
           {
             foreignKeyName: "job_required_papers_required_by_fkey"
             columns: ["required_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_revision_of_fkey"
+            columns: ["revision_of"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_settings_set_by_fkey"
+            columns: ["settings_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -46323,10 +46364,19 @@ export type Database = {
         Args: { p_def: Json; p_lang: string; p_picks: Json; p_typed: Json }
         Returns: Json
       }
+      contract_paper_picks_change: {
+        Args: { p_def: Json; p_from: Json; p_to: Json }
+        Returns: string
+      }
       contract_paper_picks_problem: {
         Args: { p_def: Json; p_picks: Json }
         Returns: string
       }
+      contract_paper_said: {
+        Args: { p_def: Json; p_lang: string; p_picks: Json }
+        Returns: Json
+      }
+      contract_paper_seal: { Args: { p_paper: Json }; Returns: string }
       contract_paper_settings_caller: {
         Args: { p_act: string }
         Returns: string
@@ -48523,6 +48573,7 @@ export type Database = {
         Returns: string
       }
       job_closed_to_me: { Args: { p_job_id: string }; Returns: boolean }
+      job_is_zz_test: { Args: { p_job_id: string }; Returns: boolean }
       job_lead_contact: {
         Args: { p_job_id: string }
         Returns: {
@@ -48597,14 +48648,47 @@ export type Database = {
         Args: { p_note_id: string; p_tagged: string[] }
         Returns: number
       }
+      job_paper_clauses: {
+        Args: { p_lang?: string; p_required_paper_id: string }
+        Returns: Json
+      }
+      job_paper_clauses_now: {
+        Args: { p_lang: string; p_required_paper_id: string }
+        Returns: Json
+      }
       job_paper_job_number: { Args: { p_job_id: string }; Returns: string }
+      job_paper_picks_clean: {
+        Args: { p_def: Json; p_picks: Json }
+        Returns: Json
+      }
+      job_paper_read_problem: {
+        Args: { p_job_id: string; p_paper_id: string }
+        Returns: string
+      }
       job_paper_remove: {
         Args: { p_required_paper_id: string }
+        Returns: undefined
+      }
+      job_paper_set_settings: {
+        Args: { p_fields?: Json; p_required_paper_id: string; p_settings: Json }
+        Returns: Json
+      }
+      job_paper_settings_check: {
+        Args: {
+          p_job_id: string
+          p_paper_id: string
+          p_picks: Json
+          p_typed: Json
+        }
         Returns: undefined
       }
       job_paper_start: {
         Args: { p_person_id?: string; p_required_paper_id: string }
         Returns: string
+      }
+      job_paper_typed_clean: {
+        Args: { p_def: Json; p_typed: Json }
+        Returns: Json
       }
       job_papers_for_person: {
         Args: { p_job_id: string; p_person_id: string }
@@ -48614,7 +48698,11 @@ export type Database = {
       job_papers_needing_me: { Args: never; Returns: Json }
       job_papers_prompt_only: { Args: never; Returns: boolean }
       job_papers_require: {
-        Args: { p_book_document_ids: string[]; p_job_id: string }
+        Args: {
+          p_book_document_ids: string[]
+          p_job_id: string
+          p_settings?: Json
+        }
         Returns: number
       }
       job_papers_roster: { Args: { p_job_id: string }; Returns: Json }

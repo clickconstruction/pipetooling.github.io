@@ -7,7 +7,7 @@ import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import type { FormSchema } from '../_shared/formSchema.ts'
 import { paperForName } from '../_shared/companyPaper.ts'
 import { isPartyPaperName, paperAudience, paperForWords, paperWord } from '../_shared/paperSigner.ts'
-import { clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
+import { JOB_PAPER_NOT_READY, clausePaperFor, isJobPaperNotReady, isSettingsPaperBare, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 
 const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
@@ -71,7 +71,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id, applied_contract_template_document_id, party_contact_id, party_name, signer_name, signer_title, signing_for',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id, applied_contract_template_document_id, job_required_paper_id, party_contact_id, party_name, signer_name, signer_title, signing_for',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -104,6 +104,7 @@ serve(async (req) => {
       signer_name: string | null
       signer_title: string | null
       signing_for: string | null
+      job_required_paper_id: string | null
     }
     // A trade partner company's paper (GC mode, B6-b-i) names the company, never its stored name.
     const companyName = r.company_id
@@ -196,12 +197,21 @@ serve(async (req) => {
     // asks for a reload.
     let clausePaper: { revision: number; en: ClausePaperJson; es: ClausePaperJson } | null = null
     try {
-      const doc = { applied_contract_template_document_id: r.applied_contract_template_document_id, company_id: r.company_id, form_template_id: r.form_template_id }
+      const doc = { applied_contract_template_document_id: r.applied_contract_template_document_id, company_id: r.company_id, form_template_id: r.form_template_id, job_required_paper_id: r.job_required_paper_id }
       const reader = admin as unknown as ClauseAdmin
       const [en, es] = await Promise.all([clausePaperFor(reader, doc, 'en'), clausePaperFor(reader, doc, 'es')])
       if (en && es && en.revision === es.revision) clausePaper = { revision: en.revision, en, es }
     } catch (e) {
-      console.error('clause paper', e)
+      console.error('clause paper', e, (e as { reason?: unknown } | null)?.reason ?? '')
+      // A paper built from settings (#389) has no body to fall back on. When the job's paper cannot be put together now
+      // (taken off the job, not read by an attorney at this revision, a wording missing), or the copy names no job, the
+      // page says so in its own words and shows nothing to sign.
+      if (isJobPaperNotReady(e) || isSettingsPaperBare(e)) {
+        return new Response(JSON.stringify({ error: JOB_PAPER_NOT_READY, code: 'paper_not_ready' }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
 
     // Who the signer is to us, for the consent words the page keeps: a party's follows what its contact points at.

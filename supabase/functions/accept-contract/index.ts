@@ -8,7 +8,7 @@ import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorag
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
-import { SETTINGS_PAPER_BARE, clauseFreeze, clausePaperFor, isSettingsPaperBare, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
+import { JOB_PAPER_NOT_READY, PAPER_CHANGED, SETTINGS_PAPER_BARE, clauseFreeze, clausePaperFor, isJobPaperNotReady, isSettingsPaperBare, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 import { statedByWords, statedDaysFromFormValues } from '../_shared/hoursStatementForm.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
@@ -101,6 +101,8 @@ serve(async (req) => {
       /** Messages, cut 4c (v2.5294): a paper built from clauses, the revision the page showed and the language it was read in. */
       paperRevision?: unknown
       paperLang?: string
+      /** A job's paper built from settings (#389 step 3): the seal of the words the page showed, in `paperLang`. */
+      paperSeal?: unknown
       /** Signed on the office's device, handed over in person (`?inperson=1` on the page, punch list #212, v2.6411). */
       inPerson?: unknown
     }
@@ -145,7 +147,7 @@ serve(async (req) => {
     const { data: row, error: fetchErr } = await admin
       .from('person_contract_documents')
       .select(
-        'id, status, public_token_expires_at, signer_printed_name, form_template_id, applied_contract_template_document_id, company_id, document_name',
+        'id, status, public_token_expires_at, signer_printed_name, form_template_id, applied_contract_template_document_id, company_id, document_name, job_required_paper_id',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -165,6 +167,7 @@ serve(async (req) => {
       applied_contract_template_document_id: string | null
       company_id: string | null
       document_name: string
+      job_required_paper_id: string | null
     }
 
     if (doc.status === 'signed') {
@@ -207,6 +210,15 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
         }
+        // A job's paper the database will not put together now (step 3): taken off the job, not read by an attorney
+        // at this revision, a wording missing. Nothing is signed, and the reason stays in this log.
+        if (isJobPaperNotReady(e)) {
+          console.error('job paper', (e as { reason?: unknown }).reason ?? '')
+          return new Response(JSON.stringify({ error: JOB_PAPER_NOT_READY, code: 'paper_not_ready' }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
         if (body.paperRevision !== undefined) {
           return new Response(JSON.stringify({ error: 'Could not read the paper. Try again.' }), {
             status: 500,
@@ -214,7 +226,7 @@ serve(async (req) => {
           })
         }
       }
-      const freeze = clauseFreeze(paper, body.paperRevision, doc.document_name)
+      const freeze = clauseFreeze(paper, body.paperRevision, doc.document_name, body.paperSeal)
       if (!freeze.ok) {
         return new Response(JSON.stringify({ error: freeze.error, code: freeze.code }), {
           status: 409,
@@ -342,6 +354,14 @@ serve(async (req) => {
         await admin.storage.from(SIGNATURE_BUCKET).remove([storagePath])
       }
       if (formPdfPath) await admin.storage.from(FORM_PDFS_BUCKET).remove([formPdfPath])
+      // The database refuses a job's paper frozen as anything but what it reads at that moment (step 3): its settings
+      // or a clause changed between this function's read and its write. The signer reloads and reads the new paper.
+      if (String((updErr as { message?: unknown }).message ?? '').includes(PAPER_CHANGED)) {
+        return new Response(JSON.stringify({ error: PAPER_CHANGED, code: 'paper_changed' }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
       return new Response(JSON.stringify({ error: 'Could not save signature' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

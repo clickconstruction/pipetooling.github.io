@@ -1,6 +1,6 @@
 /** Editing a walked builder on the GC's view (punch list #404, step 7). The paper is the made-up one. */
 import { describe, expect, it } from 'vitest'
-import { PAPER_OFF, breachGroups, type PaperDef } from './documentBuilder'
+import { PAPER_OFF, breachGroups, ownBreachLines, type PaperDef } from './documentBuilder'
 import { paperDefProblems } from './definition'
 import {
   PAPER_NEW_LINE,
@@ -84,6 +84,61 @@ describe('typing', () => {
     const next = withoutPaperLine(def, 'topic.photos.std.breach', 2)
     expect(JSON.stringify(next.topics[0])).not.toContain(KEPT)
     expect(next.topics[0]?.levels.std?.breach).toHaveLength(2)
+  })
+})
+
+describe('two new lines on one breach list', () => {
+  const breachOf = (def: PaperDef, level: string): string[] => def.topics[0]?.levels[level]?.breach ?? []
+
+  it('gives each of a level’s own lines its own place, so two lines of the same words are two fields', () => {
+    const def = paper()
+    const had = breachOf(def, 'gov').length
+    const two = withPaperLine(withPaperLine(def, 'topic.photos.gov.breach'), 'topic.photos.gov.breach')
+    const own = ownBreachLines(two, 'photos', 'gov')
+    expect(own.slice(-2)).toEqual([
+      { index: had, words: PAPER_NEW_LINE },
+      { index: had + 1, words: PAPER_NEW_LINE },
+    ])
+    expect(new Set(own.map((l) => l.index)).size).toBe(own.length)
+    // The same lines the page groups as the level's own, in the same order.
+    expect(own.map((l) => l.words)).toEqual(breachGroups(two, 'photos', 'gov').own)
+    // A line the level keeps from the one under it is not its own, and the places skip it.
+    expect(own.map((l) => l.words)).not.toContain(KEPT)
+    expect(ownBreachLines(two, 'photos', PAPER_OFF)).toEqual([])
+    expect(ownBreachLines(two, 'nope', 'gov')).toEqual([])
+  })
+
+  it('types in the second new line and leaves the first as it was', () => {
+    const def = paper()
+    const two = withPaperLine(withPaperLine(def, 'topic.photos.gov.breach'), 'topic.photos.gov.breach')
+    const [first, second] = ownBreachLines(two, 'photos', 'gov').slice(-2)
+    const typed = withPaperWords(two, `topic.photos.gov.breach.${second?.index}`, 'A made-up second line.')
+    expect(breachOf(typed, 'gov')[first?.index ?? -1]).toBe(PAPER_NEW_LINE)
+    expect(breachOf(typed, 'gov')[second?.index ?? -1]).toBe('A made-up second line.')
+    // Taking the second one off leaves the first.
+    const off = withoutPaperLine(two, 'topic.photos.gov.breach', second?.index ?? -1)
+    expect(breachOf(off, 'gov')).toEqual([...breachOf(def, 'gov'), PAPER_NEW_LINE])
+  })
+
+  it('keeps a new line the level’s own while the level under it has a new line too', () => {
+    const def = paper()
+    const both = withPaperLine(withPaperLine(def, 'topic.photos.std.breach'), 'topic.photos.gov.breach')
+    const groups = breachGroups(both, 'photos', 'gov')
+    expect(groups.own).toContain(PAPER_NEW_LINE)
+    expect(groups.carried).not.toContain(PAPER_NEW_LINE)
+    expect(ownBreachLines(both, 'photos', 'gov').slice(-1)).toEqual([{ index: breachOf(def, 'gov').length, words: PAPER_NEW_LINE }])
+  })
+
+  it('types over or takes off a new line without touching a stricter level’s new line', () => {
+    const def = paper()
+    const both = withPaperLine(withPaperLine(def, 'topic.photos.std.breach'), 'topic.photos.gov.breach')
+    const at = breachOf(def, 'std').length
+    const typed = withPaperWords(both, `topic.photos.std.breach.${at}`, 'A made-up line.')
+    expect(breachOf(typed, 'std')[at]).toBe('A made-up line.')
+    expect(breachOf(typed, 'gov')).toEqual([...breachOf(def, 'gov'), PAPER_NEW_LINE])
+    const off = withoutPaperLine(both, 'topic.photos.std.breach', at)
+    expect(breachOf(off, 'std')).toEqual(breachOf(def, 'std'))
+    expect(breachOf(off, 'gov')).toEqual([...breachOf(def, 'gov'), PAPER_NEW_LINE])
   })
 })
 

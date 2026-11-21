@@ -582,13 +582,16 @@ Found and not fixed. No PR holds any of these.
 - **Fixed, v2.8153.** The usual's publish to every job wrote each job's draft from the page as it was loaded, so a
   teammate's later changes to a job were lost. It now reads each job at the press (`publishUsualToJobs`,
   `sheetsIo.ts`), holds a job whose draft moved, and each held job's row says why.
-- A removed coverage line's key is used again, so a job's old change lands on a new line (`sheet.ts`).
+- **Fixed, v2.8139.** A removed coverage line's key was used again, so a job's old change landed on a new line
+  (`sheet.ts`). A new line's key is now letters of its own, and a publish lets go of a job's change to a line that is gone.
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
   on, on the screen and in `document-builder-send` (**fixed**, v2.8142, by one rule: `sheetWentOutChecked`). A sheet on unchecked words can go with no
   *Send it anyway* box.
 - **Fixed, v2.8135.** **Make this the usual** on the line under the title doubled the job's name on every job. The
   usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
+  **Fixed**, v2.8132: a line's field is named by its place in the list, and a new line is never matched
+  to another by its words.
 - **Send it again** picks the contact by name and does not say who.
   **Fixed**, v2.8131: it goes to the address on the send's own row, and a line under it names the person.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
