@@ -4,11 +4,11 @@ import { RIGHT, SVG_STYLE, WRONG } from './plumbingTokens'
 
 /**
  * Two flames (Intro to HVAC, lesson 13), in two frames: a burner with enough air, its flames short, blue and
- * steady; and a burner short of air, its flames tall, yellow and lazy, with soot above them. The blue and the
- * yellow are the flames' own colours and stay literal.
+ * steady; and a burner short of air, its flames tall, yellow and lazy, with soot above them. The blue is the theme's
+ * own, so it reads on both grounds; the yellow is the flame's colour and stays literal, as the orange flame does.
  */
 export function TwoFlames({ titleId }: FigureProps) {
-  const BLUE = '#2563eb'
+  const BLUE = 'var(--text-link)'
   const YELLOW = '#eab308'
   const burner = <rect x="28" y="96" width="90" height="8" rx="3" fill="var(--bg-subtle)" stroke="currentColor" strokeWidth="1.5" />
   const xs = [42, 62, 82, 102]
