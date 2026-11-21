@@ -14,7 +14,7 @@ import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import type { BuilderChip, DocumentBuilderEntry, DocumentBuilderKind } from './builders'
 
 export const DOCUMENT_BUILDERS_TABLE = 'document_builders'
-export const DOCUMENT_BUILDER_SELECT = 'key, kind, draft, published, revision, published_at, read_revision, read_by_name, read_on, updated_at'
+export const DOCUMENT_BUILDER_SELECT = 'key, kind, draft, published, revision, draft_no, published_at, read_revision, read_by_name, read_on, updated_at'
 
 export type BuilderReadMark = { revision: number; byName: string; on: string }
 
@@ -27,6 +27,8 @@ export type BuilderRecord = {
   published: unknown
   /** The published copy's number. 0 means never published. */
   revision: number
+  /** The draft's number: up one with each change to the draft or the revision. A save or a publish names it. */
+  draftNo: number
   publishedAt: string | null
   read: BuilderReadMark | null
   updatedAt: string | null
@@ -54,6 +56,7 @@ export function builderRecordFromRow(row: unknown): BuilderRecord | null {
     draft,
     published: isBag(published) ? published : null,
     revision,
+    draftNo: typeof row.draft_no === 'number' ? row.draft_no : 0,
     publishedAt: typeof row.published_at === 'string' ? row.published_at : null,
     read,
     updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,

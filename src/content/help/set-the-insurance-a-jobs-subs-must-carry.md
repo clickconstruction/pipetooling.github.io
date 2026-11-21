@@ -50,6 +50,8 @@ A list **Before this can be published** shows while something is missing. Fix ea
 
 A field a job has changed keeps the job's own words.
 
+A yellow panel may say the sheet changed somewhere else. See [When someone else changed it](/help/use-the-document-builder#when-someone-else-changed-it).
+
 ## Set one job's sheet
 
 1. Press **This job**.
@@ -138,6 +140,8 @@ The trade gets an email with a link to their own page. The sheet is on that page
 - **Turn their page on** is its own press, in the box.
 
 A sheet your agent has not checked goes only after you tick **Send it anyway**.
+
+The check is read on the revision of your usual that the job's sheet went out on. A newer usual your agent checked does not cover an older sheet. Publish the job's sheet again to bring it onto your newest usual.
 
 ## Send to every trade that is ready
 
