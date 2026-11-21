@@ -520,7 +520,7 @@ describe('the words', () => {
   })
 
   it('ends an answered name’s reason with one full stop, whatever the reason was kept with', () => {
-    const line = (reason: string): string => {
+    const line = (reason: string): string | null => {
       const standing = foldCallAnswers([answer({ answer: 'pursue', look_again_on: null, reason })], TODAY).get('ridgewaybuilders') as CallStanding
       return plain(standingWords(standing, () => 'Eve', TODAY))
     }
