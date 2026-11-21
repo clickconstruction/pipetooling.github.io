@@ -117,6 +117,7 @@ A dev **imitates** one to see the page they are on as that role — the real ses
 so RLS answers exactly what that role gets.
 Not read-only: a sample's writes are ordinary rows
 stamped with its own name.
+Two saves no press asks for are held while an imitation is on (v2.8176, `isImpersonationSessionActive()` read at each send): the app activity heartbeat (`bump_user_app_activity`, so the person's last seen time and app time stay their own) and the clock button's salary sync (`syncSalaryClockSessionsUnasked`), and Exit takes the flag off only after the session is the operator's again.
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
@@ -950,6 +951,9 @@ Every function that reads a paper as its caller and then acts with the service r
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
 Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 Since v2.7998 **Add to a list** says what such a contact is through `name_contact`, as the caller: a new customer is made in the app's own New customer form, a new supply house and a person kept with a company are written under their own tables' policies, and the paper follows through `contacts_fold_papers` when the contact folds.
+Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
+The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
+`remind-person-papers` runs as the service role behind the cron secret and has no caller.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
@@ -1276,6 +1280,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The first reads the one stage whose days of ours have come with the bullets on them nobody of ours has seen, since the crew reads no stage window.
   The second keeps the arrival, a yes we saw for each bullet as told in the caller's own name, and on a No takes their word back and inserts one `dispatch_requests` row as a stage check.
   It refuses a training account, a digital twin and an archived caller itself, and a No on a bullet that is not on the list to look at.
+  It refuses a second answer at a stage in words that name who answered first (v2.8178, `docs/migrations/20261121150500_start_check_arrive_once.md`), so one person's **Yes, all as told** never replaces another's No.
   The crew holds no insert or update grant on any `start_check_*` table, so this function is the only way a crew member writes there.
 - **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
   It answers only for a job whose desk the caller is on, and nothing for an archived caller.
@@ -2058,7 +2063,8 @@ The office (dev, master technician, assistant, controller) reads it through `is_
 It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings` and `job_paper_remove`, all office only.
 A job's settings for a paper built from settings (v2.8145) are the office's to set and never a digital twin's: `job_paper_set_settings` also refuses an archived account and a training account itself, and `job_paper_clauses`, the job's paper as the database reads it, answers the office and the service role alone.
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
-The office's change after that signature may only tighten the paper, and it makes a new row.
+The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).
+`job_paper_set_basis` moves a required paper's basis in place: the office alone, never a digital twin, an archived account or a training account.
 Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
 The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
 A login tied to no roster person reads as owing and cannot start a paper.

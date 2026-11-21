@@ -12,8 +12,9 @@
 # settings behaves as before, a paper built from settings is required with its picks and refused without, only a ZZ
 # Test job takes a paper no attorney has read, only the office sets a job's settings and never a twin, training or
 # someone who left, a copy is made for the job and never bare, a copy is signed only with the paper frozen as the
-# database reads it, the row locks at the first signature, a change after it only tightens and makes a new row, and a
-# later clause edit leaves the signed words as they were. It raises on its first failed assertion and ends with
+# database reads it, the row locks at the first signature, a change after it, tighter or looser, makes a new row, a
+# later clause edit leaves the signed words as they were, and the ground under step 4: the shape of a choice's breach
+# and site lines, the notice's box, and the basis. It raises on its first failed assertion and ends with
 # "job_paper_settings PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -23,6 +24,8 @@ PORT="${PGTEST_PORT:-55904}"
 NAME="pgtest-job-paper-settings"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_settings_on_the_job.sql)"
+# The ground under step 4 replaces two of that file's functions. It is applied after it, as prod has them.
+GROUND="$(ls supabase/migrations/*_settings_page_ground.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -41,6 +44,7 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 pgtest_migrate
 # A second run must change nothing: the columns, the check, the trigger and the functions are there, with the same grants.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+psql_as postgres -f - < "$GROUND" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $GROUND"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/job_paper_settings/20_scenario.sql 2>&1 || true)"
 if ! grep -q "job_paper_settings PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

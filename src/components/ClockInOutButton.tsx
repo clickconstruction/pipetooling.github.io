@@ -38,7 +38,7 @@ import {
   type DispatchScheduledJobForAssign,
 } from '../lib/jobScheduleBlocks'
 import { fetchWorkingBoardClockBidPicks, type WorkingBoardClockBidPick } from '../lib/fetchWorkingBoardClockBidPicks'
-import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import { syncSalaryClockSessionsUnasked } from '../lib/salaryScheduleSync'
 import {
   scheduleClockInLocationPatch,
   scheduleClockOutLocationPatch,
@@ -561,11 +561,12 @@ export default function ClockInOutButton({
 
   useEffect(() => {
     if (!salaryUiActive || !userId) return
-    void syncSalaryClockSessionsForUserDay(userId).then(() => {
+    // Held while View as is on, at each call: the read after it still runs.
+    void syncSalaryClockSessionsUnasked(userId).then(() => {
       void fetchSessions()
     })
     const t = window.setInterval(() => {
-      void syncSalaryClockSessionsForUserDay(userId).then(() => {
+      void syncSalaryClockSessionsUnasked(userId).then(() => {
         void fetchSessions()
       })
     }, 90_000)

@@ -1039,7 +1039,10 @@ A job's **picks** are one choice a setting, and the paper is put together for th
 A paper is **read** while its read mark, an attorney's name and a day, names its revision, so any later publish leaves it unread.
 A paper built from settings goes with a job's settings only, and until a job carries them it is refused as a copy, at the sign page and in the pickers.
 Since v2.8145 a job carries them on its required paper's row (`job_required_papers.settings`, the typed blanks in `fields`), set by the office through `job_papers_require` and changed through `job_paper_set_settings`.
-That row is **locked** at its first signature: a change after it may only make the paper **stricter**, by each choice's place in its list, and it makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
+That row is **locked** at its first signature: any change after it, tighter or looser, makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
+Until v2.8182 such a change could only make the paper stricter.
+The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
+A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -2396,6 +2399,19 @@ An off-report charge has *Take out of a week…*, which opens that report's Less
 Kernel `src/lib/people/openReports.ts`.
 Deep-link `?view=ledger&person=<name>` (the key kept its old name).
 Sibling view: **Pay run**.
+
+### Write someone up (Dashboard, v2.8160)
+The one press a leader, a superintendent or a dev has on the Dashboard to write a person up from a phone, a named line under the row of squares (`WriteSomeoneUpDoor`, punch list #410, Taunya's ask of 2026-11-20).
+It opens a sheet of four steps (`WriteUpSheet`, the rules and every word in `src/lib/people/writeUp.ts`).
+The first step asks who it is about, with the crew on the job today first.
+The second asks what happened, with who, when and which job filled in.
+The third is **Read it back**, and the fourth is **Your write-ups**.
+Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
+The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
+**Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
+→ *HR files*
+guide `write-someone-up`.
 
 ### Attendance card (People → Paperwork → Write-ups, v2.6140)
 The Write-ups tab's attendance card for one person in Subject, drawn while *Show attendance (derived)* is ticked (off when the tab opens since v2.6433) (punch list #217, people-docs-3;
@@ -6714,6 +6730,8 @@ Nothing left People → Contracts: both pages keep a door.
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
+Since v2.8013 a waiting staff, sub or partner line says how many **reminders by email** went and when the next one is, and carries **Turn reminders off** or **Turn reminders on**: up to three, three days apart, each with a new signing link that ends the one before it ([`personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts)).
+The reminders are behind one switch that ships off, **Settings → People & teams → Paper reminders by email**, and a paper sent while it is off is never reminded.
 
 ### Party and signer (of a paper)
 

@@ -85,11 +85,12 @@ describe('coverage', () => {
     // 31 since v2.6607: Your week's Monday email, the one row that renders the real one.
     // 32 since v2.6603: Your people's week, the Monday email about the people a reader picks.
     // 31 since v2.6902: the Bridge's Monday sheet to whoever pressed for it left with its function.
-    expect(c.total).toBe(31)
-    expect(c.sample + c.real + c.soon).toBe(31)
-    expect(c.sample).toBe(30)
+    // 32 since v2.8013: a reminder to sign a staff or sub paper (punch list #376).
+    expect(c.total).toBe(32)
+    expect(c.sample + c.real + c.soon).toBe(32)
+    expect(c.sample).toBe(31)
     expect(c.real).toBe(1)
-    expect(teamCoverageLine(c)).toBe('31 emails · 30 render live · 1 show the real one')
+    expect(teamCoverageLine(c)).toBe('32 emails · 31 render live · 1 show the real one')
     expect(teamCoverageLine({ total: 1, sample: 1, real: 0, soon: 0 })).toBe('1 email · 1 render live')
   })
 })

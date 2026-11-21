@@ -48,6 +48,8 @@ Nothing stops you. Keep working either way.
 
 A stage is asked about once. The first of ours to answer has answered for the whole crew.
 
+A send after someone else has answered is not kept. The app says who answered first.
+
 ## With no signal
 
 The card needs a signal to load and to send. With no signal the card does not show. The card comes back by itself when the phone finds a signal.
