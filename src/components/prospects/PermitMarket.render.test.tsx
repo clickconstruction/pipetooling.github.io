@@ -291,6 +291,25 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     expect(marketIo.loadCallAnswers).toHaveBeenCalledTimes(2)
   })
 
+  it('reads what was looked up again after a press, and shows no earlier fact when that read fails', async () => {
+    const fact = { id: 'f1', builder_key: 'harborfitouts', fact: 'phone', value: '(210) 555-0142', detail: '', source_url: 'https://harborfitouts.example/contact', looked_up_on: '2026-11-18', looked_up_by: 'u2', looked_up_how: 'agent', city: 'San Antonio', created_at: '2026-11-18T18:00:00Z' }
+    marketIo.loadBuilderLookups.mockResolvedValue({ rows: [fact], checks: [] })
+    marketIo.recordLookupCheck.mockReset().mockResolvedValue(undefined)
+    draw()
+    const checked = await screen.findByRole('button', { name: 'Checked: the office phone of Harbor Fitouts' })
+    marketIo.loadBuilderLookups.mockRejectedValue(new Error('Could not read what was looked up about the builders: the network is down'))
+    fireEvent.click(checked)
+    await waitFor(() => expect(marketIo.recordLookupCheck).toHaveBeenCalledWith({ lookupId: 'f1', verdict: 'checked' }))
+    expect(await screen.findByText('Could not read what was looked up about the builders: the network is down')).toBeTruthy()
+    // The red line says no name shows who to ask for, so the earlier read's phone is gone with it.
+    expect(screen.queryByText('(210) 555-0142')).toBeNull()
+    expect(screen.getAllByText('What was looked up could not be read.').length).toBeGreaterThan(0)
+    marketIo.loadBuilderLookups.mockResolvedValue({ rows: [fact], checks: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('(210) 555-0142')).toBeTruthy()
+    expect(marketIo.loadBuilderLookups).toHaveBeenCalledTimes(3)
+  })
+
   it('holds the call list when the year of permits cannot be read: no zero tile, no "all answered", no word on what the city shows', async () => {
     marketIo.loadMarketPermits.mockRejectedValue(new Error('Couldn’t load the year of permits: the network is down'))
     draw()

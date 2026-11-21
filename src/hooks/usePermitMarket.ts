@@ -22,7 +22,7 @@ export type PermitMarketReads = {
   answers: CallAnswerRow[] | null
   answersError: string | null
   reloadAnswers: () => void
-  /** What was looked up about builders, with the checks on it. Null while it reads. Empty before the tables are on the database, and when the first read fails. */
+  /** What was looked up about builders, with the checks on it. Null while it reads. Empty before the tables are on the database, and when a read fails. */
   lookups: BuilderLookupReads | null
   lookupsError: string | null
   reloadLookups: () => void
@@ -115,8 +115,9 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
       .catch((e) => {
         if (!live) return
         setLookupsError(formatErrorMessage(e))
-        // The list still draws, and each Ask for block says the lookups could not be read.
-        setLookups((held) => held ?? { rows: [], checks: [] })
+        // The list still draws, and each Ask for block says the lookups could not be read. An earlier read is
+        // dropped too, so no row shows a fact or a tag the red line says cannot be shown.
+        setLookups({ rows: [], checks: [] })
       })
     return () => {
       live = false

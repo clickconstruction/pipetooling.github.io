@@ -36,7 +36,7 @@ vi.mock('../../lib/research/permitResearchIo', () => io)
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
 vi.mock('../../lib/research/bidSiteIo', () => siteIo)
 // Market's own reads (punch list #405): its render test holds what it draws; here it only has to open.
-const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), recordLookupCheck: vi.fn() }))
 vi.mock('../../lib/research/permitMarketIo', () => marketIo)
 const streetView = vi.hoisted(() => ({
   fetchStreetViewMetaWithMonth: vi.fn(),
@@ -749,6 +749,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
         marketIo.loadBuildersOfCities.mockReset().mockResolvedValue([{ city: 'San Antonio', rows: [{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 1, won: 1, last_bid_on: null }] }])
         marketIo.loadMarketPermits.mockReset().mockResolvedValue([])
         marketIo.loadCallAnswers.mockReset().mockResolvedValue([])
+        marketIo.loadBuilderLookups.mockReset().mockResolvedValue({ rows: [], checks: [] })
       })
 
       it('opens from the strip and rides the address, so a reload comes back to it', async () => {
