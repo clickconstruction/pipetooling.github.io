@@ -106,7 +106,8 @@ describe('LienBoard · the red line has its door (the owner’s pick of 2026-11-
   it('is a press a thumb can hit on a phone, and the line under the bins says what the list shows', () => {
     const b = board()
     render(<LienBoard board={b} isMobile onTile={() => {}} onPick={() => {}} pick={lienBoardLatePick(b)} shown={1} />)
-    expect(press()?.style.minHeight).toBe('32px')
+    // 44 px since the phone walk of 2026-11-21 read it at 32; the margin gives the tile back what the press grew by.
+    expect([press()?.style.minHeight, press()?.style.marginTop, press()?.style.marginBottom]).toEqual(['44px', '-6px', '-6px'])
     expect(document.querySelector('[data-lien-board-pick-words]')?.textContent).toBe('Showing 1 row with a paper past its day.')
     // No bin is lit by this pick.
     expect(document.querySelector('[data-lien-board-bin][data-picked="yes"]')).toBeNull()

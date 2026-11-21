@@ -23,9 +23,9 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { LienFindHits, LienFindMarked } from './LienDeskFindBox'
-import { LIEN_PHONE_PILE_PRESS as PHONE_PILE_PRESS, lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
+import { lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
 import { LienSupplierMarkLine } from './LienJobSuppliers'
-import { LienPileHead, lienPileHeadCount, type LienPileHeads } from './LienPileHeads'
+import { LienPileHead, LienPilePress, lienPileHeadCount, type LienPileHeads } from './LienPileHeads'
 
 /**
  * By paper → Monthly notices, the list (its own file since v2.7608, out of `LienDesk.tsx` as it stood): each pile
@@ -148,14 +148,14 @@ export function LienDeskNoticeList({
           <Fragment key={p}>
             <LienPileHead pile={p} label={label} count={lienPileHeadCount(rows.length, total, counts?.[p], finding)} i={i} n={pilesShown.length} phone={isMobile} on={noticeHeads.lit === p} empty={finding && rows.length === 0} onPress={() => noticeHeads.scrollToPile(p, i)} onShowEvery={pile ? () => setPile(null) : null}>
               {p === 'ready' && office && runCount > 0 ? (
-                <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap', ...(isMobile ? PHONE_PILE_PRESS : null) }}>
+                <LienPilePress phone={isMobile} data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" look={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   {lienRunActLabel('print', runCount)}
-                </button>
+                </LienPilePress>
               ) : null}
               {p === 'sent' && mailedJobIds.size > 0 ? (
-                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' , ...(isMobile ? PHONE_PILE_PRESS : null) }}>
+                <LienPilePress phone={isMobile} data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} look={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
-                </button>
+                </LienPilePress>
               ) : null}
             </LienPileHead>
             <div data-lien-pile-rows={p}>

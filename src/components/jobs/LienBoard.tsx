@@ -3,6 +3,7 @@ import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHol
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { LIEN_BOARD_RETAINAGE_DOOR_HINT, lienBoardRetainageDoor } from '../../lib/jobs/lienBoardRetainageDoor'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { thumbInLine } from '../../lib/phonePress'
 import { lienBoardDayLineDoorWords, lienBoardDayLinePicked } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienBoardTileDoorWords, lienBoardTilePicked } from '../../lib/jobs/lienBoardTileDoor'
@@ -289,7 +290,7 @@ function Tile({ tile, isMobile, onTile, picked, linePicked }: { tile: LienBoardT
           // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts. It says so in words
           // (the owner's pick of 2026-11-18): the red sentence, then *Show them ›* in the link colour. An underline said it until then.
           // While the list is narrowed to the line's papers the words are the way back, *Show every row ›*, as the second tile's are.
-          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" aria-pressed={Boolean(linePicked)} onClick={linePress} title={linePicked ? 'Show every row again' : 'Show only these rows'} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, minHeight: isMobile ? 32 : undefined }}>
+          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" aria-pressed={Boolean(linePicked)} onClick={linePress} title={linePicked ? 'Show every row again' : 'Show only these rows'} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, ...(isMobile ? thumbInLine(32) : null) }}>
             <span data-lien-board-tile-line style={{ color: 'var(--text-red-700)' }}>{tile.line}</span>{' '}
             <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{lienBoardDayLineDoorWords(linePicked)} ›</span>
           </button>

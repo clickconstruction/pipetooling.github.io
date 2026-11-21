@@ -3,11 +3,21 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useModalStackEntry } from '../hooks/useModalStackEntry'
 import { useVisualViewportBox } from '../hooks/useVisualViewportBox'
 import { visibleBand } from '../lib/visibleBand'
+import { PHONE_PRESS_MIN_HEIGHT, thumbInLine } from '../lib/phonePress'
 
 /** Where a window becomes a sheet: the phone width the thread window fills the screen at (`ThreadWindow.tsx`). */
 export const PHONE_SHEET_QUERY = '(max-width: 760px)'
 
 const BACKDROP = 'rgba(15, 23, 42, 0.35)'
+
+/** The × as a desk's window draws it. */
+const CLOSE_PRESS: CSSProperties = { border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }
+
+/**
+ * The × on a phone's sheet (the phone walk of 2026-11-21 read it at 25 × 27 on the Lien desk's More): a thumb's
+ * square. The margins give back what it grew by, so the title row is as tall as it was and the × is drawn where it was.
+ */
+const CLOSE_PRESS_PHONE: CSSProperties = { ...CLOSE_PRESS, ...thumbInLine(27), minWidth: PHONE_PRESS_MIN_HEIGHT, marginLeft: -9.5, marginRight: -9.5 }
 
 /**
  * A window that is a centred box at a desk and a sheet from the bottom on a phone (Messages cut 10, the cut list's P2,
@@ -95,7 +105,7 @@ export function PhoneSheet({
           <div style={{ padding: phone ? '0.35rem 1rem 0.6rem' : '0.7rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flex: 'none' }}>
             <h2 style={{ margin: 0, fontSize: '1.05rem', minWidth: 0 }}>{title}</h2>
             <span style={{ flex: 1 }} />
-            <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+            <button type="button" onClick={onClose} aria-label="Close" style={phone ? CLOSE_PRESS_PHONE : CLOSE_PRESS}>
               ×
             </button>
           </div>

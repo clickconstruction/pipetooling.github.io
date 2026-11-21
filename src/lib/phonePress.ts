@@ -48,3 +48,15 @@ export const ONE_ROW_PILLS = {
   countGap: '0.25rem',
   fadeSlack: 6,
 } as const
+
+/**
+ * A press that sits in a line of words or in a bar (the phone walk of 2026-11-21: a job's number at 28 px on a Lien
+ * desk row, *Worked later? ›* at 28, a sheet's × at 27). On a phone it stands a fingertip tall, and the margin gives
+ * back what it grew by, so the line or the bar around it stays as tall as it was drawn and nothing under it moves.
+ * `drawn` is the height the press had. A press already a fingertip tall takes no margin.
+ */
+export function thumbInLine(drawn: number): { minHeight: number; marginTop: number; marginBottom: number } {
+  const back = Math.max(0, PHONE_PRESS_MIN_HEIGHT - drawn) / 2
+  const margin = back === 0 ? 0 : -back
+  return { minHeight: PHONE_PRESS_MIN_HEIGHT, marginTop: margin, marginBottom: margin }
+}
