@@ -42,7 +42,7 @@ import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 import { TASK_PHOTO_MIME, TASK_PHOTO_STAGING_BUCKET, TASK_PHOTO_UPLOAD_HOW, TASK_SPOT_PHOTOS_BUCKET, readTaskPhotoWorld, stagedPhotoProblem, taskPhotoAppliedWords, taskPhotoDryRun, taskPhotoStagePath, taskSpotPhotoPath, type TaskPhotoPayload } from '../_shared/devMcpTaskPhoto.ts'
 import { PAY_PERSON_SELECT, PAY_USER_SELECT, payLogRow, paySetupAppliedWords, paySetupDryRun, readPaySetupWorld, resolvePaySetup, setPayConfigArgs, WORKDAY_TEMPLATE_HOURS, workdayTemplateRow, type PayPersonRow, type PaySetupPayload, type PaySetupReads, type PaySetupStep, type PayUserRow } from '../_shared/devMcpPaySetup.ts'
 import { TASK_CLOSE_RPC, readTaskCloseWorld, taskCloseAppliedWords, taskCloseDryRun, type TaskClosePayload } from '../_shared/devMcpTaskClose.ts'
-import { TRIP_TABLE_COLUMNS, isTripVerb, prepareTripWrite, readTrips, tripAppliedWords, tripArgsForLog, tripPlanWords, type TripPrepared } from '../_shared/devMcpTrips.ts'
+import { TRIP_TABLE_COLUMNS, isTripVerb, prepareTripWrite, readTrips, tripAppliedWords, tripArgsForLog, tripPlanJoinedBack, tripPlanWords, type TripPrepared } from '../_shared/devMcpTrips.ts'
 import { PAYMENT_LINK_RPC, PAYMENT_REMOVE_RPC, PAY_ROW_COLS, jobPaymentAppliedWords, jobStatusWords, jobPaymentDryRun, payJobLabel, paymentInsertRow, paymentLine, paymentLinkRpcBody, paymentNoteBody, paymentWordsPatch, readJobPaymentWorld, type JobPaymentPayload, type JobPaymentReads, type PayRow } from '../_shared/devMcpJobPayment.ts'
 import { bidPricedTotal } from '../_shared/devMcpBidPricing.ts'
 import { DRIVE_FOLDER_PAGE, DRIVE_READONLY_SCOPE, SUBMISSION_LANDING, SUBMISSION_UPLOAD_MAX_BYTES, bidSubmissionAppliedWords, bidSubmissionDryRun, driveFolderArgs, driveGetWith, readBidSubmissionWorld, readCompanyDrive, readDriveFile, readDriveFolder, submissionFilingRefusal, submissionLinkAfter, submissionLinkWrite, submissionNoteRow, uploadBytesProblem, type BidSubmissionPayload, type DriveGet, type SubmissionHow, type SubmissionOutcome } from '../_shared/devMcpBidSubmission.ts'
@@ -141,7 +141,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.122.0'
+const SERVER_VERSION = '0.123.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -730,7 +730,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_trip',
-    description: "Dry-run a trip to a site away from home (v2.7670, punch list #379): one going-out and coming back, kept on a development, or on a job that has no development. A trip is who went and, for each person, their days, each one of three kinds: ready (Getting ready), road (On the road), site (At the site); a day off in the middle is a day left out. days is { \"YYYY-MM-DD\": kind }, or a list of runs [{ from, to?, kind }] (no to is one day; a later run wins a day two runs name; a run is at most 120 days). A person given by name alone is looked for on the roster: one match ties them to their roster row and login, no match or several leaves a name alone, and the plan says which for each. With no id the trip gets one made from its own words, so the same trip planned twice is one trip; to change a trip already kept pass its id (read_trips), and the trip whole: a change replaces its words, people and jobs. The plan replies with the site or the job, the days from first to last, where it would stand today, each person's days by kind, what it was for, who asked, billing, the jobs, any day another trip there already claims, and would: add | change, under a plan_hash; nothing is written. A trip is a reading over the clock: it changes no clock row, bill or cost. Deleting a trip is done in the app.",
+    description: "Dry-run a trip to a site away from home (v2.7670, punch list #379): one going-out and coming back, kept on a development, or on a job that has no development. A trip is who went and, for each person, their days, each one of three kinds: ready (Getting ready), road (On the road), site (At the site); a day off in the middle is a day left out. days is { \"YYYY-MM-DD\": kind }, or a list of runs [{ from, to?, kind }] (no to is one day; a later run wins a day two runs name; a run is at most 120 days). A person given by name alone is looked for on the roster: one match ties them to their roster row and login, no match or several leaves a name alone, and the plan says which for each. With no id the trip gets one made from its own words, so the same trip planned twice is one trip; to change a trip already kept pass its id (read_trips), and the trip whole: a change replaces its words, people and jobs. The plan replies with the site or the job, the days from first to last, where it would stand today, each person's days by kind, what it was for, who asked, billing, the jobs, any day another trip there already claims, and would: add | change, under a plan_hash; nothing is written. A trip that was joined into another is refused here, in the words the database refuses its save with (since 0.123.0): it stays joined, and the join is taken back with Split in two in the app. A trip is a reading over the clock: it changes no clock row, bill or cost. Deleting a trip is done in the app.",
     inputSchema: { type: 'object', properties: { trip: { type: 'object', description: "{ development_id (a developments.id) OR job_id (a jobs_ledger.id, for a job with no development), people: [{ name, days, person_id?, user_id? }], agent_label (the robot's name as the trip shows it, at most 120 characters), id? (a trips.id, to change that trip whole), purpose?, asked_by? ('us' | 'them'), asked_who? and asked_how? (with them), outcome?, billing? ('inside' | 'extra' | 'ours'), job_ids? (the jobs its work goes on) }" } }, required: ['trip'] },
   },
   {
@@ -6072,7 +6072,13 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // #297: the move's photo words say what the apply now does with a file already in Drive; the hash is of the database's own reply.
         const planned = planReply(name, name === 'plan_materials_move' ? moveReplyWithRefileWords(redactSecrets(res.body)) : redactSecrets(res.body), await planHash(name, built.body.p, res.body))
         // v2.7670: a trip's plan reads in words beside the database's own reply; the hash above is of the payload and that reply alone.
-        if (tripPrep) return ok({ ...planned, ...tripPlanWords(tripPrep, res.body, todayYmdInAppTz()) }, { target: built.target })
+        // v2.8165: a dry run that says add for a trip joined into another is refused here in the trigger's own words
+        // (trips_refuse_joined_back), since trip_save's dry run writes nothing and never hears it. The apply reads nothing more.
+        if (tripPrep) {
+          const joined = await tripPlanJoinedBack(tripReaderAs(session), tripPrep, res.body)
+          if (joined && 'refused' in joined) return refused(joined.refused, { target: built.target })
+          return ok({ ...planned, ...tripPlanWords(tripPrep, res.body, todayYmdInAppTz(), { joinUnread: joined?.unread === true }) }, { target: built.target })
+        }
         // v2.7976 (punch list #315, upgrade 2): the number the file would give the record, read and never taken, beside
         // the plan. Outside the hash: the plan already commits to the person's record count, which moves when it does.
         if (isEvidence) return ok({ ...planned, exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target))) }, { target: built.target })
