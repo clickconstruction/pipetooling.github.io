@@ -1039,7 +1039,10 @@ A job's **picks** are one choice a setting, and the paper is put together for th
 A paper is **read** while its read mark, an attorney's name and a day, names its revision, so any later publish leaves it unread.
 A paper built from settings goes with a job's settings only, and until a job carries them it is refused as a copy, at the sign page and in the pickers.
 Since v2.8145 a job carries them on its required paper's row (`job_required_papers.settings`, the typed blanks in `fields`), set by the office through `job_papers_require` and changed through `job_paper_set_settings`.
-That row is **locked** at its first signature: a change after it may only make the paper **stricter**, by each choice's place in its list, and it makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
+That row is **locked** at its first signature: any change after it, tighter or looser, makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
+Until v2.8182 such a change could only make the paper stricter.
+The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
+A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -1580,6 +1583,7 @@ The short page's **Tomorrow** line and Your record's lines read the same way, an
 What a superintendent whose **Dashboard view** is **Short** sees with **Job Mode** on, in place of the long Job Mode page (v2.7752, punch list #384;
 `JobModeShortPage.tsx`, the rule and every word in `lib/jobMode/jobModeShort.ts`, `jobModeShortOn` over `shortPageFor`).
 Top to bottom: the job card's top as it is (next stop, today's stops, the press bar), **Open this job**, a fold in place over the card's lower half (`DashboardJobModeCard`'s `short` prop: the Materials on site link, which on the whole card is a press beside Job calendar since v2.8050, and `JobModeDetailsSection`), the pace line (`SuperintendentCard`'s `short`: the project's headline as one row, a press opens the card as it is), **Waiting on you** (Your record under that name), **Tomorrow** in one line (how many stops and when the first is, a press opens the Schedule tab) and one door, **Everything else**.
+Since v2.8173 (punch list #382) **Is it as told?** is drawn above **Open this job** and not behind it, since it is asked on arrival (`arrivalAbove` on `JobModeDetailsSection`).
 The door opens the full Dashboard for the visit, folded on a phone, with **Back to the short page** on top, and the Job Mode bar's **Dashboard** tab returns too.
 Since v2.8124 (the owner's pick 2026-11-20, punch list #409) the page opens on **Job Mode's day row**, the whole row as the long page draws it, handed in as `JobModeShortPage`'s `row`.
 The page has no hours card, so there the row reads the week itself and only while **This week** is drawn (`loadHours`, `loadTopRowWeekHours`), and **This week** opens the door and lands on **My Time** (`onHours`).
@@ -6690,10 +6694,11 @@ In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettin
 ### Agreements tab
 
 v2.7617 (punch list #376).
-The Documents page's list of every agreement on file, for the office: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
+The Documents page's list of every agreement on file, for the office and, since v2.8175, for an estimator to read: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
 A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*, and since v2.7625 GC mode's *Owner contract · Statement of work · Trade company*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
 Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
 A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
+An estimator's tab (punch list #403, call 8) has the chips **All**, **Outside companies** and **Work orders**, lists what their role reads, and carries no **Send a paper**, no **Contract library** and no press on a line.
 It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
 It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
 Since v2.7932 a staff, sub or partner paper that waits on a signature acts on its own line: **Send again** emails a new signing link through the window People → Contracts uses, and **Copy the signing link** makes a link to text and emails nobody.
@@ -6705,6 +6710,8 @@ Nothing left People → Contracts: both pages keep a door.
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
+Since v2.8013 a waiting staff, sub or partner line says how many **reminders by email** went and when the next one is, and carries **Turn reminders off** or **Turn reminders on**: up to three, three days apart, each with a new signing link that ends the one before it ([`personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts)).
+The reminders are behind one switch that ships off, **Settings → People & teams → Paper reminders by email**, and a paper sent while it is off is never reminded.
 
 ### Party and signer (of a paper)
 

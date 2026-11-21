@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -350,6 +350,9 @@ last_updated: 2026-11-20
 > only the slot element moved.
 > Since **v2.7422** (Taunya's ask of 2026-11-15) a monthly notice's footer is not that bar on a computer: it is the pane's last section, `sign`, under the one blue head (`lienNoticeFootHead`, `LienPaneSection.foot` in [`lienPaneSections.ts`](../src/lib/jobs/lienPaneSections.ts)), portalled into `data-lien-pane-body="sign"`, so the paper has the whole pane and the reader scrolls through it to sign.
 > The affidavit's and the retainage notice's footers are still the bar.
+> Since **v2.8170** a notice in the Missed pile draws the draft's footer, and its head reads *Sign and send*, while `lienMissedNoticeStillGoes` (`lienPaneSections.ts`) holds: a month is still due, or `lateUntil` is set, the affidavit's last day while every window closed unsent (v2.4708).
+> Past both, the footer keeps *The window closed on … with no notice — the lien right on that work is gone* under *Window closed · Nothing to sign*.
+> A closed notice stop's note is `lienClosedNoticeStopNote` (`lienStopPaper.ts`) in the three stop windows: *A late notice can still go, and the affidavit can follow it* while the timeline's next step is `late_notice`, else that the lien right on that work is gone.
 
 > **v2.7780 (the owner-records door leaves the title bar for the call window, the owner's ask of 2026-11-18):** *An owner asked for records ›* is the last row of `LienCallScriptModal`, the window ☎ opens (`onOwnerRecords`, words `CALL_SCRIPT_RECORDS_ASK` and `CALL_SCRIPT_RECORDS_DOOR` in `lienCallScript.ts`), and `onOpenOwnerRecords` is handed the job under the reader so the packet opens on its property.
 > The bar's tools are the four presses alone: `lienDeskTitleLineFit` answers `all` or `none`, `LienDeskTitleLineParts` and `LienDeskTitleBarLayout` have no door, `lienDeskTitleBarLayout` takes no `recordsDoor`, and off By paper a bar that holds the presses is one line.

@@ -112,6 +112,7 @@ export default function JobModeDetailsSection({
   jobName,
   updatesRev = 0,
   onMessageCustomer,
+  arrivalAbove = false,
 }: {
   jobId: string
   jobAddress: string
@@ -120,6 +121,11 @@ export default function JobModeDetailsSection({
   jobName?: string | null
   /** Goes up when the card wrote to the job (Message the customer's note or text): Job updates reads again. */
   updatesRev?: number
+  /**
+   * The mount draws **Is it as told?** itself, above this section. The short page does: its details sit behind
+   * **Open this job**, and the look on arrival is asked before anything is unloaded, so it cannot wait behind a fold.
+   */
+  arrivalAbove?: boolean
   /**
    * The card's Message the customer door (#125 PR 7, v2.6717): a press under the customer's address opens it, so the
    * tech texts from the company number. Left out (the next job's card, or a role the door is not offered to), the
@@ -286,8 +292,8 @@ export default function JobModeDetailsSection({
       }}
     >
       {/* Is it as told? (punch list #382, PR 10): the look on arrival leads the job's details, since it is asked before
-          anything is unloaded. Nothing when there is nothing to ask. */}
-      <JobModeArrivalCheck jobId={jobId} />
+          anything is unloaded. Nothing when there is nothing to ask. The short page draws it above its fold instead. */}
+      {arrivalAbove ? null : <JobModeArrivalCheck jobId={jobId} />}
       {/* Painted maps (punch list #345): the way in and what is where. The person standing on the site is the one who
           can mark it, so the press to paint one is here, beside the address and out of the day's press bar. */}
       <JobPaintedMapsStrip jobId={jobId} developmentId={contact?.development_id ?? null} jobLabel={[hcpNumber, jobName].filter(Boolean).join(' · ') || null} address={jobAddress} />

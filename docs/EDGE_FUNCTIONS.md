@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 195 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -147,6 +147,7 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [remind-person-papers](#remind-person-papers)
    - [close-held-stripe-marks](#close-held-stripe-marks)
    - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
@@ -190,6 +191,7 @@ when_to_read:
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
    - [permit-pull](#permit-pull)
+   - [license-roll-pull](#license-roll-pull)
    - [permit-lookup](#permit-lookup)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
@@ -1078,6 +1080,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 > **v2.7987 (server 0.119.0) — a plan kept for a yes from the seat** (punch list #315, upgrade 3a): the seat reaches `dev_seat_kept_plans` (migration [`20261113120000`](./migrations/20261113120000_dev_seat_kept_plans.md)). `keep: true` with `words` on `plan_hr_entry`, `plan_person_doc` or `plan_person_report` stores the plan after its dry run through `dev_kept_plan_keep`: the verb's own arguments, the plan's own hash, the reply as shown, one paragraph of words, the session's name. The reply answers `kept_id`. **`list_kept_plans(person?, id?, show?)`** reads the plans that wait and the ones that went stale this week, and one plan whole by `id` with its arguments and the call that applies it, so any session applies a kept plan on the owner's yes. An apply that lands marks its plan applied, and an apply of the kept arguments whose dry run no longer matches marks it stale, both through `dev_kept_plan_decide`, fail-soft. **`drop_kept_plan(id, why)`** takes a waiting plan off with a reason. Never kept: a plan that carries a file's bytes, a counsel-only plan, a change to a counsel-only document. Nothing in the app applies a plan. One hundred and fifty write verbs, fifty-six over twenty-four RPCs, two hundred and two tools. No migration.
 >
 > **v2.8000 (server 0.120.0) — a person's standing read and written from the seat** (punch list #315, upgrade 4c): `get_person_file` and `get_case_brief` carry **`engagements`** from `person_engagements` (migration [`20261113090000`](./migrations/20261113090000_person_engagements.md)): the standing in the fact strip's words, what the person is on the day read, each stretch that stands, employee or subcontractor, with where its fact comes from, and how many were taken off. `get_person_file` hands the stretches to the Timeline's own kernel, so each change draws under Employment. **`plan_engagement`** → **`apply_engagement`** POST `dev_engagement_write`, the door Standing… on People → HR writes through: exactly one of `open`, `change`, `close` or `withdraw`. The dry run is performed and unwound by the database, and its reply holds no clock and no id. `dev_mcp_calls` keeps a call by which of the four it is, its kind and its days. Nothing marks an hour. One hundred and fifty-two write verbs, fifty-eight over twenty-five RPCs, two hundred and four tools. No migration.
+>
+> **v2.8165 (server 0.123.0) — a joined trip is refused at the plan** (punch list #379; Taunya, 2026-11-21): `plan_trip` said `add` for a trip that `trip_join` had joined into another, and `apply_trip` was then refused by the trigger `trips_refuse_joined_back` (migration [`20261120130000`](./migrations/20261120130000_trip_joined_stays_gone.md)), since `trip_save`'s dry run writes nothing and never reaches a trigger. The seat alone sends that dry run, so the fix is in the seat, with no migration: after a dry run that says `add` the plan reads the trip's newest delete that nothing has put back, as the dev, and refuses in the trigger's own sentence with no `plan_hash` (`tripPlanJoinedBack` in `_shared/devMcpTrips.ts`). `apply_trip` reads nothing more. The verb's row in [`dev-mcp/README.md`](./dev-mcp/README.md) holds the detail.
 >
 > **v2.8102 (server 0.122.0) — a plan taken off is not applied** (the audit of punch list #315; the owner, 2026-11-20: "Yes, build them"): three faults in how a plan kept for a yes is applied later, each in the seat alone, no migration. **A dropped or stale plan is refused.** The apply never read `dev_seat_kept_plans` before it wrote, so a session still holding a dropped plan's arguments and hash could file it. `apply_hr_entry`, `apply_person_doc` and `apply_person_report` now read the kept plans under their verb and hash once the dry run matches (`keptPlanOff` over `keptPlanOffQuery` / `keptPlanOffWords`): with the arguments sent and none still waiting, a dropped or stale one refuses the apply with who and why; a failed read refuses too. **An entry plan commits to what it replaces.** `dev_hr_entry_write`'s dry run answers counts and lengths, so a plan that rewrote the summary or the narrative hashed the same whatever the file held, and a kept one never went stale. The seat now reads when the summary or the narrative last changed (`hrEntryReply`, as the dev) and joins it to the reply as `replaces` before the hash, at plan and at apply. **The one-apply rule sees a long plan.** `loggableArgs` cut a row past 4,000 characters to a preview and dropped `plan_hash` with it, the key `priorApply` matches on: 13 of 36 landed `apply_hr_entry` rows had none. The cut row keeps it, and a log read that fails refuses the apply. No new verb; the counts stand.
 >
@@ -2948,6 +2952,22 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **v2.6398 (the warranty in place of a contract, 2026-11-02)**: the row's `kind` is read and the reminder worded by it (*our warranty is waiting for your initials and signature*, *Price:*).
 
+### remind-person-papers
+
+**Purpose**: Reminders by email for a staff or sub paper that waits on a signature (punch list #376, v2.8013): three, three days apart, as a job contract gets.
+
+**Endpoint**: `POST /functions/v1/remind-person-papers` — `{}`; optional `dry_run: true` (writes nothing, emails nobody, answers `would: [{ id, to, document, nth }]`, switch on or off) and `only_id` (one paper); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:37`) by pg_cron job `person-paper-reminders` (migration `20261120133000`).
+
+**Behavior**: The switch is `app_settings` `person_paper_reminders_v1`, which ships `'0'`: anything but `'1'` answers `{ skipped: 'off' }` and writes nothing. Otherwise it reads up to 50 `person_contract_documents` rows that are `sent`, `reminders_enabled`, `next_reminder_at <= now()` and `reminder_count < 3`. A row is held, and its `next_reminder_at` cleared, when it is not an agreement filed under a person, kept no address, has nothing to sign, or its person has left the team. Each other row gets a **new signing link** (the link is kept only as a hash, so a reminder makes a new one that works 14 days and ends the one before it), then the signing email's own builder under the subject `Reminder: please sign …` and opening words that say the link is new; the third says it is the last. Then `reminder_count + 1`, `last_reminded_at`, and `next_reminder_at` three days out, or null after the third. An email that fails is named in `failed`, is not counted, and is tried again the next hour. Each reminder is kept as a sent copy under the person (`person_contract`), with no sender. Answers `{ ok, sent, held: [{ id, reason }], failed: [{ id, reason }], due }`.
+
+**Rules**: `_shared/personPaperReminder.ts`, read by this function, by `send-contract-for-signature` (which sets the first reminder on an emailed send only while the switch is on, and stops them when a link is handed over) and by Documents → Agreements.
+
+---
+
 ### remind-bid-followups
 
 > **v2.6217 — through the person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the hours are read once per run, and the `bid_followup_reminders` row is written either way, so the day reminds once. The answer gains `held`. **Redeploy** once merged.
@@ -3429,6 +3449,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 > **v2.8101 — who may send**: the person path asks `signingCallerRefusal` (`_shared/contractSigningSend.ts`) before it reads the paper. It takes the four roles that write a paper (dev, master_technician, assistant, controller), and never a training account or a digital twin; anyone else gets a 403 in words with `code: 'forbidden'`. The archived check moved up beside it. The company branch keeps its own gate. **Redeploy required.**
 
+> **v2.8013 — reminders by email** (punch list #376): an emailed send of an agreement filed under a person starts `reminder_count` again and sets `next_reminder_at` three days out, only while `app_settings` `person_paper_reminders_v1` is `'1'` and the paper's own `reminders_enabled` is not off. `mode: 'link'` clears `next_reminder_at`: a link handed over ends the emailed one, so the robot stops. Any other paper writes neither column. The function now reads `doc_type` and `reminders_enabled`, so migration `20261120133000` is pushed before it is deployed. Rules: [`_shared/personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts) → `reminderPatchOnSend`; the timed half is [remind-person-papers](#remind-person-papers).
+>
 > **v2.7995 — an outside party's paper** (punch list #403, step 3): a paper filed under a party's stored name (`party:<contact id>`) goes out through the person path as any other. The email's *For* line and the kept copy's recipient are the person who signs, else the party's frozen name, never the stored name (`paperForWords`, `_shared/paperSigner.ts`). The body may carry `signing_for`, the business the signer signs for, kept with the signer: a body that names none leaves the row's alone, and one sent empty clears it. A person's own paper is unchanged, and the pin test still holds its bytes. **Redeploy required.**
 
 > **v2.7986 — the send keeps the signer** (punch list #403, PR 2 of seven): the person path writes who signs on the paper's own row, in the same update that activates the link, through [`_shared/paperSigner.ts`](../supabase/functions/_shared/paperSigner.ts) (`signerRowPatch`). The body may carry `signer_name` and `signer_title`. An emailed send keeps `signer_email` (the address the link went to), `signer_name` (as posted, else the name the row already keeps, else the person the paper is filed under, never a stored `gc-company:` or `party:` name) and `signer_title` when the body names one: a body with no `signer_title` leaves the row's alone, so an older window never wipes it, and one sent empty clears it. `mode: 'link'` keeps no address and only names a signer the paper never had. The email, its subject, its sender and the sent copy are unchanged (`contractSigningSend.pin.test.ts` still holds them), and the company branch is untouched. The row is read with `signer_name`, so the columns of migration [`20261120010000`](./migrations/20261120010000_paper_party.md) must be on prod first. **Redeploy required.**
@@ -3828,6 +3850,22 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Points** (v2.6958, punch list #310): a reader with `fillPoints` (Austin's: `TRAVIS_PARCEL_POINTS` and, since v2.6985, `WILLIAMSON_PARCEL_POINTS` for the R ids of Austin over the county line, asked by `QuickRefID` 50 a request, in `_shared/permitParcelPoints.ts`) has its rows that came without a point filled from the parcel layer their id belongs to, a page at a time, after the dedupe and before the upsert, because the upsert writes `lat` and `lng` on every read and would wipe a point filled anywhere else. The row's `raw.tcad_id` is the layer's `geo_id`; the ids go 100 a request by POST (the county's firewall turns away a long list in a URL), the answer's rings give a point inside the lot (`pointOfRings`), and a row whose id the layer does not hold stays without one. A layer that refuses, sends something that is not JSON or takes over 20 seconds never stops the pull: the asking of that layer ends for that run, the rows it was not answered for are upserted without the two point columns so a point filled earlier stands, and `permit_pulls.error` stays clear. The feed's outcome carries `points: { asked, filled, held, error }`. A dry run fills too and writes nothing.
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ city?: string, since?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, history, city, feeds: [{ source, since, seen, kept, pages, error, points? }], builderKeys, ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
+
+### license-roll-pull
+
+**Purpose** (v2.8164, punch list #411): read one of the Texas State Board of Plumbing Examiners' free licensee files and bring the kept roll (`license_roll`) up to date. The board's files say what is true today and keep no history, so the pull compares each file with the rows the last pull kept and writes what changed to `license_roll_changes`. The rule is [`_shared/licenseRoll.ts`](../supabase/functions/_shared/licenseRoll.ts) (`tsbpeRows` reads a file into rows, `planRollPull` says what to add, patch, mark gone and take off), tested from `src/lib/licenseRoll/licenseRoll.test.ts`.
+
+**Files**: `RMP` (responsible master), `MP` (master), `JP` (journeyman) and `TP` (tradesman), from `https://tsbpe.texas.gov/free-licensee-list/`. One file a call, so a call stays inside the edge's CPU limit. `JP` is a zip, read by [`_shared/zipFirst.ts`](../supabase/functions/_shared/zipFirst.ts), which checks the entry's checksum. The apprentice file is not pulled.
+
+**What is kept**: a row whose county is in `license_roll_counties`, and never a row that matches `license_roll_left_off` by number or by name key. The name, the number, the class, the status, the two dates, the ZIP, the county and the endorsements; on a responsible master, the company and the day the insurance on file ends. No phone, street address or email: the board gives none for a person, and a responsible master's business address and phone are read past.
+
+**What changes**: a new row is added with a `first_seen` change. A kept row the file still has is stamped as seen and patched where it differs, with a change for each difference a person would read: `renewed`, `lapsed`, `current_again`, `moved`, `endorsement`, `named`. A kept row that leaves our counties or is left off is deleted, and its history goes with it. A kept row the file no longer has is marked `gone` and deleted after 28 days (`GONE_KEPT_DAYS`).
+
+**Guards**: a file without a column the pull needs is refused, naming the column. A file of fewer than 200 rows is refused. A file that would mark over a third of the kept rows gone is refused as cut short (`fileLooksCutShort`). A refused pull changes no roll row and keeps its reason on its `license_roll_pulls` row.
+
+**Not one transaction**: the writes are batched requests. A pull that stops partway leaves the roll short of the file, and the next pull brings it level. Only the lines of history between the two can be missed.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (four pg_cron jobs, `license-roll-pull-rmp`, `-mp`, `-jp` and `-tp`, Mondays from 12:30 UTC five minutes apart, migration `20261121141000`), or a signed-in person who holds the Hiring switch: the function checks `user_can_read_license_roll()` under the caller's JWT. `verify_jwt = false` in `config.toml`. **Body**: `{ file: 'RMP' | 'MP' | 'JP' | 'TP', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, file, seen, kept, added, changed, gone, skipped, ms }`, or `{ ok: false, error, file, ms }` with status 502. **Deploy**: `supabase functions deploy license-roll-pull`, after migration `20261121140000` is pushed.
 
 ### permit-lookup
 

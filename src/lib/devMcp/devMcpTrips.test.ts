@@ -3,11 +3,13 @@
  * person's days, the id a trip with none is saved under, the roster laid over the names, the plan's words and the read.
  * Every site, person, day and id here is made up.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   TRIP_AGENT_LABEL_MAX,
   TRIP_ASKED_MAX,
+  TRIP_JOINED_BACK_CODE,
+  TRIP_JOIN_UNREAD_NOTE,
   TRIP_NAME_MAX,
   TRIP_OUTCOME_MAX,
   TRIP_PURPOSE_MAX,
@@ -25,7 +27,11 @@ import {
   tripDaysFrom,
   tripIdBasis,
   tripInput,
+  tripJoinedBackRefusal,
+  tripJoinedBackWords,
+  tripJoinedMark,
   tripOverlaps,
+  tripPlanJoinedBack,
   tripPlanWords,
   tripNumberOf,
   tripReadOf,
@@ -137,7 +143,7 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     expect(SERVER).toContain('its number on its site (trip_number, since v2.7886')
     // The note a version carries lives in the notes file since v2.7999, not in the function's upload.
     expect(readFileSync('docs/dev-mcp/SERVER_NOTES.md', 'utf8')).toContain('0.106.0 (v2.7886, punch list #379')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.122.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.123.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-four verbs and nothing else:')
     expect(SERVER).toContain('plan_trip → apply_trip (a trip to a site away from home')
     expect(SERVER).toContain('read_trips reads a site’s or a job’s trips'.replace(/’/g, "'"))
@@ -162,7 +168,15 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     const body = SERVER.indexOf('const built = writeRpcBody(name, tripPrep ? tripPrep.args : file ? file.args')
     expect(prep).toBeGreaterThan(0)
     expect(body).toBeGreaterThan(prep)
-    expect(SERVER).toContain('if (tripPrep) return ok({ ...planned, ...tripPlanWords(tripPrep, res.body, todayYmdInAppTz()) }, { target: built.target })')
+    // Since 0.123.0 the plan asks first whether the save would be refused as a joined trip made again, as the dev.
+    const joined = SERVER.indexOf('const joined = await tripPlanJoinedBack(tripReaderAs(session), tripPrep, res.body)')
+    const refusedThere = SERVER.indexOf("if (joined && 'refused' in joined) return refused(joined.refused, { target: built.target })")
+    const words = SERVER.indexOf('return ok({ ...planned, ...tripPlanWords(tripPrep, res.body, todayYmdInAppTz(), { joinUnread: joined?.unread === true }) }, { target: built.target })')
+    expect(joined).toBeGreaterThan(body)
+    expect(refusedThere).toBeGreaterThan(joined)
+    expect(words).toBeGreaterThan(refusedThere)
+    // The apply reads nothing more: the one call of the check is the plan's.
+    expect(SERVER.split('tripPlanJoinedBack(').length - 1).toBe(1)
     expect(SERVER).toContain('await planHash(name, built.body.p, res.body)')
     expect(SERVER).toContain('if (tripPrep) reply = tripAppliedWords(tripPrep, reply)')
     expect(SERVER).toContain('if (isTripVerb(name)) return tripArgsForLog(name, args)')
@@ -510,6 +524,124 @@ describe('the plan, as a person reads it', () => {
     expect(JSON.stringify(logged).length).toBeLessThan(900)
     expect(tripArgsForLog('plan_trip', { trip: ASK })).not.toHaveProperty('plan_hash')
     expect(tripArgsForLog('plan_trip', {})).toEqual({ trip: null })
+  })
+})
+
+describe('a trip joined into another stays joined, and the plan says so', () => {
+  const OTHER = 'eeeeeeee-2222-4222-8222-222222222222'
+  /** The newest migration that writes the trigger, so a later rewording of it fails here until the seat follows. */
+  const triggerSql = (): string => {
+    const dir = 'supabase/migrations'
+    const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
+    const holding = files.filter((f) => readFileSync(`${dir}/${f}`, 'utf8').includes('CREATE OR REPLACE FUNCTION public.trips_refuse_joined_back()'))
+    expect(holding[0]).toBe('20261120130000_trip_joined_stays_gone.sql')
+    const sql = readFileSync(`${dir}/${holding[holding.length - 1]}`, 'utf8')
+    const from = sql.indexOf('CREATE OR REPLACE FUNCTION public.trips_refuse_joined_back()')
+    return sql.slice(from, sql.indexOf('$fn$;', from))
+  }
+  /** The trigger's sentence, put together from the function's own text: its two formats and its three names. */
+  const fromSql = (tripNumber: number | null, intoNumber: number | null, there: boolean): string => {
+    const body = triggerSql()
+    const name = (variable: string, of: string) => {
+      const m = body.match(new RegExp(`${variable} := CASE WHEN ${of} IS NOT NULL THEN '([^']*)' \\|\\| ${of} ELSE '([^']*)' END;`))
+      if (!m) throw new Error(`the trigger no longer names ${variable} this way`)
+      return (n: number | null) => (n != null ? `${m[1]}${n}` : m[2]!)
+    }
+    const formats = [...body.matchAll(/RAISE EXCEPTION '([^']*)', v_this, v_that, v_again/g)].map((m) => m[1]!)
+    expect(formats).toHaveLength(2)
+    // The first is raised when the joined trip is there (IF v_there THEN), the second when it is deleted too.
+    expect(body.indexOf('IF v_there THEN')).toBeLessThan(body.indexOf(formats[0]!))
+    expect(body.indexOf('END IF;', body.indexOf(formats[0]!))).toBeLessThan(body.indexOf(formats[1]!))
+    const args = [name('v_this', 'v_number')(tripNumber), name('v_that', 'v_into_number')(intoNumber), name('v_again', 'v_into_number')(intoNumber)]
+    return (there ? formats[0]! : formats[1]!).replace(/%/g, () => args.shift()!)
+  }
+  const gone = (id: string, data: Record<string, unknown>, over: Row = {}): Row => ({ id: `archive-${id}-${String(over.deleted_at ?? '')}`, table_name: 'trips', record_id: id, deleted_at: '2026-11-19T15:00:00Z', restored_at: null, row_data: { id, ...data }, ...over })
+  const prepared = async (over: Record<string, unknown> = {}): Promise<TripPrepared> => {
+    const prep = await prepareTripWrite('plan_trip', { trip: { ...ASK, ...over } }, fake(WORLD))
+    if (!prep.ok) throw new Error(prep.error)
+    return prep
+  }
+  const add = (id: string) => ({ dry_run: true, would: 'add', trip_id: id, trip_number: null })
+
+  it('says the trigger’s own sentence, word for word, for every trip it names', () => {
+    for (const tripNumber of [2, null]) for (const intoNumber of [1, null]) for (const there of [true, false]) expect(tripJoinedBackWords({ tripNumber, intoNumber }, there)).toBe(fromSql(tripNumber, intoNumber, there))
+    // The three the migration's page writes out.
+    expect(tripJoinedBackWords({ tripNumber: 2, intoNumber: 1 }, true)).toBe('Trip 2 was joined into Trip 1, which holds its days. To take the join back, press Split in two on Trip 1.')
+    expect(tripJoinedBackWords({ tripNumber: 2, intoNumber: 1 }, false)).toBe('Trip 2 was joined into Trip 1, which holds its days. Put Trip 1 back, then press Split in two on it.')
+    expect(tripJoinedBackWords({ tripNumber: null, intoNumber: null }, true)).toBe('That trip was joined into another trip, which holds its days. To take the join back, press Split in two on that trip.')
+    const page = readFileSync('docs/migrations/20261120130000_trip_joined_stays_gone.md', 'utf8')
+    for (const words of [tripJoinedBackWords({ tripNumber: 2, intoNumber: 1 }, true), tripJoinedBackWords({ tripNumber: 2, intoNumber: 1 }, false), tripJoinedBackWords({ tripNumber: null, intoNumber: null }, true)]) expect(page).toContain(`*${words}*`)
+    expect(triggerSql()).toContain(`USING ERRCODE = '${TRIP_JOINED_BACK_CODE}'`)
+    expect(tripJoinedBackRefusal('Trip 2 was joined into Trip 1.')).toBe('plan_trip: this trip would not be saved. Trip 2 was joined into Trip 1. The database refuses the save (22023), and apply_trip would be answered in the same words. Split in two is a press in the app, and this seat has no verb for it.')
+  })
+
+  it('reads what the trigger reads: the newest delete nothing has put back, of the trip’s own row', () => {
+    const body = triggerSql()
+    expect(body).toContain("WHERE a.table_name = 'trips' AND a.record_id = NEW.id::text AND a.restored_at IS NULL")
+    expect(body).toContain('ORDER BY a.deleted_at DESC')
+    expect(body).toContain("SELECT a.row_data -> 'joined_into', NULLIF(a.row_data ->> 'trip_number', '')::integer")
+    expect(body).toContain("IF v_into IS NULL OR jsonb_typeof(v_into) <> 'object' OR NULLIF(v_into ->> 'trip_id', '') IS NULL THEN")
+    expect(body).toContain("v_there := EXISTS (SELECT 1 FROM public.trips t WHERE t.id = (v_into ->> 'trip_id')::uuid);")
+    expect(KERNEL).toContain("filters: [...by('table_name', 'trips'), ...by('record_id', id), { column: 'restored_at', op: 'is', value: null }],")
+    expect(KERNEL).toContain("order: [{ column: 'deleted_at', ascending: false }],")
+  })
+
+  it('reads the mark as the trigger does, and passes over what the trigger lets through', () => {
+    expect(tripJoinedMark(gone(TRIP, { trip_number: 2, joined_into: { trip_id: OTHER.toUpperCase(), trip_number: 1 } }))).toEqual({ intoId: OTHER, tripNumber: 2, intoNumber: 1 })
+    // A trip made before numbers.
+    expect(tripJoinedMark(gone(TRIP, { trip_number: null, joined_into: { trip_id: OTHER } }))).toEqual({ intoId: OTHER, tripNumber: null, intoNumber: null })
+    // A trip somebody deleted carries no mark.
+    expect(tripJoinedMark(gone(TRIP, { trip_number: 2 }))).toBeNull()
+    expect(tripJoinedMark(undefined)).toBeNull()
+    // A mark the trigger cannot read lets the save through: not an object, no trip, an id or a number that is not one.
+    for (const mark of ['joined', [], {}, { trip_id: '' }, { trip_id: 'not-an-id' }, { trip_id: OTHER, trip_number: 'one' }, { trip_id: OTHER, trip_number: 1.5 }]) expect(tripJoinedMark(gone(TRIP, { trip_number: 2, joined_into: mark }))).toBeNull()
+    expect(tripJoinedMark(gone(TRIP, { trip_number: 'two', joined_into: { trip_id: OTHER, trip_number: 1 } }))).toBeNull()
+  })
+
+  it('refuses the plan of a joined trip in those words, with the joined trip there and with it deleted too', async () => {
+    const prep = await prepared({ id: TRIP })
+    const archive = [gone(TRIP, { trip_number: 2, joined_into: { trip_id: OTHER, trip_number: 1 } })]
+    const log: Array<{ table: string; q: RowsQuery }> = []
+    const there = await tripPlanJoinedBack(fake({ deleted_records_archive: archive, trips: [{ id: OTHER, trip_number: 1 }] }, log), prep, add(TRIP))
+    expect(there).toEqual({ refused: tripJoinedBackRefusal('Trip 2 was joined into Trip 1, which holds its days. To take the join back, press Split in two on Trip 1.') })
+    expect(log.map((l) => l.table)).toEqual(['deleted_records_archive', 'trips'])
+    expect(log[0]!.q).toMatchObject({ limit: 1, order: [{ column: 'deleted_at', ascending: false }] })
+    const deleted = await tripPlanJoinedBack(fake({ deleted_records_archive: archive, trips: [] }), prep, add(TRIP))
+    expect(deleted).toEqual({ refused: tripJoinedBackRefusal('Trip 2 was joined into Trip 1, which holds its days. Put Trip 1 back, then press Split in two on it.') })
+    // A trip whose id the seat made from its words is asked about the same way.
+    const made = await prepared()
+    expect(made.idWas).toBe('made')
+    const again = await tripPlanJoinedBack(fake({ deleted_records_archive: [gone(made.p.id ?? '', { joined_into: { trip_id: OTHER } })], trips: [{ id: OTHER }] }), made, add(made.p.id ?? ''))
+    expect(again).toEqual({ refused: tripJoinedBackRefusal('That trip was joined into another trip, which holds its days. To take the join back, press Split in two on that trip.') })
+  })
+
+  it('leaves every other plan as it was: a change, a trip somebody deleted, a join put back, another trip’s mark', async () => {
+    const prep = await prepared({ id: TRIP })
+    const joined = gone(TRIP, { trip_number: 2, joined_into: { trip_id: OTHER, trip_number: 1 } })
+    // A change inserts no trip, so nothing is read.
+    const log: Array<{ table: string; q: RowsQuery }> = []
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [joined] }, log), prep, { dry_run: true, would: 'change', trip_id: TRIP })).toBeNull()
+    expect(log).toEqual([])
+    // A trip somebody deleted: this is how one is put back.
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [gone(TRIP, { trip_number: 2 })] }), prep, add(TRIP))).toBeNull()
+    // Never deleted at all.
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [] }), prep, add(TRIP))).toBeNull()
+    // A delete that was put back is settled and not read; the newest delete left is what counts.
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [{ ...joined, restored_at: '2026-11-19T16:00:00Z' }] }), prep, add(TRIP))).toBeNull()
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [joined, gone(TRIP, { trip_number: 2 }, { deleted_at: '2026-11-20T09:00:00Z' })] }), prep, add(TRIP))).toBeNull()
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [gone(TRIP, { trip_number: 2 }), { ...joined, deleted_at: '2026-11-20T09:00:00Z' }], trips: [] }), prep, add(TRIP))).toMatchObject({ refused: expect.stringContaining('Trip 2 was joined into Trip 1') })
+    // Another trip's mark, and a child row kept under this trip, are not this trip's delete.
+    expect(await tripPlanJoinedBack(fake({ deleted_records_archive: [gone(OTHER, { joined_into: { trip_id: TRIP } }), { ...joined, table_name: 'trip_people' }] }), prep, add(TRIP))).toBeNull()
+  })
+
+  it('says it could not check when the archive does not read, and still plans, as the trigger lets such a save through', async () => {
+    const prep = await prepared({ id: TRIP })
+    const broken: Reader = { rpc: async () => [], rows: async () => { throw new Error('The app’s API answered 500') } }
+    expect(await tripPlanJoinedBack(broken, prep, add(TRIP))).toEqual({ unread: true })
+    const notes = (opts?: { joinUnread?: boolean }) => tripPlanWords(prep, add(TRIP), '2026-11-17', opts).notes as string[]
+    expect(notes({ joinUnread: true })).toContain(TRIP_JOIN_UNREAD_NOTE)
+    expect(notes()).not.toContain(TRIP_JOIN_UNREAD_NOTE)
+    expect(notes({ joinUnread: false })).toEqual(notes())
   })
 })
 

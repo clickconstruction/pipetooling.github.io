@@ -10,7 +10,8 @@ import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY } from '../
 import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidRoomPayload'
 import { buildCustomerDueEmail, buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
-import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
+import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_COMPANY, type ContractSigningEmail } from './contractSigningEmail'
+import { reminderIntro, reminderSubject } from '../../supabase/functions/_shared/personPaperReminder'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { COMPANY_EMAIL_FROM_LABEL, CUSTOMER_EMAIL_FROM_ADDRESS, estimateEmailFrom } from './customerEmailFrom'
@@ -131,6 +132,25 @@ export function buildSampleContractEmail(ctx: SampleEmailContext): ContractSigni
     introPlain: '',
     sender: ctx.sender ? { name: ctx.sender.name, email: ctx.sender.email } : null,
     portalUrl: `${PORTAL_SHORT_ORIGIN}${SAMPLE_SUB.portalSlug}`,
+    officePhone: PORTAL_COMPANY.phone || null,
+  })
+}
+
+/**
+ * A reminder to sign (punch list #376): the same builder under the reminder's own subject and opening words, with no
+ * sender, as `remind-person-papers` sends the first of three.
+ */
+export function buildSampleContractReminderEmail(ctx: SampleEmailContext): ContractSigningEmail {
+  return buildContractSigningEmail({
+    documentName: SAMPLE_CONTRACT.documentName,
+    personName: SAMPLE_SUB.contact,
+    acceptUrl: `${ctx.origin}${CONTRACT_SAMPLE_PATH}`,
+    expiresYmd: ymdPlusDays(ctx.todayYmd, 14),
+    sentYmd: ctx.todayYmd,
+    subjectOverride: reminderSubject(SAMPLE_CONTRACT.documentName, CONTRACT_SIGNING_EMAIL_COMPANY),
+    introPlain: reminderIntro(1),
+    sender: null,
+    portalUrl: null,
     officePhone: PORTAL_COMPANY.phone || null,
   })
 }

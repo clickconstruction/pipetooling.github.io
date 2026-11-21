@@ -177,3 +177,83 @@ title: Final check bank
 - [ ] Defrost
 > right: The thermostat shows the heat strips as auxiliary or emergency heat.
 > wrong: Heat strips show on the thermostat as auxiliary or emergency heat.
+
+23. What does the blower do in a furnace?
+- [ ] Pulls the flame's gas up the flue
+- [x] Pushes house air across the outside of the heat exchanger
+- [ ] Lights the burners
+- [ ] Opens the gas valve
+> right: The blower moves the house's air past the heat exchanger and on to the rooms.
+> wrong: The blower is the house air's fan. The inducer is the one that pulls the flame's gas.
+
+24. What proves that the inducer is pulling?
+- [ ] The flame sensor
+- [ ] The thermostat
+- [x] A pressure switch
+- [ ] The filter
+> right: The pressure switch proves the inducer is pulling before anything lights.
+> wrong: A pressure switch proves the inducer. The flame sensor proves the flame.
+
+25. Which of these does not need a sediment trap?
+- [ ] A furnace
+- [ ] A water heater
+- [x] A clothes dryer
+- [ ] Both a furnace and a water heater
+> right: A range, a clothes dryer and an outdoor grill do not need one.
+> wrong: A furnace and a water heater each get a sediment trap. A clothes dryer does not need one.
+
+26. How long does a house's gas test hold on a gauge, at the least?
+- [ ] 1 minute
+- [x] 10 minutes
+- [ ] 2 hours
+- [ ] A full day
+> right: A house's new gas pipe is tested with air for at least 10 minutes.
+> wrong: The least a house's gas test holds is 10 minutes on a gauge.
+
+27. How much room does the code count as enough for each 1,000 Btu an hour of burner?
+- [ ] 5 cubic feet
+- [x] 50 cubic feet
+- [ ] 500 cubic feet
+- [ ] Any room will do
+> right: Fifty cubic feet of room for each 1,000 Btu an hour.
+> wrong: The code counts a room as big enough at 50 cubic feet for each 1,000 Btu an hour.
+
+28. What does a vent connector join?
+- [ ] The gas line to the burner
+- [x] The appliance to the vent
+- [ ] The thermostat to the unit
+- [ ] The two ducts
+> right: The vent connector is the pipe from the appliance to the vent.
+> wrong: A vent connector is the pipe from the appliance up to the vent.
+
+29. Where does the code want a carbon monoxide alarm placed?
+- [ ] Inside the furnace closet
+- [ ] In the attic
+- [x] Outside each sleeping area, near the bedrooms
+- [ ] At the gas meter
+> right: The alarm goes outside each sleeping area, near the bedrooms.
+> wrong: A CO alarm goes outside each sleeping area, near the bedrooms, where it will wake people.
+
+30. What is the plenum?
+- [ ] The filter's frame
+- [x] The box on the unit where the ducts begin
+- [ ] The pan under the coil
+- [ ] The flue's cap
+> right: The plenum is the box on the unit where the ducts begin.
+> wrong: The ducts begin at the plenum, the box on the unit.
+
+31. What makes the thermostat's 24 V?
+- [ ] A battery in the wall
+- [ ] The outdoor unit's capacitor
+- [x] A transformer in the indoor unit
+- [ ] The gas valve
+> right: A transformer in the indoor unit makes 24 V from house power.
+> wrong: The low voltage comes from a transformer in the indoor unit.
+
+32. What does an evaporative cooler need to do its work?
+- [ ] A gas line
+- [ ] A refrigerant loop
+- [x] A water line
+- [ ] A flue
+> right: It cools by wetting a pad and blowing air through it, so it needs a water line.
+> wrong: An evaporative cooler wets a pad to cool the air. It needs a water line.

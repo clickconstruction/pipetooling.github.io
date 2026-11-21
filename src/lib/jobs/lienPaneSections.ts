@@ -98,12 +98,24 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
 export type LienNoticeFootPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent' | 'missed'
 
 /**
+ * Whether a notice in the Missed pile is still a notice to send (v2.8170, the live walk of punch list #361). It is while
+ * a month is still due. It is too while every window closed unsent and the affidavit's own window is open: v2.4708's
+ * rule is that a late notice can then go and the affidavit follow it, and `lateUntil` is that window's last day. Its
+ * footer is then the draft's, with the send. Past both, the footer says the lien right on that work is gone. Before
+ * this the footer read only the months due, so in the late window it said the right was gone under a months card that
+ * said a late notice can still go.
+ */
+export function lienMissedNoticeStillGoes(i: { dueMonths: number; lateUntil?: string | null }): boolean {
+  return i.dueMonths > 0 || Boolean(i.lateUntil)
+}
+
+/**
  * The blue bar over the notice's footer (v2.7422, Taunya's ask of 2026-11-15: the signing box is a section of the
  * pane like the rest, its bar blue, so the paper has the whole pane and the reader goes through it to sign at the
  * bottom). The label is the act the section holds; the fact is where the signature stands, so the bar says from
  * the pane's bottom edge whether anything waits down there.
  */
-export function lienNoticeFootHead(i: { pile: LienNoticeFootPile; signed: boolean; signerFirst: string; /** Months still due on the job; a missed notice with none has nothing left to sign. */ dueMonths: number }): { label: string; fact: string } {
+export function lienNoticeFootHead(i: { pile: LienNoticeFootPile; signed: boolean; signerFirst: string; /** Months still due on the job; a missed notice with none has nothing left to sign, unless a late one can still go. */ dueMonths: number; /** The affidavit's last day while a late notice can still go (`lienMissedNoticeStillGoes`); null or absent otherwise. */ lateUntil?: string | null }): { label: string; fact: string } {
   const who = i.signerFirst.trim()
   switch (i.pile) {
     case 'sent':
@@ -111,7 +123,7 @@ export function lienNoticeFootHead(i: { pile: LienNoticeFootPile; signed: boolea
     case 'printed':
       return { label: LIEN_RUN_ACT.record, fact: 'Printed, not mailed' }
     case 'missed':
-      return i.dueMonths > 0 ? { label: 'Sign and send', fact: 'Not signed yet' } : { label: 'Window closed', fact: 'Nothing to sign' }
+      return lienMissedNoticeStillGoes(i) ? { label: 'Sign and send', fact: 'Not signed yet' } : { label: 'Window closed', fact: 'Nothing to sign' }
     case 'held':
       return { label: 'Sign and send', fact: 'On hold' }
     case 'ready':

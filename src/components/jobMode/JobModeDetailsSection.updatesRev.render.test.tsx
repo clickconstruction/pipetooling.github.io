@@ -44,6 +44,8 @@ vi.mock('../../lib/fetchStreetViewPreview', () => ({
   googleStreetViewPanoUrl: () => '',
 }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'primary', profileName: 'Luis Ortega' }) }))
+// The look on arrival has its own tests. Here only whether the section draws it matters.
+vi.mock('./JobModeArrivalCheck', () => ({ JobModeArrivalCheck: ({ jobId }: { jobId: string }) => <div data-testid="arrival-in-details">{jobId}</div> }))
 vi.mock('../../hooks/useJobThreadNotesForModal', () => ({
   useJobThreadNotesForModal: () => ({
     activity: [],
@@ -83,5 +85,23 @@ describe('Job Mode Job updates after Message the customer sent', { timeout: 15_0
     expect(loadJobMessages.mock.calls.length).toBe(before + 1)
     expect(within(screen.getByRole('tab', { name: /^Customer/ })).getByText('2')).toBeTruthy()
     expect(screen.getByText('Dana, I am on my way, about 15 minutes out.')).toBeTruthy()
+  })
+})
+
+// Is it as told? leads the details (punch list #382). The short page draws it over its fold and says so here.
+describe('Job Mode details and Is it as told?', { timeout: 15_000 }, () => {
+  it('leads the details with it, on the section’s own job', async () => {
+    const { renderWithProviders } = await import('../../test/renderSmokeMocks')
+    const { default: JobModeDetailsSection } = await import('./JobModeDetailsSection')
+    renderWithProviders(<JobModeDetailsSection jobId={JOB} jobAddress="" />)
+    expect((await screen.findByTestId('arrival-in-details')).textContent).toBe(JOB)
+  })
+
+  it('draws none when the mount has it above', async () => {
+    const { renderWithProviders } = await import('../../test/renderSmokeMocks')
+    const { default: JobModeDetailsSection } = await import('./JobModeDetailsSection')
+    renderWithProviders(<JobModeDetailsSection jobId={JOB} jobAddress="" arrivalAbove />)
+    await waitFor(() => expect(screen.getAllByTestId('job-updates-customer-line')).toHaveLength(1))
+    expect(screen.queryByTestId('arrival-in-details')).toBeNull()
   })
 })

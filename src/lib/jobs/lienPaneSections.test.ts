@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadFactWords, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadFactWords, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
 
 const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -124,6 +124,17 @@ describe('the footer’s section at the pane’s end (v2.7422, Taunya’s ask of
     expect(lienPaneHeadsOverPages(lienPaneSections(base))).toBe(4)
   })
 
+  it('a missed notice is still a notice to send while a month is due or the late window is open, and only past both is it closed (v2.8170)', () => {
+    // A month still due: drafted like any other row.
+    expect(lienMissedNoticeStillGoes({ dueMonths: 1, lateUntil: null })).toBe(true)
+    // Every window closed unsent, the affidavit's day still ahead: v2.4708 says a late notice can go and the affidavit follow it.
+    expect(lienMissedNoticeStillGoes({ dueMonths: 0, lateUntil: '2026-10-15' })).toBe(true)
+    // Past both, or the day unknown: the footer says the lien right on that work is gone.
+    expect(lienMissedNoticeStillGoes({ dueMonths: 0, lateUntil: null })).toBe(false)
+    expect(lienMissedNoticeStillGoes({ dueMonths: 0 })).toBe(false)
+    expect(lienMissedNoticeStillGoes({ dueMonths: 0, lateUntil: '' })).toBe(false)
+  })
+
   it('says where the signature stands, by the pile the notice is in', () => {
     const head = (pile: Parameters<typeof lienNoticeFootHead>[0]['pile'], signed = false, signerFirst = 'Dee', dueMonths = 1) => lienNoticeFootHead({ pile, signed, signerFirst, dueMonths })
     expect(head('to_draft')).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
@@ -131,6 +142,9 @@ describe('the footer’s section at the pane’s end (v2.7422, Taunya’s ask of
     // A missed notice with a month still due is drafted like any other; with none, its footer only says the window closed.
     expect(head('missed')).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
     expect(head('missed', false, 'Dee', 0)).toEqual({ label: 'Window closed', fact: 'Nothing to sign' })
+    // In the late window (v2.4708) a missed notice with nothing due is still a notice to send, so its bar is the draft's (v2.8170).
+    expect(lienNoticeFootHead({ pile: 'missed', signed: false, signerFirst: 'Dee', dueMonths: 0, lateUntil: '2026-10-15' })).toEqual({ label: 'Sign and send', fact: 'Not signed yet' })
+    expect(lienNoticeFootHead({ pile: 'missed', signed: false, signerFirst: 'Dee', dueMonths: 0, lateUntil: null })).toEqual({ label: 'Window closed', fact: 'Nothing to sign' })
     expect(head('awaiting')).toEqual({ label: 'Sign and send', fact: 'Waiting on Dee’s signature' })
     expect(head('awaiting', false, ' ')).toEqual({ label: 'Sign and send', fact: 'Waiting on the signature' })
     // Approved (v2.7448): unsigned, the section holds the signature first; signed, the press to print and mail.

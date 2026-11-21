@@ -32,6 +32,14 @@ export function agreementCanBeSentAgain(row: Pick<AgreementRow, 'kind' | 'state'
 }
 
 /**
+ * Whether a waiting line may carry reminders by email (punch list #376): a staff, sub or partner paper that can be
+ * sent again. An outside party's paper carries none: that chase is the office's own.
+ */
+export function agreementMayHaveReminders(row: Pick<AgreementRow, 'kind' | 'state' | 'facts'>): boolean {
+  return (row.kind === 'person_agreement' || row.kind === 'partner_agreement') && agreementCanBeSentAgain(row)
+}
+
+/**
  * Whether a job's paper opens the Contract window: a signed one opens it on its record, and one that waits opens it on
  * the job, where it is the live contract. A voided one does not: the window opens on the job's live contract or a new
  * draft, never on a voided record, so that line keeps the preview of the page that went out. Their paper is not one of
