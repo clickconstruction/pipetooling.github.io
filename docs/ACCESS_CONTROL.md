@@ -922,7 +922,7 @@ Since v2.8009 a dev sends a published sheet to a trade on its job through `docum
 A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing of another company's.
 Since v2.8024 a dev also types on a walked builder's draft, publishes it as the next revision and marks a revision as read by an attorney, through the same row and the same trigger.
 
-**Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
+**Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office and, since v2.8175, to an estimator to read (`canSeeAgreements`: dev · master · assistant · controller · estimator, where `canActOnAgreements` stays the four).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
@@ -931,7 +931,9 @@ Since v2.8101 that function also says who may send before it reads the paper: th
 Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' quick send does, under `person_contract_documents`' own write policy, and reads the Contract Book and the roster under theirs.
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
-`estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
+`primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
+Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no press on a line.
+Their list is what the view answers them under each table's own read, an outside company's agreements from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
 Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
 Since v2.8108 (`20261120080000_estimator_reads_outside_papers.sql`, the owner's call 9) that is every kind of such a paper, a W-9 and an insurance certificate among them, where v2.7977 opened an agreement alone, and the rule is the function `paper_is_outside_company`.
 It opens no paper filed under a person and no party on no list, and a digital twin reads none.

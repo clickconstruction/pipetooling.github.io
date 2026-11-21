@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, agreementFindWords, kindsOfPick, statesOfPick, type AgreementRow, type AgreementsQuery, type KindPick } from './agreementsLedger'
+import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, agreementFindWords, kindsOfPick, statesOfPick, type AgreementRow, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -19,9 +19,9 @@ export type AgreementsRead = { rows: AgreementRow[]; more: boolean }
 type Narrowable<T> = { in: (column: string, values: ReadonlyArray<string>) => T; ilike: (column: string, pattern: string) => T }
 
 /** The chips and the find box as filters: the kinds, the states, and every typed word found in the row's `find_text`. */
-function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery, 'kind' | 'state' | 'typed'>): T {
+function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'reader'>): T {
   let out = q
-  const kinds = kindsOfPick(query.kind)
+  const kinds = kindsOfPick(query.kind, query.reader)
   if (kinds) out = out.in('kind', kinds)
   const states = statesOfPick(query.state)
   if (states) out = out.in('state', states)
@@ -40,10 +40,10 @@ export async function readAgreements(query: AgreementsQuery): Promise<Agreements
 }
 
 /** How many agreements wait on a signature under a kind chip, for the chip's count; null when it cannot be read. */
-export async function countAgreementsWaiting(kind: KindPick): Promise<number | null> {
+export async function countAgreementsWaiting(kind: KindPick, reader?: AgreementsReader): Promise<number | null> {
   try {
     let q = db.from(AGREEMENTS_VIEW).select('id', { count: 'exact', head: true }).eq('state', 'waiting')
-    const kinds = kindsOfPick(kind)
+    const kinds = kindsOfPick(kind, reader)
     if (kinds) q = q.in('kind', kinds)
     const { count, error } = await q
     if (error) return null

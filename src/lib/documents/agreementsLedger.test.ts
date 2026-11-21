@@ -9,7 +9,9 @@ import {
   AGREEMENTS_SELECT,
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_GROUP_KINDS,
+  AGREEMENTS_READER_DOORS,
   AGREEMENT_KIND_CHIPS,
+  ESTIMATOR_GROUP_KINDS,
   AGREEMENT_STATE_CHIPS,
   AGREEMENT_STATE_COLORS,
   agreementCountWords,
@@ -25,7 +27,10 @@ import {
   agreementName,
   agreementStateChip,
   agreementTag,
+  agreementKindChips,
   agreementsEmptyWords,
+  agreementsReader,
+  canActOnAgreements,
   agreementsNarrowed,
   canSeeAgreements,
   kindsOfPick,
@@ -61,9 +66,54 @@ function row(over: Partial<AgreementRow>): AgreementRow {
 }
 
 describe('who sees the tab', () => {
-  it('is the four office roles, the ones the tables let read these papers', () => {
-    for (const r of ['dev', 'master_technician', 'assistant', 'controller']) expect(canSeeAgreements(r), r).toBe(true)
-    for (const r of ['estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) expect(canSeeAgreements(r), String(r)).toBe(false)
+  it('is the four office roles and the estimator (punch list #403, call 8)', () => {
+    for (const r of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) expect(canSeeAgreements(r), r).toBe(true)
+    for (const r of ['primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) expect(canSeeAgreements(r), String(r)).toBe(false)
+  })
+
+  it('keeps every act with the four roles: an estimator reads and acts on nothing', () => {
+    for (const r of ['dev', 'master_technician', 'assistant', 'controller']) expect(canActOnAgreements(r), r).toBe(true)
+    for (const r of ['estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) expect(canActOnAgreements(r), String(r)).toBe(false)
+  })
+
+  it('reads an estimator as a reader, and everyone else with the tab as the office', () => {
+    expect(agreementsReader('estimator')).toBe('estimator')
+    for (const r of ['dev', 'master_technician', 'assistant', 'controller']) expect(agreementsReader(r), r).toBe('office')
+  })
+})
+
+describe('an estimator’s chips', () => {
+  it('leaves out the chips for kinds they cannot read', () => {
+    expect(agreementKindChips('estimator').map((c) => c.label)).toEqual(['All', 'Outside companies', 'Work orders'])
+    expect(agreementKindChips('office')).toBe(AGREEMENT_KIND_CHIPS)
+    expect(agreementKindChips()).toBe(AGREEMENT_KIND_CHIPS)
+  })
+
+  it('asks Outside companies for every outside company’s agreement, a trade company’s among them', () => {
+    expect(kindsOfPick('outside', 'estimator')).toEqual(['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement'])
+    expect(kindsOfPick('orders', 'estimator')).toEqual(['work_order'])
+    expect(kindsOfPick('all', 'estimator')).toBeNull()
+  })
+
+  it('asks for no kind at all under a chip an estimator does not have', () => {
+    for (const pick of ['jobs', 'warranty', 'people', 'partners', 'gc'] as const) expect(kindsOfPick(pick, 'estimator'), pick).toEqual([])
+  })
+
+  it('never asks for a person’s paper, a job contract or a party on no list', () => {
+    const asked = Object.values(ESTIMATOR_GROUP_KINDS).flat()
+    for (const kind of ['person_agreement', 'partner_agreement', 'job_contract', 'job_warranty', 'their_paper', 'owner_contract', 'sow', 'outside_agreement']) expect(asked, kind).not.toContain(kind)
+  })
+
+  it('tells an estimator with nothing on file that the office sends, with no press', () => {
+    const w = agreementsEmptyWords({ kind: 'all', state: 'live', typed: '' }, 'estimator')
+    expect(w).toEqual({ main: 'No agreements yet.', next: '', tail: 'The office sends a paper to an outside company from this tab.' })
+    expect(plainWordsFailures(`${w.main} ${w.tail}`)).toEqual([])
+    expect(plainWordsFailures(AGREEMENTS_READER_DOORS)).toEqual([])
+  })
+
+  it('offers an estimator the same way out of a search or a chip as the office', () => {
+    expect(agreementsEmptyWords({ kind: 'outside', state: 'live', typed: '' }, 'estimator')).toEqual(agreementsEmptyWords({ kind: 'outside', state: 'live', typed: '' }))
+    expect(agreementsEmptyWords({ kind: 'all', state: 'live', typed: 'tallgrass' }, 'estimator').next).toBe('Clear the search')
   })
 })
 

@@ -6,8 +6,8 @@ import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogC
 import {
   AGREEMENTS_EMPTY_PAGE,
   AGREEMENTS_PAGE,
+  AGREEMENTS_READER_DOORS,
   AGREEMENT_GROUP_COLORS,
-  AGREEMENT_KIND_CHIPS,
   AGREEMENT_STATE_CHIPS,
   AGREEMENT_STATE_COLORS,
   agreementCountWords,
@@ -16,6 +16,7 @@ import {
   agreementFindWords,
   agreementJobTail,
   agreementJobTitle,
+  agreementKindChips,
   agreementMonthGroups,
   agreementName,
   agreementNeedsAList,
@@ -24,6 +25,8 @@ import {
   agreementTag,
   agreementsEmptyWords,
   agreementsNarrowed,
+  agreementsReader,
+  canActOnAgreements,
   waitingChipLabel,
   type AgreementRow,
   type KindPick,
@@ -72,6 +75,10 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
+ * An estimator has the tab to read (punch list #403, call 8). They are drawn the chips for the kinds their role reads,
+ * no **Send a paper**, no **Contract library**, and no press on a line: a name and a job are plain words, and a line
+ * carries no act. Sending stays with the four roles, and the server holds that too.
+ *
  * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box and no chips, asks for the words
  * it is handed across every kind and every state, so a voided paper is found too, and stays quiet until there are two
  * letters.
@@ -116,6 +123,8 @@ const day: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', 
 const quiet: CSSProperties = { margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600 }
 const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
+/** What a line opens for someone who reads the tab and acts on nothing. */
+const NO_DOOR = { kind: 'none' } as const
 const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
 /** Add to a list: the one press on a line that makes a record, so it reads as the main press. */
 const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb', border: '1px solid #2563eb', color: 'white', fontWeight: 600 }
@@ -127,7 +136,10 @@ function pickChipStyle(pressed: boolean): CSSProperties {
 
 export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { embedSearch?: string; onClearEmbedSearch?: () => void } = {}) {
   const embedded = embedSearch !== undefined
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  /** Whose tab this is: the office acts on it, and an estimator reads it (punch list #403, call 8). */
+  const reader = agreementsReader(role)
+  const canAct = canActOnAgreements(role)
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -178,7 +190,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
     let cancelled = false
     setReading(true)
-    void readAgreements({ kind: kindAsk, state: stateAsk, typed: asked, limit })
+    void readAgreements({ kind: kindAsk, state: stateAsk, typed: asked, limit, reader })
       .then((read) => {
         if (cancelled) return
         setRows(read.rows)
@@ -195,20 +207,20 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     return () => {
       cancelled = true
     }
-  }, [kindAsk, stateAsk, asked, limit, tries, quietEmbed])
+  }, [kindAsk, stateAsk, asked, limit, tries, quietEmbed, reader])
 
   // The count on Waiting on a signature, under the kind picked; a count that cannot be read leaves the chip's words alone.
   // The Search tab draws no chips, so it asks for no count.
   useEffect(() => {
     if (embedded) return
     let cancelled = false
-    void countAgreementsWaiting(kind).then((n) => {
+    void countAgreementsWaiting(kind, reader).then((n) => {
       if (!cancelled) setWaiting(n)
     })
     return () => {
       cancelled = true
     }
-  }, [kind, tries, embedded])
+  }, [kind, tries, embedded, reader])
 
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
@@ -302,7 +314,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
   }
 
-  const empty = agreementsEmptyWords(query)
+  const empty = agreementsEmptyWords(query, reader)
 
   return (
     <section aria-label="Agreements" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -319,10 +331,14 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
             aria-label="Find an agreement"
             style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
           />
-          <AgreementsSendPaper onSent={retry} startOn={sendStart} onOpenLibrary={() => setLibraryOpen(true)} />
-          <button type="button" style={documentsQuietButton} onClick={() => setLibraryOpen(true)}>
-            Contract library
-          </button>
+          {canAct ? (
+            <>
+              <AgreementsSendPaper onSent={retry} startOn={sendStart} onOpenLibrary={() => setLibraryOpen(true)} />
+              <button type="button" style={documentsQuietButton} onClick={() => setLibraryOpen(true)}>
+                Contract library
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
       {quietEmbed ? (
@@ -334,7 +350,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
           {!embedded ? (
             <>
               <div role="group" aria-label="Kind of agreement" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                {AGREEMENT_KIND_CHIPS.map((c) => (
+                {agreementKindChips(reader).map((c) => (
                   <button
                     key={c.key}
                     type="button"
@@ -392,13 +408,14 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const colors = t.plain ? { background: 'transparent', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' } : AGREEMENT_GROUP_COLORS[t.group]
                       const signerWords = agreementSignerWords(row)
                       const name = agreementName(row)
-                      const door = agreementDoor(row)
+                      // A reader's line opens nothing: its name is plain words.
+                      const door = canAct ? agreementDoor(row) : NO_DOOR
                       const chip = agreementStateChip(row, today)
                       const chipColors = AGREEMENT_STATE_COLORS[chip.tone]
                       const jobTitle = agreementJobTitle(row)
                       const tail = agreementJobTail(row)
                       const dayWords = agreementDayWords(row, today)
-                      const acts = agreementCanBeSentAgain(row)
+                      const acts = canAct && agreementCanBeSentAgain(row)
                       const sending = busyAct === `send:${row.id}`
                       const linking = busyAct === `link:${row.id}`
                       return (
@@ -422,7 +439,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                               {jobTitle ? (
                                 <>
                                   {' · '}
-                                  {row.job_id ? (
+                                  {row.job_id && canAct ? (
                                     <Link to={`/jobs?edit=${row.job_id}`} style={jobLink}>
                                       {jobTitle}
                                     </Link>
@@ -437,7 +454,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                           <div style={lineRight}>
                             <span style={{ ...stateChip, background: chipColors.background, color: chipColors.color }}>{chip.words}</span>
                             {dayWords ? <span style={day}>{dayWords}</span> : null}
-                            {agreementNeedsAList(row) ? (
+                            {canAct && agreementNeedsAList(row) ? (
                               <button type="button" style={addPress} disabled={busyAct != null} onClick={() => setAddToList(row.source_id)}>
                                 {ADD_TO_A_LIST_LABEL}
                               </button>
@@ -468,7 +485,12 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
               ) : null}
             </>
           ) : null}
-          {!embedded ? (
+          {!embedded && !canAct ? (
+            <p style={quiet} data-testid="documents-agreements-reader-doors">
+              {AGREEMENTS_READER_DOORS}
+            </p>
+          ) : null}
+          {!embedded && canAct ? (
             <p style={quiet} data-testid="documents-agreements-doors">
               A job with no contract is in the Contract sweep, under Tools on the{' '}
               <Link to={AGREEMENTS_EMPTY_PAGE.to} style={doorLink}>
@@ -520,7 +542,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
           />
         </Suspense>
       ) : null}
-      {!embedded ? <AgreementsContractLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} onQuickSend={(documentName) => setSendStart({ documentName })} onChanged={retry} /> : null}
+      {!embedded && canAct ? <AgreementsContractLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} onQuickSend={(documentName) => setSendStart({ documentName })} onChanged={retry} /> : null}
       {sendAgain != null ? (
         <Suspense fallback={null}>
           <ContractSendWindow

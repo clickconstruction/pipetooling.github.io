@@ -44,8 +44,7 @@ const lineLeft: CSSProperties = { minWidth: 0, flex: '1 1 14rem' }
 const lineRight: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }
 const tag: CSSProperties = {
   display: 'inline-block',
-  verticalAlign: 'text-bottom',
-  marginRight: '0.45rem',
+  flex: '0 0 auto',
   padding: '0.08rem 0.45rem',
   borderRadius: 999,
   fontSize: '0.7rem',
@@ -54,6 +53,7 @@ const tag: CSSProperties = {
   background: 'var(--bg-teal-tint)',
   color: 'var(--text-teal-700)',
 }
+const nameRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0 0.45rem' }
 const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.875rem', overflowWrap: 'anywhere' }
 const subLine: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.1rem', overflowWrap: 'anywhere' }
 const stateChip: CSSProperties = { padding: '0.08rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, whiteSpace: 'nowrap' }
@@ -117,14 +117,17 @@ export function PartyPapersList({ read, canSend, surface, showEmpty = false }: {
               return (
                 <div key={l.id} style={line} data-testid="party-paper-row">
                   <div style={lineLeft}>
-                    <span style={tag}>{l.kind}</span>
-                    {l.opens ? (
-                      <button type="button" style={namePress(narrow)} onClick={() => setSignedDocId(l.id)}>
-                        {l.name}
-                      </button>
-                    ) : (
-                      <span style={nameText}>{l.name}</span>
-                    )}
+                    {/* The tag sits level with the name, also when a phone's 44px press makes the name taller. */}
+                    <span style={nameRow}>
+                      <span style={tag}>{l.kind}</span>
+                      {l.opens ? (
+                        <button type="button" style={namePress(narrow)} onClick={() => setSignedDocId(l.id)}>
+                          {l.name}
+                        </button>
+                      ) : (
+                        <span style={nameText}>{l.name}</span>
+                      )}
+                    </span>
                     {l.signer ? <span style={subLine}>{l.signer}</span> : null}
                   </div>
                   <div style={lineRight}>
