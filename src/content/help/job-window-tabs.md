@@ -75,7 +75,7 @@ The job may still owe money. Or a lien paper or demand letter may be out. Then *
 
 ## The Map tab
 
-**Map** is the last tab. It shows everything painted or kept for the job on one map.
+**Map** is the last tab. The tab shows everything painted or kept for the job on one map.
 
 - The lines of the job's painted maps.
 - The places kept on the job, each with its letter.

@@ -474,7 +474,7 @@ A long list shows four rows. Press **＋ 3 more** to open the rest.
 
 The next job at a house is a different job. The cleanout is where it was.
 
-A job reads the places an earlier job kept at the same customer address. They sit under a dashed line named **Kept at this address**.
+A job reads the places an earlier job kept at the same customer address. Those places sit under a dashed line named **Kept at this address**.
 
 The line says how many places there are and when they were kept. The office also reads which job kept them.
 
