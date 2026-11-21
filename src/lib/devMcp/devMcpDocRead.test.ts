@@ -33,9 +33,9 @@ function reader(rpcReply: unknown): Reader & { asked: unknown[] } {
 
 describe('get_person_document (a document a piece at a time, v2.6621)', () => {
   it('shapes the ask: doc_id or kind, one of the two; section a number or a heading', () => {
-    expect(docReadInput({ person: PERSON, doc_id: DOC.toUpperCase(), section: 12 })).toEqual({ ok: true, docId: DOC, kind: null, section: '12' })
-    expect(docReadInput({ person: PERSON, kind: 'narrative', section: ' 2. The spring ' })).toEqual({ ok: true, docId: null, kind: 'narrative', section: '2. The spring' })
-    expect(docReadInput({ person: PERSON, kind: 'summary' })).toEqual({ ok: true, docId: null, kind: 'summary', section: null })
+    expect(docReadInput({ person: PERSON, doc_id: DOC.toUpperCase(), section: 12 })).toEqual({ ok: true, docId: DOC, kind: null, section: '12', freshness: false })
+    expect(docReadInput({ person: PERSON, kind: 'narrative', section: ' 2. The spring ' })).toEqual({ ok: true, docId: null, kind: 'narrative', section: '2. The spring', freshness: false })
+    expect(docReadInput({ person: PERSON, kind: 'summary' })).toEqual({ ok: true, docId: null, kind: 'summary', section: null, freshness: false })
     expect(docReadInput({ person: PERSON })).toMatchObject({ ok: false, refused: expect.stringContaining('one of the two') })
     expect(docReadInput({ person: PERSON, doc_id: DOC, kind: 'summary' })).toMatchObject({ ok: false })
     expect(docReadInput({ person: PERSON, doc_id: 'nope' })).toMatchObject({ ok: false })
@@ -70,7 +70,7 @@ describe('get_person_document (a document a piece at a time, v2.6621)', () => {
   it('the server, the docs and the migration carry the verb; the function cuts sections as the headings read and refuses a section it lacks', () => {
     expect(SERVER).toContain("name: 'get_person_document'")
     expect(SERVER).toContain("case 'get_person_document': {")
-    expect(README).toContain('`get_person_document(person, doc_id? \\| kind?, section?)`') // the pipe escaped for the table
+    expect(README).toContain('`get_person_document(person, doc_id? \\| kind?, section?, freshness?)`') // the pipe escaped for the table
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_doc_read(p_person_id uuid, p_doc_id uuid DEFAULT NULL, p_kind text DEFAULT NULL, p_section text DEFAULT NULL)')
     expect(MIGRATION).toContain("IF auth.uid() IS NULL OR NOT public.is_dev() THEN")
