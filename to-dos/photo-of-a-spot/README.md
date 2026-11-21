@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · she is handing the build to another person on another computer · not built
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -12,9 +12,9 @@ summary: >
   the person stands. The sheet has big presses, asks what is buried, takes a description as long as
   it needs to be, and has one wide press for anything not on the list. One small migration and no new
   tab. A Map tab waits until jobs hold enough places to need one.
-next: Whoever picks it up reads *Picking this up*, ships the small migration alone, then PR 1 and PR 2. Step 0 can run beside the build.
+next: The migration alone and pushed, then PR 1 and PR 2, then the later steps in order. Taunya's word covers them all.
 size: S as a train of three (XS · S · S), then M for the later steps if the places get used
-blocker: None to start. The later steps wait for Taunya's word.
+blocker: None. A real phone on a real site is the walk no session can do.
 opinion: build, small — the places exist and nobody has set one, so the work is a quicker door onto them and not a new surface
 ---
 
@@ -41,6 +41,13 @@ day:
 > I'm going to let another user on a different computer do the entire thing. But there are some
 > changes I want to make first. For example, deciding what is buried there. There also needs to be
 > an open-ended description available. And that custom button. Needs to be easy to click
+
+And after the card merged:
+
+> I've decided we're going to build it all. Please build it all here.
+
+That is her yes to every step of the plan, the later ones too. Step 3 keeps where a worker stood on a
+photo, and step 4 changes who can read a place. Both are built as the card describes them.
 
 ## Taunya's three changes
 
@@ -225,7 +232,7 @@ is never read when the photo sends. Setting a place must not need the map's pict
   It was the card's gate. Taunya's word to have it built makes it a thing to watch and not a thing
   to wait for.
 
-0. **Room for a description (XS, one migration, alone).** The check on `painted_map_places.words`
+0. **Room for a description (XS, one migration, alone). Built in v2.8186.** The check on `painted_map_places.words`
    goes from 200 characters to 4,000. No new column and no new table, so the four fences are not
    called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
    `supabase db push` after its merge and before PR 1 is armed. The table held no row on
@@ -252,7 +259,8 @@ is never read when the photo sends. Setting a place must not need the map's pict
    photo (`src/hooks/useReportPhotos.ts`). A plain photo is one press to skip. A photo whose own
    time is more than a few minutes old does not take the phone's spot.
 
-Then stop and watch for three or four weeks. Each later step is built only if the places get used.
+The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
+2026-11-21 is to build the later steps too.
 
 3. **A photo keeps the phone's reading by itself (S, one migration).** Columns for the point, the
    margin and where it came from on `job_photo_notes` and `report_photos`. No new table. The column
