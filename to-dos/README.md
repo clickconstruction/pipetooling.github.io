@@ -50,7 +50,8 @@ PR like any other.
    part, a *left:* clause winning, a size with no letter last as unsized — so write the letter the
    whole card costs first (`L as a train of six (M · M · S …)`) and name what is left once most of
    it shipped (`…; left: PR 7 (S)`). `npm run shortlist` prints the same list as markdown for a chat.
-3. **Check** — `npm run check:todos` says whether every to-do parses, cites shipped versions
+3. **Check** — `npm run check:todos` says whether every to-do parses, writes each front-matter
+   key once (the board would show only the last `next:` of two, v2.8171), cites shipped versions
    only, carries a number no other to-do carries, and renders. It runs in CI on every PR and on
    the merge queue's build, where a second PR's card meets the first's: two to-dos on one number
    is an error there, never a warning, so the second PR to reach the queue fails until it is

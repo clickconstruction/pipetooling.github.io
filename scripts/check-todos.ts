@@ -1,7 +1,7 @@
 #!/usr/bin/env vite-node
 /**
- * `npm run check:todos` — every to-do parses, cites shipped versions only, and the board
- * renders from them. Exit 1 on an error (CI). Nothing is written: since v2.3623 the punch
+ * `npm run check:todos` — every to-do parses, writes each front-matter key once, cites shipped
+ * versions only, and the board renders from them. Exit 1 on an error (CI). Nothing is written: since v2.3623 the punch
  * list is rendered at build time from `to-dos/` (`todoBoardPlugin` in vite.config.ts), so
  * there is no generated file to keep in step and no `--fix`. The next free number it prints
  * is past every claim another branch holds (`scripts/todos/todoClaims.ts`, v2.5998);
@@ -9,8 +9,16 @@
  */
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { GROUP_LABELS, GROUP_ORDER, nextTodoNumber, openItemCount, type Finding, type TodoDoc } from '../src/lib/todos/todoBoard'
-import { readAssignedNumbers, renderTodoBoardModule } from './todos/readTodos'
+import {
+  GROUP_LABELS,
+  GROUP_ORDER,
+  findRepeatedKeyProblems,
+  nextTodoNumber,
+  openItemCount,
+  type Finding,
+  type TodoDoc,
+} from '../src/lib/todos/todoBoard'
+import { readAssignedNumbers, readTodoSources, renderTodoBoardModule } from './todos/readTodos'
 import { readClaimedTodoNumbers } from './todos/todoClaims'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -40,7 +48,10 @@ function main(): void {
     console.error(`the punch list could not be rendered: ${(e as Error).message}`)
     process.exit(1)
   }
-  const { problems, docs } = rendered
+  const { docs } = rendered
+  // The reader keeps the last value of a key written twice, so the board would render from such a
+  // card without a word: the check reads the lines themselves and refuses it (v2.8171).
+  const problems = [...rendered.problems, ...findRepeatedKeyProblems(readTodoSources(ROOT))]
   if (problems.length === 0) {
     const past = claimed.numbers.length > 0 ? `, past the claimed ${claimed.numbers.map((n) => `#${n}`).join(', ')}` : ''
     const asFetched = claimed.fetched ? '' : ' (claims as last fetched)'
