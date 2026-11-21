@@ -20,6 +20,7 @@ export const DOCUMENT_BUILDER_SEND_REFUSALS = {
   unread: { status: 409, words: 'Nobody has marked this revision as read. Tick Send it anyway to send it.' },
   notOnJob: { status: 409, words: 'That company is not on this job.' },
   noSuchContact: { status: 409, words: 'That person is not on the company record. Pick someone who is.' },
+  notWhoItWentTo: { status: 409, words: 'A reminder goes to the person it was sent to. Take it off their page to send it to someone else.' },
   pageOff: { status: 409, words: 'Their page was turned off. A send never turns a page back on.' },
   noEmail: { status: 409, words: 'Email is not set up yet, so nothing was sent.' },
   sendFailed: { status: 502, words: 'The email did not go. Nothing was recorded. Try again.' },
@@ -62,6 +63,17 @@ export function parseSheetSend(body: unknown): SheetSendRequest | null {
   return { builderKey, sheetId, companyId, contactEmail, note, why, anyway: b.anyway === true, test: b.test === true }
 }
 
+/**
+ * A reminder, or word that it changed, goes to the person the send went to: the address on the send's own live row.
+ * Two people at one company can share a name, so a name never picks who. A first send may pick anyone on the record,
+ * and so may a send with no live row or with a row that kept no address.
+ */
+export function resendGoesToWhoItWentTo(why: DocumentBuilderSendWhy, wentTo: string | null | undefined, asked: string): boolean {
+  if (why === 'first') return true
+  const was = (wentTo ?? '').trim().toLowerCase()
+  return was === '' || was === asked.trim().toLowerCase()
+}
+
 /** The note a send to a trade starts on. A person types over it. */
 export const SHEET_SEND_NOTE = 'Here is what your certificate must show on this job. Hand it to your insurance agent.'
 
@@ -84,6 +96,29 @@ export function sheetSendEmail(input: { job: string; note: string; why: Document
 /** The key of the message row a send leaves on the company's thread: one a send and a time it went. */
 export function sheetSendMessageKey(sendId: string, timesSent: number): string {
   return `builder-send:${sendId}:${timesSent}`
+}
+
+/**
+ * Whether a job's sheet went out on a usual someone checked. The read mark names one revision of the usual. A job's
+ * sheet is published on one revision of the usual, and stays on it until the job is published again. So the question
+ * is asked of the revision the sheet went out on, never of the usual's newest: a newer usual that was checked does
+ * not check an older sheet, and a newer usual nobody checked does not uncheck a sheet that went out on the checked
+ * one. The screen's warning and the function's refusal both ask here.
+ */
+export function sheetWentOutChecked(readRevision: number | null | undefined, sheetUsualRevision: number | null | undefined): boolean {
+  return typeof sheetUsualRevision === 'number' && sheetUsualRevision >= 1 && readRevision === sheetUsualRevision
+}
+
+/**
+ * Why a job's sheet goes only with the box *Send it anyway*, or an empty string once the revision of the usual it went
+ * out on is checked. A sheet behind the usual names its revision, since the mark on the bar speaks of the newest. A
+ * job with no sheet published yet is asked of the usual's newest, the one it would go out on.
+ */
+export function sheetUnreadWords(input: { readRevision: number | null; sheetUsualRevision: number | null; usualRevision: number }): string {
+  const on = typeof input.sheetUsualRevision === 'number' && input.sheetUsualRevision >= 1 ? input.sheetUsualRevision : input.usualRevision
+  if (sheetWentOutChecked(input.readRevision, on)) return ''
+  if (on >= 1 && on < input.usualRevision) return `Your insurance agent has not checked revision ${on} of your usual sheet. This job's sheet went out on that revision.`
+  return 'Your insurance agent has not checked your usual sheet.'
 }
 
 /** The kind a sent sheet's email is filed as under Sent copies. */

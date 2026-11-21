@@ -7,7 +7,12 @@
  *
  * A read that fails asks nothing and shows nothing: the card is an extra on the way in, never a wall, and most jobs
  * have nothing to ask. It reads again by itself when the phone finds its signal or the page comes back to the front,
- * so a site with no signal at the gate is still asked once it has one.
+ * so a site with no signal at the gate is still asked once it has one. A later read that fails keeps the card that is
+ * up, with the Nos pressed on it.
+ *
+ * A send that is refused reads again. The card was read before the answer, so a refusal means it is older than the
+ * list: one of the crew answered first, or the office changed a bullet. The words say which, and the card then shows
+ * what is true now, or leaves. Without that read a second person on the crew kept a card no press could answer.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -30,9 +35,8 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
       (next) => {
         if (mine === gen.current) setAsk(next)
       },
-      () => {
-        if (mine === gen.current) setAsk(null)
-      },
+      // A read that fails keeps what is drawn: nothing after the first read, the card after a later one.
+      () => {},
     )
   }, [io, jobId])
 
@@ -84,6 +88,8 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
       setAsk(null)
     } catch (e) {
       showToast(formatErrorMessage(e, W.notKept), 'error')
+      // The card may be older than the list. Read again, so it shows what is true now or leaves.
+      read()
     } finally {
       setBusy(false)
     }

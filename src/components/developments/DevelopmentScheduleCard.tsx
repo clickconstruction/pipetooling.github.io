@@ -12,6 +12,7 @@ import { addDays, byTrouble, daySpan, daysBetween, readiness, readyList, readyMa
 import type { SiteStartChecksRead } from '../../hooks/useSiteStartChecks'
 import type { StartWho } from '../../lib/startChecks/startChecksIo'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { EmptyState } from '../EmptyState'
 import { ReadyMarks } from '../startChecks/ReadyBar'
 import { StartCheckAskPanel } from '../startChecks/StartCheckAskPanel'
 import { StartCheckStage } from '../startChecks/StartCheckStage'
@@ -127,7 +128,8 @@ export function DevelopmentScheduleCard({
               </button>
             ) : null}
           </div>
-          {onLine && onTheLine ? <ScheduleTimeLine line={onTheLine} /> : null}
+          {/* A site whose stages have no day yet has nothing to draw. The press still opened something: it says what fills it. */}
+          {onLine ? onTheLine ? <ScheduleTimeLine line={onTheLine} /> : <EmptyState main={TIME_LINE_WORDS.nothing.main} tail={TIME_LINE_WORDS.nothing.tail} compact /> : null}
           <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
             {sorted.map((stage) => {
               const line = lineOf.get(stage.id)

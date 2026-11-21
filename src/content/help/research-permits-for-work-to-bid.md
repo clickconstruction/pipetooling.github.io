@@ -133,7 +133,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. San Antonio's permits never name a plumber. So the list leaves the plumber out there. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
+Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. Older permits never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. Each row also shows our bids with them and the plumber they use. Our bids are the ones made in the last two years. A practice bid does not count. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. San Antonio's permits never name a plumber. So the list leaves the plumber out there. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
@@ -159,9 +159,9 @@ Each row says why the name is on the list.
 
 - {{chip:green|Picking up}} means two or more jobs more in the last 90 days than in the 90 before.
 - {{chip:green|New and busy}} means three or more jobs in the last 90 days and none before.
-- {{chip:blue|Never bid}} means we have never priced a job for them.
+- {{chip:blue|Never bid}} means we priced no job for them in the last two years.
 - {{chip:yellow|2 jobs open now}} means two jobs applied for with no plumbing permit yet.
-- {{chip:red|We bid 4, won 0}} means we priced four of their jobs and won none.
+- {{chip:red|We bid 4, won 0}} means we priced four of their jobs in two years and won none. The table under the list counts the same bids.
 
 Five names show, so one person can call them all. A name with a building word comes first, such as Construction, Contracting or Builders. The other companies follow. Then a job open now, then a name picking up or new, then a name never bid. No number is a score.
 
@@ -214,13 +214,13 @@ The last column says what the row reads as.
 - {{chip:yellow|Builds, two tries}} means one or two bids so far. One or two bids is too early to say.
 - {{chip:gray|No permit on record}} means no permit carries their exact name. The company may still build.
 
-Three chips filter the table. **Builds here** shows the companies with a permit. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
+Three chips filter the table. **Builds** shows the companies with a permit in any city the app reads. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
 
 A company may file under a person or under another name. Press **Tie a name** on its row to find that name. The sheet suggests names and says why. Nothing is tied until you press. A tied name's permits then count for the company.
 
-The small words under a company say where its permits are. Press one to open that builder's sheet.
+The count in **Permits, all cities, 12 mo** is the same on every city's page. The small words under a company say where its permits are. Press one to open that builder's sheet.
 
-Four numbers sit at the top of **Market**. The first two count the builders to call this week and their jobs open now. The third says how many of the companies we bid pulled a permit. The fourth is the middle wait on the clock.
+Four numbers sit at the top of **Market**. The first two count the builders to call this week and their jobs open now. The third says how many of the companies we bid pulled a permit in any city the app reads. The fourth is the middle wait on the clock.
 
 ## Read the clock
 

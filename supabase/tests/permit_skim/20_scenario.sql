@@ -47,6 +47,37 @@ UPDATE public.permits SET project_name = 'Water heater, suite 210' WHERE id = '0
 -- COM-1 arrived three days ago; the rest arrived now.
 UPDATE public.permits SET first_seen_at = now() - interval '3 days' WHERE id = '00000000-0000-0000-0000-0000003020b1';
 
+-- Our bids with Lime Build (migration *_research_builders_our_bids): Builders counts them as Market's table of
+-- companies does. Six count: under the customer, under the old builders list's name, and one under both, once. Four do
+-- not: two practice bids, one a day past two years, and none is lost to a name that only starts with ZZZ. Each is
+-- made at noon of its day on the company calendar, so the day never turns on the hour the bed runs.
+-- A customer's master is a master technician: Mo holds the customer, and Eve, the estimator, made the bids.
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000003020a4', 'mo@skim.test');
+INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin, archived_at) VALUES
+  ('00000000-0000-0000-0000-0000003020a4', 'mo@skim.test', 'Mo Master', 'master_technician', false, false, NULL)
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000003020f0', 'Skim Plumbing');
+INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000003020f1', 'Lime Build, Inc.', '00000000-0000-0000-0000-0000003020a4');
+INSERT INTO public.bids_gc_builders (id, name, created_by) VALUES ('00000000-0000-0000-0000-0000003020f2', 'Lime Build LLC', '00000000-0000-0000-0000-0000003020a1');
+INSERT INTO public.bids (id, created_by, service_type_id, project_name, customer_id, gc_builder_id, outcome, created_at)
+SELECT ('00000000-0000-0000-0000-0000003021' || lpad(b.n::text, 2, '0'))::uuid, '00000000-0000-0000-0000-0000003020a1', '00000000-0000-0000-0000-0000003020f0',
+       b.project_name,
+       CASE WHEN b.customer THEN '00000000-0000-0000-0000-0000003020f1'::uuid END,
+       CASE WHEN b.gc THEN '00000000-0000-0000-0000-0000003020f2'::uuid END,
+       b.outcome,
+       ((public.app_today() - b.days_ago)::timestamp + interval '12 hours') AT TIME ZONE 'America/Chicago'
+FROM (VALUES
+  (1, 'Mill Street Lofts', true, false, 'won', 10),
+  (2, 'Kiln Street Offices', true, false, 'lost', 100),
+  (3, 'ZZ Shadow MILL STREET LOFTS', true, false, NULL, 5),
+  (4, 'zz test', true, false, NULL, 4),
+  (5, 'Aster Ridge Clinic', true, false, 'won', 731),
+  (6, 'Larkspur Court Retail', true, false, 'lost', 730),
+  (7, 'Orchard Way Retail', false, true, NULL, 20),
+  (8, 'Tower Blvd Fitout', true, true, NULL, 30),
+  (9, 'ZZZ Corp Tower', true, false, 'lost', 40)
+) AS b(n, project_name, customer, gc, outcome, days_ago);
+
 CREATE SCHEMA ps;
 GRANT USAGE ON SCHEMA ps TO authenticated, service_role;
 CREATE FUNCTION ps.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -179,6 +210,32 @@ SELECT ps.same('Builders lists each name with its permits, its open ones, its pl
    FROM public.research_builders('Skim City')),
   'ridgewaybuilders:Ridgeway Builders:gc:2/1:Blue Heron Plumbingx1:none:0 tallpinedevelopment:-:-:1/1:nobodyx0:avoid:0');
 
+-- Our bids with a name, by the one rule (migration *_research_builders_our_bids).
+SELECT ps.same('Builders counts our bids of two years that are no practice bid, each once',
+  (SELECT bids || ' bids, ' || won || ' won, the last ' || (public.app_today() - last_bid_on) || ' days ago' FROM public.research_builders('Elm City') WHERE key = 'limebuild'),
+  '6 bids, 1 won, the last 10 days ago');
+SELECT ps.same('a bid counts when it is no practice bid and was made within two years',
+  concat_ws(' ',
+    public.research_bid_counts('Mill Street Lofts', now())::text,
+    public.research_bid_counts('ZZ Shadow MILL STREET LOFTS', now())::text,
+    public.research_bid_counts('  zz test', now())::text,
+    public.research_bid_counts('ZZZ Corp Tower', now())::text,
+    public.research_bid_counts(NULL, now())::text,
+    public.research_bid_counts('Larkspur Court Retail', ((public.app_today() - 730)::timestamp + interval '12 hours') AT TIME ZONE 'America/Chicago')::text,
+    public.research_bid_counts('Aster Ridge Clinic', ((public.app_today() - 731)::timestamp + interval '12 hours') AT TIME ZONE 'America/Chicago')::text,
+    public.research_bid_counts('Dated tomorrow', ((public.app_today() + 1)::timestamp + interval '12 hours') AT TIME ZONE 'America/Chicago')::text),
+  'true false false true true true false false');
+SELECT ps.same('a bid counts under a company''s name, never a ZZ name or a bid platform''s bucket',
+  concat_ws(' ',
+    COALESCE(public.research_bid_party_key('Lime Build, Inc.'), '-'),
+    COALESCE(public.research_bid_party_key('ZZ Test Builders'), '-'),
+    COALESCE(public.research_bid_party_key(' zz lime build'), '-'),
+    COALESCE(public.research_bid_party_key('PlanHub - Subcontractor Prime Opportunity'), '-'),
+    COALESCE(public.research_bid_party_key('BuildingConnected bids'), '-'),
+    COALESCE(public.research_bid_party_key('The Plan Hubbard Group'), '-'),
+    COALESCE(public.research_bid_party_key(NULL), '-')),
+  'limebuild - - - - theplanhubbardgroup -');
+
 -- The count: three arrived; two were skimmed, both by Eve; one stands pursued for their next jobs; the put-back counts nowhere.
 SELECT ps.same('the count',
   (SELECT (f->>'arrived') || ' arrived, ' || (f->>'skimmed') || ' skimmed, ' || (f->>'kept') || ' kept, ' || (f->>'passed') || ' passed, ' || (f->>'pursuing') || ' pursuing, ' || (f->>'bid') || ' bid, by ' || (f->'by_person'->0->>'name') || ' ' || (f->'by_person'->0->>'n') || ', for ' || (f->'pursue_for'->0->>'code')
@@ -202,7 +259,7 @@ RESET ROLE;
 SELECT ps.same('both tables carry the read-only fence',
   (SELECT count(DISTINCT tablename)::text FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('builders', 'builder_marks') AND permissive = 'RESTRICTIVE'), '2');
 SELECT ps.same('anon runs none of the new functions',
-  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
+  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3', 'research_bid_counts', 'research_bid_party_key') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
 
 DO $$ BEGIN RAISE NOTICE 'permit_skim PASSED'; END $$;
 ROLLBACK;

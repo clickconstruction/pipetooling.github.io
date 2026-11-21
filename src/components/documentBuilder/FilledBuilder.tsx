@@ -54,7 +54,8 @@ import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import { publishUsualToJobs } from '../../lib/documentBuilder/sheetsIo'
 import type { GcJob, SheetRecord } from '../../lib/documentBuilder/sheetsIo'
 import { MOVED_ON_USUAL, movedOnJobName, movedOnWords } from '../../lib/documentBuilder/movedOn'
-import { isBuilderRead, sameContents, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import { sheetUnreadWords } from '../../lib/documentBuilder/sendWords'
+import { sameContents, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -737,7 +738,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   <p style={MUTED}>Publish this job's sheet first. It then prints as subs see it.</p>
                 )}
               </div>
-              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={isBuilderRead(rec) ? '' : 'Your insurance agent has not checked your usual sheet.'} io={io.sends} />
+              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
             </>
           ) : (
             <div style={CARD}>

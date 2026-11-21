@@ -8,12 +8,15 @@ import {
   DOCUMENT_BUILDER_SEND_REFUSALS as REFUSALS,
   SHEET_SEND_SENT_KIND,
   parseSheetSend,
+  resendGoesToWhoItWentTo,
   sheetSendEmail,
   sheetSendMessageKey,
+  sheetWentOutChecked,
   type DocumentBuilderSendRefusal,
 } from '../_shared/documentBuilderSend.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
+import { sentCopyKeptHtml } from '../_shared/sentCopyEmail.ts'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME, GC_TRADE_EMAIL_TEST_TYPE, newTradeToken, tradeEmailTestSubject, tradePortalLinkUrl, tradeTestLinkUrl } from '../_shared/gcTradeEmail.ts'
 import { resolveTradeLink, sha256Hex, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
@@ -27,12 +30,13 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
  * which has no session, and the send checks its caller here.
  *
  *   POST { action: 'send', builderKey, sheetId, companyId, contactEmail, note, why, anyway?, test? }   a dev, signed in
- *       → { ok, send: { id, contactName, sentAt, sentRevision, timesSent, openedAt, openedRevision }, page: 'on' }
+ *       → { ok, send: { id, contactName, contactEmail, sentAt, sentRevision, timesSent, openedAt, openedRevision }, page: 'on' }
  *       → { ok, test: true, email }     a test copy: the same email to the caller's own address, and nothing written
  *       → { error: key, words } with the key's status
  *     In order: the caller (a dev; never an archived account, a training account or a twin), the sheet (it must be
  *     published), the read mark (an unread revision goes only with `anyway`), the company (on a trade of this job),
- *     the person (someone on the company's record with that email), then the company's page. A page that is on is
+ *     the person (someone on the company's record with that email; a reminder goes only to the address the send's
+ *     own row went to, never to a namesake), then the company's page. A page that is on is
  *     used. A company that never had a page gets one. A page that was turned off stays off: the send is refused,
  *     since a send never turns a page back on. Then the sheet's own link (made when the sheet never had one), the
  *     email, and only after it went: the send's row, the message on the company's thread and the sent copy.
@@ -60,11 +64,14 @@ const refuse = (key: DocumentBuilderSendRefusal, detail?: string) => json({ erro
 // deno-lint-ignore no-explicit-any
 type Admin = any
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const SEND_COLUMNS = 'id, contact_name, sent_at, sent_revision, times_sent, opened_at, opened_revision'
+/** The kind whose rule hides a page's key in a filed copy (`sentCopyKeptHtml`): the trade email's, whose frame this email is. */
+const SENT_COPY_KEPT_AS = 'gc_trade_email'
 
-type SendRow = { id: string; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
-const sendOut = (r: SendRow) => ({ id: r.id, contactName: r.contact_name, sentAt: r.sent_at, sentRevision: r.sent_revision, timesSent: r.times_sent, openedAt: r.opened_at, openedRevision: r.opened_revision })
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const SEND_COLUMNS = 'id, contact_name, contact_email, sent_at, sent_revision, times_sent, opened_at, opened_revision'
+
+type SendRow = { id: string; contact_name: string; contact_email: string | null; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
+const sendOut = (r: SendRow) => ({ id: r.id, contactName: r.contact_name, contactEmail: r.contact_email ?? '', sentAt: r.sent_at, sentRevision: r.sent_revision, timesSent: r.times_sent, openedAt: r.opened_at, openedRevision: r.opened_revision })
 
 async function send(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
   const caller = await documentBuilderCaller(req, admin, supabaseUrl, corsHeaders, (why) => refuse(why))
@@ -73,15 +80,16 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   if (!m) return refuse('badRequest')
 
   // The sheet, as published. A draft is never sent.
-  const { data: sheetRow } = await admin.from('document_builder_sheets').select('id, builder_key, project_id, revision, published_sheet').eq('id', m.sheetId).eq('builder_key', m.builderKey).maybeSingle()
-  const sheet = sheetRow as { id: string; builder_key: string; project_id: string; revision: number; published_sheet: unknown } | null
+  const { data: sheetRow } = await admin.from('document_builder_sheets').select('id, builder_key, project_id, revision, usual_revision, published_sheet').eq('id', m.sheetId).eq('builder_key', m.builderKey).maybeSingle()
+  const sheet = sheetRow as { id: string; builder_key: string; project_id: string; revision: number; usual_revision: number | null; published_sheet: unknown } | null
   if (!sheet) return refuse('notFound')
   if (sheet.revision < 1 || !sheet.published_sheet) return refuse('notPublished')
-  const { data: builder } = await admin.from('document_builders').select('revision, read_revision').eq('key', m.builderKey).maybeSingle()
-  const usual = builder as { revision: number; read_revision: number | null } | null
+  const { data: builder } = await admin.from('document_builders').select('read_revision').eq('key', m.builderKey).maybeSingle()
+  const usual = builder as { read_revision: number | null } | null
   if (!usual) return refuse('notFound')
-  // A revision nobody has read goes only when the sender ticked Send it anyway.
-  if (usual.read_revision !== usual.revision && !m.anyway) return refuse('unread')
+  // A sheet that went out on a usual nobody checked goes only when the sender ticked Send it anyway. The mark is read
+  // on the revision of the usual this sheet was published on, not on the usual's newest.
+  if (!sheetWentOutChecked(usual.read_revision, sheet.usual_revision) && !m.anyway) return refuse('unread')
 
   // The company is on a trade of this job, and the person is on the company's record.
   const { data: company } = await admin.from('gc_companies').select('id, name, contact_name, email').eq('id', m.companyId).maybeSingle()
@@ -95,6 +103,10 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   const contact = known.find((k) => k.email.trim().toLowerCase() === m.contactEmail)
   if (!contact) return refuse('noSuchContact')
   const contactName = contact.name.trim() || String(company.name ?? '')
+  // The send that is on their page now, when there is one. A reminder goes to the address that row went to.
+  const { data: liveRow } = await admin.from('document_builder_sends').select(SEND_COLUMNS).eq('builder_key', m.builderKey).eq('sheet_id', sheet.id).eq('company_id', m.companyId).is('taken_off_at', null).maybeSingle()
+  const live = liveRow as SendRow | null
+  if (!resendGoesToWhoItWentTo(m.why, live?.contact_email, m.contactEmail)) return refuse('notWhoItWentTo')
 
   // Their page: on is used, never made gets one, turned off stays off.
   const { data: links } = await admin.from('gc_trade_portal_links').select('token, revoked_at').eq('company_id', m.companyId)
@@ -141,8 +153,6 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
 
   // It went. Now the record: the send's own row, sent again on the same row while it is on their page.
   const nowIso = new Date().toISOString()
-  const { data: liveRow } = await admin.from('document_builder_sends').select(SEND_COLUMNS).eq('builder_key', m.builderKey).eq('sheet_id', sheet.id).eq('company_id', m.companyId).is('taken_off_at', null).maybeSingle()
-  const live = liveRow as SendRow | null
   const write = live
     ? admin.from('document_builder_sends').update({ contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name, times_sent: live.times_sent + 1 }).eq('id', live.id)
     : admin.from('document_builder_sends').insert({ builder_key: m.builderKey, sheet_id: sheet.id, company_id: m.companyId, contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name })
@@ -168,10 +178,11 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   })
   if (threadError) console.error('document-builder-send thread row', threadError.message)
 
-  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id.
+  // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the company's own page link,
+  // which is a key, so the copy is kept as a trade email's is: `/t/…`, never the token. The sheet's own link stays.
   await fileSentEmailBestEffort(
     { kind: SHEET_SEND_SENT_KIND, title: email.subject, recipientName: String(company.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
-    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: email.html, resendEmailId: sent.resendEmailId ?? null },
+    { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html), resendEmailId: sent.resendEmailId ?? null },
   )
   console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, sheet: sheet.id, company: m.companyId, revision: sheet.revision, why: m.why }))
   return json({ ok: true, send: sendOut(row), page: 'on' })

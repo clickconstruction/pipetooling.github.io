@@ -19,12 +19,12 @@ const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 const FUNCTION_URL = `${supabaseUrl}/functions/v1/document-builder-send`
 
-const SEND_SELECT = 'id, company_id, customer_id, contact_name, sent_at, sent_revision, times_sent, opened_at, opened_revision'
+const SEND_SELECT = 'id, company_id, customer_id, contact_name, contact_email, sent_at, sent_revision, times_sent, opened_at, opened_revision'
 
-type SendRow = { id: string; company_id: string | null; customer_id: string | null; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
+type SendRow = { id: string; company_id: string | null; customer_id: string | null; contact_name: string; contact_email: string | null; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
 
-export function sendRecordFromRow(row: { id: string; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }, about: string | null = null): SendRecord {
-  return { id: row.id, contactName: row.contact_name, about, sentOn: calendarYmdInAppTzFromIso(row.sent_at), sentRevision: row.sent_revision, timesSent: row.times_sent, openedOn: row.opened_at ? calendarYmdInAppTzFromIso(row.opened_at) : null, openedRevision: row.opened_revision }
+export function sendRecordFromRow(row: { id: string; contact_name: string; contact_email?: string | null; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }, about: string | null = null): SendRecord {
+  return { id: row.id, contactName: row.contact_name, contactEmail: (row.contact_email ?? '').trim(), about, sentOn: calendarYmdInAppTzFromIso(row.sent_at), sentRevision: row.sent_revision, timesSent: row.times_sent, openedOn: row.opened_at ? calendarYmdInAppTzFromIso(row.opened_at) : null, openedRevision: row.opened_revision }
 }
 
 /** Where a party's own page stands, from its links: one that is on, none ever made, or every one turned off. */
@@ -130,7 +130,7 @@ export async function sendSheet(ask: SheetSendAsk): Promise<Landed<SendRecord | 
   if (!s || typeof s.id !== 'string' || typeof s.sentAt !== 'string') return { ok: false, error: DOCUMENT_BUILDER_SEND_REFUSALS.failed.words }
   return {
     ok: true,
-    value: sendRecordFromRow({ id: s.id, contact_name: String(s.contactName ?? ''), sent_at: s.sentAt, sent_revision: Number(s.sentRevision ?? 0), times_sent: Number(s.timesSent ?? 1), opened_at: typeof s.openedAt === 'string' ? s.openedAt : null, opened_revision: typeof s.openedRevision === 'number' ? s.openedRevision : null }),
+    value: sendRecordFromRow({ id: s.id, contact_name: String(s.contactName ?? ''), contact_email: typeof s.contactEmail === 'string' ? s.contactEmail : '', sent_at: s.sentAt, sent_revision: Number(s.sentRevision ?? 0), times_sent: Number(s.timesSent ?? 1), opened_at: typeof s.openedAt === 'string' ? s.openedAt : null, opened_revision: typeof s.openedRevision === 'number' ? s.openedRevision : null }),
   }
 }
 

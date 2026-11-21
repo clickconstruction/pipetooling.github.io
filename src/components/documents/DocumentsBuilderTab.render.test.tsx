@@ -6,6 +6,8 @@
  * in the editor. The flow's own wiring is held by
  * `DocumentBuilderFlow.render.test.tsx`. Every name here is made up.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useLocation } from 'react-router-dom'
@@ -91,6 +93,24 @@ describe('DocumentsBuilderTab', () => {
     expect(screen.queryByText('Step 1 of 11')).toBeNull()
     expect(screen.getByText('Insurance requirements for subs')).toBeTruthy()
     expect(screen.getByText('What each sub must carry on a job you run as the GC. One sheet a job.')).toBeTruthy()
+  })
+
+  it('draws inside the one element the stylesheet makes every press 44 px tall in on a phone', async () => {
+    open({ route: '/documents?tab=builder&builder=sub-nda' })
+    const back = await screen.findByRole('button', { name: '‹ Document builder' })
+    const tab = back.closest('.documentBuilderTab')
+    expect(tab).not.toBeNull()
+    // Every press of the open builder is inside it, and the step bar's dashes carry the class the rule leaves out.
+    const presses = Array.from(document.querySelectorAll('button'))
+    expect(presses.length).toBeGreaterThan(30)
+    expect(presses.every((b) => tab?.contains(b))).toBe(true)
+    expect(presses.filter((b) => b.classList.contains('documentBuilderStep'))).toHaveLength(11)
+    // Their own heights are inline, 24 to 40 px, so the rule has to outrank an inline style.
+    expect(back.style.minHeight).toBe('28px')
+
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
+    const rule = css.match(/@media \(max-width: 720px\) \{\n  \.documentBuilderTab button:not\(\.documentBuilderStep\),\n  \.documentBuilderTab select \{[^}]*\}/)?.[0] ?? ''
+    expect(rule).toContain('min-height: 44px !important')
   })
 
   it('says a published builder’s revision and who read it', async () => {

@@ -2,7 +2,7 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, map, publish, publish revision, changed, changed somewhere else, load the newer one, save mine over it, two tabs, someone else, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, link, share, copy the link, switch the link on, switch the link off, make a new link, look only, secrecy on your jobs, map, publish, publish revision, changed, changed somewhere else, load the newer one, save mine over it, two tabs, someone else, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.
@@ -91,6 +91,25 @@ What you typed stays on the page. Nothing is saved and nothing is dropped until 
 - {{button:outline-blue|Save mine over it}} saves what you typed. Their draft goes.
 
 A revision someone published stays published either way. The publish button waits until you choose.
+
+## Share the Sub NDA by link
+
+The link is a second way in, for someone with no page of their own. Anyone who holds it walks the published revision. They only look. Nothing they pick is saved or sent.
+
+Find **This builder's link** on the left side, under the list of what changed. Publish a revision first. A link opens only what is published.
+
+1. Press {{button:outline|Switch the link on}}.
+2. Press {{button:outline|Copy the link}}.
+3. Send the link to the person yourself. The app sends nothing.
+
+The card says the day the link was made. It also says how many times someone outside opened it.
+
+- {{button:outline-blue|Make a new link}} stops the old link. Anyone you gave it to needs the new one.
+- {{button:outline-blue|Switch the link off}} closes the builder to links. Switching it on again makes a new link.
+
+The page the link opens is named *Secrecy on your jobs*. It shows the eleven steps with no field to type in. Its last step has no blue button.
+
+A draft never shows on the link. A revision you publish later shows on the same link.
 
 ## Walk the Sub NDA
 
