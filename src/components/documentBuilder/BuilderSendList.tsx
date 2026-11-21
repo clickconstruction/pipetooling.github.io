@@ -14,7 +14,8 @@ import type { BatchNoun } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { BuilderChip, BuilderChipTone } from '../../lib/documentBuilder/builders'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { resendPress, sendBatch, sendBatchOutcome, sendBox, sendChips, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 type Props = {
   title: string
@@ -142,8 +143,10 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
           const to = open ? (party.contacts.find((c) => c.email === box?.email) ?? party.contacts[0] ?? null) : null
           const state = open ? sendBox(party, to, gate) : null
           const again = party.send ? resendPress(party.send, revision) : null
-          /** The second press on a sent row cannot go: nothing published, their page off, nobody to send to, or an unread revision not waved through. */
-          const againDead = !published || party.page.state === 'off' || party.contacts.length === 0 || (unread !== '' && !anyway)
+          /** Who the second press goes to: the person the send went to, by the address on the send's own row. */
+          const goesTo = resendTo(party)
+          /** The second press on a sent row cannot go: nothing published, their page off, the person it went to gone from the record, or an unread revision not waved through. */
+          const againDead = !published || party.page.state === 'off' || !goesTo?.to || (unread !== '' && !anyway)
           return (
             <div key={party.id} data-send-party={party.id} style={{ display: 'grid', gap: 6, padding: i === 0 ? '0 0 10px' : '10px 0', borderTop: i === 0 ? 0 : '1px solid var(--border)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'baseline', justifyContent: 'space-between', fontSize: '0.84rem' }}>
@@ -158,9 +161,10 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                       type="button"
                       disabled={busy || againDead}
                       aria-label={`${again.label}, ${party.name}`}
+                      aria-describedby={goesTo ? `goes-to-${party.id}` : undefined}
                       style={smallPress(busy || againDead)}
                       onClick={() => {
-                        const person = party.contacts.find((c) => c.name === party.send?.contactName) ?? party.contacts[0]
+                        const person = goesTo?.to
                         if (person) void run(party.id, () => onSend(party, person, '', again.why, anyway))
                       }}
                     >
@@ -176,6 +180,11 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                   </button>
                 ) : null}
               </div>
+              {party.send && goesTo ? (
+                <p id={`goes-to-${party.id}`} data-goes-to={goesTo.to ? 'someone' : 'nobody'} style={goesTo.to ? FINE : { ...WARN, margin: 0 }}>
+                  <ValueSentence text={goesTo.words} />
+                </p>
+              ) : null}
 
               {open && state ? (
                 <div style={{ border: '1px dashed var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 10 }}>

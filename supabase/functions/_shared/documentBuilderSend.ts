@@ -20,6 +20,7 @@ export const DOCUMENT_BUILDER_SEND_REFUSALS = {
   unread: { status: 409, words: 'Nobody has marked this revision as read. Tick Send it anyway to send it.' },
   notOnJob: { status: 409, words: 'That company is not on this job.' },
   noSuchContact: { status: 409, words: 'That person is not on the company record. Pick someone who is.' },
+  notWhoItWentTo: { status: 409, words: 'A reminder goes to the person it was sent to. Take it off their page to send it to someone else.' },
   pageOff: { status: 409, words: 'Their page was turned off. A send never turns a page back on.' },
   noEmail: { status: 409, words: 'Email is not set up yet, so nothing was sent.' },
   sendFailed: { status: 502, words: 'The email did not go. Nothing was recorded. Try again.' },
@@ -60,6 +61,17 @@ export function parseSheetSend(body: unknown): SheetSendRequest | null {
   if (note.length > DOCUMENT_BUILDER_SEND_NOTE_MAX) return null
   if (why !== 'first' && why !== 'again' && why !== 'changed') return null
   return { builderKey, sheetId, companyId, contactEmail, note, why, anyway: b.anyway === true, test: b.test === true }
+}
+
+/**
+ * A reminder, or word that it changed, goes to the person the send went to: the address on the send's own live row.
+ * Two people at one company can share a name, so a name never picks who. A first send may pick anyone on the record,
+ * and so may a send with no live row or with a row that kept no address.
+ */
+export function resendGoesToWhoItWentTo(why: DocumentBuilderSendWhy, wentTo: string | null | undefined, asked: string): boolean {
+  if (why === 'first') return true
+  const was = (wentTo ?? '').trim().toLowerCase()
+  return was === '' || was === asked.trim().toLowerCase()
 }
 
 /** The note a send to a trade starts on. A person types over it. */
