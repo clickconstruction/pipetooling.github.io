@@ -1258,3 +1258,100 @@ describe('Send more…, from a place\'s row (v2.7844)', () => {
     expect(ways()).toEqual(['All 3 places on this jobCopies 3 map pins', 'The whole listWith its photos. They give their name first.'])
   })
 })
+
+/**
+ * A place that starts from a photo (punch list #413, **Photo of a spot**): the window is handed the photo the camera
+ * took and the phone's reading of that moment. The sheet opens with the photo first, and the dot starts on the reading
+ * when the reading is good and the photo is fresh.
+ */
+describe('a place that starts from a photo (#413)', () => {
+  const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+  const GATE = { id: 'jp1', mapId: 'list', name: 'Truck gate', words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: 'gate' as const, setBy: 'dana', setAt: '2026-11-18T15:01:00Z' }
+  const listWhole = () => ({ map: LIST, lines: [], places: [GATE] })
+  const file = new File(['x'], 'spot.jpg', { type: 'image/jpeg' })
+  type Reading = { ok: true; fix: { lat: number; lng: number; accuracyM: number | null } } | { ok: false; why: 'none' | 'refused' | 'failed' }
+  const spot = (reading: Reading, takenMs: number | null = Date.now()) => ({ file, reading: Promise.resolve(reading), takenMs })
+  const HERE: Reading = { ok: true, fix: { lat: 29.6, lng: -98.3, accuracyM: 6 } }
+  const fix = () => document.querySelector('[data-painted-place-fix]')?.getAttribute('data-painted-place-fix')
+  const dotAt = (where: string) => waitFor(() => expect(screen.getByTestId('canvas').textContent).toContain(`dot:${where}`))
+
+  it('opens the sheet with the photo first and the dot on the reading of that moment', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot(HERE)} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.6,-98.3')
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('first')
+    expect(fix()).toBe('read')
+    expect(document.querySelector('[data-place-note]')).toBeNull()
+  })
+
+  it('saves the place on the reading, with the phone’s margin', async () => {
+    io.whole = listWhole()
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:shot' }
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot(HERE)} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.6,-98.3')
+    fireEvent.click(document.querySelector('[data-place-kind="cleanout"]') as HTMLElement)
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(names()).toContain('uploadPaintedPlacePhoto')
+    const added = io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1] as { lat: number; lng: number; accuracyM: number | null; kind: string; name: string }
+    expect(added).toMatchObject({ lat: 29.6, lng: -98.3, accuracyM: 6, kind: 'cleanout', name: 'Cleanout' })
+  })
+
+  it('a rough reading moves no dot: it starts where the map is looking, and the sheet shows the way to the switch', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot({ ok: true, fix: { lat: 31, lng: -99, accuracyM: 3200 } })} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await waitFor(() => expect(fix()).toBe('rough'))
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('first')
+  })
+
+  it('says why when no reading came, and still opens with the photo', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot({ ok: false, why: 'refused' })} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await waitFor(() => expect(fix()).toBe('no-reading'))
+    expect(document.querySelector('[data-painted-place-no-fix]')?.getAttribute('data-painted-place-no-fix')).toBe('refused')
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+  })
+
+  it('a photo taken hours ago takes no reading: the dot is not put where the person stands, and the sheet says so', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot(HERE, Date.now() - 6 * 60 * 60_000)} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    expect(document.querySelector('[data-place-note]')?.textContent).toBe('This photo was taken 6 hours ago. You are not there now, so the dot was not put where you stand. Drag it onto the spot.')
+    // The good reading is never used.
+    await Promise.resolve()
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
+    expect(fix()).toBeUndefined()
+  })
+
+  it('a job with no list yet: the new list opens on the reading and not on the address', async () => {
+    render(<PaintedMapWindow ask={{ start: { id: 'new-list', name: 'Places on this job', words: '', home: { jobId: 'j1', label: 'Lot 14', address: '1 Made Up Road' }, first: 'place', jobList: true } }} address="1 Made Up Road" spot={spot(HERE)} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.6,-98.3')
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('first')
+  })
+
+  it('a job with no list yet and no reading: the dot starts on the address', async () => {
+    render(<PaintedMapWindow ask={{ start: { id: 'new-list', name: 'Places on this job', words: '', home: { jobId: 'j1', label: 'Lot 14', address: '1 Made Up Road' }, first: 'place', jobList: true } }} address="1 Made Up Road" spot={spot({ ok: false, why: 'failed' })} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.4,-98.1')
+    await waitFor(() => expect(fix()).toBe('no-reading'))
+  })
+
+  it('a photo put down with its place is gone: the next place starts with none, and the sheet does not open by itself again', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot(HERE)} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.6,-98.3')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('heading', { name: 'Places on this job' })).toBeTruthy()
+    expect(document.querySelector('[data-painted-spot-waits]')).toBeNull()
+    fireEvent.click(document.querySelector('[data-painted-place]') as HTMLElement)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('after')
+  })
+})

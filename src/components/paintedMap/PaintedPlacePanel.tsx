@@ -12,6 +12,10 @@
  * sheet, is for anything on no list: the name box takes the keyboard. And the words are a
  * description as long as the person needs, in a box that grows with it.
  *
+ * A place may start from a photo (#413, **Photo of a spot**): the sheet is handed the photo the
+ * camera just took, shows it first and large, and says so when the dot could not be put where the
+ * person stood.
+ *
  * Under **Put the dot where I am** the Precise Location line says how that one reading did (punch
  * list #402): on, a weak signal, or a rough area. A rough reading does not move the dot, and the
  * line then shows the way to the switch. A press that got no reading at all says why in the same
@@ -22,6 +26,7 @@ import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { MyFixFailure } from '../../lib/materials/myLocation'
+import { handHeld } from '../../lib/paintedMap/handHeld'
 import { PAINTED_PLACE_NAME_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
 import { BURIED_KIND_TILES, PLACE_KIND_HINT_WORDS, PLACE_KIND_TILES, PLACE_KIND_WORDS, PLACE_WARN_COLOR, isBuriedKind, pressBuriedAnswer, pressBuriedTile, pressPlaceKindChip, pressSomethingElse, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PAINTED_PLACE_WORDS_MAX, PLACE_WORDS_HINT, PLACE_WORDS_LABEL, PLACE_WORDS_PLACEHOLDER } from '../../lib/paintedMap/paintedPlaceWords'
@@ -53,6 +58,10 @@ type Props = {
   busy: boolean
   /** The place is the caller's to remove. */
   canRemove: boolean
+  /** A photo taken before the sheet opened (#413): the sheet takes it as the place's photo and shows it first. */
+  startShot?: File | null
+  /** A line for the top of the sheet: why the dot is not where the person stands. */
+  note?: string | null
   onUseWhereIAm: () => void
   onSave: (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice }) => void
   onRemove: () => void
@@ -76,16 +85,7 @@ const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125
 const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
 const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32 }
 
-/** A device held in the hand: its press on the photo opens the camera. A desk opens the file picker. */
-function handHeld(): boolean {
-  try {
-    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
-  } catch {
-    return false
-  }
-}
-
-export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
+export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, startShot = null, note = null, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
@@ -116,6 +116,13 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
   useEffect(() => {
     if (shot) setKeepSaved(false)
   }, [shot])
+  // The photo the sheet was opened with is read once, as a photo picked here would be.
+  const photoFirst = !!startShot
+  useEffect(() => {
+    if (startShot) void pick(startShot)
+    // Once, for the photo the sheet opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const phoneKind = usePhoneKind()
   // A rough reading moves nothing on the map, so its words are the only sign the press did anything. On a phone they
@@ -139,8 +146,67 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
     onSave({ name, words, kind, photo: shot ? { kind: 'new', id: shot.id, blob: shot.blob } : keepSaved ? { kind: 'keep' } : { kind: 'none' } })
   }
 
+  const photoBlock = (
+      <div data-place-photo={photoFirst ? 'first' : 'after'} style={{ display: 'grid', gap: '0.35rem' }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Photo</span>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture={handHeld() ? 'environment' : undefined}
+          aria-label="Photo of the place"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) void pick(file)
+          }}
+        />
+        {hasPhoto ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {preview ? (
+              <img src={preview} alt="The photo of the place" style={photoFirst ? { width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)', display: 'block' } : { width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+            ) : (
+              <span style={{ width: 96, height: 72, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-muted)', display: 'grid', placeItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>A photo is saved</span>
+            )}
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem' }}>
+              <button type="button" style={quiet} disabled={waiting} onClick={() => inputRef.current?.click()}>
+                {shrinking ? 'Reading the photo…' : 'Take another'}
+              </button>
+              <button
+                type="button"
+                style={quiet}
+                disabled={waiting}
+                onClick={() => {
+                  clear()
+                  setKeepSaved(false)
+                }}
+              >
+                Remove the photo
+              </button>
+            </span>
+          </div>
+        ) : (
+          <button type="button" disabled={waiting} onClick={() => inputRef.current?.click()} style={{ display: 'grid', placeItems: 'center', width: '100%', minHeight: 64, borderRadius: 8, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer' }}>
+            {shrinking ? 'Reading the photo…' : '＋ Add a photo'}
+          </button>
+        )}
+        {shotError ? (
+          <p role="alert" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+            {shotError}
+          </p>
+        ) : null}
+      </div>
+  )
+
   return (
     <div data-painted-place-panel style={{ display: 'grid', gap: '0.7rem' }}>
+      {note ? (
+        <p role="status" data-place-note style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+          {note}
+        </p>
+      ) : null}
+      {photoFirst ? photoBlock : null}
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }}>What is here?</span>
         <div data-place-kinds style={tiles}>
@@ -192,56 +258,7 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PAINTED_PLACE_NO_CODES_WORDS}</span>
       </div>
 
-      <div style={{ display: 'grid', gap: '0.35rem' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Photo</span>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture={handHeld() ? 'environment' : undefined}
-          aria-label="Photo of the place"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            if (file) void pick(file)
-          }}
-        />
-        {hasPhoto ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            {preview ? (
-              <img src={preview} alt="The photo of the place" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
-            ) : (
-              <span style={{ width: 96, height: 72, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-muted)', display: 'grid', placeItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>A photo is saved</span>
-            )}
-            <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem' }}>
-              <button type="button" style={quiet} disabled={waiting} onClick={() => inputRef.current?.click()}>
-                {shrinking ? 'Reading the photo…' : 'Take another'}
-              </button>
-              <button
-                type="button"
-                style={quiet}
-                disabled={waiting}
-                onClick={() => {
-                  clear()
-                  setKeepSaved(false)
-                }}
-              >
-                Remove the photo
-              </button>
-            </span>
-          </div>
-        ) : (
-          <button type="button" disabled={waiting} onClick={() => inputRef.current?.click()} style={{ display: 'grid', placeItems: 'center', width: '100%', minHeight: 64, borderRadius: 8, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer' }}>
-            {shrinking ? 'Reading the photo…' : '＋ Add a photo'}
-          </button>
-        )}
-        {shotError ? (
-          <p role="alert" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
-            {shotError}
-          </p>
-        ) : null}
-      </div>
+      {photoFirst ? null : photoBlock}
 
       <div style={{ display: 'grid', gap: '0.35rem' }}>
         <button type="button" style={finding ? deadPress : press} disabled={finding} onClick={onUseWhereIAm}>

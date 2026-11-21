@@ -10,7 +10,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
 vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => browser.kind }))
-vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: null, shrinking: false, kept: false, error: null, pick: async () => {}, clear: () => {}, markKept: () => {} }) }))
+/** The camera, stood in for: it keeps each file the sheet hands it, and a test may put a shot in it. */
+const camera = vi.hoisted(() => ({ picked: [] as File[], shot: null as null | { id: string; blob: Blob; previewUrl: string } }))
+vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: camera.shot, shrinking: false, kept: false, error: null, pick: async (file: File) => { camera.picked.push(file) }, clear: () => {}, markKept: () => {} }) }))
 
 import type { MyFixFailure } from '../../lib/materials/myLocation'
 import { PaintedPlacePanel } from './PaintedPlacePanel'
@@ -26,6 +28,8 @@ const HINT = 'Drag the blue dot onto the spot, or press the map to bring it ther
 afterEach(() => {
   cleanup()
   browser.kind = 'iphone-safari'
+  camera.picked = []
+  camera.shot = null
   Object.values(presses).forEach((p) => p.mockClear())
 })
 
@@ -304,5 +308,44 @@ describe('PaintedPlacePanel, what is here and what is buried', () => {
     expect(saved().words).toBe(words)
     expect(screen.getByText('As much as you need. What it is, how deep, which way it runs.')).toBeTruthy()
     expect(screen.getByText('Never type a gate code or a lock code here. Anyone this map is shared with would read it.')).toBeTruthy()
+  })
+})
+
+/** A place that starts from a photo (punch list #413, **Photo of a spot**): the sheet is handed the photo. */
+describe('PaintedPlacePanel, opened with a photo', () => {
+  const file = new File(['x'], 'spot.jpg', { type: 'image/jpeg' })
+  const withShot = (more: { note?: string | null } = {}) => render(<PaintedPlacePanel place={null} photoUrl={null} accuracyM={6} movedOffReading={false} finding={false} busy={false} canRemove={false} startShot={file} note={more.note ?? null} {...presses} />)
+  const order = () => [...document.querySelectorAll('[data-painted-place-panel] > *')].map((el) => (el.hasAttribute('data-place-photo') ? 'photo' : el.hasAttribute('data-place-note') ? 'note' : el.querySelector('[data-place-kinds]') ? 'kinds' : 'other'))
+
+  it('reads the photo it was handed once, and shows the photo before what it is', () => {
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:spot' }
+    withShot()
+    expect(camera.picked).toEqual([file])
+    expect(order().slice(0, 2)).toEqual(['photo', 'kinds'])
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('first')
+    const img = document.querySelector('[data-place-photo] img') as HTMLImageElement
+    expect(img.getAttribute('src')).toBe('blob:spot')
+    expect(img.style.width).toBe('100%')
+  })
+
+  it('hands the photo over with the place', () => {
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:spot' }
+    withShot()
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLButtonElement)
+    expect(presses.onSave.mock.calls[0]?.[0].photo).toMatchObject({ kind: 'new', id: 'shot-1' })
+  })
+
+  it('says at the top why the dot is not where the person stands', () => {
+    withShot({ note: 'This photo was taken 6 hours ago. You are not there now, so the dot was not put where you stand. Drag it onto the spot.' })
+    expect(order().slice(0, 3)).toEqual(['note', 'photo', 'kinds'])
+    expect(document.querySelector('[data-place-note]')?.getAttribute('role')).toBe('status')
+    expect(document.querySelector('[data-place-note]')?.textContent).toBe('This photo was taken 6 hours ago. You are not there now, so the dot was not put where you stand. Drag it onto the spot.')
+  })
+
+  it('with no photo handed over, the photo stays where it was, after the words', () => {
+    draw()
+    expect(camera.picked).toEqual([])
+    expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('after')
+    expect(order()[0]).toBe('kinds')
   })
 })

@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -394,6 +394,31 @@ Anyone can change or remove a place they set. Only the office can throw the whol
 
 :::example What is where on Lot 14
 ＋ Place on this job → {{button:outline|Gate}} → **Add this place**. Then {{button:outline|Meter}}, then {{button:outline|Hazard}} for the open trench.
+:::
+
+### Start with a photo
+
+Standing at the spot? Press {{button:outline|Photo of a spot}} under the job's address. The camera opens.
+
+Take the photo. The place sheet opens with the photo in it.
+
+The dot is already where you stood. Your phone is read once, on that press, and is not followed.
+
+1. Press what it is, such as {{button:outline|Cleanout}}.
+2. Press {{button:blue|Add this place}}.
+
+The place takes two presses after the photo.
+
+A line under **Put the dot where I am** says how the reading did. An amber line means the signal is weak. Drag the dot onto the spot.
+
+When your phone gives only an area, the dot is not moved. Drag the dot onto the spot by hand.
+
+Picked an older photo? The dot is not put where you stand. A line at the top of the sheet says so. Drag the dot onto the spot.
+
+The photo is the place's photo. The photo shows beside the place in **Places on this job**.
+
+:::example A cleanout, before the trench is filled
+Photo of a spot → take the photo → {{button:outline|Cleanout}} → **Add this place**.
 :::
 
 ## Read a length

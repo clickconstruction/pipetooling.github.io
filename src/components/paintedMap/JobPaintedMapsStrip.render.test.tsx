@@ -18,6 +18,14 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
   },
 }))
 
+const phone = vi.hoisted(() => ({ reads: 0, answer: { ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6 } } as unknown }))
+vi.mock('../../lib/paintedMap/paintedSpotIo', () => ({
+  readSpotNow: async () => {
+    phone.reads += 1
+    return phone.answer
+  },
+}))
+
 import { onPaintedMapAsk, paintedMapsChanged } from '../../lib/paintedMap/paintedMapDoor'
 import { DevelopmentPaintedMapsStrip, JobPaintedMapsStrip } from './JobPaintedMapsStrip'
 
@@ -41,6 +49,8 @@ afterEach(() => {
   io.answer = { ok: true, value: [] }
   io.calls = 0
   io.asked = []
+  phone.reads = 0
+  phone.answer = { ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6 } }
 })
 
 /** A job's own list of places: a painted map marked as the list, with so many places. */
@@ -221,5 +231,110 @@ describe('DevelopmentPaintedMapsStrip', () => {
     await waitFor(() => expect(io.calls).toBe(1))
     fireEvent.click(screen.getByRole('button', { name: '＋ Paint a map' }))
     expect(asks).toEqual([{ kind: 'start', home: { developmentId: 'd1', developmentLabel: 'Juniper Ridge', address: '1 Made Up Road' } }])
+  })
+})
+
+/**
+ * Photo of a spot (punch list #413): the camera first. The press opens the camera and reads the phone once in the
+ * same press, and the photo that comes back opens the job's list already adding a place, with the photo and the
+ * reading of that moment.
+ */
+describe('Photo of a spot (#413)', () => {
+  const press = () => document.querySelector('[data-job-spot]') as HTMLButtonElement
+  const input = () => document.querySelector('[data-job-spot-input]') as HTMLInputElement
+  const photo = (lastModified = Date.now()) => new File(['x'], 'spot.jpg', { type: 'image/jpeg', lastModified })
+  const choose = (file: File) => fireEvent.change(input(), { target: { files: [file] } })
+
+  it('is a press of its own, before Paint a map and Place on this job', async () => {
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    expect(press().textContent).toBe('Photo of a spot')
+    expect([...document.querySelectorAll('[data-job-spot], [data-paint-a-map], [data-job-place-add]')].map((b) => b.textContent)).toEqual(['Photo of a spot', '＋ Paint a map', '＋ Place on this job'])
+    expect(input().accept).toBe('image/*')
+    expect(input().getAttribute('aria-label')).toBe('Photo of a spot on this job')
+  })
+
+  it('on a phone is the full width and 56 px tall, over the two quiet presses', async () => {
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" addCentred />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    expect(document.querySelectorAll('[data-job-spot]')).toHaveLength(1)
+    expect(press().style.minHeight).toBe('56px')
+    expect(press().style.width).toBe('100%')
+  })
+
+  it('opens the camera and reads the phone once, in the one press', async () => {
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    let opened = 0
+    input().click = () => {
+      opened += 1
+    }
+    fireEvent.click(press())
+    expect(opened).toBe(1)
+    expect(phone.reads).toBe(1)
+  })
+
+  it('with no list yet, starts one that is saved with this first place, and hands it the photo and the reading', async () => {
+    listen()
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    input().click = () => {}
+    fireEvent.click(press())
+    const file = photo(1_800_000_000_000)
+    choose(file)
+    expect(asks).toHaveLength(1)
+    const ask = asks[0] as Extract<PaintedMapAsk, { kind: 'paint' }>
+    expect(ask.kind).toBe('paint')
+    expect(ask.start).toMatchObject({ name: 'Places on this job', first: 'place', jobList: true, home: { jobId: 'j1', label: 'Lot 14', address: '1 Made Up Road' } })
+    expect(ask.start.spot?.file).toBe(file)
+    expect(ask.start.spot?.takenMs).toBe(1_800_000_000_000)
+    expect(await ask.start.spot?.reading).toEqual({ ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6 } })
+    // The press read the phone. The photo coming back did not read it again.
+    expect(phone.reads).toBe(1)
+  })
+
+  it('with a list, opens it already adding a place, with the photo', async () => {
+    listen()
+    io.answer = { ok: true, value: [listWhole('list', 'j1', 2, '2026-11-18T15:00:00Z')] }
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(document.querySelector('[data-job-places-line]')).not.toBeNull())
+    input().click = () => {}
+    fireEvent.click(press())
+    const file = photo()
+    choose(file)
+    expect(asks).toHaveLength(1)
+    const ask = asks[0] as Extract<PaintedMapAsk, { kind: 'open' }>
+    expect(ask).toMatchObject({ kind: 'open', mapId: 'list', address: '1 Made Up Road', add: 'place' })
+    expect(ask.spot?.file).toBe(file)
+  })
+
+  it('hands on why no reading came, and still opens the sheet with the photo', async () => {
+    listen()
+    phone.answer = { ok: false, why: 'refused' }
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    input().click = () => {}
+    fireEvent.click(press())
+    choose(photo())
+    const ask = asks[0] as Extract<PaintedMapAsk, { kind: 'paint' }>
+    expect(await ask.start.spot?.reading).toEqual({ ok: false, why: 'refused' })
+  })
+
+  it('a camera put down with no photo opens nothing', async () => {
+    listen()
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Lot 14" address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    input().click = () => {}
+    fireEvent.click(press())
+    fireEvent.change(input(), { target: { files: [] } })
+    expect(asks).toHaveLength(0)
+  })
+
+  it('is not on a sheet that shows the maps alone', async () => {
+    io.answer = { ok: true, value: [whole('way', 'The way in', { jobId: 'j1' }, 265, 2)] }
+    render(<JobPaintedMapsStrip jobId="j1" only="maps" />)
+    await waitFor(() => expect(document.querySelector('[data-painted-map-line]')).not.toBeNull())
+    expect(press()).toBeNull()
+    expect(input()).toBeNull()
   })
 })

@@ -82,6 +82,7 @@ import { haversineMeters } from '../../lib/jobTravelEstimate'
 import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { readingMovesDot } from '../../lib/paintedMap/paintedPlaceDot'
+import { spotPhotoIsFresh, spotStaleWords, spotStart, type PaintedSpot } from '../../lib/paintedMap/paintedSpot'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
@@ -104,7 +105,7 @@ import { PAINT_SWATCH } from './paintedMapLook'
 const PaintedMapCanvasLazy = lazy(() => import('./PaintedMapCanvas'))
 
 /** A map that is about to be made: named on the start sheet, saved with its first line. */
-export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line drawn by hand (the default), a place, or a walk. */ first?: 'line' | 'place' | 'walk'; /** The job's own list of places (#393): it holds places only. */ jobList?: boolean }
+export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line drawn by hand (the default), a place, or a walk. */ first?: 'line' | 'place' | 'walk'; /** The job's own list of places (#393): it holds places only. */ jobList?: boolean; /** A photo taken first (#413). */ spot?: PaintedSpot }
 
 /** What is kept on the phone beside a walk, so its window can open again after a reload. */
 export type KeptPaintedWalk = { mapId: string; start: PaintedMapToStart | null; address: string | null; pending: WalkStroke[] }
@@ -120,6 +121,11 @@ type Props = {
   center?: PaintedPoint | null
   /** A saved map opened by a press that adds a place: the place panel opens once the map has. */
   openOn?: 'place' | null
+  /**
+   * A photo taken first (punch list #413, **Photo of a spot**): the place sheet opens with it, and the dot starts on the
+   * phone's reading of that moment when the reading is good and the photo is fresh.
+   */
+  spot?: PaintedSpot | null
   onClose: () => void
 }
 
@@ -169,7 +175,7 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, onClose }: Props) {
+export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
@@ -231,6 +237,10 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [roughFix, setRoughFix] = useState<number | null>(null)
   // The last Put the dot where I am got no reading at all: why, for the panel's words under the press. The dot was not moved.
   const [noFix, setNoFix] = useState<MyFixFailure | null>(null)
+  // A photo taken first (#413) waits here until a new place takes it. A place added or put down drops it.
+  const [spotFile, setSpotFile] = useState<File | null>(() => spot?.file ?? null)
+  // Why the dot was not put where the person stands: the photo is not of this moment.
+  const [spotNote, setSpotNote] = useState<string | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -570,6 +580,9 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setRoughFix(null)
     setNoFix(null)
     setGlass(null)
+    // The photo a spot began with went with its place, or was put down with it.
+    setSpotFile(null)
+    setSpotNote(null)
   }
   const putDotWhereIAm = () => {
     setFinding(true)
@@ -845,6 +858,41 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openOn, whole, mode, viewReady])
 
+  // A spot (#413): the phone was read when the camera opened. A fresh photo's dot starts on that reading, with its
+  // margin. A rough reading or none moves nothing, and the sheet says why under its own press. A photo that is not
+  // of this moment uses no reading at all. The address or the map's own view gives the dot its start meanwhile.
+  useEffect(() => {
+    if (!spot) return
+    const now = Date.now()
+    if (!spotPhotoIsFresh(spot.takenMs, now)) {
+      if (spot.takenMs != null) setSpotNote(spotStaleWords(spot.takenMs, now))
+      return
+    }
+    let gone = false
+    setFinding(true)
+    void spot.reading.then((reading) => {
+      if (gone) return
+      setFinding(false)
+      const start = spotStart(reading, true)
+      if (start.kind === 'rough') setRoughFix(start.accuracyM)
+      else if (start.kind === 'none') setNoFix(start.why)
+      else if (start.kind === 'here') {
+        const point = { lat: start.fix.lat, lng: start.fix.lng }
+        // The sheet opens on the reading, or moves to it: neither the address nor the map's view opens it again.
+        openedOnPlace.current = true
+        openedOn.current = true
+        setPlacing((pl) => (pl && pl.place ? pl : { place: null, point, fix: start.fix, live: true }))
+        setMode((m) => (m === 'view' ? 'place' : m))
+        setFly(point)
+      }
+    })
+    return () => {
+      gone = true
+    }
+    // Once, for the spot the window opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const canvasLines = useMemo(
     () => [
       ...lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how })),
@@ -990,6 +1038,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   finding={finding}
                   busy={busy}
                   canRemove={!!placing.place && mine(placing.place.setBy)}
+                  startShot={placing.place ? null : spotFile}
+                  note={placing.place ? null : spotNote}
                   onUseWhereIAm={putDotWhereIAm}
                   onSave={(input) => void savePlace(input)}
                   onRemove={() => placing.place && setConfirm({ kind: 'place', place: placing.place })}
@@ -1068,6 +1118,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
                   {savedBand ? <PaintedMapSavedBand mapId={map.id} mapName={map.name} head={savedBand.head} under={savedBand.under} offersText={savedBand.offersText} /> : null}
 
+                  {spotFile ? (
+                    // The photo came first and the sheet has nowhere to put its dot yet: the photo waits for the press.
+                    <p role="status" data-painted-spot-waits style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+                      Your photo is ready. Zoom the map in to the site, then press ＋ Place to put it on the map.
+                    </p>
+                  ) : null}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {/* A job's own list holds places only: no line is drawn or walked on it. */}
                     {/* One blue press on the screen: while the band offers its text press, Draw a line is plain. */}
