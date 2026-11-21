@@ -15,6 +15,9 @@ import {
   parseBoardModule,
   parseBoardValidated,
   findTodoProblems,
+  findRepeatedKeyProblems,
+  repeatedFrontMatterKeys,
+  frontMatterKeyLine,
   renderFrontMatter,
   mockupState,
   parseMockupField,
@@ -447,6 +450,51 @@ describe('findTodoProblems', () => {
     const twin: TodoDoc = { ...DOC, file: 'to-dos/gc-on-notice.md' }
     const f = findTodoProblems({ docs: [DOC, twin], errors: [], knownVersions: known })
     expect(f.find((x) => x.kind === 'duplicate_slug')?.message).toContain('gc-on-notice')
+  })
+})
+
+describe('a key written twice (v2.8171)', () => {
+  const card = (...frontMatter: string[]): string => ['---', ...frontMatter, '---', '', '# Title', '', 'next: prose under the fence is not front matter'].join('\n')
+
+  it('refuses a card with a duplicate key, naming the file, the key and its lines', () => {
+    // #359's shape: an old `next:` left above the one two PRs had kept up to date.
+    const markdown = card('name: Edge upload headroom', 'number: 359', 'next: the old line', 'size: S', 'next: the line that is true today')
+    expect(parseFrontMatter(markdown).fields.next).toBe('the line that is true today')
+    const found = findRepeatedKeyProblems([{ file: 'to-dos/edge-upload-headroom/README.md', markdown }])
+    expect(found).toHaveLength(1)
+    expect(found[0]?.kind).toBe('repeated_key')
+    expect(found[0]?.severity).toBe('error')
+    expect(found[0]?.message).toContain('to-dos/edge-upload-headroom/README.md')
+    expect(found[0]?.message).toContain('"next:" 2 times (lines 4 and 6)')
+  })
+
+  it('counts a key once whether its value is on the line or in a block under it', () => {
+    const markdown = card('name: Alpha', 'next: on the line', 'next: >', '  in a block', '  of two lines', 'summary: |', '  kept', 'summary: >-', '  folded')
+    expect(repeatedFrontMatterKeys(markdown)).toEqual([
+      { key: 'next', lines: [3, 4] },
+      { key: 'summary', lines: [7, 9] },
+    ])
+  })
+
+  it('a block line that reads like a key is the block\'s words, never a key', () => {
+    const markdown = card('name: Alpha', 'summary: >', '  what is left,', '  next: call the GC', '  name: and nothing else', 'next: the one real next')
+    expect(repeatedFrontMatterKeys(markdown)).toEqual([])
+    expect(parseFrontMatter(markdown).fields.summary).toBe('what is left, next: call the GC name: and nothing else')
+    expect(frontMatterKeyLine('  next: call the GC')).toBeNull()
+    expect(frontMatterKeyLine('next: >-')).toEqual({ key: 'next', value: '>-', opensBlock: true })
+  })
+
+  it('names every repeated key of every card in one pass, and is quiet on a clean card', () => {
+    const twice = card('name: Alpha', 'status: built', 'next: one', 'status: left', 'next: two', 'next: three')
+    const found = findRepeatedKeyProblems([
+      { file: 'to-dos/clean.md', markdown: fileWith(META) },
+      { file: 'to-dos/twice.md', markdown: twice },
+      { file: 'to-dos/no-front-matter.md', markdown: 'next: a\nnext: b\n' },
+    ])
+    expect(found.map((f) => f.file)).toEqual(['to-dos/twice.md', 'to-dos/twice.md'])
+    expect(found[0]?.message).toContain('"status:" 2 times (lines 3 and 5)')
+    expect(found[1]?.message).toContain('"next:" 3 times (lines 4, 6 and 7)')
+    expect(findRepeatedKeyProblems([{ file: 'to-dos/clean.md', markdown: fileWith({ ...META, summary: 'a long sentence '.repeat(12) }) }])).toEqual([])
   })
 })
 
