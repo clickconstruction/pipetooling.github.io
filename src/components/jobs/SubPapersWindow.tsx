@@ -40,6 +40,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { paymentRecordHtml, statementOfAccountHtml, SUB_PAPER_CSS, workStatementHtml } from '../../lib/subWorkOrders/subPapersHtml'
 import { subPaperSendPlan, subPaperSendSet, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
 import { ledgerPeriodRange } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { SCHEDULE_SHEET_Z } from '../schedule/ScheduleBlockSheet'
 
 export type SubPapersOpen = { kind: 'statement' } | { kind: 'work'; sheetId: string } | { kind: 'payment'; sendingKey: string }
 
@@ -145,7 +146,8 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const backcharges = sheets.reduce((n, s) => n + s.money.filter((m) => m.amount < 0 && statement.rows.some((r) => r.sheetId === s.id)).length, 0)
 
   return (
-    <div role="presentation" onClick={closeUnlessBusy} style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
+    // Above the phone's sheet: on a phone People → Subs opens this window from a press inside *What we owe*, and under the sheet every press here was covered.
+    <div role="presentation" onClick={closeUnlessBusy} style={{ position: 'fixed', inset: 0, zIndex: SCHEDULE_SHEET_Z + 1, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
       <div role="dialog" aria-modal="true" aria-label={`Papers for ${ctx.sub.name}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1rem 1.1rem', width: 'min(820px, 100%)', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.8rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>
