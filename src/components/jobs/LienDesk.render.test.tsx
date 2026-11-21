@@ -4237,6 +4237,21 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(card.textContent).not.toContain('Tick a month to put it on this notice.')
   })
 
+  // A notice that went has months, the ones it went out for (v2.8167, the live walk of punch list #361): the pane picks none
+  // on it, so the strip read *No month picked ›* and the months head *no months* over a paper sent for June.
+  it('on a notice in Sent, the strip’s months chip and the Months on this job head read the months the notice named (v2.8167)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={sentData()} initialKind="notice" initialJobId="j650" initialPile="sent" />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull())
+    expect((document.querySelector('[data-lien-pane-head="months"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toMatch(/^Jun · \$/)
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect((strip.querySelector('[data-lien-strip-sent]') as HTMLElement).textContent).toBe('Sent Sep 14 ›')
+    expect((strip.querySelector('[data-lien-strip-chip="months"]') as HTMLElement).textContent).toBe('Jun ›')
+    expect(strip.textContent).not.toContain('No month picked')
+    expect(document.querySelector('[data-lien-pane-head="months"]')!.textContent).not.toContain('no months')
+  })
+
   it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
     await settle()

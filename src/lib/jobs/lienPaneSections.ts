@@ -47,6 +47,12 @@ export type LienPaneSectionsInput = {
   houses: { count: number; housesOwed: number; owed: number; paid: number; asOf: string } | null
   /** 'YYYY-MM', the months on this notice. */
   months: readonly string[]
+  /**
+   * On a sent notice with nothing due, the months the notice named as its fold words them (`lienSentGatesFold`'s
+   * `months`: "Jul + Aug", or *no month named* when the record keeps none); null or absent on a notice still being
+   * drafted. The head reads these in place of the draft's months, which a paper that went does not have (v2.8167).
+   */
+  sentMonths?: string | null
   /** "$27,199" — the claim as the strip says it. */
   claimWords: string
   /** The pages of the owner's copy the pane shows. */
@@ -82,7 +88,7 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
       tail: h.asOf ? `from our books · ${h.asOf}` : '',
     })
   }
-  out.push({ key: 'months', label: 'Months on this job', fact: `${i.months.length ? i.months.map(i.monthShort).join(' + ') : 'no months'} · ${i.claimWords}`, tail: '' })
+  out.push({ key: 'months', label: 'Months on this job', fact: `${i.sentMonths || (i.months.length ? i.months.map(i.monthShort).join(' + ') : 'no months')} · ${i.claimWords}`, tail: '' })
   out.push({ key: 'envelope', label: 'In the envelope', fact: `${i.pages} ${i.pages === 1 ? 'page' : 'pages'} · owner + GC`, tail: i.gcEmail ? 'courtesy PDF to the GC' : '' })
   if (i.foot) out.push({ key: 'sign', label: i.foot.label, fact: i.foot.fact, tail: '', foot: true })
   return out

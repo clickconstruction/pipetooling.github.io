@@ -78,16 +78,41 @@ describe('lienStripChips', () => {
     expect(chips.find((c) => c.key === 'wording')).toMatchObject({ words: '2 lines edited by Taunya ›', tone: 'amber', act: 'wording' })
   })
 
-  it('a sent notice with nothing due: the grey Sent chip is the way back up, and no gate judges it', () => {
+  it('a sent notice with nothing due: the grey Sent chip is the way back up, no gate judges it, and the months chip reads the months the notice named (v2.8167)', () => {
     const { gates } = buildLienDeskGates({ ...clear, ownerName: '', ownerMailingAddress: '', pickedMonthsCount: 0, monthLabels: [], monthsOnJob: 0 })
-    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: ['2026-07'], monthShort: () => 'Jul' })
+    const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
+    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: ['2026-07', '2026-08'], monthShort })
+    // The pane picks no month on a paper that went, so `monthWords` is '' here. The chip read *No month picked ›* off it.
     const chips = lienStripChips({ ...base, gates, monthWords: '', fold, next: { kind: 'affidavit', words: 'File the affidavit — in 40 days.', tone: 'quiet' } })
     expect(chips.map((c) => [c.key, c.words, c.tone, c.act])).toEqual([
       ['sent', 'Sent Oct 14 ›', 'quiet', 'top'],
-      ['months', 'No month picked ›', 'quiet', 'months'],
+      ['months', 'Jul + Aug ›', 'quiet', 'months'],
       ['next', 'File the affidavit — in 40 days ›', 'quiet', 'next'],
       ['claim', 'Claim $33,500 ›', 'quiet', 'claim'],
     ])
+    expect(chips.find((c) => c.key === 'months')!.title).toBe('The months the notice named when it went. Down to Months on this job.')
+    // The fold's months win over the pane's own, which belong to no draft on a sent notice.
+    expect(lienStripChips({ ...base, gates, monthWords: 'Sep', fold }).find((c) => c.key === 'months')!.words).toBe('Jul + Aug ›')
+  })
+
+  it('a sent notice whose record keeps no month says so, and never asks for a pick (v2.8167)', () => {
+    // The months gate blocks on a job with no open month. A folded notice still gets its months chip, since no gate judges it.
+    const { gates } = buildLienDeskGates({ ...clear, pickedMonthsCount: 0, monthLabels: [], monthsOnJob: 0 })
+    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: [], monthShort: (k) => k })
+    const chips = lienStripChips({ ...base, gates, monthWords: '', fold, next: null })
+    expect(chips.map((c) => [c.key, c.words])).toEqual([
+      ['sent', 'Sent Oct 14 ›'],
+      ['months', 'No month named ›'],
+      ['claim', 'Claim $33,500 ›'],
+    ])
+    expect(chips.some((c) => c.words.includes('No month picked'))).toBe(false)
+  })
+
+  it('a draft with no month ticked still reads No month picked, on the red chip or the quiet one', () => {
+    const blocked = buildLienDeskGates({ ...clear, pickedMonthsCount: 0, monthLabels: ['Sep'], monthsOnJob: 1 })
+    expect(lienStripChips({ ...base, gates: blocked.gates, monthWords: '', next: null }).map((c) => c.words)).toEqual(['No month picked ›', 'Claim $33,500 ›'])
+    const { gates } = buildLienDeskGates(clear)
+    expect(lienStripChips({ ...base, gates, monthWords: '', next: null }).find((c) => c.key === 'months')!.words).toBe('No month picked ›')
   })
 
   it('every chip ends in › and the kernel’s own words are plain', () => {
