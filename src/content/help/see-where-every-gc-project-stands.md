@@ -2,7 +2,7 @@
 title: see where every GC project stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage, ring, progress, how far along
+keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage, ring, progress, how far along, price bar, show the price bars, quoted, our budget
 where: /gc
 order: 94
 ---
@@ -72,6 +72,22 @@ A row with trades that have no number says *so far, with 3 holes* under the pric
 4. Press {{button:outline|Open the project}} to go to its card. Press Escape to close the card.
 
 The guess for a trade with no number is its lowest quote. When there is none, it is our budget for that trade.
+
+## See the price as a bar
+
+A bar under each bidding row is a trial. It is off until you turn it on.
+
+1. Press {{button:outline|Show the price bars}} at the top of the board, beside {{button:outline|By customer}}.
+2. Each bidding row draws a bar on its own line. The quoted trades are solid. Our budget is hatched. A trade with no number is a dashed guess. General conditions and the fee are grey.
+3. The words under the bar name each part and its trades.
+4. Point at a part of the bar, or press it, to open the price card on those trades.
+5. Press {{button:outline|Show today’s look}} to turn the bars off.
+
+The bars stay off while every bidding row is one quoted part. A bar that says nothing the number does not is not drawn. The heading over the rows says the price so far and about what it comes to with every trade in.
+
+:::example A row with the bar on
+{{chip:blue|$612k}} {{chip:gray|$410k}} {{chip:gray|≈ $180k}} {{chip:gray|$218k}}
+:::
 
 ## See who to call on a job
 
