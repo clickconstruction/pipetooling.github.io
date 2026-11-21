@@ -237,7 +237,7 @@ describe('the printed page', () => {
     expect(html).not.toContain('<script')
     expect(sheetPrintTitle(sheet)).toBe('INSURANCE REQUIREMENTS For subcontractors on Cedar Park Medical Office')
     expect(SHEET_SENT_KIND).toMatch(/^[a-z][a-z0-9_]{1,60}$/)
-    expect(sentKindGroup(SHEET_SENT_KIND)).toBe('other')
+    expect(sentKindGroup(SHEET_SENT_KIND)).toBe('contracts')
   })
 
   it('escapes what a person typed', () => {

@@ -8,6 +8,7 @@ import {
   BUILDER_SEND_SENT_KIND,
   DOCUMENT_BUILDER_SEND_REFUSALS as REFUSALS,
   SHEET_SEND_SENT_KIND,
+  sentCopyJobIds,
   builderSendEmail,
   customerPageUrl,
   gcJobLabel,
@@ -139,7 +140,7 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
   const { data: project } = await admin.from('projects').select('name').eq('id', sheet.project_id).maybeSingle()
   const job = String((project as { name: string | null } | null)?.name ?? '').trim()
-  const { data: gc } = await admin.from('gc_projects').select('project_manager_user_id').eq('project_id', sheet.project_id).maybeSingle()
+  const { data: gc } = await admin.from('gc_projects').select('project_manager_user_id, billing_job_id').eq('project_id', sheet.project_id).maybeSingle()
   const pmId = (gc as { project_manager_user_id: string | null } | null)?.project_manager_user_id ?? null
   const pm = pmId ? ((await admin.from('users').select('name, email').eq('id', pmId).maybeSingle()).data as { name: string | null; email: string | null } | null) : null
   const replyTo = (pm?.email || caller.email || '').trim() || undefined
@@ -201,7 +202,7 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the company's own page link,
   // which is a key, so the copy is kept as a trade email's is: `/t/…`, never the token. The sheet's own link stays.
   await fileSentEmailBestEffort(
-    { kind: SHEET_SEND_SENT_KIND, title: email.subject, recipientName: String(company.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
+    { kind: SHEET_SEND_SENT_KIND, title: email.subject, recipientName: String(company.name ?? ''), jobIds: sentCopyJobIds((gc as { billing_job_id?: string | null } | null)?.billing_job_id), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
     { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html), resendEmailId: sent.resendEmailId ?? null },
   )
   console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, sheet: sheet.id, company: m.companyId, revision: sheet.revision, why: m.why }))
@@ -303,7 +304,7 @@ async function sendBuilderToGc(req: Request, admin: Admin, supabaseUrl: string, 
   // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the customer's own page link,
   // which is a key, so the copy keeps it cut short, as a sheet's does.
   await fileSentEmailBestEffort(
-    { kind: BUILDER_SEND_SENT_KIND, title: email.subject, recipientName: String(customer.name ?? ''), source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
+    { kind: BUILDER_SEND_SENT_KIND, title: email.subject, recipientName: String(customer.name ?? ''), jobIds: sentCopyJobIds(aboutJobId), customerId: m.customerId, source: { table: 'document_builder_sends', id: row.id }, sentBy: caller.userId },
     { to: [contact.email.trim()], cc: [], from, subject: email.subject, html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html), resendEmailId: sent.resendEmailId ?? null },
   )
   console.log(JSON.stringify({ event: 'document_builder_send', send: row.id, builder: m.builderKey, customer: m.customerId, about: aboutJobId, revision: builder.revision, why: m.why }))

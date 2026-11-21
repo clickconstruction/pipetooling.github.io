@@ -154,6 +154,8 @@ describe('the Documents page groups', () => {
     expect(['gc_statement', 'gc_statement_print', 'gc_checks_applied', 'test_report', 'field_report', 'statement_of_charges'].every((k) => sentKindGroup(k) === 'statements')).toBe(true)
     // Punch list #350: a sub's three papers are statements, though the printed sub sheet stays with the contracts.
     expect(['sub_work_statement', 'sub_payment_record', 'sub_statement_of_account'].every((k) => sentKindGroup(k) === 'statements')).toBe(true)
+    // The Document builder's papers (punch list #404): what a job's subs must carry, and a secrecy paper to a GC.
+    expect(['insurance_sheet', 'insurance_sheet_email', 'secrecy_builder_email'].every((k) => sentKindGroup(k) === 'contracts')).toBe(true)
     expect(sentKindGroup('something_new')).toBe('other')
     expect(SENT_KIND_GROUPS.map((g) => g.key)).toEqual(['all', 'bills', 'lien', 'contracts', 'bids', 'statements', 'other'])
   })
