@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienLastWorkStepIsStandIn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import { lienLastWorkDoorWords } from '../../lib/jobs/lienLastWorkDoor'
+import { lienDayValues, lienHasDayValue, type LienDayValueKind } from '../../lib/jobs/lienDayValues'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type LienTimelineViewScope } from '../../hooks/useLienTimelineView'
 
@@ -39,6 +41,12 @@ import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type L
  * on the owner* tag. The press is drawn only when the host hands over `onAct`, so the History tab and
  * the Lien window read the same row with no press. The *Waiting on* words ride in the press's title,
  * and beside the words only when the move is not ours. The mini row keeps its one quiet line.
+ *
+ * Values in place (punch list #399, the first screen): every day the strip prints is drawn apart from the words
+ * around it, bold with no press, because the app works each one out from the last day of work. That is each stop's
+ * date, the days inside its two small lines, the verdict band's sentence and the calendar's captions. `Days` draws a
+ * kernel's sentence that way (`lienDayValues` marks the days, `ValueSentence` draws them). The words are the
+ * kernel's, untouched; a tooltip still reads them plain. The last day's own press is as it was.
  */
 
 export type LienTimelineLayout = 'auto' | 'row' | 'list' | 'mini'
@@ -98,6 +106,34 @@ function verdictMark(tone: LienTimeline['next']['tone']): string {
 const LABEL: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
 /** Read by a screen reader, drawn to nobody. */
 const HIDDEN: CSSProperties = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }
+
+/** A kernel's sentence with its days drawn as values (punch list #399): bold, apart from the words. `whole` keeps each date on one line first, as the steps' small lines always have (`keepDatesWhole`). */
+function Days({ text, whole = false }: { text: string; whole?: boolean }) {
+  return <ValueSentence<LienDayValueKind> text={lienDayValues(whole ? keepDatesWhole(text) : text)} values={WHOLE_VALUES} />
+}
+
+/** A value never breaks across two lines: `Jan 15, 2027` and `35 days` wrap before them, never inside. */
+const wholeValue = (text: string) => (
+  <WorkedOutValue>
+    <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
+  </WorkedOutValue>
+)
+const WHOLE_VALUES: Record<LienDayValueKind, (text: string) => ReactNode> = { day: wholeValue, month: wholeValue, days: wholeValue }
+
+/**
+ * A stop's date line. With a day in it, the day is the value and a word in front of it (*filed*, *reply by*) is a
+ * quiet word. With none (`—`, *now*, *when paid*, *4 windows closed*) the line reads as it always has.
+ */
+function DateLine({ s, style }: { s: LienTimelineStep; style: CSSProperties }) {
+  if (lienHasDayValue(s.dateWords)) {
+    return (
+      <span data-lien-timeline-date style={{ ...style, fontWeight: 400, color: 'var(--text-muted)' }}>
+        <Days text={s.dateWords} />
+      </span>
+    )
+  }
+  return <span data-lien-timeline-date style={{ ...style, fontWeight: 700, color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
+}
 
 /** One stop's node, exported for the stop window's folded dots (v2.4806). */
 export function LienTimelineNode({ s, size }: { s: LienTimelineStep; size: number }) {
@@ -200,7 +236,7 @@ function FoldTray({ s, todayYmd }: { s: LienTimelineStep; todayYmd: string }) {
       {s.fold.steps.map((f) => (
         <div key={f.key} data-lien-timeline-step={f.key}>
           <div style={{ fontWeight: 700, color: 'var(--text-red-600)' }}>{f.label}</div>
-          <div style={{ color: 'var(--text-muted)' }}>closed {lienDateWords(f.date, todayYmd)}</div>
+          <div style={{ color: 'var(--text-muted)' }}>closed <WorkedOutValue>{lienDateWords(f.date, todayYmd)}</WorkedOutValue></div>
           <div style={{ color: / not noted/.test(f.words) ? 'var(--text-amber-800)' : 'var(--text-700)', fontWeight: / not noted/.test(f.words) ? 700 : 400 }}>{f.words.replace(/^window closed · ?/, '') || 'window closed'}</div>
         </div>
       ))}
@@ -353,9 +389,9 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
   const nextWords = (
     <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: mini ? '0.35rem' : 0 }}>
       <span style={LABEL}>Next on the path</span>
-      <strong style={{ color: nextColor(next.tone), fontSize: mini ? undefined : '0.875rem' }}>{next.words}</strong>
-      {next.aside ? <span style={{ color: 'var(--text-muted)' }}>{next.aside}</span> : null}
-      {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}>{timeline.windowsAside}</span> : null}
+      <strong style={{ color: nextColor(next.tone), fontSize: mini ? undefined : '0.875rem' }}><Days text={next.words} /></strong>
+      {next.aside ? <span style={{ color: 'var(--text-muted)' }}><Days text={next.aside} /></span> : null}
+      {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}><Days text={timeline.windowsAside} /></span> : null}
       {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
     </div>
   )
@@ -367,12 +403,12 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
       <strong style={{ color: nextColor(next.tone), fontSize: '0.9rem', lineHeight: 1.3 }}>
         {/* The mark leads the words inside one run, so a narrow band wraps the words after it and never strands it on a line of its own. */}
         <span aria-hidden data-lien-timeline-mark style={{ fontWeight: 800, marginRight: '0.4em' }}>{verdictMark(next.tone)}</span>
-        {next.words}
+        <Days text={next.words} />
       </strong>
-      {next.aside ? <span style={{ color: 'var(--text-muted)' }}>{next.aside}</span> : null}
+      {next.aside ? <span style={{ color: 'var(--text-muted)' }}><Days text={next.aside} /></span> : null}
       {/* Whose move and for what: beside the words when the move is not ours, or when no press can carry it in its title (the History tab, the Lien window). */}
-      {waiting && (!ours || !pressable) ? <span data-lien-timeline-waiting style={{ color: 'var(--text-muted)' }}>Waiting on {waiting.who} — {waiting.words}</span> : null}
-      {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}>{timeline.windowsAside}</span> : null}
+      {waiting && (!ours || !pressable) ? <span data-lien-timeline-waiting style={{ color: 'var(--text-muted)' }}>Waiting on {waiting.who} — <Days text={waiting.words} /></span> : null}
+      {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}><Days text={timeline.windowsAside} /></span> : null}
       {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
     </div>
   )
@@ -422,9 +458,9 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
                 {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
                 {stopLabel(s, { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' })}
-                <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
-                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{keepDatesWhole(s.opensWords)} ·</span> : null}
-                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}</span>
+                <DateLine s={s} style={{ margin: '0 0.4rem', fontVariantNumeric: 'tabular-nums' }} />
+                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}><Days whole text={s.opensWords} /> ·</span> : null}
+                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : <Days whole text={s.words} />}</span>
                 {s.fold ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem' }}>{foldDoor(s)}</span> : null}
                 {s.door && onDoor ? (
                   <button type="button" onClick={() => onDoor(s.door!)} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
@@ -459,11 +495,15 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
             <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
               {node(s, nodeSize)}
               {mini ? null : stopLabel(s, { marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' })}
-              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{keepDatesWhole(s.opensWords)}</span> : null}
-              <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
+              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}><Days whole text={s.opensWords} /></span> : null}
+              {mini ? (
+                <span style={{ marginTop: 2, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{miniDateWords(s.dateWords)}</span>
+              ) : (
+                <DateLine s={s} style={{ marginTop: 1, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }} />
+              )}
               {mini ? null : (
                 <span style={{ color: wordsColor(s), maxWidth: '100%' }}>
-                  {s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}
+                  {s.fold ? <FoldWords s={s} /> : <Days whole text={s.words} />}
                   {s.fold ? (
                     <>
                       <br />
@@ -728,7 +768,7 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
         <div key={r.key} data-lien-timeline-window={r.key} data-lien-timeline-window-kind={r.kind === 'bar' ? r.tone : r.undated ? 'undated' : 'text'} style={{ display: 'grid', gridTemplateColumns: `${nameCol} minmax(0, 1fr)`, alignItems: 'center', minHeight: r.kind === 'bar' ? 48 : 36, borderBottom: '1px dashed var(--border)' }}>
           <div style={{ minWidth: 0, paddingRight: 6, lineHeight: 1.25 }}>
             <div style={{ fontWeight: 700, color: r.kind === 'bar' && r.dim ? 'var(--text-muted)' : 'var(--text-strong)' }}>{r.label}</div>
-            {r.sub ? <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>{r.sub}</div> : null}
+            {r.sub ? <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}><Days text={r.sub} /></div> : null}
             {moveOf(r.key) ? <MovePill move={moveOf(r.key)!} voice={voice} style={{ marginTop: 3 }} /> : null}
           </div>
           {r.kind === 'bar' ? (
@@ -763,14 +803,14 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
                 data-lien-timeline-caption
                 style={{ position: 'absolute', top: 27, ...(pct(r.start) > 55 ? { right: 0, textAlign: 'right' } : { left: `${pct(r.start)}%` }), maxWidth: '100%', fontSize: '0.7rem', lineHeight: 1.3, color: captionColor(r.captionTone), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
               >
-                {r.caption}
+                <Days text={r.caption} />
                 {r.chip ? <span data-lien-timeline-chip style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, lineHeight: '15px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', verticalAlign: 1 }}>{r.chip}</span> : null}
               </span>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.35rem 0', lineHeight: 1.3, color: r.tone === 'red' ? 'var(--text-red-600)' : r.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
               {r.undated ? <span aria-hidden style={{ width: 12, height: 12, borderRadius: '50%', border: '2px dashed var(--border-strong)', boxSizing: 'border-box', flex: 'none' }} /> : null}
-              <span>{r.words}</span>
+              <span><Days text={r.words} /></span>
               {r.door && onDoor ? (
                 <button type="button" onClick={() => onDoor(r.door!)} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
                   set the date ›
@@ -781,7 +821,7 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
         </div>
       ))}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.2rem 0.9rem', color: 'var(--text-muted)', fontSize: '0.68rem', paddingTop: '0.4rem' }}>
-        {after ? <span data-lien-timeline-windows-after>{after}</span> : <span />}
+        {after ? <span data-lien-timeline-windows-after><Days text={after} /></span> : <span />}
         <span data-lien-timeline-windows-legend style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem' }}>
           {legend.map((l) => (
             <span key={l}>{l}</span>

@@ -81,7 +81,8 @@ describe('LienTimelineStrip — Steps · Windows', () => {
     setLienTimelineView('steps')
     const { container } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
     expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('steps')
-    expect(screen.getByText('open since Aug 1')).toBeTruthy()
+    // The day in the first-day line is its own bold value since punch list #399, so the line is read whole.
+    expect(container.querySelector('[data-lien-timeline-step="notice:2026-07"] [data-lien-timeline-opens]')?.textContent).toBe('open since Aug\u00a01')
     expect(screen.getByText('opens when the notice is mailed')).toBeTruthy()
     expect(container.querySelector('[data-lien-timeline-windows-aside]')).toBeNull()
 
@@ -367,5 +368,66 @@ describe('LienTimelineStrip — the late notice (v2.4708): job 890 read Oct 6, t
     const rule = css.split('\n').find((l) => l.startsWith('[data-lien-pane-phone] [data-lien-timeline-last-work-door]')) ?? ''
     expect(rule).toContain('min-height: 44px')
     expect(rule).toContain('display: inline-flex')
+  })
+
+  describe('values in place (punch list #399, the first screen)', () => {
+    /** The values one element draws, in order. */
+    const worked = (el: Element | null | undefined) => [...(el?.querySelectorAll('[data-value="worked-out"]') ?? [])].map((v) => v.textContent)
+
+    it('every day on the steps is a bold value apart from its words, in both layouts, and the words read as the kernel wrote them', () => {
+      setLienTimelineView('steps')
+      for (const layout of ['row', 'list'] as const) {
+        const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout={layout} />)
+        const stop = (key: string) => container.querySelector(`[data-lien-timeline-step="${key}"]`)
+        // The last month of work, and each day that follows from it.
+        expect(worked(stop('last_work')?.querySelector('[data-lien-timeline-date]'))).toEqual(['Aug 2026'])
+        expect(worked(stop('notice:2026-07')?.querySelector('[data-lien-timeline-date]'))).toEqual(['Oct 15'])
+        expect(worked(stop('suit')?.querySelector('[data-lien-timeline-date]'))).toEqual(['Dec 15, 2027'])
+        expect(worked(stop('serve')?.querySelector('[data-lien-timeline-date]'))).toEqual(['+5 days'])
+        // The first day and the days left, inside the two small lines.
+        expect(worked(stop('notice:2026-07')?.querySelector('[data-lien-timeline-opens]'))).toEqual(['Aug\u00a01'])
+        expect(worked(stop('notice:2026-07'))).toContain('21 days')
+        // A stop with no day keeps its line as it was: no value drawn on a dash.
+        expect(worked(stop('retainage')?.querySelector('[data-lien-timeline-date]'))).toEqual([])
+        expect(stop('retainage')?.querySelector('[data-lien-timeline-date]')?.textContent).toBe('—')
+        // The words are the kernel's: the stop still reads its sentence whole.
+        expect(stop('notice:2026-07')?.textContent).toContain('21 days · owner of record missing')
+        // No value on the strip takes a press: the app works out every one.
+        expect(container.querySelector('[data-value="changeable"]')).toBeNull()
+        unmount()
+      }
+    })
+
+    it('the verdict band draws the days in its sentence, and the hover still reads plain words', () => {
+      setLienTimelineView('steps')
+      const { container } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
+      const next = container.querySelector('[data-lien-timeline-verdict] [data-lien-timeline-next]')
+      expect(next?.textContent).toContain(timeline.next.words)
+      expect(worked(next)).toContain('21 days')
+      expect(container.querySelector('[data-lien-timeline-step="notice:2026-07"]')?.getAttribute('title')).toBe('§ 53.056 · Jul · Oct 15 · 21 days · owner of record missing')
+      expect(container.textContent).not.toMatch(/[⟪⟫]/)
+    })
+
+    it('a word in front of a date is a quiet word and the date is the value: reply by Sep 28', () => {
+      setLienTimelineView('steps')
+      const withLetter = buildLienTimeline({ todayYmd: '2026-09-24', isSub: true, propertyKind: 'non_residential', lastMonth: '2026-08', lastMonthFromCreation: false, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'open', at: '' }], noticeState: 'to_draft', retainage: null, affidavit: null, originalContractCompletedOn: null, releasedAt: null, paid: false, demandLetters: [{ sentAt: '2026-09-14', deadlineDate: '2026-09-28', amount: 8940, openRemaining: 8940, debtorParty: 'gc' }] })
+      const { container } = render(<LienTimelineStrip timeline={withLetter} layout="row" />)
+      const date = container.querySelector('[data-lien-timeline-step="demand"] [data-lien-timeline-date]') as HTMLElement
+      expect(date.textContent).toBe('reply by Sep 28')
+      expect(worked(date)).toEqual(['Sep 28'])
+      expect(date.style.fontWeight).toBe('400')
+    })
+
+    it('the calendar draws the days in its captions, and the mini row keeps its short dates', () => {
+      setLienTimelineView('windows')
+      const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
+      expect(worked(container.querySelector('[data-lien-timeline-window="notice:2026-07"] [data-lien-timeline-caption]'))).toEqual(['Aug 1', 'Oct 15', '21 of 75 days', '21 days'])
+      expect(worked(container.querySelector('[data-lien-timeline-windows-aside]'))).toEqual(['Dec 15'])
+      unmount()
+      setLienTimelineView('steps')
+      const mini = render(<LienTimelineStrip timeline={timeline} layout="mini" withNext={false} />)
+      expect(mini.container.querySelector('[data-lien-timeline-step="suit"]')?.textContent).toContain('Dec ’27')
+      expect(mini.container.querySelector('[data-value]')).toBeNull()
+    })
   })
 })

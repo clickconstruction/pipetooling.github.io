@@ -123,4 +123,48 @@ describe('LienLastWorkDayLine', () => {
     renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-11-13" canEdit userId="u1" onSaved={() => {}} />)
     expect(screen.queryByTestId('lien-last-work-later-hours')).toBeNull()
   })
+
+  describe('values in place (punch list #399, the first screen)', () => {
+    const worked = (el: Element | null) => [...(el?.querySelectorAll('[data-value="worked-out"]') ?? [])].map((v) => v.textContent)
+
+    it('one fact a line: the day, why, and the later hours each on their own line, the values bold and apart from the words', () => {
+      renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12', lien_last_work_note: 'final walk-through', lien_last_work_set_at: '2026-10-06T14:00:00Z', lien_last_work_set_by: 'u1' }} setByName="Robert" todayYmd="2026-11-13" canEdit userId="u1" onSaved={() => {}} />)
+      const lines = screen.getByTestId('lien-last-work').querySelector('[data-value-lines]') as HTMLElement
+      expect([...lines.querySelectorAll('.vipLineLabel')].map((l) => l.textContent)).toEqual(['Last day of work', 'Why', 'Later hours'])
+      // The day, then who set it and when inside the chip, then the hours' last day: each its own value.
+      expect(worked(screen.getByTestId('lien-last-work-day'))).toEqual(['Jun 12'])
+      expect(worked(screen.getByTestId('lien-last-work-source'))).toEqual(['Robert', 'Oct 6'])
+      expect(worked(screen.getByTestId('lien-last-work-later-hours'))).toEqual(['Oct 20'])
+      // The words are the kernels' own, whole.
+      expect(screen.getByTestId('lien-last-work-source').textContent).toBe('set by hand · Robert · Oct 6')
+      expect(screen.getByTestId('lien-last-work-later-hours').textContent).toBe('Hours were approved after it, through Oct 20. They do not move it.')
+      expect(screen.getByTestId('lien-last-work').textContent).not.toMatch(/[⟪⟫]/)
+    })
+
+    it('a day from clock hours is one line, and a job with no day says so in quiet words with no value', () => {
+      const first = renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+      expect([...screen.getByTestId('lien-last-work').querySelectorAll('.vipLineLabel')].map((l) => l.textContent)).toEqual(['Last day of work'])
+      expect(worked(screen.getByTestId('lien-last-work'))).toEqual(['Sep 24'])
+      first.unmount()
+      renderWithProviders(<LienLastWorkDayLine jobId="j1" job={null} todayYmd="2026-10-06" canEdit={false} userId={null} onSaved={() => {}} />)
+      expect(screen.getByTestId('lien-last-work-day').textContent).toBe('none yet')
+      expect(worked(screen.getByTestId('lien-last-work'))).toEqual([])
+    })
+
+    it('the day takes no press of its own: it moves every lien deadline, so its change is still Change › and the window that shows what moves', async () => {
+      renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+      expect(screen.getByTestId('lien-last-work').querySelector('[data-value="changeable"]')).toBeNull()
+      expect(screen.getByTestId('lien-last-work-day').querySelector('button')).toBeNull()
+      fireEvent.click(screen.getByTestId('lien-last-work-day'))
+      expect(screen.queryByTestId('lien-last-work-editor')).toBeNull()
+      // The door that was there is the door that is there, and nothing is written until the window's Set the day.
+      fireEvent.click(screen.getByTestId('lien-last-work-change'))
+      fireEvent.change(screen.getByLabelText('Last day of work'), { target: { value: '2026-09-10' } })
+      fireEvent.blur(screen.getByLabelText('Last day of work'))
+      fireEvent.click(screen.getByTestId('lien-last-work-save'))
+      await settle()
+      expect(screen.getByTestId('lien-last-work-confirm')).toBeTruthy()
+      expect(update).not.toHaveBeenCalled()
+    })
+  })
 })
