@@ -137,12 +137,23 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   /** The moment Send was first pressed on this read-back: a Retry keeps it. */
   const pressedAtRef = useRef<number | null>(null)
 
+  /** The newest draft, for a handler that fires before the next draw: two quick presses never undo each other. */
+  const draftRef = useRef<WriteUpDraft | null>(initialDraft)
   const setDraft = useCallback(
     (next: WriteUpDraft | null) => {
+      draftRef.current = next
       setDraftState(next)
       onDraft(next)
     },
     [onDraft],
+  )
+  /** One change to the form, worked out from the newest draft. */
+  const patch = useCallback(
+    (change: (d: WriteUpDraft) => Partial<WriteUpDraft>) => {
+      const current = draftRef.current
+      if (current) setDraft({ ...current, ...change(current) })
+    },
+    [setDraft],
   )
 
   const loadList = useCallback(async () => {
@@ -188,8 +199,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
 
   const voice = useVoiceNote(
     (heard) => {
-      if (!draft) return
-      setDraft({ ...draft, words: mergeHeard(draft.words, heard) })
+      patch((d) => ({ words: mergeHeard(d.words, heard) }))
     },
     voiceWindow,
   )
@@ -330,7 +340,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
               <WorkedOutValue>{d.person.name}</WorkedOutValue>
             </ValueLine>
             <ValueLine label={WRITE_UP_WORDS.when}>
-              <ChangeableValue text={writeUpDayWords(d.date, today)} label="the day it happened" type="date" value={d.date} max={today} onKeep={(v) => setDraft({ ...d, date: v })} />{' '}
+              <ChangeableValue text={writeUpDayWords(d.date, today)} label="the day it happened" type="date" value={d.date} max={today} onKeep={(v) => patch((d) => ({ date: v }))} />{' '}
               <ChangeableValue
                 text={timeWords(d.time) || 'no time'}
                 label="the time it happened"
@@ -339,7 +349,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
                 canClear
                 hint="Like 12:20 pm"
                 check={(v) => (v.trim() === '' || parseWriteUpTime(v) ? null : 'Type a time like 12:20 pm.')}
-                onKeep={(v) => setDraft({ ...d, time: parseWriteUpTime(v) ?? '' })}
+                onKeep={(v) => patch((d) => ({ time: parseWriteUpTime(v) ?? '' }))}
               />
             </ValueLine>
             <ValueLine label={WRITE_UP_WORDS.job}>
@@ -349,7 +359,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
                 type="choice"
                 value={d.job?.id ?? NO_JOB}
                 choices={jobChoices}
-                onKeep={(v) => setDraft({ ...d, job: v === NO_JOB ? null : { id: v, label: jobChoices.find((c) => c.value === v)?.label ?? '' }, seenBy: d.seenBy.filter((s) => !s.person_id) })}
+                onKeep={(v) => patch((d) => ({ job: v === NO_JOB ? null : { id: v, label: jobChoices.find((c) => c.value === v)?.label ?? '' }, seenBy: d.seenBy.filter((s) => !s.person_id) }))}
               />
             </ValueLine>
           </ValueLines>
@@ -360,7 +370,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           </span>
           <div role="group" aria-labelledby="write-up-kind" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {WRITE_UP_KINDS.map((k) => (
-              <button key={k.key} type="button" aria-pressed={d.kind === k.key} onClick={() => setDraft({ ...d, kind: k.key })} style={chip(d.kind === k.key)}>
+              <button key={k.key} type="button" aria-pressed={d.kind === k.key} onClick={() => patch((d) => ({ kind: k.key }))} style={chip(d.kind === k.key)}>
                 {k.label}
               </button>
             ))}
@@ -369,7 +379,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           <label style={fieldHead} htmlFor="write-up-words">
             {WRITE_UP_WORDS.words}
           </label>
-          <textarea id="write-up-words" rows={5} value={d.words} maxLength={WRITE_UP_MAX_WORDS} onChange={(e) => setDraft({ ...d, words: e.target.value })} placeholder={WRITE_UP_WORDS.wordsPlaceholder} style={{ ...textBox, resize: 'vertical', lineHeight: 1.45 }} />
+          <textarea id="write-up-words" rows={5} value={d.words} maxLength={WRITE_UP_MAX_WORDS} onChange={(e) => patch((d) => ({ words: e.target.value }))} placeholder={WRITE_UP_WORDS.wordsPlaceholder} style={{ ...textBox, resize: 'vertical', lineHeight: 1.45 }} />
           <button type="button" onClick={voice.press} aria-label={voicePressLabel(voice.state)} style={{ ...quietPress, flex: 'none', width: '100%', minHeight: 48, marginTop: '0.5rem', color: 'var(--text-link)', fontWeight: 650, textAlign: 'left' }}>
             {voiceWords.title}
           </button>
@@ -380,19 +390,19 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
             {WRITE_UP_WORDS.seen}
           </span>
           <div role="group" aria-labelledby="write-up-seen" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button type="button" aria-pressed={d.sawIt} onClick={() => setDraft({ ...d, sawIt: !d.sawIt })} style={chip(d.sawIt)}>
+            <button type="button" aria-pressed={d.sawIt} onClick={() => patch((d) => ({ sawIt: !d.sawIt }))} style={chip(d.sawIt)}>
               {WRITE_UP_WORDS.iDid}
             </button>
             {witnesses.map((w) => {
               const on = d.seenBy.some((s) => s.person_id === w.person_id)
               return (
-                <button key={w.person_id} type="button" aria-pressed={on} onClick={() => setDraft({ ...d, seenBy: toggleSeen(d.seenBy, { person_id: w.person_id, name: w.name }) })} style={chip(on)}>
+                <button key={w.person_id} type="button" aria-pressed={on} onClick={() => patch((d) => ({ seenBy: toggleSeen(d.seenBy, { person_id: w.person_id, name: w.name }) }))} style={chip(on)}>
                   {w.name}
                 </button>
               )
             })}
             {typed.map((s) => (
-              <button key={`typed:${s.name}`} type="button" aria-pressed onClick={() => setDraft({ ...d, seenBy: toggleSeen(d.seenBy, s) })} style={chip(true)}>
+              <button key={`typed:${s.name}`} type="button" aria-pressed onClick={() => patch((d) => ({ seenBy: toggleSeen(d.seenBy, s) }))} style={chip(true)}>
                 {s.name}
               </button>
             ))}
@@ -408,7 +418,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
                 disabled={otherName.trim() === ''}
                 onClick={() => {
                   const name = otherName.trim()
-                  if (!d.seenBy.some((s) => !s.person_id && s.name.toLowerCase() === name.toLowerCase())) setDraft({ ...d, seenBy: [...d.seenBy, { name }] })
+                  patch((d) => (d.seenBy.some((s) => !s.person_id && s.name.toLowerCase() === name.toLowerCase()) ? {} : { seenBy: [...d.seenBy, { name }] }))
                   setOtherName('')
                   setOtherOpen(false)
                 }}
@@ -423,10 +433,10 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
             {talkedQuestion(d.person.name)}
           </span>
           <div role="group" aria-labelledby="write-up-talked" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button type="button" aria-pressed={d.talked === true} onClick={() => setDraft({ ...d, talked: d.talked === true ? null : true })} style={chip(d.talked === true)}>
+            <button type="button" aria-pressed={d.talked === true} onClick={() => patch((d) => ({ talked: d.talked === true ? null : true }))} style={chip(d.talked === true)}>
               {TALKED_CHOICES.yes}
             </button>
-            <button type="button" aria-pressed={d.talked === false} onClick={() => setDraft({ ...d, talked: d.talked === false ? null : false })} style={chip(d.talked === false)}>
+            <button type="button" aria-pressed={d.talked === false} onClick={() => patch((d) => ({ talked: d.talked === false ? null : false }))} style={chip(d.talked === false)}>
               {TALKED_CHOICES.notYet}
             </button>
           </div>
