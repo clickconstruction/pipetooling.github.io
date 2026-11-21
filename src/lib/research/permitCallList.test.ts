@@ -518,6 +518,22 @@ describe('the words', () => {
     const due = foldCallAnswers([answer({ answer: 'pursue', look_again_on: '2026-11-15', answered_at: '2026-08-17T15:00:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
     expect(plain(standingWords(due, () => 'Eve', TODAY))).toBe('Pursuing. Eve, Aug 17. Off the list until it applies for a new job.')
   })
+
+  it('ends an answered name’s reason with one full stop, whatever the reason was kept with', () => {
+    const line = (reason: string): string | null => {
+      const standing = foldCallAnswers([answer({ answer: 'pursue', look_again_on: null, reason })], TODAY).get('ridgewaybuilders') as CallStanding
+      return plain(standingWords(standing, () => 'Eve', TODAY))
+    }
+    // A pursue keeps its reason with a full stop. The line read "Pursuing, Pursued for this job.. Eve".
+    expect(line('Pursued for this job.')).toBe('Pursuing, Pursued for this job. Eve, Nov 19. Off the list.')
+    expect(line('Pursued for this job')).toBe('Pursuing, Pursued for this job. Eve, Nov 19. Off the list.')
+    expect(line('  Called twice...  ')).toBe('Pursuing, Called twice. Eve, Nov 19. Off the list.')
+    // A question or an exclamation closes the sentence by itself.
+    expect(line('Do they build here?')).toBe('Pursuing, Do they build here? Eve, Nov 19. Off the list.')
+    // Only full stops, or nothing: no reason at all.
+    expect(line(' . ')).toBe('Pursuing. Eve, Nov 19. Off the list.')
+    expect(line('')).toBe('Pursuing. Eve, Nov 19. Off the list.')
+  })
 })
 
 describe('pursue', () => {

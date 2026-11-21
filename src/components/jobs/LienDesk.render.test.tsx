@@ -4334,6 +4334,44 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(screen.getByTestId('lien-stop-paper').textContent).toContain('The window closed with nothing sent. The lien right on that work is gone; the money is still owed.')
   })
 
+  // A missed notice that can no longer go judged a notice nobody could send (v2.8206, punch list #361, Taunya's pick of 2026-11-21): the
+  // gates read *Can't go out yet · 1 blocker* and *No month picked*, the strip a red *No month picked ›*, the months head *no months*,
+  // over a month nobody could tick. It folds to one line, as a sent notice has since v2.6625.
+  it('a missed notice that can no longer go folds its gates to one line with no verdict, and its strip and heads name the closed month (v2.8206)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={lateWindowData('2026-09-10')} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-gates]')).toBeNull()
+    const fold = document.querySelector('[data-lien-gates-sent]') as HTMLElement
+    expect(fold.getAttribute('data-kind')).toBe('closed')
+    expect((fold.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe('Window closed Aug 15 · Elwick Holdings LLC · Lowbeck Contracting · Commercial · Guadalupe · May')
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('The four gatesWindow closed Aug 15 · nothing sent')
+    expect((document.querySelector('[data-lien-pane-head="months"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toMatch(/^May, closed · \$/)
+    fireEvent.click(fold.querySelector('[data-lien-gates-sent-fold="open"]') as HTMLElement)
+    expect([...fold.querySelectorAll('[data-lien-gates-sent-row]')].map((d) => d.textContent)[3]).toBe('4Months whose window closedMay')
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    const chips = Array.from(strip.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
+    expect(chips.slice(0, 2).map((c) => [c.getAttribute('data-lien-strip-chip'), c.textContent, c.getAttribute('data-tone')])).toEqual([
+      ['closed', 'Window closed Aug 15 \u203a', 'quiet'],
+      ['months', 'May \u203a', 'quiet'],
+    ])
+    expect(strip.querySelector('[data-lien-strip-chip^="gate:"]')).toBeNull()
+    // Nothing on the pane asks for a month or says a notice cannot go out yet.
+    expect(document.body.textContent).not.toContain('No month picked')
+    expect(document.body.textContent).not.toContain("Can't go out yet")
+    // The footer is unchanged: the window closed, nothing to sign.
+    expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Window closedNothing to sign')
+  })
+
+  it('a missed notice in the late window keeps its four gates, since a notice is still to be sent there (v2.8206)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={lateWindowData('2026-09-15')} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    expect(document.querySelector('[data-lien-gates-sent]')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-gates]')).not.toBeNull()
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('The four gates\u2713 Ready to go out · All 4 clear')
+    expect((document.querySelector('[data-lien-pane-head="months"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toMatch(/^May · \$/)
+  })
+
   // The step grows when its read of the property's papers ends, and the watch on the footer's growth stops after 4 s
   // (the owner's answer 4 of 2026-11-20 to the audit of punch list #361): with the read held 6 s the step's Apply ended
   // at 1,087 px of a 900 px window. The step now says when it has its final pane, and the pane lands on it again.

@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -195,7 +195,7 @@ Press {{button:blue|Save the map}} to keep it.
 A saved line is only a shape. It keeps no time along it. It cannot say how fast you went or where you stopped.
 
 :::example The way in, walked
-**Walk or drive it** → walk from the gate to the slab → {{chip:gray|Gate}} at the gate → **Done** → **Save the map**.
+**Walk or drive it** → walk from the gate to the slab → {{button:outline|Gate}} at the gate → **Done** → **Save the map**.
 :::
 
 ### With no signal
@@ -251,8 +251,8 @@ A place is a named dot on the map. It says what is there, such as the gate, the 
 
 1. Open the map and press {{button:outline|＋ Place}}. A blue dot appears in the middle of the map.
 2. Drag the blue dot onto the spot. On a phone the magnifying glass opens as you drag.
-3. Press what it is, such as {{chip:gray|Gate}}. Type a name of your own if you want one.
-4. Type a word for whoever comes next, such as *Close it behind you*.
+3. Press what it is, such as {{button:outline|Gate}}. Type a name of your own if you want one.
+4. Type what whoever comes next should know under **Describe it**.
 5. Press **＋ Add a photo** to show what the spot looks like. On a phone the camera opens.
 6. Press {{button:blue|Add this place}}.
 
@@ -262,17 +262,58 @@ On a walk, {{button:outline|＋ Place}} is under the red bar. It is on **Look it
 
 ### A mark for each kind
 
-Each chip is a kind of place. A kind gives the dot its own mark, such as a gate or a valve. The place's number moves to the corner of the mark.
+Each press under **What is here?** is a kind of place. The presses are big, two to a row. A thumb in a glove can land on one.
 
-There are seven kinds. They are {{chip:gray|Gate}}, {{chip:gray|Park here}}, {{chip:gray|Door}}, {{chip:gray|Meter}}, {{chip:gray|Shutoff}}, {{chip:gray|Cleanout}} and {{chip:gray|Hazard}}.
+A kind gives the dot its own mark, such as a gate or a valve. The place's number moves to the corner of the mark.
 
-{{chip:gray|Hazard}} is drawn in red. Use it for an open trench or a live wire.
+There are eight kinds. The kinds are {{button:outline|Gate}}, {{button:outline|Park here}}, {{button:outline|Door}}, {{button:outline|Meter}}, {{button:outline|Shutoff}}, {{button:outline|Cleanout}}, {{button:outline|Buried line}} and {{button:outline|Hazard}}.
 
-A chip names a place that has no name yet. It never changes a name you typed.
+{{button:outline|Hazard}} is drawn in red. Use it for an open trench or a live wire.
 
-Press a chip a second time to take the kind off. The dot goes back to its plain number.
+A press names a place that has no name yet. A press never changes a name you typed.
 
-Type a name and press no chip, and the dot keeps its plain number.
+Press a kind a second time to take it off. The dot goes back to its plain number.
+
+Type a name and press no kind, and the dot keeps its plain number.
+
+### Say what is buried
+
+Press {{button:outline|Buried line}}. The sheet asks **What is buried?**.
+
+Press {{button:outline|Water}}, {{button:outline|Sewer}}, {{button:outline|Gas}}, {{button:outline|Electric}}, {{button:outline|Irrigation}} or {{button:outline|Cable}}.
+
+The place is named for it, such as *Buried sewer line*.
+
+The place's mark takes the color a locator paints on the ground.
+
+- Water is blue.
+- Sewer is green.
+- Gas is yellow.
+- Electric is red.
+- Irrigation is purple.
+- Cable is orange.
+
+Press the same answer again to take it off. The place stays a buried line.
+
+### Something not on the list
+
+Press {{button:outline|＋ Something else}}. That press runs the full width of the sheet.
+
+The box under it asks **What is it?**, and the keyboard opens. Type the name, such as *Septic tank lid*.
+
+The dot keeps its plain number.
+
+Under **What is buried?** the same press asks what is buried. The place stays a buried line.
+
+### Describe it
+
+**Describe it** takes as much as you need. Say what it is, how deep it is and which way it runs.
+
+The box grows as you type.
+
+A list shows the start of a long description. Press **Read it all** to open the rest. Press **Show less** to fold it again.
+
+A printed page and a shared link show the whole description. A picture and a text show the start of it.
 
 Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you when your phone is sure enough. Your phone is read once, on that press, and is not followed.
 
@@ -289,7 +330,7 @@ Sometimes your phone gives no reading at all. An amber box under the press then 
 Never type a gate code or a lock code on a place. Anyone the map is shared with would read it.
 
 :::example What is where, in three places
-＋ Place → {{chip:gray|Gate}} → photo → **Add this place**. Then the same for {{chip:gray|Meter}} and {{chip:gray|Shutoff}}.
+＋ Place → {{button:outline|Gate}} → photo → **Add this place**. Then the same for {{button:outline|Meter}} and {{button:outline|Shutoff}}.
 :::
 
 To change a place you set, press **Change this place** beside it. Drag its dot, change its words or take another photo. Then press {{button:blue|Save the place}}. **Remove this place** takes it off the map for everyone.
@@ -338,7 +379,7 @@ Some spots matter on every map of a job. The gate is one. The meter is another. 
 
 1. Open the job. Under its address, press {{button:outline|＋ Place on this job}}.
 2. Drag the blue dot onto the spot.
-3. Press what it is, such as {{chip:gray|Gate}}.
+3. Press what it is, such as {{button:outline|Gate}}.
 4. Press {{button:blue|Add this place}}.
 
 You do not paint a map first. The job now has a line named **Places on this job**. Press it to see them all.
@@ -352,7 +393,34 @@ A link or a copy of a painted map does not carry the job's places. To send them,
 Anyone can change or remove a place they set. Only the office can throw the whole list away.
 
 :::example What is where on Lot 14
-＋ Place on this job → {{chip:gray|Gate}} → **Add this place**. Then {{chip:gray|Meter}}, then {{chip:gray|Hazard}} for the open trench.
+＋ Place on this job → {{button:outline|Gate}} → **Add this place**. Then {{button:outline|Meter}}, then {{button:outline|Hazard}} for the open trench.
+:::
+
+### Start with a photo
+
+Standing at the spot? Press {{button:outline|Photo of a spot}} under the job's address. The camera opens.
+
+Take the photo. The place sheet opens with the photo in it.
+
+The dot is already where you stood. Your phone is read once, on that press, and is not followed.
+
+1. Press what it is, such as {{button:outline|Cleanout}}.
+2. Press {{button:blue|Add this place}}.
+
+The place takes two presses after the photo.
+
+A line under **Put the dot where I am** says how the reading did. An amber line means the signal is weak. Drag the dot onto the spot.
+
+When your phone gives only an area, the dot is not moved. Drag the dot onto the spot by hand.
+
+Picked an older photo? The dot is not put where you stand. A line at the top of the sheet says so. Drag the dot onto the spot.
+
+The photo is the place's photo. The photo shows beside the place in **Places on this job**.
+
+Adding a photo to the job anyway? Each new photo in **Job photos** has {{button:outline|＋ Keep this spot on the job}}. A photo on **Leave Report** has {{button:outline|Keep this spot}}. Either press opens the same sheet with that photo in it.
+
+:::example A cleanout, before the trench is filled
+Photo of a spot → take the photo → {{button:outline|Cleanout}} → **Add this place**.
 :::
 
 ## Read a length

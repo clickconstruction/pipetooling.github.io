@@ -42,6 +42,14 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
     expect(lienPaneSections({ ...sent, gates: null }).find((h) => h.key === 'months')!.fact).toBe('no months · $285')
   })
 
+  it('on a missed notice that can no longer go the gates head reads the day the window closed, and the months head the closed months (v2.8206)', () => {
+    const heads = lienPaneSections({ nextWords: null, gates: { sentOn: 'Aug 15', head: 'Window closed Aug 15', tail: 'nothing sent' }, houses: null, months: [], sentMonths: 'May, closed', claimWords: '$33,500', pages: 2, gcEmail: false, monthShort, money })
+    expect(heads.find((h) => h.key === 'gates')).toEqual({ key: 'gates', label: 'The four gates', fact: 'Window closed Aug 15', tail: 'nothing sent' })
+    expect(heads.find((h) => h.key === 'months')!.fact).toBe('May, closed · $33,500')
+    // A sent fold passes no head of its own and keeps its words.
+    expect(lienPaneSections({ nextWords: null, gates: { sentOn: 'Oct 14' }, houses: null, months: [], claimWords: '$285', pages: 1, gcEmail: false, monthShort, money })[1]).toMatchObject({ fact: 'Sent Oct 14', tail: 'as the notice went' })
+  })
+
   it('leaves the houses out when the job bought nothing, says all paid when it did and paid, and reads the gaps', () => {
     const base = { nextWords: null, gates: { ready: false, headline: 'Not ready', summary: '2 to fix' }, months: [], claimWords: '$0', pages: 1, gcEmail: false, monthShort, money }
     const none = lienPaneSections({ ...base, houses: null })
