@@ -14,3 +14,5 @@ The Document builder: a draft has a number, punch list #404. Database only: the 
 Checked before the push: section 4b of `supabase/tests/document_builders/20_scenario.sql` and section 2b of `supabase/tests/document_builder_sheets/20_scenario.sql`, in the beds `document-builders` and `document-builder-sheets`. Each bed's script applies the table's migration a second time and then this one, in that order, since each replaces the stamp.
 
 Apply: `supabase db push` after the merge. No client names the number yet.
+
+**Applied** to prod on 2026-11-21, by `scripts/db-push.sh` from a checkout at `origin/main`, this migration alone: a sibling's unpushed `20261120163000` was set aside for the push and put back. The drift check read 1418 local files against 1418 remote versions, the dev seat's `check_migration_ledger` read this version as the newest, and `draft_no` read 0 on the three rows prod holds, with no row's `updated_at` moved. Types in #9190.

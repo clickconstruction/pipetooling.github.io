@@ -576,8 +576,9 @@ is a draft that was never published, and the usual sheet is at revision 1 with n
 
 Found and not fixed. No PR holds any of these.
 
-- A tab left open can publish over a newer revision, in both builders. A draft save names no
-  revision (`sheetsIo.ts`).
+- **Fixed, v2.8143 (the database) and v2.8148 (the tab).** A tab left open could publish over a newer revision, in
+  both builders. A draft save named no revision (`sheetsIo.ts`). A save and a publish now name the draft's number
+  (`draft_no`), and a refused one is held with **Load the newer one** and **Save mine over it**.
 - The usual's publish to every job writes each job's draft from the page as it was loaded, so a
   teammate's later changes to a job are lost.
 - **Fixed, v2.8139.** A removed coverage line's key was used again, so a job's old change landed on a new line

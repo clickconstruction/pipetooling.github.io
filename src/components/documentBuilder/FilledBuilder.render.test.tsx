@@ -40,7 +40,7 @@ const CEDAR_OWN = (): JobSheet => startJobSheet({ name: JOBS[0]!.name, place: JO
 const builder = (over: Record<string, unknown> = {}): BuilderRecord =>
   builderRecordFromRow({ key: 'insurance', kind: 'filled', draft: USUAL, published: USUAL, revision: 1, published_at: '2026-11-19T15:00:00Z', read_revision: null, read_by_name: '', read_on: null, updated_at: null, ...over }) as BuilderRecord
 
-const sheetRow = (over: Partial<SheetRecord> = {}): SheetRecord => ({ id: 'sheet-cedar', projectId: 'cedar', draft: CEDAR_OWN(), published: CEDAR_OWN(), publishedSheet: layOver(USUAL, CEDAR_OWN()), revision: 1, usualRevision: 1, publishedAt: '2026-11-19T16:00:00Z', ...over })
+const sheetRow = (over: Partial<SheetRecord> = {}): SheetRecord => ({ id: 'sheet-cedar', projectId: 'cedar', draft: CEDAR_OWN(), published: CEDAR_OWN(), publishedSheet: layOver(USUAL, CEDAR_OWN()), revision: 1, draftNo: 0, usualRevision: 1, publishedAt: '2026-11-19T16:00:00Z', ...over })
 
 type Mocks = { [K in keyof FilledBuilderIo]: ReturnType<typeof vi.fn> }
 
@@ -142,7 +142,7 @@ describe('FilledBuilder', () => {
     expect(screen.getByText('Saving the draft…')).toBeTruthy()
     expect(io.saveSheetDraft).not.toHaveBeenCalled()
     await waitFor(() => expect(io.saveSheetDraft).toHaveBeenCalledTimes(1), { timeout: 3000 })
-    expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'))
+    expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'), 0)
     expect(await screen.findByText('Draft saved')).toBeTruthy()
   })
 
@@ -201,7 +201,7 @@ describe('FilledBuilder', () => {
     expect(saveSheetDraft).toHaveBeenCalledTimes(1)
     leave()
     await waitFor(() => expect(saveSheetDraft).toHaveBeenCalledTimes(2))
-    expect(saveSheetDraft).toHaveBeenLastCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'))
+    expect(saveSheetDraft).toHaveBeenLastCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'), 0)
   })
 
   it('publishes a job with no row yet: the row is made, then the page goes out on the usual’s revision', async () => {
@@ -210,7 +210,7 @@ describe('FilledBuilder', () => {
     fireEvent.click(publish())
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     expect(io.startSheet).toHaveBeenCalledWith('insurance', 'cedar', CEDAR_OWN())
-    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 0, CEDAR_OWN(), layOver(USUAL, CEDAR_OWN()), 1)
+    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 0, CEDAR_OWN(), layOver(USUAL, CEDAR_OWN()), 1, 0)
     expect(await screen.findByText('Published, revision 1')).toBeTruthy()
     expect(screen.getByText('Subs see what you see.')).toBeTruthy()
     expect(publish().textContent).toBe('Nothing to publish')
@@ -223,8 +223,8 @@ describe('FilledBuilder', () => {
     fireEvent.click(publish())
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     const own = withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9')
-    expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', own)
-    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, own, layOver(USUAL, own), 1)
+    expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', own, 0)
+    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, own, layOver(USUAL, own), 1, 0)
   })
 
   it('names the reason when a publish is refused', async () => {
@@ -278,8 +278,8 @@ describe('FilledBuilder', () => {
     fireEvent.click(publish())
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     const usual = { ...USUAL, fields: { ...USUAL.fields, foot: 'A new foot line.' } }
-    expect(io.publishBuilder).toHaveBeenCalledWith('insurance', 1, usual)
-    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, CEDAR_OWN(), layOver(usual, CEDAR_OWN()), 2)
+    expect(io.publishBuilder).toHaveBeenCalledWith('insurance', 1, usual, 0)
+    expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, CEDAR_OWN(), layOver(usual, CEDAR_OWN()), 2, 0)
     expect(await screen.findByText('Published to 1 job. Held 1.')).toBeTruthy()
     expect(screen.getByText('Your usual, revision 2')).toBeTruthy()
   })
