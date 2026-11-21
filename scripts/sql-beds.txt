@@ -117,6 +117,7 @@ in-kind
 permit-skim
 permit-policies
 permit-hint-decks
+bid-site-permits
 theme-review
 bid-photos
 bill-lines-sweep

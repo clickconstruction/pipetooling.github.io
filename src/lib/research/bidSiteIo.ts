@@ -1,6 +1,7 @@
 /**
  * Bids and permits (punch list #307): the reads behind the two panels in a bid's window. The
- * permits come from `bid_site_permits` (migration 20261110220345), asked by house number; which
+ * permits come from `bid_site_permits` (migration 20261110220345, its order made one order by
+ * 20261121234000), asked by house number; which
  * sit on a bid's site is decided by `bidSite.ts`. No kernel logic here.
  */
 import { supabase } from '../supabase'
@@ -30,9 +31,10 @@ export const SITE_PERMITS_RPC_LIMIT = 5000
  * while the read is not on the database yet and the numbers are too many to ask one at a time.
  *
  * Read a page at a time: the API returns at most 1,000 rows with no error, and the board's one
- * read for San Antonio holds over 700. The pages are cut by `id`, since the read's own order (day,
- * number, type) ties when one permit sits in both feeds on one day, and a tie can shuffle between
- * pages. `sitePermitOrder` puts the whole answer back newest first.
+ * read for San Antonio holds over 700. The pages are cut by `id`: the API sorts a paged read by
+ * a column, and the read's own order starts on the day issued, else applied for, which is no
+ * column. `sitePermitOrder` puts the whole answer back newest first, in the function's own order.
+ * That order ends on the id (v2.8220), so every page's call keeps the same rows at the limit.
  */
 export async function loadPermitsByHouseNumber(city: string, numbers: readonly string[]): Promise<SitePermitRow[] | null> {
   if (numbers.length === 0) return []
