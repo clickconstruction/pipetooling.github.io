@@ -3,8 +3,14 @@
  * whoever comes next, and a photo. The dot itself is on the map above this panel, dragged under
  * the magnifying glass or set by one reading of where the painter stands.
  *
- * The chips are kinds (punch list #393): each gives the dot its own mark, and a name to a place
- * that has none yet. A name somebody typed is theirs, and a chip never changes it.
+ * The presses are kinds (punch list #393): each gives the dot its own mark, and a name to a place
+ * that has none yet. A name somebody typed is theirs, and a press never changes it.
+ *
+ * Since punch list #413 (Taunya's three changes of 2026-11-21) the kinds are big presses, two to a
+ * row and 56 px tall, made for a thumb in a glove. **Buried line** asks what is buried, and each
+ * answer wears the color a locator paints for it. **＋ Something else**, the full width of the
+ * sheet, is for anything on no list: the name box takes the keyboard. And the words are a
+ * description as long as the person needs, in a box that grows with it.
  *
  * Under **Put the dot where I am** the Precise Location line says how that one reading did (punch
  * list #402): on, a weak signal, or a rough area. A rough reading does not move the dot, and the
@@ -16,8 +22,9 @@ import { usePhoneKind } from '../../hooks/usePreciseLocation'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { MyFixFailure } from '../../lib/materials/myLocation'
-import { PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
-import { PAINTED_PLACE_KINDS, PLACE_KIND_HINT_WORDS, PLACE_WARN_COLOR, pressPlaceKindChip, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
+import { PAINTED_PLACE_NAME_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
+import { BURIED_KIND_TILES, PLACE_KIND_HINT_WORDS, PLACE_KIND_TILES, PLACE_KIND_WORDS, PLACE_WARN_COLOR, isBuriedKind, pressBuriedAnswer, pressBuriedTile, pressPlaceKindChip, pressSomethingElse, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
+import { PAINTED_PLACE_WORDS_MAX, PLACE_WORDS_HINT, PLACE_WORDS_LABEL, PLACE_WORDS_PLACEHOLDER } from '../../lib/paintedMap/paintedPlaceWords'
 import { PLACE_DOT_WEAK_NOTE_WORDS, placeDotNoFixWords, placeDotRoughNoteWords } from '../../lib/paintedMap/paintedPlaceDot'
 import { PAINTED_PLACE_NO_CODES_WORDS } from '../../lib/paintedMap/paintedPlacePhoto'
 import { PlaceGlyphDrawing } from './PaintedPlaceMark'
@@ -54,8 +61,15 @@ type Props = {
 
 const press: CSSProperties = { minHeight: 44, padding: '0 0.9rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
 const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' }
-const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minHeight: 36, padding: '0 0.8rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }
-const chipOn: CSSProperties = { ...chip, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
+/** A kind's press (#413): two to a row and 56 px tall, so a thumb in a glove lands on it. */
+const tile: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%', minHeight: 56, padding: '0 0.85rem', borderRadius: 12, borderWidth: 1.5, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '1rem', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
+const tileOn: CSSProperties = { ...tile, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
+/** ＋ Something else: the full width of the sheet, dashed until it is pressed. */
+const tileElse: CSSProperties = { ...tile, gridColumn: '1 / -1', justifyContent: 'center', borderStyle: 'dashed' }
+const tileElseOn: CSSProperties = { ...tileOn, gridColumn: '1 / -1', justifyContent: 'center' }
+const tiles: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }
+/** The color a locator paints for what is buried, as a bar at the press's left. */
+const swatch = (color: string): CSSProperties => ({ width: 12, height: 30, borderRadius: 4, background: color, flex: 'none', boxShadow: '0 0 0 1.5px rgba(255,255,255,.85)' })
 const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%' }
 const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }
 /** The amber box of the Precise Location line, for the press's own answer when there is no reading to draw a line for. */
@@ -75,6 +89,25 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
+  // ＋ Something else was the last kind press: under What is here?, or under What is buried?. The name box says so.
+  const [elseOn, setElseOn] = useState<'top' | 'buried' | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const wordsRef = useRef<HTMLTextAreaElement>(null)
+  // The description's box grows with what is in it, so a long one is read whole as it is written.
+  useEffect(() => {
+    const el = wordsRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.max(96, el.scrollHeight + 2)}px`
+  }, [words])
+  const buried = isBuriedKind(kind)
+  const take = (next: { name: string; kind: PaintedPlaceKind | null }, other: 'top' | 'buried' | null = null) => {
+    setName(next.name)
+    setKind(next.kind)
+    setElseOn(other)
+    // Something else is on no list: the name is the person's to type, so the keyboard comes up on its box.
+    if (other) window.requestAnimationFrame(() => nameRef.current?.focus())
+  }
   // The saved photo stays until the painter takes it off or takes another.
   const [keepSaved, setKeepSaved] = useState(Boolean(place?.photoPath))
   const inputRef = useRef<HTMLInputElement>(null)
@@ -108,41 +141,54 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
 
   return (
     <div data-painted-place-panel style={{ display: 'grid', gap: '0.7rem' }}>
-      <div style={{ display: 'grid', gap: '0.4rem' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>What is here?</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-          {PAINTED_PLACE_KINDS.map((k) => {
-            const on = kind === k.kind
+      <div style={{ display: 'grid', gap: '0.5rem' }}>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }}>What is here?</span>
+        <div data-place-kinds style={tiles}>
+          {PLACE_KIND_TILES.map((k) => {
+            const on = k.kind === 'buried' ? buried : kind === k.kind
             return (
-              <button
-                key={k.kind}
-                type="button"
-                data-place-kind={k.kind}
-                aria-pressed={on}
-                style={on ? chipOn : chip}
-                onClick={() => {
-                  const next = pressPlaceKindChip({ name, kind }, k.kind)
-                  setName(next.name)
-                  setKind(next.kind)
-                }}
-              >
-                <PlaceGlyphDrawing glyph={k.glyph} size={16} color={k.warns && !on ? PLACE_WARN_COLOR : 'currentColor'} />
+              <button key={k.kind} type="button" data-place-kind={k.kind} aria-pressed={on} style={on ? tileOn : tile} onClick={() => take(k.kind === 'buried' ? pressBuriedTile({ name, kind }) : pressPlaceKindChip({ name, kind }, k.kind))}>
+                <PlaceGlyphDrawing glyph={k.glyph} size={24} color={k.warns && !on ? PLACE_WARN_COLOR : 'currentColor'} />
                 {k.name}
               </button>
             )
           })}
+          <button type="button" data-place-kind-else="top" aria-pressed={elseOn === 'top' && kind === null} style={elseOn === 'top' && kind === null ? tileElseOn : tileElse} onClick={() => take(pressSomethingElse({ name, kind }), 'top')}>
+            {PLACE_KIND_WORDS.somethingElse}
+          </button>
         </div>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PLACE_KIND_HINT_WORDS}</span>
+        {buried ? (
+          <div data-place-buried style={{ display: 'grid', gap: '0.5rem', padding: '0.7rem', borderRadius: 12, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-subtle)' }}>
+            <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }}>{PLACE_KIND_WORDS.buriedAsk}</span>
+            <div style={tiles}>
+              {BURIED_KIND_TILES.map((k) => {
+                const on = kind === k.kind
+                return (
+                  <button key={k.kind} type="button" data-place-kind={k.kind} aria-pressed={on} style={on ? tileOn : tile} onClick={() => take(pressBuriedAnswer({ name, kind }, k.kind))}>
+                    <span aria-hidden style={swatch(k.color ?? 'var(--text-strong)')} />
+                    {k.short ?? k.name}
+                  </button>
+                )
+              })}
+              <button type="button" data-place-kind-else="buried" aria-pressed={elseOn === 'buried' && kind === 'buried'} style={elseOn === 'buried' && kind === 'buried' ? tileElseOn : tileElse} onClick={() => take(pressSomethingElse({ name, kind }, 'buried'), 'buried')}>
+                {PLACE_KIND_WORDS.somethingElse}
+              </button>
+            </div>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PLACE_KIND_WORDS.buriedHint}</span>
+          </div>
+        ) : null}
         <label style={label}>
-          Name
-          <input type="text" value={name} maxLength={PAINTED_PLACE_NAME_MAX} onChange={(e) => setName(e.target.value)} placeholder="Truck gate" style={field} />
+          {elseOn === 'top' ? PLACE_KIND_WORDS.elseAsk : elseOn === 'buried' ? PLACE_KIND_WORDS.buriedElseAsk : 'Name'}
+          <input ref={nameRef} type="text" data-place-name value={name} maxLength={PAINTED_PLACE_NAME_MAX} onChange={(e) => setName(e.target.value)} placeholder={elseOn === 'top' ? 'Septic tank lid' : elseOn === 'buried' ? 'Buried conduit' : 'Truck gate'} style={field} />
         </label>
       </div>
       <div style={{ display: 'grid', gap: '0.3rem' }}>
         <label style={label}>
-          A word for whoever comes next
-          <input type="text" value={words} maxLength={PAINTED_PLACE_WORDS_MAX} onChange={(e) => setWords(e.target.value)} placeholder="Close it behind you." style={field} />
+          {PLACE_WORDS_LABEL}
+          <textarea ref={wordsRef} data-place-words-box value={words} maxLength={PAINTED_PLACE_WORDS_MAX} rows={3} onChange={(e) => setWords(e.target.value)} placeholder={PLACE_WORDS_PLACEHOLDER} style={{ ...field, minHeight: 96, lineHeight: 1.4, fontFamily: 'inherit', fontWeight: 400, resize: 'vertical', display: 'block' }} />
         </label>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PLACE_WORDS_HINT}</span>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PAINTED_PLACE_NO_CODES_WORDS}</span>
       </div>
 
@@ -224,7 +270,7 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
         )}
       </div>
 
-      <button type="button" data-painted-place-save style={waiting ? { ...deadPress, minHeight: 52 } : { ...press, minHeight: 52, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} disabled={waiting} onClick={save}>
+      <button type="button" data-painted-place-save style={waiting ? { ...deadPress, minHeight: 56, fontSize: '1.0625rem' } : { ...press, minHeight: 56, fontSize: '1.0625rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} disabled={waiting} onClick={save}>
         {busy ? 'Saving…' : place ? 'Save the place' : 'Add this place'}
       </button>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>

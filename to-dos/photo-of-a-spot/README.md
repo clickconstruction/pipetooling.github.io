@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186 and the new place sheet is v2.8188
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -237,21 +237,17 @@ is never read when the photo sends. Setting a place must not need the map's pict
    called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
    `supabase db push` after its merge and before PR 1 is armed. The table held no row on
    2026-11-21. Read the constraint's real name on prod before writing the drop.
-1. **Photo of a spot, from the job (S).** A press beside **＋ Place on this job** in
+1. **The new place sheet (S). Built in v2.8188.** Taunya's three changes, on the sheet every place
+   is set from: the kinds as presses two to a row and 56 px tall with **＋ Something else** under
+   them, **What is buried?** under **Buried line** with each answer a kind in its locator's color,
+   and **Describe it** at any length with a short form for a row, a picture's key and a text. It was
+   split from the photo press so each could ship alone.
+1b. **Photo of a spot, from the job (S).** A press beside **＋ Place on this job** in
    `src/components/paintedMap/JobPaintedMapsStrip.tsx`. The camera opens at once. The place sheet
    (`src/components/paintedMap/PaintedPlacePanel.tsx`) then opens with the photo in it and the dot
    where the person stands, read once through `requestMyFix` in `src/lib/materials/myLocation.ts`
    and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, puts the dot on
-   the job's address. The sheet's kinds become presses two to a row and 56 px tall, with
-   **＋ Something else** under them. **Buried line** opens **What is buried?**, and each answer is a
-   kind with its color (`src/lib/paintedMap/paintedPlaceKind.ts`, whose rule that every mark is ink
-   but a hazard changes with this). **Describe it** takes the place's words at any length up to the
-   new cap, and one kernel gives every other surface its short form: the rows, the mark's label, the
-   printed page (`src/lib/paintedMap/paintedMapPrint.ts`), the picture
-   (`src/lib/paintedMap/paintedMapPicture.ts`), the copied text
-   (`src/lib/paintedMap/paintedMapText.ts`) and the public page (`src/pages/PaintedWay.tsx`). An
-   older build of the app draws a kind it does not know as the plain dot, which is the file's own
-   rule. The list of places draws each photo beside its name.
+   the job's address. The list of places already draws each photo beside its name.
    A place set with no signal has to wait on the phone as a photo does: read what the sheet does
    today before building. The guide `src/content/help/paint-a-map.md` gains a section.
 2. **Keep this spot on the job, from a photo (S).** The same sheet from one press on

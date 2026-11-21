@@ -97,6 +97,7 @@ import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
 import { PaintedPlaceShare } from './PaintedPlaceShare'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
+import { PaintedPlaceWords } from './PaintedPlaceWords'
 import { PaintedWalkReview } from './PaintedWalkReview'
 import { PAINT_SWATCH } from './paintedMapLook'
 
@@ -1158,7 +1159,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                                 <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                               </button>
                             ) : null}
-                            {p.words ? <span style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }}>{p.words}</span> : null}
+                            <PaintedPlaceWords words={p.words} name={p.name} style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }} />
                             <span style={{ gridColumn: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                               {sure ? `the phone was sure ${sure}` : 'placed by hand'}
                               {by ? ` · ${by}` : ''}
@@ -1187,7 +1188,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                         <div key={p.id} data-painted-job-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: pickedPlace === p.id ? 'solid' : 'dashed', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border-strong)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
                           <PaintedPlaceMark number={p.letter} kind={p.kind} size={28} dashed style={{ gridRow: '1 / 4' }} />
                           <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
-                          {p.words ? <span style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }}>{p.words}</span> : null}
+                          <PaintedPlaceWords words={p.words} name={p.name} style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }} />
                           <span style={{ gridColumn: 2 }}>
                             <PaintedPlaceShare place={p} more={{ set: overlay, setKind: 'job', photoPath: p.photoPath }} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
                           </span>

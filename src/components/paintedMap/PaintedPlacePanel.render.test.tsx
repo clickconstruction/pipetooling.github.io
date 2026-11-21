@@ -195,3 +195,114 @@ describe('PaintedPlacePanel and a press that got no reading (#402)', () => {
     }
   })
 })
+
+/**
+ * The sheet's presses since punch list #413 (Taunya's three changes of 2026-11-21): the kinds are big
+ * presses, **Buried line** asks what is buried, **＋ Something else** is one wide press that hands
+ * the name box the keyboard, and the words are a description as long as the person needs.
+ */
+describe('PaintedPlacePanel, what is here and what is buried', () => {
+  const kind = (k: string) => document.querySelector(`[data-place-kind="${k}"]`) as HTMLButtonElement
+  const other = (where: 'top' | 'buried') => document.querySelector(`[data-place-kind-else="${where}"]`) as HTMLButtonElement
+  const nameBox = () => document.querySelector('[data-place-name]') as HTMLInputElement
+  const save = () => fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLButtonElement)
+  const saved = () => presses.onSave.mock.calls[presses.onSave.mock.calls.length - 1]?.[0] as { name: string; words: string; kind: string | null }
+
+  it('offers each kind as a press 56 px tall, two to a row, and Something else the full width', () => {
+    draw()
+    const kinds = [...document.querySelectorAll('[data-place-kinds] > [data-place-kind]')] as HTMLButtonElement[]
+    expect(kinds.map((b) => b.textContent)).toEqual(['Gate', 'Park here', 'Door', 'Meter', 'Shutoff', 'Cleanout', 'Buried line', 'Hazard'])
+    expect(kinds.every((b) => b.style.minHeight === '56px')).toBe(true)
+    expect((document.querySelector('[data-place-kinds]') as HTMLElement).style.gridTemplateColumns).toBe('1fr 1fr')
+    expect(other('top').textContent).toBe('＋ Something else')
+    expect(other('top').style.minHeight).toBe('56px')
+    expect(other('top').style.gridColumn).toBe('1 / -1')
+    expect((document.querySelector('[data-painted-place-save]') as HTMLButtonElement).style.minHeight).toBe('56px')
+  })
+
+  it('asks what is buried only once Buried line is pressed', () => {
+    draw()
+    expect(document.querySelector('[data-place-buried]')).toBeNull()
+    fireEvent.click(kind('buried'))
+    expect(kind('buried').getAttribute('aria-pressed')).toBe('true')
+    const block = document.querySelector('[data-place-buried]') as HTMLElement
+    expect(block.textContent).toContain('What is buried?')
+    expect([...block.querySelectorAll('[data-place-kind]')].map((b) => b.textContent)).toEqual(['Water', 'Sewer', 'Gas', 'Electric', 'Irrigation', 'Cable'])
+    expect(block.textContent).toContain('The colors are the ones a locator paints on the ground.')
+    expect(nameBox().value).toBe('Buried line')
+  })
+
+  it('names the place for what is buried, keeps Buried line pressed, and saves that kind', () => {
+    draw()
+    fireEvent.click(kind('buried'))
+    fireEvent.click(kind('buried_sewer'))
+    expect(kind('buried_sewer').getAttribute('aria-pressed')).toBe('true')
+    expect(kind('buried').getAttribute('aria-pressed')).toBe('true')
+    expect(nameBox().value).toBe('Buried sewer line')
+    save()
+    expect(saved()).toMatchObject({ name: 'Buried sewer line', kind: 'buried_sewer' })
+  })
+
+  it('takes an answer off on a second press and leaves a buried line, and takes the whole kind off from Buried line', () => {
+    draw()
+    fireEvent.click(kind('buried'))
+    fireEvent.click(kind('buried_gas'))
+    fireEvent.click(kind('buried_gas'))
+    expect(nameBox().value).toBe('Buried line')
+    expect(kind('buried').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(kind('buried'))
+    expect(document.querySelector('[data-place-buried]')).toBeNull()
+    expect(nameBox().value).toBe('')
+    save()
+    expect(saved()).toMatchObject({ kind: null })
+  })
+
+  it('Something else clears a name a press gave, takes the mark off and asks what it is', () => {
+    draw()
+    fireEvent.click(kind('cleanout'))
+    expect(nameBox().value).toBe('Cleanout')
+    fireEvent.click(other('top'))
+    expect(other('top').getAttribute('aria-pressed')).toBe('true')
+    expect(kind('cleanout').getAttribute('aria-pressed')).toBe('false')
+    expect(nameBox().value).toBe('')
+    expect(screen.getByLabelText('What is it?')).toBe(nameBox())
+    fireEvent.change(nameBox(), { target: { value: 'Septic tank lid' } })
+    save()
+    expect(saved()).toMatchObject({ name: 'Septic tank lid', kind: null })
+  })
+
+  it('Something else under What is buried? stays a buried line with a name to type', () => {
+    draw()
+    fireEvent.click(kind('buried'))
+    fireEvent.click(kind('buried_water'))
+    fireEvent.click(other('buried'))
+    expect(other('buried').getAttribute('aria-pressed')).toBe('true')
+    expect(kind('buried_water').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByLabelText('What is buried?')).toBe(nameBox())
+    fireEvent.change(nameBox(), { target: { value: 'Conduit for the gate' } })
+    save()
+    expect(saved()).toMatchObject({ name: 'Conduit for the gate', kind: 'buried' })
+  })
+
+  it('a kind pressed after Something else puts the name box back to Name', () => {
+    draw()
+    fireEvent.click(other('top'))
+    fireEvent.click(kind('meter'))
+    expect(other('top').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByLabelText('Name')).toBe(nameBox())
+    expect(nameBox().value).toBe('Meter')
+  })
+
+  it('takes a description far past one line, and hands it over whole', () => {
+    draw()
+    const box = screen.getByLabelText('Describe it') as HTMLTextAreaElement
+    expect(box.tagName).toBe('TEXTAREA')
+    expect(box.maxLength).toBe(4000)
+    const words = '4 in. PVC sewer, from the house to the tap at the street.\nAbout 4 ft deep at the walk and 6 ft at the curb.\n' + 'It runs straight. '.repeat(40)
+    fireEvent.change(box, { target: { value: words } })
+    save()
+    expect(saved().words).toBe(words)
+    expect(screen.getByText('As much as you need. What it is, how deep, which way it runs.')).toBeTruthy()
+    expect(screen.getByText('Never type a gate code or a lock code here. Anyone this map is shared with would read it.')).toBeTruthy()
+  })
+})

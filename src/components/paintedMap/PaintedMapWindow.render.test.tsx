@@ -574,7 +574,7 @@ describe('places on a map', () => {
     fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
     expect(screen.getByTestId('canvas').textContent).toContain('dot:29.55,-98.25')
     fireEvent.click(screen.getByRole('button', { name: 'Meter' }))
-    fireEvent.change(screen.getByLabelText('A word for whoever comes next'), { target: { value: 'Behind the hedge.' } })
+    fireEvent.change(screen.getByLabelText('Describe it'), { target: { value: 'Behind the hedge.' } })
     expect(screen.getByText(/Never type a gate code or a lock code here/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
     await waitFor(() => expect(names()).toContain('addPaintedPlace'))
@@ -929,7 +929,7 @@ describe('places on a map', () => {
     expect((await placeRow()).querySelector('[data-place-mark]')?.getAttribute('data-place-mark')).toBe('gate')
     fireEvent.click(screen.getByRole('button', { name: 'Change this place' }))
     expect(screen.getByRole('button', { name: 'Gate' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.change(screen.getByLabelText('A word for whoever comes next'), { target: { value: 'Chain it.' } })
+    fireEvent.change(screen.getByLabelText('Describe it'), { target: { value: 'Chain it.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save the place' }))
     await waitFor(() => expect(names()).toContain('savePaintedPlace'))
     // The kind was not touched, so it is not sent: an older app never wipes a kind it does not know.
