@@ -59,12 +59,19 @@ export function usualPublishPress(draft: SheetDef, rec: BuilderRecord, plan: Rea
   return { label: ready > 0 ? countedLabel('Publish to', ready, 'job') : 'Publish your usual', dead: why.length > 0, why }
 }
 
-/** The plan for the usual's publish, from every job the company runs as the GC. */
-export function usualPlanFor(jobs: ReadonlyArray<{ projectId: string; name: string }>, sheets: ReadonlyMap<string, JobSheetState>): UsualPublishRow[] {
+/**
+ * The plan for the usual's publish, from every job the company runs as the GC. `heldHere` says what the page that
+ * publishes holds for a job beyond its sheet as read: words typed and not saved, or a choice not yet made.
+ */
+export function usualPlanFor(
+  jobs: ReadonlyArray<{ projectId: string; name: string }>,
+  sheets: ReadonlyMap<string, JobSheetState>,
+  heldHere: (projectId: string) => 'own-changes' | 'moved' | null = () => null,
+): UsualPublishRow[] {
   return usualPublishPlan(
     jobs.map((j) => {
       const s = sheets.get(j.projectId)
-      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false }
+      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false, here: heldHere(j.projectId) }
     }),
   )
 }
