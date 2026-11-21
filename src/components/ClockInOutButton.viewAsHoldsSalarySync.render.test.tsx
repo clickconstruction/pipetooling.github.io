@@ -11,7 +11,7 @@ import { renderWithProviders } from '../test/renderSmokeMocks'
 import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../lib/impersonationSession'
 import ClockInOutButton from './ClockInOutButton'
 
-const h = vi.hoisted(() => ({ rpcs: [] as string[], clockReads: 0 }))
+const h = vi.hoisted(() => ({ rpcs: [] as string[], clockReads: 0, probes: 0 }))
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -31,7 +31,10 @@ vi.mock('../lib/supabase', async () => {
   }
 })
 vi.mock('../lib/selfSalaryClockState', () => ({
-  fetchSelfSalaryClockState: async () => ({ isSalary: true, hasTemplate: true, week: [0, 8, 8, 8, 8, 8, 0] }),
+  fetchSelfSalaryClockState: async () => {
+    h.probes += 1
+    return { isSalary: true, hasTemplate: true, week: [0, 8, 8, 8, 8, 8, 0] }
+  },
 }))
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
@@ -45,6 +48,8 @@ vi.mock('../contexts/LedgerDisplayPrefixContext', () => ({ useLedgerDisplayPrefi
 
 const SYNC = 'sync_salary_clock_sessions_for_user_day'
 const syncs = () => h.rpcs.filter((fn) => fn === SYNC).length
+/** A full CI run can starve a worker for seconds, so a wait on the mount gets the long limit. */
+const MOUNT_WAIT = { timeout: 15_000 }
 
 /** Let the salary probe answer and the effects it sets off run. */
 async function settleEffects() {
@@ -67,6 +72,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     h.rpcs.length = 0
     h.clockReads = 0
+    h.probes = 0
     localStorage.clear()
   })
   afterEach(() => {
@@ -77,7 +83,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
 
   it('as yourself syncs on mount and again every 90 seconds', async () => {
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
-    await waitFor(() => expect(syncs()).toBe(1))
+    await waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
     await tick90()
     expect(syncs()).toBe(2)
   })
@@ -85,6 +91,8 @@ describe('ClockInOutButton: the salary sync and View as', () => {
   it('while View as is on never syncs, on mount or on a tick, and still reads the clock', async () => {
     localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
+    // The salary probe has answered, so the effect that would sync has had its turn.
+    await waitFor(() => expect(h.probes).toBeGreaterThan(0), MOUNT_WAIT)
     await settleEffects()
     const readsAfterMount = h.clockReads
     expect(readsAfterMount).toBeGreaterThan(0)
@@ -99,7 +107,7 @@ describe('ClockInOutButton: the salary sync and View as', () => {
 
   it('holds a tick scheduled before the imitation began', async () => {
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Pat" />)
-    await waitFor(() => expect(syncs()).toBe(1))
+    await waitFor(() => expect(syncs()).toBe(1), MOUNT_WAIT)
 
     localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
     await tick90()

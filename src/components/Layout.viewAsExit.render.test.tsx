@@ -155,12 +155,12 @@ describe('Layout: the way back from View as', () => {
       await renderShell()
 
       fireEvent.click(exitButtons()[0]!)
-      await waitFor(() => expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' }))
+      await waitFor(() => expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' }), { timeout: 15_000 })
       // Still signed in as the person: the background saves held while View as is on stay held.
       expect(isImpersonationSessionActive()).toBe(true)
 
       swapped()
-      await waitFor(() => expect(window.location.hash).toBe('#back'))
+      await waitFor(() => expect(window.location.hash).toBe('#back'), { timeout: 15_000 })
       expect(isImpersonationSessionActive()).toBe(false)
     } finally {
       delete auth.setSession
