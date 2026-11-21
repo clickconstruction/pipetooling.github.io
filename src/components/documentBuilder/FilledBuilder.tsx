@@ -29,7 +29,7 @@ import {
   usualFromJobExtra,
   usualFromJobField,
   usualHasCover,
-  usualWords,
+  usualOffer,
   withJobCoverOff,
   withoutJobExtra,
   withoutJobWords,
@@ -557,7 +557,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                 {differs.length === 0 ? <p style={MUTED}>Only its names and its place are its own. Press any words on the sheet to change them for this job.</p> : null}
                 {differs.map((d) => {
                   if (d.kind === 'field') {
-                    const inUsual = usualWords(usual, d.path) === d.words
+                    const offer = usualOffer(usual, jobState.own, d.path)
                     return (
                       <div key={d.path} style={ROW}>
                         <div>
@@ -568,8 +568,10 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                           <button type="button" aria-label={`Back to the usual for ${d.name}`} style={SMALL_PRESS} onClick={() => changeJob(withoutJobWords(jobState.own, d.path))}>
                             Back to the usual
                           </button>
-                          {inUsual ? (
+                          {offer.kind === 'in-usual' ? (
                             <span style={FINE}>In your usual now. Publish the usual to send it to the other jobs.</span>
+                          ) : offer.kind === 'held' ? (
+                            <span style={FINE}>{offer.why}</span>
                           ) : (
                             <button type="button" aria-label={`Make this the usual for ${d.name}`} style={SMALL_PRESS} onClick={() => changeUsual(usualFromJobField(usual, jobState.own, d.path))}>
                               Make this the usual

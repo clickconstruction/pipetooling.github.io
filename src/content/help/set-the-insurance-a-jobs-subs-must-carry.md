@@ -70,6 +70,7 @@ The card on the left counts what this job changed from your usual. Each row has 
 
 - {{button:outline-blue|Back to the usual}} drops the job's own words for that field.
 - {{button:outline-blue|Make this the usual}} copies the job's words into your usual draft. Publish your usual to send them to the other jobs.
+- On the line under the title, it leaves this job's name out. Every other job then reads the line with its own name.
 - {{button:outline-blue|Put it back}} asks again for a coverage this job had stopped asking for.
 - {{button:outline-blue|Take it off}} removes a line added for this job.
 

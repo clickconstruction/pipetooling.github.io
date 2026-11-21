@@ -11,12 +11,14 @@
 import type { CSSProperties, ReactNode } from 'react'
 import {
   SHEET_FIELD_NAMES,
+  SHEET_JOB_BLANK,
   coverPath,
   fieldMark,
   fieldPath,
   openPath,
   pathName,
   sheetWords,
+  subtitleWith,
   usualWords,
   withJobCoverOff,
   withJobExtra,
@@ -214,13 +216,19 @@ export function SheetPaperEdit(props: EditProps) {
 
   const subtitle: ReactNode =
     props.mode === 'usual' ? (
-      <>
-        {field('sub')} <span style={STILL}>the job's name</span>
-      </>
+      // A usual line that writes the blank out shows it in its own words. One that does not takes the name at its end.
+      def.fields.sub.includes(SHEET_JOB_BLANK) ? (
+        field('sub')
+      ) : (
+        <>
+          {field('sub')} <span style={STILL}>the job's name</span>
+        </>
+      )
     ) : props.job.over[fieldPath('sub')] != null ? (
       field('sub')
     ) : (
-      blank(`${def.fields.sub} ${props.job.name}`.trim(), SHEET_FIELD_NAMES.sub, (words) => props.onJob({ ...props.job, over: { ...props.job.over, [fieldPath('sub')]: words } }))
+      // Typed back to what the usual reads on this job, the line is not kept as the job's own.
+      blank(subtitleWith(def.fields.sub, props.job.name), SHEET_FIELD_NAMES.sub, (words) => props.onJob(withJobWords(def, props.job, fieldPath('sub'), words)))
     )
 
   const open: Line[] = def.open.map((line, i) => ({

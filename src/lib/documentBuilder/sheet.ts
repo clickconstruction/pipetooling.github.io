@@ -219,9 +219,49 @@ export function pathName(def: SheetDef, path: string): string {
   return path
 }
 
+/**
+ * The blank for the job's name, as the usual's line under the title holds it. The usual never holds a job's name:
+ * it holds this blank, and each job fills it with its own.
+ */
+export const SHEET_JOB_BLANK = "[the job's name]"
+
+/**
+ * The usual's line under the title with one job's name in it. A line with the blank takes the name there, as many
+ * times as the blank is written. A line with no blank takes the name at its end.
+ */
+export function subtitleWith(usualLine: string, jobName: string): string {
+  if (usualLine.includes(SHEET_JOB_BLANK)) return usualLine.split(SHEET_JOB_BLANK).join(jobName).trim()
+  return `${usualLine} ${jobName}`.trim()
+}
+
+/**
+ * A job's whole line under the title as the usual would hold it: the job's name becomes the blank. Null when the
+ * line does not say the job's name, since there is then no blank for another job to fill. `subtitleWith` of the
+ * answer and the same name reads as the line, word for word.
+ */
+export function subtitleAsUsual(line: string, jobName: string): string | null {
+  const name = jobName.trim()
+  if (!name || !line.includes(name) || line.includes(SHEET_JOB_BLANK)) return null
+  const blanked = line.split(name).join(SHEET_JOB_BLANK)
+  // A line that only ends on the name is kept as the words before it: the name goes at the end by itself.
+  const tail = ` ${SHEET_JOB_BLANK}`
+  const head = blanked.endsWith(tail) ? blanked.slice(0, -tail.length) : null
+  const usual = head && !head.includes(SHEET_JOB_BLANK) && head === head.trim() ? head : blanked
+  return subtitleWith(usual, name) === line ? usual : null
+}
+
+/**
+ * What the usual says at a path on one job. Every path reads as the usual's own words but the line under the title,
+ * which reads with the job's name in its blank. This is what a job's own words are held against.
+ */
+export function usualWordsOn(def: SheetDef, job: { name: string }, path: string): string | undefined {
+  return path === fieldPath('sub') ? subtitleWith(def.fields.sub, job.name) : usualWords(def, path)
+}
+
 /** What a job's sheet says at a path: the job's own words when it has any, else the usual. */
 export function sheetWords(def: SheetDef, job: JobSheet | null, path: string): string {
-  return job?.over[path] ?? usualWords(def, path) ?? ''
+  if (!job) return usualWords(def, path) ?? ''
+  return job.over[path] ?? usualWordsOn(def, job, path) ?? ''
 }
 
 /** Where a field's words come from, for its mark. */
@@ -233,7 +273,7 @@ export function fieldMark(job: JobSheet | null, path: string): FieldMark {
 /** A job's field typed over. Words that read as the usual are not kept, so a job holds only what differs. */
 export function withJobWords(def: SheetDef, job: JobSheet, path: string, words: string): JobSheet {
   const over = { ...job.over }
-  if (words === usualWords(def, path)) delete over[path]
+  if (words === usualWordsOn(def, job, path)) delete over[path]
   else over[path] = words
   return { ...job, over }
 }
@@ -312,7 +352,25 @@ export function withoutJobExtra(job: JobSheet, extraKey: string): JobSheet {
  */
 export function usualFromJobField(def: SheetDef, job: JobSheet, path: string): SheetDef {
   const words = job.over[path]
-  return words == null ? def : withUsualWords(def, path, words)
+  if (words == null) return def
+  if (path !== fieldPath('sub')) return withUsualWords(def, path, words)
+  // The line under the title goes to the usual with the job's name as a blank, never as the filled words.
+  const usual = subtitleAsUsual(words, job.name)
+  return usual == null ? def : withUsualWords(def, path, usual)
+}
+
+/** Where a job's own words stand against the usual's draft: in it already, ready to be made the usual, or held. */
+export type UsualOffer = { kind: 'in-usual' } | { kind: 'offer' } | { kind: 'held'; why: string }
+
+/** Why a line under the title cannot be made the usual. */
+export const SUB_NOT_USUAL = "This line does not say this job's name, so no other job could put its own name in it."
+
+/** What the list of what differs offers beside **Back to the usual** for one field. */
+export function usualOffer(def: SheetDef, job: JobSheet, path: string): UsualOffer {
+  const words = job.over[path]
+  if (words != null && usualWordsOn(def, job, path) === words) return { kind: 'in-usual' }
+  if (path === fieldPath('sub') && words != null && subtitleAsUsual(words, job.name) == null) return { kind: 'held', why: SUB_NOT_USUAL }
+  return { kind: 'offer' }
 }
 /** A line added for one job made a usual line: every job then asks for it, once the usual is published. */
 export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string): SheetDef {
@@ -329,7 +387,7 @@ export function usualHasCover(def: SheetDef, line: { label: string; limit: strin
  * usual asks for word for word. So a job keeps only what differs, also after the usual moves toward it.
  */
 export function pruneJobSheet(def: SheetDef, job: JobSheet): JobSheet {
-  const over = Object.fromEntries(Object.entries(job.over).filter(([path, words]) => usualWords(def, path) !== words))
+  const over = Object.fromEntries(Object.entries(job.over).filter(([path, words]) => usualWordsOn(def, job, path) !== words))
   const extra = job.extra.filter((x) => !usualHasCover(def, x))
   if (Object.keys(over).length === Object.keys(job.over).length && extra.length === job.extra.length) return job
   return { ...job, over, extra }
@@ -353,7 +411,7 @@ export function sheetDiffers(def: SheetDef, job: JobSheet): SheetDiffer[] {
   const order = [...SHEET_FIELD_KEYS.map(fieldPath), ...def.open.map((l) => openPath(l.key)), ...def.cover.flatMap((c) => [coverPath(c.key, 'label'), coverPath(c.key, 'limit')])]
   const fields: SheetDiffer[] = order.flatMap((path): SheetDiffer[] => {
     const words = job.over[path]
-    const usual = usualWords(def, path)
+    const usual = usualWordsOn(def, job, path)
     return words != null && usual != null && words !== usual ? [{ kind: 'field', path, name: pathName(def, path), usual, words }] : []
   })
   const off: SheetDiffer[] = def.cover.filter((c) => job.off.includes(c.key)).map((c) => ({ kind: 'off', coverKey: c.key, name: c.label }))
@@ -379,8 +437,8 @@ export function layOver(def: SheetDef, job: JobSheet): ResolvedSheet {
     addr1: w('addr1'),
     addr2: w('addr2'),
     title: w('title'),
-    // The line under the title is the usual words and then the job's name, unless the job wrote the whole line.
-    subtitle: job.over[fieldPath('sub')] ?? `${def.fields.sub} ${job.name}`.trim(),
+    // The line under the title is the usual's line with the job's name in its blank, unless the job wrote the whole line.
+    subtitle: sheetWords(def, job, fieldPath('sub')),
     open: def.open.map((l) => sheetWords(def, job, openPath(l.key))),
     lead: w('lead'),
     insured: [...job.insured],

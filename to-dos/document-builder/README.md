@@ -571,7 +571,8 @@ Found and not fixed. No PR holds any of these.
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
   on, on the screen and in `document-builder-send`. A sheet on unchecked words can go with no
   *Send it anyway* box.
-- **Make this the usual** on the line under the title doubles the job's name on every job.
+- **Fixed, v2.8135.** **Make this the usual** on the line under the title doubled the job's name on every job. The
+  usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
 - **Send it again** picks the contact by name and does not say who.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
