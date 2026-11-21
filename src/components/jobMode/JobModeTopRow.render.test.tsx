@@ -165,6 +165,68 @@ describe('JobModeTopRow', () => {
     expect(names()[0]).toBe('Photo')
   })
 
+  it('on a page with no hours card the row reads the week itself, and only while the square is drawn', async () => {
+    const loadHours = vi.fn(async () => 28.94)
+    const working = renderWithProviders(<JobModeTopRow userId="u1" role="superintendent" hoursThisWeek={12} tomorrowJobs={3} loadHours={loadHours} load={async () => ahead} loadBoxes={noBoxes} />)
+    await settle()
+    // A day with a job ahead draws no hours square, so the week is not read.
+    expect(names()[0]).toBe('Directions')
+    expect(loadHours).not.toHaveBeenCalled()
+    working.unmount()
+    renderWithProviders(<JobModeTopRow userId="u1" role="superintendent" hoursThisWeek={12} tomorrowJobs={3} loadHours={loadHours} load={async () => noDay} loadBoxes={noBoxes} />)
+    await settle()
+    expect(loadHours).toHaveBeenCalledTimes(1)
+    // The row's own read wins over a number handed in.
+    expect(names()).toEqual(['28.9 hThis week', '3 jobsTomorrow', 'Paint a map', 'My spend2'])
+  })
+
+  it('on a page with no hours card the This week square opens that page\'s own door', async () => {
+    const onHours = vi.fn()
+    renderWithProviders(<JobModeTopRow userId="u1" role="superintendent" loadHours={async () => 40} onHours={onHours} load={async () => noDay} loadBoxes={noBoxes} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'This week: 40 h so far. Open your hours' }))
+    expect(onHours).toHaveBeenCalledTimes(1)
+    expect(recordNavClick).toHaveBeenCalledWith('u1', 'superintendent', 'job-mode-row', '#hours')
+  })
+
+  it('the row\'s own week is read again on a punch, and a read that fails keeps the number', async () => {
+    let week: number | null = 31.5
+    let fail = false
+    const loadHours = vi.fn(async () => {
+      if (fail) throw new Error('no signal')
+      return week
+    })
+    let tell = () => {}
+    const Teller = () => {
+      tell = useUpdateFocusOpenerBridge().notifySessionChanged
+      return null
+    }
+    renderWithProviders(
+      <UpdateFocusOpenerBridgeProvider>
+        <Teller />
+        <JobModeTopRow userId="u1" role="superintendent" loadHours={loadHours} load={async () => ({ ...noDay })} loadBoxes={noBoxes} />
+      </UpdateFocusOpenerBridgeProvider>,
+    )
+    await settle()
+    expect(names()[0]).toBe('31.5 hThis week')
+    week = 39.5
+    act(() => tell())
+    await settle()
+    expect(loadHours).toHaveBeenCalledTimes(2)
+    expect(names()[0]).toBe('39.5 hThis week')
+    fail = true
+    act(() => tell())
+    await settle()
+    expect(loadHours).toHaveBeenCalledTimes(3)
+    expect(names()[0]).toBe('39.5 hThis week')
+  })
+
+  it('with nobody to read on that page the square says what it opens', async () => {
+    renderWithProviders(<JobModeTopRow userId="u1" role="superintendent" hoursThisWeek={12} loadHours={async () => null} load={async () => noDay} loadBoxes={noBoxes} />)
+    await settle()
+    expect(names()[0]).toBe('My hours')
+  })
+
   it('draws nothing with nobody signed in', () => {
     const { container } = renderWithProviders(<JobModeTopRow userId={null} role={null} load={async () => noDay} loadBoxes={noBoxes} />)
     expect(container.querySelector('[data-job-mode-top-row]')).toBeNull()

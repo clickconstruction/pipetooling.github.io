@@ -8,6 +8,9 @@ import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { loadPaintOfficeJobId } from '../paintedMap/paintedMapPressIo'
 import type { PaintPressJob, PaintPressStop } from '../paintedMap/paintedMapPress'
 import { legOf } from './onMyWay'
+import { defaultAvailabilityIo, type AvailabilityIo } from '../people/availabilityIo'
+import { fetchMyUtilization } from '../people/fetchUtilizationBoard'
+import type { SalariedWeek } from '../salariedEffectiveHours'
 import type { TopRowDay } from './topRow'
 
 type JobRow = { id?: string | null; hcp_number: string | null; job_name: string | null; job_address: string | null; billing_only?: boolean | null }
@@ -89,4 +92,16 @@ export async function loadSiteBoxCount(jobId: string): Promise<number> {
   const { count, error } = await supabase.from('job_containers').select('id', { count: 'exact', head: true }).in('job_id', jobIds).is('retired_at', null).neq('kind', 'unsorted')
   if (error) throw error
   return count ?? 0
+}
+
+/**
+ * This week's hours so far, for a page that draws the row with no hours card to hand it the number (the Short
+ * view of Job Mode). The hours card's own read and the same rule: the week's hours when the person has a row on
+ * the board, zero for an answer with nothing on the clock, and `null` for nobody to read, which the square
+ * draws as My hours. A read that fails throws, and the row keeps the number it had.
+ */
+export async function loadTopRowWeekHours(args: { userId: string; name: string; role: string; isSalary: boolean; salariedWeek?: SalariedWeek | null; io?: AvailabilityIo }): Promise<number | null> {
+  const read = await fetchMyUtilization({ userId: args.userId, name: args.name, role: args.role, isSalary: args.isSalary, salariedWeek: args.salariedWeek ?? null, io: args.io ?? defaultAvailabilityIo() })
+  const row = read.board.people[0] ?? null
+  return row ? (row.weeks[row.weeks.length - 1]?.workedHours ?? 0) : null
 }

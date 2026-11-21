@@ -22,6 +22,8 @@ import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
+import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
+import { loadTopRowWeekHours } from '../lib/jobMode/topRowIo'
 import { JOB_MODE_SHORT_WORDS, jobModeShortOn, jobModeShortScheduleRead, jobModeShortTomorrow } from '../lib/jobMode/jobModeShort'
 import { useTrainingCoursesOwed } from '../hooks/useTrainingCoursesOwed'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
@@ -578,6 +580,13 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [clockDisplayName, authUser?.id])
+  // The Short view of Job Mode has no hours card, so its day row reads the week itself. One identity per person
+  // and pay setup: the row reads again only when one of them changes, or the clock does.
+  const jobModeShortUserId = authUser?.id ?? null
+  const jobModeShortLoadHours = useCallback(
+    () => (jobModeShortUserId ? loadTopRowWeekHours({ userId: jobModeShortUserId, name: clockDisplayName ?? '', role: role ?? '', isSalary: dashboardSelfIsSalary, salariedWeek: dashboardSelfSalariedWeek }) : Promise.resolve(null)),
+    [jobModeShortUserId, clockDisplayName, role, dashboardSelfIsSalary, dashboardSelfSalariedWeek],
+  )
   const openMyTimePreviewFromClock = useCallback(() => {
     if (!authUser?.id) return
     const dateStr = denverCalendarDayKey(Date.now())
@@ -1302,12 +1311,33 @@ export default function Dashboard() {
         )}
       </>
     )
-    // Job Mode, short (punch list #384): the card's top, what waits on him, tomorrow in one line and one door.
-    // The pinned quick row, Your week, the hours block, My Schedule and Training are behind Everything else.
+    // Job Mode, short (punch list #384): the day's row, the card's top, what waits on him, tomorrow in one line and
+    // one door. Your week, the hours block, My Schedule and Training are behind Everything else. The row is the
+    // owner's pick of 2026-11-20 (punch list #409): it reads its own hours, and its This week square opens the door
+    // and lands on My Time, where the hours are.
     if (jobModeShort) {
+      const openEverythingElse = () => {
+        setJobModeShowFullDashboard(true)
+        setShortShowFullDashboard(true)
+      }
       const tomorrowStops = subScheduleDayPartition.tomorrowBlocks.map((b) => ({ timeStart: b.time_start, label: subScheduleLabels.get(b.job_id ?? `bid:${b.bid_id ?? ''}`) ?? (b.job_id == null ? 'Bid' : 'Job') }))
       return (
         <JobModeShortPage
+          row={
+            <JobModeTopRow
+              userId={authUser.id}
+              role={role}
+              tomorrowJobs={jobModeTomorrowJobs}
+              loadHours={jobModeShortLoadHours}
+              onHours={() => {
+                openEverythingElse()
+                // The full page draws on the next frames, and its cards above My Time settle a moment later.
+                const land = () => document.getElementById('dash-me')?.scrollIntoView?.({ block: 'start' })
+                requestAnimationFrame(() => requestAnimationFrame(land))
+                window.setTimeout(land, 700)
+              }}
+            />
+          }
           top={jobModeTop}
           card={<DashboardJobModeCard userId={authUser.id} onLeaveReport={(j) => setLeaveReportJob(j)} onTurnaway={(j) => setTurnawayJob(j)} canClockOut={!dashboardSelfIsSalary} knownJobs={jobsForVisitLabels} short />}
           waiting={<DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} title={JOB_MODE_SHORT_WORDS.waiting} />}
@@ -1319,8 +1349,7 @@ export default function Dashboard() {
           }}
           onEverythingElse={() => {
             recordNavClick(authUser.id, role, 'job-mode-short', '#everything-else')
-            setJobModeShowFullDashboard(true)
-            setShortShowFullDashboard(true)
+            openEverythingElse()
             window.scrollTo(0, 0)
           }}
           tail={jobModeWindows}

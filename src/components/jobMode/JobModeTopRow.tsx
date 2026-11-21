@@ -4,6 +4,10 @@
  * sit at the right end and never move. `lib/jobMode/topRow.ts` decides which squares and their words; this
  * file reads the day, draws them and opens each door.
  *
+ * The Short view of Job Mode draws the row too (the owner's pick, 2026-11-20). That page has no hours card, so
+ * there the row reads the week itself (`loadHours`) and its This week square opens the door to the full page
+ * (`onHours`).
+ *
  * The day is read when the row is drawn and again when the clock changes. Until it lands the left pair is
  * two empty squares, so nothing jumps when it does. A read that fails draws the person's own squares: no
  * press on this row waits on a weak signal.
@@ -47,6 +51,13 @@ type Props = {
   hoursThisWeek?: number | null
   /** Tomorrow's stops, from the Dashboard's schedule read. `null` until it lands. */
   tomorrowJobs?: number | null
+  /**
+   * For a page with no hours card (the Short view): the row reads the week itself, and only while the This week
+   * square is drawn, so a working day costs no read. With it `hoursThisWeek` is not looked at.
+   */
+  loadHours?: () => Promise<number | null>
+  /** For a page with no hours card: where the This week square goes. Without it the square scrolls to the card. */
+  onHours?: () => void
   /** For a smoke: the day's read. */
   load?: (userId: string) => Promise<TopRowDay>
   /** For a smoke: the site's box count. */
@@ -107,7 +118,7 @@ const RECEIPT = glyph(
   </>,
 )
 
-export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs = null, load = loadTopRowDay, loadBoxes = loadSiteBoxCount }: Props) {
+export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs = null, loadHours, onHours, load = loadTopRowDay, loadBoxes = loadSiteBoxCount }: Props) {
   const navigate = useNavigate()
   const jobDetailModal = useJobDetailModal()
   const subscribeSessionChanges = useSessionChanges()
@@ -148,13 +159,29 @@ export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs
     }
   }, [onSiteJobId, loadBoxes])
 
+  // The week's hours, read here for a page with no hours card. Only while the square is drawn, and again whenever
+  // the day is read again, which is every punch. A read that fails keeps the number already on the square.
+  const [ownHours, setOwnHours] = useState<number | null>(null)
+  const noJobLeft = state?.kind === 'none'
+  useEffect(() => {
+    if (!loadHours || !noJobLeft) return
+    let live = true
+    loadHours().then(
+      (h) => live && setOwnHours(h),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [loadHours, noJobLeft, day])
+
   if (!userId) return null
 
   const siteBoxes = boxes && boxes.jobId === onSiteJobId ? boxes.count : null
   const squares: TopRowSquareId[] = state ? topRowSquares(state, siteBoxes) : ['paint', 'spend']
   const job = state && state.kind !== 'none' ? state.job : null
   const pressed = (square: TopRowSquareId) => recordNavClick(userId, role, TOP_ROW_CONTROL, topRowTarget(square))
-  const hours = topRowHoursValue(hoursThisWeek)
+  const hours = topRowHoursValue(loadHours ? ownHours : hoursThisWeek)
   const tomorrow = topRowTomorrowValue(tomorrowJobs)
   const spendBadge = topRowBadge(spendCount)
 
@@ -197,7 +224,7 @@ export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs
         )
       case 'hours':
         return (
-          <button key={square} type="button" data-top-row-square={square} aria-label={TOP_ROW_ARIA.hours(hours)} style={quiet} onClick={() => { pressed(square); document.getElementById(JOB_MODE_HOURS_ANCHOR)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>
+          <button key={square} type="button" data-top-row-square={square} aria-label={TOP_ROW_ARIA.hours(hours)} style={quiet} onClick={() => { pressed(square); if (onHours) onHours(); else document.getElementById(JOB_MODE_HOURS_ANCHOR)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>
             {hours ? <span style={value}>{hours}</span> : CLOCK}
             <span>{hours ? TOP_ROW_WORDS.hours : TOP_ROW_WORDS.hoursUnread}</span>
           </button>
