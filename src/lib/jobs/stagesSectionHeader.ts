@@ -1,5 +1,5 @@
 import type { StageRow } from '../jobsStagesBoard'
-import { billedStageRowAgingBucket, billedStageRowHasNoBillLine, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { billedStageRowAgingBucket, billedStageRowHasNoBillLine, billedStageRowIsInKind, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { formatCurrencyAbbrevTruncated } from './jobFormatting'
 import type { StagesSectionStat } from './stagesHeaderStats'
 
@@ -34,15 +34,17 @@ export function stagesSectionLoadingSuffix({ open, merged, busy }: { open: boole
   return open && !merged && busy ? ' — loading' : ''
 }
 
-export type BilledListFilter = '30_90' | '90' | 'no_line' | null
+export type BilledListFilter = '30_90' | '90' | 'no_line' | 'in_kind' | null
 
 /**
  * The Billed list under its aging chip: the 30–90 or 90+ bucket, the rows with money owed
- * and no bill line, or every row when no chip is down. The chips themselves always describe
- * the whole section; only the list narrows.
+ * and no bill line, the rows an in kind deal pays (punch list #301: in no aging bucket), or
+ * every row when no chip is down. The chips themselves always describe the whole section;
+ * only the list narrows.
  */
 export function billedListRows(rows: readonly StageRow[], filter: BilledListFilter, now = new Date()): StageRow[] {
   if (!filter) return [...rows]
   if (filter === 'no_line') return rows.filter((r) => stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r))
+  if (filter === 'in_kind') return rows.filter(billedStageRowIsInKind)
   return rows.filter((r) => billedStageRowAgingBucket(r, now) === filter)
 }

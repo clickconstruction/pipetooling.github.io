@@ -6,6 +6,8 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { billOnOpenJob, openRemainder } from '../billing/billTruth'
 import { billAppliedOnJob } from './billApplied'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
+import { splitInKind } from '../inKind/inKindApart'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -71,6 +73,9 @@ export function billedRowsRemainingTotal(rows: readonly StageRow[]): number {
 }
 
 export function stageRowBilledAgeReference(r: StageRow): { ymd: string; handSet: boolean; source?: 'collections' } | null {
+  // A bill an in kind deal pays is on a schedule (punch list #301): it has no clock, so no reader of this one
+  // function can call it 30 or 90 days late. `buildBilledInKindBucket` counts those rows for the board's chip.
+  if (jobIsScheduledInKind(r.job)) return null
   if (r.kind === 'job') {
     if (!jobInCollections(r.job)) return null
     const flagged = r.job.collections_at?.trim()
@@ -249,6 +254,17 @@ export function buildBilledNoLineBucket(rows: StageRow[]): { count: number; sum:
     sum += open
   }
   return { count, sum }
+}
+
+/** A billed row with money open that an in kind deal pays (punch list #301): scheduled, never aged. */
+export function billedStageRowIsInKind(r: StageRow): boolean {
+  return jobIsScheduledInKind(r.job) && stageRowBilledRemainingAmount(r) > 0
+}
+
+/** Count + open dollars of the board's billed rows an in kind deal pays (the "In kind" chip beside 30+ and 90+). */
+export function buildBilledInKindBucket(rows: readonly StageRow[]): { count: number; sum: number } {
+  const { inKind } = splitInKind(rows, (r) => jobIsScheduledInKind(r.job), stageRowBilledRemainingAmount)
+  return { count: inKind.count, sum: inKind.dollars }
 }
 
 export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]): number {

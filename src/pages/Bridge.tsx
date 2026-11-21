@@ -1242,6 +1242,7 @@ export default function Bridge() {
       cashUsd: cashToday,
       ar: { total: fin.data.ar.total, count: fin.data.ar.count, items: fin.data.ar.items },
       arCollections: { total: fin.data.arCollections.total, count: fin.data.arCollections.count },
+      arInKind: { total: fin.data.arInKind.total, count: fin.data.arInKind.count },
       ap: { total: fin.data.ap.total, supplyTotal: fin.data.ap.supplyTotal, payrollTotal: fin.data.ap.payrollTotal, subLaborTotal: fin.data.ap.subLaborTotal, upcomingTotal: fin.data.ap.upcomingTotal },
       unbilled: { total: billPile.knownUsd, count: billPile.knownJobs },
       bills,
@@ -1734,6 +1735,13 @@ export default function Bridge() {
                     <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(fin.data.arCollections.total)}</span>
                   </li>
                 )}
+                {/* Punch list #301: a credit is not cash, so a bill an in kind deal pays is in no week here. */}
+                {fin.data && fin.data.arInKind.count > 0 && (
+                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
+                    <span>Scheduled in kind ({fin.data.arInKind.count}) — not counted</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(fin.data.arInKind.total)}</span>
+                  </li>
+                )}
               </ul>
               {receiptsPress && (
                 <button type="button" onClick={() => setListsAll((a) => !a)} aria-expanded={listsAll} data-testid="bridge-receipts-later" style={{ ...btnStyle, marginTop: '0.4rem', minHeight: 36 }}>
@@ -1785,6 +1793,7 @@ export default function Bridge() {
                   </div>
                   <div style={det}>
                     owed by you <b style={{ color: 'var(--text)' }}>{shortK(fin.data.ap.total)}</b> · finished work not yet billed <b style={{ color: 'var(--text)' }}>{billPile ? shortK(billPile.knownUsd) : '…'}</b> · collections {shortK(fin.data.arCollections.total)} ({fin.data.arCollections.count}) written off for planning
+                    {fin.data.arInKind.count > 0 ? ` · scheduled in kind ${shortK(fin.data.arInKind.total)} (${fin.data.arInKind.count}) not counted` : ''}
                   </div>
                 </>
               ) : (

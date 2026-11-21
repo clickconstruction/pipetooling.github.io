@@ -2,7 +2,7 @@
 title: keep track of work paid in kind
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: in kind, in kind page, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord, monthly credit, credit every month, not entered, no credit this month, needs you
+keywords: in kind, in kind page, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord, monthly credit, credit every month, not entered, no credit this month, needs you, in kind chip, not late, not money owed, accounts receivable, who owes what
 ---
 Some customers pay for finished work with something other than money. A landlord takes it off the rent. A supplier sends concrete. The customer's page keeps that deal in one place.
 
@@ -29,6 +29,36 @@ The bills of those jobs now read as scheduled in kind. The open balance stops re
 Those jobs also leave the Lien desk. The desk treats them as paid and stops watching their lien dates. The dates still run. [A job paid in kind is off the desk](/help/send-lien-notices-from-the-lien-desk#a-job-paid-in-kind-is-off-the-desk) says what that means.
 
 The payment forecast and Money waiting leave those bills out. One line on each says how much is scheduled in kind. The emails of both say the same.
+
+## Where those bills are left out
+
+A bill the arrangement pays is not money owed late. So the screens that count late money leave it out. Each one says what it left out in one line.
+
+:::cards
+
+:::card The Dashboard
+The **Accounts Receivable** card counts money owed only. A line under it names what is scheduled in kind. The card's window lists those bills in their own section, with no days on them.
+:::
+
+:::card The Pipeline
+Those bills are in neither the 30+ chip nor the 90+ chip. A chip named **In kind** counts them. Press it to list them.
+:::
+
+:::card Who owes what
+The bill is under no customer. A line under the total says where it went. Quickfill's **Billed Awaiting Payment** reads the same way.
+:::
+
+:::card Pay speeds
+The **By customer** list leaves the bill out of that customer's open money. No row colours it late.
+:::
+
+:::card The Bridge
+The bill is in no pile to collect and in no week of cash coming. The Bridge names it as scheduled in kind and not counted. The Monday email says the same.
+:::
+
+:::
+
+A customer can have some jobs on the arrangement and some off it. The bills off it still read as money owed, and they still age.
 
 ## Add a line when something is given
 

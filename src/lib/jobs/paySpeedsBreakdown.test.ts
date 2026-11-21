@@ -114,3 +114,21 @@ describe('receiptGapTone', () => {
   })
 })
 
+
+describe('buildPaySpeedsBreakdown: a bill an in kind deal pays (punch list #301)', () => {
+  const onDeal = (r: StageRow): StageRow => ({ ...r, job: { ...r.job, in_kind_arrangement_id: 'deal-a' } }) as StageRow
+  const open = (rows: StageRow[]) => {
+    const b = buildPaySpeedsBreakdown(rows, speeds)
+    return [...b.ranked, ...b.thin].map((c) => [c.customerId, c.open])
+  }
+
+  it('a covered bill is no payer’s open money', () => {
+    expect(open([onDeal(invRow('kestrin', 'Kestrin Builders', 4200))])).toEqual([])
+  })
+  it('a payer part covered keeps the bill off the deal as open money', () => {
+    expect(open([onDeal(invRow('kestrin', 'Kestrin Builders', 4200)), invRow('kestrin', 'Kestrin Builders', 900)])).toEqual([['kestrin', 900]])
+  })
+  it('an ordinary bill is counted as before', () => {
+    expect(open([invRow('kestrin', 'Kestrin Builders', 1800)])).toEqual([['kestrin', 1800]])
+  })
+})

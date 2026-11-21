@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DashboardFinancials } from '../dashboardFinancialsLoad'
 import type { FinancialItem } from '../dashboardFinancials'
 import type { BridgeData } from './loadBridgeData'
-import { buildWeekMailFromReads, type MondaySheetReads } from './sheetBuild'
+import { buildReceipts, buildWeekMailFromReads, type MondaySheetReads } from './sheetBuild'
 import type { BidSent } from './bidWins'
 import type { EstimateSent } from './estimateWins'
 import type { DemandInput } from './demandPace'
@@ -52,6 +52,7 @@ function fin(arItems: FinancialItem[] = []): DashboardFinancials {
     ar: bucket(arItems),
     arCollections: bucket(),
     arUncollectible: bucket(),
+    arInKind: bucket(),
     arExcluded: { count: 0, total: 0 },
     ap: { ...bucket(), supplyTotal: 0, payrollTotal: 0, subLaborTotal: 0, upcomingTotal: 0 },
     apUpcoming: { total: 0, count: 0, items: [] },
@@ -196,5 +197,32 @@ describe('buildWeekMailFromReads: Market on the won rates (punch list #318)', ()
       expect(market(mail)?.paceText).toBe('$50k asked')
       expect(mail.marketParts).toEqual([])
     }
+  })
+})
+
+describe('a bill an in kind deal pays (punch list #301)', () => {
+  // The loader's AR bucket already leaves a deal's bills out (`buildArBuckets`), so the mail's part is to say so.
+  const finWith = (arItems: FinancialItem[], inKindItems: FinancialItem[]): DashboardFinancials => ({ ...fin(arItems), arInKind: bucket(inKindItems) })
+
+  it('a covered bill is in no receipt and no late count, and the mail says where it went', () => {
+    const f = finWith([], [item('inv:deal', 14_643.46, null as unknown as string)])
+    expect(buildReceipts({ data: data(), fin: f, collectDesk: null })).toEqual({ receipts: [], doubtful: [] })
+    const mail = buildWeekMailFromReads(reads({ fin: f }))
+    expect(mail.leftOut).toBe('$14,643 on 1 bill is scheduled in kind, not money owed.')
+    expect(weekMailText(mail, 'https://app.example/bridge')).toContain('$14,643 on 1 bill is scheduled in kind, not money owed.')
+  })
+
+  it('a payer part covered: the bill off the deal is still a receipt, and the line counts the covered one alone', () => {
+    const f = finWith([item('inv:money', 900, '2026-04-01')], [item('inv:deal', 4_200, null as unknown as string)])
+    const { receipts, doubtful } = buildReceipts({ data: data(), fin: f, collectDesk: null })
+    expect([...receipts, ...doubtful].map((r) => r.usd)).toEqual([900])
+    expect(buildWeekMailFromReads(reads({ fin: f, leftOut: [{ kind: 'development', key: 'd1', label: 'Oak Hollow' }] })).leftOut).toBe('Leaves out Oak Hollow. $4,200 on 1 bill is scheduled in kind, not money owed.')
+  })
+
+  it('an ordinary late bill, with no deal anywhere: the mail says nothing of in kind', () => {
+    const f = finWith([item('inv:late', 1_800, '2026-04-01')], [])
+    const { receipts, doubtful } = buildReceipts({ data: data(), fin: f, collectDesk: null })
+    expect(receipts.length + doubtful.length).toBe(1)
+    expect(buildWeekMailFromReads(reads({ fin: f })).leftOut).toBe('')
   })
 })

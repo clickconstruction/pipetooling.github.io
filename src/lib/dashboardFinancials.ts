@@ -24,6 +24,10 @@ import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
 import { effectivePctComplete } from './jobs/effectivePctComplete'
 import { computeBillTruth, type BillTruth, type BillTruthOpenRow } from './billing/billTruth'
 import { openAmount, partPaidWords } from './materials/payments/supplyPayment'
+import { jobIsScheduledInKind } from './inKind/inKindLedger'
+// Read where it lives, not through `./inKind/inKindApart`: this file is copied for the edge (`bridge-weekly-sheet`), and
+// a new file in that copy changes the bundle of every function that reads the copy's index.
+import { inKindApartWords, splitInKind } from '../../supabase/functions/_shared/inKindApart'
 
 export type FinancialItem = {
   key: string
@@ -83,6 +87,8 @@ export type FinancialJobRow = {
   gc_customer_id?: string | null
   bill_to_party?: string | null
   gcCustomer?: { name: string | null } | null
+  /** The in kind deal that pays this job's bills (punch list #301): its bills are scheduled, never owed late. */
+  in_kind_arrangement_id?: string | null
 }
 
 export type FinancialInvoiceRow = {
@@ -156,11 +162,14 @@ export type ArExcluded = { count: number; total: number }
 
 /** Sublabel for a bill that is fully paid but still `billed` — a Mark Paid to-do, not money owed. */
 export const AR_SETTLED_SUBLABEL = 'paid in full — not yet marked Paid'
+/** Sublabel for a bill an in kind deal pays (punch list #301): on a schedule, so it carries no date to age. */
+export const AR_IN_KIND_SUBLABEL = 'scheduled in kind'
 
 function arItemFromRow(
   row: BillTruthOpenRow,
   job: FinancialJobRow | undefined,
   invoiceById: ReadonlyMap<string, FinancialInvoiceRow>,
+  inKind = false,
 ): FinancialItem {
   const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
   const shell = row.kind === 'shell'
@@ -168,14 +177,17 @@ function arItemFromRow(
   return {
     key: shell ? `job:${row.jobId}` : `inv:${row.invoiceId}`,
     label: job ? financialJobLabel(job) : '—',
-    sublabel: row.settled
-      ? `${shell ? 'Billed job' : 'Billed invoice'} · ${AR_SETTLED_SUBLABEL}`
-      : shell
-        ? 'Billed job (no invoice rows)'
-        : 'Billed invoice',
+    sublabel: inKind
+      ? `${shell ? 'Billed job' : 'Billed invoice'} · ${AR_IN_KIND_SUBLABEL}`
+      : row.settled
+        ? `${shell ? 'Billed job' : 'Billed invoice'} · ${AR_SETTLED_SUBLABEL}`
+        : shell
+          ? 'Billed job (no invoice rows)'
+          : 'Billed invoice',
     amount: row.remaining,
-    // A settled row has nothing to age — never let it drive the "oldest" hint or the 30/90 bars.
-    dateYmd: row.settled || shell ? null : isoToYmd(inv?.billed_at ?? null),
+    // A settled row has nothing to age — never let it drive the "oldest" hint or the 30/90 bars. Nor has a bill a
+    // deal pays: it is on a schedule, so no reader of its date may call it late.
+    dateYmd: row.settled || shell || inKind ? null : isoToYmd(inv?.billed_at ?? null),
     jobId: row.jobId,
     address: (job?.job_address ?? '').trim() || null,
     pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
@@ -192,26 +204,53 @@ function arItemFromRow(
  * so the count matches the Pipeline strip), remainders clamped once in the kernel, bills on paid
  * or missing jobs excluded and counted in `excluded`. ar.total + collections.total = Owed;
  * `uncollectible` (v2.4784) is the Collections money the office gave up on — shown, never owed.
+ *
+ * `inKind` (punch list #301) is the bills an in kind deal pays (`jobs_ledger.in_kind_arrangement_id`):
+ * out of `ar` and out of `collections`, since a credit pays them down on a schedule and nobody
+ * chases them. Every reader of `ar` (the card, its aging bars, the Bridge's Collect pile and
+ * receipts) then leaves them out by construction, and says the bucket in one line so the total
+ * does not shrink with no word. A deal's bill the office gave up on stays in `uncollectible`.
  */
 export function buildArBuckets(
   jobs: FinancialJobRow[],
   invoices: FinancialInvoiceRow[],
   invoicePayments: FinancialInvoicePaymentRow[],
-): { ar: FinancialBucket; collections: FinancialBucket; uncollectible: FinancialBucket; excluded: ArExcluded; truth: BillTruth } {
+): { ar: FinancialBucket; collections: FinancialBucket; uncollectible: FinancialBucket; inKind: FinancialBucket; excluded: ArExcluded; truth: BillTruth } {
   const truth = computeBillTruth({ jobs, invoices, payments: invoicePayments })
   const jobsById = new Map(jobs.map((j) => [j.id, j]))
   const invoiceById = new Map(invoices.map((i) => [i.id, i]))
   const toItems = (rows: BillTruthOpenRow[]) => rows.map((r) => arItemFromRow(r, jobsById.get(r.jobId), invoiceById))
+  // A deal's bill that is paid off and not yet marked Paid stays where it was: a Mark Paid to-do, at $0 and never aged.
+  const onDeal = (r: BillTruthOpenRow) => !r.settled && jobIsScheduledInKind(jobsById.get(r.jobId))
+  const open = (r: BillTruthOpenRow) => r.remaining
+  const billed = splitInKind(truth.billed.rows, onDeal, open)
+  const collections = splitInKind(truth.collections.rows, onDeal, open)
   return {
-    ar: finishBucket(toItems(truth.billed.rows)),
-    collections: finishBucket(toItems(truth.collections.rows)),
+    ar: finishBucket(toItems(billed.money)),
+    collections: finishBucket(toItems(collections.money)),
     uncollectible: finishBucket(toItems(truth.uncollectible.rows)),
+    inKind: finishBucket([...billed.scheduled, ...collections.scheduled].map((r) => arItemFromRow(r, jobsById.get(r.jobId), invoiceById, true))),
     excluded: { count: truth.excludedOwed.count, total: truth.excludedOwed.total },
     truth,
   }
 }
 
-/** AR ignoring the collections split: open remainders on ALL billed invoices + invoice-less billed jobs. */
+/** The drill-down's section for the bills a deal pays. */
+export const AR_IN_KIND_SECTION_TITLE = 'Scheduled in kind — not money owed'
+
+/** The receivables card's line on what its total leaves out: "$14,643 on 8 bills is scheduled in kind, not money owed". Null with none. */
+export function arInKindLine(inKind: Pick<FinancialBucket, 'count' | 'total'> | null | undefined): string | null {
+  return inKind ? inKindApartWords({ count: inKind.count, dollars: inKind.total }, 'money owed') : null
+}
+
+/** The drill-down's footer label: what the total beside it leaves out. */
+export function arFooterTotalLabel(has: { collections: boolean; inKind: boolean }): string {
+  if (has.collections && has.inKind) return 'Total (excl. Collections and in kind)'
+  if (has.collections) return 'Total (excl. Collections)'
+  return has.inKind ? 'Total (excl. in kind)' : 'Total'
+}
+
+/** AR ignoring the collections split: open remainders on ALL billed invoices + invoice-less billed jobs that money pays (a deal's bills are `inKind`). */
 export function buildArBucket(
   jobs: FinancialJobRow[],
   invoices: FinancialInvoiceRow[],

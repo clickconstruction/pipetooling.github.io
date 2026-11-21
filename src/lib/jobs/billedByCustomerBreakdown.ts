@@ -9,11 +9,18 @@
  * `ageDays` null). Every row is kept, including a fully-paid bill never marked
  * Paid (`settled`, $0, never aged) — so the bill count here equals the strip's
  * (journey J4-1 (b): Quickfill used to say 58 where the board said 59).
+ *
+ * One kind of row is left out (punch list #301): a bill with money open that an
+ * in kind deal pays. A credit pays it down on a schedule, so its customer does
+ * not owe it late and nobody leans on them for it. `billedInKindLine` says what
+ * was left out, so the total does not shrink with no word.
  */
 import { jobPartyName } from './jobPartyExclusive'
 import { effectiveInvoiceParty, listPayer, type EffectiveBillParty } from './billToParty'
 import type { StageRow } from '../jobsStagesBoard'
-import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { buildBilledInKindBucket, stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
+import { inKindApartWords } from '../inKind/inKindApart'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { fixturesForInvoiceBill } from '../invoiceScopedFixtures'
 import { arLineItemFromFixture, type ArLineItem } from '../arModalLineItems'
@@ -97,6 +104,12 @@ export type BilledBreakdownCustomerGroup = {
   worstAgeHandSet: boolean
 }
 
+/** The list's word on the bills it left out because a deal pays them: "$14,643 on 8 bills is scheduled in kind, not money owed". Null with none. */
+export function billedInKindLine(billedActiveRows: readonly StageRow[]): string | null {
+  const bucket = buildBilledInKindBucket(billedActiveRows)
+  return inKindApartWords({ count: bucket.count, dollars: bucket.sum }, 'money owed')
+}
+
 /** Groups sorted by total owed descending; ties broken oldest-first. */
 export function buildBilledByCustomerBreakdown(
   billedActiveRows: readonly StageRow[],
@@ -107,6 +120,8 @@ export function buildBilledByCustomerBreakdown(
     const amount = stageRowBilledRemainingAmount(row)
     const settled = isSettledRemainder(amount)
     const job = row.job
+    // Scheduled in kind is not owed late. A paid-off bill on a deal stays: it still needs its Mark Paid.
+    if (!settled && jobIsScheduledInKind(job)) continue
     const inv = row.kind === 'job' ? null : row.inv
     // v2.4367: grouped under whoever the bill went to (the builder on a GC-billed bill);
     // a GC job (v2.3403) already grouped under the GC standing alone.

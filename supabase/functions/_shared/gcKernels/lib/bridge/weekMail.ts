@@ -45,6 +45,8 @@ export type WeekMail = {
   marketParts?: ReadonlyArray<string>
   /**
    * What the Bridge leaves out, in the page's own sentence under its name (`leftOutWords`): "Leaves out Oak Hollow."
+   * Since punch list #301 it ends with the bills an in kind deal pays, when there are any: "$14,643 on 8 bills is
+   * scheduled in kind, not money owed."
    * Empty or absent when nothing is left out, and then the mail says nothing of it.
    */
   leftOut?: string

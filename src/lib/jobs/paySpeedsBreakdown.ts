@@ -14,6 +14,7 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledRemainingAmount } from './invoiceBilling'
 import { listPayer } from './billToParty'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PayReceipt, type PaySpeedData } from './billedExpectedPay'
 
 export type PaySpeedCustomerRow = {
@@ -42,6 +43,9 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
+    // Punch list #301: a bill an in kind deal pays is not open money under its payer. Money waiting, in the same
+    // window, counts those bills in its one line (`moneyWaitingInKindLine`).
+    if (jobIsScheduledInKind(r.job)) continue
     // v2.4367: filed under whoever the bill went to (the builder on a GC-billed bill).
     const payer = listPayer(r.job, r.inv)
     const customerId = payer.id

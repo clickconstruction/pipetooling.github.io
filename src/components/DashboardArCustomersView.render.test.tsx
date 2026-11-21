@@ -102,3 +102,22 @@ describe('AR Customers view — the empty list names the next press (punch list 
     expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waiting on a customer. Every bill is paid.')
   })
 })
+
+describe('AR Customers view — the bills an in kind deal pays (punch list #301)', () => {
+  const inKind = { total: 14643.46, count: 8, oldestDateYmd: null, items: [] as FinancialItem[] }
+
+  it('one line under the list says what the list leaves out, with the door to In kind', () => {
+    const rollup = buildArCustomerRollup([], null, TODAY)
+    renderWithProviders(<DashboardArCustomersView rollup={rollup} query="" onOpenJob={null} billExtras={() => null} collectionsSection={null} inKindSection={inKind} isMobile={false} />)
+    expect(screen.getByText('$14,643 on 8 bills is scheduled in kind, not money owed.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open In kind' }).getAttribute('href')).toBe('/in-kind')
+    // A bill a deal pays is not paid, so the empty list does not say every bill is.
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waiting on a customer.')
+  })
+
+  it('says nothing when no bill is on a deal', () => {
+    const rollup = buildArCustomerRollup([], null, TODAY)
+    renderWithProviders(<DashboardArCustomersView rollup={rollup} query="" onOpenJob={null} billExtras={() => null} collectionsSection={null} inKindSection={{ ...inKind, total: 0, count: 0 }} isMobile={false} />)
+    expect(screen.queryByText(/scheduled in kind/)).toBeNull()
+  })
+})
