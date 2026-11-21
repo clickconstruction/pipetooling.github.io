@@ -2235,6 +2235,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "refresh-stripe-invoice-links",
   "remind-bid-followups",
   "remind-job-contracts",
+  "remind-person-papers",
   "report-draft",
   "request-job-account-move",
   "resend-webhook",
