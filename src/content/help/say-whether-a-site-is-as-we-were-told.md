@@ -18,6 +18,8 @@ The office wrote the list. Most of it came from the customer's own word. You are
 
 The card reads **Is it as told?** and names the stage, like Rough In.
 
+On the short page the card sits above **Open this job**. You do not open the job to find it.
+
 The card shows only when there is something to look at. The first day we planned for the stage is the first day it shows. A stage with no planned days is not asked about.
 
 ## When everything is as told
