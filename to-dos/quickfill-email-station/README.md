@@ -2,7 +2,7 @@
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
 group: close
-status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · the Google admin step done 2026-11-08 (the delegation row reads four scopes, `gmail.metadata` among them; a session typed it from the owner's Chrome, the owner pressed Authorize) · the switch went on 2026-11-08 at the owner's hand (`email_count_on_v1` true, a lead named, the limit 3 days; bids@ and team@ as the shared boxes and three people, each seeing their own rows) · the week of use ran 2026-11-08 to 2026-11-15 and was read on 2026-11-21 (under Where it stands) · left: the owner's read of it
+status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · the Google admin step done 2026-11-08 (the delegation row reads four scopes, `gmail.metadata` among them; a session typed it from the owner's Chrome, the owner pressed Authorize) · the switch went on 2026-11-08 at the owner's hand (`email_count_on_v1` true, the lead Robert, the limit 3 days; bids@ and team@ as the shared boxes and three people, Taunya, Grace and Wendi, each seeing their own rows) · the week of use ran 2026-11-08 to 2026-11-15 and was read on 2026-11-21 (under Where it stands) · left: the owner's read of it
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads

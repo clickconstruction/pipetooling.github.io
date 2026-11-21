@@ -18,7 +18,7 @@ summary: >
   close sheet the owner can read from the Dashboard.
 next: the owner reads the outcomes read of 2026-11-21 (under Where it stands) against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
 size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR, all built; decisions 4 and 6 one PR each, built 2026-11-08; left: the outcomes read (XS)
-blocker: none; the Email station's live labels wait on the Google admin step (#159)
+blocker: none; the owner's read of the outcomes is all that is left (the Google admin step the Email station waited on was done 2026-11-08, under #159)
 ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868, v2.6750, v2.6754
 opinion: do changes 1, 2 and 4 first, in that order; they fix the stamp without moving a line; change 3 is the owner's thesis in code and earns its train once 1 and 2 have shown what the assistant actually works
 ---
@@ -509,4 +509,4 @@ The first live look, read-only on prod data the night of 2026-10-25, found three
 
 Not done, by the decisions list: the Google admin step for the Email station (decision 9, with #159). After a week of rounds, the outcomes on `quickfill_section_mark_events` say whether the round changed: the share of presses under 20 seconds after the previous one (57% in the eight weeks read), how many were *Worked it* against *Done*, and the questions filed.
 
-**Read 2026-11-21**, through the dev seat on production, read-only: that outcomes read, from `quickfill_section_mark_events` for 2026-10-26 to 2026-11-19. 414 marks on 18 round days of 20 workdays, all by one marker. Marks under 20 seconds after the previous press: 280, which is 68% (57% in the eight weeks read). The median gap between marks is 6.5 seconds (it was 9), computed from the timestamps. By outcome: *Done* 177, *Worked it* 237, *Not sure* 0. Prospects went 268 to 264 and Billed Awaiting Payment 53 to 12. Lost bids with no reason read 75 against this card's 61, but by an inferred filter on `bids`, so treat that one as approximate. Left: the owner's read of these, then this folder goes.
+**Read 2026-11-21**, through the dev seat on production, read-only: that outcomes read, from `quickfill_section_mark_events` for 2026-10-26 to 2026-11-19. 414 marks on 18 round days of the 19 workdays in that range, all by one marker. Marks under 20 seconds after the previous press: 280, which is 68% (57% in the eight weeks read). The median gap between marks is 6.5 seconds (it was 9), computed from the timestamps. By outcome: *Done* 177, *Worked it* 237, *Not sure* 0. Prospects went 268 to 264 and Billed Awaiting Payment 53 to 12. Lost bids with no reason read 75 against this card's 61, but by an inferred filter on `bids`, so treat that one as approximate. Left: the owner's read of these, then this folder goes.

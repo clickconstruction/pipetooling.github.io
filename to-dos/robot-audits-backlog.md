@@ -13,7 +13,7 @@ ver: —
 mockup: not required — work in the existing Audits tab, no screen change
 group: waiting
 status: on 2026-09-29 the Robot Board read 31 audits waiting (oldest 29 d) · the owner's rule 2026-10-09: each estimator audits a standing half hour a week, oldest first · measured 2026-11-05 from the dev seat: 63 waiting, the oldest 65 days, 41 older than 14 days, one audit completed since the rule · the owner reset the cadence the same day · measured 2026-11-21 from the dev seat: 74 waiting, the oldest 82 days, 64 older than 14 days, none completed since 2026-11-05, so the target is not met
-next: The cadence restarts from 2026-11-05 (the owner's reset): each estimator works Bids → 🤖 Robots → Audits from the oldest for half an hour a week. The measure of 2026-11-21 from the dev seat (`read_rows bid_audits`, status pending, by requested_at) did not meet the target: audits waiting under 10 and none older than 14 days. If a single audit takes more than about fifteen minutes, write down which step is slow — that is the case for #63's queue.
+next: The cadence restarts from 2026-11-05 (the owner's reset): Wendi and Stephen each work Bids → 🤖 Robots → Audits from the oldest for half an hour a week. The measure of 2026-11-21 from the dev seat (`read_rows bid_audits`, status pending, by requested_at) did not meet the target: audits waiting under 10 and none older than 14 days. If a single audit takes more than about fifteen minutes, write down which step is slow — that is the case for #63's queue.
 blocker: The cadence itself: the two weeks from 2026-11-05 passed with no audit completed.
 ---
 
