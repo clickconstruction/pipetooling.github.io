@@ -24,9 +24,11 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin, arc
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only,
     is_digital_twin = EXCLUDED.is_digital_twin, archived_at = EXCLUDED.archived_at;
 INSERT INTO public.service_types (id, name, ledger_job_prefix) VALUES ('00000000-0000-0000-0000-00004135f001', 'Spot ground bed work', 'PG');
-INSERT INTO public.customer_addresses (id, property_kind) VALUES
-  ('00000000-0000-0000-0000-00004135d001', 'non_residential'),
-  ('00000000-0000-0000-0000-00004135d002', 'non_residential');
+INSERT INTO public.customers (id, name, master_user_id) VALUES
+  ('00000000-0000-0000-0000-00004135d101', 'Spot ground bed customer', '00000000-0000-0000-0000-00004135a001');
+INSERT INTO public.customer_addresses (id, customer_id, address, property_kind) VALUES
+  ('00000000-0000-0000-0000-00004135d001', '00000000-0000-0000-0000-00004135d101', '418 Made Up Run', 'non_residential'),
+  ('00000000-0000-0000-0000-00004135d002', '00000000-0000-0000-0000-00004135d101', '9 Made Up Road', 'non_residential');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, hcp_number, customer_address_id) VALUES
   ('00000000-0000-0000-0000-00004135b001', '00000000-0000-0000-0000-00004135a001', '00000000-0000-0000-0000-00004135f001', 'Sewer line at the house', '4135', '00000000-0000-0000-0000-00004135d001'),
   ('00000000-0000-0000-0000-00004135b002', '00000000-0000-0000-0000-00004135a001', '00000000-0000-0000-0000-00004135f001', 'Drain call at the house', '4136', '00000000-0000-0000-0000-00004135d001'),
