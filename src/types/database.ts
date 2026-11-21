@@ -35798,6 +35798,7 @@ export type Database = {
         Row: {
           board_version: string
           card_number: number
+          claimer_name: string
           section: string
           ticked_at: string
           user_id: string
@@ -35805,6 +35806,7 @@ export type Database = {
         Insert: {
           board_version?: string
           card_number: number
+          claimer_name?: string
           section: string
           ticked_at?: string
           user_id?: string
@@ -35812,6 +35814,7 @@ export type Database = {
         Update: {
           board_version?: string
           card_number?: number
+          claimer_name?: string
           section?: string
           ticked_at?: string
           user_id?: string
