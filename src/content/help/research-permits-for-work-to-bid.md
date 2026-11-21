@@ -214,13 +214,13 @@ The last column says what the row reads as.
 - {{chip:yellow|Builds, two tries}} means one or two bids so far. One or two bids is too early to say.
 - {{chip:gray|No permit on record}} means no permit carries their exact name. The company may still build.
 
-Three chips filter the table. **Builds here** shows the companies with a permit. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
+Three chips filter the table. **Builds** shows the companies with a permit in any city the app reads. **No permit on record** shows the rest. **Tie a name** shows the ones where a name on the permits begins like theirs.
 
 A company may file under a person or under another name. Press **Tie a name** on its row to find that name. The sheet suggests names and says why. Nothing is tied until you press. A tied name's permits then count for the company.
 
-The small words under a company say where its permits are. Press one to open that builder's sheet.
+The count in **Permits, all cities, 12 mo** is the same on every city's page. The small words under a company say where its permits are. Press one to open that builder's sheet.
 
-Four numbers sit at the top of **Market**. The first two count the builders to call this week and their jobs open now. The third says how many of the companies we bid pulled a permit. The fourth is the middle wait on the clock.
+Four numbers sit at the top of **Market**. The first two count the builders to call this week and their jobs open now. The third says how many of the companies we bid pulled a permit in any city the app reads. The fourth is the middle wait on the clock.
 
 ## Read the clock
 

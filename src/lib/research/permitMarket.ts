@@ -216,7 +216,16 @@ export function bidCompanies(input: { bids: readonly MarketBid[]; builders: read
 /** The three chips over the table. */
 export type BidCompanyShowing = 'builds' | 'no_permit' | 'tie'
 export const BID_COMPANY_SHOWING: readonly BidCompanyShowing[] = ['builds', 'no_permit', 'tie']
-export const BID_COMPANY_SHOWING_WORDS: Record<BidCompanyShowing, string> = { builds: 'Builds here', no_permit: 'No permit on record', tie: 'Tie a name' }
+/**
+ * The first chip was *Builds here* until v2.8134. Its count, the tile's and the column's are a
+ * company's permits in every city the pull reads, the card's definition, and each was drawn on
+ * every city's page under a word that read as that city alone. The count stands. The words now
+ * say what it covers.
+ */
+export const BID_COMPANY_SHOWING_WORDS: Record<BidCompanyShowing, string> = { builds: 'Builds', no_permit: 'No permit on record', tie: 'Tie a name' }
+
+/** The head of the permits column: every city the pull reads, twelve months. */
+export const BID_COMPANY_PERMITS_HEAD = 'Permits, all cities, 12 mo'
 
 function shows(c: BidCompany, showing: BidCompanyShowing): boolean {
   if (showing === 'builds') return c.permits > 0
@@ -256,10 +265,10 @@ export function permitsWhereWords(c: Pick<BidCompany, 'sources'>): string | null
   return `${where} · under ${tied.length > 2 ? `${tied.length} tied names` : tied.join(' and ')}`
 }
 
-/** The first tile: how many of the companies we bid pulled a permit. */
+/** The first tile: how many of the companies we bid pulled a permit, in any city the pull reads. The same on every city's page. */
 export function builtTile(rows: readonly BidCompany[]): { value: string; words: string } {
   const built = rows.filter((c) => c.permits > 0).length
-  return { value: `${built} of ${rows.length}`, words: rows.length === 1 ? 'company we bid pulled a permit here' : 'companies we bid pulled a permit here' }
+  return { value: `${built} of ${rows.length}`, words: rows.length === 1 ? 'company we bid pulled a permit in the cities we read' : 'companies we bid pulled a permit in the cities we read' }
 }
 
 // ---------- the clock ----------
