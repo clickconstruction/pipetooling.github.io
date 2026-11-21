@@ -2,7 +2,7 @@
 name: "Write someone up, from the Dashboard, on a phone"
 number: 410
 group: close
-status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · building on worktree-write-someone-up
+status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160 · left: photos, and the old HR Report card's retirement
 summary: >
   Taunya said writing someone up was not made easy enough for a leader or a superintendent from
   their Dashboard. A leader's only door was the HR Report card, 8.7 phone screens down the full
@@ -11,8 +11,9 @@ summary: >
   kind, what was seen, photos, who saw it, then a read-back and one press that sends. It lands in
   the Pending reports the office already reads, with the job, the time and the facts the record
   lacked. Seven PRs, built on the HR report queue and not on the Writeups forms.
-next: Build the train in order, the migration first and alone. Walk it on a ZZ Test person after each deploy.
-size: L as a train of seven (S · M · S · M · M · S · S)
+next: The photos migration, then photos in the sheet with the old HR Report card retired. Then a walk on a leader's and a superintendent's own phone.
+size: L as a train of seven (S · M · S · M · M · S · S); left: photos (M)
+ver: v2.8157, v2.8160
 blocker: None. The person's side and a kept voice recording are set aside, see *Set aside*.
 opinion: build — the first screen PR gives a leader and a superintendent a door they did not have, and nothing lands on a file until the office files it
 ---
@@ -89,15 +90,20 @@ All were put to her with a pick on 2026-11-20. Her go kept every pick.
 
 ## The plan
 
-1. **The database half (S).** The record's new facts, the superintendent's right to write and to read their
-   own, the list of people and the function a send lands through. A migration, pushed alone.
-2. **The press and the sheet (M).** The kernel, the sheet, the press on the full Dashboard for a leader and
-   a superintendent, spoken words, the read-back and the writer's own list. The help guide.
-3. **The short pages (S).** The same press on the short Dashboard, Job Mode and its Short view.
-4. **No signal (M).** The write-up is kept on the phone and sent when the signal is back.
+1. **The database half (S).** Built, v2.8157, pushed 2026-11-21. The record's new facts, the superintendent's
+   right to write and to read their own, the list of people and the function a send lands through. Taking one
+   back and adding to one came with it, so step 7 needed no migration of its own.
+2. **The press and the sheet (M).** Built, v2.8160. The kernel, the sheet, the press on the full Dashboard for a
+   leader and a superintendent, spoken words, the read-back and the writer's own list. The help guide.
+3. **The short pages (S).** Built, v2.8160. The same press on the short Dashboard, Job Mode and its Short view.
+4. **No signal (M).** Built, v2.8160. The write-up is kept on the phone and sent when the signal is back.
 5. **Photos (M).** Taken in the sheet, kept with no signal, a numbered evidence record once filed. A migration.
-6. **The office's card (S).** Pending reports shows the facts, a line the same day, and Start a Writeup.
-7. **Add to it and Take it back (S).** A small migration.
+6. **The office's card (S).** Built, v2.8160. Pending reports shows the facts, and a line shows the same day.
+   **Start a Writeup from it** is not built: it waits for a word that it is wanted.
+7. **Add to it and Take it back (S).** Built, v2.8160.
+
+Steps 2 to 4, 6 and 7 went in as one change. Each costs most of an hour in CI and the queue, and none ships
+alone to any use.
 
 ## Set aside
 

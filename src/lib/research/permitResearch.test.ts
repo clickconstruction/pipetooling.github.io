@@ -189,7 +189,7 @@ describe('the hint', () => {
     expect(hintFor('Northgate Builders LLC', h).word).toBe('cold')
     expect(hintFor('Northgate Builders LLC', h).detail).toContain('on a calling deck')
     expect(hintFor('Caldwell & Sons', h).word).toBe('seen')
-    expect(hintFor('Harlan Development Co.', h)).toEqual({ tone: 'new', word: 'new name', detail: 'no bid to this name in our history' })
+    expect(hintFor('Harlan Development Co.', h)).toEqual({ tone: 'new', word: 'new name', detail: 'no bid to this name in the last two years' })
   })
   it('tallies the plumbers on the taken rows and places only the rows with a point', async () => {
     const { plumberTally, researchPins } = await import('./permitResearch')

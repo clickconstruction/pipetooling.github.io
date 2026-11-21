@@ -13,9 +13,17 @@ import {
 } from '../../lib/ageState'
 import {
   formatHrReportWhen,
+  isFieldWriteUp,
+  pendingReportFactLines,
+  reportCountsLine,
   sortPendingReportsOldestFirst,
   summarizePendingReportAging,
+  type PendingReportSeen,
 } from '../../lib/people/hrPendingReports'
+import { filePersonReport, PENDING_REPORT_COLUMNS } from '../../lib/people/hrPendingReportsIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { writeUpKindLabel } from '../../lib/people/writeUp'
+import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
  * People → HR → "Pending reports" (v2.2235): the queue of field reports
@@ -30,6 +38,10 @@ import {
  *
  * Oldest first with an age chip (journey-map #40): the report that has waited
  * eleven days leads the list and reads red, not gray under this morning's.
+ *
+ * A write-up sent from the Dashboard's Write someone up sheet (punch list #410) carries its facts: the kind as a chip,
+ * then the time, the job, who wrote it and how soon, whether they were on the clock there, who saw it and whether the
+ * person was told, one fact a line. Filing writes those facts into the entry ahead of the writer's own words.
  */
 
 export type PendingReport = {
@@ -39,7 +51,20 @@ export type PendingReport = {
   occurred_date: string
   content: string
   created_at: string
+  author_user_id?: string | null
+  kind?: string | null
+  job_label?: string | null
+  occurred_time?: string | null
+  author_role?: string | null
+  author_saw_it?: boolean | null
+  author_on_job?: boolean | null
+  seen_by?: PendingReportSeen[] | null
+  talked_to_person?: boolean | null
+  adds_to?: string | null
+  pressed_at?: string | null
 }
+
+type YearRow = { id: string; author_user_id: string | null; subject_person_id: string; status: string }
 
 export function HrPendingReportsSection({
   nameForPerson,
@@ -61,6 +86,7 @@ export function HrPendingReportsSection({
   const { showToast } = useToastContext()
   const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<PendingReport[] | null>(null)
+  const [year, setYear] = useState<YearRow[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dismissId, setDismissId] = useState<string | null>(null)
   const [reason, setReason] = useState('')
@@ -68,14 +94,25 @@ export function HrPendingReportsSection({
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('person_reports')
-      .select('id, subject_person_id, author_name, occurred_date, content, created_at')
+      .select(PENDING_REPORT_COLUMNS)
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
     if (error) {
       setRows([])
       return
     }
-    setRows(sortPendingReportsOldestFirst((data ?? []) as PendingReport[]))
+    setRows(sortPendingReportsOldestFirst((data ?? []) as unknown as PendingReport[]))
+    // This year's reports, for the one line that says how many the writer has sent and how many stand about the person.
+    // The line is a help, never a need: a read that fails leaves the cards as they are, without it.
+    try {
+      const { data: yearRows } = await supabase
+        .from('person_reports')
+        .select('id, author_user_id, subject_person_id, status')
+        .gte('created_at', `${new Date().getFullYear()}-01-01T00:00:00Z`)
+      setYear((yearRows ?? []) as YearRow[])
+    } catch {
+      setYear([])
+    }
   }, [])
 
   useEffect(() => {
@@ -113,10 +150,12 @@ export function HrPendingReportsSection({
     onOpenPerson(r.subject_person_id)
   }
 
-  async function file(id: string) {
+  async function file(r: PendingReport) {
+    const id = r.id
     setBusyId(id)
-    const { error } = await supabase.rpc('file_person_report', { p_report_id: id })
-    if (error) showToast(`Could not file: ${error.message}`, 'error')
+    // A write-up is filed with its facts ahead of the writer's words; an older report takes the function's own preamble.
+    const { error } = await filePersonReport(id, nameForPerson(r.subject_person_id), r)
+    if (error) showToast(formatErrorMessage(error, 'The report was not filed.'), 'error')
     else {
       showToast('Filed as a dated entry on their record.', 'success')
       onFiled()
@@ -139,10 +178,11 @@ export function HrPendingReportsSection({
 
   const btn = (primary: boolean): React.CSSProperties => ({
     font: 'inherit',
-    fontSize: '0.76rem',
+    fontSize: '0.8125rem',
     fontWeight: 650,
-    padding: '0.25rem 0.6rem',
-    borderRadius: 6,
+    minHeight: 44,
+    padding: '0 0.8rem',
+    borderRadius: 8,
     border: primary ? 'none' : '1px solid var(--border)',
     background: primary ? '#2563eb' : 'transparent',
     color: primary ? 'var(--surface)' : 'var(--text-link)',
@@ -168,10 +208,17 @@ export function HrPendingReportsSection({
 
       {rows.map((r) => {
         const age = describeAge(r.created_at, undefined, HR_PENDING_REPORT_AGE)
+        const subject = nameForPerson(r.subject_person_id)
+        const facts = pendingReportFactLines(r, subject)
         return (
-        <div key={r.id} style={{ border: `1px solid ${age?.state === 'red' ? 'var(--border-red)' : age?.state === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`, borderRadius: 8, padding: '0.65rem 0.75rem', marginBottom: '0.5rem', background: 'var(--surface)' }}>
+        <div key={r.id} data-pending-report={r.id} style={{ border: `1px solid ${age?.state === 'red' ? 'var(--border-red)' : age?.state === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`, borderRadius: 8, padding: '0.65rem 0.75rem', marginBottom: '0.5rem', background: 'var(--surface)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>About {nameForPerson(r.subject_person_id)}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>About {subject}</span>
+              {isFieldWriteUp(r) ? (
+                <span data-report-kind style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>{writeUpKindLabel(r.kind)}</span>
+              ) : null}
+            </span>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
               {age ? (
                 <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(age.state) }}>
@@ -181,12 +228,28 @@ export function HrPendingReportsSection({
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formatHrReportWhen(r)}</span>
             </span>
           </div>
+          {facts.length > 0 ? (
+            <div data-report-facts style={{ margin: '0.5rem 0 0' }}>
+              <ValueLines>
+                {facts.map((f) => (
+                  <ValueLine key={f.label} label={f.label}>
+                    <WorkedOutValue>{f.value}</WorkedOutValue>
+                  </ValueLine>
+                ))}
+              </ValueLines>
+            </div>
+          ) : null}
           <p style={{ fontSize: '0.85rem', color: 'var(--text-700)', margin: '0.45rem 0 0', whiteSpace: 'pre-wrap', borderLeft: '3px solid var(--border)', paddingLeft: '0.65rem' }}>
             {r.content}
           </p>
+          {facts.length > 0 ? (
+            <p data-report-counts style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.45rem 0 0' }}>
+              {reportCountsLine({ id: r.id, author_user_id: r.author_user_id ?? null, subject_person_id: r.subject_person_id, author_name: r.author_name }, year, subject)}
+            </p>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.6rem', alignItems: 'center' }}>
-            <button type="button" style={btn(true)} disabled={busyId === r.id} onClick={() => void file(r.id)}>
-              {busyId === r.id ? 'Filing…' : `File to ${nameForPerson(r.subject_person_id)}’s record`}
+            <button type="button" style={btn(true)} disabled={busyId === r.id} onClick={() => void file(r)}>
+              {busyId === r.id ? 'Filing…' : `File to ${subject}’s record`}
             </button>
             <button type="button" style={btn(false)} onClick={() => openPerson(r)}>
               Open their file

@@ -82,6 +82,14 @@ A blank is a word a clause holds in braces. Add one under **Blanks a clause may 
 
 A level is one pick for every setting. Add one under **Levels**.
 
+A choice can also say what puts a person in breach. A choice can say what the site must have too. Type one line each in the two boxes under the choice. A choice that leaves the topic out has no such boxes.
+
+A list can open on a notice. Type the notice's lines under **The notice a job's settings page opens on**. The office ticks the notice's box before the paper is required on a job.
+
+A list can carry a note on the real site. Type the note's lines under **The note on matching the paper to the site**.
+
+These lines are plain words about a choice. They are not the clause.
+
 ## Tie a clause to a choice
 
 On a paper with a settings list, a clause's window has one more line.

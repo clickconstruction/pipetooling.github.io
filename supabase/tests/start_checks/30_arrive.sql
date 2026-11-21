@@ -1,7 +1,8 @@
 -- Before we start, on arrival (migration *_start_check_arrive, punch list #382 PR 10): the crew is asked about the
 -- one stage whose days have come, shown only what nobody of ours has seen; Yes, all as told turns each into a yes we
 -- saw in the arriving person's name; a No opens its bullet again and sends Dispatch one stage check; a stage is asked
--- about once; and who the two functions refuse. Fixtures are written as postgres; presses run as each user; everything
+-- about once, by the read and by the door (migration *_start_check_arrive_once); and who the two functions refuse.
+-- Fixtures are written as postgres; presses run as each user; everything
 -- rolls back. Raises on the first failed assertion; ends with "start_check_arrive PASSED".
 -- See scripts/pgtest-start-checks.sh. Never against prod. Every name here is made up.
 \set ON_ERROR_STOP 1
@@ -52,14 +53,16 @@ END $$;
 GRANT USAGE ON SCHEMA sca TO authenticated, anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sca TO authenticated, anon;
 
--- One job on no site, with three stage lines. Rough In's days hold today, Top Out's start next month, Trim Set has none.
+-- One job on no site, with four stage lines. Rough In's days hold today, Top Out's start next month, Trim Set and
+-- Final have none.
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000003821f9', 'Arrive Bed Work');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
   ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821a2', '00000000-0000-0000-0000-0000003821f9', 'Lodge plumbing');
 INSERT INTO public.jobs_ledger_fixtures (id, job_id, name, stage_kind, sequence_order) VALUES
   ('00000000-0000-0000-0000-0000003821c1', '00000000-0000-0000-0000-0000003821b1', 'Rough In', 'order', 1),
   ('00000000-0000-0000-0000-0000003821c2', '00000000-0000-0000-0000-0000003821b1', 'Top Out', 'order', 2),
-  ('00000000-0000-0000-0000-0000003821c3', '00000000-0000-0000-0000-0000003821b1', 'Trim Set', 'order', 3);
+  ('00000000-0000-0000-0000-0000003821c3', '00000000-0000-0000-0000-0000003821b1', 'Trim Set', 'order', 3),
+  ('00000000-0000-0000-0000-0000003821c4', '00000000-0000-0000-0000-0000003821b1', 'Final', 'order', 4);
 INSERT INTO public.job_stage_windows (id, job_id, fixture_id, window_start, window_end) VALUES
   ('00000000-0000-0000-0000-0000003821e1', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', public.app_today() - 1, public.app_today() + 3),
   ('00000000-0000-0000-0000-0000003821e2', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c2', public.app_today() + 30, public.app_today() + 34);
@@ -67,16 +70,19 @@ INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES
   ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821aa'), ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ac'),
   ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ad'), ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ae');
 -- Rough In: three on them (one Ray told us, one we saw, one open) and one of ours. Top Out and Trim Set: one each.
+-- Final: one the office has already seen, so nobody has arrived there and there is nothing to look at.
 INSERT INTO public.start_check_bullets (id, job_id, fixture_id, sort_order, words, waits_on, reads) VALUES
   ('00000000-0000-0000-0000-000000382101', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 1, 'The slab is poured.', 'them', NULL),
   ('00000000-0000-0000-0000-000000382102', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 2, 'Power is on.', 'them', NULL),
   ('00000000-0000-0000-0000-000000382103', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 3, 'The trench is open.', 'them', NULL),
   ('00000000-0000-0000-0000-000000382104', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 4, 'Our material lands.', 'us', 'hand'),
   ('00000000-0000-0000-0000-000000382105', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c2', 1, 'Framing is done.', 'them', NULL),
-  ('00000000-0000-0000-0000-000000382106', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c3', 1, 'The walls are painted.', 'them', NULL);
+  ('00000000-0000-0000-0000-000000382106', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c3', 1, 'The walls are painted.', 'them', NULL),
+  ('00000000-0000-0000-0000-000000382107', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c4', 1, 'The water is on.', 'them', NULL);
 INSERT INTO public.start_check_marks (bullet_id, job_id, know, who_name, how, said_on, source) VALUES
   ('00000000-0000-0000-0000-000000382101', '00000000-0000-0000-0000-0000003821b1', 'word', 'Ray Ortiz', 'by phone', public.app_today() - 3, 'office'),
-  ('00000000-0000-0000-0000-000000382102', '00000000-0000-0000-0000-0000003821b1', 'saw', 'Dana Office', 'on site', public.app_today() - 2, 'office');
+  ('00000000-0000-0000-0000-000000382102', '00000000-0000-0000-0000-0000003821b1', 'saw', 'Dana Office', 'on site', public.app_today() - 2, 'office'),
+  ('00000000-0000-0000-0000-000000382107', '00000000-0000-0000-0000-0000003821b1', 'saw', 'Dana Office', 'on site', public.app_today() - 2, 'office');
 
 -- 1 · What is asked: the stage whose days hold today, and only what nobody of ours has seen.
 SET LOCAL ROLE authenticated;
@@ -114,6 +120,14 @@ SELECT sca.same('what the office saw before is left alone', (SELECT who_name FRO
 SELECT sca.same('Dispatch gets one stage check, high, on the stage, that names who told us', (SELECT pending_action || ' · ' || priority || ' · ' || title FROM public.dispatch_requests WHERE id = (SELECT (r ->> 'dispatch_request_id')::uuid FROM sca_out)), 'stage_check · high · Rough In · “The slab is poured.” · something else: not as told on arrival. Ray Ortiz told us it was ready');
 SELECT sca.same('and carries the stage and the bullet', (SELECT (fixture_id = '00000000-0000-0000-0000-0000003821c1')::text || ', ' || (pending_payload #>> '{stage_check,not_as_told,0}') FROM public.dispatch_requests WHERE id = (SELECT (r ->> 'dispatch_request_id')::uuid FROM sca_out)), 'true, 00000000-0000-0000-0000-000000382101');
 
+-- 3b · A stage is answered once. A second answer, from a card that was read before the first, is refused by name and
+-- keeps nothing: Yes, all as told from that card must not turn Hector's No into a yes we saw.
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
+SELECT sca.refused('a second answer at the stage is refused, in words that name who answered', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1')$$, 'Hector Helper already answered for this stage.');
+RESET ROLE;
+SELECT sca.same('and it kept nothing: one arrival, and the No stands with no yes on its bullet', (SELECT count(*) FROM public.start_check_arrivals WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1') || ' arrival, ' || (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382101' AND taken_back_at IS NULL) || ' yes on the slab', '1 arrival, 0 yes on the slab');
+
 -- 4 · A stage is asked about once. The next one waits for its days, and one with no days of ours is never asked about.
 SET LOCAL ROLE authenticated;
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
@@ -127,7 +141,7 @@ SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
 SELECT sca.same('a stage whose days have passed unfinished is still asked about', public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') #>> '{stage,name}', 'Top Out');
 -- The office may answer for a stage too (the desk), and a stage with nothing left to look at keeps no arrival.
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
-SELECT sca.refused('nothing left to look at keeps no arrival', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c3')$$, 'nothing left to look at');
+SELECT sca.refused('nothing left to look at keeps no arrival', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c4')$$, 'nothing left to look at');
 SELECT sca.same('the desk may answer for a stage', (public.start_check_arrive('00000000-0000-0000-0000-0000003821c2') ->> 'as_told'), '1');
 RESET ROLE;
 SELECT sca.same('anon may call neither', (SELECT count(*) FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name IN ('start_check_arrive', 'start_check_arrival_state') AND grantee IN ('anon', 'PUBLIC'))::text, '0');

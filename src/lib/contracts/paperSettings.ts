@@ -9,7 +9,10 @@
  * in `supabase/tests/paper_settings/20_scenario.sql` run through both, so the preview and the sign page cannot drift.
  *
  * A settings list holds no clause wording. Its words are the names of settings and choices and the plain words a
- * summary says. Pure: no React, no supabase, no clock.
+ * summary says. Since step 4 it also holds the words the office's settings page shows beside a choice: what puts a
+ * person in breach and what the site must have, and the notice and the site note the page opens on. The database
+ * stops a shape that is not plain lines (`20261121150000_settings_page_ground.sql`). Pure: no React, no supabase, no
+ * clock.
  */
 
 /** A key as the database keeps it: lower case, digits and underscores, a letter first. */
@@ -28,7 +31,34 @@ export interface SettingChoice {
   /** The blanks this choice fills, by field key. */
   fills: Record<string, string>
   fillsEs: Record<string, string>
+  /** What puts a person in breach under this choice, a line each. Absent when it has none. */
+  breach?: string[]
+  breachEs?: string[]
+  /** What the site must have for this choice to hold, a line each. Absent when it asks nothing of the site. */
+  site?: string[]
+  siteEs?: string[]
 }
+
+/** The four lists of lines a choice may carry. */
+export const CHOICE_LINE_KEYS = ['breach', 'breachEs', 'site', 'siteEs'] as const
+export type ChoiceLineKey = (typeof CHOICE_LINE_KEYS)[number]
+
+/**
+ * A few words the settings page opens on: the notice (*Before you start*, with the words beside its box in `tick`) and
+ * the site note (*Match the paper to the site*, with a `lead`). A note with no line is no note.
+ */
+export interface PaperNote {
+  title: string
+  titleEs: string
+  lead: string
+  leadEs: string
+  tick: string
+  tickEs: string
+  lines: string[]
+  linesEs: string[]
+}
+
+export const EMPTY_PAPER_NOTE: PaperNote = { title: '', titleEs: '', lead: '', leadEs: '', tick: '', tickEs: '', lines: [], linesEs: [] }
 
 export interface PaperSetting {
   key: string
@@ -58,6 +88,10 @@ export interface SettingsDef {
   settings: PaperSetting[]
   fields: PaperField[]
   levels: PaperLevel[]
+  /** The notice the settings page opens on. Absent when the list has none. */
+  notice?: PaperNote
+  /** The note on matching the paper to the site. Absent when the list has none. */
+  siteNote?: PaperNote
 }
 
 /** A job's picks: one choice a setting, by key. */
@@ -66,7 +100,7 @@ export type PaperPicks = Record<string, string>
 /** What puts a clause in the paper: a choice of a setting, by key. Null is in every paper. */
 export type ClauseWhen = Record<string, string> | null
 
-export const PAPER_SETTINGS_LIMITS = { settings: 40, choices: 12, fields: 40, levels: 12, words: 400 } as const
+export const PAPER_SETTINGS_LIMITS = { settings: 40, choices: 12, fields: 40, levels: 12, words: 400, lines: 20, noteLines: 12 } as const
 
 /** A settings paper asked for with no settings. The database says the same words. */
 export const SETTINGS_PAPER_BARE = 'This paper is built from settings. It goes with its settings.'
@@ -83,6 +117,34 @@ function stringBag(v: unknown): Record<string, string> {
   return out
 }
 
+/** Lines as they are kept: trimmed, and an empty one left out. While a person types, a list may hold empty lines. */
+export function tidyLines(lines: ReadonlyArray<string> | null | undefined): string[] {
+  return (lines ?? []).map((l) => l.trim()).filter((l) => l !== '')
+}
+
+function stringList(v: unknown): string[] {
+  return Array.isArray(v) ? tidyLines(v.filter((x): x is string => typeof x === 'string')) : []
+}
+
+function noteFrom(raw: unknown): PaperNote | null {
+  if (!isBag(raw)) return null
+  const note: PaperNote = { title: str(raw.title), titleEs: str(raw.titleEs), lead: str(raw.lead), leadEs: str(raw.leadEs), tick: str(raw.tick), tickEs: str(raw.tickEs), lines: stringList(raw.lines), linesEs: stringList(raw.linesEs) }
+  return note.lines.length > 0 ? note : null
+}
+
+/** A note as the list keeps it: its lines tidied, and nothing at all when no line is left. */
+function tidyNote(note: PaperNote | null | undefined): PaperNote | null {
+  if (!note) return null
+  const lines = tidyLines(note.lines)
+  return lines.length > 0 ? { ...note, lines, linesEs: tidyLines(note.linesEs) } : null
+}
+
+/** A choice's lines in one language. An empty Spanish list shows the English. */
+export function choiceLines(choice: SettingChoice, kind: 'breach' | 'site', lang: 'en' | 'es'): string[] {
+  const es = tidyLines(kind === 'breach' ? choice.breachEs : choice.siteEs)
+  return lang === 'es' && es.length > 0 ? es : tidyLines(kind === 'breach' ? choice.breach : choice.site)
+}
+
 /** The settings list from what the database holds, or null when it is not one at all. Gaps are `settingsDefProblems`'. */
 export function parseSettingsDef(raw: unknown): SettingsDef | null {
   if (!isBag(raw) || !Array.isArray(raw.settings)) return null
@@ -92,7 +154,13 @@ export function parseSettingsDef(raw: unknown): SettingsDef | null {
     const choices: SettingChoice[] = []
     for (const c of Array.isArray(s.choices) ? s.choices : []) {
       if (!isBag(c)) return null
-      choices.push({ key: str(c.key), label: str(c.label), labelEs: str(c.labelEs), says: str(c.says), saysEs: str(c.saysEs), out: c.out === true, fills: stringBag(c.fills), fillsEs: stringBag(c.fillsEs) })
+      const choice: SettingChoice = { key: str(c.key), label: str(c.label), labelEs: str(c.labelEs), says: str(c.says), saysEs: str(c.saysEs), out: c.out === true, fills: stringBag(c.fills), fillsEs: stringBag(c.fillsEs) }
+      // A list written before step 4 has none of these, and reads exactly as it did.
+      for (const k of CHOICE_LINE_KEYS) {
+        const lines = stringList(c[k])
+        if (lines.length > 0) choice[k] = lines
+      }
+      choices.push(choice)
     }
     settings.push({ key: str(s.key), label: str(s.label), labelEs: str(s.labelEs), choices })
   }
@@ -106,18 +174,33 @@ export function parseSettingsDef(raw: unknown): SettingsDef | null {
     if (!isBag(l)) return null
     levels.push({ key: str(l.key), label: str(l.label), labelEs: str(l.labelEs), alignedWith: str(l.alignedWith), alignedWithEs: str(l.alignedWithEs), picks: stringBag(l.picks) })
   }
-  return { settings, fields, levels }
+  const def: SettingsDef = { settings, fields, levels }
+  const notice = noteFrom(raw.notice)
+  if (notice) def.notice = notice
+  const siteNote = noteFrom(raw.siteNote)
+  if (siteNote) def.siteNote = siteNote
+  return def
 }
 
-/** The list as the database keeps it: empty Spanish and empty bags left out, so a list reads short. */
+/**
+ * The list as the database keeps it: empty Spanish, empty bags and empty lists left out, so a list reads short. A
+ * choice's lines and the two notes are tidied on the way. A list with none of them writes exactly as it did before
+ * step 4, so saving one unchanged is still *Nothing changed.*
+ */
 export function settingsDefJson(def: SettingsDef): Record<string, unknown> {
   const lean = (o: Record<string, unknown>): Record<string, unknown> =>
-    Object.fromEntries(Object.entries(o).filter(([, v]) => !(v === '' || v === false || (isBag(v) && Object.keys(v).length === 0))))
-  return {
-    settings: def.settings.map((s) => ({ ...lean({ key: s.key, label: s.label, labelEs: s.labelEs }), choices: s.choices.map((c) => lean({ ...c })) })),
+    Object.fromEntries(Object.entries(o).filter(([, v]) => !(v === undefined || v === '' || v === false || (isBag(v) && Object.keys(v).length === 0) || (Array.isArray(v) && v.length === 0))))
+  const choiceJson = (c: SettingChoice) => lean({ ...c, breach: tidyLines(c.breach), breachEs: tidyLines(c.breachEs), site: tidyLines(c.site), siteEs: tidyLines(c.siteEs) })
+  const out: Record<string, unknown> = {
+    settings: def.settings.map((s) => ({ ...lean({ key: s.key, label: s.label, labelEs: s.labelEs }), choices: s.choices.map(choiceJson) })),
     fields: def.fields.map((f) => lean({ ...f })),
     levels: def.levels.map((l) => ({ ...lean({ key: l.key, label: l.label, labelEs: l.labelEs, alignedWith: l.alignedWith, alignedWithEs: l.alignedWithEs }), picks: l.picks })),
   }
+  const notice = tidyNote(def.notice)
+  if (notice) out.notice = lean({ ...notice })
+  const siteNote = tidyNote(def.siteNote)
+  if (siteNote) out.siteNote = lean({ ...siteNote })
+  return out
 }
 
 const twice = (keys: readonly string[]): string | null => keys.find((k, i) => keys.indexOf(k) !== i) ?? null
@@ -148,7 +231,18 @@ export function settingsDefProblems(def: SettingsDef): string[] {
       for (const k of [...Object.keys(c.fills), ...Object.keys(c.fillsEs)]) if (!def.fields.some((f) => f.key === k)) out.push(`${name}, ${cname}, fills a blank that is not on the list: ${k}.`)
     })
     if (s.choices.length > 0 && s.choices.every((c) => c.out)) out.push(`${name} leaves the topic out on every choice.`)
+    s.choices.forEach((c, j) => {
+      const cname = c.label.trim() || `choice ${j + 1}`
+      if (Math.max(tidyLines(c.breach).length, tidyLines(c.breachEs).length) > L.lines) out.push(`${name}, ${cname}, holds at most ${L.lines} breach lines.`)
+      if (Math.max(tidyLines(c.site).length, tidyLines(c.siteEs).length) > L.lines) out.push(`${name}, ${cname}, holds at most ${L.lines} site lines.`)
+    })
   })
+  for (const [label, note] of [['The notice', def.notice], ['The site note', def.siteNote]] as const) {
+    if (!note) continue
+    const lines = tidyLines(note.lines)
+    if (Math.max(lines.length, tidyLines(note.linesEs).length) > L.noteLines) out.push(`${label} holds at most ${L.noteLines} lines.`)
+    if (lines.length === 0 && [note.title, note.lead, note.tick, note.titleEs, note.leadEs, note.tickEs, ...note.linesEs].some((w) => w.trim() !== '')) out.push(`${label} has words and no line. Add a line or clear its words.`)
+  }
   const fieldTwice = twice(def.fields.map((f) => f.key))
   if (fieldTwice) out.push(`Two blanks share the key ${fieldTwice}.`)
   def.fields.forEach((f, i) => {
@@ -165,7 +259,14 @@ export function settingsDefProblems(def: SettingsDef): string[] {
     const missing = picksProblem(def, l.picks)
     if (missing) out.push(`${name}: ${missing}`)
   })
-  const tooLong = [...def.settings.flatMap((s) => [s.label, s.labelEs, ...s.choices.flatMap((c) => [c.label, c.labelEs, c.says, c.saysEs, ...Object.values(c.fills), ...Object.values(c.fillsEs)])]), ...def.fields.flatMap((f) => [f.label, f.labelEs]), ...def.levels.flatMap((l) => [l.label, l.labelEs, l.alignedWith, l.alignedWithEs])]
+  const noteWords = (n: PaperNote | undefined): string[] => (n ? [n.title, n.titleEs, n.lead, n.leadEs, n.tick, n.tickEs, ...n.lines, ...n.linesEs] : [])
+  const tooLong = [
+    ...def.settings.flatMap((s) => [s.label, s.labelEs, ...s.choices.flatMap((c) => [c.label, c.labelEs, c.says, c.saysEs, ...Object.values(c.fills), ...Object.values(c.fillsEs), ...CHOICE_LINE_KEYS.flatMap((k) => c[k] ?? [])])]),
+    ...def.fields.flatMap((f) => [f.label, f.labelEs]),
+    ...def.levels.flatMap((l) => [l.label, l.labelEs, l.alignedWith, l.alignedWithEs]),
+    ...noteWords(def.notice),
+    ...noteWords(def.siteNote),
+  ]
   if (tooLong.some((w) => w.length > L.words)) out.push(`A name or a line holds at most ${L.words} characters.`)
   return out
 }

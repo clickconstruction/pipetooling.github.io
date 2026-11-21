@@ -1,6 +1,6 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
 import { landedWhole, onSiteLandingWords, type OnSiteLanding } from '../materials/onSiteWrites'
-import { failureQueues, type BidPhotosPayload, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OnSitePressPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
+import { failureQueues, type BidPhotosPayload, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OnSitePressPayload, type PersonReportPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -34,6 +34,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'bid-photos': 'bid_photos',
   /** Never sent to the RPC: an on-site press lands through the tables' own policies (`landOnSitePress`). */
   'on-site-press': 'on_site_press',
+  /** Never sent to the RPC: a write-up lands through its own function, `land_person_report` (`landPersonReport`). */
+  'person-report': 'person_report',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -79,6 +81,10 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
     case 'on-site-press': {
       const p = press.payload as OnSitePressPayload
       return { job_id: p.jobId, row_ids: p.writes.map((w) => w.id) }
+    }
+    case 'person-report': {
+      const p = press.payload as PersonReportPayload
+      return { ...p.fields, press_id: press.id, pressed_at: new Date(press.pressedAt).toISOString() }
     }
   }
 }
@@ -240,6 +246,32 @@ export async function landOnSitePress(press: OutboxPress, io: LandOnSitePressIo 
   }
 }
 
+export type LandPersonReportIo = {
+  land?: (p: Record<string, unknown>) => Promise<{ data: unknown; error: SupabaseResultError | null; status?: number }>
+}
+
+/**
+ * A write-up lands without the RPC (punch list #410, PR 4): `land_person_report` takes the press's own id and its
+ * pressed time with the fields, does the write as the caller, and answers `{ already: true }` on a second arrival of
+ * the same press, so a timeout whose request landed counts once. The outcome is classed as any press's: a lost signal
+ * or a timeout fails and waits, a refusal keeps the server's own sentence.
+ */
+export async function landPersonReport(press: OutboxPress, io: LandPersonReportIo = {}): Promise<LandOutcome> {
+  try {
+    const land =
+      io.land ??
+      (async (p: Record<string, unknown>) => {
+        const { supabase } = await import('../supabase')
+        return (await supabase.rpc('land_person_report' as never, { p } as never)) as unknown as { data: unknown; error: SupabaseResultError | null; status?: number }
+      })
+    const { data, error, status } = await withOperationTimeout(land(rpcPayload(press)), LAND_TIMEOUT_MS, 'Send the write-up')
+    if (error) return outcomeOfFailure(databaseErrorFromResult(error, 'send the write-up', status))
+    return { kind: 'landed', result: data ?? {} }
+  } catch (e) {
+    return outcomeOfFailure(e)
+  }
+}
+
 function online(): boolean {
   return typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean' ? true : navigator.onLine
 }
@@ -261,6 +293,7 @@ export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
   if (press.kind === 'counter-ticket') return landCounterTicket(press)
   if (press.kind === 'bid-photos') return landBidPhotos(press)
   if (press.kind === 'on-site-press') return landOnSitePress(press)
+  if (press.kind === 'person-report') return landPersonReport(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')

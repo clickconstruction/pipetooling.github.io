@@ -95,6 +95,7 @@ import { DashboardProjectsCard } from '../components/dashboard/DashboardProjects
 import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
 import { DashboardOverheadCard } from '../components/dashboard/DashboardOverheadCard'
 import { DashboardPersonReportCard } from '../components/dashboard/DashboardPersonReportCard'
+import { WriteSomeoneUpDoor } from '../components/writeUp/WriteSomeoneUpDoor'
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
 import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
 import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCard'
@@ -1340,7 +1341,13 @@ export default function Dashboard() {
           }
           top={jobModeTop}
           card={<DashboardJobModeCard userId={authUser.id} onLeaveReport={(j) => setLeaveReportJob(j)} onTurnaway={(j) => setTurnawayJob(j)} canClockOut={!dashboardSelfIsSalary} knownJobs={jobsForVisitLabels} short />}
-          waiting={<DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} title={JOB_MODE_SHORT_WORDS.waiting} />}
+          waiting={
+            <>
+              <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} title={JOB_MODE_SHORT_WORDS.waiting} />
+              {/* Write someone up (punch list #410): Taunya's pick, the short pages show the press. */}
+              <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode-short" style={{ margin: '0.75rem 0' }} />
+            </>
+          }
           tomorrow={jobModeShortTomorrow(tomorrowStops, jobModeShortScheduleRead({ loading: subScheduleLoading, failed: subScheduleError != null, kept: subScheduleKeptAt != null }))}
           coursesOwed={jobModeShortCoursesOwed}
           onTomorrow={() => {
@@ -1371,6 +1378,8 @@ export default function Dashboard() {
           canClockOut={!dashboardSelfIsSalary}
           knownJobs={jobsForVisitLabels}
         />
+        {/* Write someone up (punch list #410): the same press as the full Dashboard's, under the job card. */}
+        <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode" style={{ marginTop: '0.75rem' }} />
         {/* Your week (v2.6589, punch list #255): the one progress signal the office picked for this person, and how far it moved this week. */}
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
@@ -1423,7 +1432,13 @@ export default function Dashboard() {
               <DashboardTrialVerdictSection authUserId={authUser.id} role={role} />
             </Suspense>
           }
-          schedule={myScheduleSection}
+          schedule={
+            <>
+              {myScheduleSection}
+              {/* Write someone up (punch list #410): Taunya's pick, the short pages show the press. */}
+              <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="short-dashboard" style={{ margin: '0.25rem 0 0.75rem' }} />
+            </>
+          }
           foot={<DashboardTrainingSection userId={authUser.id} role={role} />}
           onEverythingElse={() => {
             setShortShowFullDashboard(true)
@@ -1638,6 +1653,8 @@ export default function Dashboard() {
         quietSquares={phoneOffice}
         afterJobReportRow={
           <>
+            {/* Write someone up (punch list #410): the one press, right under the row of squares, for a leader or a superintendent. */}
+            <WriteSomeoneUpDoor userId={authUser?.id} role={role} surface="dashboard" style={{ marginBottom: '0.75rem' }} />
             {authUser?.id ? <DashboardCustomerWordsStrip userId={authUser.id} /> : null}
             {authUser?.id ? <DashboardYourWeekCard userId={authUser.id} /> : null}
             {authUser?.id ? <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} /> : null}
