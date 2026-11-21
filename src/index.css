@@ -4515,7 +4515,17 @@ body.my-time-boundary-dragging {
   .lienLedgerGrid tr[data-on='yes'] > td[data-col='this'] { background: var(--bg-blue-tint); }
   /* A thumb's target: the tick with its word under it. */
   .lienLedgerTick { flex-direction: column; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; }
-  .lienLedgerNoteMissed { padding: 5px 10px; }
+  .lienLedgerNoteMissed { padding: 0 12px; }
+  /* Every press on the card is a thumb's target (v2.8119, the owner's pick of 2026-11-20): 44 px tall with its words
+     centred, as the tick is. A press of words alone keeps its line, so the 44 px is its touch area and the card is no
+     taller for it: the margin takes back what the height adds (13 px each way where a browser has no `lh`). A press
+     with an edge (Note it as missed, the two editors' own) is that tall itself. */
+  .lienLedger button, .lienLedger a { display: inline-flex; align-items: center; min-height: 44px; vertical-align: baseline; }
+  .lienLedger button:not(.lienLedgerNoteMissed), .lienLedger a { margin-block: -13px; margin-block: calc((1lh - 44px) / 2); }
+  .lienLedger [data-lien-claim-editor] button, .lienLedger [data-testid='lien-last-work-editor'] button { margin-block: 0; }
+  /* Two quiet rows, each with a press in its sentence, sit one under the other: a one-line row is 44 px itself, so the
+     two touch areas do not overlap. */
+  .lienLedgerQuiet:has(button, a) { padding-top: 13px; padding-bottom: 13px; }
   /* The noted line wraps inside the month's column: on one line a full name ran into the tick's column, and at 320 px under the tick itself. */
   .lienMonthClosed > .lienLedgerNoted { flex: 0 1 auto; min-width: 0; white-space: normal; }
   /* The total line keeps its two columns; the months it names drop under the claim's own words when they are long. */
