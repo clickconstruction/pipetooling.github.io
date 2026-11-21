@@ -50,7 +50,17 @@ A stage is asked about once. The first of ours to answer has answered for the wh
 
 The card needs a signal to load and to send. With no signal the card does not show. The card comes back by itself when the phone finds a signal.
 
+A card that is already up stays up when the signal drops. Your **No** presses stay on it.
+
 A send with no signal says the answer was not kept. Press the send again when the signal is back.
+
+## When the send is refused
+
+The office can change the list while your card is open. Your send is then refused, and the app says why.
+
+The card reads the list again by itself. Look at the lines again and press the send.
+
+The card goes away when there is nothing left to ask.
 
 ## Related
 

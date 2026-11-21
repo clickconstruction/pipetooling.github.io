@@ -207,6 +207,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Click Construction asks you to quote Electrical on Sample Retail Shell',
   },
   {
+    id: 'document_builder_email',
+    name: 'Document builder — a builder sent to a GC to look at (the Sub NDA; devs only for now)',
+    group: 'bids',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'document-builder-send',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Secrecy on your jobs with Click Plumbing and Electrical',
+  },
+  {
     id: 'gc_customer_email',
     name: 'GC mode — our email to a GC customer or its architect (every kind, one sender)',
     group: 'billing',

@@ -31,6 +31,7 @@ const CUSTOMERS: CustomerName[] = [
 const names: Record<string, string> = { u1: 'Eve', u2: 'Sam' }
 const nameOf = (id: string) => names[id] ?? null
 const ME = 'u1'
+const TODAY = '2026-11-20'
 const TEXAS = 'ridgewaybuildersoftexas'
 
 let n = 0
@@ -98,29 +99,42 @@ describe('our bids with a tied name', () => {
 
   it('counts the tied customer’s bids, on every row of that customer, with the wins and the newest day', () => {
     const bids = [bid({ outcome: 'won', bidOn: '2026-03-01' }), bid({ customerId: 'c2', outcome: 'started_or_complete', bidOn: '2026-09-14' }), bid({ outcome: 'lost' }), bid({ customerId: 'c3', outcome: 'won' })]
-    expect(answeredBids(TEXAS, book, bids)).toEqual({ bids: 3, won: 2, lastBidOn: '2026-09-14', customers: ['Ridgeway Builders'] })
+    expect(answeredBids(TEXAS, book, bids, TODAY)).toEqual({ bids: 3, won: 2, lastBidOn: '2026-09-14', customers: ['Ridgeway Builders'] })
   })
 
   it('leaves out a robot’s copy, and a bid the same-name hint already counts through the old builders list', () => {
     const bids = [bid(), bid({ projectName: 'ZZ Shadow MILL STREET LOFTS' }), bid({ projectName: 'ZZ Twin Mill Street Lofts' }), bid({ legacyGcName: 'Ridgeway Builders of Texas, LLC' }), bid({ legacyGcName: 'Some Other Builder' })]
-    expect(answeredBids(TEXAS, book, bids)).toMatchObject({ bids: 2 })
+    expect(answeredBids(TEXAS, book, bids, TODAY)).toMatchObject({ bids: 2 })
+  })
+
+  it('counts by the one rule Market’s table counts by: any practice bid is out, and so is a bid older than two years', () => {
+    // Any ZZ bid is a practice bid, as the table reads it, not only a twin's or a shadow's.
+    expect(answeredBids(TEXAS, book, [bid(), bid({ projectName: 'zz test' }), bid({ projectName: 'ZZ walk of the bid form' })], TODAY)).toMatchObject({ bids: 1 })
+    // Two years is 730 days back from today. The day itself counts, the day before does not, and neither does a day to come.
+    expect(answeredBids(TEXAS, book, [bid({ bidOn: '2024-11-20', outcome: 'won' }), bid({ bidOn: '2024-11-19', outcome: 'won' }), bid({ bidOn: '2026-11-21' }), bid({ bidOn: null })], TODAY)).toEqual({ bids: 2, won: 1, lastBidOn: '2024-11-20', customers: ['Ridgeway Builders'] })
+  })
+
+  it('adds nothing for a tied customer that is no company: a ZZ customer, or a bid platform’s bucket', () => {
+    const odd = [{ id: 'z1', name: 'ZZ Test Builders' }, { id: 'p1', name: 'PlanHub - Subcontractor Prime Opportunity' }]
+    const tied = answerBook([answer({ customer_id: 'z1' }), answer({ customer_id: 'p1' })], odd)
+    expect(answeredBids(TEXAS, tied, [bid({ customerId: 'z1' }), bid({ customerId: 'p1' })], TODAY)).toEqual({ bids: 0, won: 0, lastBidOn: null, customers: [] })
   })
 
   it('counts a bid once, and nothing for a name tied to nobody', () => {
     const twice = bid()
-    expect(answeredBids(TEXAS, book, [twice, twice])).toMatchObject({ bids: 1 })
-    expect(answeredBids('copperlinemechanical', book, [bid()])).toEqual({ bids: 0, won: 0, lastBidOn: null, customers: [] })
+    expect(answeredBids(TEXAS, book, [twice, twice], TODAY)).toMatchObject({ bids: 1 })
+    expect(answeredBids('copperlinemechanical', book, [bid()], TODAY)).toEqual({ bids: 0, won: 0, lastBidOn: null, customers: [] })
   })
 
   it('does not count a customer of the name itself twice: the hint has every bid with it', () => {
     // Someone tied "Ridgeway Builders" on permits to the customer Ridgeway Builders.
     const own = answerBook([answer({ builder_key: 'ridgewaybuilders', name: 'Ridgeway Builders' })], CUSTOMERS)
-    expect(answeredBids('ridgewaybuilders', own, [bid(), bid()])).toMatchObject({ bids: 0 })
+    expect(answeredBids('ridgewaybuilders', own, [bid(), bid()], TODAY)).toMatchObject({ bids: 0 })
   })
 
   it('adds the answers to the same-name count on the row, and says through whom', () => {
     const rows = [builder({ bids: 2, won: 1, last_bid_on: '2026-10-02' }), builder({ key: 'copperlinemechanical', sample_contact: 'Copperline Mechanical', bids: 4, won: 0, last_bid_on: '2026-01-05' })]
-    const out = withAnsweredBids(rows, book, [bid({ outcome: 'won', bidOn: '2026-03-01' }), bid({ bidOn: '2026-11-02' })])
+    const out = withAnsweredBids(rows, book, [bid({ outcome: 'won', bidOn: '2026-03-01' }), bid({ bidOn: '2026-11-02' })], TODAY)
     expect(out[0]).toMatchObject({ bids: 4, won: 2, last_bid_on: '2026-11-02', by_word: { bids: 2, won: 1, customers: ['Ridgeway Builders'] } })
     expect(ourBidsWords(out[0] as BuilderRow)).toBe('4 priced, 2 won')
     expect(throughWords(out[0] as BuilderRow)).toBe('through Ridgeway Builders')
@@ -132,14 +146,14 @@ describe('our bids with a tied name', () => {
   })
 
   it('keeps the read’s own newest day when it is the later one', () => {
-    const out = withAnsweredBids([builder({ bids: 1, last_bid_on: '2026-12-01' })], book, [bid({ bidOn: '2026-03-01' })])
+    const out = withAnsweredBids([builder({ bids: 1, last_bid_on: '2026-12-01' })], book, [bid({ bidOn: '2026-03-01' })], TODAY)
     expect(out[0]).toMatchObject({ bids: 2, last_bid_on: '2026-12-01' })
   })
 
   it('takes a tied name off the list of who to get to know', () => {
     const before = builder()
     expect(neverBid(before)).toBe(true)
-    const [after] = withAnsweredBids([before], book, [bid()])
+    const [after] = withAnsweredBids([before], book, [bid()], TODAY)
     expect(neverBid(after as BuilderRow)).toBe(false)
     expect(ourBidsWords(after as BuilderRow)).toBe('1 priced, none won')
     expect(byWordWords(after as BuilderRow)).toBe('1 of them is with Ridgeway Builders, tied to this name by a person’s word.')
@@ -147,16 +161,16 @@ describe('our bids with a tied name', () => {
 
   it('stops counting once the tie is taken back, or the answer is someone else', () => {
     const taken = answerBook([answer({ answered_at: '2026-11-01T15:00:00Z' }), answer({ answer: 'taken_back', scope: null, answered_at: '2026-11-02T15:00:00Z' })], CUSTOMERS)
-    expect(withAnsweredBids([builder()], taken, [bid()])[0]).toMatchObject({ bids: 0 })
+    expect(withAnsweredBids([builder()], taken, [bid()], TODAY)[0]).toMatchObject({ bids: 0 })
     const no = answerBook([answer({ answer: 'someone_else', scope: null })], CUSTOMERS)
-    expect(withAnsweredBids([builder()], no, [bid()])[0]).toMatchObject({ bids: 0 })
+    expect(withAnsweredBids([builder()], no, [bid()], TODAY)[0]).toMatchObject({ bids: 0 })
     const one = answerBook([answer({ scope: 'this_permit', permit_id: 'p1' })], CUSTOMERS)
-    expect(withAnsweredBids([builder()], one, [bid()])[0]).toMatchObject({ bids: 0 })
+    expect(withAnsweredBids([builder()], one, [bid()], TODAY)[0]).toMatchObject({ bids: 0 })
   })
 
   it('names two customers, and counts past two', () => {
     const two = answerBook([answer({ customer_id: 'c3', answered_at: '2026-11-01T15:00:00Z' }), answer({ customer_id: 'c4', answered_at: '2026-11-05T15:00:00Z' })], CUSTOMERS)
-    const [row] = withAnsweredBids([builder()], two, [bid({ customerId: 'c3' }), bid({ customerId: 'c4' })])
+    const [row] = withAnsweredBids([builder()], two, [bid({ customerId: 'c3' }), bid({ customerId: 'c4' })], TODAY)
     expect(throughWords(row as BuilderRow)).toBe('through Tall Pine Development and Hartwell Interiors')
     expect(throughWords({ by_word: { bids: 3, won: 0, customers: ['A', 'B', 'C'] } })).toBe('through 3 customers tied to it')
   })

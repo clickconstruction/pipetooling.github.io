@@ -44,15 +44,17 @@ const LOADED = {
 const posts: Record<string, unknown>[] = []
 let acceptReply: { status: number; json: Record<string, unknown> } = { status: 200, json: { ok: true, documentId: 'pcd-1' } }
 let loaded: Record<string, unknown> = LOADED
+let loadStatus = 200
 
 beforeEach(() => {
   posts.length = 0
   acceptReply = { status: 200, json: { ok: true, documentId: 'pcd-1' } }
   loaded = LOADED
+  loadStatus = 200
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).includes('get-contract-for-signer')) return new Response(JSON.stringify(loaded), { status: 200 })
+      if (String(url).includes('get-contract-for-signer')) return new Response(JSON.stringify(loaded), { status: loadStatus })
       posts.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
       return new Response(JSON.stringify(acceptReply.json), { status: acceptReply.status })
     }),
@@ -111,6 +113,25 @@ describe('ContractAccept · a paper built from clauses', () => {
     sign('Greg Paulk')
     await waitFor(() => expect(posts).toHaveLength(1))
     expect(posts[0]).toMatchObject({ paperRevision: 3, paperLang: 'en' })
+    expect(posts[0]).not.toHaveProperty('paperSeal')
+  })
+
+  it('sends the seal of the words it showed for a job’s paper built from settings, in the language read (punch list #389)', async () => {
+    loaded = { ...LOADED, signing_body_html: null, clause_paper: { revision: 3, en: { ...PAPER_EN, sha256: 'a'.repeat(64) }, es: { ...PAPER_ES, sha256: 'b'.repeat(64) } } }
+    open()
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    sign('Greg Paulk', 'Enviar la firma')
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ paperRevision: 3, paperLang: 'es', paperSeal: 'b'.repeat(64) })
+  })
+
+  it('says a job’s paper is not ready, and shows nothing to sign', async () => {
+    loadStatus = 409
+    loaded = { error: 'This paper is not ready to sign yet. Ask the office that sent it.', code: 'paper_not_ready' }
+    open()
+    expect(await screen.findByText('This paper is not ready to sign yet. Ask the office that sent it.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Submit signature' })).toBeNull()
   })
 
   it('a paper that moved on since it was opened reads the page’s own words by the answer’s code, in the language read (v2.5965)', async () => {

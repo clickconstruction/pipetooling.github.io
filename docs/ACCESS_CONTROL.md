@@ -915,6 +915,9 @@ A dev writes `document_builders` and `document_builder_sheets` directly, under t
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
+Since v2.8150 a published Sub NDA opens at `/d/<code>` the same way, as a flow to walk with no field and no press that writes: whoever holds the link reads the published revision and can change, save or send nothing.
+Since v2.8151 a dev sends the published Sub NDA to a customer who is the GC on a job with us, through `document-builder-send`, which checks its caller as it does for a sheet.
+That customer then reads it on the customer portal, on a link that shows the jobs they are the GC on (`gc` or `all`), look only: the page sends back the mark that it was opened and nothing else.
 Since v2.8009 a dev sends a published sheet to a trade on its job through `document-builder-send`, which refuses anyone else, a training account, a twin and an archived account itself, and refuses a company whose page was turned off.
 A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing of another company's.
 Since v2.8024 a dev also types on a walked builder's draft, publishes it as the next revision and marks a revision as read by an attorney, through the same row and the same trigger.
@@ -1331,7 +1334,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
   Since v2.7963 the list names the trip a deleted one was joined into (`joined_into`), and the fold draws no **Put back** for it.
-  The save itself refuses nothing more for a joined trip.
+  Since v2.8127 the save refuses a trip that was joined away, whatever door it comes through, the dev's `restore_deleted_records` included.
+  The refusal is a definer trigger on `trips` (`trips_refuse_joined_back`), which reads the trip's newest delete that nothing has put back and refuses the insert in words when that delete carries `joined_into`.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
   Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 - **How far is far** (v2.7888): `app_settings` `trips_far_miles_v1`, the miles from the shop that make a site a trip from home, is read by every signed-in user, as `app_settings` is, and set by a dev alone under the table's own dev policy.
@@ -2048,7 +2052,10 @@ From the prompt the office can open the job's papers and who has signed, so a pa
 The section **Papers before this job opens** on the job window's Documents tab and the chip in the job's head are drawn for the office roles alone (`isOfficeRole`: dev, master technician, assistant, controller).
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
-It has no write policy and no write grant: rows are written only by `job_papers_require` and `job_paper_remove`, both office only.
+It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings` and `job_paper_remove`, all office only.
+A job's settings for a paper built from settings (v2.8145) are the office's to set and never a digital twin's: `job_paper_set_settings` also refuses an archived account and a training account itself, and `job_paper_clauses`, the job's paper as the database reads it, answers the office and the service role alone.
+Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
+The office's change after that signature may only tighten the paper, and it makes a new row.
 Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
 The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
 A login tied to no roster person reads as owing and cannot start a paper.

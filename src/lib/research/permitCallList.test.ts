@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import type { BuilderRow } from './permitBuilders'
 import type { MarketPermit } from './permitMarket'
 import type { ResearchPermitRow } from './permitResearch'
@@ -17,6 +18,7 @@ import {
   callRowsShowing,
   callTags,
   callTiles,
+  callWaitingWords,
   callWorkWords,
   foldCallAnswers,
   lookAgainOn,
@@ -35,6 +37,11 @@ import {
   type CallAnswerRow,
   type CallStanding,
 } from './permitCallList'
+
+/** A marked sentence as its plain words (values in place): what a reader sees, value or not. */
+const plain = (sentence: string | null): string | null => (sentence == null ? null : plainSentence(sentence))
+/** The values a sentence marks, in order. */
+const values = (sentence: string | null) => sentenceParts(sentence ?? '').filter((p) => typeof p !== 'string')
 import { foldLookups, type LookupCheckRow, type LookupRow } from './builderLookups'
 
 /** Every company, person, address and number here is made up. */
@@ -112,7 +119,7 @@ describe('foldCallAnswers', () => {
     expect(answeredDay({ answered_at: '2026-11-20T03:30:00Z' })).toBe('2026-11-19')
     expect(answeredDay({ answered_at: '2026-11-19T15:00:00Z' })).toBe('2026-11-19')
     const late = foldCallAnswers([answer({ answered_at: '2026-11-20T03:30:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(late, () => 'Eve', TODAY)).toBe('Not for us. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
+    expect(plain(standingWords(late, () => 'Eve', TODAY))).toBe('Not for us. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
   })
 
   it('sets the day to look again: a quarter after a pursue, a year after a pass', () => {
@@ -370,7 +377,7 @@ describe('callRows', () => {
     const varied = Array.from({ length: 30 }, (_, i) => issued('ridgewaybuilders', '2026-10-20', 1, { declared_value: 400_000 + i * 40_000 })).flat()
     const list = callRows({ ...input, permits: varied })
     expect(list[0]).toMatchObject({ key: 'ridgewaybuilders', over1m: 15 })
-    expect(callWorkWords(list[0] as never)).toBe('Mostly commercial remodel. Typical job $690k to $1.3M.')
+    expect(plain(callWorkWords(list[0] as never))).toBe('Mostly commercial remodel. Typical job $690k to $1.3M.')
     const round = Array.from({ length: 30 }, () => issued('ridgewaybuilders', '2026-10-20', 1, { declared_value: 1_000_000 })).flat()
     expect(callRows({ ...input, permits: round })[0]).toMatchObject({ over1m: 0, typical: null })
   })
@@ -403,6 +410,42 @@ describe('the chips', () => {
       { value: '0', words: 'builders to call this week' },
       { value: '0', words: 'of their jobs are applied for, with no plumber yet' },
     ])
+  })
+})
+
+describe('values in place', () => {
+  it('marks every count, day, amount and name in a row’s lines, and leaves the words as they were', () => {
+    expect(values(callCountWords({ permits: 14, last90: 6, prior90: 2 }, 'in the last year', true))).toEqual([
+      { kind: 'jobs', text: '14 jobs' },
+      { kind: 'last90', text: '6' },
+      { kind: 'prior90', text: '2' },
+    ])
+    // The day the records start is a value too.
+    expect(values(callCountWords({ permits: 4, last90: 4, prior90: 0 }, 'since Aug 27', false))).toEqual([
+      { kind: 'jobs', text: '4 jobs' },
+      { kind: 'since', text: 'Aug 27' },
+    ])
+    expect(values(callWorkWords({ mostly: 'New commercial', typical: { low: 400_000, high: 1_200_000 } }))).toEqual([
+      { kind: 'mostly', text: 'new commercial' },
+      { kind: 'typical', text: '$400k to $1.2M' },
+    ])
+    expect(values(callHistoryWords({ bids: 4, won: 0, lastBidOn: '2026-06-03' }, TODAY))).toEqual([
+      { kind: 'bids', text: '4' },
+      { kind: 'won', text: 'none' },
+      { kind: 'day', text: 'Jun 3' },
+    ])
+    expect(values(callNoteWords({ city: 'Austin', trendKnown: false, hasApplications: false, recordsStart: 'Aug 27' }))).toEqual([{ kind: 'day', text: 'Aug 27' }])
+    expect(values(callNoteWords({ city: 'San Antonio', trendKnown: true, hasApplications: true, recordsStart: 'Jan 1, 2025' }))).toEqual([])
+  })
+
+  it('says how many more wait behind the week’s five', () => {
+    expect(plain(callWaitingWords(3))).toBe('3 more wait behind these. A name leaves the list when it is answered, the way a permit leaves the skim, and the next takes its place.')
+    expect(plain(callWaitingWords(1))).toMatch(/^1 more waits behind these\./)
+    expect(values(callWaitingWords(12))).toEqual([{ kind: 'waiting', text: '12' }])
+  })
+
+  it('leaves a toast plain: it cannot draw a value apart', () => {
+    expect(answeredWords('Harbor Fitouts', 'pursue', '2027-02-17', TODAY)).not.toMatch(/[⟪⟫]/)
   })
 })
 
@@ -439,14 +482,14 @@ describe('the words', () => {
   })
 
   it('says the counts, the work and our history', () => {
-    expect(callCountWords({ permits: 14, last90: 6, prior90: 2 }, 'in the last year', true)).toBe('14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before.')
-    expect(callCountWords({ permits: 4, last90: 4, prior90: 0 }, 'since Aug 27', false)).toBe('4 jobs since Aug 27.')
-    expect(callCountWords({ permits: 1, last90: 0, prior90: 0 }, null, false)).toBe('1 job we can see.')
-    expect(callWorkWords({ mostly: 'New commercial', typical: { low: 400_000, high: 1_200_000 } })).toBe('Mostly new commercial. Typical job $400k to $1.2M.')
-    expect(callWorkWords({ mostly: null, typical: { low: 1_000_000, high: 1_000_000 } })).toBe('Typical job $1M.')
+    expect(plain(callCountWords({ permits: 14, last90: 6, prior90: 2 }, 'in the last year', true))).toBe('14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before.')
+    expect(plain(callCountWords({ permits: 4, last90: 4, prior90: 0 }, 'since Aug 27', false))).toBe('4 jobs since Aug 27.')
+    expect(plain(callCountWords({ permits: 1, last90: 0, prior90: 0 }, null, false))).toBe('1 job we can see.')
+    expect(plain(callWorkWords({ mostly: 'New commercial', typical: { low: 400_000, high: 1_200_000 } }))).toBe('Mostly new commercial. Typical job $400k to $1.2M.')
+    expect(plain(callWorkWords({ mostly: null, typical: { low: 1_000_000, high: 1_000_000 } }))).toBe('Typical job $1M.')
     expect(callWorkWords({ mostly: null, typical: null })).toBeNull()
-    expect(callHistoryWords({ bids: 4, won: 0, lastBidOn: '2026-06-03' }, TODAY)).toBe('We priced 4 of their jobs and won none. The last was Jun 3.')
-    expect(callHistoryWords({ bids: 1, won: 1, lastBidOn: null }, TODAY)).toBe('We priced 1 of their job and won 1.')
+    expect(plain(callHistoryWords({ bids: 4, won: 0, lastBidOn: '2026-06-03' }, TODAY))).toBe('We priced 4 of their jobs and won none. The last was Jun 3.')
+    expect(plain(callHistoryWords({ bids: 1, won: 1, lastBidOn: null }, TODAY))).toBe('We priced 1 of their job and won 1.')
     expect(callHistoryWords({ bids: 0, won: 0, lastBidOn: null }, TODAY)).toBeNull()
     expect(openJobsTail(1)).toBe('It has no plumbing permit yet.')
     expect(openJobsTail(3)).toBe('They have no plumbing permit yet.')
@@ -459,8 +502,8 @@ describe('the words', () => {
   })
 
   it('says the order under the list, and what a city’s records leave out', () => {
-    expect(callNoteWords({ city: 'San Antonio', trendKnown: true, hasApplications: true, recordsStart: 'Jan 1, 2025' })).toBe('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')
-    expect(callNoteWords({ city: 'Austin', trendKnown: false, hasApplications: false, recordsStart: 'Aug 27' })).toBe(
+    expect(plain(callNoteWords({ city: 'San Antonio', trendKnown: true, hasApplications: true, recordsStart: 'Jan 1, 2025' }))).toBe('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')
+    expect(plain(callNoteWords({ city: 'Austin', trendKnown: false, hasApplications: false, recordsStart: 'Aug 27' }))).toBe(
       'A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once. Austin’s records start Aug 27, so nothing here reads as picking up or new yet. Austin shows only issued permits, so no job is open here by the time we see it.',
     )
   })
@@ -469,11 +512,11 @@ describe('the words', () => {
     expect(answeredWords('Ridgeway Builders', 'pursue', '2027-02-17', TODAY)).toBe('Ridgeway Builders is off the list while you pursue them. It may be offered again after Feb 17, 2027, once it applies for a new job.')
     expect(answeredWords('Quill Permits', 'not_for_us', '2027-11-19', TODAY)).toBe('Quill Permits is off the list. It may be offered again after Nov 19, 2027, once it applies for a new job.')
     const standing = foldCallAnswers([answer({ reason: 'They file for others' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(standing, (id) => (id === 'u1' ? 'Eve' : null), TODAY)).toBe('Not for us, They file for others. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
+    expect(plain(standingWords(standing, (id) => (id === 'u1' ? 'Eve' : null), TODAY))).toBe('Not for us, They file for others. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
     const pursued = foldCallAnswers([answer({ answer: 'pursue', look_again_on: null, answered_by: 'u9' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(pursued, () => null, TODAY)).toBe('Pursuing. someone, Nov 19. Off the list.')
+    expect(plain(standingWords(pursued, () => null, TODAY))).toBe('Pursuing. someone, Nov 19. Off the list.')
     const due = foldCallAnswers([answer({ answer: 'pursue', look_again_on: '2026-11-15', answered_at: '2026-08-17T15:00:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(due, () => 'Eve', TODAY)).toBe('Pursuing. Eve, Aug 17. Off the list until it applies for a new job.')
+    expect(plain(standingWords(due, () => 'Eve', TODAY))).toBe('Pursuing. Eve, Aug 17. Off the list until it applies for a new job.')
   })
 })
 

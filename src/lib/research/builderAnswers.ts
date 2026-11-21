@@ -10,10 +10,10 @@
  * window reads it. No React, no Supabase.
  */
 import { contactParts, nameKey } from '../../../supabase/functions/_shared/permitLookup'
-import { isRobotBidName } from '../bids/bidPursuit'
 import { foldNameAnswers, nameGrade, nameStanding, wordOfWords, type NameAnswerRow, type NameState } from './nameAnswers'
 import { builderName, type BuilderRow } from './permitBuilders'
 import type { LookAlike } from './nameLikeness'
+import { bidCounts, bidPartyKey, bidWon } from './ourBids'
 
 export type CustomerName = { id: string; name: string }
 
@@ -101,29 +101,29 @@ export function tiedCustomerIds(book: AnswerBook): string[] {
 /** One of our bids as the count reads it. `legacyGcName` is the old builders list's name on the bid, when it has one. */
 export type CountedBid = { id: string; customerId: string; outcome: string | null; bidOn: string | null; projectName: string | null; legacyGcName: string | null }
 
-/** The outcomes `research_builders` counts as won. */
-const WON = new Set(['won', 'started_or_complete'])
-
 export type AnsweredBids = { bids: number; won: number; lastBidOn: string | null; customers: string[] }
 
 /**
  * Our bids with the customers a name is tied to, beyond what the same-name hint already counts.
  * Left out: a customer whose own name is the name (the hint counts every bid with it), a bid
- * whose legacy builder is the name (the hint counts it too), and a robot's copy of a bid.
+ * whose legacy builder is the name (the hint counts it too), and whatever the one rule leaves
+ * out (`ourBids.ts`): a practice bid, a bid older than two years, and a customer that is no
+ * company. The hint, `research_builders`, counts by the same rule, so the two parts add up to
+ * what Market's table of companies counts.
  */
-export function answeredBids(builderKey: string, book: AnswerBook, bids: readonly CountedBid[]): AnsweredBids {
+export function answeredBids(builderKey: string, book: AnswerBook, bids: readonly CountedBid[], todayYmd: string): AnsweredBids {
   const out: AnsweredBids = { bids: 0, won: 0, lastBidOn: null, customers: [] }
   const seen = new Set<string>()
   for (const g of book.tied.get(builderKey) ?? []) {
-    if (g.key === builderKey) continue
+    if (g.key === builderKey || bidPartyKey(g.name) == null) continue
     const ids = new Set(g.ids)
     let counted = 0
     for (const b of bids) {
-      if (!ids.has(b.customerId) || seen.has(b.id) || isRobotBidName(b.projectName) || nameKey(b.legacyGcName) === builderKey) continue
+      if (!ids.has(b.customerId) || seen.has(b.id) || !bidCounts(b, todayYmd) || nameKey(b.legacyGcName) === builderKey) continue
       seen.add(b.id)
       counted += 1
       out.bids += 1
-      if (WON.has(b.outcome ?? '')) out.won += 1
+      if (bidWon(b.outcome)) out.won += 1
       if (b.bidOn && b.bidOn > (out.lastBidOn ?? '')) out.lastBidOn = b.bidOn
     }
     if (counted > 0) out.customers.push(g.name)
@@ -136,10 +136,10 @@ export function answeredBids(builderKey: string, book: AnswerBook, bids: readonl
  * customer's bids as ours with it. `by_word` keeps the part that came from an answer, so the
  * screen can say whose customers they are. A row no answer touches comes back as it was.
  */
-export function withAnsweredBids(rows: readonly BuilderRow[], book: AnswerBook, bids: readonly CountedBid[]): BuilderRow[] {
+export function withAnsweredBids(rows: readonly BuilderRow[], book: AnswerBook, bids: readonly CountedBid[], todayYmd: string): BuilderRow[] {
   if (book.tied.size === 0) return [...rows]
   return rows.map((r) => {
-    const add = answeredBids(r.key, book, bids)
+    const add = answeredBids(r.key, book, bids, todayYmd)
     if (add.bids === 0) return r
     const last = [r.last_bid_on, add.lastBidOn].filter((d): d is string => Boolean(d)).sort()
     return { ...r, bids: r.bids + add.bids, won: r.won + add.won, last_bid_on: last[last.length - 1] ?? null, by_word: { bids: add.bids, won: add.won, customers: add.customers } }

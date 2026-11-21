@@ -9,7 +9,7 @@ summary: >
   look at where the door belongs. The assessment found the doors each role has, checked his 99% on the
   live data and drew three ways on a phone mock-up. He picked the second: the door stays on every job
   as a proper press beside Job calendar, and it shows a count when the job's site holds boxes.
-next: Look at the press on a crew's phone on the one site that holds boxes.
+next: Ask the owner whether a crew may see the boxes under a site's other jobs, then look at the press on a crew's phone on the one site that holds boxes.
 size: S (one client-only PR)
 blocker: None.
 ver: v2.8050, v2.8060, v2.8103
@@ -93,6 +93,13 @@ a card that names no job. The detail is in [`docs/recent-features/v2.8050.md`](.
 
 - **A look on a crew's phone.** The walk was on the dev server with a made-up stop on the ZZ test job.
 - **A real estimator's read.** The walk of v2.8060 kept the dev's sign-in, so every job was readable.
+- **The owner's question: may a crew see the boxes under a site's other jobs?** Every Materials on site table
+  reads only the jobs a person may open. On the one real site, most of the boxes and every waiting sticker sit
+  under a paid sister job that the crew is not on. So a helper on the working job sees a small count on the
+  press and no stickers line, while the office sees the whole site. The press and the On site tab agree, and
+  the count of v2.8050 read the same way, so nothing broke. Changing it is an access decision and new read
+  rules on four tables, not a change to the card. Read on prod on 2026-11-21, as that helper, through the dev
+  seat.
 
 ## The three doors (v2.8060)
 

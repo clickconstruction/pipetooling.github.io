@@ -130,6 +130,7 @@ SELECT dsb.same('she starts a job''s sheet, sent as published',
   dsb.touched($q$INSERT INTO public.document_builder_sheets (id, builder_key, project_id, draft, published, published_sheet, revision, usual_revision)
     VALUES ('00000000-0000-0000-0000-0000004043a0', 'insurance', '00000000-0000-0000-0000-0000004043d1', '{"name": "Cedar Park Medical Office"}', '{"name": "Sent"}', '{"co": "Sent"}', 4, 4)$q$), '1');
 RESET ROLE;
+SELECT dsb.same('its draft is number 0', dsb.past($q$SELECT draft_no::text FROM document_builder_sheets WHERE project_id = '00000000-0000-0000-0000-0000004043d1'$q$), '0');
 SELECT dsb.same('it starts as a draft on revision 0', dsb.past($q$SELECT revision::text || ' ' || coalesce(published::text, 'null') || ' ' || coalesce(published_sheet::text, 'null') || ' ' || coalesce(usual_revision::text, 'null') FROM document_builder_sheets WHERE project_id = '00000000-0000-0000-0000-0000004043d1'$q$), '0 null null null');
 SELECT dsb.same('who made it is the caller', dsb.past($q$SELECT created_by::text FROM document_builder_sheets WHERE project_id = '00000000-0000-0000-0000-0000004043d1'$q$), '00000000-0000-0000-0000-0000004043a1');
 SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
@@ -153,6 +154,30 @@ RESET ROLE;
 SELECT dsb.same('it is still Cedar Park''s insurance sheet, and subs still read revision 1', dsb.past($q$SELECT builder_key || ' ' || project_id::text || ' ' || published_sheet::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$), 'insurance 00000000-0000-0000-0000-0000004043d1 {"co": "Acme Plumbing", "place": "410 Sample Street"}');
 SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
 SELECT dsb.refused('a builder that has a sheet cannot be deleted', $q$DELETE FROM public.document_builders WHERE key = 'insurance'$q$, 'foreign key');
+
+-- 2b · A job's draft has a number (migration *_document_builder_draft_no). A teammate saves the job's draft after
+-- this page read it. The page's own save, and the usual's publish to every job from it, land on no row.
+RESET ROLE;
+SELECT dsb.past($q$SELECT draft_no::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$) AS n \gset
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('a teammate''s save, naming the number her page read, lands',
+  dsb.touched(format($q$UPDATE public.document_builder_sheets SET draft = '{"name": "Cedar Park Medical Office", "place": "414 Sample Street"}' WHERE id = '00000000-0000-0000-0000-0000004043a0' AND draft_no = %s$q$, :n)), '1');
+SELECT dsb.same('a save from the page that fell behind lands on no row',
+  dsb.touched(format($q$UPDATE public.document_builder_sheets SET draft = '{"name": "Cedar Park Medical Office", "place": "Typed on the page left open"}' WHERE id = '00000000-0000-0000-0000-0000004043a0' AND draft_no = %s$q$, :n)), '0');
+SELECT dsb.same('and so does a publish from it, though the revision it names still stands',
+  dsb.touched(format($q$UPDATE public.document_builder_sheets SET draft = published, published_sheet = '{"co": "Acme Plumbing", "place": "From the page left open"}', revision = 2, usual_revision = 1 WHERE id = '00000000-0000-0000-0000-0000004043a0' AND revision = 1 AND draft_no = %s$q$, :n)), '0');
+SELECT dsb.same('a number sent by the client is taken as a write', dsb.touched($q$UPDATE public.document_builder_sheets SET draft_no = 900 WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('the teammate''s words stand, subs still read revision 1, and the number went up one',
+  dsb.past(format($q$SELECT draft::text || ' ' || revision::text || ' ' || published_sheet::text || ' ' || (draft_no - %s)::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$, :n)),
+  '{"name": "Cedar Park Medical Office", "place": "414 Sample Street"} 1 {"co": "Acme Plumbing", "place": "410 Sample Street"} 1');
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('a publish that names the number as it now stands lands',
+  dsb.touched(format($q$UPDATE public.document_builder_sheets SET published = draft, published_sheet = '{"co": "Acme Plumbing", "place": "414 Sample Street"}', revision = 2, usual_revision = 1 WHERE id = '00000000-0000-0000-0000-0000004043a0' AND revision = 1 AND draft_no = %s$q$, :n + 1)), '1');
+SELECT dsb.same('the draft goes back to where the next steps read it', dsb.touched($q$UPDATE public.document_builder_sheets SET draft = '{"name": "Cedar Park Medical Office", "place": "412 Sample Street"}' WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('a publish and a save each moved the number', dsb.past(format($q$SELECT (draft_no - %s)::text || ' on revision ' || revision::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0'$q$, :n)), '3 on revision 2');
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
 
 -- 3 · A link is the function's to write. A dev reads it and writes none.
 SELECT dsb.refused('a dev making a link', $q$INSERT INTO public.document_builder_links (builder_key, sheet_id, nonce, code_hash) VALUES ('insurance', '00000000-0000-0000-0000-0000004043a0', repeat('a', 32), repeat('b', 64))$q$, 'permission denied');

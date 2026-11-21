@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width, and the small-job gap fixed as v2.8120 · left: the owner's own look, and three calls
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width · the small-job gap fixed as v2.8120 and the card drawn for the next stop as v2.8122, both live the same evening · left: the owner's own look, and four calls
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -11,12 +11,13 @@ summary: >
   It speaks hours and never money. It asks before it warns: when hours went in after the percent was
   last set it is amber and asks Is 40% still right?, with Still 40% to say it again in one press, and
   it is red only on a fresh percent. What is this? explains the card and opens by itself once. The
-  office's line says dollars over in place of points.
-next: The owner looks at the card on a phone and answers the three calls below.
+  office's line says dollars over in place of points. On a small job, a gap of a tenth of the hours
+  counts. Clocked in with no job, the superintendent sees the pace of the next stop.
+next: The owner looks at the card on a phone and answers the four calls below.
 size: M, built as one PR, and an XS for the Job Budget card
 blocker: None in the code.
-ver: v2.8048 · 8058 · 8120
-opinion: your call — the card is built on the defaults, and each of the three calls is one small change either way
+ver: v2.8048 · 8058 · 8120 · 8122
+opinion: your call — the card is built on the defaults, and each of the four calls is one small change either way
 ---
 
 # Job pace: the pace card says what it compares, and why (#406)
@@ -107,14 +108,14 @@ that bundles it reading as behind. The owner, 2026-11-20: "Yes, do it".
 | --- | --- |
 | Hours ahead, the percent fresh | *Hours are ahead of the work.* The gap in hours. **Set the %**, then **My finish date** and **Ask a master**. Red. |
 | Hours ahead, hours clocked after the percent | *Is 40% still right?* The day it was set and the hours since. **Set the %** and **Still 40%**. Amber. |
-| Within one crew day | *On track.* *Hours and work are moving together.* Calm. |
+| Within one crew day, and under a tenth of the hours budget | *On track.* *Hours and work are moving together.* Calm. |
 | Work ahead | *The work is ahead of the hours.* The hours under. Green. |
 | Nobody has set a percent | *Nobody has set the work percent yet.* **Set the %**. |
 | Under 8 hours | *Too early to tell.* |
 | No hours budget | *This job has no hours budget yet.* The office sets it. |
 | Money ahead, hours not | The hours' own headline, and one grey line that the office watches the money. |
 
-## The three calls left for the owner
+## The four calls left for the owner
 
 Each is built on its default. Each is one small change either way.
 
@@ -125,6 +126,8 @@ Each is built on its default. Each is one small change either way.
    keep it.
 3. **A percent is old after 8 hours.** On a job that is over, the card asks again on each day after work went
    in. The other way is a longer wait, a crew day or a week.
+4. **The next stop's card also shows on a bid.** A clock on a bid has no job of its own, so the card draws for
+   the day's next stop, as it does with no job linked. The other way is no card until a job is linked.
 
 ## Is this the best we can do?
 
@@ -132,8 +135,8 @@ Each is built on its default. Each is one small change either way.
   place. Here it opens the **Set the %** window, because the window takes a number for each stage. Left.
 - The folded row's two thin bars still have no labels. The open card names them now. Left for the walk with a
   real superintendent, as #396 left it.
-- The office's board still calls a pace in days. The crew's card says hours. They agree on which jobs are
-  ahead of the work on hours, and differ only where money leads alone.
+- The office's board calls a pace in days, and in hours when the gap is under a crew day. The crew's card says
+  hours. They agree on which jobs are ahead of the work on hours, and differ only where money leads alone.
 
 ## The Still press, walked in place (2026-11-20)
 
@@ -161,7 +164,7 @@ phone's width, on the dev server at `main` against live data, and nothing that w
 
 - **His page showed no Job pace card at that moment.** He was clocked in with no job linked. The card draws
   only for the job he is on or next, which is how it has always been mounted. A day that starts with a clock
-  in and no job hides the card until a job is linked.
+  in and no job hides the card until a job is linked. Fixed as v2.8122, below.
 - **Drawn for his first stop under his own sign-in**, through a temporary hook that was never committed, the
   card read amber, *Is 40% still right?*, both bars, *set 28 days ago*, and the hours since. The first stage
   wore its tick. Nothing ran off the side at 390 pixels.
@@ -179,6 +182,10 @@ phone's width, on the dev server at `main` against live data, and nothing that w
 - **What is this?** is open the first time and folded the next.
 - Job window, Costs: a job whose money is ahead reads *$N over so far*.
 - Projects board: the words under a money-ahead card read *Money is ahead of the work.*
+- Projects board: a small job behind by less than a crew day, but by a tenth of its hours or more, reads
+  *6 hours behind.* with the chip *-6 h*, never *On pace.*
+- Clocked in as the superintendent with no job linked: the card reads *Next stop* with the job's number and
+  name, and shows that job's pace.
 
 ## The next stop (v2.8122)
 
@@ -187,3 +194,10 @@ and the card drew only for a job the Job Mode card shows. It now draws for his n
 line, *Next stop* and the job's number and name (`src/lib/jobMode/paceNextStop.ts`). Walked read-only as the
 same superintendent, still clocked in with no job linked: the card was there, named his first stop, and read
 that job's pace. The owner, 2026-11-20: "Yes, build it".
+
+## Live (2026-11-20)
+
+v2.8122 and v2.8120 merged that evening, and one site deploy carries both. The live site's own code was read
+after it finished: the Dashboard draws the *Next stop* card, and the Projects board counts a gap of a tenth of
+the hours budget. The next stop was not walked again on the live site, because that needs the superintendent
+clocked in with no job linked.

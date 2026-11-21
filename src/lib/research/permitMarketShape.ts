@@ -3,13 +3,16 @@
  * The first reads the plumbers a city's permits name and how tied each builder is to one. It is
  * drawn only where the permits name plumbers. The second counts a city's commercial permits by
  * month, by kind and by size. Every count is defined on the card
- * (`to-dos/permits-market-page/README.md`, How each number is counted). No React, no Supabase.
+ * (`to-dos/permits-market-page/README.md`, How each number is counted). A sentence here marks
+ * each count and amount in it with `val` (values in place), and the screen draws it with
+ * `ValueSentence`. No React, no Supabase.
  */
 import { nameKey } from '../../../supabase/functions/_shared/permitLookup'
 import { shortMoney, type ResearchPermitRow } from './permitResearch'
 import { builderNameOfPermit } from './permitBuilders'
 import { marketPermitsSince, type MarketPermit } from './permitMarket'
 import { valuesReliable } from './permitCallList'
+import { val } from '../valuesInPlace'
 
 // ---------- who holds the work ----------
 
@@ -112,8 +115,8 @@ export function builderTies(rows: readonly NamedJob[], todayYmd: string): Builde
 /** The note under the plumbers: how the builders split, and that the ones who shop around are the open doors. */
 export function builderTiesWords(t: BuilderTies): string {
   if (t.judged === 0) return `No builder has ${TIE_MIN_JOBS} or more jobs with a named plumber yet, so none can be judged.`
-  const builders = `Of ${t.judged} builder${t.judged === 1 ? '' : 's'} with ${TIE_MIN_JOBS} or more named jobs`
-  const split = `${t.usesOne} use${t.usesOne === 1 ? 's' : ''} one plumber nearly every time, ${t.leans} lean${t.leans === 1 ? 's' : ''} to one and ${t.shops} shop${t.shops === 1 ? 's' : ''} around.`
+  const builders = `Of ${val('judged', `${t.judged} builder${t.judged === 1 ? '' : 's'}`)} with ${TIE_MIN_JOBS} or more named jobs`
+  const split = `${val('uses_one', String(t.usesOne))} use${t.usesOne === 1 ? 's' : ''} one plumber nearly every time, ${val('leans', String(t.leans))} lean${t.leans === 1 ? 's' : ''} to one and ${val('shops', String(t.shops))} shop${t.shops === 1 ? 's' : ''} around.`
   return `${builders}: ${split}${t.shops > 0 ? ' The ones that shop around are the open doors.' : ''}`
 }
 
@@ -178,7 +181,7 @@ export function valueBands(permits: readonly Pick<MarketPermit, 'declared_value'
 /** "Of 2,000 with a value on the permit: 1,200 are $250k or more, 800 are $1M or more. The middle one is $450k." */
 export function valueBandsWords(b: ValueBands): string {
   const n = (v: number) => v.toLocaleString('en-US')
-  return `Of ${n(b.valued)} with a value on the permit: ${n(b.ge250k)} are $250k or more, ${n(b.ge1m)} are $1M or more. The middle one is ${shortMoney(b.median) ?? '$0'}.`
+  return `Of ${val('valued', n(b.valued))} with a value on the permit: ${val('ge250k', n(b.ge250k))} are $250k or more, ${val('ge1m', n(b.ge1m))} are $1M or more. The middle one is ${val('median', shortMoney(b.median) ?? '$0')}.`
 }
 
 /** What the size line says where no band is drawn. */

@@ -2,7 +2,8 @@
  * A walked builder, open in the Document builder tab (punch list #404, step 7): the Sub NDA. Two sides. On the right,
  * what a GC sees: the flow, where every piece of words is a field a dev presses and types over. On the left, the map
  * (a row a topic, a column a level), the pages changed since the published revision with the way back, and the press
- * that publishes the draft as the next revision.
+ * that publishes the draft as the next revision. Under them, the builder's link (step 8): switched on, anyone who holds
+ * it walks the published revision at `/d/<code>`, look only.
  *
  * A change is to the draft, saved a moment after the typing rests. Nobody outside sees a draft. No clause wording is
  * typed here: a clause stays grey bars, and its wording stays in the Contract Book. Every rule is
@@ -15,13 +16,18 @@ import { DOCUMENT_BUILDER_WORDS as WORDS } from '../../lib/documentBuilder/build
 import { readPaperDef } from '../../lib/documentBuilder/definition'
 import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
+import { walkedLinkCardWords } from '../../lib/documentBuilder/linkPage'
+import { movedOnWords } from '../../lib/documentBuilder/movedOn'
 import { changedPages, isPathChanged, mapRows, pageName, pageOpens, revertPage, walkedNote, walkedPublishPress, withPaperLine, withPaperWords, withoutPaperLine } from '../../lib/documentBuilder/paperEdit'
 import { readPress } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import type { BuilderRecord } from '../../lib/documentBuilder/standing'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { BUILDER_LINK_CARD_IO, BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 import { DocumentBuilderFlow, type FlowEdit, type FlowOpen } from './DocumentBuilderFlow'
+import { LevelBars } from './DocumentBuilderSlider'
 import { levelTone } from './levelTone'
+import { MovedOnPanel } from './MovedOnPanel'
 
 /** The writes the builder makes. A smoke hands its own in. */
 export type WalkedBuilderIo = Pick<typeof defaultIo, 'saveBuilderDraft' | 'publishBuilder' | 'markBuilderRead'>
@@ -33,9 +39,11 @@ type Props = {
   def: PaperDef
   onBack: () => void
   onRecord: (rec: BuilderRecord) => void
-  /** What sits under the map on the left: the link and the send, as later steps add them. */
+  /** What sits under the link on the left: the send, as a later step adds it. */
   share?: ReactNode
   io?: WalkedBuilderIo
+  /** The link card's own reads and presses. A smoke hands its own in. */
+  linkIo?: BuilderLinkCardIo
 }
 
 /** How long the typing rests before the draft is saved. */
@@ -71,7 +79,7 @@ function Chip({ chip }: { chip: BuilderChip }) {
   return <span style={{ ...CHIP, ...CHIP_TONES[chip.tone] }}>{chip.words}</span>
 }
 
-export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo }: Props) {
+export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
   const [draft, setDraft] = useState<PaperDef>(def)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -80,6 +88,16 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [refusal, setRefusal] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** The draft's number as this page last read it. Set from each write's answer, ahead of the next draw. */
+  const draftNo = useRef(rec.draftNo)
+  draftNo.current = Math.max(draftNo.current, rec.draftNo)
+  /** The builder moved on somewhere else: the row as it now reads. Saves wait until the person chooses. */
+  const [hold, setHoldState] = useState<BuilderRecord | null>(null)
+  const holdRef = useRef(hold)
+  const setHold = (next: BuilderRecord | null) => {
+    holdRef.current = next
+    setHoldState(next)
+  }
   const [readOpen, setReadOpen] = useState(false)
   const [readName, setReadName] = useState('')
 
@@ -97,13 +115,24 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   /** The last save did not land, and no save has been asked for since. Leaving the builder sends the draft again. */
   const unsaved = useRef(false)
   const save = useCallback(async () => {
-    const res = await io.saveBuilderDraft(entry.id, draftRef.current)
+    // Held: the builder moved on somewhere else, and the person has not chosen yet.
+    if (holdRef.current) {
+      unsaved.current = true
+      if (here.current) setSaveState('failed')
+      return
+    }
+    const res = await io.saveBuilderDraft(entry.id, draftRef.current, draftNo.current)
     unsaved.current = !res.ok
     // The saved row goes up to the tab even after the builder is left: the tab opens the builder from it next time.
-    if (res.ok) onRecord(res.value)
+    if (res.ok) {
+      draftNo.current = res.value.draftNo
+      onRecord(res.value)
+    }
     if (!here.current) return
     if (!res.ok) {
-      setRefusal(res.error)
+      // A save refused because the builder moved on is held, and the panel says the rest.
+      if (res.movedOn) setHold(res.movedOn)
+      else setRefusal(res.error)
       setSaveState('failed')
     } else setSaveState(timer.current == null ? 'saved' : 'saving')
   }, [io, entry.id, onRecord])
@@ -153,13 +182,53 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
     return res.ok
   }
   const publish = async () => {
-    if (busy) return
+    if (busy || holdRef.current) return
     setBusy(true)
     setRefusal(null)
     await flush()
-    const res = await io.publishBuilder(entry.id, rec.revision, draftRef.current)
+    if (holdRef.current) {
+      setBusy(false)
+      return
+    }
+    const res = await io.publishBuilder(entry.id, rec.revision, draftRef.current, draftNo.current)
     setBusy(false)
-    if (said(res)) onRecord(res.value)
+    if (!res.ok && res.movedOn) {
+      setHold(res.movedOn)
+      return
+    }
+    if (said(res)) {
+      draftNo.current = res.value.draftNo
+      onRecord(res.value)
+    }
+  }
+  /** Load the newer one: the builder as it now reads replaces what was typed here. */
+  const loadNewer = () => {
+    const newer = holdRef.current
+    if (!newer) return
+    if (timer.current != null) window.clearTimeout(timer.current)
+    timer.current = null
+    unsaved.current = false
+    setHold(null)
+    setRefusal(null)
+    const parsed = readPaperDef(newer.draft)
+    if (parsed.ok) {
+      draftRef.current = parsed.def
+      setDraft(parsed.def)
+    }
+    draftNo.current = newer.draftNo
+    onRecord(newer)
+    setSaveState('saved')
+  }
+  /** Save mine over it: what was typed here is saved over the newer draft, naming the number that draft is on. */
+  const keepMine = () => {
+    const newer = holdRef.current
+    if (!newer) return
+    setHold(null)
+    setRefusal(null)
+    draftNo.current = newer.draftNo
+    onRecord(newer)
+    setSaveState('saving')
+    send()
   }
   const markRead = async () => {
     if (busy || !readName.trim()) return
@@ -201,7 +270,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
         <span style={saveState === 'failed' ? { ...FINE, fontWeight: 600, color: 'var(--text-red-700)' } : FINE} aria-live="polite">
           {SAVE_WORDS[saveState]}
         </span>
-        <button type="button" disabled={press.dead || busy} style={mainPress(press.dead || busy)} onClick={() => void publish()}>
+        <button type="button" disabled={press.dead || busy || hold != null} style={mainPress(press.dead || busy || hold != null)} onClick={() => void publish()}>
           {press.label}
         </button>
       </div>
@@ -230,6 +299,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
           {refusal}
         </p>
       ) : null}
+      {hold ? <MovedOnPanel words={movedOnWords(entry.name, { revision: rec.revision }, hold)} busy={busy} onLoad={loadNewer} onKeep={keepMine} /> : null}
       {press.dead && press.why.length > 0 ? (
         <div style={CARD}>
           <h3 style={CARD_TITLE}>Before this can be published</h3>
@@ -245,11 +315,15 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
         <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
           <div style={CARD}>
             <h3 style={CARD_TITLE}>The map: a row a topic, a column a level</h3>
-            <div role="table" aria-label="The map" style={{ display: 'grid', gridTemplateColumns: `minmax(72px, 1.1fr) repeat(${draft.levels.length}, minmax(0, 1fr))`, gap: 4, alignItems: 'stretch', fontSize: '0.72rem' }}>
+            {/* The grid's columns, a head's words or bars and a cell's shape are `index.css`'s: they differ on a phone. */}
+            <div role="table" aria-label="The map" className="documentBuilderMap" style={{ ['--map-levels' as string]: draft.levels.length, fontSize: '0.72rem' }}>
               <span />
               {draft.levels.map((l) => (
-                <span key={l.id} style={{ ...CAP, fontSize: '0.62rem', textAlign: 'center', color: levelTone(draft, l.id) }}>
-                  {l.shortName ?? l.name}
+                <span key={l.id} className="documentBuilderMapHead" title={l.name} style={{ ...CAP, fontSize: '0.62rem', color: levelTone(draft, l.id) }}>
+                  <span className="documentBuilderMapHeadWords">{l.shortName ?? l.name}</span>
+                  <span className="documentBuilderMapHeadBars">
+                    <LevelBars def={draft} stop={l.id} />
+                  </span>
                 </span>
               ))}
               {rows.map((row) => (
@@ -264,7 +338,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
                       aria-label={`${row.label}, ${cell.levelName}${cell.changed ? ', changed' : ''}`}
                       title={cell.says}
                       onClick={() => show(cell.page)}
-                      style={{ border: `1px solid ${cell.changed ? 'var(--text-amber-700)' : 'var(--border)'}`, background: cell.changed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 6, padding: '4px 5px', minHeight: 28, minWidth: 0, textAlign: 'left', fontFamily: 'inherit', fontSize: '0.7rem', lineHeight: 1.25, cursor: 'pointer', boxShadow: `inset 0 3px 0 ${levelTone(draft, cell.level)}` }}
+                      style={{ ['--tone' as string]: levelTone(draft, cell.level), border: `1px solid ${cell.changed ? 'var(--text-amber-700)' : 'var(--border)'}`, background: cell.changed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: 'var(--text-700)', minWidth: 0, textAlign: 'left', fontFamily: 'inherit', fontSize: '0.7rem', lineHeight: 1.25, cursor: 'pointer' }}
                     >
                       <span className="documentBuilderMapWords">{cell.says}</span>
                     </button>
@@ -295,6 +369,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
               </div>
             ))}
           </div>
+          {/* The builder's own link, with no sheet: it opens the published revision and never the draft on the right. */}
+          <BuilderLinkCard builderKey={entry.id} sheetId={null} published={rec.revision > 0} io={linkIo} words={walkedLinkCardWords(rec.revision)} />
           {share}
         </div>
 

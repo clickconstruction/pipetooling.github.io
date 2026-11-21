@@ -8,6 +8,7 @@ import {
   builderRowPress,
   builderStanding,
   builderStandingChips,
+  builderUnreadWords,
   hasUnpublishedChanges,
   isBuilderRead,
   sameContents,
@@ -34,7 +35,11 @@ const rec = (over: Record<string, unknown> = {}) => builderRecordFromRow(row(ove
 
 describe('a row of the table as a record', () => {
   it('reads a draft on revision 0', () => {
-    expect(rec()).toEqual({ key: 'sub-nda', kind: 'walked', draft: { title: 'A made-up paper' }, published: null, revision: 0, publishedAt: null, read: null, updatedAt: '2026-11-19T15:00:00.000Z' })
+    expect(rec()).toEqual({ key: 'sub-nda', kind: 'walked', draft: { title: 'A made-up paper' }, published: null, revision: 0, draftNo: 0, publishedAt: null, read: null, updatedAt: '2026-11-19T15:00:00.000Z' })
+  })
+
+  it('reads the draft’s number, which a save and a publish name', () => {
+    expect(rec({ draft_no: 7 }).draftNo).toBe(7)
   })
 
   it('reads a published builder with its read mark, the name trimmed', () => {
@@ -147,5 +152,21 @@ describe('the chips', () => {
   it('read in plain words', () => {
     const every = [null, rec(), rec({ published: {}, revision: 2, read_revision: 2, read_by_name: 'Avery Stone', read_on: '2026-11-20' }), rec({ draft: { a: 1 }, published: {}, revision: 3 })]
     expect(every.flatMap((r) => builderStandingChips(SUB_NDA, r)).flatMap((c) => plainWordsFailures(c.words))).toEqual([])
+  })
+})
+
+describe('why a builder\u2019s send asks for Send it anyway', () => {
+  const published = (over: Record<string, unknown> = {}) => builderRecordFromRow(row({ published: { title: 'A made-up paper' }, revision: 2, ...over })) as BuilderRecord
+
+  it('names the published revision nobody has read', () => {
+    expect(builderUnreadWords(published())).toBe('No attorney has read revision 2.')
+    expect(builderUnreadWords(published({ read_revision: 1, read_by_name: 'Jo Ferris', read_on: '2026-11-19' }))).toBe('No attorney has read revision 2.')
+    expect(plainWordsFailures(builderUnreadWords(published()))).toEqual([])
+  })
+
+  it('is nothing once that revision is read, and nothing before a publish', () => {
+    expect(builderUnreadWords(published({ read_revision: 2, read_by_name: 'Jo Ferris', read_on: '2026-11-20' }))).toBe('')
+    expect(builderUnreadWords(builderRecordFromRow(row()))).toBe('')
+    expect(builderUnreadWords(null)).toBe('')
   })
 })

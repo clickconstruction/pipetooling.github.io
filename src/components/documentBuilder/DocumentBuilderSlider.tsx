@@ -176,7 +176,8 @@ export function DocumentBuilderSlider({
           />
         ) : null}
       </div>
-      <div style={{ position: 'relative', height: basis != null ? 44 : 32 }}>
+      {/* A stop is a press, so its row is 44 px with or without the word *Basis* under a stop. */}
+      <div style={{ position: 'relative', height: 44 }}>
         {stops.map((stop, i) => {
           const dead = i < floor
           const on = stop === value
@@ -200,7 +201,7 @@ export function DocumentBuilderSlider({
                 border: 0,
                 background: 'none',
                 padding: '4px 0',
-                minHeight: basis != null ? 44 : 32,
+                minHeight: 44,
                 fontFamily: 'inherit',
                 fontSize: '0.78rem',
                 lineHeight: 1.3,

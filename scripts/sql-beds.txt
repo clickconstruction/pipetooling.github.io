@@ -148,6 +148,7 @@ trips
 primary-test-papers
 job-papers-lock
 job-papers-lists
+job-paper-settings
 schedule-reads-gate
 dashboard-view
 job-finish-calls

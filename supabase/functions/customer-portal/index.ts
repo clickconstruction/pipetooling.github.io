@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { gcPortalStages, loadGcStageInputs, type GcPortalStages, type GcStageAdmin } from '../_shared/gcStages.ts'
+import { customerPageBuildersOrNone } from '../_shared/documentBuilderCustomerPage.ts'
 import { loadGcPageJobs } from '../_shared/startChecksPortal.ts'
 import type { GcPageStage } from '../_shared/gcKernels/lib/startChecks/gcPage.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -816,6 +817,10 @@ serve(async (req) => {
       console.error('customer-portal my jobs', e instanceof Error ? e.message : String(e))
     }
 
+    // The Document builder (punch list #404, step 9): a builder the office sent this GC, under the job it is about.
+    // Only on a page that shows the jobs they are the GC on.
+    const builders = link.audience === 'gc' || link.audience === 'all' ? await customerPageBuildersOrNone(admin, link.customer_id, jobs.filter((j) => j.gc_customer_id === link.customer_id).map((j) => ({ id: j.id, label: jobLabel(j) }))) : []
+
     return jsonResponse({
       // Whose letterhead (v2.5229): Click Construction for a customer whose every job is a GC job we build.
       company: portalLetterhead({ audience: link.audience, gcJobCount: gcJobs.length, jobs }),
@@ -838,6 +843,7 @@ serve(async (req) => {
       testReports,
       stages,
       startChecks,
+      builders,
       checks,
       waivers,
       promise,

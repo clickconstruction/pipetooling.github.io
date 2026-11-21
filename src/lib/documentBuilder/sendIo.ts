@@ -11,20 +11,20 @@ import { supabase } from '../supabase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Landed } from './documentBuildersIo'
-import type { PartyContact, PartyPage, SendParty, SendRecord } from './send'
-import { DOCUMENT_BUILDER_SEND_REFUSALS, type DocumentBuilderSendWhy } from './sendWords'
+import type { PartyContact, PartyJob, PartyPage, SendParty, SendRecord } from './send'
+import { DOCUMENT_BUILDER_SEND_REFUSALS, gcJobLabel, type DocumentBuilderSendWhy } from './sendWords'
 
 const db = supabase as unknown as SupabaseClient
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 const FUNCTION_URL = `${supabaseUrl}/functions/v1/document-builder-send`
 
-const SEND_SELECT = 'id, company_id, customer_id, contact_name, sent_at, sent_revision, times_sent, opened_at, opened_revision'
+const SEND_SELECT = 'id, company_id, customer_id, about_job_id, contact_name, contact_email, sent_at, sent_revision, times_sent, opened_at, opened_revision'
 
-type SendRow = { id: string; company_id: string | null; customer_id: string | null; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
+type SendRow = { id: string; company_id: string | null; customer_id: string | null; about_job_id?: string | null; contact_name: string; contact_email: string | null; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }
 
-export function sendRecordFromRow(row: { id: string; contact_name: string; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }, about: string | null = null): SendRecord {
-  return { id: row.id, contactName: row.contact_name, about, sentOn: calendarYmdInAppTzFromIso(row.sent_at), sentRevision: row.sent_revision, timesSent: row.times_sent, openedOn: row.opened_at ? calendarYmdInAppTzFromIso(row.opened_at) : null, openedRevision: row.opened_revision }
+export function sendRecordFromRow(row: { id: string; contact_name: string; contact_email?: string | null; sent_at: string; sent_revision: number; times_sent: number; opened_at: string | null; opened_revision: number | null }, about: string | null = null): SendRecord {
+  return { id: row.id, contactName: row.contact_name, contactEmail: (row.contact_email ?? '').trim(), about, sentOn: calendarYmdInAppTzFromIso(row.sent_at), sentRevision: row.sent_revision, timesSent: row.times_sent, openedOn: row.opened_at ? calendarYmdInAppTzFromIso(row.opened_at) : null, openedRevision: row.opened_revision }
 }
 
 /** Where a party's own page stands, from its links: one that is on, none ever made, or every one turned off. */
@@ -87,6 +87,91 @@ export async function readSheetParties(projectId: string, sheetId: string | null
     .map(({ awarded: _awarded, ...party }) => party)
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// A builder to GCs (step 9): the customers who are the GC on our jobs, as the send's rows.
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Where a GC's own page stands. Their page is the customer portal's link that shows the jobs they are the GC on: the
+ * view made for them alone, or the whole account's. A link that shows only their own jobs is not it.
+ */
+export function gcPageFromLinks(links: ReadonlyArray<{ audience: string; revoked_at: string | null }>): PartyPage {
+  return pageFromLinks(links.filter((l) => l.audience === 'gc' || l.audience === 'all'))
+}
+
+type GcJobRow = { id: string; gc_customer_id: string | null; job_name: string | null; hcp_number: string | null; click_number: string | null }
+type GcCustomerRow = { id: string; name: string | null; contact_info: unknown }
+
+/** The email on a customer's own record. */
+function customerEmail(contactInfo: unknown): string | null {
+  const email = typeof contactInfo === 'object' && contactInfo !== null ? (contactInfo as Record<string, unknown>).email : null
+  return typeof email === 'string' ? email : null
+}
+
+/**
+ * The send's rows for a builder, from what was read: one a customer who is the GC on a job with us, with their jobs,
+ * who can be sent to, where their page stands and the live send. A GC who was sent it comes first, then the one with
+ * the most jobs. Pure.
+ */
+export function builderPartiesFrom(input: {
+  jobs: ReadonlyArray<GcJobRow>
+  customers: ReadonlyArray<GcCustomerRow>
+  people: ReadonlyArray<{ customer_id: string; name: string | null; email: string | null }>
+  links: ReadonlyArray<{ customer_id: string; audience: string; revoked_at: string | null }>
+  sends: ReadonlyArray<SendRow>
+}): SendParty[] {
+  return input.customers
+    .map((c): SendParty => {
+      const jobs: PartyJob[] = input.jobs.filter((j) => j.gc_customer_id === c.id).map((j) => ({ id: j.id, label: gcJobLabel(j) })).sort((a, b) => a.label.localeCompare(b.label))
+      const send = input.sends.find((s) => s.customer_id === c.id)
+      const about = send?.about_job_id ? (jobs.find((j) => j.id === send.about_job_id)?.label ?? 'A job that is no longer theirs') : null
+      return {
+        id: c.id,
+        name: (c.name ?? '').trim(),
+        sub: `${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} with you`,
+        page: gcPageFromLinks(input.links.filter((l) => l.customer_id === c.id)),
+        contacts: contactsOf({ contact_name: c.name, email: customerEmail(c.contact_info) }, input.people.filter((p) => p.customer_id === c.id).map((p) => ({ name: p.name, email: p.email, role: null }))),
+        jobs,
+        send: send ? sendRecordFromRow(send, about) : null,
+      }
+    })
+    .sort((a, b) => Number(b.send != null) - Number(a.send != null) || (b.jobs?.length ?? 0) - (a.jobs?.length ?? 0) || a.name.localeCompare(b.name))
+}
+
+const PAGE = 1000
+const CHUNK = 150
+const chunks = <T,>(all: readonly T[]): T[][] => Array.from({ length: Math.ceil(all.length / CHUNK) }, (_, i) => all.slice(i * CHUNK, (i + 1) * CHUNK))
+
+/** Every job with a GC on it, a page at a time, since one read answers a thousand rows at most. */
+async function readGcJobs(): Promise<GcJobRow[]> {
+  const out: GcJobRow[] = []
+  for (let from = 0; ; from += PAGE) {
+    const rows = ((await withSupabaseRetry<unknown[]>(() => db.from('jobs_ledger').select('id, gc_customer_id, job_name, hcp_number, click_number').not('gc_customer_id', 'is', null).order('id').range(from, from + PAGE - 1), 'read the GCs')) ?? []) as GcJobRow[]
+    out.push(...rows)
+    if (rows.length < PAGE) return out
+  }
+}
+
+/** A table's rows for a list of customers, read a few customers at a time so no address grows too long. */
+async function readForCustomers<T>(table: string, select: string, ids: readonly string[], column = 'customer_id'): Promise<T[]> {
+  const parts = await Promise.all(chunks(ids).map((part) => withSupabaseRetry<unknown[]>(() => db.from(table).select(select).in(column, part), 'read the GCs')))
+  return parts.flatMap((p) => (p ?? []) as T[])
+}
+
+/** The GCs a builder can go to, as the send's rows. Throws with the reason. */
+export async function readBuilderParties(builderKey: string): Promise<SendParty[]> {
+  const jobs = await readGcJobs()
+  const ids = [...new Set(jobs.map((j) => j.gc_customer_id).filter((id): id is string => id != null))]
+  if (ids.length === 0) return []
+  const [customers, people, links, sends] = await Promise.all([
+    readForCustomers<GcCustomerRow>('customers', 'id, name, contact_info', ids, 'id'),
+    readForCustomers<{ customer_id: string; name: string | null; email: string | null }>('customer_contact_persons', 'customer_id, name, email', ids),
+    readForCustomers<{ customer_id: string; audience: string; revoked_at: string | null }>('customer_portal_links', 'customer_id, audience, revoked_at', ids),
+    withSupabaseRetry<unknown[]>(() => db.from('document_builder_sends').select(SEND_SELECT).eq('builder_key', builderKey).is('sheet_id', null).not('customer_id', 'is', null).is('taken_off_at', null), 'read the sends'),
+  ])
+  return builderPartiesFrom({ jobs, customers, people, links, sends: (sends ?? []) as SendRow[] })
+}
+
 /**
  * The words for a send the function refused. The function answers its key's words, and for some refusals the reason
  * beside them (`detail`): the mail service's own answer, or what the database said. One of those is not a refusal of
@@ -107,9 +192,20 @@ export function sendRefusalWords(body: unknown): string {
 }
 
 export type SheetSendAsk = { builderKey: string; sheetId: string; companyId: string; contactEmail: string; note: string; why: DocumentBuilderSendWhy; anyway: boolean; test?: boolean }
+/** A builder to a GC (step 9). `aboutJobId` is the job it is about, or null for all their jobs with us. */
+export type BuilderSendAsk = { builderKey: string; customerId: string; aboutJobId: string | null; contactEmail: string; note: string; why: DocumentBuilderSendWhy; anyway: boolean; test?: boolean }
 
-/** One send, through the function. It answers the send's row, or the reason in the function's own words. */
-export async function sendSheet(ask: SheetSendAsk): Promise<Landed<SendRecord | { test: true; email: string }>> {
+/** One send of a job's sheet to a trade, through the function. It answers the send's row, or the reason in the function's own words. */
+export function sendSheet(ask: SheetSendAsk): Promise<Landed<SendRecord | { test: true; email: string }>> {
+  return callSend(ask)
+}
+
+/** One send of a builder to a GC, through the same function. */
+export function sendBuilder(ask: BuilderSendAsk): Promise<Landed<SendRecord | { test: true; email: string }>> {
+  return callSend(ask)
+}
+
+async function callSend(ask: SheetSendAsk | BuilderSendAsk): Promise<Landed<SendRecord | { test: true; email: string }>> {
   let token: string | null = null
   try {
     token = (await supabase.auth.getSession()).data.session?.access_token ?? null
@@ -130,7 +226,7 @@ export async function sendSheet(ask: SheetSendAsk): Promise<Landed<SendRecord | 
   if (!s || typeof s.id !== 'string' || typeof s.sentAt !== 'string') return { ok: false, error: DOCUMENT_BUILDER_SEND_REFUSALS.failed.words }
   return {
     ok: true,
-    value: sendRecordFromRow({ id: s.id, contact_name: String(s.contactName ?? ''), sent_at: s.sentAt, sent_revision: Number(s.sentRevision ?? 0), times_sent: Number(s.timesSent ?? 1), opened_at: typeof s.openedAt === 'string' ? s.openedAt : null, opened_revision: typeof s.openedRevision === 'number' ? s.openedRevision : null }),
+    value: sendRecordFromRow({ id: s.id, contact_name: String(s.contactName ?? ''), contact_email: typeof s.contactEmail === 'string' ? s.contactEmail : '', sent_at: s.sentAt, sent_revision: Number(s.sentRevision ?? 0), times_sent: Number(s.timesSent ?? 1), opened_at: typeof s.openedAt === 'string' ? s.openedAt : null, opened_revision: typeof s.openedRevision === 'number' ? s.openedRevision : null }),
   }
 }
 

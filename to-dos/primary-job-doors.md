@@ -3,7 +3,7 @@ name: "A primary's job doors: the ones the scope never reached"
 number: 400
 mockup: not required — it narrows database doors and changes no screen
 group: gated
-status: live on prod 2026-11-19 · five PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner
+status: live on prod 2026-11-19 · seven PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner
 summary: >
   A primary has been held to their own jobs since v2.2177, but only where the tables' restrictive
   policies can see. Functions that run as the owner, and the policies that call them, still ask
@@ -11,7 +11,7 @@ summary: >
   named. Through them a primary on no job reads another job's money lines, photos and test
   papers, and can write down or delete its bill. No screen of theirs asks, so this is a hole at
   the API. The card lists every door, what it gives, and the predicate proposed for it.
-next: The owner answers the two new calls under What was built. #8895, the schedule share reads, is still to merge.
+next: The owner answers the two new calls under What was built.
 size: L as a train of five (M · M · S · M · S)
 blocker: The owner's two new calls.
 opinion: leave the stage checklist as it is; ask the owner about the payers, since that read is company-wide
@@ -232,7 +232,8 @@ primary on a crew who owes a paper is not locked out the way a helper on that cr
 The owner read this card on 2026-11-19 and said to build the whole train, then to merge and push it. Five PRs merged that day. Each is one migration
 with its page, a bed in `scripts/sql-beds.txt` and `docs/ACCESS_CONTROL.md` amended in place. Every function body
 was compared with prod's live definition before its PR opened and matched it but for the one clause. All five
-migrations are on prod, checked there read-only after each push, and `job-photos` is deployed. #8895 is still open.
+migrations are on prod, checked there read-only after each push, and `job-photos` is deployed. #8895 merged on
+2026-11-20 (05:03 UTC) and #9121 after it. Prod's migration ledger holds the migration of each, read on 2026-11-20.
 
 | PR | Version | What it holds |
 |---|---|---|
@@ -241,7 +242,7 @@ migrations are on prod, checked there read-only after each push, and `job-photos
 | #8907 | v2.7936 | Families 4 and 5, in part. Photo notes, the first look tied to a job, the crew's position, `job-photos`. Stacked on #8877. |
 | #8898 | v2.7926 | Family 6. Test papers. |
 | #8905 | v2.7931 | Family 3, in part. The bank payments desk, returned checks and disputes, the pay speed lines, the GC review week. |
-| #8895 | v2.7925 | Family 7, by the session that fixes who may call the schedule share reads. |
+| #8895 | v2.7925 | Family 7. The two schedule email reads hold a primary to their own jobs. Built by the session that fixed who may call them. |
 | #9121 | v2.8109 | Family 3, the rest of the bank payments desk. Its two paying verbs, apply a deposit and add a tip, and the policies of three of its tables. |
 
 Four things came out differently from the tables above.

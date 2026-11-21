@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day are in PRs #9134, #9130 and #9133
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day built as v2.8115 (#9134), v2.8116 (#9130) and v2.8119 (#9133), live 2026-11-21 and walked read-only · the walk's one more dead tick column, on a missed notice with nothing due, fixed as v2.8125 (#9148)
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -203,9 +203,20 @@ the kernel's. Record it… opened its step on every pile, at a desk and on a pho
 5. *Which presses on a phone should grow to thumb size?* **Every press on the card.** Each is 44 px tall to the touch. A
    press of words keeps its line, so the card is 26 px taller and no more. PR #9133.
 
+**Live, 2026-11-21.** All five answers and the three fixes were walked on clicktooling.com, read-only, on six notices at
+1,440, 1,068 and 390 px. A missed notice opens Record it… with no paper picked and no month ticked. A sent notice opens it
+on the by-hand record. Apply stays inside the window. Every press on a phone is 44 px or more. The pinned column is in
+place, but no live notice has two earlier papers yet, so it was seen sliding only on made-up months, and the phone's
+noted line only on made-up names. The same walk found one more dead tick column. A missed notice with nothing due drew
+*This notice* over empty locked boxes, and v2.8125 (#9148) draws that column only where a month can be ticked or one is
+ticked already.
+
 **Still open.** The figure in the head of the notice's column is Grace's choice, as above. The claim drops cents and its
 lines keep them, as before this card. The empty card names no next press. The audit read the affidavit's side of
-question 1 in the code and did not walk it.
+question 1 in the code and did not walk it. Two things the walk saw, older than this card and not built: on a sent notice
+the strip reads *No month picked ›* and the months head *no months*, and a missed notice in the late window (v2.4708) may
+say *the lien right on that work is gone* in its footer while the card says a late notice can still go, read in the code
+only.
 
 ## How to verify
 

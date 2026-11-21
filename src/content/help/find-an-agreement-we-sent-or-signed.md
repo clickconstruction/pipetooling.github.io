@@ -167,6 +167,8 @@ Their paper comes with them. Nothing is copied.
 
 A new customer opens the same form you use to add any customer. Save it and they are added.
 
+If adding them fails, the window says why and stays open. Press the blue button again. The second press goes on from where the first one stopped, so nothing is made twice.
+
 The line then reads **Customer** or **Supply house**. A signed paper's record carries the same press.
 
 A job's contract is not sent here. Send it from its job.
