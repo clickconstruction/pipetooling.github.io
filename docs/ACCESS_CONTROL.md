@@ -2999,6 +2999,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
+- **Write someone up**: since v2.8157 (punch list #410) a superintendent sends a field report about a person through `land_person_report`, as a leader and a dev do, never about themselves, and reads only their own rows of `person_reports`, while the queue and the HR file stay a dev's.
 
 **Service Type Filtering**:
 - Devs can restrict a superintendent to specific service types via `superintendent_service_type_ids` on the user record (like `primary_service_type_ids`)
