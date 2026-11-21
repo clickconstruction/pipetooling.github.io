@@ -7,13 +7,13 @@ order: 22
 ---
 You saw something on a job that HR should know about. You can write it up on your phone while it is fresh.
 
-Your Dashboard has one press for it, {{button:outline|Write someone up}}. The press sits right under the row of squares at the top. It opens a sheet and saves nothing by itself.
+Your Dashboard has one press for it, {{button:outline|Write someone up}}. The press sits right under the row of squares at the top. The press opens a sheet and saves nothing by itself.
 
 ## Pick the person
 
 The sheet opens on a list of people.
 
-1. Look under **With you today**. These are the people on your job today.
+1. Look under **With you today** for the people on your job today.
 2. Look under **With you this week** for someone from an earlier day.
 3. Type a name in **Search everyone** to find anyone else.
 4. Press the person's name.
@@ -22,7 +22,7 @@ You are never on your own list.
 
 ## Say what happened
 
-The sheet fills in three things for you. They are who it is about, when it happened and which job. Press the day, the time or the job to change one.
+The sheet fills in who it is about, when it happened and which job. Press the day, the time or the job to change one.
 
 1. Pick a kind under **What kind?**. The last kind is **Good work**, for something done well.
 2. Type what you saw under **What did you see?**. Give the times.
