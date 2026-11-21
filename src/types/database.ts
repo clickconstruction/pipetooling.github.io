@@ -51677,6 +51677,11 @@ export type Database = {
         Returns: string
       }
       request_is_dev_seat: { Args: never; Returns: boolean }
+      research_bid_counts: {
+        Args: { p_created_at: string; p_project_name: string }
+        Returns: boolean
+      }
+      research_bid_party_key: { Args: { p_name: string }; Returns: string }
       research_builders: {
         Args: { p_city: string }
         Returns: {

@@ -117,8 +117,8 @@ export function PermitMarket({
   // The city's Builders rows with the bids a tie adds, as Builders shows them.
   const cityBuilders = useMemo(() => {
     const raw = market.ground?.builders.find((c) => c.city === city)?.rows ?? []
-    return ground ? withAnsweredBids(raw, ground.book, ground.bids) : [...raw]
-  }, [market.ground, city, ground])
+    return ground ? withAnsweredBids(raw, ground.book, ground.bids, todayYmd) : [...raw]
+  }, [market.ground, city, ground, todayYmd])
   const namesPlumbers = useMemo(() => cityNamesPlumbers(cityBuilders), [cityBuilders])
   const permits = market.permits
   const clocks = useMemo(() => marketClocks({ city, applications: permits ?? [], rows, namesPlumbers, todayYmd }), [city, permits, rows, namesPlumbers, todayYmd])
@@ -158,7 +158,7 @@ export function PermitMarket({
   const openSource = (s: BidCompanyPermits) => {
     const row = market.ground?.builders.find((c) => c.city === s.city)?.rows.find((r) => r.key === s.builderKey)
     if (!row) return
-    setOpened({ city: s.city, row: ground ? (withAnsweredBids([row], ground.book, ground.bids)[0] ?? row) : row })
+    setOpened({ city: s.city, row: ground ? (withAnsweredBids([row], ground.book, ground.bids, todayYmd)[0] ?? row) : row })
   }
 
   if (market.loading && !market.ground) return <div style={muted}>Reading the market…</div>

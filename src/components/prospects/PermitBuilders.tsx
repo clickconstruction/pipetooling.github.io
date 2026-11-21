@@ -116,7 +116,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   // The answers on names (punch list #307): a name someone tied to a customer counts that customer's bids as ours with it.
   const answers = useBuilderAnswers()
   const ground = answers.ground
-  const all = useMemo(() => (ground ? withAnsweredBids(rows ?? [], ground.book, ground.bids) : (rows ?? [])), [rows, ground])
+  const all = useMemo(() => (ground ? withAnsweredBids(rows ?? [], ground.book, ground.bids, todayYmd) : (rows ?? [])), [rows, ground, todayYmd])
   // Names that may be one of our customers (punch list #307): a chip with its count, and the list behind it.
   const lookAlikes = usePermitLookAlikes(city, all)
   // A pair answered from a builder's sheet leaves the worklist at once.

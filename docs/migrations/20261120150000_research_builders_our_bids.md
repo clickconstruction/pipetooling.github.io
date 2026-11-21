@@ -16,7 +16,7 @@ Permits: Builders and the call list count our bids as Market's table of companie
 
 Both new functions are closed to `PUBLIC` and `anon` by name and granted to `authenticated` and `service_role`.
 
-The client's one place is `src/lib/research/ourBids.ts`, which lands in the PR after this one. The table of companies and the count of a tied customer's bids read it. A test there holds the two copies together: the days and the platforms in this file must be the ones in that kernel.
+The client's one place is `src/lib/research/ourBids.ts`, which landed in the PR after this one (v2.8147). The table of companies and the count of a tied customer's bids read it. A test there holds the two copies together: the days and the platforms in this file must be the ones in that kernel.
 
 ## What it changes for a reader
 
@@ -41,6 +41,15 @@ The shape of `research_builders` did not change, so no client and no type change
 
 `supabase/tests/permit_skim` (`npm run test:pg:permit-skim`, the SQL beds workflow): nine bids with one made-up builder, of which six count. Under the customer, under the old list's name, one under both counted once, one on the 730th day. Left out: two practice bids and one on the 731st day. A name that only starts with ZZZ is no practice bid. The two rule functions are asked directly, and `anon` runs neither.
 
-## Push
+## Applied
 
-After the merge, from a checkout at `origin/main`: `bash scripts/db-push.sh`, this file alone. The client that reads the same rule merges after the push.
+Pushed to prod on 2026-11-21 at about 06:40 UTC with `bash scripts/db-push.sh`, minutes after #9175 merged, from a checkout at `origin/main`. The dry run listed this file alone. Two later migrations were already on prod, so the plain push asked for `--include-all` and the script's retry applied it. The drift check then read 1,420 local files against 1,420 remote versions.
+
+Read back, read only:
+
+- The ledger holds `20261120150000 research_builders_our_bids`.
+- The stored body of `research_builders` is this file's, by its hash. Both rule functions exist, and `anon` can run none of the three.
+- In every city, the count `research_builders` gives a name was set beside the table's rule written out by hand in one query. No name differed, in bids or in wins. Before the push four names did.
+- Through the dev seat, as the dev: one city's whole list came back, and the names with a bid and their bids were the ones the query counted.
+
+No count is kept in this public folder.
