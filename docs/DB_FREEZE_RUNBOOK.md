@@ -57,7 +57,11 @@ Read it like this:
 - **Both fast** → the DB is fine; the problem is elsewhere (client, auth, realtime).
 
 Any HTTP *response* — even a `400 column does not exist` — means Postgres
-answered and parsed SQL. That is a recovery signal, not an error. Don't write a
+answered and parsed SQL. That is a recovery signal, not an error. As anon the
+`db-touching` probe is refused inside the policy, so a healthy database answers
+it **401 with `42501 permission denied for function is_dev`** in ~0.2s and
+writes that line to the Postgres log once a probe: a burst of them after a
+stall is the sessions' own probes, not a new fault. Don't write a
 polling loop that waits for exactly `200`; a wrong column name will loop forever
 (this happened on 2026-07-31).
 
@@ -92,8 +96,8 @@ FATAL: (ECIRCUITBREAKER) failed to retrieve database credentials after multiple 
 ```
 
 `EAUTHQUERY` comes first; after a few attempts Supavisor trips its breaker and
-returns `ECIRCUITBREAKER` until it cools down. A stall can also time out before
-either comes back: the pooler then says `FATAL: Failed to connect to database:
+returns `ECIRCUITBREAKER` until it cools down. In a stall's first minutes a
+connect can also time out before either comes back: the pooler then says `FATAL: Failed to connect to database:
 {:error, :timeout}`, and a CLI run with no `SUPABASE_DB_PASSWORD` says
 `unexpected login role status 544 … Connection terminated due to connection
 timeout`, because the Management API cannot reach Postgres to make its login
@@ -549,24 +553,34 @@ green the whole time** — this is the first partial stall on record.
 ### 2026-11-20 — Mode B (24-minute stall 20:05–20:29 UTC, ended by an instance restart; eight restarts in the day)
 
 Found because a dev seat write timed out: `dev-mcp` answered `The operation
-timed out` to an apply and then to every read, `whoami` included. The
-second-longest stall on record, after 08-19.
+timed out` to an apply and then to every read, `whoami` included. Two other
+agent sessions found it the same way within minutes, and the office was at
+work (14:05 CST). The second-longest stall on record, after 08-19.
 
-- **Step 0** (20:13–20:15): `http-only` **401 in 0.12s**, `db-touching` **000
-  at 20–25s** on five probes. A 15-second probe loop got its first HTTP answer
-  (401) at **20:28:47**.
-- **Every new-connection path was dead, in two wordings the playbook did not
-  list**: the three `supabase inspect db` commands, run with no
-  `SUPABASE_DB_PASSWORD`, each failed with `unexpected login role status 544 …
-  Connection terminated due to connection timeout`, and psql on the session
-  pooler got `FATAL: Failed to connect to database: {:error, :timeout}` in 5s
-  (the 08-24 wording). status.supabase.com: "All Systems Operational".
+- **Step 0** (20:13–20:28, three sessions): `http-only` **401 in 0.11–0.15s**,
+  `db-touching` **000 at 20–25s** on every probe. A 15-second probe loop got
+  its first HTTP answer (401 with `42501`) at **20:28:47**.
+- **Every new-connection path was dead, first in two wordings the playbook
+  did not list**: at 20:14 the three `supabase inspect db` commands, run with
+  no `SUPABASE_DB_PASSWORD`, each failed with `unexpected login role status
+  544 … Connection terminated due to connection timeout`, and at 20:15 psql on
+  the session pooler got `FATAL: Failed to connect to database: {:error,
+  :timeout}` in 5s (the 08-24 wording). The listed pair came later, as the
+  other two sessions saw them: `EAUTHQUERY` from about 20:19 to 20:23:30, and
+  `ECIRCUITBREAKER` from 20:22:40 on one and 20:23:44 on the other, to at least
+  20:26:15. status.supabase.com: "All Systems Operational".
 - **Step 2**: one `monitoring.health_checks` gap **20:05:01 → 20:29:00
   (1,438s)**. The 20:05:01 sample is the onset caught in the act: sampler
   **3,749.7ms** (8–35ms in the minutes before), 84 conns, 11 `active` with NULL
   wait event, 10 `idle in transaction`, and **zero `Lock` rows** (none in 3
   hours). The 20:05 cron batch took 7–11s a job and succeeded; then no cron row
   until 20:29, with no failed rows: the silent gap.
+- **Leading indicator, fifteen minutes and not ninety**: the sampler read
+  288ms at 19:50:00 with 41 backends `active` (34 with no wait event, 7 on
+  `Client`) and 9 `idle in transaction`, 202ms at 19:54:00 and 193ms at 20:03,
+  against 7–35ms in the minutes between. The 19:54:00 sample, the last before
+  the 19:55:02 restart, shows 3 backends `active` on an `LWLock`, the only
+  `LWLock` row over 1 in the ninety minutes before the stall.
 - **Ended by a restart nobody asked for.** The log reads `database system was
   interrupted; last known up at 2026-11-20 20:01:13 UTC` → `not properly shut
   down; automatic recovery in progress` → `starting PostgreSQL 17.6` at
@@ -595,8 +609,16 @@ second-longest stall on record, after 08-19.
   and a few Drive file facts, two dry-run plans at 20:01 (0.4s and 3.8s) and one
   single-row apply, the call that timed out. `dev_mcp_calls` holds no row for
   that apply: it never reached the database, and the log write needs the
-  database too. Not surveyed: what the office and the other agent sessions were
-  running.
+  database too. The other two sessions ran short read-only catalog reads over
+  the pooler (19:52:00–19:53:22 and 20:03:05 from one; 19:55:55, 19:56:48 and
+  about 19:57:30 from the other), four dev seat reads at about 19:53 and a
+  `supabase migration list` at about 19:55, and pushed nothing. The first slow
+  sample (19:50:00) and the day's first five restarts came before any of it.
+  Not surveyed: what the office was running.
+- **After recovery the log filled with the probes**: 15 `permission denied for
+  function is_dev` lines from 20:28:30 to 20:30:30, against none from 19:30 to
+  19:45. They are the sessions' Step 0 probes answering again (Step 0 says
+  why).
 - **The write that timed out**: nothing was re-sent blind. After recovery the
   row read unchanged, a fresh plan gave the same hash, and the apply landed at
   20:30:03 and read back intact after the 20:33:53 restart.
@@ -608,7 +630,11 @@ second-longest stall on record, after 08-19.
   is not the all-clear, so read a write back once `pg_postmaster_start_time()`
   has stopped moving; (4) count a day's restarts from the sampler and
   `pg_postmaster_start_time()` together, since the checkpoint counter and the
-  log each missed some.
+  log each missed some; (5) one top-of-the-hour cron batch failing `job startup
+  timeout` came five minutes before the app went dark, so it is worth a Step 0
+  at once; (6) while the breaker is tripped, probe through the API once a
+  minute and open no pooler connection, since each attempt is one more
+  credential lookup Postgres cannot answer.
 - **What this needs**: the Supabase support ticket the 09-06 entry asks for,
   now with today's `last known up` → `starting PostgreSQL` pairs: 14:35:08 →
   14:38:34, 16:04:44 → 16:07:42, 16:21:27 → 16:25:24, 19:50:55 → 19:55:02,
