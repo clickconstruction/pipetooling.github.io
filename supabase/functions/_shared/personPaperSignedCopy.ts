@@ -15,6 +15,7 @@ import { buildPersonPaperPdf, paperAuditLine, paperMakesAPdf, paperParagraphs, p
 import { buildSignedCopyEmail, signedCopyFileName, signedCopyHold, type SignedCopyHold } from './personPaperSignedCopyEmail.ts'
 import { isPartyPaperName, paperWord, partyFileWords, signerEmailWord } from './paperSigner.ts'
 import { isCompanyPaperName } from './companyPaper.ts'
+import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 import { hasOfficeBoxes, type FormSchema } from './formSchema.ts'
 import { sendEmailViaResend } from './resendSendEmail.ts'
 import { EMAIL_FROM } from './emailFrom.ts'
@@ -79,7 +80,7 @@ function consentLabel(iso: string | null): string | null {
   if (!iso) return null
   const at = new Date(iso)
   if (Number.isNaN(at.getTime())) return null
-  return `${new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' }).format(at)} CT`
+  return `${new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, dateStyle: 'medium', timeStyle: 'short' }).format(at)} CT`
 }
 
 async function bytesOf(blob: unknown): Promise<Uint8Array | null> {
