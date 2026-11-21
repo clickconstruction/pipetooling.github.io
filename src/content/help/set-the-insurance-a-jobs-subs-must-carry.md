@@ -50,6 +50,8 @@ A list **Before this can be published** shows while something is missing. Fix ea
 
 A field a job has changed keeps the job's own words.
 
+A yellow panel may say the sheet changed somewhere else. See [When someone else changed it](/help/use-the-document-builder#when-someone-else-changed-it).
+
 ## Set one job's sheet
 
 1. Press **This job**.

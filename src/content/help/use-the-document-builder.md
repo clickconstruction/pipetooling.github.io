@@ -2,7 +2,7 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, map, publish, publish revision, changed, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, map, publish, publish revision, changed, changed somewhere else, load the newer one, save mine over it, two tabs, someone else, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.
@@ -78,6 +78,19 @@ A list **Before this can be published** shows while something is missing. Fix ea
 Press **Marks are on** to read the flow as a GC does. Press it again to type.
 
 To mark a revision as read, press **Mark it read** on the bar. Type the attorney's name and press the blue button. A new revision is unread again.
+
+## When someone else changed it
+
+Two people can have one builder open. A tab left open for days counts too.
+
+Your typing is saved only when nobody saved a newer draft since your page read it. If someone did, a yellow panel says so. It names what changed, like **Your usual sheet changed somewhere else**.
+
+What you typed stays on the page. Nothing is saved and nothing is dropped until you press one of the two.
+
+- {{button:blue|Load the newer one}} takes their draft. What you typed here goes.
+- {{button:outline-blue|Save mine over it}} saves what you typed. Their draft goes.
+
+A revision someone published stays published either way. The publish button waits until you choose.
 
 ## Walk the Sub NDA
 

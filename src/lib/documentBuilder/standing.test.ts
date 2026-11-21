@@ -34,7 +34,11 @@ const rec = (over: Record<string, unknown> = {}) => builderRecordFromRow(row(ove
 
 describe('a row of the table as a record', () => {
   it('reads a draft on revision 0', () => {
-    expect(rec()).toEqual({ key: 'sub-nda', kind: 'walked', draft: { title: 'A made-up paper' }, published: null, revision: 0, publishedAt: null, read: null, updatedAt: '2026-11-19T15:00:00.000Z' })
+    expect(rec()).toEqual({ key: 'sub-nda', kind: 'walked', draft: { title: 'A made-up paper' }, published: null, revision: 0, draftNo: 0, publishedAt: null, read: null, updatedAt: '2026-11-19T15:00:00.000Z' })
+  })
+
+  it('reads the draft’s number, which a save and a publish name', () => {
+    expect(rec({ draft_no: 7 }).draftNo).toBe(7)
   })
 
   it('reads a published builder with its read mark, the name trimmed', () => {
