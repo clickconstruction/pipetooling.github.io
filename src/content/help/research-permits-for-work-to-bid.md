@@ -284,7 +284,7 @@ Press the round **G** beside a name to search Google for it. The search opens in
 
 ## Read the word under a name
 
-Under who pulled a permit sits one word from our own bid history with that name. **warm** means we have won with them. **cold** means three or more priced bids and nothing won. **new name** means we never bid to them. Hover the word for the reason. The word is a hint. You decide.
+Under who pulled a permit sits one word from our own bid history with that name. **warm** means we have won with them. **cold** means three or more priced bids and nothing won. **new name** means we priced no job for them in the last two years. The word counts the same bids as **Market** does. A practice bid never counts, and neither does a bid older than two years. Hover the word for the reason. The word is a hint. You decide.
 
 ## See the rows on a map
 

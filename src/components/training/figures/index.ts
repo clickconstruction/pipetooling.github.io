@@ -145,6 +145,13 @@ import { CoPath } from './CoPath'
 import { SupplyAndReturn } from './SupplyAndReturn'
 import { FilterAndStat } from './FilterAndStat'
 import { WaterMeetsAir } from './WaterMeetsAir'
+import { CloggedDrainStrip } from './CloggedDrainStrip'
+import { FrozenCoilStrip } from './FrozenCoilStrip'
+import { BackdraftStrip } from './BackdraftStrip'
+import { GasSmellStrip } from './GasSmellStrip'
+import { CutLineSetStrip } from './CutLineSetStrip'
+import { StartsAloneStrip } from './StartsAloneStrip'
+import { AtticStrip } from './AtticStrip'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -275,4 +282,11 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'supply-and-return': SupplyAndReturn,
   'filter-and-stat': FilterAndStat,
   'water-meets-air': WaterMeetsAir,
+  'clogged-drain-strip': CloggedDrainStrip,
+  'frozen-coil-strip': FrozenCoilStrip,
+  'backdraft-strip': BackdraftStrip,
+  'gas-smell-strip': GasSmellStrip,
+  'cut-line-set-strip': CutLineSetStrip,
+  'starts-alone-strip': StartsAloneStrip,
+  'attic-strip': AtticStrip,
 }

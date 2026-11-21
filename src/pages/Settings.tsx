@@ -113,6 +113,7 @@ import MachineTemplatesSettingsCard from '../components/settings/MachineTemplate
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import LineBudgetSettingsBlock from '../components/settings/LineBudgetSettingsBlock'
 import SuperintendentBonusSettingsBlock from '../components/settings/SuperintendentBonusSettingsBlock'
+import PaperRemindersSettingsBlock from '../components/settings/PaperRemindersSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
 import TripFarMilesSettingsBlock from '../components/settings/TripFarMilesSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
@@ -693,18 +694,20 @@ export default function Settings() {
 
   async function handleBackToMyAccount() {
     const raw = localStorage.getItem('impersonation_original')
-    localStorage.removeItem('impersonation_original')
     setImpersonating(false)
     if (!raw) return
     const stash = readImpersonationStash(raw)
+    // The flag comes off only after the session is the operator's again (as Layout's Exit does).
     try {
       if (stash?.access_token && stash.refresh_token) {
         await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
       }
     } catch {
+      localStorage.removeItem('impersonation_original')
       window.location.href = '/sign-in'
       return
     }
+    localStorage.removeItem('impersonation_original')
     // v2.3606: back to the page the operator left, not the dashboard.
     window.location.href = impersonationReturnPath(stash, window.location.origin)
   }
@@ -1557,6 +1560,8 @@ export default function Settings() {
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {isOwnerOrDev(myRole) && <TeamReviewCadenceSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <SuperintendentBonusSettingsBlock />}
+      {/* Punch list #376: the one switch for reminders by email on a staff or sub paper. It ships off. */}
+      {(myRole === 'dev' || myRole === 'master_technician') && <PaperRemindersSettingsBlock />}
       {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs, bills and liens; its old anchor still lands here. */}
       {/* Punch list #188 row 22 (v2.6755): the pay-run day is payroll's, the controller's with a dev. */}
       {isControllerOrDev(myRole) && (

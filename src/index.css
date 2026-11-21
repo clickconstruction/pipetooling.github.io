@@ -6638,6 +6638,9 @@ tr[data-stages-row-stamped] {
 .vipChange { display: inline-block; position: relative; margin: 0; padding: 0 3px; border: none; border-bottom: 2px dotted var(--text-link); border-radius: 4px 4px 0 0; background: var(--bg-blue-tint); color: var(--text-strong); font: inherit; font-weight: 700; line-height: inherit; text-align: inherit; white-space: nowrap; cursor: pointer; }
 button.vipChange:hover, button.vipChange:active { background: var(--bg-blue-200); }
 button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+/* Write someone up (punch list #410) is a phone sheet: a value's press keeps its look and takes a thumb's 44 px. */
+[data-write-up-sheet] button.vipChange::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+[data-write-up-sheet] .vipKeep, [data-write-up-sheet] .vipCancel, [data-write-up-sheet] .vipInput { min-height: 44px; }
 .vipChangeSample { cursor: default; }
 .vipWorked { font-weight: 700; color: var(--text-strong); }
 .vipWorked[data-tone='red'] { color: var(--text-red-700); }

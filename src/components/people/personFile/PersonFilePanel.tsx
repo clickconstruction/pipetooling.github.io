@@ -19,6 +19,7 @@ import { loadExhibitNumbers, loadPersonCase, runExhibitBackfill } from '../../..
 import { PersonCaseView } from './PersonCaseView'
 import { standingWords, type PersonEngagementRow } from '../../../lib/people/personEngagements'
 import { loadPersonEngagements } from '../../../lib/people/personEngagementsIo'
+import { filePersonReport } from '../../../lib/people/hrPendingReportsIo'
 import { PersonStandingWindow } from './PersonStandingWindow'
 import { sectionChangedWords, sectionFreshness, sectionFreshnessHeadWords, sectionNeedsALook, sectionNewerWords, type DocRevision } from '../../../lib/people/sectionFreshness'
 import { loadDocRevisions } from '../../../lib/people/sectionFreshnessIo'
@@ -650,8 +651,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const fileReport = useCallback(
     async (reportId: string) => {
       setReportBusyId(reportId)
-      const { error } = await supabase.rpc('file_person_report', { p_report_id: reportId })
-      if (error) showToast(`Could not file it: ${error.message}`, 'error')
+      // The queue's own call (punch list #410): a write-up from the Dashboard's sheet is filed with its facts.
+      const { error } = await filePersonReport(reportId, personName)
+      if (error) showToast(formatErrorMessage(error, 'The report was not filed.'), 'error')
       else {
         showToast('Filed as a dated entry on the line.', 'success')
         await load()
@@ -659,7 +661,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       }
       setReportBusyId(null)
     },
-    [showToast, load, onChanged],
+    [showToast, load, onChanged, personName],
   )
 
   const dismissReport = useCallback(

@@ -1,8 +1,10 @@
 -- Permits, the hint beside a name (v2.6917, punch list #302 call 4, migration *_permit_hint_both_decks):
 -- research_contact_history says "on the deck" for an open lead of that name on either calling deck, Customers or
 -- Jobs to GC, and still for no sub, no lead that left the queue and no name it was not asked about; the bids and
--- the wins read as before. Fixtures are written as postgres; one read runs under RLS as the office; everything
--- rolls back. Raises on the first failed assertion; ends with "permit_hint_decks PASSED". See
+-- the wins read as before. Since *_research_contact_history_our_bids (v2.8181, punch list #405) the bids are the ones
+-- the one rule counts: no practice bid, none older than two years, none under a bid platform's bucket or a ZZ name,
+-- and the last bid's day is the company calendar's. Fixtures are written as postgres; one read runs under RLS as the
+-- office; everything rolls back. Raises on the first failed assertion; ends with "permit_hint_decks PASSED". See
 -- scripts/pgtest-permit-hint-decks.sh. Never against prod. Every name is made up.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -17,6 +19,23 @@ INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0
 INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_name, customer_id, outcome) VALUES
   ('00000000-0000-0000-0000-0000009417d1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Sample Plaza', '00000000-0000-0000-0000-0000009417c1', 'won'),
   ('00000000-0000-0000-0000-0000009417d2', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Sample Annex', '00000000-0000-0000-0000-0000009417c1', NULL);
+
+-- The one rule (migration *_research_contact_history_our_bids). Two more bids under Ridgeway that do not count, both
+-- won so a miscount shows in the wins too: a practice bid, and one made a day past two years. A bid platform's bucket
+-- and a ZZ builder each hold a bid no name is given. Harbor Gate is on the old builders list with one bid made late
+-- in the evening of three days ago on the company calendar, which is the next day in UTC.
+INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000009417c2', '00000000-0000-0000-0000-0000009417a1', 'PlanHub - Subcontractor Prime Opportunity');
+INSERT INTO public.bids_gc_builders (id, name, created_by) VALUES
+  ('00000000-0000-0000-0000-0000009417f1', 'Harbor Gate Builders LLC', '00000000-0000-0000-0000-0000009417a1'),
+  ('00000000-0000-0000-0000-0000009417f2', 'ZZ Test Builders', '00000000-0000-0000-0000-0000009417a1');
+INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_name, customer_id, gc_builder_id, outcome, created_at) VALUES
+  ('00000000-0000-0000-0000-0000009417d3', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'ZZ Shadow SAMPLE PLAZA', '00000000-0000-0000-0000-0000009417c1', NULL, 'won', now()),
+  ('00000000-0000-0000-0000-0000009417d4', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Old Mill Depot', '00000000-0000-0000-0000-0000009417c1', NULL, 'won',
+    ((public.app_today() - 731)::timestamp + interval '12 hours') AT TIME ZONE 'America/Chicago'),
+  ('00000000-0000-0000-0000-0000009417d5', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Dock Street Shell', '00000000-0000-0000-0000-0000009417c2', NULL, 'won', now()),
+  ('00000000-0000-0000-0000-0000009417d6', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Gantry Row Offices', NULL, '00000000-0000-0000-0000-0000009417f2', 'won', now()),
+  ('00000000-0000-0000-0000-0000009417d7', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417b1', 'Pier Nine Clinic', NULL, '00000000-0000-0000-0000-0000009417f1', 'lost',
+    ((public.app_today() - 3)::timestamp + interval '23 hours 30 minutes') AT TIME ZONE 'America/Chicago');
 
 INSERT INTO public.prospects (id, kind, master_user_id, created_by, company_name, prospect_fit_status) VALUES
   ('00000000-0000-0000-0000-0000009417e1', 'gc_lead',  '00000000-0000-0000-0000-0000009417a1', '00000000-0000-0000-0000-0000009417a1', 'Tall Pine Development', NULL),
@@ -51,8 +70,13 @@ SELECT ph.same('a lead that left the queue is not', ph.hint('closeddoorcontracti
 SELECT ph.same('a sub is not', ph.hint('subonlyplumbing'), '0/0/false');
 SELECT ph.same('a name nobody holds is a new name', ph.hint('nobodyatall'), '0/0/false');
 
--- 2. The bids read as before.
-SELECT ph.same('the bids and the wins of a customer of that name', ph.hint('ridgewaybuilders'), '2/1/false');
+-- 2. The bids, by the one rule.
+SELECT ph.same('the bids and the wins of a customer of that name, without the practice bid and the bid past two years', ph.hint('ridgewaybuilders'), '2/1/false');
+SELECT ph.same('a bid platform''s bucket is no name', ph.hint(public.research_name_key('PlanHub - Subcontractor Prime Opportunity')), '0/0/false');
+SELECT ph.same('a ZZ builder is no name', ph.hint(public.research_name_key('ZZ Test Builders')), '0/0/false');
+SELECT ph.same('a name on the old builders list counts its bid', ph.hint(public.research_name_key('Harbor Gate Builders LLC')), '1/0/false');
+SELECT ph.same('the last bid''s day is the company calendar''s',
+  (SELECT (last_bid_on = public.app_today() - 3)::text FROM public.research_contact_history(ARRAY[public.research_name_key('Harbor Gate Builders LLC')])), 'true');
 
 -- 3. One row per name asked, whatever was asked twice or left blank.
 SELECT ph.same('one row per distinct name',

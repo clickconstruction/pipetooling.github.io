@@ -2,7 +2,7 @@
 name: "State roll: who holds a license near us"
 number: 411
 group: ready
-status: Go 2026-11-21 · Taunya said build it as drawn · branch worktree-state-roll · step one under way
+status: Go 2026-11-21 · Taunya said build it as drawn · step one's tables and pull built, v2.8159 and v2.8164, pushed, deployed and the first pull in · the Pulls view and the tab next
 summary: >
   Taunya cannot find experienced plumbers, and they must be licensed. The state publishes the roll
   of every licensed plumber as free files, and of every electrician and A/C license on its open
@@ -12,8 +12,9 @@ summary: >
   is no score. The state gives no phone, address or email, so how to reach a person is added by
   the office by hand.
 next: >
-  Step one, the tables and the weekly pull for plumbing. Then Our own, which contacts nobody.
+  The State roll tab with its Pulls view, the last piece of step one. Then Our own, which contacts nobody.
 size: L as a train of five (M · M · M · M · S)
+ver: v2.8159 · 8164
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.
 opinion: build — start with the pull and Our own, which are worth having with no outreach at all
 ---
@@ -76,11 +77,22 @@ Taunya's go of 2026-11-21 was to build it as drawn. The drawing's choices stand 
 - **No text without a yes.** *OK to text* starts as *Not asked*, the rule Prospects already keeps.
 - **A name match stays grey until a person checks it**, the way a looked-up fact does on Market.
 
+## Where it stands
+
+Read on prod on 2026-11-21, by counts only.
+
+- **The tables are on prod** ([v2.8159](../../docs/recent-features/v2.8159.md), migration `20261121140000`): five tables with row security and the four fences, the gate closed to `anon`, the five counties seeded.
+- **The pull is deployed and scheduled** ([v2.8164](../../docs/recent-features/v2.8164.md), migration `20261121141000`): `license-roll-pull` answers, refuses an unsigned caller, and has four Monday jobs.
+- **The first pull is in.** Four files read, 6,507 rows kept, none skipped and none outside our counties. Every row has its `first_seen` line. A second pass over the same files added, changed and dropped nothing.
+- **Seen on the way:** about half the responsible master rows carry no ZIP, since that file's ZIP belongs to a business address the board fills only sometimes. They are kept by county. It matters in step four, where a master is matched to their journeyman row by name and ZIP.
+- **Not built yet:** any screen. Nobody can see the roll in the app until the tab ships.
+- **The dev seat** reads the new tables once `dev-mcp` is redeployed with its regenerated catalog.
+
 ## The train, step by step
 
 One change a PR. A migration merges alone and is pushed before the code that calls it.
 
-1. **The tables and the pull.** `license_roll` (one row a license), `license_roll_changes` (what a pull saw change, growing only), `license_roll_pulls` (the ledger), `license_roll_counties` and `license_roll_left_off`. Then `license-roll-pull`, a function on a Monday cron that reads the plumbing files, keeps our counties, honours Leave off and writes what changed. The Pulls view.
+1. **The tables and the pull.** `license_roll` (one row a license), `license_roll_changes` (what a pull saw change, growing only), `license_roll_pulls` (the ledger), `license_roll_counties` and `license_roll_left_off`. Then `license-roll-pull`, a function on a Monday cron that reads the plumbing files, keeps our counties, honours Leave off and writes what changed. **Built, v2.8159 and v2.8164**, and the first pull is in. Left: the Pulls view, which ships with the tab.
 2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number.
 3. **Everyone and the person's sheet.** Search, the line of history, notes, Leave off.
 4. **Call this week.** The tags, the order, Pursue to Hiring, Not for us, the Reach block.

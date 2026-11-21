@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · steps 4 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and its ground was built (v2.8182) · steps 4 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The owner's calls on the look, which hold step 4, the office's settings page. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*.
+next: Step 4's second part, the Contract Book holding a choice's breach and site lines, then its third, the office's settings page on a job. Its four calls were answered on 2026-11-21 and its ground is built (v2.8182). The rest of the look is open still. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -147,6 +147,21 @@ The owner settled these five on 2026-11-19, in the review of the look.
    military bases and defense plants* and *Aligned with private research labs*. Point 12 for an attorney
    asks what that line promises.
 
+Taunya answered these four on 2026-11-21, asked as the calls step 4 stood on.
+
+10. **The job's page is the whole walked flow.** Every topic page shows *What puts a person in breach* and
+    *What the site must have*, as in the Document builder. The Contract Book must hold those lines first,
+    beside each choice, so that is built before the page. She chose it over a lean page first, and over
+    reading the lines from the Document builder's Sub NDA.
+11. **The flow first, the list after.** The step-by-step flow sets a job's settings the first time. After
+    that one page with every topic's slider makes a quick change.
+12. **The disclaimer's box is ticked once for a paper on a job.** It is ticked before the paper is first
+    required. A later change of its settings shows the words with no box. The job's row keeps who ticked
+    it and when.
+13. **After the first signature the office may make any change**, tighter or looser. It is a new version
+    that everyone signs again. Step 3 had held it to stricter only, and the ground under step 4 changed
+    that (v2.8182).
+
 ## Open: the look
 
 This is what the review is for. The owner likes sliders. He has not seen a drawing he would build.
@@ -198,13 +213,13 @@ the builder steps aside for it.
 | What each level means on each topic | The terms under each stop | The mock-up's are placeholders for him and counsel to set. Two neighbouring levels may share a wording. |
 | The GC's page | The same sliders with looser stops greyed, or a plain list with a *Propose* press | The same sliders |
 | Sliders as the choices | He said he hoped for "other options as choices". Not yet answered by any drawing. | Ask him, with two or three drawn side by side |
-| The flow and the one-page list | The flow replaces the office's list of seven sliders, or both stay and the list is the quick way | Both. The flow for a first setting, the list for a change. |
+| The flow and the one-page list | The flow replaces the office's list of seven sliders, or both stay and the list is the quick way | **Answered 2026-11-21, settled 11:** both. The flow for a first setting, the list for a change. |
 | Who walks the flow | The office only, or the GC too from their page | The office first. A GC's walk ends in a proposal, never a setting. |
-| What a breach line is | Plain words kept beside each wording in the Contract Book and approved with it, or written by hand for a job | Kept beside each wording, so a page never says more than its clause |
-| The tick on the disclaimer | A box that must be ticked before the flow opens, as drawn, or the words alone | The box, and the build keeps who ticked it and when |
+| What a breach line is | Plain words kept beside each wording in the Contract Book and approved with it, or written by hand for a job | **Answered 2026-11-21, settled 10:** kept in the Contract Book beside each choice, so a page never says more than its clause |
+| The tick on the disclaimer | A box that must be ticked before the flow opens, as drawn, or the words alone | **Answered 2026-11-21, settled 12:** the box, once for a paper on a job, and the row keeps who ticked it and when |
 | Where else the disclaimer shows | The flow only, or also the GC's page before *Propose a stricter setting* | Both. He said *requests made via this tool*, and a GC's proposal is one. |
 | How the site note ends | His sentence stops at the badging and gates. The mock-up finishes it: *A rule nobody enforces protects nothing. It also puts people in breach of a rule they cannot follow.* | His to confirm or reword |
-| What the site must have | A line for each level of a topic, kept beside its wording like a breach line, or the one page alone | A line for each level, so the warning sits where the choice is made |
+| What the site must have | A line for each level of a topic, kept beside its wording like a breach line, or the one page alone | **Answered 2026-11-21, settled 10:** a line for each level, kept in the Contract Book beside the choice |
 | A custom mix, once there is a basis | *Custom mix: 1 Aggressive, 6 Standard*, as drawn, or *Standard, 1 page off it* | The second. The basis is the level he picked, and it would answer the custom-mix call above. |
 
 ## Open: the picks the build stands on
@@ -216,7 +231,7 @@ Not yet answered. The build can start on them, and each can be flipped.
 | How the GC gets in | The private link they already have, no login | No outsider has a login today |
 | How strictness is named | A level name and no score | A number reads as a legal grade nobody can stand behind |
 | Where the protected party is named | In the paper | A person should see who can enforce against them before they sign |
-| A change after signing starts | Allowed, as a new revision, with the count who sign again | Upstream rules do change mid-job |
+| A change after signing starts | **Answered 2026-11-21, settled 13:** any change, tighter or looser, as a new revision that everyone signs again | Upstream rules do change mid-job |
 | The GC's confirm | Kept as a record, with name, time and settings | It turns *was the flow-down enough?* from a guess into a record |
 | Who the builder serves | Only people who work through the company | Making papers for a GC's other subs makes the company a supplier of legal documents |
 | Real jobs before an attorney's read | No. ZZ Test jobs and made-up clauses only | The paper is only as sound as its approved wording |
@@ -315,13 +330,18 @@ paper until an entry has a settings list, and the first one is a test entry.
    that sets them and locks at the first signature (`job_paper_set_settings`), the read-revision rule,
    the freeze with the hash, and the signature's *Signing for* line. Card #403 built that line's column
    and keeps it at the send (v2.7977, v2.7986), so it needed nothing here. Its step 5, not built, fills
-   it from a sub's own company. One pick was taken from *Open: the picks the build stands on*: a change
-   after signing starts makes a new revision that everyone signs again, and it may only tighten. A
-   looser paper is taken off the job and required again. No screen sets a job's settings yet: the
-   job's **Add a paper** list shows such a paper and holds it.
-4. **The office's settings page (M).** The step-by-step flow lands here, reused from the Document
-   builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
-   `JobDocumentsRequiredPapers`. This is the first screen the open look decides.
+   it from a sub's own company. A change after signing starts makes a new revision that everyone signs
+   again. Step 3 held it to stricter only, and step 4's ground lets it loosen too (settled 13). No screen
+   sets a job's settings yet: the job's **Add a paper** list shows such a paper and holds it.
+4. **The office's settings page (M), in three parts.** The step-by-step flow lands here, reused from the
+   Document builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
+   `JobDocumentsRequiredPapers`. Its four calls were answered on 2026-11-21 (settled 10 to 13).
+   - **The ground. Built, v2.8182.** `20261121150000_settings_page_ground.sql`: any change after a
+     signature, the basis and the notice's tick on the job's row (`job_paper_set_basis`), and the
+     database's stop on the shape of a choice's breach and site lines, a notice and a site note.
+   - **The Book holds the lines.** The settings list window takes a choice's breach and site lines, the
+     notice and the site note. The kernel turns a Book entry into the flow's paper.
+   - **The page.** The flow for a first setting and the list for a change, on a job's Documents tab.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -330,7 +350,8 @@ paper until an entry has a settings list, and the first one is a test entry.
    is one-way or mutual, tied to a relationship and not a job, and needs its own approved clause set.
 
 Steps 1 and 2 touched only the Contract Book and are built. Step 3 is the ground under a job and is
-built too, since it could start before the look was settled. Step 4 cannot.
+built too, since it could start before the look was settled. Step 4 started once its four calls were
+answered.
 
 ## Points for an attorney
 
@@ -536,8 +557,10 @@ it keeps the settings, their plain words and a SHA-256 seal of the words. The si
 **The job's settings when this was signed** and says whether the seal still holds. A job with no
 settings behaves as before, and the bed proves it (`supabase/tests/job_paper_settings`).
 
-Step 3 has no screen that sets a job's settings: that is step 4, which waits on the look. Until then
-a job takes such a paper only through the database's function.
+Step 3 has no screen that sets a job's settings: that is step 4. Its four calls were answered on
+2026-11-21 and its ground is built (v2.8182). Two parts are left: the Contract Book holding a choice's
+breach and site lines, then the page on a job. Until the page a job takes such a paper only through
+the database's function.
 The sign path's functions, `accept-contract` and `get-contract-for-signer`, were deployed on
 2026-11-21 on Taunya's go, with `gc-trade-portal`. A ZZ Test paper was then signed on prod, on a ZZ
 Test job: read in both languages, signed only at the seal the page showed, frozen with its settings,
