@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20 · step three is go in its smallest form · the owner makes the calls
+status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20, built in v2.8112, v2.8114 and v2.8121 · step three built in its smallest form, v2.8118 and v2.8121, with the first 25 San Antonio companies looked up · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -11,10 +11,10 @@ summary: >
   the day the city first shows a job), who holds the work where a city names the plumber, and how
   much is being built. Each row gives its reasons as tags and there is no score.
 next: >
-  Build the owner's four answers of 2026-11-20: the call list's order and its count, the rule for
-  a name that comes back, Austin's name mark, and step three for the next 25 San Antonio companies.
+  The owner calls from the list and checks the looked-up facts as he goes. Then his word on whether
+  the lookups go past the first 25 names and past San Antonio, and the Monday note.
 size: L as a train of three (M · M · L)
-blocker: None. Step three starts with its drawing, which the owner sees before it is built.
+blocker: None.
 opinion: build — start with step one, which needs no research and is the table that says where estimating hours go
 ---
 
@@ -29,7 +29,7 @@ Read this card top to bottom, then the mock-up. Everything decided is here.
 - **What is asked:** build the page in the mock-up, in the steps under [The train](#the-train-step-by-step), and show it to the owner on live data.
 - **When:** the owner wants to see it the day after 2026-11-19. Steps one and two are the target. Say plainly what was not reached.
 - **What is settled:** the page's five parts and their order, five names a week, no score, the owner makes the calls. Do not reopen these.
-- **What is not:** step three. Bring the owner its one question.
+- **What is not:** how far the lookups go past San Antonio's first 25 names. That is the owner's to say once he has called from them.
 - **What to bring to the showing:** see [What to show the owner](#what-to-show-the-owner).
 
 ## The ask
@@ -93,14 +93,19 @@ Needs no research. San Antonio first; the other cities follow the same code.
 - **Ask for** is drawn as an empty state until step three: *Nobody looked this name up yet*, with the Google press the skim card already has.
 - **Done when:** five names show with true reasons; answering one brings the next; the list is the same on a reload; a builder marked *Avoid* never shows.
 
-### Step three: Ask for — go in its smallest form, 2026-11-20
+### Step three: Ask for — built in its smallest form, 2026-11-21
 
-A one-time lookup of each name: the company, what it is (builder, owner, architect, a filer for others), a phone, a person and title to ask for, each with the page it came from, the day, and whether a person checked it.
+**Built, v2.8118** (the two tables, [fragment](../../docs/recent-features/v2.8118.md)) **and v2.8121** (the Ask for block, [fragment](../../docs/recent-features/v2.8121.md)), from the drawing [`mockup-ask-for.html`](./mockup-ask-for.html). The owner saw it and said build it as drawn. The first 25 San Antonio companies on the list were looked up on 2026-11-20, and their facts read as not checked on the live page.
+
+A one-time lookup of each name: what it is (a builder, an owner, a design firm, a permit service or a trade), an office phone, a person and title to ask for, each with the page it came from, the day, and whether a person checked it.
 
 - **The question for the owner:** may an agent look up the top names of a city once? About 150 names a city, a minute each, public sources only, nobody contacted, nothing shown as checked until a person checks it.
 - **His answer:** yes, smaller. See [The owner's answers](#the-owners-answers-2026-11-20).
 - **What the trial showed:** a builder worth a call behind about half of twenty names. The largest filers were not builders. Two of the agents' inferences were wrong and were caught on a check, so the person's check is part of the design.
-- **Not designed here:** where the facts are kept and how the lookups are run. That is the first thing to draw if he says yes.
+- **Where the facts are kept:** `builder_lookups`, one row a fact with its page and day, added only by a dev account. `builder_lookup_checks`, one row a press (**Checked**, **Wrong**, **Put back**), by anyone who reads permits. Both only grow. Neither touches the builder's kind, its mark or an answer.
+- **How the lookups are run:** once, by an agent session signed in as the dev. One agent reads public business pages for each fact, and a second opens the same page to confirm it. The rows go in through the app's own connection. No function, no job and no paid service. The list with the real names, each fact's page and the words on it, goes to the owner outside this public folder.
+- **The order:** a looked-up kind tags the name at once. It moves the name in the order only once a person checks it, the owner's pick on the drawing.
+- **What is left:** the names past the first 25 and the other cities, on the owner's word once he has called from them. The block on the builder's sheet.
 
 ### After the list exists: the Monday note
 
@@ -129,7 +134,7 @@ So the built page and the first read agree, and so a hand count can check it.
 | Busy, picking up, new | Building permits by name, the last 90 days against the 90 before | Solid in San Antonio, whose records start in January 2025. Three months old in the other four cities. |
 | Open now | An application with no plumbing permit tied to it (`permit_address_plumbing_counts`) | Solid in San Antonio since v2.7922. Austin's feed has no applications. |
 | Do the companies we bid build | Our bids' customers and GCs matched to permit names | Weak until names are tied: the match is exact, and San Antonio's applicant is often a filer. |
-| Ask for | A one-time lookup of each name, kept on the builder | Not built. Step three. |
+| Ask for | A one-time lookup of each name, kept apart from the office's word | San Antonio's first 25 names, looked up 2026-11-20 (v2.8121). Each fact reads as not checked until a person checks it. |
 | The clock | The days between the dates on the permits | Solid. |
 | Who holds the work | The name on a plumbing permit at the job's address | Austin and New Braunfels only, and thin after three months. |
 | How big | The value and the square feet on the permit | Most San Antonio permits have a value. Austin's values look unreliable: too many are one round figure, so show Austin no value bands. |
@@ -178,7 +183,7 @@ The four calls were put to the owner with a read of the live permits behind each
    - San Antonio only, the next 25 companies on the call list.
    - Companies only. A name that reads as one person is never looked up.
    - Kept: what kind of company it is, an office phone, one person and title. Each fact carries its page and its day.
-   - Kept in a table of its own, apart from the office's marks. A looked-up fact may tag and order a name. It never takes one off the list.
+   - Kept in a table of its own, apart from the office's marks. A looked-up fact may tag a name, and moves it in the order only once a person has checked it, his pick on the drawing the same day. It never takes one off the list.
    - Drawn as *Looked up, not checked* until a person presses Checked.
    - Run once by an agent. No nightly job and no new paid service.
 2. **Does Austin follow San Antonio now? No. Austin waits until 2027-02-22.**
