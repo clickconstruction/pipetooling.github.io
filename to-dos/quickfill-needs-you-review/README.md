@@ -2,7 +2,7 @@
 name: "Quickfill and Needs you, read together: what the round holds, what gets stamped, and the five changes"
 number: 176
 group: close
-status: BUILT and LIVE 2026-10-26 · the owner's "I like it, please build it" of 2026-10-25 · change 1 v2.5837 (migration 20261025010000 pushed), change 2 v2.5839, change 4 v2.5841, change 3 v2.5843 and v2.5844, change 5 v2.5845, the first live look's three fixes v2.5868 · the owner's answers of 2026-11-08 built: decision 4 v2.6750 (Jobs Billing folded into Complete, no Total Bill), decision 6 v2.6754 (the three backlogs oldest first, no portion); decisions 5 and 7 recorded as given; decision 8's count check run · left: the Google admin step (9, with #159) and a read of the first week's outcomes
+status: BUILT and LIVE 2026-10-26 · the owner's "I like it, please build it" of 2026-10-25 · change 1 v2.5837 (migration 20261025010000 pushed), change 2 v2.5839, change 4 v2.5841, change 3 v2.5843 and v2.5844, change 5 v2.5845, the first live look's three fixes v2.5868 · the owner's answers of 2026-11-08 built: decision 4 v2.6750 (Jobs Billing folded into Complete, no Total Bill), decision 6 v2.6754 (the three backlogs oldest first, no portion); decisions 5 and 7 recorded as given; decision 8's count check run · the outcomes of 2026-10-26 to 2026-11-19 read on 2026-11-21 (under Where it stands) · left: the owner's read of them
 summary: >
   The owner asked for a holistic look at Quickfill and Needs you: Quickfill was built so an
   assistant with ADHD finishes a daily round knowing everything is done, but they skip what
@@ -16,7 +16,7 @@ summary: >
   count, the duplicates and the dead stations go, the Needs you sources get an actor so the
   assistant's lines and the owner's lines stop sharing one list, and the round ends on a
   close sheet the owner can read from the Dashboard.
-next: the Google admin step for the Email station (decision 9, with #159); after a week of rounds, read the outcomes against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
+next: the owner reads the outcomes read of 2026-11-21 (under Where it stands) against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
 size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR, all built; decisions 4 and 6 one PR each, built 2026-11-08; left: the outcomes read (XS)
 blocker: none; the Email station's live labels wait on the Google admin step (#159)
 ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868, v2.6750, v2.6754
@@ -508,3 +508,5 @@ The first live look, read-only on prod data the night of 2026-10-25, found three
 **Decision 8, the count check**, as the Assistant sample through View as on the dev server, 2026-11-08 in the five o'clock hour Central: Quickfill's Today's lines station read **12 open · 1 for others** (the estimators' robot line, folded); the Dashboard's Needs you card for the same sample read **19 · 5 for others**. The seven lines the card shows and the station does not are the sources a station carries (`QUICKFILL_CARRIED_BY_STATION`: hours approvals, aged dispatch requests, job follow-ups and idle jobs, the GC review, the Customers line, Today's sends) or the host holds back; the four more *for others* on the card are other actors' lines the station folds away for an assistant (not listed one by one). The station's count is the assistant's own lines, which is what v2.5868 made it; the 2 to 4 in the mark events were a real assistant's lines on her days.
 
 Not done, by the decisions list: the Google admin step for the Email station (decision 9, with #159). After a week of rounds, the outcomes on `quickfill_section_mark_events` say whether the round changed: the share of presses under 20 seconds after the previous one (57% in the eight weeks read), how many were *Worked it* against *Done*, and the questions filed.
+
+**Read 2026-11-21**, through the dev seat on production, read-only: that outcomes read, from `quickfill_section_mark_events` for 2026-10-26 to 2026-11-19. 414 marks on 18 round days of 20 workdays, all by one marker. Marks under 20 seconds after the previous press: 280, which is 68% (57% in the eight weeks read). The median gap between marks is 6.5 seconds (it was 9), computed from the timestamps. By outcome: *Done* 177, *Worked it* 237, *Not sure* 0. Prospects went 268 to 264 and Billed Awaiting Payment 53 to 12. Lost bids with no reason read 75 against this card's 61, but by an inferred filter on `bids`, so treat that one as approximate. Left: the owner's read of these, then this folder goes.
