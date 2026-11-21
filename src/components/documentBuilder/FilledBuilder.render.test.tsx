@@ -105,6 +105,15 @@ describe('FilledBuilder', () => {
     expect(screen.getByText('Draft. Not published.')).toBeTruthy()
   })
 
+  it('draws the marks’ legend on a light ground of its own, so *Your usual* reads on a dark card', async () => {
+    open()
+    await screen.findByText('This job is on your usual sheet')
+    // The legend is pinned light and *Your usual* has no fill: without a ground its dark words sat on the dark card.
+    const legend = screen.getByText('Your usual').parentElement as HTMLElement
+    expect(legend.getAttribute('data-theme')).toBe('light')
+    expect(legend.style.background).toBe('var(--surface)')
+    expect(legend.style.color).toBe('var(--text-base)')
+  })
   it('holds a job’s publish until the usual is published, and says so', async () => {
     open({ rec: builder({ published: null, revision: 0 }) })
     expect(await screen.findByText('Publish your usual sheet first.')).toBeTruthy()
