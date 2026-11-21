@@ -13,6 +13,7 @@ import {
   type TsbpeFile,
 } from '../_shared/licenseRoll.ts'
 import { unzipFirst } from '../_shared/zipFirst.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * State roll (punch list #411): read one of the plumbing board's free licensee files and bring the kept roll up to
@@ -133,13 +134,18 @@ serve(async (req) => {
     }
   }
   if (!allowed) return jsonResponse({ error: 'Unauthorized' }, 401)
+  const admin: Admin = createClient(supabaseUrl, serviceKey)
+  // A signed-in caller who has been archived is refused before the service role does anything for them.
+  if (pulledBy) {
+    const refused = await refuseArchivedCaller(admin, pulledBy, corsHeaders)
+    if (refused) return refused
+  }
 
   const file = typeof body.file === 'string' ? tsbpeFile(body.file) : null
   if (!file || !TSBPE_WEEKLY_FILES.includes(file.file)) {
     return jsonResponse({ error: `Name the file to pull. The files are ${TSBPE_WEEKLY_FILES.join(', ')}.` }, 400)
   }
   const dryRun = body.dry_run === true
-  const admin: Admin = createClient(supabaseUrl, serviceKey)
   const today = todayYmdInAppTz()
   const started = Date.now()
 
