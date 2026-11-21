@@ -8862,7 +8862,9 @@ export type Database = {
           id: string
           job_id: string | null
           job_required_paper_id: string | null
+          last_reminded_at: string | null
           lineage_version: number
+          next_reminder_at: string | null
           note: string | null
           office_attested_at: string | null
           office_completed_at: string | null
@@ -8877,6 +8879,8 @@ export type Database = {
           person_name: string
           public_token_expires_at: string | null
           public_token_hash: string | null
+          reminder_count: number
+          reminders_enabled: boolean
           sent_at: string | null
           sign_by: string | null
           signed_at: string | null
@@ -8919,7 +8923,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_required_paper_id?: string | null
+          last_reminded_at?: string | null
           lineage_version?: number
+          next_reminder_at?: string | null
           note?: string | null
           office_attested_at?: string | null
           office_completed_at?: string | null
@@ -8934,6 +8940,8 @@ export type Database = {
           person_name: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
@@ -8976,7 +8984,9 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_required_paper_id?: string | null
+          last_reminded_at?: string | null
           lineage_version?: number
+          next_reminder_at?: string | null
           note?: string | null
           office_attested_at?: string | null
           office_completed_at?: string | null
@@ -8991,6 +9001,8 @@ export type Database = {
           person_name?: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
