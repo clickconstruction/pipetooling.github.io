@@ -3413,6 +3413,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
+> **v2.8101 — who may send**: the person path asks `signingCallerRefusal` (`_shared/contractSigningSend.ts`) before it reads the paper. It takes the four roles that write a paper (dev, master_technician, assistant, controller), and never a training account or a digital twin; anyone else gets a 403 in words with `code: 'forbidden'`. The archived check moved up beside it. The company branch keeps its own gate. **Redeploy required.**
+
 > **v2.7995 — an outside party's paper** (punch list #403, step 3): a paper filed under a party's stored name (`party:<contact id>`) goes out through the person path as any other. The email's *For* line and the kept copy's recipient are the person who signs, else the party's frozen name, never the stored name (`paperForWords`, `_shared/paperSigner.ts`). The body may carry `signing_for`, the business the signer signs for, kept with the signer: a body that names none leaves the row's alone, and one sent empty clears it. A person's own paper is unchanged, and the pin test still holds its bytes. **Redeploy required.**
 
 > **v2.7986 — the send keeps the signer** (punch list #403, PR 2 of seven): the person path writes who signs on the paper's own row, in the same update that activates the link, through [`_shared/paperSigner.ts`](../supabase/functions/_shared/paperSigner.ts) (`signerRowPatch`). The body may carry `signer_name` and `signer_title`. An emailed send keeps `signer_email` (the address the link went to), `signer_name` (as posted, else the name the row already keeps, else the person the paper is filed under, never a stored `gc-company:` or `party:` name) and `signer_title` when the body names one: a body with no `signer_title` leaves the row's alone, so an older window never wipes it, and one sent empty clears it. `mode: 'link'` keeps no address and only names a signer the paper never had. The email, its subject, its sender and the sent copy are unchanged (`contractSigningSend.pin.test.ts` still holds them), and the company branch is untouched. The row is read with `signer_name`, so the columns of migration [`20261120010000`](./migrations/20261120010000_paper_party.md) must be on prod first. **Redeploy required.**
@@ -3423,7 +3425,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 > **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
-**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
+**Purpose**: Verify JWT, ensure the caller is one of the four roles that write a paper and not in training (v2.8101), ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 
 **Endpoint**: `POST /functions/v1/send-contract-for-signature`
 

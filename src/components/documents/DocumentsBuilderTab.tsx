@@ -27,7 +27,7 @@ import {
   type BuilderChipTone,
   type DocumentBuilderEntry,
 } from '../../lib/documentBuilder/builders'
-import { readPaperDef } from '../../lib/documentBuilder/definition'
+import { parsePaperDef } from '../../lib/documentBuilder/definition'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
 import { filledRowChips } from '../../lib/documentBuilder/sheetScreen'
@@ -115,11 +115,13 @@ function LoadFirstDraft({ entry, busy, refusal, onLoad }: { entry: DocumentBuild
 
 /**
  * A walked builder, open, over the draft the database holds: the editor, where a dev types on what a GC would walk
- * (`WalkedBuilder`, step 7). A draft that does not read as a paper is never half drawn: the page lists what is wrong
- * with it instead.
+ * (`WalkedBuilder`, step 7). Only the draft's shape is checked here (`parsePaperDef`): the editor saves every key
+ * with no check, so a draft that breaks a rule of the paper must still open, or the save would shut its own editor.
+ * A broken rule is the Publish press's to list (`walkedPublishPress`). A draft that is not shaped like a paper is
+ * never half drawn: the page lists what is wrong with it instead.
  */
 function WalkedBuilder({ entry, rec, onBack, onRecord }: { entry: DocumentBuilderEntry; rec: BuilderRecord; onBack: () => void; onRecord: (rec: BuilderRecord) => void }) {
-  const parsed = readPaperDef(rec.draft)
+  const parsed = parsePaperDef(rec.draft)
   if (parsed.ok) {
     return (
       <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>

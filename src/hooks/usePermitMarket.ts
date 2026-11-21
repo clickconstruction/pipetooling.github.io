@@ -16,7 +16,9 @@ export type PermitMarketReads = {
   /** The city's commercial permits of twelve months. Null while they read and when the read fails. */
   permits: MarketPermit[] | null
   permitsError: string | null
-  /** The answers on the call list. Null while they read. Empty before the table is on the database. */
+  /** Asks for the city's year of permits again, after a read that failed. */
+  reloadPermits: () => void
+  /** The answers on the call list. Null while they read. Empty before the table is on the database, and when the first read fails. */
   answers: CallAnswerRow[] | null
   answersError: string | null
   reloadAnswers: () => void
@@ -27,7 +29,8 @@ export type PermitMarketReads = {
  * again when `reload` is called after a mark, a kind or a tie changed: it is the same for every
  * city, so picking another city reads only that city's year of permits. The answers on the call
  * list are read once and again after each answer. A read that fails says why in its own error,
- * and the parts that do not need it still draw.
+ * and the parts that do not need it still draw. `reloadPermits` and `reloadAnswers` ask again
+ * after a read that failed.
  */
 export function usePermitMarket(city: string, todayYmd: string): PermitMarketReads {
   const [ground, setGround] = useState<PermitMarketGround | null>(null)
@@ -38,6 +41,7 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
   const [answers, setAnswers] = useState<CallAnswerRow[] | null>(null)
   const [answersError, setAnswersError] = useState<string | null>(null)
   const [answersAsked, setAnswersAsked] = useState(0)
+  const [permitsAsked, setPermitsAsked] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -71,7 +75,7 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
     return () => {
       live = false
     }
-  }, [city, todayYmd])
+  }, [city, todayYmd, permitsAsked])
 
   useEffect(() => {
     let live = true
@@ -84,7 +88,7 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
       .catch((e) => {
         if (!live) return
         setAnswersError(formatErrorMessage(e))
-        // The list still draws: with no answer read, no name is held off it.
+        // The list still draws, and says under the reason that an answered name may be on it.
         setAnswers((held) => held ?? [])
       })
     return () => {
@@ -93,8 +97,16 @@ export function usePermitMarket(city: string, todayYmd: string): PermitMarketRea
   }, [answersAsked])
 
   const reload = useCallback(() => setAsked((n) => n + 1), [])
-  const reloadAnswers = useCallback(() => setAnswersAsked((n) => n + 1), [])
+  const reloadAnswers = useCallback(() => {
+    setAnswersError(null)
+    setAnswersAsked((n) => n + 1)
+  }, [])
+  const reloadPermits = useCallback(() => {
+    // The failed read is dropped, so the parts that wait on it say they are reading again.
+    setPermits(null)
+    setPermitsAsked((n) => n + 1)
+  }, [])
   // Another city's permits are never drawn under this city's name while its own read is on the way.
   const mine = permits?.city === city ? permits : null
-  return { ground, loading, error, reload, permits: mine?.rows ?? null, permitsError: mine?.error ?? null, answers, answersError, reloadAnswers }
+  return { ground, loading, error, reload, permits: mine?.rows ?? null, permitsError: mine?.error ?? null, reloadPermits, answers, answersError, reloadAnswers }
 }

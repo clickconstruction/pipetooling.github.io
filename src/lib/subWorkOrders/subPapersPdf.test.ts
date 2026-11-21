@@ -23,6 +23,30 @@ const CTX: PaperContext = { company: { name: 'Your Company Name', lines: ['100 E
 const lib = pdfLib as unknown as PdfLibLike
 const RANGE = { from: '2026-10-01', to: '2026-11-13' }
 
+type Drawn = { texts: Array<{ text: string; y: number }>; rects: Array<{ y: number; height: number; borderWidth?: number }> }
+/** A stand-in for pdf-lib that keeps what each page was asked to draw, so a test can read where a box landed. */
+function recordingLib(): { lib: PdfLibLike; pagesDrawn: Drawn[] } {
+  const pagesDrawn: Drawn[] = []
+  const font = { widthOfTextAtSize: (text: string, size: number) => text.length * size * 0.5 }
+  const doc = {
+    addPage: () => {
+      const page: Drawn = { texts: [], rects: [] }
+      pagesDrawn.push(page)
+      return {
+        drawText: (text: string, o: { y: number }) => void page.texts.push({ text, y: o.y }),
+        drawLine: () => undefined,
+        drawImage: () => undefined,
+        drawRectangle: (o: { y: number; height: number; borderWidth?: number }) => void page.rects.push({ y: o.y, height: o.height, borderWidth: o.borderWidth }),
+      }
+    },
+    embedFont: async () => font,
+    setTitle: () => undefined,
+    save: async () => new Uint8Array(),
+  }
+  const lib = { PDFDocument: { create: async () => doc }, StandardFonts: { Helvetica: 'Helvetica', HelveticaBold: 'Helvetica-Bold', TimesRomanItalic: 'Times-Italic' }, rgb: (r: number, g: number, b: number) => [r, g, b] }
+  return { lib: lib as unknown as PdfLibLike, pagesDrawn }
+}
+
 async function pages(bytes: Uint8Array): Promise<number> {
   return (await pdfLib.PDFDocument.load(bytes)).getPageCount()
 }
@@ -56,6 +80,42 @@ describe('the sub papers as PDFs', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ ...SHEETS[2]!, id: `m${i}`, number: `WS-2057-${i + 1}`, day: `2026-10-${String((i % 28) + 1).padStart(2, '0')}` }))
     const bytes = await buildStatementOfAccountPdf(lib, buildStatementOfAccount(many, { from: null, to: null }, CTX), { from: null, to: null })
     expect(await pages(bytes)).toBeGreaterThan(1)
+  })
+  it('boxes Last payments on each page it runs over, never upside down', async () => {
+    // 45 payments on one sheet: the Last payments box starts on the first page and ends on the second.
+    const money = Array.from({ length: 45 }, (_, i) => line(`q${i}`, 50, `2026-10-${String((i % 28) + 1).padStart(2, '0')}`, { how: 'Check 1200' }))
+    const sheets: PaperSheet[] = [{ ...SHEETS[2]!, id: 'long', lines: [{ label: 'Slab sleeves', amount: 2500 }], money }]
+    const { lib: rec, pagesDrawn } = recordingLib()
+    await buildStatementOfAccountPdf(rec, buildStatementOfAccount(sheets, { from: null, to: null }, CTX), { from: null, to: null })
+    expect(pagesDrawn.length).toBe(2)
+    const boxes = pagesDrawn.map((p) => p.rects.filter((r) => r.borderWidth === 0.7))
+    // Every box stands the right way up and inside the page, above the foot's rule.
+    for (const r of boxes.flat()) {
+      expect(r.height).toBeGreaterThan(0)
+      expect(r.y).toBeGreaterThanOrEqual(48 + 14)
+      expect(r.y + r.height).toBeLessThanOrEqual(792 - 48 + 12)
+    }
+    // The first page's box holds the payments drawn on it, and the second page's holds the rest and the total.
+    const paidOn = (i: number) => pagesDrawn[i]!.texts.filter((t) => t.text === '$50.00')
+    expect(paidOn(0).length + paidOn(1).length).toBe(45)
+    expect(paidOn(0).length).toBeGreaterThan(0)
+    expect(paidOn(1).length).toBeGreaterThan(0)
+    for (const i of [0, 1]) {
+      const box = boxes[i]!.find((r) => paidOn(i).every((t) => t.y > r.y && t.y < r.y + r.height))
+      expect(box, `page ${i + 1} has a box round its payments`).toBeTruthy()
+    }
+    const total = pagesDrawn[1]!.texts.find((t) => t.text === 'Paid in this period')!
+    expect(boxes[1]!.some((r) => total.y > r.y && total.y < r.y + r.height)).toBe(true)
+  })
+  it('breaks the payment record’s open statements over a page, and never draws past the foot', async () => {
+    // 60 open sheets after one payment: After this payment is longer than a page.
+    const open = Array.from({ length: 60 }, (_, i) => ({ ...SHEETS[2]!, id: `o${i}`, number: `WS-2057-${i + 1}`, day: '2026-10-01', money: i === 0 ? [line('one', 100, '2026-10-05', { how: 'Check 1201', sendingId: 's300', sendingNo: 300 })] : [] }))
+    const snd = paperSendings(open)[0]!
+    const { lib: rec, pagesDrawn } = recordingLib()
+    await buildPaymentRecordPdf(rec, buildPaymentRecord(snd, open, CTX))
+    expect(pagesDrawn.length).toBeGreaterThan(1)
+    for (const p of pagesDrawn) for (const t of p.texts) expect(t.y, t.text).toBeGreaterThanOrEqual(48)
+    for (const p of pagesDrawn) for (const r of p.rects.filter((x) => x.borderWidth === 0.7)) expect(r.height).toBeGreaterThan(0)
   })
   it('keeps to the letters Helvetica has: a true minus becomes a hyphen', () => {
     expect(subPaperPdfSafe('−$100.00 ✓ “done”')).toBe('-$100.00  "done"')
