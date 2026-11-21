@@ -103,11 +103,16 @@ export function HrPendingReportsSection({
     }
     setRows(sortPendingReportsOldestFirst((data ?? []) as unknown as PendingReport[]))
     // This year's reports, for the one line that says how many the writer has sent and how many stand about the person.
-    const { data: yearRows } = await supabase
-      .from('person_reports')
-      .select('id, author_user_id, subject_person_id, status')
-      .gte('created_at', `${new Date().getFullYear()}-01-01T00:00:00Z`)
-    setYear((yearRows ?? []) as YearRow[])
+    // The line is a help, never a need: a read that fails leaves the cards as they are, without it.
+    try {
+      const { data: yearRows } = await supabase
+        .from('person_reports')
+        .select('id, author_user_id, subject_person_id, status')
+        .gte('created_at', `${new Date().getFullYear()}-01-01T00:00:00Z`)
+      setYear((yearRows ?? []) as YearRow[])
+    } catch {
+      setYear([])
+    }
   }, [])
 
   useEffect(() => {
