@@ -5,7 +5,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
-import { lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
+import { lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { lienNoticeOpensOn } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
@@ -125,7 +125,7 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
     return (
       <div className="lienMonthClosed">
         <span style={chip('var(--bg-muted)', 'var(--text-muted)')}>closed {formatYmdMonthDay(w.deadline)}</span>
-        <span className="lienMonthClosedTail lienLedgerFaint" title="named after the window — information">named after the window — information</span>
+        <span className="lienMonthClosedTail lienLedgerFaint" title={lienGridNoticedWords(r.cells)}>{lienGridNoticedWords(r.cells)}</span>
       </div>
     )
   }

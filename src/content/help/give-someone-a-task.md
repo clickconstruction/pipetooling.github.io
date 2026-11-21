@@ -44,6 +44,8 @@ The line under **Use where I am** says how that reading did.
 
 When the map was not moved, tap **Show the steps** under the line. The steps are for your phone. Turn the switch on and tap **Use where I am** again. Or drag the map by hand.
 
+A map with nowhere to open opens wide instead, and the line says so. Zoom in and drag the map until the ring is on the spot.
+
 Type a name, like *Pump house*. Then tap {{button:blue|Use this place}}. The name becomes a chip for the next task.
 
 The app asks your phone where it is only when you tap **Use where I am**. That one reading becomes the task's place. The app does not follow you after that.

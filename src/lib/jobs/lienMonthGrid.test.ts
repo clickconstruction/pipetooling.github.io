@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { buildLienMonthGrid, lienGridPaperTitle, lienGridPaperWords } from './lienMonthGrid'
+import { buildLienMonthGrid, lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords } from './lienMonthGrid'
 
 const TODAY = '2026-09-23'
 const month = (key: string, deadline: string, over: Partial<LienDeskMonth> = {}): LienDeskMonth => ({ key, approvedHours: 10, deadline, daysLeft: Math.round((Date.parse(deadline) - Date.parse(TODAY)) / 86400000), noticed: false, fromCreation: false, ...over })
@@ -70,6 +70,33 @@ describe('buildLienMonthGrid · months down, papers across (#38)', () => {
     expect(lienGridPaperWords(grid.papers[0]!, money, label)).toBe('$28,987 with 2 more jobs · mail')
     expect(lienGridPaperTitle(grid.papers[1]!, (d) => d)).toBe('This notice')
     expect(lienGridPaperWords(grid.papers[1]!, money, label)).toBe('')
+  })
+})
+
+describe('lienGridNoticedWords · a closed month a paper names says whether it was in time (v2.8063)', () => {
+  it('follows the earlier papers’ cells, never this notice’s own', () => {
+    // The live case: a paper sent Sep 22 names August, whose window closed Oct 15.
+    expect(lienGridNoticedWords({ fA: 'named', this: 'blank' })).toBe('named in time')
+    // One paper in time settles it, even when a later one named the month again as information.
+    expect(lienGridNoticedWords({ fA: 'named', fB: 'info', this: 'blank' })).toBe('named in time')
+    expect(lienGridNoticedWords({ fA: 'info', fB: 'blank', this: 'blank' })).toBe('named after the window — information')
+    // No loaded paper names it (the RPC or a sent desk item says noticed): neither claim is made.
+    expect(lienGridNoticedWords({ fA: 'blank', this: 'blank' })).toBe('a notice names it')
+    expect(lienGridNoticedWords({ this: 'blank' })).toBe('a notice names it')
+    // This notice's cell is the office's tick, not a paper that went out.
+    expect(lienGridNoticedWords({ fA: 'info', this: 'named' })).toBe('named after the window — information')
+    expect(lienGridNoticedWords({ this: 'named' })).toBe('a notice names it')
+    expect(lienGridNoticedWords({ this: 'info' })).toBe('a notice names it')
+  })
+  it('reads the grid’s own rows: the 273 paper named April and July late, and a paper sent inside the window named its month in time', () => {
+    const late = buildLienMonthGrid({ jobId: 'j273', months: [month('2026-07', '2026-09-15')], items: [], filings: [linmor], checked: new Set(), thisItem: null, thisPile: '', propertyKind: 'residential', todayYmd: TODAY })
+    expect(lienGridNoticedWords(late.rows.find((r) => r.month === '2026-07')!.cells)).toBe('named after the window — information')
+    // Today is Nov 20: August closed Oct 15 and the Sep 22 paper named it before that.
+    const inTime = buildLienMonthGrid({ jobId: 'j273', months: [month('2026-08', '2026-10-15', { daysLeft: -36, noticed: true })], items: [], filings: [linmor], checked: new Set(), thisItem: null, thisPile: '', propertyKind: 'residential', todayYmd: '2026-11-20' })
+    const aug = inTime.rows.find((r) => r.month === '2026-08')!
+    expect(aug.window).toMatchObject({ state: 'closed', deadline: '2026-10-15', noticed: true })
+    expect(aug.cells).toEqual({ fA: 'named', this: 'blank' })
+    expect(lienGridNoticedWords(aug.cells)).toBe('named in time')
   })
 })
 

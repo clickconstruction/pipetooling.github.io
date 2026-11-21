@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: gated
-status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) · building resumed 2026-11-19 on Grace's word · live and walked 2026-11-20: v2.7976 the seat's reads of the numbers and plan_case (#8979, dev-mcp 0.118.0), v2.7991 the standing on the fact strip and the Timeline (#8987), v2.7999 the seat's notes out of its upload (#8996), v2.7987 the seat keeps, lists and drops a kept plan (#8998, dev-mcp 0.119.0), v2.8000 the seat reads and writes the standing (#9015, dev-mcp 0.120.0) · held for room in the seat's upload: the seat's half of 5a, on its branch · the owner's calls, not built: Apply and Drop from the tab, the mark on hours, 5b · 5c not started
+status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) · building resumed 2026-11-19 on Grace's word · live and walked 2026-11-20: v2.7976 the seat's reads of the numbers and plan_case (#8979, dev-mcp 0.118.0), v2.7991 the standing on the fact strip and the Timeline (#8987), v2.7999 the seat's notes out of its upload (#8996), v2.7987 the seat keeps, lists and drops a kept plan (#8998, dev-mcp 0.119.0), v2.8000 the seat reads and writes the standing (#9015, dev-mcp 0.120.0) · audited 2026-11-20: three screen fixes and v2.8102, the seat refuses a kept plan that was taken off (dev-mcp 0.122.0) · held for room in the seat's upload: the seat's half of 5a, on its branch · the owner's calls, not built: Apply and Drop from the tab, the mark on hours, 5b · 5c not started
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,8 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125, v2.7976, v2.7987, v2.7991, v2.7999, v2.8000
-next: The train's buildable work is live and walked (2026-11-20). Waiting on the owner: who may press Apply and Drop on People → HR and whether a kept plan expires (3b); the report per person, then the mark on hours (4d, 4e); the list of kinds; whether the firm reads a referenced document live or as it stood when released (5b); the backfill of old exhibit numbers and moving prose items into rows, per person. Waiting on Grace: card 359's step 3, which makes room for the seat's half of 5a (built, held on claude/315-hr-seat-section-freshness). 5c needs a Drive read on the server: see the notes below.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125, v2.7976, v2.7987, v2.7991, v2.7999, v2.8000, v2.8061, v2.8071, v2.8102
+next: The train's buildable work is live and walked (2026-11-20), and audited the same day: see *The audit* below for what it found and what still waits. Waiting on the owner: the audit's findings that need a migration or his choice; who may press Apply and Drop on People → HR and whether a kept plan expires (3b); the report per person, then the mark on hours (4d, 4e); the list of kinds; whether the firm reads a referenced document live or as it stood when released (5b); the backfill of old exhibit numbers and moving prose items into rows, per person. Waiting on Grace: card 359's step 3, which makes room for the seat's half of 5a (built, held on claude/315-hr-seat-section-freshness). 5c needs a Drive read on the server: see the notes below.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -198,6 +198,27 @@ free.
 
 - **5b, the reference.** `legal_matter_documents.storage_path` is `NOT NULL`, and every reader assumes a file: the Evidence row's open press signs a URL for it, `legal-portal` signs URLs for the firm, the file index's matter pass reads it. A reference row needs the column nullable with a check that a row has a file or a reference, a third path in `dev_legal_document_write` (every path today requires a stored file), and each reader taught first. Whether the firm reads the document live or as it stood when released decides whether the row also carries a pinned revision, so that call comes before the schema. The safe default if it is built before his call: the row is drawn for a dev on the person's Matter view, `legal-portal` does not serve a reference row (one filter where it selects documents, which also keeps it out of the printed packet), a counsel-only document makes a counsel-only row, and the guard holds the document to the person the matter stands on.
 - **5c, the Drive chip.** `documents.source_sha256` is kept, but comparing it needs the Drive file read on the server, an edge function's action and its own deploy. A report by hash alone of the copies that no longer match comes first.
+
+## The audit (2026-11-20)
+
+A second session read every PR of the train, checked the live policies and grants, and walked the screens on `ZZ Test Hand`. The tables, the doors and the numbering are sound: every table is a dev's alone with its four fences, other roles read nothing, and no number repeats. No real file holds a standing, a case item or a kept plan yet.
+
+**Fixed.**
+
+- v2.8061: a failed read of the correction links, the evidence numbers or the standing is named on the file. A corrected entry used to lose its chip without a word.
+- v2.8071: *Waiting on you* says when it could not be read, and names the plans on other files while a file is open.
+- The entry composer drops a correction pick that was refused or belongs to another person's file (PR #9084).
+- v2.8102 (dev-mcp 0.122.0): three things section 3 says of a kept plan did not hold, and now do. A dropped or stale plan is refused when a session applies it. A `plan_hr_entry` that rewrites the summary or the narrative commits to the text it replaces, so it turns stale. The call log keeps the plan hash on a long row, so one plan is not filed twice.
+
+**Found, waiting on the owner.** Each needs a migration or his choice.
+
+- A signed-in user who is not a dev can learn that a person has case Item N: the item guard answers *already stands* before the policy refuses, and the table grants INSERT. The fix is to revoke the direct grants or check the caller first in the guard.
+- A number typed at the start of a new record's title moves the counter for good: the title floor is read over numbered records too. *Ev 2026-11-05 …* makes the next record Ev #2027.
+- Another dev's key cannot apply a kept plan, and trying marks it stale: the keeper's name is in the hash. It follows his call on who may apply.
+- The kept-plan door skips its counsel-only document check for a document id with a stray space. The seat's call log keeps the words of the older HR verbs, counsel-only ones too; the log is a dev's alone.
+- The fact strip reads a change dated ahead as today's standing. The kernel is the seat's too, so the fix needs a deploy.
+- `apply_engagement` answers *already applied* when a stretch is recorded, taken off and recorded again alike. `search_case` hides a failed read of the links.
+- The words on a refused write are the database's own. The presses in Standing… and the Case view are under 44 px tall. Standing… draws its dates inside sentences.
 
 ## How to verify each PR
 

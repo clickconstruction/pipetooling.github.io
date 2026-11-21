@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 import { AgreementsSendPaper } from './AgreementsSendPaper'
 
 const io = vi.hoisted(() => ({
@@ -25,6 +26,8 @@ const io = vi.hoisted(() => ({
   /** What a party's send did, in order. */
   party: [] as string[],
   customers: [] as Array<{ id: string; name: string }>,
+  /** What a customer search throws, when it fails. */
+  failSearch: null as unknown,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -43,7 +46,10 @@ vi.mock('../../lib/documents/paperPartyIo', () => ({
     supplyHouses: [{ id: 'h1', name: 'Tallgrass Supply Co.' }],
     reps: [{ id: 'r1', name: 'Lena Park', label: 'Branch manager', email: 'lena@tallgrass.example', houseId: 'h1', houseName: 'Tallgrass Supply Co.' }],
   }),
-  searchPartyCustomers: async () => io.customers,
+  searchPartyCustomers: async () => {
+    if (io.failSearch) throw io.failSearch
+    return io.customers
+  },
   readPartyContact: async (record: { table: string; id: string }) => {
     io.party.push(`contact ${record.table}:${record.id}`)
     return '3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
@@ -134,6 +140,7 @@ beforeEach(() => {
   io.facts = []
   io.party = []
   io.customers = []
+  io.failSearch = null
 })
 afterEach(() => cleanup())
 
@@ -243,6 +250,36 @@ describe('AgreementsSendPaper', () => {
         'sends party-row',
       ]),
     )
+  })
+
+  it('a customer search that fails says so, keeps the other rows, and reads again on Retry', async () => {
+    io.failSearch = new Error('TypeError: Failed to fetch')
+    io.customers = [{ id: 'c2', name: 'Tallgrass Homes' }]
+    await openPicker()
+    fireEvent.change(screen.getByLabelText('Find a person or a company'), { target: { value: 'tallgrass' } })
+    const retry = await screen.findByRole('button', { name: 'Retry' }, { timeout: 3000 })
+    expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
+    // The supply house and the last row still list under the failure.
+    expect(screen.getByRole('button', { name: /^Tallgrass Supply Co\./ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Someone not in any list/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Tallgrass Homes/ })).toBeNull()
+    io.failSearch = null
+    fireEvent.click(retry)
+    expect(await screen.findByRole('button', { name: /^Tallgrass Homes/ }, { timeout: 3000 })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
+  it('a customer search that is refused says why, and a new keystroke clears it', async () => {
+    io.failSearch = { code: '42501', message: 'permission denied for table customers' }
+    await openPicker()
+    const find = screen.getByLabelText('Find a person or a company')
+    fireEvent.change(find, { target: { value: 'tallgrass' } })
+    const said = await screen.findByText(/^The customers did not read/, undefined, { timeout: 3000 })
+    expect(said.textContent).not.toBe('The customers did not read.')
+    expect(screen.getByRole('button', { name: /^Someone not in any list/ })).toBeTruthy()
+    io.failSearch = null
+    fireEvent.change(find, { target: { value: 'tallgrass h' } })
+    expect(screen.queryByText(/^The customers did not read/)).toBeNull()
   })
 
   it('someone on no list: their contact is made from the address, and the paper keeps the company typed', async () => {

@@ -50,6 +50,10 @@ export function PaperPartyAddToList({
   const [typed, setTyped] = useState('')
   const [houses, setHouses] = useState<PartySupplyHouse[]>([])
   const [customers, setCustomers] = useState<PartyCustomer[]>([])
+  const [housesFailure, setHousesFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [housesAttempt, setHousesAttempt] = useState(0)
+  const [customersFailure, setCustomersFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [customersAttempt, setCustomersAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   /** The app's own New customer form, open on the plan it finishes. */
@@ -73,20 +77,28 @@ export function PaperPartyAddToList({
     }
   }, [documentId, attempt])
 
-  // A company the app already keeps: the supply houses are a short list, and a customer is found by name.
+  // A company the app already keeps: the supply houses are a short list, and a customer is found by name. A read that
+  // fails says so and offers to read again, so a lost signal never reads as a company the app does not keep.
   const searching = choice === 'existing'
   useEffect(() => {
+    setHousesFailure(null)
     if (!searching) return
     let live = true
     readPartyShortLists().then(
       (lists) => live && setHouses(lists.supplyHouses),
-      () => live && setHouses([]),
+      (e: unknown) => {
+        if (!live) return
+        setHouses([])
+        setHousesFailure(recoveryFailureFromError(e, 'The supply houses did not read.'))
+      },
     )
     return () => {
       live = false
     }
-  }, [searching])
+  }, [searching, housesAttempt])
   useEffect(() => {
+    // A new keystroke or a Retry starts over: the old failure goes.
+    setCustomersFailure(null)
     if (!searching || typed.trim().length < 2) {
       setCustomers([])
       return
@@ -95,14 +107,18 @@ export function PaperPartyAddToList({
     const timer = setTimeout(() => {
       searchPartyCustomers(typed).then(
         (found) => live && setCustomers(found),
-        () => live && setCustomers([]),
+        (e: unknown) => {
+          if (!live) return
+          setCustomers([])
+          setCustomersFailure(recoveryFailureFromError(e, 'The customers did not read.'))
+        },
       )
     }, 250)
     return () => {
       live = false
       clearTimeout(timer)
     }
-  }, [searching, typed])
+  }, [searching, typed, customersAttempt])
 
   const who = useMemo(() => ({ name: person?.name ?? '', email: person?.email ?? '', company }), [person, company])
   const options = useMemo(() => listOptions(who), [who])
@@ -226,6 +242,8 @@ export function PaperPartyAddToList({
             ) : (
               <div style={{ marginTop: '0.7rem' }}>
                 <input type="search" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Find a customer or a supply house" aria-label="Find a customer or a supply house" style={field} />
+                {housesFailure ? <OfflineRetryPanel failure={housesFailure} onRetry={() => setHousesAttempt((n) => n + 1)} surface="paper-party-add-to-list-houses" idempotent style={{ marginTop: '0.45rem' }} /> : null}
+                {customersFailure ? <OfflineRetryPanel failure={customersFailure} onRetry={() => setCustomersAttempt((n) => n + 1)} surface="paper-party-add-to-list-customers" idempotent style={{ marginTop: '0.45rem' }} /> : null}
                 {picked ? (
                   <p style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem' }} data-testid="paper-party-list-picked">
                     They are at <strong>{picked.name}</strong>.

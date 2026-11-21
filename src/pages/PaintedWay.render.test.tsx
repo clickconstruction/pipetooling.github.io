@@ -297,7 +297,7 @@ describe('PaintedWay, how sure the reader’s phone is (#402)', () => {
   })
 
   it('waits 4 seconds on a rough reading, drawing nobody, before it says the phone gives only an area', async () => {
-    const { p } = await shown()
+    const { p, io } = await shown()
     // The middle of an area 3,200 m wide, a mile north of the map: the map itself is inside the circle.
     act(() => p.ok!(at(29.515, -98.2, 3200)))
     expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
@@ -306,8 +306,12 @@ describe('PaintedWay, how sure the reader’s phone is (#402)', () => {
     wait(3999)
     expect(whereBox()?.getAttribute('data-way-where')).toBe('finding')
     expect(canvasText()).toContain('me:no')
+    // A reading still being waited on is sent to nobody (v2.8105): it may be one reading off a cell tower.
+    expect(io.points).toHaveLength(0)
     wait(1)
     expect(whereBox()?.getAttribute('data-way-where')).toBe('area')
+    // Once it is an area it is sent as one, with its margin, which the office reads as an area.
+    expect(io.points.map((x) => x.point)).toEqual([at(29.515, -98.2, 3200)].map((x) => ({ lat: x.coords.latitude, lng: x.coords.longitude, accuracyM: 3200 })))
     const rough = document.querySelector('[data-way-rough]')!
     expect(rough.querySelector('b')?.textContent).toBe('Your phone is only giving the area you are in.')
     expect(rough.textContent).toContain('It is only sure within 2 miles, so the map cannot show where you stand. You are somewhere in this circle, 4 miles across.')
@@ -318,8 +322,31 @@ describe('PaintedWay, how sure the reader’s phone is (#402)', () => {
     expect(whereBox()?.textContent).not.toMatch(/The start is|You are on|You are at|Your phone is sure|is off/)
     // The whole circle and no dot, and the page's own frame for a dot stands down.
     expect(canvasText()).toContain('me:yes frame:no area:yes circle:yes')
-    // Who sees the reader is still said, under it.
-    expect(whereBox()?.textContent).toContain('Made Up Plumbing sees where you are while this is on.')
+    // Who sees what is still said, under it: the area, and no word of a dot that is not drawn.
+    expect(document.querySelector('[data-way-seen]')?.textContent).toBe('Made Up Plumbing sees only this area while this is on. Press Hide where I am to stop.')
+    expect(whereBox()?.textContent).not.toMatch(/sees where you are|the dot moves/)
+  })
+
+  it('sends the first spot after an area without waiting out the minute, and nothing between', async () => {
+    const { p, io } = await shown()
+    act(() => p.ok!(at(29.515, -98.2, 3200)))
+    wait(4000)
+    expect(io.points).toHaveLength(1)
+    // Ten seconds on the reader turns the switch on. The function keeps no two points nearer than 20 s, so it waits.
+    wait(10_000)
+    act(() => p.ok!(at(29.50002, -98.199, 6)))
+    expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    expect(io.points).toHaveLength(1)
+    wait(10_000)
+    act(() => p.ok!(at(29.50003, -98.199, 5)))
+    expect(io.points.map((x) => x.point.accuracyM)).toEqual([3200, 5])
+    // From a spot the next one waits the minute, as it always did.
+    wait(30_000)
+    act(() => p.ok!(at(29.50004, -98.199, 5)))
+    expect(io.points).toHaveLength(2)
+    wait(30_000)
+    act(() => p.ok!(at(29.50005, -98.199, 5)))
+    expect(io.points).toHaveLength(3)
   })
 
   it('leaves the picture on the map when the area is nowhere near it, and speaks of no circle', async () => {
@@ -333,12 +360,14 @@ describe('PaintedWay, how sure the reader’s phone is (#402)', () => {
   })
 
   it('never says the phone gives an area when a better reading comes inside the wait', async () => {
-    const { p } = await shown()
+    const { p, io } = await shown()
     act(() => p.ok!(at(29.515, -98.2, 3200)))
     wait(2500)
     act(() => p.ok!(at(29.50002, -98.199, 6)))
     wait(10_000)
     expect(whereBox()?.getAttribute('data-way-where')).toBe('spot')
+    // The reading off the cell tower was never sent: the first point the company keeps is the spot.
+    expect(io.points.map((x) => x.point.accuracyM)).toEqual([6])
     expect(document.querySelector('[data-way-rough]')).toBeNull()
     expect(canvasText()).toContain('me:yes frame:yes area:no circle:no')
   })

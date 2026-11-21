@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { needsYouDoor } from '../needsYouDoors'
 import { plainWordsFailures } from '../plainWords'
 import type { StageLine, StartBulletRow, StartCheckRows } from '../startChecks/startCheckRows'
-import { START_OWED_ACTION, sitesOnDefaultNotice, startAnswersOwed, startOwedDetail, startOwedHref, startOwedTitle, type StartOwedJob, type StartOwedSources } from './startAnswersOwed'
+import { START_OWED_ACTION, sitesOnDefaultNotice, startAnswersOwed, startOwedDetail, startOwedHref, startOwedTitle, withoutZzTestStartJobs, type StartOwedJob, type StartOwedSources } from './startAnswersOwed'
 
 const TODAY = '2026-11-17'
 let n = 0
@@ -58,6 +58,33 @@ describe('the answers owed, site by site', () => {
     expect(startAnswersOwed({ jobs: [], lines: [], rows: rows([]), settings: [] }, TODAY)).toEqual({ sites: [], answers: 0, stages: 0 })
     const noDays: StartOwedSources = { jobs: [job('j1')], lines: [line('x', 'j1', null)], rows: rows([bullet('a', 'j1', 'x')]), settings: [] }
     expect(startAnswersOwed(noDays, TODAY).answers).toBe(0)
+  })
+})
+
+describe('a ZZ test job owes the office nothing', () => {
+  // A walk's test job on its own test site, with two open bullets near its day, beside a real site with one.
+  const sources: StartOwedSources = {
+    jobs: [job('j1'), job('zz', { name: 'ZZ Test Stages Walk', developmentId: 'dev-zz', developmentName: 'ZZ Test development', gcContact: null, gcName: null, customerName: null })],
+    lines: [line('f1', 'j1', ['2026-11-24', '2026-11-26']), line('fz', 'zz', ['2026-11-24', '2026-11-26'])],
+    rows: rows([bullet('a', 'j1', 'f1'), bullet('z1', 'zz', 'fz'), bullet('z2', 'zz', 'fz')]),
+    settings: [],
+  }
+
+  it('counts it for a seat that shows ZZ jobs, and leaves it out for one that hides them', () => {
+    const all = startAnswersOwed(sources, TODAY)
+    expect(all.answers).toBe(3)
+    expect(all.sites.map((s) => s.name)).toEqual(['ZZ Test development', 'Heron Point'])
+    const shown = startAnswersOwed(withoutZzTestStartJobs(sources), TODAY)
+    expect(shown.answers).toBe(1)
+    expect(shown.sites.map((s) => s.name)).toEqual(['Heron Point'])
+    expect(sitesOnDefaultNotice(withoutZzTestStartJobs(sources)).map((s) => s.key)).toEqual(['dev-1'])
+  })
+
+  it('reads a customer named ZZ the same way, and hands back the same sources when there is no ZZ job', () => {
+    const byCustomer: StartOwedSources = { ...sources, jobs: [job('j1'), job('zz', { name: 'Lodge plumbing', customerName: 'ZZ Test GC', developmentId: 'dev-zz', developmentName: 'A test site' })] }
+    expect(startAnswersOwed(withoutZzTestStartJobs(byCustomer), TODAY).answers).toBe(1)
+    const none: StartOwedSources = { ...sources, jobs: [job('j1')] }
+    expect(withoutZzTestStartJobs(none)).toBe(none)
   })
 })
 

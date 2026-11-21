@@ -27,7 +27,13 @@ vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: null, sh
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: () => {} }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyLocation: () => {} }))
 /** Which phone the page takes itself to be on. The wait is the real one. */
-const device = vi.hoisted(() => ({ kind: 'iphone-safari' as string, /** Where the map says it is looking, for a test that needs the middle of the view. */ view: null as null | { lat: number; lng: number } }))
+const device = vi.hoisted(() => ({
+  kind: 'iphone-safari' as string,
+  /** Where the map says it is looking, for a test that needs the middle of the view. */
+  view: null as null | { lat: number; lng: number },
+  /** Where the window sent the map, in order: a point to fly to, or everything on it framed again. Read as the real canvas reads them. */
+  moves: [] as string[],
+}))
 vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => device.kind }))
 
 /** The phone, stood in for: the test hands the walk its state, and the presses run the real rules. */
@@ -88,13 +94,26 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
 }))
 
 vi.mock('./PaintedMapCanvas', async () => {
-  const { useEffect } = await import('react')
+  const { useEffect, useRef } = await import('react')
   return {
-  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number; accuracyM: number | null; area?: boolean } | null; follow?: boolean; frameMargin?: boolean; time?: unknown; dot?: { point: { lat: number; lng: number } } | null; onView?: (c: { lat: number; lng: number }) => void }) {
-    const { onView } = props
+  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number; accuracyM: number | null; area?: boolean } | null; follow?: boolean; frameMargin?: boolean; flyTo?: { lat: number; lng: number } | null; refit?: number; time?: unknown; dot?: { point: { lat: number; lng: number } } | null; onView?: (c: { lat: number; lng: number }) => void }) {
+    const { onView, flyTo, refit } = props
     useEffect(() => {
       if (device.view) onView?.(device.view)
     }, [onView])
+    // The canvas flies to each new point it is handed, and frames everything again each time the count moves.
+    useEffect(() => {
+      if (flyTo) device.moves.push(`fly ${flyTo.lat},${flyTo.lng}`)
+    }, [flyTo])
+    const seen = useRef(refit)
+    const shapes = props.lines.length + (props.places ?? []).length
+    useEffect(() => {
+      if (seen.current === refit) return
+      seen.current = refit
+      device.moves.push(`refit ${shapes}`)
+      // As the canvas does: the shapes are read as they are when the count moves.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refit])
     return (
       <div data-testid="canvas">
         area:{props.me?.area ? `yes ${props.me.accuracyM}` : 'no'} margin:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'} lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'} places:{(props.places ?? []).map((pl) => `${pl.number} ${pl.name}`).join(',')}
@@ -139,6 +158,7 @@ afterEach(() => {
   vi.useRealTimers()
   device.kind = 'iphone-safari'
   device.view = null
+  device.moves = []
   delete (navigator as unknown as { geolocation?: unknown }).geolocation
   phone.calls = []
   phone.kept = []
@@ -326,6 +346,84 @@ describe('painting', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
     expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
     expect(phone.calls).toContain('clear')
+  })
+})
+
+describe('Draw it by hand instead, from a map pulled back to the whole circle', () => {
+  const HERE = { lat: 29.5, lng: -98.2 }
+  /** The walk's readings have stayed rough: the panel shows the way to the switch and the map is on the whole circle. */
+  const heldRough = (state: WalkState) => {
+    vi.useFakeTimers()
+    give(state)
+    wait(4000)
+    expect(panel()).toBe('rough')
+    expect(canvas()).toContain('area:yes 3000 margin:yes')
+  }
+
+  it('brings a new map back to the place it opened on, not a view miles wide', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} center={HERE} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    heldRough(roughWalk())
+    expect(device.moves).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
+    expect(phone.calls).toContain('clear')
+    // The map has nothing on it yet, so it goes to the job, as it opened.
+    expect(device.moves).toEqual(['fly 29.5,-98.2'])
+    expect(canvas()).toContain('margin:no')
+    expect(canvas()).toContain('me:no')
+  })
+
+  it('frames a saved map’s own lines again', async () => {
+    io.whole = { map: MAP, lines: [LINE], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} center={HERE} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Walk or drive a line' }))
+    heldRough(roughWalk())
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
+    // One line is on the map: the canvas frames it, and is not sent to a point.
+    expect(device.moves).toEqual(['refit 1'])
+  })
+
+  it('frames what the walk painted before the readings turned rough, kept to look over', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} center={HERE} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    heldRough(walkFix(walked(), fix(80, 0, 22_000, 3000), 22_000))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(canvas()).toContain('lines:pending-0')
+    expect(device.moves).toEqual(['refit 1'])
+  })
+
+  it('moves nothing when the reading was never rough, or was rough and still waited on', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} center={HERE} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    act(() => phone.setRefusal!('refused'))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
+    expect(device.moves).toEqual([])
+    cleanup()
+    phone.calls = []
+
+    render(<PaintedMapWindow ask={{ start: START }} center={HERE} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    vi.useFakeTimers()
+    give(roughWalk())
+    wait(3999)
+    // The map has not pulled back yet: the view is still the painter's own.
+    expect(canvas()).toContain('area:no')
+    act(() => phone.setRefusal!('refused'))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
+    expect(device.moves).toEqual([])
+  })
+
+  it('leaves a map with nothing on it and nowhere to open alone', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} onClose={() => {}} />)
+    await waitFor(() => expect(phone.calls).toEqual(['start']))
+    heldRough(roughWalk())
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand instead' }))
+    expect(screen.getByRole('heading', { name: 'Draw it by hand' })).toBeTruthy()
+    expect(device.moves).toEqual([])
   })
 })
 

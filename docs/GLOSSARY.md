@@ -1622,6 +1622,21 @@ Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the th
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
+### Gear menu sections (app-wide)
+The gear menu reads in groups since v2.8059, each under a small label: **Modes**, **Show**, **Pages** and **Help and settings** (`gearMenuSections.ts`, `GearSectionLabel`).
+**Modes** holds the rows that change the page: Job Mode, Dispatch Mode with its PO tab, Task Mode.
+**Show** holds the rows that show or hide one thing: Pin bar, Tell the dev, Dark Mode.
+**Pages** holds the pages the menu is the door to, drawn in one order, `GEAR_PAGE_ORDER`: Checklist, Calendar, Materials, Map, Customers, People, Documents, Banking, Roadmap, Partnerships.
+A crew's pages come first and the office's last;
+until v2.8059 the rows sat in the order they were added.
+Who sees which page is unchanged and is one object in `Layout.tsx`, `gearPages`;
+a label is drawn only over a group with a row in it.
+**Help and settings** holds My logbook, Help and Settings.
+Sign out and the reloads sit last, under a grey band and no label.
+The wrench's press, where a narrow phone's header had no room for it, stays the first row, above every label.
+The phone dock's More sheet uses the same four labels: its last group read **Settings** until v2.8059.
+Display-only — no role's menu gained or lost a row.
+
 ### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
 It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
@@ -1643,8 +1658,9 @@ unread is kept per person per device as the time the box last listed the notes (
 The gear menu's switch for the wrench is the row **Tell the dev**, with the wrench's icon and a tick, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
 the row read **Fix Mode** until v2.8043, and the stored key `pt_fix_mode_<user>` keeps the old word so no choice was lost.
 The pin bar's switch is the row **Pin bar** with the pin's icon, **Pin Mode** until v2.8043 and stored as before (`pinModeToggle.ts`), and the strip at the bottom of a pinnable page is the **pin bar** in every word a person reads.
-Neither is a mode, because neither changes the page: a grey band under Task Mode sets the two apart in the gear menu, and the phone dock's More sheet lists them with Dark Mode under **Show**, below **Modes** (`gearSwitchWords.ts`).
-On a narrow phone the gear menu holds two rows named Tell the dev: the press that opens the box is the first row, and the ticked switch sits under the band.
+Neither is a mode, because neither changes the page: the gear menu lists the two with Dark Mode under its **Show** label, below **Modes**, and the phone dock's More sheet does the same (`gearSwitchWords.ts`).
+A grey band stood where the Show label is from v2.8043 to v2.8059.
+On a narrow phone the gear menu holds two rows named Tell the dev: the press that opens the box is the first row, above every label, and the ticked switch sits under **Show**.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
 Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
 Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
@@ -3196,6 +3212,7 @@ a press on a line opens its map.
 In the job window's top band and on a tech's Job Mode card (`JobPaintedMapsStrip`), on the On my way sheet (the same strip, the maps alone), and under a development's address (`DevelopmentPaintedMapsStrip`, the site's own maps and each lot's).
 The job window's Documents tab lists the same maps in a **Painted maps** section (since v2.7393, `JobDocumentsPaintedMaps` over `paintedMapDocuments.ts`): each row is a door to the map as it is now, and nothing is stored there, since the copy that went out is already a sent copy.
 **Share** on a row (since v2.7415) opens the map's Share sheet, where **Who opened it** lists each reader of a link from `painted_map_link_visits`: the name given, the device, when, and the place they chose to show.
+A reader whose phone gave only an area is listed as *Showed only the area they were in*, with its width and no place to open (since v2.8105, `visitPoint` in `paintedMapLink.ts`, which takes the latest kept point that is a spot before any area).
 The Documents page's **Painted maps** tab (`/documents?tab=painted-maps`, since v2.7409, `DocumentsPaintedMapsTab`) lists every map the reader can open, a map on no job among them.
 One host in the Layout opens it (`PaintedMapHost` over `paintedMapDoor`), and the window looks the address up only for a map with nothing on it yet.
 Drawing by hand: a press adds a corner, a drag moves one, and on a phone **the magnifying glass** rides above a dragging finger (a second small map two zoom steps in, `PaintedMapCanvas`).
@@ -3231,6 +3248,7 @@ a map of several lines says how under each and the guide once at the foot;
 the print, the picture and the files keep their own foot line).
 **Text the customer…** on the Share sheet (since v2.7338, named **Text it…** until v2.7790) texts the link to the job's customer from the company's number: for the office team (`jobBoxOffered`) on a map that is on a job, it opens the customer's own text box (`ContractTextDoor`) with the words from `paintedMapText.ts`, and nothing goes until that box's send window.
 **Who opened a link** (the table `painted_map_link_visits` since v2.7411, the function's `way.open` and `way.here` since v2.7413): the server can keep the name a signed-out reader gives, the device and, once they choose to show it, the first point and the latest, for the office and the map's painter to read.
+Since v2.8105 the page sends only a reading it has settled on (`wayReading`): nothing while a rough one is still waited on, and an area as it is with its margin, which the office reads as an area.
 **A copy** (since v2.7225, `usePaintedMapCopies` in the same sheet): a picture of the map with its places and the day (`paintedMapPicture.ts`), and a page to print or save as a PDF, filed as a sent copy (`painted_map_print`).
 A copy cannot be taken back, so it says the day it was made and carries the link's code, making the link itself when none is out (since v2.7790).
 Since v2.7226 the same panel hands over a `.kml` or a `.gpx` file of the lines and places (`paintedMapFiles.ts`), with no photo and no time along a line.
@@ -3260,7 +3278,8 @@ What a screen does about a weak or a rough reading is its own sentence, kept wit
 A rough reading leaves the dot and the map where they were and says *The dot was not moved.*, a weak one moves the dot and asks for a drag (`readingMovesDot` and the notes in `paintedPlaceDot.ts`), and a saved place's own margin says nothing of the phone, so a place opened to change shows no line.
 The shared page `/way` tells a spot from an area since v2.8004 (`wayReading` in `paintedWay.ts`): a sure reading keeps its words and gains the tick, a weak one reads *The signal is weak here.* and names no switch, and an area draws no dot and gets no word about where the reader stands.
 That page names the switch only for an area, after the same 4 second wait, with *Your phone is only giving the area you are in.* and the steps for the reader's phone (`wayRoughWords`, `wayWeakWords`), and its map pulls back to the circle when the area's edge is within `WAY_FRAME_METERS` of the map.
-A press that takes one reading draws the same line since v2.8011 (`PreciseReadingLine`, the notes in `src/lib/tasks/taskPlaceReading.ts`): a task's **Use where I am** and the box map's **Use my location** in every state, and the press a doer adds a task's place with (`TaskPlaceAddHere`) for a reading it keeps and for one it does not.
+A press that takes one reading draws the same line since v2.8011 (`PreciseReadingLine`, the notes in `src/lib/tasks/taskPlaceReading.ts`): a task's **Use where I am** and the box map's **Use my location** in every state, on **Move the pin by hand** and since v2.8073 on the Tally's pin sheet, with the Tally's **Site map** drawing it for a rough reading alone, and the press a doer adds a task's place with (`TaskPlaceAddHere`) for a reading it keeps and for one it does not.
+A map with nowhere to open opens wide on a task's wide start when that press gets an area, a refusal or nothing, says *The map opened wide.* and never *was not moved*, and holds the pin press dead until the ring has left that start (`boxMapOpening` and `boxPinReady` in `src/lib/materials/boxMapStart.ts`, since v2.8073).
 On those screens a rough reading moves no map and adds no place, **How far am I?** and both **Show where I am** presses say no distance and draw no dot from one, and **I found it** and the pin strip pin nothing and say the switch, not the open sky, is the cure (`foundRoughNoteWords`).
 The box map's **Show where I am** follows the phone, so it waits the 4 seconds, and the presses that ask once call a rough reading rough at once.
 Guide `paint-a-map`, *When Precise Location looks off*.

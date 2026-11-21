@@ -25,7 +25,7 @@ import { directionsUrlForPoint } from '../lib/directionsUrl'
 import { lineLengthWords, mapLengthMeters, aboutLengthWords } from '../lib/paintedMap/paintedMap'
 import { PAINTED_MAP_LINK_WORDS, PAINTED_MAP_VISITOR_NAME_MAX, linkEndsWords, paintedMapLinkCode, paintedMapVisitorName, sharedLineForCanvas, sharedPlacesForCanvas } from '../lib/paintedMap/paintedMapLink'
 import { paintedWayIo, type PaintedWayAsk, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
-import { WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayReading, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
+import { WAY_AREA_PRIVACY_WORDS, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayAreaSeenWords, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayReading, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
 import { roughCircleWords, wayRoughWords, wayWeakWords } from '../lib/paintedMap/preciseLocation'
 import { usePhoneKind, useRoughHeld } from '../hooks/usePreciseLocation'
@@ -87,6 +87,8 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   // The name the reader just typed, so Try again after no signal does not ask for it twice.
   const typedName = useRef<string | null>(null)
   const pointSentAt = useRef<number | null>(null)
+  // The last point sent was an area: the first spot after it does not wait out the minute.
+  const sentArea = useRef(false)
 
   const askFor = useCallback((name: string | null): PaintedWayAsk => {
     deviceId.current ??= wayDeviceId(wayStore(), newDeviceId)
@@ -144,7 +146,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   }, [shared, view])
 
   // The reader's own dot: read only after their press and only while they keep it on. On a real link the company sees
-  // it too, as the line under the press says: the first point at once, then about one a minute. The sample sends none.
+  // it too, as the line under the press says. What is sent, and when, is the effect under `reading`.
   useEffect(() => {
     if (!showMe) return
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -157,10 +159,6 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
       (pos) => {
         const at = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null }
         setMe(at)
-        if (!sample && code && deviceId.current && wayPointIsDue(pointSentAt.current, Date.now())) {
-          pointSentAt.current = Date.now()
-          void io.here(code, deviceId.current, at)
-        }
       },
       (err) => {
         if (err.code === 1) {
@@ -176,6 +174,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
       if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
       watchId.current = null
       pointSentAt.current = null
+      sentArea.current = false
       setMe(null)
     }
   }, [showMe, sample, code, io])
@@ -197,6 +196,18 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   // A spot near the map is held in one picture with it, and across town the picture stays on the map and the words
   // say how far. An area whose edge is near the map is shown whole. Its middle is nobody's spot, so it gets no dot.
   const reading = useMemo(() => wayReading(showMe ? me : null, roughHeld, mapPoints), [showMe, me, roughHeld, mapPoints])
+  // What the company is sent is what the page has made up its mind about: a spot, or an area once the readings have
+  // stayed rough for the wait, with its margin, which the office reads as an area. A reading still being waited on is
+  // sent to nobody, so a first reading off a cell tower is never kept as where the reader was. The sample sends none.
+  useEffect(() => {
+    if (sample || !code || !deviceId.current || reading.kind === 'finding') return
+    const isArea = reading.kind === 'area'
+    const now = Date.now()
+    if (!wayPointIsDue(pointSentAt.current, now, { lastWasArea: sentArea.current, isArea })) return
+    pointSentAt.current = now
+    sentArea.current = isArea
+    void io.here(code, deviceId.current, { lat: reading.me.lat, lng: reading.me.lng, accuracyM: reading.me.accuracyM })
+  }, [reading, sample, code, io])
   const where = reading.kind === 'spot' ? wayWords(reading.me, lines, start) : null
   const weak = reading.kind === 'spot' && reading.weak ? wayWeakWords(reading.me.accuracyM, phoneKind) : null
   const area = reading.kind === 'area' ? wayRoughWords(reading.me.accuracyM, phoneKind) : null
@@ -331,7 +342,10 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                   ) : (
                     'Finding you…'
                   )}
-                  <div style={{ ...tiny, marginTop: 6 }}>{sample ? WAY_PRIVACY_WORDS : wayIsSeenWords(sentBy)}</div>
+                  {/* Under an area there is no dot, and the company is sent the area: the line says that and no more. */}
+                  <div data-way-seen={reading.kind === 'area' ? 'area' : 'spot'} style={{ ...tiny, marginTop: 6 }}>
+                    {reading.kind === 'area' ? (sample ? WAY_AREA_PRIVACY_WORDS : wayAreaSeenWords(sentBy)) : sample ? WAY_PRIVACY_WORDS : wayIsSeenWords(sentBy)}
+                  </div>
                 </div>
               ) : null}
 

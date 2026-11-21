@@ -3,7 +3,7 @@
  * The place panel under **Put the dot where I am** (punch list #402, call 5). One reading, asked
  * for by the press: the Precise Location line says how it did. A rough reading says the dot was not
  * moved and shows the way to the switch. With no reading taken on this visit the panel says nothing
- * of the phone.
+ * of the phone. A press that got no reading at all says why in the same place, under the press.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -12,11 +12,13 @@ const browser = vi.hoisted(() => ({ kind: 'iphone-safari' as string }))
 vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => browser.kind }))
 vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: null, shrinking: false, kept: false, error: null, pick: async () => {}, clear: () => {}, markKept: () => {} }) }))
 
+import type { MyFixFailure } from '../../lib/materials/myLocation'
 import { PaintedPlacePanel } from './PaintedPlacePanel'
 
 const presses = { onUseWhereIAm: vi.fn(), onSave: vi.fn(), onRemove: vi.fn(), onCancel: vi.fn() }
-const draw = (more: { accuracyM?: number | null; roughAccuracyM?: number | null; movedOffReading?: boolean; finding?: boolean } = {}) =>
-  render(<PaintedPlacePanel place={null} photoUrl={null} accuracyM={more.accuracyM ?? null} roughAccuracyM={more.roughAccuracyM ?? null} movedOffReading={more.movedOffReading ?? false} finding={more.finding ?? false} busy={false} canRemove={false} {...presses} />)
+type More = { accuracyM?: number | null; roughAccuracyM?: number | null; noFix?: MyFixFailure | null; movedOffReading?: boolean; finding?: boolean }
+const panel = (more: More = {}) => <PaintedPlacePanel place={null} photoUrl={null} accuracyM={more.accuracyM ?? null} roughAccuracyM={more.roughAccuracyM ?? null} noFix={more.noFix ?? null} movedOffReading={more.movedOffReading ?? false} finding={more.finding ?? false} busy={false} canRemove={false} {...presses} />
+const draw = (more: More = {}) => render(panel(more))
 
 const fix = () => document.querySelector('[data-painted-place-fix]')
 const HINT = 'Drag the blue dot onto the spot, or press the map to bring it there. Your phone is read once, on that press, and not followed.'
@@ -115,5 +117,81 @@ describe('PaintedPlacePanel and one reading of the phone', () => {
     draw({ movedOffReading: true })
     expect(screen.getByRole('status').textContent).toBe('You moved the dot. The place is where the dot is now.')
     expect(document.querySelector('[data-precise]')).toBeNull()
+  })
+})
+
+describe('PaintedPlacePanel and a press that got no reading (#402)', () => {
+  const WORDS: Record<MyFixFailure, string> = {
+    failed: 'Your phone did not find you in time. The dot was not moved. Drag it onto the spot, or press Put the dot where I am again.',
+    refused: 'Location is off for this app. The dot was not moved. Drag it onto the spot, or allow location in the phone’s settings and press again.',
+    none: 'This device gives no location. The dot was not moved. Drag it onto the spot by hand.',
+  }
+
+  it('says why in an amber alert right under the press, with the press live again', () => {
+    for (const why of ['failed', 'refused', 'none'] as const) {
+      draw({ noFix: why })
+      const alert = screen.getByRole('alert')
+      expect(fix(), why).toBe(alert)
+      expect(alert.getAttribute('data-painted-place-fix'), why).toBe('no-reading')
+      expect(alert.getAttribute('data-painted-place-no-fix'), why).toBe(why)
+      expect(alert.textContent, why).toBe(WORDS[why])
+      expect(alert.textContent, why).not.toMatch(/Drag the map/)
+      expect(alert.style.background, why).toBe('var(--bg-amber-tint)')
+      expect(alert.style.color, why).toBe('var(--text-amber-800)')
+      // Right under the press: the press is the alert's own neighbour above it.
+      const button = screen.getByRole('button', { name: 'Put the dot where I am' }) as HTMLButtonElement
+      expect(alert.previousElementSibling, why).toBe(button)
+      expect(button.disabled, why).toBe(false)
+      expect(screen.queryByText(HINT), why).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('stands in for the line: an older reading, weak or rough, is not what the press is seen to answer', () => {
+    draw({ accuracyM: 300, noFix: 'failed' })
+    expect(document.querySelectorAll('[data-painted-place-fix]')).toHaveLength(1)
+    expect(document.querySelector('[data-precise]')).toBeNull()
+    expect(screen.getByRole('alert').textContent).toBe(WORDS.failed)
+    cleanup()
+    draw({ accuracyM: 4.5, roughAccuracyM: 3200, noFix: 'refused' })
+    expect(document.querySelectorAll('[data-painted-place-fix]')).toHaveLength(1)
+    expect(document.querySelector('[data-precise]')).toBeNull()
+    expect(screen.getByRole('alert').textContent).toBe(WORDS.refused)
+    cleanup()
+    draw({ movedOffReading: true, noFix: 'failed' })
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('alert').textContent).toBe(WORDS.failed)
+  })
+
+  it('brings the reason into view when the press answers, and again when a second press fails the same way', () => {
+    const seen: Array<string | null> = []
+    Element.prototype.scrollIntoView = function (this: Element) {
+      seen.push(this.getAttribute('data-painted-place-fix'))
+    }
+    try {
+      // A rough alert from an earlier press, then the press is made again.
+      const view = draw({ roughAccuracyM: 3200 })
+      expect(seen).toEqual(['rough'])
+      view.rerender(panel({ roughAccuracyM: 3200, finding: true }))
+      expect(seen).toEqual(['rough'])
+      // The phone does not answer in time.
+      view.rerender(panel({ noFix: 'failed' }))
+      expect(seen).toEqual(['rough', 'no-reading'])
+      // The same answer drawn again does not pull the panel about.
+      view.rerender(panel({ noFix: 'failed' }))
+      expect(seen).toEqual(['rough', 'no-reading'])
+      // A third press holds the reason while the phone is read, and scrolls nothing until it answers.
+      view.rerender(panel({ noFix: 'failed', finding: true }))
+      expect(screen.getByRole('alert').textContent).toBe(WORDS.failed)
+      expect(seen).toEqual(['rough', 'no-reading'])
+      view.rerender(panel({ noFix: 'failed' }))
+      expect(seen).toEqual(['rough', 'no-reading', 'no-reading'])
+      // A reading takes the reason away, and a good reading moves the dot: the map itself shows the press worked.
+      view.rerender(panel({ accuracyM: 4.5 }))
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(seen).toEqual(['rough', 'no-reading', 'no-reading'])
+    } finally {
+      delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView
+    }
   })
 })

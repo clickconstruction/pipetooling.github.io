@@ -4,6 +4,7 @@
  * on a line, the sheet asks how many more, its button carries the count, and the save files the
  * Tally's request in the presser's name through `sendShortRequest` and says where the office reads it.
  */
+import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -59,6 +60,30 @@ vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
 }))
 const io = vi.hoisted(() => ({ send: vi.fn(async () => ({ kind: 'request' as const })) }))
 vi.mock('../../lib/materials/shortRequestIo', () => ({ sendShortRequest: io.send }))
+// The site map is a stand-in that says what it was handed. Like the real one it draws an empty frame with nowhere to
+// open, and says where its ring is when it opens, when it is flown and when it is dragged.
+vi.mock('../materials/OnSiteMap', () => ({
+  default: function MapStub(p: { center?: { lat: number; lng: number } | null; startZoom?: number; pins: Array<{ id: string; lat: number; lng: number }>; focusId?: string | null; placing?: { label: string } | null; flyTo?: { lat: number; lng: number } | null; onCenterChange?: (c: { lat: number; lng: number }) => void }) {
+    const { flyTo, onCenterChange } = p
+    const start = p.pins.find((x) => x.id === p.focusId) ?? p.pins[0] ?? p.center ?? flyTo ?? null
+    const lat = start?.lat ?? null
+    const lng = start?.lng ?? null
+    useEffect(() => {
+      if (lat != null && lng != null) onCenterChange?.({ lat, lng })
+    }, [lat, lng, onCenterChange])
+    useEffect(() => {
+      if (flyTo) onCenterChange?.({ lat: flyTo.lat, lng: flyTo.lng })
+    }, [flyTo, onCenterChange])
+    if (!start) return <div data-testid="site-map-empty" />
+    return (
+      <div data-testid="site-map" data-at={`${start.lat},${start.lng}`} data-zoom={p.startZoom ?? ''} data-placing={p.placing?.label ?? ''} data-fly={flyTo ? `${flyTo.lat},${flyTo.lng}` : ''}>
+        {onCenterChange ? <button type="button" onClick={() => onCenterChange({ lat: 29.7, lng: -98.6 })}>drag the map</button> : null}
+      </div>
+    )
+  },
+}))
+/** Which phone the page takes itself to be on, for the Precise Location line's words (#402). */
+vi.mock('../../hooks/usePreciseLocation', async (real) => ({ ...(await real<typeof import('../../hooks/usePreciseLocation')>()), usePhoneKind: () => 'iphone-safari' }))
 
 import TallyOnSiteTab from './TallyOnSiteTab'
 
@@ -493,5 +518,140 @@ describe('TallyOnSiteTab · Pin A2 where you stand? (punch list #372, step 3)', 
     fireEvent.click(screen.getByRole('button', { name: /^Count A2/ }))
     fireEvent.click(screen.getByRole('button', { name: '5 is right' }))
     expect(screen.queryByTestId('pin-ask')).toBeNull()
+  })
+})
+
+describe('TallyOnSiteTab · Use my location on the map sheets (punch list #402)', () => {
+  const list = () => renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
+  /** A phone that answers the one press with this reading, or says no. */
+  const phoneAt = (fix: { lat: number; lng: number; accuracy: number } | null, code = 1) => {
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: (ok: (p: unknown) => void, fail: (e: unknown) => void) => { if (fix) ok({ coords: { latitude: fix.lat, longitude: fix.lng, accuracy: fix.accuracy } }); else fail({ code }) } } })
+  }
+  const a3 = { ...box, id: 'a3', label: 'A3', kind: 'box', lat: 29.5001, lng: -98.4001 }
+  const openSiteMap = async () => {
+    list()
+    fireEvent.click(await screen.findByRole('button', { name: 'Site map' }))
+  }
+  /** Site map, Pin a box…, then the box: the sheet with the ring. */
+  const openPinA2 = async () => {
+    await openSiteMap()
+    fireEvent.click(screen.getByRole('button', { name: 'Pin a box…' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Pin which box?' })).getByRole('button', { name: /^A2/ }))
+    return screen.getByRole('dialog', { name: 'Pin A2 on the map' })
+  }
+  const put = () => screen.getByRole('button', { name: 'Put A2 here' }) as HTMLButtonElement
+
+  it('on the pin sheet a rough reading does not move the map, shows the way to the switch, and is never the pin', async () => {
+    store.containers = [box, a3]
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    const { pinContainer } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(pinContainer).mockClear()
+    const sheet = await openPinA2()
+    const map = await screen.findByTestId('site-map')
+    expect(map.getAttribute('data-placing')).toBe('A2')
+    expect(map.getAttribute('data-at')).toBe('29.5001,-98.4001')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await within(sheet).findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-compare]')?.textContent).toBe('Your phone nowwithin 2 milesWith Precise Location onwithin 20 ft')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map was not moved. Drag it until the ring is on the spot, or turn the switch on and press again.')
+    // The map takes the room the footer leaves, so the steps wait behind one press of their own.
+    expect((alert.querySelector('details[data-precise-steps-fold]') as HTMLDetailsElement).open).toBe(false)
+    expect(screen.getByTestId('site-map').getAttribute('data-fly')).toBe('')
+    // The ring is where the map opened. The pin goes there as a person's own word, with no margin off the area.
+    fireEvent.click(put())
+    expect(pinContainer).toHaveBeenCalledTimes(1)
+    expect(pinContainer).toHaveBeenCalledWith('a2', { lat: 29.5001, lng: -98.4001 }, { accuracyM: null, byName: 'Mateo' })
+  })
+
+  it('on the pin sheet a sure reading moves the map and says the switch is on, and a weak one asks for the ring', async () => {
+    store.containers = [box, a3]
+    phoneAt({ lat: 29.5004, lng: -98.4003, accuracy: 5 })
+    const { pinContainer } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(pinContainer).mockClear()
+    await openPinA2()
+    await screen.findByTestId('site-map')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await waitFor(() => expect(screen.getByTestId('site-map').getAttribute('data-fly')).toBe('29.5004,-98.4003'))
+    expect(screen.getByTestId('on-site-pin-read').textContent).toBe('Precise Location is on. Sure within 20 ft.')
+    expect(screen.queryByRole('alert')).toBeNull()
+    phoneAt({ lat: 29.5005, lng: -98.4004, accuracy: 35 })
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await waitFor(() => expect(screen.getByTestId('site-map').getAttribute('data-fly')).toBe('29.5005,-98.4004'))
+    expect(screen.getByTestId('on-site-pin-read').textContent).toBe('Precise Location is on, but the signal is weak here. Your phone is only sure within 120 ft. Drag the map until the ring is on the spot.')
+    // The margin belongs to the reading: a drag takes the line away, and the pin is then a person's word.
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    expect(screen.queryByTestId('on-site-pin-read')).toBeNull()
+    fireEvent.click(put())
+    expect(pinContainer).toHaveBeenCalledWith('a2', { lat: 29.7, lng: -98.6 }, { accuracyM: null, byName: 'Mateo' })
+  })
+
+  it('on the pin sheet with nowhere to open, a rough reading opens the map wide, and the pin waits for a drag', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    const { pinContainer } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(pinContainer).mockClear()
+    const sheet = await openPinA2()
+    expect(await screen.findByTestId('site-map-empty')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await within(sheet).findByRole('alert')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map opened wide. Zoom in and drag it until the ring is on the spot, or turn the switch on and press again.')
+    const map = await screen.findByTestId('site-map')
+    expect(map.getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(map.getAttribute('data-zoom')).toBe('4')
+    expect(map.getAttribute('data-fly')).toBe('')
+    expect(put().disabled).toBe(true)
+    fireEvent.click(put())
+    expect(pinContainer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    expect(put().disabled).toBe(false)
+    fireEvent.click(put())
+    expect(pinContainer).toHaveBeenCalledWith('a2', { lat: 29.7, lng: -98.6 }, { accuracyM: null, byName: 'Mateo' })
+  })
+
+  it('on the pin sheet with nowhere to open, a phone that refuses still leaves a map to drag', async () => {
+    phoneAt(null)
+    await openPinA2()
+    await screen.findByTestId('site-map-empty')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(await screen.findByText('Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.')).toBeTruthy()
+    expect((await screen.findByTestId('site-map')).getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(screen.getByTestId('on-site-map-wide').textContent).toBe('The map opened wide. Zoom in and drag it until the ring is on the spot.')
+    expect(put().disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'drag the map' }))
+    expect(screen.queryByTestId('on-site-map-wide')).toBeNull()
+    expect(put().disabled).toBe(false)
+  })
+
+  it('on the Site map a rough reading does not move the map, and names no ring', async () => {
+    store.containers = [box, a3]
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    await openSiteMap()
+    await screen.findByTestId('site-map')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('b')?.textContent).toBe('Precise Location looks off.')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map was not moved. Turn the switch on and press again.')
+    expect(screen.getByTestId('site-map').getAttribute('data-fly')).toBe('')
+    expect(screen.getByTestId('site-map').getAttribute('data-at')).toBe('29.5001,-98.4001')
+  })
+
+  it('on the Site map with nowhere to open, a rough reading or a refusal opens the map wide', async () => {
+    phoneAt({ lat: 29.9, lng: -98.9, accuracy: 3200 })
+    await openSiteMap()
+    await screen.findByTestId('site-map-empty')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.querySelector('[data-precise-note]')?.textContent).toBe('The map opened wide. Zoom in and drag it to the site, or turn the switch on and press again.')
+    const map = await screen.findByTestId('site-map')
+    expect(map.getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(map.getAttribute('data-zoom')).toBe('4')
+    cleanup()
+    phoneAt(null)
+    await openSiteMap()
+    await screen.findByTestId('site-map-empty')
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(await screen.findByText('Location is off for this app. Drag the map by hand, or allow location in the phone’s settings.')).toBeTruthy()
+    expect((await screen.findByTestId('site-map')).getAttribute('data-at')).toBe('39.5,-98.35')
+    expect(screen.getByTestId('on-site-map-wide').textContent).toBe('The map opened wide. Zoom in and drag it to the site.')
   })
 })

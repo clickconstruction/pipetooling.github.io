@@ -87,6 +87,25 @@ export async function readSheetParties(projectId: string, sheetId: string | null
     .map(({ awarded: _awarded, ...party }) => party)
 }
 
+/**
+ * The words for a send the function refused. The function answers its key's words, and for some refusals the reason
+ * beside them (`detail`): the mail service's own answer, or what the database said. One of those is not a refusal of
+ * the send at all: the email went and only its record did not land. Its key's words say *Try again*, which would send
+ * a second email, so that case reads as what happened.
+ */
+export function sendRefusalWords(body: unknown): string {
+  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+  const words = typeof b.words === 'string' && b.words ? b.words : DOCUMENT_BUILDER_SEND_REFUSALS.failed.words
+  const detail = typeof b.detail === 'string' ? b.detail.trim() : ''
+  if (!detail) return words
+  const went = /^Sent, but not recorded:?\s*/i
+  if (went.test(detail)) {
+    const reason = detail.replace(went, '')
+    return `The email went, but the send was not recorded here. Do not send it again.${reason ? ` The reason: ${reason}` : ''}`
+  }
+  return `${words} The reason: ${detail}`
+}
+
 export type SheetSendAsk = { builderKey: string; sheetId: string; companyId: string; contactEmail: string; note: string; why: DocumentBuilderSendWhy; anyway: boolean; test?: boolean }
 
 /** One send, through the function. It answers the send's row, or the reason in the function's own words. */
@@ -105,7 +124,7 @@ export async function sendSheet(ask: SheetSendAsk): Promise<Landed<SendRecord | 
     return { ok: false, error: 'Could not reach the app. Nothing was sent. Check your signal, then try again.' }
   }
   const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
-  if (!res.ok || !body) return { ok: false, error: typeof body?.words === 'string' && body.words ? body.words : DOCUMENT_BUILDER_SEND_REFUSALS.failed.words }
+  if (!res.ok || !body) return { ok: false, error: sendRefusalWords(body) }
   if (body.test === true) return { ok: true, value: { test: true, email: String(body.email ?? '') } }
   const s = body.send as Record<string, unknown> | undefined
   if (!s || typeof s.id !== 'string' || typeof s.sentAt !== 'string') return { ok: false, error: DOCUMENT_BUILDER_SEND_REFUSALS.failed.words }

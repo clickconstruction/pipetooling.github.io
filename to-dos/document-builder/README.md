@@ -2,7 +2,7 @@
 name: "Document builder: a tab on Documents where the Sub NDA and a job's insurance requirements are made, published and sent"
 number: 404
 group: ready
-status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · on main there is only this card and its clickable mock-up
+status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · left: steps 6, 8, 9 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
 summary: >
   One more tab on Documents, for a dev only for now. It holds builders. A builder makes one kind of paper.
   The first is the Sub NDA from #389: someone walks it and picks a level, page by page. The second is
@@ -20,14 +20,15 @@ blocker: None for the build. An attorney's read of the Sub NDA's words and an in
 # Document builder (#404)
 
 This card is written for someone who was not in the room. Everything needed is here, in
-[mockup.html](mockup.html), and on one branch. Nothing else exists: no notes elsewhere, no file on
-anyone's computer.
+[mockup.html](mockup.html), and in the code on `main` under `src/lib/documentBuilder/` and
+`src/components/documentBuilder/`. *Where it stands*, at the foot, says which steps are built.
 
 **The mock-up works.** One state drives its five drawn screens, so a press on one shows on the others.
 Open it and press things before reading on. It is the reference for every state and every word.
 
 **The spike's code is on branch `spike/document-builder`**, pushed and not meant to merge. It is the
-Sub NDA's step-by-step flow, working in the app on made-up data:
+Sub NDA's step-by-step flow, working in the app on made-up data. Step 1 brought these files to `main`
+under the name `documentBuilder`, and `main` is newer than the branch. On the branch they are:
 
 | File | What it is |
 |---|---|
@@ -40,11 +41,12 @@ Sub NDA's step-by-step flow, working in the app on made-up data:
 | `src/pages/PaperBuilderSpike.tsx` | The page, open to the `dev` role only. |
 | `src/App.tsx`, `src/index.css` | One lazy route, `/paper-builder`, and the slider's CSS. |
 
-To run it: check the branch out, `npm install`, `npm run dev`, sign in as a dev, open `/paper-builder`.
-No link in the app opens it. It reads and writes nothing in the database.
+To run the spike: check the branch out, `npm install`, `npm run dev`, sign in as a dev, open
+`/paper-builder`. No link in the app opens it. It reads and writes nothing in the database. On `main`
+that address is gone, and the flow opens from Documents → Document builder.
 
-**Only the Sub NDA's flow is built.** The tab, the editing, the send, the link, the insurance builder
-and the certificate check exist as the mock-up and this card, and nowhere else.
+**Six of the ten steps are built.** The certificate check, the Sub NDA's link, the send to a GC and a
+GC's picks exist as the mock-up and this card, and nowhere else.
 
 ## Not legal advice, not insurance advice, and no legal text here
 
@@ -338,7 +340,8 @@ Read in the code on 2026-11-19. Check each again on the day.
   Spanish. `src/lib/gc/companyPapers.ts` reads a company's certificate and the day it runs out from
   `person_contract_documents`. **A certificate is kept for a company today, not for a job.**
 - **Sent copies.** `sent_documents`, drawn on Documents → Sent copies.
-- **Printing** goes through `src/lib/printRoot.ts`.
+- **Printing** goes through `src/lib/printRoot.ts`. The sheet, as built, prints through `printAndFile`
+  (`src/lib/sent/sentCopiesIo.ts`), which also files the sent copy.
 
 ## The plan
 
@@ -393,7 +396,9 @@ standing), and #389's own train.
 - `document_builder_sheets`: a builder and a project, the job's blanks and its own fields as a draft
   and a published copy, and the usual's revision it was published on.
 - The blanks start from the job: `gc_projects.property_owner_customer_id` and the project's address.
-  The company's name comes from its own settings, as the portal's letterhead does.
+  The company's name was to come from its own settings, as the portal's letterhead does. As built it
+  is copied once from `GC_COMPANY` (`src/lib/gc/company.ts`) when the first draft is loaded, and is a
+  field from then on.
 - A field is a text box drawn as the sheet's own words. Plain text only.
 - The press that publishes the usual is a batch.
 
@@ -540,10 +545,53 @@ of it. The same day he said to build it.
 | 4 · The sheet's link | **Built**, v2.8008. A published sheet has one live link, `/d/<code>`, that opens it with no login, made, copied, replaced and switched off from a card on the sheet. Only the code's hash is kept. The function is `document-builder-link`. Nothing is sent: a person copies the link. |
 | 5 · Send it to a job's trades | **Built**, v2.8009. A card on a published sheet lists the job's trades, each with where its send stands. A box sends to one person at one trade, and one press sends to every trade that is ready and lists the ones it held. A send never turns a page back on, and a trade with no page gets one only from a send to that trade alone. The trade reads the sheet on its own page. The function is `document-builder-send`. |
 | 6 · A certificate for each job | Not built. It waits on the owner's call on *A certificate for each job, or one for each company*, in *Calls still open*. Its migration adds columns to `person_contract_documents`, and no other card's migration holds it. Card 403's `20261120010000_paper_party.sql` is on prod since 2026-11-20, and card 376's two unpushed migrations (`20261120060000`, `20261120061000`) add columns only. Stamp it from `origin/main` as usual, and leave the columns those cards add alone. |
-| 7 · Edit on the GC's view, and Publish | **Built**, v2.8024. Every piece of words on the Sub NDA's flow is a field. The map opens a page at a level. The pages changed since the published revision are listed with the way back. **Publish revision N** makes the draft what everyone outside sees, and an attorney's read is marked on a revision. The levels' names are not fields. |
+| 7 · Edit on the GC's view, and Publish | **Built**, v2.8024. The words on the Sub NDA's flow are fields: the disclaimer, a level's meaning, the breach lines, the site lines. The review of 2026-11-20 found that not every piece is one yet, and names section names, fact labels, some of the flow's own words and the title, the job, the company and the party. The map opens a page at a level. The pages changed since the published revision are listed with the way back. **Publish revision N** makes the draft what everyone outside sees, and an attorney's read is marked on a revision. The levels' names are not fields. |
 | 8 · The link | Not built. `document-builder-link` already answers a published builder (`kind: 'builder'`). Left: the page at `/d/<code>` draws a walked builder read-only, and the editor's left side takes a `BuilderLinkCard` for `sub-nda` with no sheet. |
-| 9 · Send it to a GC | Not built. Step 5's `BuilderSendList` pointed at GCs, and a block on the customer portal placed by job. Card #382's PR 9 changes `customer-portal`, `submit-portal-request` and `CustomerPortal.tsx` too, so the two cards settle their order before either starts. |
+| 9 · Send it to a GC | Not built. Step 5's `BuilderSendList` pointed at GCs, and a block on the customer portal placed by job. Card #382's PR 9 changed `customer-portal`, `submit-portal-request` and `CustomerPortal.tsx` too, and it merged first (v2.8018), so this step starts from those files as they are now. |
 | 10 · Send their picks | Not built. The default for *What a GC can do with the Sub NDA at first* is look only, so it waits on the owner's yes. |
+
+### What the review of 2026-11-20 left
+
+A review read all six built steps and walked them on prod with test records only. Both migrations
+are applied and both functions are deployed. The link was walked whole. One send to a test trade was
+walked: sent, opened, sent again, taken off their page. Seven faults went out as PRs of their own:
+PR #9087, #9095, #9096, #9100, #9105, #9108 and #9109.
+
+Not walked on prod: the one press with more than one trade, *Tell them it changed*, a trade with no
+page, a page that is off, and the Sub NDA's **Publish** and its attorney's mark. On prod the Sub NDA
+is a draft that was never published, and the usual sheet is at revision 1 with no agent's check.
+
+Found and not fixed. No PR holds any of these.
+
+- A tab left open can publish over a newer revision, in both builders. A draft save names no
+  revision (`sheetsIo.ts`).
+- The usual's publish to every job writes each job's draft from the page as it was loaded, so a
+  teammate's later changes to a job are lost.
+- A removed coverage line's key is used again, so a job's old change lands on a new line (`sheet.ts`).
+- The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
+  on, on the screen and in `document-builder-send`. A sheet on unchecked words can go with no
+  *Send it anyway* box.
+- **Make this the usual** on the line under the title doubles the job's name on every job.
+- Two **Add a line** presses on one breach list edit the same line.
+- **Send it again** picks the contact by name and does not say who.
+- The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
+  key would leave a link that does not open.
+- A sent sheet's copy carries no job, and Sent copies files it under *Other*.
+- The job list is every `gc_projects` row, a bid pursuit and a lost job among them. The one press
+  counts a trade that was asked and not awarded.
+
+Against the mock-up, the built steps still lack:
+
+- The tab's row has no *A sheet on N of M jobs* chip.
+- The Sub NDA has no **Edit** / **Share** switch. Its Share side comes with steps 8 and 9.
+- On a phone the map's column heads run together and its cells are bars, not the small squares.
+- The card of changed pages has no counts and no legend, and the open cell has no outline.
+- A trade's row does not say where its certificate stands. That is step 6.
+- Most presses in the tab are under 44 px tall on a phone.
+
+Two things the review asks the owner: whether **Take it off their page** should also close the
+sheet's link, which is in the email, and whether the one press should reach a trade that was asked
+and not awarded.
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from

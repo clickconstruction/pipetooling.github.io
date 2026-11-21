@@ -14,7 +14,7 @@ The Dashboard itself cannot be pinned. The Dashboard is where pins land. With th
 ## Turn it on
 
 1. Open the {{icon:gear}} gear menu in the header.
-2. Tap **Pin bar**. The row sits under the modes, below the grey band.
+2. Tap **Pin bar**. The row sits under **Show**.
 3. The pin bar appears at the bottom of pinnable pages. {{button:outline|Pin}} pins the page you are on. On Bids with a bid open, {{button:outline|Pin bid}} pins that bid's tab.
 
 Turn it off the same way when you are done arranging shortcuts. The bar disappears, and everything you pinned stays.

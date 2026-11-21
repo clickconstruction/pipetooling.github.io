@@ -214,3 +214,16 @@ export function lienGridPaperWords(p: LienGridPaper, money: (n: number) => strin
   if (p.method) parts.push(methodLabel(p.method))
   return parts.join(' · ')
 }
+
+/**
+ * How a closed month a paper names reads in the Window column (v2.8063). A paper that went on or before the month's
+ * deadline named it in time; one that went after named it as information (counsel, v2.3745). The cells already say
+ * which, so the words follow them: in time when any earlier paper's cell is `named`, as information when every paper
+ * that names it is `info`, and neither when no loaded paper names it.
+ */
+export function lienGridNoticedWords(cells: Readonly<Record<string, LienGridCell>>): string {
+  const papers = Object.entries(cells).filter(([key]) => key !== 'this').map(([, cell]) => cell)
+  if (papers.includes('named')) return 'named in time'
+  if (papers.includes('info')) return 'named after the window — information'
+  return 'a notice names it'
+}

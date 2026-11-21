@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
+import { forgetGoogleKeyRefusalForTests } from '../../lib/map/googleAuthFailure'
 
 /** The stand-in script: it loads at once unless a case holds it back. */
 const script = vi.hoisted(() => ({ loads: true }))
@@ -98,6 +99,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   delete (window as Window & { gm_authFailure?: () => void }).gm_authFailure
+  forgetGoogleKeyRefusalForTests()
 })
 
 describe('the paint clock', () => {
@@ -228,6 +230,17 @@ describe('the other doors, as they were', () => {
     expect(over.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
     expect(page.onUnavailable).toHaveBeenCalledTimes(1)
     expect(over.onUnavailable).toHaveBeenCalledTimes(1)
+  })
+
+  it('a map made after Google refused the key falls back at once, with no wait on an empty frame', () => {
+    // Seen on Google's own script (2026-11-20): Google says no once for a page. A map made later was given a frame
+    // that never painted and waited out the whole paint clock, eight seconds, before the other map came up.
+    const first = mount()
+    act(() => (window as Window & { gm_authFailure?: () => void }).gm_authFailure?.())
+    first.view.unmount()
+    const later = mount()
+    expect(later.onUnavailable).toHaveBeenCalledWith('auth: Google rejected the browser key for this page')
+    expect(later.onUnavailable).toHaveBeenCalledTimes(1)
   })
 
   it('a map still hears when the one that came before it leaves first', () => {

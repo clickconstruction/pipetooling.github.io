@@ -86,7 +86,7 @@ Press those words to change them. Pick one of these and press **Keep**.
 
 | Pick | Ready when |
 | --- | --- |
-| read from the order log | Every line of the stage is on site or lands before our first day. |
+| read from the order log | Every line of the stage is on site or lands before our first day. A line whose day to land has passed is open until it is marked on site. |
 | read from Trips | A trip with a person on it covers our first day. |
 | read from the city's permits | The city shows a plumbing permit in our name as issued. |
 

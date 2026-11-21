@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · step three waits on the owner's word · the owner makes the calls
+status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20 · step three is go in its smallest form · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -11,10 +11,10 @@ summary: >
   the day the city first shows a job), who holds the work where a city names the plumber, and how
   much is being built. Each row gives its reasons as tags and there is no score.
 next: >
-  Show the owner on live data. Bring him the one question step three waits on: may an agent look
-  up the top names of a city once.
+  Build the owner's four answers of 2026-11-20: the call list's order and its count, the rule for
+  a name that comes back, Austin's name mark, and step three for the next 25 San Antonio companies.
 size: L as a train of three (M · M · L)
-blocker: None for steps one and two. Step three waits on the owner's word on the one-time lookups.
+blocker: None. Step three starts with its drawing, which the owner sees before it is built.
 opinion: build — start with step one, which needs no research and is the table that says where estimating hours go
 ---
 
@@ -93,11 +93,12 @@ Needs no research. San Antonio first; the other cities follow the same code.
 - **Ask for** is drawn as an empty state until step three: *Nobody looked this name up yet*, with the Google press the skim card already has.
 - **Done when:** five names show with true reasons; answering one brings the next; the list is the same on a reload; a builder marked *Avoid* never shows.
 
-### Step three: Ask for — waits on the owner's word
+### Step three: Ask for — go in its smallest form, 2026-11-20
 
 A one-time lookup of each name: the company, what it is (builder, owner, architect, a filer for others), a phone, a person and title to ask for, each with the page it came from, the day, and whether a person checked it.
 
 - **The question for the owner:** may an agent look up the top names of a city once? About 150 names a city, a minute each, public sources only, nobody contacted, nothing shown as checked until a person checks it.
+- **His answer:** yes, smaller. See [The owner's answers](#the-owners-answers-2026-11-20).
 - **What the trial showed:** a builder worth a call behind about half of twenty names. The largest filers were not builders. Two of the agents' inferences were wrong and were caught on a check, so the person's check is part of the design.
 - **Not designed here:** where the facts are kept and how the lookups are run. That is the first thing to draw if he says yes.
 
@@ -168,12 +169,37 @@ So the built page and the first read agree, and so a hand count can check it.
 
 What the question changed: no score, since a number hides its reasons; the bid table moved up to second; no second map; the plumber box only where plumbers are named; a name leaves the list when it is answered; five names, since one person calls them.
 
+## The owner's answers, 2026-11-20
+
+The four calls were put to the owner with a read of the live permits behind each. He took all four recommendations. The counts went to him and are not kept here.
+
+1. **May an agent look up the top names once? Yes, in the smallest form.**
+   - San Antonio only, the next 25 companies on the call list.
+   - Companies only. A name that reads as one person is never looked up.
+   - Kept: what kind of company it is, an office phone, one person and title. Each fact carries its page and its day.
+   - Kept in a table of its own, apart from the office's marks. A looked-up fact may tag and order a name. It never takes one off the list.
+   - Drawn as *Looked up, not checked* until a person presses Checked.
+   - Run once by an agent. No nightly job and no new paid service.
+2. **Does Austin follow San Antonio now? No. Austin waits until 2027-02-22.**
+   - Austin's top names are as steady month to month as San Antonio's. That is not what is missing.
+   - Its feed has no applications, so no job is ever open there.
+   - Its records are too short for a trend. The trend turns on by itself on 2027-02-22, when they reach 180 days.
+   - Until then every Austin name has one reason, *Never bid*, and the order is by size.
+   - No city is gated in the code. Austin's Market draws today with the chips its records cannot fill left out.
+   - Austin stays out of the lookups and the Monday note until that day. Its name mark is fixed first, as a change of its own.
+3. **Should a name that reads as a builder lead? Yes, by a stricter reading, and a job counts once.**
+   - As built, any company word made a name read as a builder. Of San Antonio's first twenty, about half were design firms or trades that need no plumber.
+   - A name with a building word leads: construction, contracting, contractors or builders. The rest follow in the order as built. Nothing is removed.
+   - Builders only was turned down. Too few names carry a building word to fill the weeks.
+   - A job is counted once. San Antonio keeps an application and its permit as two rows, and a project of several buildings as a row a building. The audit of 2026-11-20 found that over half of the *Picking up* and *New and busy* reasons did not survive counting a job once.
+4. **How long does an answer keep a name off? 90 days and a year, as built, and a name comes back only with a new job.**
+   - A name whose day has come took its old place back, since the order has no key for an earlier answer. At five a week the list would have started to repeat.
+   - After its day, a name is offered again only when it has applied for a job since the answer.
+
 ## Still the owner's to say
 
-- Whether an agent may look up the top names once (step three).
-- Whether Austin follows San Antonio now or waits for more months of records.
-- Whether a name that reads as a builder should lead the call list, as built. On the order this card proposed, most of San Antonio's first five were permit services, design firms or one person.
-- How long an answer keeps a name off the list. As built, a pursued name may come back after 90 days and a passed one after a year.
+- Whether the lookups go past the first 25 names and past San Antonio, once he has called from them.
+- Whether Austin's list is worth calling from, on a second read after 2027-02-22.
 
 ## Seen while building, not done
 
@@ -181,5 +207,7 @@ Each is a change of its own, noted here for whoever picks it up.
 
 - **One Austin builder on the list is many companies.** Austin's feed writes a `**MAIN**` mark after a contractor's name. When the name has a comma, as in `Name, Inc.**MAIN**`, the name splitter `contactParts` takes the marked tail as the company. The key it makes is `main`, the same for every such contractor. So one row on Austin's Builders list and call list stands for many companies. No other city has the mark. The splitter also writes `permits.builder_key` in `permit-pull`, so the fix re-keys Austin's permits: a backfill and a redeploy.
 - **Austin's clock runs to a job's newest plumbing permit.** The read keeps one plumbing day per job. Running to the first one needs a column on `research_permits_v3`.
-- **San Antonio's clock reads short.** An application still waiting for its permit has no second day, so it is left out. The longest waits are the ones missing.
+- **San Antonio's clock reads short.** An application still waiting for its permit has no second day, so it is left out. The longest waits are the ones missing. A read of 2026-11-20 found nearly half of the year's applications still waiting, and over a quarter of those older than six months with no permit at all. The feed cannot say whether a long wait is a slow review or a dead project. The clock should say how many still wait.
+- **The practice bids count as our bids on the call list.** Found by the audit of 2026-11-20. `research_builders` counts every bid of any age under a name, the robots' practice bids among them. The table of companies leaves them out and looks back two years, so one name can read two counts. Needs a migration.
+- **One count says *here* and means every city.** Found by the same audit. The tile and the table's column count a company's permits in all five cities and are drawn on each city's page.
 - **Market does not draw its values in place.** The rule reached `CLAUDE.md` while the page was being built, in v2.7985. Its counts, days, amounts and names sit inside plain sentences. To meet it, `permitMarket.ts`, `permitCallList.ts` and `permitMarketShape.ts` mark each value with `val`, and the screens draw them with `ValueSentence`. The table's columns and the tiles already stand apart. Every value here is worked out, so each draws plain bold.

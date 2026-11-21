@@ -69,6 +69,7 @@ vi.mock('./PaintedMapGoogleCanvas', async () => {
   }
 })
 
+import { forgetGoogleKeyRefusalForTests, onGoogleAuthFailure } from '../../lib/map/googleAuthFailure'
 import { forgetPaintedGoogleFailureForTests } from '../../lib/paintedMap/paintedGooglePage'
 import PaintedMapCanvas, { type PaintedCanvasDraft, type PaintedCanvasGoogleAsk, type PaintedCanvasLine, type PaintedCanvasPlace } from './PaintedMapCanvas'
 
@@ -95,7 +96,16 @@ afterEach(() => {
   cleanup()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
+  delete (window as Window & { gm_authFailure?: () => void }).gm_authFailure
+  forgetGoogleKeyRefusalForTests()
 })
+
+/** Google says no, as it does once for a page: through its one global. */
+const googleRefusesTheKey = () => {
+  const stop = onGoogleAuthFailure(() => {})
+  ;(window as Window & { gm_authFailure?: () => void }).gm_authFailure?.()
+  stop()
+}
 
 describe('a caller that says nothing about Google', () => {
   it('gets the Leaflet map, with a key or without, as it always did', () => {
@@ -109,6 +119,16 @@ describe('a caller that says nothing about Google', () => {
 })
 
 describe('the painting window, reading a saved map', () => {
+  it('opens on the Leaflet map at once when Google refused the key under another map of this page', () => {
+    // A job's map or the Dashboard's heard the refusal before any painted map was opened. Google does not say it twice.
+    googleRefusesTheKey()
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    expect(provider()).toBe('osm')
+    expect(screen.getByTestId('leaflet')).toBeTruthy()
+    expect(screen.queryByTestId('google')).toBeNull()
+    expect(google.mounts).toBe(0)
+  })
+
   it('draws on Google’s photograph with street names, and no Leaflet map is on the screen', async () => {
     render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
     const g = await screen.findByTestId('google')

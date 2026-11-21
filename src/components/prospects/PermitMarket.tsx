@@ -26,6 +26,7 @@ import {
   builtTile,
   clockAt,
   clockDaysWords,
+  clockMiddleNearStart,
   clockNote,
   clockScaleDays,
   clockTile,
@@ -67,6 +68,9 @@ const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 6
 
 type Opened = { city: string; row: BuilderRow }
 
+/** Under The clock when a read it stands on failed. The call list above says why, with Retry. */
+const CLOCK_UNREAD = 'The permits did not load, so no clock is drawn.'
+
 export function PermitMarket({
   city,
   authUserId,
@@ -74,6 +78,8 @@ export function PermitMarket({
   isMobile,
   rows,
   rowsLoading,
+  rowsError,
+  onRetryRows,
   researchers,
   onChanged,
   onOpenPermit,
@@ -85,6 +91,10 @@ export function PermitMarket({
   /** Every permit the tab holds for the city, with the plumbing permit that counts for each. The open jobs, the plumbers and the plumber clock read them. */
   rows: readonly ResearchPermitRow[]
   rowsLoading: boolean
+  /** Why the tab's rows could not be read, when their read failed. The open jobs come off them, so the call list waits. */
+  rowsError: string | null
+  /** Reads the tab's rows again after a read that failed. */
+  onRetryRows: () => void
   /** The people a pursue can be handed to. */
   researchers: readonly Researcher[]
   /** A mark, a kind or a verdict changed: the deck's rows carry them, so they read again. */
@@ -120,7 +130,14 @@ export function PermitMarket({
   const reliable = useMemo(() => valuesReliable(permits ?? []), [permits])
   const standings = useMemo(() => foldCallAnswers(market.answers ?? [], todayYmd), [market.answers, todayYmd])
   // The open jobs come off the tab's rows, so the list waits for them: an order that shifts under the reader is worse than a wait.
-  const callLoading = (permits == null && !market.permitsError) || market.answers == null || rowsLoading
+  // A read the list is built from failed: the list says so and waits. Drawn without it, the list reads as empty, or as having no job open.
+  const callError = market.permitsError ?? rowsError
+  const callLoading = callError == null && (permits == null || market.answers == null || rowsLoading)
+  const retryCall = () => {
+    if (market.permitsError) market.reloadPermits()
+    if (market.answersError) market.reloadAnswers()
+    if (rowsError) onRetryRows()
+  }
   const callList = useMemo(() => (permits ? callRows({ builders: cityBuilders, permits, rows, standings, recordsStartYmd: recordsStart, todayYmd }) : []), [permits, cityBuilders, rows, standings, recordsStart, todayYmd])
   const chips = useMemo(() => callChips({ trendKnown: known, hasApplications, valuesReliable: reliable }), [known, hasApplications, reliable])
   const board = useMemo(() => plumbersByJobs(rows, todayYmd), [rows, todayYmd])
@@ -151,7 +168,7 @@ export function PermitMarket({
     )
   }
 
-  const tiles = [...(callLoading ? [] : callTiles(callRowsShowing(callList, 'week'))), builtTile(companies), clockTile(clocks)].filter((t): t is { value: string; words: string } => t != null)
+  const tiles = [...(callLoading || callError ? [] : callTiles(callRowsShowing(callList, 'week'))), builtTile(companies), clockTile(clocks)].filter((t): t is { value: string; words: string } => t != null)
   const whereLine = (c: BidCompany) =>
     c.sources.length === 0 ? null : (
       <span style={muted}>
@@ -203,7 +220,9 @@ export function PermitMarket({
         standings={standings}
         rows={rows}
         loading={callLoading}
-        error={market.permitsError ?? market.answersError}
+        error={callError}
+        answersError={market.answersError}
+        onRetry={retryCall}
         reach={reachSays}
         trendKnown={known}
         hasApplications={hasApplications}
@@ -308,7 +327,7 @@ export function PermitMarket({
             <div style={muted}>How long you have, from the day the city first shows a job.</div>
           </div>
           {clocks.length === 0 ? (
-            <div style={muted}>{rowsLoading || (permits == null && !market.permitsError) ? 'Reading the permits…' : `${city}’s permits carry too few pairs of dates to draw a clock yet.`}</div>
+            <div style={muted}>{rowsLoading || (permits == null && !market.permitsError) ? 'Reading the permits…' : market.permitsError || rowsError ? CLOCK_UNREAD : `${city}’s permits carry too few pairs of dates to draw a clock yet.`}</div>
           ) : (
             clocks.map((c) => <ClockBar key={c.kind} clock={c} scale={scale} />)
           )}
@@ -368,6 +387,9 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
   const left = clockAt(q1, scale)
   const width = Math.max(1.5, clockAt(q3, scale) - left)
   const mid = clockAt(median, scale)
+  // A middle close to the bar's start is said beside the first word: under its mark the two run together on a phone.
+  const near = clockMiddleNearStart(mid)
+  const days = { whiteSpace: 'nowrap', color: 'var(--text-strong)' } as const
   return (
     <div data-market-clock={clock.kind}>
       <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{clockTitle(clock)}</div>
@@ -376,8 +398,11 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
         <span style={{ position: 'absolute', top: -3, bottom: -3, left: `${mid}%`, width: 2, background: 'var(--text-strong)' }} />
       </div>
       <div style={{ position: 'relative', height: 18, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-        <span style={{ position: 'absolute', left: 0 }}>{clock.kind === 'application' ? 'applied' : 'issued'}</span>
-        <strong style={{ position: 'absolute', left: `${Math.max(14, Math.min(80, mid))}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>{clockDaysWords(median)}</strong>
+        <span data-clock-start style={{ position: 'absolute', left: 0, display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
+          {clock.kind === 'application' ? 'applied' : 'issued'}
+          {near && <strong style={days}>{clockDaysWords(median)}</strong>}
+        </span>
+        {!near && <strong style={{ ...days, position: 'absolute', left: `${Math.min(80, mid)}%`, transform: 'translateX(-50%)' }}>{clockDaysWords(median)}</strong>}
         <span style={{ position: 'absolute', right: 0 }}>{scale} days</span>
       </div>
       <div style={{ ...muted, marginTop: 4 }}>{clockNote(clock)}</div>

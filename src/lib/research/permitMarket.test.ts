@@ -10,6 +10,7 @@ import {
   bidCompanyChipCounts,
   builtTile,
   clockAt,
+  clockMiddleNearStart,
   clockDaysWords,
   clockNote,
   clockScaleDays,
@@ -236,5 +237,9 @@ describe('the clock', () => {
     expect(clockAt(30, 120)).toBe(25)
     expect(clockAt(500, 120)).toBe(100)
     expect(clockAt(-4, 120)).toBe(0)
+    // A middle of 7 days on a 120-day bar sits at the bar's start, where the first word is: its days go beside the word.
+    expect(clockMiddleNearStart(clockAt(7, 120))).toBe(true)
+    expect(clockMiddleNearStart(clockAt(0, 120))).toBe(true)
+    expect(clockMiddleNearStart(clockAt(45, 120))).toBe(false)
   })
 })

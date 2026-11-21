@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { checkSupabaseError, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Know, UsReads } from './startChecks'
 import {
@@ -95,9 +96,24 @@ const ARRIVAL_COLS = 'id, job_id, fixture_id, arrived_on, not_as_told, by_name, 
 const SETTINGS_COLS = 'id, development_id, job_id, notice_days, shows_on_gc_page'
 const TEMPLATE_COLS = 'id, stage_kind, sort_order, words, waits_on, wants_photo, reads, retired_at'
 
-async function readOf<T>(table: string, cols: string, jobIds: readonly string[], what: string): Promise<T[]> {
-  const rows = await withSupabaseRetry(async () => db.from(table).select(cols).in('job_id', [...jobIds]).order('created_at').order('id'), what)
-  return (rows ?? []) as T[]
+type Stamped = { id: string; created_at: string }
+type Paged<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+
+/**
+ * Every row of one table for these jobs, oldest first. An un-ranged read is cut at 1,000 rows with no error, and
+ * oldest first means the cut drops the newest, so each read is paged. A long list of jobs is asked for in pieces,
+ * since one long list of ids overflows the address. Rows from two pieces interleave, so they are put back in order.
+ */
+async function readOf<T extends Stamped>(table: string, cols: string, jobIds: readonly string[], what: string): Promise<T[]> {
+  const rows = await fetchAllRowsChunkedIn<T, string>(
+    [...jobIds],
+    async (chunk, from, to) => ({
+      data: await withSupabaseRetry(async () => db.from(table).select(cols).in('job_id', chunk).order('created_at').order('id').range(from, to) as unknown as Paged<T>, what),
+      error: null,
+    }),
+    what,
+  )
+  return rows.sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
 export async function onStartChecksDesk(jobId: string): Promise<boolean> {

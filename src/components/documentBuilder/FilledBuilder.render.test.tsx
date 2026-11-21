@@ -20,6 +20,7 @@ vi.mock('../../hooks/useAuth', () => {
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { documentBuilderById, type DocumentBuilderEntry } from '../../lib/documentBuilder/builders'
+import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
 import { INSURANCE_SHEET_FIXTURE } from '../../lib/documentBuilder/insuranceSheet.fixture'
 import { coverPath, layOver, startJobSheet, withJobWords, type JobSheet, type SheetDef } from '../../lib/documentBuilder/sheet'
 import type { GcJob, SheetRecord } from '../../lib/documentBuilder/sheetsIo'
@@ -65,11 +66,18 @@ function open(opts: { rec?: BuilderRecord; sheets?: SheetRecord[]; jobs?: GcJob[
     ...(opts.io as Partial<Mocks>),
   }
   const onBack = vi.fn()
+  const onRecord = vi.fn()
+  let gone = false
   function Host() {
-    return <FilledBuilder entry={INSURANCE} rec={rec} onBack={onBack} onRecord={(next) => { rec = next; view.rerender(<Host />) }} io={io as unknown as FilledBuilderIo} />
+    return <FilledBuilder entry={INSURANCE} rec={rec} onBack={onBack} onRecord={(next) => { onRecord(next); rec = next; if (!gone) view.rerender(<Host />) }} io={io as unknown as FilledBuilderIo} />
   }
   const view = renderWithProviders(<Host />)
-  return { io, onBack }
+  /** Leave the builder, as the back press does: the tab above stays. */
+  const leave = () => {
+    gone = true
+    view.unmount()
+  }
+  return { io, onBack, onRecord, leave }
 }
 
 /** Type over a field, as a person would. */
@@ -127,6 +135,64 @@ describe('FilledBuilder', () => {
     await waitFor(() => expect(io.saveSheetDraft).toHaveBeenCalledTimes(1), { timeout: 3000 })
     expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'))
     expect(await screen.findByText('Draft saved')).toBeTruthy()
+  })
+
+  it('says a job’s draft did not save, with the reason, and holds that until a later save lands', async () => {
+    const saveSheetDraft = vi.fn(async (id: string, draft: JobSheet): Promise<Landed<SheetRecord>> => ({ ok: true, value: sheetRow({ id, draft }) })).mockResolvedValueOnce({ ok: false, error: 'The draft did not save.' })
+    open({ sheets: [sheetRow()], io: { saveSheetDraft } })
+    await screen.findByText('This job is on your usual sheet')
+    type('Umbrella, its amount', 'Made-up amount 9')
+    expect((await screen.findByRole('alert', undefined, { timeout: 3000 })).textContent).toBe('The draft did not save.')
+    expect(saveSheetDraft).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Draft saved')).toBeNull()
+    expect(screen.getByText('Draft not saved')).toBeTruthy()
+
+    // The next typing sends the draft again. The bar holds its words until that save lands.
+    type('Umbrella, its amount', 'Made-up amount 10')
+    expect(screen.getByText('Draft not saved')).toBeTruthy()
+    expect(await screen.findByText('Draft saved', undefined, { timeout: 3000 })).toBeTruthy()
+    expect(saveSheetDraft).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText('Draft not saved')).toBeNull()
+  })
+
+  it('says the usual’s draft did not save, with the reason', async () => {
+    const saveBuilderDraft = vi.fn(async (): Promise<Landed<BuilderRecord>> => ({ ok: false, error: 'The draft did not save.' }))
+    const { onRecord } = open({ sheets: [sheetRow()], io: { saveBuilderDraft } })
+    await screen.findByText('This job is on your usual sheet')
+    fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
+    type('The line at the foot', 'A new foot line.')
+    expect((await screen.findByRole('alert', undefined, { timeout: 3000 })).textContent).toBe('The draft did not save.')
+    expect(screen.queryByText('Draft saved')).toBeNull()
+    expect(screen.getByText('Draft not saved')).toBeTruthy()
+    expect(onRecord).not.toHaveBeenCalled()
+  })
+
+  it('hands up the usual’s save when it lands after the builder is left', async () => {
+    let land: (res: Landed<BuilderRecord>) => void = () => {}
+    const saveBuilderDraft = vi.fn(() => new Promise<Landed<BuilderRecord>>((resolve) => (land = resolve)))
+    const { onRecord, leave } = open({ sheets: [sheetRow()], io: { saveBuilderDraft } })
+    await screen.findByText('This job is on your usual sheet')
+    fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
+    type('The line at the foot', 'A new foot line.')
+    leave()
+    await waitFor(() => expect(saveBuilderDraft).toHaveBeenCalledTimes(1))
+    expect(onRecord).not.toHaveBeenCalled()
+    const saved = builder({ draft: { ...USUAL, fields: { ...USUAL.fields, foot: 'A new foot line.' } } })
+    land({ ok: true, value: saved })
+    await waitFor(() => expect(onRecord).toHaveBeenCalledTimes(1))
+    expect(onRecord).toHaveBeenCalledWith(saved)
+  })
+
+  it('sends a draft that did not save again when the builder is left', async () => {
+    const saveSheetDraft = vi.fn(async (id: string, draft: JobSheet): Promise<Landed<SheetRecord>> => ({ ok: true, value: sheetRow({ id, draft }) })).mockResolvedValueOnce({ ok: false, error: 'The draft did not save.' })
+    const { leave } = open({ sheets: [sheetRow()], io: { saveSheetDraft } })
+    await screen.findByText('This job is on your usual sheet')
+    type('Umbrella, its amount', 'Made-up amount 9')
+    await screen.findByRole('alert', undefined, { timeout: 3000 })
+    expect(saveSheetDraft).toHaveBeenCalledTimes(1)
+    leave()
+    await waitFor(() => expect(saveSheetDraft).toHaveBeenCalledTimes(2))
+    expect(saveSheetDraft).toHaveBeenLastCalledWith('sheet-cedar', withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9'))
   })
 
   it('publishes a job with no row yet: the row is made, then the page goes out on the usual’s revision', async () => {

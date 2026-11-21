@@ -82,11 +82,16 @@ export function isBuilderRead(rec: BuilderRecord | null): boolean {
   return rec != null && rec.revision > 0 && rec.read != null && rec.read.revision === rec.revision
 }
 
-/** The same JSON whatever order its keys were written in, so two copies of one definition compare equal. */
+/**
+ * The same JSON whatever order its keys were written in, so two copies of one definition compare equal. A key
+ * holding `undefined` is left out, as `JSON.stringify` leaves it out: the published copy came back from JSON, so
+ * it never has such a key, and a draft that has one holds the same contents.
+ */
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`
   if (isBag(value)) {
     return `{${Object.keys(value)
+      .filter((k) => value[k] !== undefined)
       .sort()
       .map((k) => `${JSON.stringify(k)}:${stable(value[k])}`)
       .join(',')}}`

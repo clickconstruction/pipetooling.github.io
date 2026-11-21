@@ -51,6 +51,10 @@ const CHIP_TONES: Record<BuilderChipTone, CSSProperties> = {
   warn: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
 }
 const SMALL_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', borderRadius: 8, padding: '3px 10px', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, minHeight: 32, cursor: 'pointer' }
+/** A small press, drawn dead while it cannot be pressed: a dead press that looked live read as one that did nothing. */
+function smallPress(dead: boolean): CSSProperties {
+  return dead ? { ...SMALL_PRESS, border: '1px solid var(--border)', background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : SMALL_PRESS
+}
 const SECOND_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 9, padding: '7px 12px', fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, minHeight: 38, cursor: 'pointer' }
 const INPUT: CSSProperties = { width: '100%', color: 'var(--text-base)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 9px', fontFamily: 'inherit', fontSize: '1rem', minWidth: 0, boxSizing: 'border-box' }
 const LABEL: CSSProperties = { display: 'grid', gap: 4, fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)' }
@@ -138,6 +142,8 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
           const to = open ? (party.contacts.find((c) => c.email === box?.email) ?? party.contacts[0] ?? null) : null
           const state = open ? sendBox(party, to, gate) : null
           const again = party.send ? resendPress(party.send, revision) : null
+          /** The second press on a sent row cannot go: nothing published, their page off, nobody to send to, or an unread revision not waved through. */
+          const againDead = !published || party.page.state === 'off' || party.contacts.length === 0 || (unread !== '' && !anyway)
           return (
             <div key={party.id} data-send-party={party.id} style={{ display: 'grid', gap: 6, padding: i === 0 ? '0 0 10px' : '10px 0', borderTop: i === 0 ? 0 : '1px solid var(--border)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'baseline', justifyContent: 'space-between', fontSize: '0.84rem' }}>
@@ -150,9 +156,9 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                   <>
                     <button
                       type="button"
-                      disabled={busy || !published || party.page.state === 'off' || party.contacts.length === 0 || (unread !== '' && !anyway)}
+                      disabled={busy || againDead}
                       aria-label={`${again.label}, ${party.name}`}
-                      style={SMALL_PRESS}
+                      style={smallPress(busy || againDead)}
                       onClick={() => {
                         const person = party.contacts.find((c) => c.name === party.send?.contactName) ?? party.contacts[0]
                         if (person) void run(party.id, () => onSend(party, person, '', again.why, anyway))
@@ -160,12 +166,12 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                     >
                       {again.label}
                     </button>
-                    <button type="button" disabled={busy} aria-label={`Take it off the page of ${party.name}`} style={SMALL_PRESS} onClick={() => void run(party.id, () => onTakeOff(party))}>
+                    <button type="button" disabled={busy} aria-label={`Take it off the page of ${party.name}`} style={smallPress(busy)} onClick={() => void run(party.id, () => onTakeOff(party))}>
                       Take it off their page
                     </button>
                   </>
                 ) : !open ? (
-                  <button type="button" disabled={busy} aria-label={`Send it to ${party.name}`} style={SMALL_PRESS} onClick={() => setBox({ partyId: party.id, email: party.contacts[0]?.email ?? '', note: defaultNote })}>
+                  <button type="button" disabled={busy} aria-label={`Send it to ${party.name}`} style={smallPress(busy)} onClick={() => setBox({ partyId: party.id, email: party.contacts[0]?.email ?? '', note: defaultNote })}>
                     Send it to them
                   </button>
                 ) : null}
@@ -195,7 +201,7 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                       {state.note.turnOn ? (
                         <>
                           {' '}
-                          <button type="button" disabled={busy} style={SMALL_PRESS} onClick={() => void run(party.id, () => onTurnPageOn(party))}>
+                          <button type="button" disabled={busy} style={smallPress(busy)} onClick={() => void run(party.id, () => onTurnPageOn(party))}>
                             Turn their page on
                           </button>
                         </>

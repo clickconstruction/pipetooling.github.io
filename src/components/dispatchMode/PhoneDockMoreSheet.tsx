@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import { GEAR_SECTION_LABELS } from '../../lib/gearMenuSections'
 import {
   phoneDockPage,
   phoneDockPagesFor,
@@ -85,7 +86,8 @@ const rowBtn: CSSProperties = {
 
 /**
  * The phone's one menu (punch list #30, PR 1): pages first, then modes, then the show-or-hide switches
- * (v2.8043: the pin bar, Tell the dev's wrench and the dark theme, under their own Show label), then settings —
+ * (v2.8043: the pin bar, Tell the dev's wrench and the dark theme, under their own Show label), then help and
+ * settings — under the gear menu's own four labels since v2.8059 (`gearMenuSections.ts`) —
  * the hamburger, the modes menu and the gear folded into a bottom sheet the thumb can
  * reach. Opened by the dock's More slot, or by a long-press on any slot (then it swaps).
  *
@@ -305,7 +307,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           </>
         ) : null}
 
-        <div style={sectionLabel}>Pages</div>
+        <div style={sectionLabel}>{GEAR_SECTION_LABELS.pages}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>{pages.map((p) => tile(p))}</div>
 
         {swapping ? (
@@ -325,8 +327,8 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           <>
             {(
               [
-                { label: 'Modes', rows: modes.filter((m) => m.group !== 'show') },
-                { label: 'Show', rows: modes.filter((m) => m.group === 'show') },
+                { label: GEAR_SECTION_LABELS.modes, rows: modes.filter((m) => m.group !== 'show') },
+                { label: GEAR_SECTION_LABELS.show, rows: modes.filter((m) => m.group === 'show') },
               ] as const
             ).map((section) =>
               section.rows.length > 0 ? (
@@ -374,7 +376,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
               ) : null,
             )}
 
-            <div style={sectionLabel}>Settings</div>
+            <div style={sectionLabel}>{GEAR_SECTION_LABELS.help}</div>
             <div>
               {ownLogbookShown ? (
                 <button type="button" onClick={() => go('/my-logbook')} style={rowBtn} data-testid="more-my-logbook">

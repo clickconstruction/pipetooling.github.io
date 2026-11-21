@@ -4,9 +4,13 @@
  * red, and red under a No. A percent follows. Every bullet is one equal step, and the percent reads 100 only when
  * every bullet has a yes (`readiness`). `light` pins the open box to white for the GC's page, which stays light.
  */
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReadyList, ReadyMark } from '../../lib/startChecks/startChecks'
 
+/** A click this soon after the list opened is the same press that opened it. */
+const READY_LIST_SAME_PRESS_MS = 400
+/** The room the list keeps from the screen's edge. */
+const READY_LIST_EDGE_GAP = 8
 const GREEN = '#16a34a'
 const RED = '#dc2626'
 const AMBER = '#f59e0b'
@@ -50,6 +54,28 @@ export function ReadyPercent({ marks, pct, urgent = false }: { marks: readonly R
  */
 export function ReadyMarks({ list, marks, pct, urgent = false }: { list: ReadyList; marks: readonly ReadyMark[]; pct: number; urgent?: boolean }) {
   const [show, setShow] = useState(false)
+  // A tap on a phone enters, focuses and clicks in one go. The press that opened the list must not shut it.
+  const openedAt = useRef(0)
+  const open = () =>
+    setShow((v) => {
+      if (!v) openedAt.current = Date.now()
+      return true
+    })
+  // The list hangs from the bar, which can sit mid-line: it is pulled back so it never runs off the screen's right edge.
+  const listRef = useRef<HTMLSpanElement | null>(null)
+  const [pull, setPull] = useState(0)
+  useLayoutEffect(() => {
+    if (!show) {
+      setPull(0)
+      return
+    }
+    const r = listRef.current?.getBoundingClientRect()
+    if (!r) return
+    // The page's own width: a phone's window can read wider while something overflows it.
+    const screen = document.documentElement.clientWidth || window.innerWidth
+    const over = r.right - (screen - READY_LIST_EDGE_GAP)
+    setPull(over > 0 ? Math.min(over, Math.max(0, r.left - READY_LIST_EDGE_GAP)) : 0)
+  }, [show])
   if (!marks.length) return null
   const yes = marks.filter((m) => m === 'yes').length
   const box = (m: ReadyMark, size: number) => (
@@ -58,17 +84,21 @@ export function ReadyMarks({ list, marks, pct, urgent = false }: { list: ReadyLi
     </span>
   )
   return (
-    <span style={{ position: 'relative', display: 'inline-block', verticalAlign: 'middle' }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+    <span style={{ position: 'relative', display: 'inline-block', verticalAlign: 'middle' }} onMouseEnter={open} onMouseLeave={() => setShow(false)}>
       <button
         type="button"
         className="scReady"
         aria-expanded={show}
         aria-label={`${pct}% ready, ${yes} of ${marks.length}. Press to see what it takes to start.`}
-        onFocus={() => setShow(true)}
+        onFocus={open}
         onBlur={() => setShow(false)}
         onClick={(e) => {
           e.stopPropagation()
-          setShow((v) => !v)
+          setShow((v) => {
+            if (v && Date.now() - openedAt.current < READY_LIST_SAME_PRESS_MS) return v
+            if (!v) openedAt.current = Date.now()
+            return !v
+          })
         }}
         onKeyDown={(e) => {
           if (e.key === 'Escape' && show) {
@@ -82,7 +112,7 @@ export function ReadyMarks({ list, marks, pct, urgent = false }: { list: ReadyLi
         <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)', fontWeight: 400 }}>ready</span>
       </button>
       {show ? (
-        <span role="status" data-ready-list className="scReadyList">
+        <span ref={listRef} role="status" data-ready-list className="scReadyList" style={pull ? { left: -pull } : undefined}>
           <b style={{ color: 'var(--text-strong)', fontSize: '0.875rem' }}>{list.title}</b>
           <span style={{ display: 'block', fontSize: '0.78125rem', color: 'var(--text-muted)' }}>{list.count}</span>
           {list.open.length ? <span style={{ display: 'block', marginTop: 8, fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-strong)' }}>Still open · {list.open.length}</span> : null}

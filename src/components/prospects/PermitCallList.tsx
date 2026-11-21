@@ -14,6 +14,8 @@ import { approachFromPermit, loadPermitsOfBuilder, recordVerdict } from '../../l
 import { recordCallAnswer } from '../../lib/research/permitMarketIo'
 import {
   ASK_FOR_EMPTY,
+  CALL_ANSWERS_UNREAD,
+  CALL_LIST_UNREAD,
   CALL_SHOWING_WORDS,
   NOT_FOR_US_REASONS,
   answeredWords,
@@ -70,6 +72,8 @@ export function PermitCallList({
   rows,
   loading,
   error,
+  answersError,
+  onRetry,
   reach,
   trendKnown,
   hasApplications,
@@ -93,7 +97,11 @@ export function PermitCallList({
   /** The tab's rows for the city: the open jobs open The building, and a pursue's lead is made from one. */
   rows: readonly ResearchPermitRow[]
   loading: boolean
+  /** Why a read the list is built from failed. The list then draws no name, no count and no empty state: only this, with Retry. */
   error: string | null
+  /** Why the answers could not be read. The list still draws, and says an answered name may be on it. */
+  answersError: string | null
+  onRetry: () => void
   /** "in the last year" or "since Aug 26": how far back a count here can see. */
   reach: string | null
   trendKnown: boolean
@@ -215,17 +223,27 @@ export function PermitCallList({
         </h3>
         <div style={muted}>Builders who keep pulling permits here, with why each is on the list. Five a week, so one person can call them all. Nothing is a score.</div>
       </div>
-      <div role="group" aria-label="Which builders to call" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {chips.map((s) => (
-          <button key={s} type="button" aria-pressed={showing === s} onClick={() => pick(s)} style={chip(showing === s)}>
-            {CALL_SHOWING_WORDS[s]} {counts[s]}
+      {!loading && !error && (
+        <div role="group" aria-label="Which builders to call" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          {chips.map((s) => (
+            <button key={s} type="button" aria-pressed={showing === s} onClick={() => pick(s)} style={chip(showing === s)}>
+              {CALL_SHOWING_WORDS[s]} {counts[s]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(error || answersError) && (
+        <div role="alert" style={{ display: 'grid', gap: 6, justifyItems: 'start' }}>
+          <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{error ?? answersError}</div>
+          <div style={muted}>{error ? CALL_LIST_UNREAD : CALL_ANSWERS_UNREAD}</div>
+          <button type="button" onClick={onRetry} style={press}>
+            Retry
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {error && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{error}</div>}
-
-      {loading ? (
+      {error ? null : loading ? (
         <div style={muted}>Reading the year of permits…</div>
       ) : visible.length === 0 ? (
         <EmptyState main={callEmptyWords({ city, builders: builders.length, eligible: list.length, showing })} compact />
@@ -308,17 +326,17 @@ export function PermitCallList({
         </div>
       )}
 
-      {!loading && showing === 'week' && list.length > shown.length && (
+      {!loading && !error && showing === 'week' && list.length > shown.length && (
         <div style={muted}>
           {list.length - shown.length} more wait behind these. A name leaves the list when it is answered, the way a permit leaves the skim, and the next takes its place.
         </div>
       )}
-      {!loading && showing !== 'week' && shown.length > visible.length && (
+      {!loading && !error && showing !== 'week' && shown.length > visible.length && (
         <button type="button" onClick={() => setMore((n) => n + PAGE)} style={{ ...linkPress, alignSelf: 'flex-start' }}>
           Show {Math.min(PAGE, shown.length - visible.length)} more of {shown.length}
         </button>
       )}
-      {!loading && builders.length > 0 && <div style={muted}>{callNoteWords({ city, trendKnown, hasApplications, recordsStart })}</div>}
+      {!loading && !error && builders.length > 0 && <div style={muted}>{callNoteWords({ city, trendKnown, hasApplications, recordsStart })}</div>}
 
       {answered.length > 0 && (
         <div style={{ display: 'grid', gap: 6 }}>
