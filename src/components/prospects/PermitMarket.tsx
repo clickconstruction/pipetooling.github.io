@@ -19,6 +19,7 @@ import { withAnsweredBids } from '../../lib/research/builderAnswers'
 import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
 import type { ResearchPermitRow } from '../../lib/research/permitResearch'
 import {
+  BID_COMPANY_PERMITS_HEAD,
   BID_COMPANY_SHOWING,
   BID_COMPANY_SHOWING_WORDS,
   bidCompanies,
@@ -293,7 +294,7 @@ export function PermitMarket({
                   <th style={th}>Company</th>
                   <th style={{ ...th, textAlign: 'right' }}>Our bids</th>
                   <th style={{ ...th, textAlign: 'right' }}>Won</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Permits here, 12 mo</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{BID_COMPANY_PERMITS_HEAD}</th>
                   <th style={th}>Reads as</th>
                 </tr>
               </thead>

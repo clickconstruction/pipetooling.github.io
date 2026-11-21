@@ -3,6 +3,8 @@ import { answerBook } from './builderAnswers'
 import type { NameAnswerRow } from './nameAnswers'
 import type { BuilderRow } from './permitBuilders'
 import {
+  BID_COMPANY_PERMITS_HEAD,
+  BID_COMPANY_SHOWING_WORDS,
   aboutWeeksWords,
   applicationClockDays,
   bidCompanies,
@@ -164,8 +166,22 @@ describe('the chips and the words', () => {
   })
 
   it('writes the first tile', () => {
-    expect(builtTile(rows)).toEqual({ value: '2 of 4', words: 'companies we bid pulled a permit here' })
-    expect(builtTile([])).toEqual({ value: '0 of 0', words: 'companies we bid pulled a permit here' })
+    expect(builtTile(rows)).toEqual({ value: '2 of 4', words: 'companies we bid pulled a permit in the cities we read' })
+    expect(builtTile([])).toEqual({ value: '0 of 0', words: 'companies we bid pulled a permit in the cities we read' })
+    expect(builtTile(rows.slice(0, 1)).words).toBe('company we bid pulled a permit in the cities we read')
+  })
+
+  it('counts every city and says so, since the same count is drawn on each city’s page', () => {
+    // A company whose only permits are in the other city still built, on either page.
+    const elsewhere: CityBuilders = { city: 'New Braunfels', rows: [builder('larkspurcommercial', 'Larkspur Commercial', 4)] }
+    const both = bidCompanies({ bids: [bid('Harbor Fitouts'), bid('Larkspur Commercial')], builders: [SAN_ANTONIO, AUSTIN, elsewhere], book: null, todayYmd: TODAY })
+    expect(both.find((c) => c.key === 'larkspurcommercial')).toMatchObject({ permits: 4, reads: 'early' })
+    expect(both.find((c) => c.key === 'harborfitouts')?.permits).toBe(8)
+    expect(builtTile(both)).toEqual({ value: '2 of 2', words: 'companies we bid pulled a permit in the cities we read' })
+    // No word over the count names one place.
+    for (const words of [builtTile(both).words, BID_COMPANY_SHOWING_WORDS.builds, BID_COMPANY_PERMITS_HEAD]) expect(words).not.toMatch(/\bhere\b/)
+    expect(BID_COMPANY_PERMITS_HEAD).toBe('Permits, all cities, 12 mo')
+    expect(BID_COMPANY_SHOWING_WORDS.builds).toBe('Builds')
   })
 })
 
