@@ -73,6 +73,20 @@ Devs, master techs, assistants and controllers see the block. A job with no sub 
 
 The job may still owe money. Or a lien paper or demand letter may be out. Then **History** shows the job's **lien timeline** above the grid. A lien is a legal claim on the property for unpaid work. The timeline lists every deadline in order and whose move it is. It shows the demand letter with its reply-by day, and a *Waiting on* line. It is the same strip the Lien window's header draws. On this tab it is the calendar. The verdict sits first in a tinted band. Every window is drawn, the closed ones too. See *send lien notices from the Lien desk* → *Where a job stands*. Under it, **Days on the job** is a calendar. One line counts the days worked, first day to last. It also gives the most people on one day, and the hours. Under the line, **Who** lists each person with their days. Tap a name and only their days stay lit. Tap it again to see everyone. Then comes one month grid for every month the job had work. On a sub job each month also carries its § 53.056 notice line. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. It uses the lien timeline's own words and colors. The number in a day is how many people clocked in. Weekends sit back. Today has a blue ring. A day still clocked in has an amber corner. Tap a day to see who was there, their hours and what the day cost. Nothing on this tab edits anything. The calendar shows the whole job by default. The {{button:outline|Whole job}} menu on the card's top line narrows it to the last 90 or 365 days. Pick dates… in that menu shows From and To pickers. When the range holds no day worked, the card says so and offers Whole job. On a phone the months stack one under the other.
 
+## The Map tab
+
+**Map** is the last tab. The tab shows everything painted or kept for the job on one map.
+
+- The lines of the job's painted maps.
+- The places kept on the job, each with its letter.
+- The places an earlier job kept at the same address, each in a dashed ring.
+
+Press a dot to open its place, with its photo and its words.
+
+A buried line is drawn in the color of what is buried. A sewer line is green.
+
+The tab only shows the map. To set a place, press {{button:outline|Photo of a spot}} under the job's address. [Paint a map](/help/paint-a-map#start-with-a-photo) shows how.
+
 ## The Edit tab reads as rows
 
 The middle of the Edit tab is a compact list. Its rows are **Account man, Team, Customer, Phone, Email, GC/Builder, Date met, Folders, Project, Plans, Bid, Development**. GC means the general contractor. Each row shows the current value at a glance, with a *—* where nothing is set. You tap a row or its ✎ to open the familiar editor for just that field. You tap again to fold it away. On a phone the rows read under five titles. They are **The people**, **The folders**, **The customer**, **The GC and the site** and **The paper**. Each row is 44 px tall and a chevron sits at its right. The status rail is not on the Edit tab on a phone. The bar's **Status ▾** is the same rail. The **Folders** and **Plans** rows keep their Drive links clickable right on the row. So opening the customer's files never requires expanding anything.

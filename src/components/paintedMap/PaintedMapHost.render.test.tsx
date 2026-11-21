@@ -21,6 +21,17 @@ vi.mock('../../hooks/usePaintedWalk', () => ({
     phone.raw = kept ? JSON.stringify(kept) : null
   },
 }))
+/** The places that wait on this phone for a signal, stood in for (punch list #413, step 2b). */
+const spots = vi.hoisted(() => ({ waiting: 0, sends: 0, sendLeaves: 0, sendError: null as string | null }))
+vi.mock('../../lib/paintedMap/paintedKeptSpotIo', () => ({
+  readKeptSpots: () => Array.from({ length: spots.waiting }, (_, i) => ({ id: `s${i}` })),
+  sendKeptSpots: async () => {
+    spots.sends += 1
+    const sent = spots.waiting - spots.sendLeaves
+    spots.waiting = spots.sendLeaves
+    return { sent, waiting: spots.waiting, error: spots.sendError }
+  },
+}))
 vi.mock('./PaintAMapStartSheet', () => ({
   PaintAMapStartSheet: (props: { home: { jobId?: string }; onStart: (s: unknown) => void; onClose: () => void }) => (
     <div data-testid="sheet">
@@ -183,5 +194,88 @@ describe('PaintedMapHost', () => {
     const r = render(<PaintedMapHost />)
     expect(r.container.textContent).toBe('')
     expect(phone.writes).toEqual([null])
+  })
+})
+
+/** A place set with no signal (punch list #413, step 2b): the host sends what waits, and says what still does. */
+describe('places that wait on the phone for a signal (#413)', () => {
+  const band = () => document.querySelector('[data-painted-spots-waiting]') as HTMLElement | null
+  const online = (value: boolean) => Object.defineProperty(navigator, 'onLine', { value, configurable: true })
+  afterEach(() => {
+    spots.waiting = 0
+    spots.sends = 0
+    spots.sendLeaves = 0
+    spots.sendError = null
+    online(true)
+  })
+
+  it('says nothing and sends nothing with nothing waiting', async () => {
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    expect(band()).toBeNull()
+    expect(spots.sends).toBe(0)
+  })
+
+  it('sends what waits when the app opens, and says nothing once it has gone', async () => {
+    spots.waiting = 2
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    expect(spots.sends).toBe(1)
+    expect(band()).toBeNull()
+  })
+
+  it('with no signal, asks the server nothing and says how many wait, with a press to try', async () => {
+    online(false)
+    spots.waiting = 2
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    expect(spots.sends).toBe(0)
+    expect(band()?.textContent).toContain('2 places wait on this phone. They go to the job when the signal is back.')
+    const send = document.querySelector('[data-painted-spots-send]') as HTMLButtonElement
+    expect(send.textContent).toBe('Send now')
+    expect(send.style.minHeight).toBe('44px')
+  })
+
+  it('sends when the phone says the signal is back', async () => {
+    online(false)
+    spots.waiting = 1
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    expect(band()?.textContent).toContain('1 place waits on this phone. It goes to the job when the signal is back.')
+    online(true)
+    await act(async () => {
+      window.dispatchEvent(new Event('online'))
+    })
+    expect(spots.sends).toBe(1)
+    expect(band()).toBeNull()
+  })
+
+  it('keeps saying what still waits when a send did not get through', async () => {
+    spots.waiting = 3
+    spots.sendLeaves = 2
+    spots.sendError = 'Failed to fetch'
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    expect(band()?.textContent).toContain('2 places wait on this phone.')
+    spots.sendLeaves = 0
+    await act(async () => {
+      fireEvent.click(document.querySelector('[data-painted-spots-send]') as HTMLButtonElement)
+    })
+    expect(spots.sends).toBe(2)
+    expect(band()).toBeNull()
+  })
+
+  it('tries again when a map’s window closes, since a place may just have been kept there', async () => {
+    renderBare(<MemoryRouter><PaintedMapHost /></MemoryRouter>)
+    await act(async () => {})
+    act(() => {
+      openPaintedMap('m1')
+    })
+    spots.waiting = 1
+    online(false)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'close' }))
+    })
+    expect(band()?.textContent).toContain('1 place waits on this phone.')
   })
 })

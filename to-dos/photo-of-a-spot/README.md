@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, a photo's own spot is v2.8201, more photos and a buried line's length are v2.8203, the office's Map tab is v2.8204, and a place that waits for a signal is v2.8205
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -232,49 +232,64 @@ is never read when the photo sends. Setting a place must not need the map's pict
   It was the card's gate. Taunya's word to have it built makes it a thing to watch and not a thing
   to wait for.
 
+0b. **The ground for steps 3, 4, 6 and 7 (S, one migration, alone). Built in v2.8195.** A photo's point on
+   the job photo and report photo rows, a place's count of opens, its line and its other photos, and
+   the read rule that lets a job's list of places follow its customer address. One migration, so
+   each later screen ships with none of its own.
 0. **Room for a description (XS, one migration, alone). Built in v2.8186.** The check on `painted_map_places.words`
    goes from 200 characters to 4,000. No new column and no new table, so the four fences are not
    called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
    `supabase db push` after its merge and before PR 1 is armed. The table held no row on
    2026-11-21. Read the constraint's real name on prod before writing the drop.
-1. **Photo of a spot, from the job (S).** A press beside **＋ Place on this job** in
+1. **The new place sheet (S). Built in v2.8188.** Taunya's three changes, on the sheet every place
+   is set from: the kinds as presses two to a row and 56 px tall with **＋ Something else** under
+   them, **What is buried?** under **Buried line** with each answer a kind in its locator's color,
+   and **Describe it** at any length with a short form for a row, a picture's key and a text. It was
+   split from the photo press so each could ship alone.
+1b. **Photo of a spot, from the job (S). Built in v2.8191.** A press beside **＋ Place on this job** in
    `src/components/paintedMap/JobPaintedMapsStrip.tsx`. The camera opens at once. The place sheet
    (`src/components/paintedMap/PaintedPlacePanel.tsx`) then opens with the photo in it and the dot
    where the person stands, read once through `requestMyFix` in `src/lib/materials/myLocation.ts`
-   and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, puts the dot on
-   the job's address. The sheet's kinds become presses two to a row and 56 px tall, with
-   **＋ Something else** under them. **Buried line** opens **What is buried?**, and each answer is a
-   kind with its color (`src/lib/paintedMap/paintedPlaceKind.ts`, whose rule that every mark is ink
-   but a hazard changes with this). **Describe it** takes the place's words at any length up to the
-   new cap, and one kernel gives every other surface its short form: the rows, the mark's label, the
-   printed page (`src/lib/paintedMap/paintedMapPrint.ts`), the picture
-   (`src/lib/paintedMap/paintedMapPicture.ts`), the copied text
-   (`src/lib/paintedMap/paintedMapText.ts`) and the public page (`src/pages/PaintedWay.tsx`). An
-   older build of the app draws a kind it does not know as the plain dot, which is the file's own
-   rule. The list of places draws each photo beside its name.
-   A place set with no signal has to wait on the phone as a photo does: read what the sheet does
-   today before building. The guide `src/content/help/paint-a-map.md` gains a section.
-2. **Keep this spot on the job, from a photo (S).** The same sheet from one press on
+   and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, moves no dot:
+   it starts on the job's address or where the map is looking, and the sheet says why. A weak
+   reading still sets the dot, with an amber line that says to drag it, which is the place sheet's
+   own rule and not the mock-up's *On the house*. A photo more than five minutes old takes no
+   reading. The list of places already draws each photo beside its name.
+   **Not built:** a place set with no signal. Today the sheet says the save failed and keeps the
+   photo and the words while it stays open. A place that waits on the phone as a photo does is its
+   own step, 2b below. The guide `src/content/help/paint-a-map.md` gains a section.
+2. **Keep this spot on the job, from a photo (S). Built in v2.8193.** The same sheet from one press on
    a photo in the Job photos window (`src/components/photos/JobPhotosWindow.tsx`) and on a report's
-   photo (`src/hooks/useReportPhotos.ts`). A plain photo is one press to skip. A photo whose own
-   time is more than a few minutes old does not take the phone's spot.
+   photo (`src/components/reports/ReportPhotoTiles.tsx`), through one small press,
+   `src/components/paintedMap/KeepSpotPress.tsx`. A plain photo is one press to skip. A photo whose
+   own time is more than five minutes old does not take the phone's spot. The phone is read on this
+   press and not when the camera opened, since the photo is already on the screen. Of the report
+   forms, Leave Report alone has the press: New report, Turnaway and the edit of a saved report do
+   not.
+
+2b. **A spot set with no signal waits on the phone (S). Built in v2.8205.** Kept the way a walk that was
+   never saved is, in the phone's own storage, with the photo's bytes where a job photo's wait
+   (`src/lib/offline/keptPhotos.ts`), and sent by the painted maps' own host. It is not a kind of
+   press in the waiting queue (`src/lib/offline/outbox.ts`), so the line at the top of the app does
+   not count it: the host says how many places wait.
 
 The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
 2026-11-21 is to build the later steps too.
 
-3. **A photo keeps the phone's reading by itself (S, one migration).** Columns for the point, the
+3. **A photo keeps the phone's reading by itself (S). Built in v2.8201, on the columns of v2.8195.** Columns for the point, the
    margin and where it came from on `job_photo_notes` and `report_photos`. No new table. The column
    ships alone first. The reading rides in the waiting photo's own record
    (`src/lib/offline/outbox.ts`). This is the step that serves proof. It also counts how often a
    place is opened.
-4. **Places follow the address (M).** A job reads the places kept by earlier jobs at the same
+4. **Places follow the address (M). Built in v2.8200, on the read rule of v2.8195.** A job reads the places kept by earlier jobs at the same
    customer address.
-5. **The crew's window draws them (S).** Rows with photos in the **Where** section of
+5. **The crew's window draws them (S). Built in v2.8200, as rows with photos. The small picture from above
+   is not built: a row opens the list's own map on that place.** Rows with photos in the **Where** section of
    `src/components/jobs/DetailJobModal.tsx`, with a small picture from above on the old map.
-6. **A buried line with its length (S).** A walked line tied to a photo taken before backfill. The
+6. **A buried line with its length (S). Built in v2.8203.** A walked line tied to a photo taken before backfill. The
    app can walk a line and say its length today.
-7. **More than one photo on a place (S).** Open and covered.
-8. **A Map tab for the office (M).** Once a job commonly holds five or more places.
+7. **More than one photo on a place (S). Built in v2.8203.** Open and covered.
+8. **A Map tab for the office (M). Built in v2.8204.** Once a job commonly holds five or more places.
 
 ## Left out
 

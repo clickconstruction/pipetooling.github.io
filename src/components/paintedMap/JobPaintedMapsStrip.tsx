@@ -8,12 +8,27 @@
  *
  * The job's own list of places sits here too (punch list #393, `paintedJobList.ts`): one line when
  * it holds a place, and a press that sets one with no map to paint first.
+ *
+ * **Photo of a spot** (punch list #413) is that press with the camera first: it opens the camera
+ * and reads the phone once in the same press, and the place sheet then opens with the photo in it
+ * and the dot where the person stood.
+ *
+ * Places an earlier job kept at the same customer address show here too (#413, step 4,
+ * `paintedAddressPlaces.ts`): a line for each such list, since the next tech at a house is on a
+ * different job. With `rows`, each place of the job's list and of those lists is drawn as a row
+ * with its photo (step 5), so the crew's window shows what is where without opening a map.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { handHeld } from '../../lib/paintedMap/handHeld'
 import { mapSummaryWords, mapsForDevelopment, mapsForJob } from '../../lib/paintedMap/paintedMap'
-import { JOB_LIST_WORDS, jobListCountWords, jobListPlaces, jobListsOf } from '../../lib/paintedMap/paintedJobList'
+import { JOB_LIST_WORDS, jobListCountWords, jobListPlaces, jobListsOf, type JobPlace } from '../../lib/paintedMap/paintedJobList'
 import { onPaintedMapsChanged, openPaintedMap, paintPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
-import { loadPaintedMapsFor, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { ADDRESS_PLACES_WORDS, addressListLineWords, placeRowsMoreWords, placeRowsShown, type AddressList } from '../../lib/paintedMap/paintedAddressPlaces'
+import { loadAddressPlaceLists, notePaintedPlaceOpened } from '../../lib/paintedMap/paintedAddressPlacesIo'
+import { loadPaintedMapsFor, paintedPlacePhotoUrls, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { shortPlaceWords } from '../../lib/paintedMap/paintedPlaceWords'
+import { SPOT_WORDS, type PaintedSpot, type SpotReading } from '../../lib/paintedMap/paintedSpot'
+import { readSpotNow } from '../../lib/paintedMap/paintedSpotIo'
 import { useTakenDown } from '../../hooks/useTakenDown'
 import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PAINT_SWATCH } from './paintedMapLook'
@@ -36,6 +51,8 @@ type Props = {
   /** The phone's Paint a map: centred blue words, no box. */
   addCentred?: boolean
   only?: 'maps'
+  /** Draw each place as a row with its photo, under its list's line (#413, step 5): the job's own window. */
+  rows?: boolean
 }
 
 const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 40, padding: '0.35rem 0.6rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
@@ -43,9 +60,45 @@ const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem
 const add: CSSProperties = { ...row, width: 'auto', justifySelf: 'start', minHeight: 34, padding: '0.3rem 0.75rem', fontSize: '0.8125rem', borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'transparent', color: 'var(--text-link)' }
 /** The phone's press (punch list #355, the owner's call): centred blue words with no box, the row still 40 px for a thumb. */
 const addWords: CSSProperties = { ...add, width: '100%', justifySelf: 'stretch', minHeight: 40, fontSize: '0.875rem', borderStyle: 'none', justifyContent: 'center', textAlign: 'center', padding: '0.2rem 0.6rem', fontWeight: 700 }
+/** The phone's Photo of a spot (#413): the full width and 56 px tall, since it is pressed standing in a yard. */
+const spotPress: CSSProperties = { ...row, minHeight: 56, justifyContent: 'center', gap: '0.55rem', fontSize: '1rem', fontWeight: 700, borderWidth: 1.5, borderColor: 'var(--border-strong)', background: 'var(--surface)' }
 
-export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false }: Props) {
+/** A place as a row (#413, step 5): its photo, its mark and name, and the start of its words. 64 px for a thumb. */
+const placeRow: CSSProperties = { display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) auto', gap: '0.6rem', alignItems: 'center', width: '100%', minHeight: 64, padding: '0.3rem 0.6rem 0.3rem 0.3rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
+const placeThumb: CSSProperties = { width: 72, height: 54, borderRadius: 6, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-muted)', objectFit: 'cover', display: 'block' }
+
+function PlaceRow({ place, url, dashed, onOpen }: { place: JobPlace; url: string | null; dashed: boolean; onOpen: () => void }) {
+  const words = shortPlaceWords(place.words, 90)
+  return (
+    <button type="button" data-job-place-row={place.id} style={placeRow} aria-label={`${place.name}: open this place`} onClick={(e) => { e.stopPropagation(); onOpen() }}>
+      {url ? <img src={url} alt="" style={placeThumb} /> : <span aria-hidden style={{ ...placeThumb, display: 'grid', placeItems: 'center' }}><PaintedPlaceMark number={place.letter} kind={place.kind} size={26} dashed={dashed} /></span>}
+      <span style={{ display: 'grid', gap: '0.1rem', minWidth: 0 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+          {url ? <PaintedPlaceMark number={place.letter} kind={place.kind} size={20} dashed={dashed} /> : null}
+          <b style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</b>
+        </span>
+        {words ? <span style={{ color: 'var(--text-700)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{words}</span> : null}
+      </span>
+      <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>›</span>
+    </button>
+  )
+}
+
+/** A camera, drawn in the colour of the words beside it. */
+function CameraGlyph({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block', flex: 'none' }}>
+      <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+      <circle cx="12" cy="13.5" r="3" />
+    </svg>
+  )
+}
+
+export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false, rows = false }: Props) {
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
+  // The lists of places earlier jobs kept at this job's customer address (#413). A read that fails shows none: the job's own maps still stand.
+  const [addressLists, setAddressLists] = useState<AddressList[]>([])
+  const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
   const [failed, setFailed] = useState<string | null>(null)
   // A read that lands after the strip is taken down sets nothing: there is no screen left to draw on.
   const takenDown = useTakenDown()
@@ -59,6 +112,9 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
     } else {
       setFailed(res.error)
     }
+    const kept = await loadAddressPlaceLists(jobId)
+    if (takenDown()) return
+    setAddressLists(kept.ok ? kept.value : [])
   }, [jobId, developmentId, takenDown])
 
   useEffect(() => {
@@ -76,13 +132,62 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
   const listPlaces = useMemo(() => jobListPlaces(lists.map((l) => wholes.find((w) => w.map.id === l.id)!)), [lists, wholes])
   const firstList = lists[0] ?? null
 
+  // The rows' photos, by signed address. Asked for only where rows are drawn.
+  const photoKey = rows ? [...listPlaces, ...addressLists.flatMap((l) => l.places)].map((p) => p.photoPath ?? '').join('|') : ''
+  useEffect(() => {
+    if (!photoKey.replace(/\|/g, '')) return
+    let gone = false
+    void paintedPlacePhotoUrls(photoKey.split('|')).then((urls) => {
+      if (!gone && !takenDown()) setPhotoUrls(urls)
+    })
+    return () => {
+      gone = true
+    }
+  }, [photoKey, takenDown])
+
+  /** A place's row was pressed: its list opens on it. Someone came looking, so the place counts an open. */
+  const openPlace = (place: JobPlace) => {
+    notePaintedPlaceOpened(place.id)
+    openPaintedMap(place.mapId, address, undefined, undefined, place.id)
+  }
+  const placeRows = (places: ReadonlyArray<JobPlace>, listId: string, dashed: boolean) => {
+    const { shown, more } = placeRowsShown(places)
+    return (
+      <div data-job-place-rows={listId} style={{ display: 'grid', gap: '0.3rem' }}>
+        {shown.map((p) => (
+          <PlaceRow key={p.id} place={p} url={p.photoPath ? (photoUrls.get(p.photoPath) ?? null) : null} dashed={dashed} onOpen={() => openPlace(p)} />
+        ))}
+        {more > 0 ? (
+          <button type="button" data-job-place-rows-more style={{ ...addWords, minHeight: 44 }} onClick={(e) => { e.stopPropagation(); openPaintedMap(listId, address) }}>
+            {placeRowsMoreWords(more)}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   /** ＋ Place on this job: onto the list the job has, or onto a new one that is saved with this first place. */
   const addJobPlace = () => {
     if (firstList) openPaintedMap(firstList.id, address, 'place')
     else paintPaintedMap({ id: newId(), name: JOB_LIST_WORDS.name, words: '', home: { jobId, developmentId: null, label: jobLabel, address }, first: 'place', jobList: true })
   }
 
-  if (only === 'maps' && maps.length === 0 && listPlaces.length === 0) return null
+  // Photo of a spot (#413): the camera opens on the press, and the phone is read once in that same press, so the
+  // reading is of the moment the photo was taken. The place sheet opens when the photo comes back.
+  const spotInput = useRef<HTMLInputElement>(null)
+  const spotReading = useRef<Promise<SpotReading> | null>(null)
+  const pressSpot = () => {
+    spotInput.current?.click()
+    spotReading.current = readSpotNow()
+  }
+  const takeSpot = (file: File) => {
+    const spot: PaintedSpot = { file, reading: spotReading.current ?? readSpotNow(), takenMs: file.lastModified > 0 ? file.lastModified : null }
+    spotReading.current = null
+    if (firstList) openPaintedMap(firstList.id, address, 'place', spot)
+    else paintPaintedMap({ id: newId(), name: JOB_LIST_WORDS.name, words: '', home: { jobId, developmentId: null, label: jobLabel, address }, first: 'place', jobList: true, spot })
+  }
+
+  if (only === 'maps' && maps.length === 0 && listPlaces.length === 0 && addressLists.length === 0) return null
 
   return (
     <div data-job-painted-maps style={{ display: 'grid', gap: '0.35rem' }}>
@@ -107,6 +212,18 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
           <span style={{ marginLeft: 'auto', flex: 'none', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }}>{jobListCountWords(listPlaces.length)} ›</span>
         </button>
       ) : null}
+      {rows && firstList && listPlaces.length > 0 ? placeRows(listPlaces, firstList.id, false) : null}
+      {addressLists.map((l) => (
+        // Kept by an earlier job at this customer address (#413): read here, and owned by the job that made it.
+        <div key={l.map.id} data-address-places={l.map.id} style={{ display: 'grid', gap: '0.3rem' }}>
+          <button type="button" data-address-places-line style={{ ...row, borderStyle: 'dashed' }} onClick={(e) => { e.stopPropagation(); openPaintedMap(l.map.id, address) }}>
+            <PaintedPlaceMark number={l.places[0]!.letter} kind={l.places[0]!.kind} size={22} dashed />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ADDRESS_PLACES_WORDS.name}</span>
+            <span style={{ marginLeft: 'auto', flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }}>{addressListLineWords(l)} ›</span>
+          </button>
+          {rows ? placeRows(l.places, l.map.id, true) : null}
+        </div>
+      ))}
       {failed && only !== 'maps' ? (
         <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           The painted maps did not load: {failed}{' '}
@@ -116,7 +233,36 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
         </p>
       ) : null}
       {only === 'maps' ? null : (
+        <input
+          ref={spotInput}
+          type="file"
+          accept="image/*"
+          capture={handHeld() ? 'environment' : undefined}
+          aria-label="Photo of a spot on this job"
+          data-job-spot-input
+          style={{ display: 'none' }}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) takeSpot(file)
+          }}
+        />
+      )}
+      {only === 'maps' || !addCentred ? null : (
+        <button type="button" data-job-spot style={spotPress} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
+          <CameraGlyph size={22} />
+          {SPOT_WORDS.press}
+        </button>
+      )}
+      {only === 'maps' ? null : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem' }}>
+          {addCentred ? null : (
+            <button type="button" data-job-spot style={{ ...add, gap: '0.4rem' }} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
+              <CameraGlyph size={16} />
+              {SPOT_WORDS.press}
+            </button>
+          )}
           <button type="button" data-paint-a-map style={addCentred ? { ...addWords, width: 'auto', flex: '1 1 0' } : add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
             ＋ Paint a map
           </button>

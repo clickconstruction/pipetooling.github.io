@@ -2561,6 +2561,9 @@ export default function DetailJobModal({
             <JobPaintedMapsStrip
               jobId={jobId}
               addCentred={phoneShape}
+              // The crew's plain window draws each place as a row with its photo (punch list #413). The office's tabbed window
+              // keeps its band short, since the band sits over every tab: it has the Map tab for the same places.
+              rows={!paneMode}
               developmentId={detailJob?.development_id ?? null}
               jobLabel={(fullJob ?? limitedJob)?.job_name ?? null}
               developmentLabel={detailJob ? ('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null)) : null}

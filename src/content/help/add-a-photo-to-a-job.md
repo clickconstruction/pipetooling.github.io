@@ -49,6 +49,35 @@ The press waits while a photo is still sending. A photo that did not send says w
 
 Close the window without pressing Add and the new photos are let go. Nothing lands on the job.
 
+## Keep a photo's spot on the job
+
+Some photos show a thing the next crew must find. A cleanout is one. A shutoff is another. A buried line is a third.
+
+Under such a photo, press {{button:outline|＋ Keep this spot on the job}}.
+
+The place sheet opens with the photo in it. The dot is where you stand, when your phone is sure enough.
+
+1. Press what it is, such as {{button:outline|Cleanout}}.
+2. Press {{button:blue|Add this place}}.
+
+The press then reads *Kept on this job*. The place shows under the job's address, in **Places on this job**.
+
+A plain photo needs none of this. Skip the press and add the photo as usual.
+
+Added the photo later, away from the spot? The dot is not put where you stand. Drag the dot onto the spot.
+
+[Paint a map](/help/paint-a-map#start-with-a-photo) has more on places.
+
+## Where a photo was taken
+
+The app keeps where your phone was when you took a job photo. Your phone is read once, as you pick the photo, and is not followed.
+
+Open a photo on the job. **Taken here** opens that spot in your phone's maps, with how sure the phone was.
+
+A photo has no **Taken here** when the phone gave no good reading. A photo picked from the phone's library hours later has none either.
+
+Whoever can open the job's photos can read where one was taken.
+
 ## With no signal
 
 A shot taken with no signal is kept on the phone. Its tile reads *Kept on the phone. It goes when the signal is back.* Type the words as usual and press the Add button. The photos wait in the queue together. The line at the top reads *Job photos from 7:58 AM*, then *waiting to send* and *1 photo with it*.

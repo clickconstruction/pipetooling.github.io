@@ -58,7 +58,7 @@ import { clampView, type PaintedMapView } from '../../lib/paintedMap/paintedMapV
 
 const PaintedMapGoogleCanvasLazy = lazy(() => import('./PaintedMapGoogleCanvas'))
 
-export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow }
+export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow; /** A color of the line's own, in place of the paint's (#413): what a locator paints for a buried line. */ color?: string }
 /**
  * A place as the map draws it. A place kept on the job (punch list #393, `paintedJobList.ts`) wears its letter in
  * place of a number, and a dashed ring on a map that is not the job's own list.
@@ -396,12 +396,12 @@ function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: 
             {runs.sure.map((run, i) => (
               <Fragment key={`s${i}`}>
                 <Polyline positions={run.map(ll)} pathOptions={{ color: INK, weight: 8, opacity: 0.9, lineJoin: 'round', lineCap: 'round' }} interactive={false} />
-                <Polyline positions={run.map(ll)} pathOptions={{ color: PAINT_COLOR, weight: 5, lineJoin: 'round', lineCap: 'round', dashArray: line.how === 'drawn' ? '14 7' : undefined }} interactive={false} />
+                <Polyline positions={run.map(ll)} pathOptions={{ color: line.color ?? PAINT_COLOR, weight: 5, lineJoin: 'round', lineCap: 'round', dashArray: line.how === 'drawn' ? '14 7' : undefined }} interactive={false} />
               </Fragment>
             ))}
             {/* A stretch the phone was not sure of: faint dots, never a solid line. */}
             {runs.poor.map((run, i) => (
-              <Polyline key={`p${i}`} positions={run.map(ll)} pathOptions={{ color: PAINT_COLOR, weight: 4, opacity: 0.85, dashArray: '2 9', lineCap: 'round' }} interactive={false} />
+              <Polyline key={`p${i}`} positions={run.map(ll)} pathOptions={{ color: line.color ?? PAINT_COLOR, weight: 4, opacity: 0.85, dashArray: '2 9', lineCap: 'round' }} interactive={false} />
             ))}
           </Fragment>
         )

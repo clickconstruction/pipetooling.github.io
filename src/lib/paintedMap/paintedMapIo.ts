@@ -18,6 +18,7 @@ import {
   paintedMapFromRow,
   paintedPlaceColumns,
   paintedPlaceFromRow,
+  placePhotosToJson,
   type PaintedLine,
   type PaintedLineDraft,
   type PaintedMap,
@@ -26,9 +27,11 @@ import {
   type PaintedMapRow,
   type PaintedMeasuredHow,
   type PaintedPlace,
+  type PlacePhoto,
 } from './paintedMap'
 import type { PaintedPoint } from './paintedLine'
 import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
+import { cleanPlaceWords } from './paintedPlaceWords'
 import type { PaintedMapSearchRow } from './paintedMapSearch'
 import { PAINTED_MAP_PHOTOS_BUCKET, isPaintedPlacePhotoPath, paintedPlacePhotoPath } from './paintedPlacePhoto'
 
@@ -337,11 +340,13 @@ export async function deletePaintedLine(lineId: string): Promise<Landed<boolean>
 /** Adds a place to a map. */
 export async function addPaintedPlace(
   mapId: string,
-  place: PaintedPoint & { id?: string; name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null; kind?: PaintedPlaceKind | null },
+  place: PaintedPoint & { id?: string; name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null; kind?: PaintedPlaceKind | null; /** The place's photos after its first (#413). Left out, the row takes none. */ morePhotos?: ReadonlyArray<PlacePhoto> },
   by: string,
 ): Promise<Landed<PaintedPlace>> {
-  const columns = paintedPlaceColumns(place, mapId, by)
-  if (!columns) return { ok: false, error: 'A place needs a point on the map.' }
+  const base = paintedPlaceColumns(place, mapId, by)
+  if (!base) return { ok: false, error: 'A place needs a point on the map.' }
+  // A place with no other photo writes no such column: the table's own default stands.
+  const columns = place.morePhotos && place.morePhotos.length > 0 ? { ...base, more_photos: placePhotosToJson(place.morePhotos) } : base
   try {
     const res = (await supabase
       .from(PLACES)
@@ -359,17 +364,19 @@ export async function addPaintedPlace(
 /** Changes a place: its name, its words, its kind, its dot or its photo. A dot moved by hand loses the phone's margin. */
 export async function savePaintedPlace(
   placeId: string,
-  change: Partial<{ name: string; words: string; lat: number; lng: number; accuracyM: number | null; photoPath: string | null; kind: PaintedPlaceKind | null }>,
+  change: Partial<{ name: string; words: string; lat: number; lng: number; accuracyM: number | null; photoPath: string | null; kind: PaintedPlaceKind | null; /** The line the place runs along (#413), or null to take it off. */ lineId: string | null; /** The place's photos after its first (#413), whole. */ morePhotos: ReadonlyArray<PlacePhoto> }>,
 ): Promise<Landed<PaintedPlace>> {
   const cols: Record<string, unknown> = {}
   if (change.name !== undefined) cols.name = change.name
-  if (change.words !== undefined) cols.words = change.words
+  if (change.words !== undefined) cols.words = cleanPlaceWords(change.words)
   if (change.lat !== undefined && change.lng !== undefined) {
     cols.lat = change.lat
     cols.lng = change.lng
     cols.accuracy_m = change.accuracyM ?? null
   }
   if (change.photoPath !== undefined) cols.photo_path = change.photoPath
+  if (change.lineId !== undefined) cols.line_id = change.lineId
+  if (change.morePhotos !== undefined) cols.more_photos = placePhotosToJson(change.morePhotos)
   // Only a kind this app knows is written, so a place never carries a word no mark answers to.
   if (change.kind !== undefined) cols.kind = paintedPlaceKindFrom(change.kind)
   try {

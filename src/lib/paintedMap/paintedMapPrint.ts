@@ -56,6 +56,7 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ro
 .head span { font-size: 10pt; color: #4b5563; }
 h1 { font-size: 20pt; margin: 12px 0 2px; }
 .words { margin: 0 0 8px; color: #374151; }
+.w { white-space: pre-wrap; overflow-wrap: anywhere; }
 .map { width: 100%; border: 1px solid #9ca3af; border-radius: 6px; display: block; }
 .nomap { border: 1px dashed #9ca3af; border-radius: 6px; padding: 14px; color: #4b5563; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; }
