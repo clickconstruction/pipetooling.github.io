@@ -3,15 +3,18 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
   fileLooksCutShort,
+  ownPlumbingNumbers,
   planRollPull,
   pullErrorWords,
   tsbpeFile,
   tsbpeRows,
+  TSBPE_OWN_ONLY_FILES,
   TSBPE_WEEKLY_FILES,
   type KeptRow,
   type LeftOff,
   type TsbpeFile,
 } from '../_shared/licenseRoll.ts'
+import { parseLicenseType } from '../_shared/gcKernels/lib/logbook/logbook.ts'
 import { unzipFirst } from '../_shared/zipFirst.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
@@ -26,8 +29,13 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * No phone, street address or email is kept: the board gives none for a person, and a responsible master's
  * business address and phone are read past.
  *
+ * Our own people's licenses are kept whatever the county (`ours`): the numbers on People → Licenses
+ * (`person_licenses.license_type`) and on the roster's license line (`people.license`), read by the app's own
+ * reader, `parseLicenseType`. The apprentice file, PA, is read for those numbers alone: no county's apprentices
+ * are kept, since the file gives no age.
+ *
  * Auth: `X-Cron-Secret` = CRON_SECRET, or a bearer JWT whose user passes `user_can_read_license_roll()`.
- * Body: `{ file: 'RMP' | 'MP' | 'JP' | 'TP', dry_run?: boolean }`.
+ * Body: `{ file: 'RMP' | 'MP' | 'JP' | 'TP' | 'PA', dry_run?: boolean }`.
  * Answer: `{ ok, dryRun, file, seen, kept, added, changed, gone, skipped, ms }`, or `{ ok: false, error }` with the
  * reason, which the ledger row keeps too.
  */
@@ -83,6 +91,26 @@ async function readCounties(admin: Admin): Promise<Set<string>> {
   const { data, error } = await admin.from('license_roll_counties').select('county')
   if (error) throw new Error(`The counties could not be read: ${error.message}`)
   return new Set(((data ?? []) as { county: string }[]).map((r) => r.county))
+}
+
+/**
+ * Our own people's license numbers at this file's class: what People → Licenses holds, and the license line on a
+ * roster row, which is where a sub's sits. Only the text of each license is read, never a name.
+ */
+async function readOwnNumbers(admin: Admin, file: TsbpeFile): Promise<Set<string>> {
+  const texts: string[] = []
+  for (const [table, column] of [['person_licenses', 'license_type'], ['people', 'license']] as const) {
+    for (let from = 0; ; from += READ_PAGE) {
+      const { data, error } = await admin.from(table).select(`id,${column}`).not(column, 'is', null).neq(column, '').order('id').range(from, from + READ_PAGE - 1)
+      if (error) throw new Error(`Our own licenses could not be read: ${error.message}`)
+      for (const r of (data ?? []) as Record<string, string | null>[]) {
+        const text = r[column]
+        if (text) texts.push(text)
+      }
+      if (!data || data.length < READ_PAGE) break
+    }
+  }
+  return ownPlumbingNumbers(texts.map((t) => parseLicenseType(t)))[file.license_class] ?? new Set<string>()
 }
 
 async function readLeftOff(admin: Admin): Promise<LeftOff> {
@@ -142,9 +170,12 @@ serve(async (req) => {
   }
 
   const file = typeof body.file === 'string' ? tsbpeFile(body.file) : null
-  if (!file || !TSBPE_WEEKLY_FILES.includes(file.file)) {
-    return jsonResponse({ error: `Name the file to pull. The files are ${TSBPE_WEEKLY_FILES.join(', ')}.` }, 400)
+  const pullable = [...TSBPE_WEEKLY_FILES, ...TSBPE_OWN_ONLY_FILES]
+  if (!file || !pullable.includes(file.file)) {
+    return jsonResponse({ error: `Name the file to pull. The files are ${pullable.join(', ')}.` }, 400)
   }
+  // A file read for our own numbers alone keeps no county's rows.
+  const ownOnly = TSBPE_OWN_ONLY_FILES.includes(file.file)
   const dryRun = body.dry_run === true
   const today = todayYmdInAppTz()
   const started = Date.now()
@@ -163,9 +194,13 @@ serve(async (req) => {
   try {
     const read = tsbpeRows(file, await fetchFileText(file))
     if (read.rows.length < FEWEST_ROWS) throw new Error(`The board's ${file.file} file has ${read.rows.length} rows. That is too few to be the roll.`)
-    const [kept, counties, leftOff] = await Promise.all([readKept(admin, file), readCounties(admin), readLeftOff(admin)])
-    // Our own people's numbers arrive with step two. Until then no row is kept for being ours.
-    const plan = planRollPull({ rows: read.rows, kept, counties, ours: new Set<string>(), leftOff, today, newId: () => crypto.randomUUID() })
+    const [kept, counties, leftOff, ours] = await Promise.all([
+      readKept(admin, file),
+      ownOnly ? Promise.resolve(new Set<string>()) : readCounties(admin),
+      readLeftOff(admin),
+      readOwnNumbers(admin, file),
+    ])
+    const plan = planRollPull({ rows: read.rows, kept, counties, ours, leftOff, today, newId: () => crypto.randomUUID() })
     const keptThere = kept.filter((k) => !k.gone_on).length
     if (fileLooksCutShort(keptThere, plan.markedGone)) {
       throw new Error(`The board's ${file.file} file lacks ${plan.markedGone} of the ${keptThere} rows kept. It looks cut short, so nothing was changed.`)
