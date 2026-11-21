@@ -2061,7 +2061,8 @@ The office (dev, master technician, assistant, controller) reads it through `is_
 It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings` and `job_paper_remove`, all office only.
 A job's settings for a paper built from settings (v2.8145) are the office's to set and never a digital twin's: `job_paper_set_settings` also refuses an archived account and a training account itself, and `job_paper_clauses`, the job's paper as the database reads it, answers the office and the service role alone.
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
-The office's change after that signature may only tighten the paper, and it makes a new row.
+The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).
+`job_paper_set_basis` moves a required paper's basis in place: the office alone, never a digital twin, an archived account or a training account.
 Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
 The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
 A login tied to no roster person reads as owing and cannot start a paper.

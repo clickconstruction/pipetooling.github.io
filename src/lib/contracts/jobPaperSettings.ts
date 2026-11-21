@@ -1,11 +1,12 @@
 /**
  * Settings on the job (punch list #389, step 3). A job carries the picks of a paper built from settings on its
  * required paper's row (`job_required_papers.settings`, the typed blanks in `fields`). This file holds the rules that
- * row keeps, as the database keeps them (`20261120163000_settings_on_the_job.sql`):
+ * row keeps, as the database keeps them (`20261120163000_settings_on_the_job.sql`, and for a change after a signature
+ * `20261121150000_settings_page_ground.sql`):
  *
  *   - a paper built from settings is required with its picks, and a plain paper takes none;
- *   - the row is locked at its first signature: until then a change is made in place, and after it a change may only
- *     tighten, and makes a new row that everyone signs again;
+ *   - the row is locked at its first signature: until then a change is made in place, and after it any change,
+ *     tighter or looser, makes a new row that everyone signs again (Taunya's call, 2026-11-21);
  *   - the read-revision rule: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read;
  *   - the seal: a SHA-256 over a paper's settings, blanks and clauses with their versions, which a signed copy keeps.
  *
@@ -27,7 +28,8 @@ export const JOB_SETTINGS_WORDS = {
   needsSettings: (name: string) => `${name} is built from settings. Require it with its settings.`,
   takesNone: (name: string) => `${name} is not built from settings. It takes none.`,
   nothingChanged: 'Nothing changed.',
-  stricterOnly: 'People have signed this paper. A change now can only make it stricter. To loosen it, take the paper off the job and require it again.',
+  noticeUnticked: (name: string) => `${name} opens on a notice. Tick its box before you require it.`,
+  notALevel: "That level is not on this paper's list.",
   unread: (name: string) => `${name} has not been read by an attorney as it reads today. Until it is, only a ZZ Test job takes it.`,
   noClause: (name: string) => `${name} has no clause yet. Write it in Contracts and clauses first.`,
 } as const
@@ -125,8 +127,8 @@ export type SettingsChangePlan =
 
 /**
  * What `job_paper_set_settings` will do with a change. Until someone signs, the row changes in place. After the first
- * signature the row is locked: a change may only tighten, and it makes a new row that everyone signs again. The same
- * picks with new typed words, or at a newer Book revision, are a change too.
+ * signature the row is locked: any change, tighter or looser, makes a new row that everyone signs again, and `change`
+ * says which way it went. The same picks with new typed words, or at a newer Book revision, are a change too.
  */
 export function settingsChangePlan(c: SettingsChange): SettingsChangePlan {
   const picks = cleanPicks(c.def, c.to.picks)
@@ -137,7 +139,6 @@ export function settingsChangePlan(c: SettingsChange): SettingsChangePlan {
     return { kind: 'nothing', change, words: JOB_SETTINGS_WORDS.nothingChanged }
   }
   if (c.signed <= 0) return { kind: 'saved', change }
-  if (change === 'looser' || change === 'mixed') return { kind: 'refused', change, words: JOB_SETTINGS_WORDS.stricterOnly }
   return { kind: 'revised', change, signAgain: c.signed }
 }
 
