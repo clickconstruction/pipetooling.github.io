@@ -855,6 +855,13 @@ It is `SECURITY DEFINER` over `email_send_log`, a dev's and since v2.6762 the ow
 no delete policy (a cleared pick is `''`).
 Read-only training mode and the twin write fence apply.
 
+### Punch list ticks — one person's "working on it" marks (v2.8196, `20261121193000_punch_list_ticks.sql`)
+
+`punch_list_ticks` (one row per person and card number: the section the card was in when ticked, the build's newest version, `ticked_at` stamped by trigger): select / insert / update / delete each ask for `user_id = auth.uid()` and `is_master_or_dev()`.
+A person reads and writes only their own ticks, and nobody reads another person's, a dev included.
+`anon` has nothing.
+Read-only training mode, the twin write fence and the archived read fence apply.
+
 ### Test reports — the job's certified test paper (v2.3298, `20260911175738_job_test_reports.sql`)
 
 `job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary;
