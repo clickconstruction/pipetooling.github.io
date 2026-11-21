@@ -31,6 +31,7 @@ import {
   levelFacts,
   nextLabel,
   nextStep,
+  ownBreachLines,
   paperLevelLine,
   paperStops,
   prevStep,
@@ -545,7 +546,6 @@ function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: Paper
   const site = siteLines(def, topic.key, at)
   const tone = levelTone(def, at)
   const here = `topic.${topic.key}.${at}`
-  const levelLines = at === PAPER_OFF ? [] : (topic.levels[at]?.breach ?? [])
   const where = `${topic.label} at ${stopShortName(def, at)}`
   return (
     <>
@@ -583,23 +583,24 @@ function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: Paper
                 </LevelChip>
               </li>
             ) : null}
-            {breach.own.map((line) =>
-              edit ? (
-                // Kept by its place in the level's own list, so the line being typed is never drawn anew.
-                <Line key={`own-${levelLines.indexOf(line)}`} tone={tone}>
-                  <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
-                    <W edit={edit} path={`${here}.breach.${levelLines.indexOf(line)}`} text={line} label={`A breach line of ${where}`} />
-                    <button type="button" aria-label={`Remove the breach line: ${line}`} onClick={() => edit.onRemoveLine(`${here}.breach`, levelLines.indexOf(line))} style={CTL}>
-                      ×
-                    </button>
-                  </span>
-                </Line>
-              ) : (
-                <Line key={line} glide={`breach:${line}`} tone={tone}>
-                  {line}
-                </Line>
-              ),
-            )}
+            {edit
+              ? // Named by its place in the level's own list, never looked up by its words: two new lines read the same
+                // and are two fields. Kept by that place too, so the line being typed is never drawn anew.
+                ownBreachLines(def, topic.key, at).map((line) => (
+                  <Line key={`own-${line.index}`} tone={tone}>
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
+                      <W edit={edit} path={`${here}.breach.${line.index}`} text={line.words} label={`A breach line of ${where}`} />
+                      <button type="button" aria-label={`Remove the breach line: ${line.words}`} onClick={() => edit.onRemoveLine(`${here}.breach`, line.index)} style={CTL}>
+                        ×
+                      </button>
+                    </span>
+                  </Line>
+                ))
+              : breach.own.map((line) => (
+                  <Line key={line} glide={`breach:${line}`} tone={tone}>
+                    {line}
+                  </Line>
+                ))}
             {edit ? (
               <li key="::add">
                 <button type="button" aria-label={`Add a breach line to ${where}`} onClick={() => edit.onAddLine(`${here}.breach`)} style={CTL}>

@@ -588,6 +588,8 @@ Found and not fixed. No PR holds any of these.
 - **Fixed, v2.8135.** **Make this the usual** on the line under the title doubled the job's name on every job. The
   usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
+  **Fixed**, v2.8132: a line's field is named by its place in the list, and a new line is never matched
+  to another by its words.
 - **Send it again** picks the contact by name and does not say who.
   **Fixed**, v2.8131: it goes to the address on the send's own row, and a line under it names the person.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
