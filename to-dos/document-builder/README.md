@@ -573,7 +573,8 @@ Found and not fixed. No PR holds any of these.
   *Send it anyway* box.
 - **Make this the usual** on the line under the title doubles the job's name on every job.
 - Two **Add a line** presses on one breach list edit the same line.
-- **Send it again** picks the contact by name and does not say who. **Fixed**, v2.8131: it goes to the address on the send's own row, the line under it names the person, and the function refuses any other (it takes a deploy of `document-builder-send`).
+- **Send it again** picks the contact by name and does not say who.
+  **Fixed**, v2.8131: it goes to the address on the send's own row, and a line under it names the person.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
   key would leave a link that does not open.
 - A sent sheet's copy carries no job, and Sent copies files it under *Other*.
