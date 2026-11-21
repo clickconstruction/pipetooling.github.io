@@ -72,8 +72,13 @@ describe('resolvePaintedMapProvider', () => {
 })
 
 describe('PAINTED_GOOGLE_REACH, today', () => {
-  it('puts both screens on Google for looking, and nothing else', () => {
-    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'looking' ? 'google' : 'osm')
+  it('puts both screens on Google for looking and for a walk, and nothing else', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'looking' || use === 'walking' ? 'google' : 'osm')
+  })
+
+  it('paints a walk on Google from its first reading to Done (step 3)', () => {
+    expect(PAINTED_GOOGLE_REACH.uses).toContain('walking')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('walk') }))).toBe('google')
   })
 
   it('puts the public page on Google, on Taunya’s yes of 2026-11-21', () => {
@@ -82,8 +87,9 @@ describe('PAINTED_GOOGLE_REACH, today', () => {
     expect(PAINTED_GOOGLE_REACH.screens).toContain('way')
   })
 
-  it('keeps drawing by hand off Google until Google’s terms on content made from its imagery are read', () => {
-    // 3.2.3 (c). This line comes out with the owner's word on that reading, and with nothing else.
+  it('keeps drawing by hand and placing off Google until the canvas carries each', () => {
+    // The reading of Google's terms they waited on (3.2.3 (c)) was settled on 2026-11-21, on Taunya's word from her
+    // lawyer. Each word goes in with the part of the Google canvas that draws it, and with nothing else.
     expect(PAINTED_GOOGLE_REACH.uses).not.toContain('drawing')
     expect(PAINTED_GOOGLE_REACH.uses).not.toContain('placing')
   })

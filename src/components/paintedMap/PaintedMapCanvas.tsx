@@ -31,7 +31,8 @@
  * may get Google's map under the painted map in place of this one. `paintedMapProvider.ts` decides,
  * and this file mounts the answer: its own Leaflet map, or `PaintedMapGoogleCanvas`. The view, the
  * two presses and Time are held here, above both, so a change of map keeps them. Today Google draws
- * only a map that is being read. A caller that hands no `google` gets the Leaflet map, as before.
+ * a map that is being read and a walk that is being painted. A caller that hands no `google` gets
+ * the Leaflet map, as before.
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -769,7 +770,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         // The boundary is out here as well as in the canvas: a file that does not arrive on a weak signal falls back too.
         <GoogleCanvasBoundary onUnavailable={googleUnavailable}>
           <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} frameMargin={frameMargin} frameMe={frameMe} light={googleAsk?.screen === 'way'} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
+            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} follow={follow} frameMargin={frameMargin} frameMe={frameMe} light={googleAsk?.screen === 'way'} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
           </Suspense>
         </GoogleCanvasBoundary>
       ) : (

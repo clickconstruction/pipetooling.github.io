@@ -154,6 +154,41 @@ describe('the public page (step 4)', () => {
   })
 })
 
+describe('the painting window, on a walk (step 3)', () => {
+  const WALKING: PaintedCanvasGoogleAsk = { screen: 'window', use: 'walking' }
+
+  it('paints the walk on Google’s map, follows the walker, and makes no Leaflet map', async () => {
+    const me = { lat: 30.201, lng: -98.099, accuracyM: 6 }
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} me={me} follow frameMargin />)
+    await screen.findByTestId('google')
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.props?.follow).toBe(true)
+    expect(google.props?.frameMargin).toBe(true)
+    expect(google.props?.me).toEqual(me)
+  })
+
+  it('keeps the one Google map from reading to the walk and back to Look it over', async () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} follow />)
+    expect(provider()).toBe('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} refit={1} />)
+    expect(provider()).toBe('google')
+    expect(google.mounts).toBe(1)
+  })
+
+  it('goes to the Leaflet map, and stays, when a line of the walk is fixed by hand', async () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} follow />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={DRAWING} draft={DRAFT} />)
+    expect(provider()).toBe('osm')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    await waitFor(() => expect(provider()).toBe('osm'))
+    expect(screen.queryByTestId('google')).toBeNull()
+  })
+})
+
 describe('the painting window, reading a saved map', () => {
   it('opens on the Leaflet map at once when Google refused the key under another map of this page', () => {
     // A job's map or the Dashboard's heard the refusal before any painted map was opened. Google does not say it twice.
