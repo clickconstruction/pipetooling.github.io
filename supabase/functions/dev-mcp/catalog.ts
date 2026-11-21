@@ -1812,6 +1812,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "reports_open_to_user": [{"args":{"p_report_ids":"string[]","p_user_id":"string"},"returns":"string[]"}],
   "request_field_job": [{"args":{"p_customer_email":"string","p_customer_name":"string","p_customer_phone":"string","p_gc_name":"string","p_job_address":"string","p_job_name":"string","p_line_items":"string[]","p_time_end":"string","p_time_start":"string","p_work_date":"string"},"returns":"string"}],
   "request_is_dev_seat": [{"args":{},"returns":"boolean"}],
+  "research_bid_counts": [{"args":{"p_created_at":"string","p_project_name":"string"},"returns":"boolean"}],
+  "research_bid_party_key": [{"args":{"p_name":"string"},"returns":"string"}],
   "research_builders": [{"args":{"p_city":"string"},"returns":"{ bids: number customer_id: string key: string kind: string last_bid_on: string last_permit_on: string mark: string mark_at: string mark_by_name: string mark_re…"}],
   "research_contact_history": [{"args":{"p_keys":"string[]"},"returns":"{ bids: number key: string last_bid_on: string on_deck: boolean won: number }[]"}],
   "research_name_key": [{"args":{"p_name":"string"},"returns":"string"}],

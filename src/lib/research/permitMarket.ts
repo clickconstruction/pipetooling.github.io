@@ -7,9 +7,8 @@
  * defined on the card (`to-dos/permits-market-page/README.md`, How each number is counted), so a
  * hand count can check it. No React, no Supabase.
  */
-import { nameKey } from '../../../supabase/functions/_shared/permitLookup'
-import { isZzBidName, isZzTestName } from '../../../supabase/functions/_shared/zzTestJob'
 import { ymdPlusDays, type ResearchPermitRow } from './permitResearch'
+import { OUR_BID_DAYS, bidCounts, bidPartyKey, bidWon, isBidPlatformBucket, ourBidsSince } from './ourBids'
 import { builderName, type BuilderRow } from './permitBuilders'
 import type { AnswerBook } from './builderAnswers'
 import { lookAlikePairs, type PermitName } from './nameLikeness'
@@ -18,14 +17,14 @@ import { daysBetween } from './permitSkim'
 
 // ---------- the companies we bid ----------
 
-/** How far back a bid counts: two years. */
-export const MARKET_BID_DAYS = 730
+/** How far back a bid counts: two years, the one rule's (`ourBids.ts`). */
+export const MARKET_BID_DAYS = OUR_BID_DAYS
 /** How far back a permit counts: twelve months, as `research_builders` counts a builder's. */
 export const MARKET_PERMIT_DAYS = 365
 
 /** The first day a bid counts from. */
 export function marketBidsSince(todayYmd: string): string {
-  return ymdPlusDays(todayYmd, -MARKET_BID_DAYS)
+  return ourBidsSince(todayYmd)
 }
 
 /** The first day a permit counts from. */
@@ -45,21 +44,9 @@ export type MarketBid = {
   projectName: string | null
 }
 
-/** The outcomes that count as won, as `research_builders` counts them. */
-const WON = new Set(['won', 'started_or_complete'])
-
-/**
- * The bid platforms a catch-all customer is named for, as its name key starts. A bid found on a
- * platform with no GC chosen yet sits under a customer of the platform's name. That customer is
- * a bucket and not a company, so it is no row of the table.
- */
-const BID_PLATFORM_KEYS = ['planhub', 'buildingconnected', 'constructconnect', 'isqft', 'smartbid', 'bidnet', 'buildingblok', 'civcast', 'demandstar'] as const
-
-/** A customer named for a bid platform: the bucket its bids sit under until a GC is chosen. */
-export function isBidPlatformBucket(name: string | null | undefined): boolean {
-  const key = nameKey(name)
-  return key != null && BID_PLATFORM_KEYS.some((p) => key.startsWith(p))
-}
+// Which bids count, under which names, and what a win is: the one rule, `ourBids.ts`. A customer
+// named for a bid platform is a bucket and no company, so it is no row of the table.
+export { isBidPlatformBucket }
 
 /** One city's Builders rows, as `research_builders` returns them. */
 export type CityBuilders = { city: string; rows: readonly BuilderRow[] }
@@ -118,8 +105,9 @@ function mostUsed(names: ReadonlyMap<string, number>): string {
  *
  * - A bid counts under its customer's name and under the old builders list's name on it, each
  *   keyed as permits are. One bid under two names of one key counts once.
- * - Left out: a practice bid (the ZZ convention), a ZZ customer, and a customer named for a bid
- *   platform.
+ * - Left out, by the one rule (`ourBids.ts`, which `research_builders` and a tied customer's
+ *   count read too): a practice bid (the ZZ convention), a bid older than two years, a ZZ
+ *   customer, and a customer named for a bid platform.
  * - The permits are each city's Builders count under the company's key, plus the count under
  *   every name a person tied to the customer for all of its permits.
  * - A customer of ours with no permit on record gets a name on the permits that begins its own,
@@ -127,21 +115,18 @@ function mostUsed(names: ReadonlyMap<string, number>): string {
  *   *Same company?* on). The row then says the name may be theirs. Nothing is tied on a likeness.
  */
 export function bidCompanies(input: { bids: readonly MarketBid[]; builders: readonly CityBuilders[]; book: AnswerBook | null; todayYmd: string }): BidCompany[] {
-  const since = marketBidsSince(input.todayYmd)
   const tallies = new Map<string, Tally>()
   for (const b of input.bids) {
-    if (isZzBidName(b.projectName)) continue
-    if (b.bidOn != null && (b.bidOn < since || b.bidOn > input.todayYmd)) continue
+    if (!bidCounts(b, input.todayYmd)) continue
     const seen = new Set<string>()
     const parties: Array<{ name: string | null; customerId: string | null }> = [
       { name: b.customerName, customerId: b.customerId },
       { name: b.gcName, customerId: null },
     ]
     for (const p of parties) {
-      const name = (p.name ?? '').trim()
-      if (name === '' || isZzTestName(name) || isBidPlatformBucket(name)) continue
-      const key = nameKey(name)
+      const key = bidPartyKey(p.name)
       if (!key) continue
+      const name = (p.name ?? '').trim()
       const t = tallies.get(key) ?? { key, names: new Map<string, number>(), customerIds: new Set<string>(), bidIds: new Set<string>(), won: 0, lastBidOn: null }
       tallies.set(key, t)
       // The customer's own spelling leads the old list's: it is the one the office keeps.
@@ -150,7 +135,7 @@ export function bidCompanies(input: { bids: readonly MarketBid[]; builders: read
       if (seen.has(key) || t.bidIds.has(b.id)) continue
       seen.add(key)
       t.bidIds.add(b.id)
-      if (WON.has(b.outcome ?? '')) t.won += 1
+      if (bidWon(b.outcome)) t.won += 1
       if (b.bidOn && b.bidOn > (t.lastBidOn ?? '')) t.lastBidOn = b.bidOn
     }
   }
