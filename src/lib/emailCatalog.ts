@@ -357,6 +357,17 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['the last of three says so'],
   },
   {
+    id: 'contract_signed_copy',
+    name: 'Signed copy to the signer',
+    group: 'estimates_contracts',
+    audience: 'team',
+    builtWhere: 'server',
+    sender: 'accept-contract',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Your signed copy: {{doc}} · Click Plumbing and Electrical',
+    variants: ['the PDF of the signed paper attached'],
+  },
+  {
     id: 'estimate_accepted_staff',
     name: 'Estimate accepted (staff notify)',
     group: 'estimates_contracts',

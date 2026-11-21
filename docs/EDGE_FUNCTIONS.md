@@ -176,6 +176,7 @@ when_to_read:
    - [send-contract-for-signature](#send-contract-for-signature)
    - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
    - [open-contract-form-pdf](#open-contract-form-pdf)
+   - [person-paper-pdf](#person-paper-pdf)
    - [contract-form-paper-entry](#contract-form-paper-entry)
    - [hours-statement-signing](#hours-statement-signing)
    - [complete-contract-form-office](#complete-contract-form-office)
@@ -3413,6 +3414,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 > **v2.8019 — a paper built from settings is never signed bare** (punch list #389): `clausePaperFor` throws `SETTINGS_PAPER_BARE` for a copy whose library document has a settings list, and the accept answers **409** `{ error, code: "settings_paper_bare" }` in those words whatever the page showed. Before this a throw from the clause read let a page that showed the body sign the body. The database refuses such a copy and its signing too (`contract_copy_refuses_bare_settings`, `20261120050000_paper_settings.sql`). `get-contract-for-signer` and `gc-trade-portal` read through the same helper and are deployed with it. Tests `src/lib/contracts/clausePaperEdge.test.ts`. **Deploy**: `accept-contract`, `get-contract-for-signer`, `gc-trade-portal`.
 
+> **v2.8016 — the signer's copy, and a plain paper's PDF** (punch list #376): once the signature row has committed, and for anything but a signed hours statement, the function reads the row again and calls `sendSignerCopy` ([`_shared/personPaperSignedCopy.ts`](../supabase/functions/_shared/personPaperSignedCopy.ts)). A paper of plain words or clauses gets its PDF drawn ([`_shared/personPaperPdf.ts`](../supabase/functions/_shared/personPaperPdf.ts)), kept in `contract-form-pdfs` at `<paper id>/signed-paper.pdf`, and its place written to `signed_pdf_storage_path`. The signer of an agreement whose paper kept an address is emailed the PDF once (`signed_copy_sent_at`); an agreement that is a form sends its filled PDF, and a two-party form sends none until the office's half is done. Never an hours statement, a W-9, a certificate or a licence (`signedCopyHold`). Best effort inside a try, eight seconds at most: a signature never fails for its copy. New secret read: `RESEND_API_KEY`. Migration `20261120134000` is pushed first; ahead of it the read answers nothing and no copy goes.
+
 > **v2.7995 — the audience `outside`** (punch list #403, step 3): `_shared/esignConsent.ts` takes a fourth audience, for a signer who is neither a customer nor a sub, such as a supply house's rep. The table's check took it in migration [`20261120010000`](./migrations/20261120010000_paper_party.md). `paperSigner.test.ts` holds the check's newest restatement, the functions' union, the app's union and the parse to the same four. The eight functions that bundle the file are redeployed after it merges, with no other change to what they do: `accept-contract`, `accept-estimate`, `sign-bid-room`, `sign-job-contract`, `sign-owner-records`, `submit-gc-trade-portal`, `submit-portal-request` and `submit-sub-portal`.
 
 > **v2.6411 — a signed hours statement** (punch list #212): once the signature row commits, a form row whose id an `hours_statements.contract_document_id` names moves that statement to `state = 'signed'` and keeps the days the worker typed into the stated boxes (`stated_<n>_day` · `_hours` · `_note`, read by `statedDaysFromFormValues` in `_shared/hoursStatementForm.ts`: a day in any shape they type, the hours a number, a row with no day dropped) as its `stated_days`, each stated by `<printed name>, <signing day>`. Its consent row is kept as `record_type = 'hours_statement'` with the statement's id. The body may carry `inPerson: true` (the page's `?inperson=1`), kept as the consent's `method = 'in_person'`. Best-effort after the signature; a failure is logged and the copy still stands signed. **Redeploy required.**
@@ -3487,6 +3490,20 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 > **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
+### person-paper-pdf
+
+**Purpose**: Open the PDF of a signed paper of plain words or clauses (punch list #376, v2.8016). A form's PDF opens through [open-contract-form-pdf](#open-contract-form-pdf), whose gate is unchanged.
+
+**Endpoint**: `POST /functions/v1/person-paper-pdf` — `{ person_contract_document_id }`, the caller's JWT.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the function reads the caller itself and refuses an archived account.
+
+**Behavior**: The caller must be a dev, the owner, an assistant or the controller, or an estimator who is not a digital twin and whose paper `estimator_reads_paper`, asked as the caller, says is with an outside company (`paperPdfRefusal` in `_shared/personPaperPdf.ts`; Taunya's call of 2026-11-21). The caller must also read the row through their own client. The paper must be signed, not a form, and have words of its own. A paper signed since v2.8016 has its PDF; an older one gets it drawn here and kept (`ensurePaperPdf`), the first time it is opened. Answers `{ ok, url, made }`: a 120-second link that downloads as `<document name> - <who> - signed.pdf`. It emails nobody.
+
+---
 
 ### open-contract-form-pdf
 
