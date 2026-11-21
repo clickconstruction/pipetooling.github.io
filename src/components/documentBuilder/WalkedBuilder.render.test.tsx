@@ -187,6 +187,22 @@ describe('WalkedBuilder', () => {
     expect(screen.getByRole('button', { name: 'Nothing to publish' })).toBeTruthy()
   })
 
+  it('adds two breach lines as two fields: typing in the second leaves the first, and each has its own way off', () => {
+    draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Photos and video, Elevated' }))
+    const add = screen.getByRole('button', { name: 'Add a breach line to Photos and video at Elevated' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    const fresh = () => screen.getAllByRole('textbox', { name: 'A breach line of Photos and video at Elevated' }).filter((f) => f.textContent === 'A new line.')
+    expect(fresh()).toHaveLength(2)
+    type(fresh()[1]!, 'A made-up second line.')
+    const fields = screen.getAllByRole('textbox', { name: 'A breach line of Photos and video at Elevated' }).map((f) => f.textContent)
+    expect(fields.slice(-2)).toEqual(['A new line.', 'A made-up second line.'])
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the breach line: A made-up second line.' }))
+    expect(fresh()).toHaveLength(1)
+    expect(screen.queryByText('A made-up second line.')).toBeNull()
+  })
+
   it('publishes the draft as the next revision, saving what was typed last first', async () => {
     const { io, onRecord } = draw()
     type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
