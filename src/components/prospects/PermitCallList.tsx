@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { EmptyState } from '../EmptyState'
 import { PermitChip } from '../bids/PermitChip'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { PermitAskFor } from './PermitAskFor'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import type { Researcher } from './PermitSkimDeck'
@@ -25,6 +26,7 @@ import {
   callNoteWords,
   callRowsShowing,
   callTags,
+  callWaitingWords,
   callWorkWords,
   lookAgainOn,
   openJobsTail,
@@ -45,6 +47,9 @@ import {
  * everyone and on a reload, and **Put back** undoes one. *Ask for* ([`PermitAskFor`]) shows what
  * was looked up about the name, grey until a person presses **Checked**, and stands empty with
  * the Google press for a name nobody looked up. A tag from a lookup nobody checked is an outline.
+ *
+ * Values in place: every count, day, amount and name in a row's lines is worked out, so each is
+ * drawn plain bold (`ValueSentence` over the kernel's marked sentence) and none is a press.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
 const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
@@ -306,9 +311,8 @@ export function PermitCallList({
                       ),
                     )}
                   </div>
-                  <div style={{ fontSize: '0.8125rem' }}>
-                    {callCountWords(call, reach, trendKnown)}
-                    {work ? ` ${work}` : ''}
+                  <div data-call-count style={{ fontSize: '0.8125rem' }}>
+                    <ValueSentence text={work ? `${callCountWords(call, reach, trendKnown)} ${work}` : callCountWords(call, reach, trendKnown)} />
                   </div>
                   {call.openJobs.length > 0 && (
                     <div style={{ fontSize: '0.8125rem' }}>
@@ -326,14 +330,28 @@ export function PermitCallList({
                             ) : (
                               where
                             )}
-                            {job.appliedOn ? `, applied ${shortDay(job.appliedOn, todayYmd)}` : ''}
+                            {job.appliedOn && (
+                              <>
+                                , applied <WorkedOutValue>{shortDay(job.appliedOn, todayYmd)}</WorkedOutValue>
+                              </>
+                            )}
                           </span>
                         )
                       })}
-                      {call.openJobs.length > 4 ? ` · and ${call.openJobs.length - 4} more` : ''}. {openJobsTail(call.openJobs.length)}
+                      {call.openJobs.length > 4 && (
+                        <>
+                          {' · and '}
+                          <WorkedOutValue>{call.openJobs.length - 4}</WorkedOutValue> more
+                        </>
+                      )}
+                      . {openJobsTail(call.openJobs.length)}
                     </div>
                   )}
-                  {history && <div style={{ fontSize: '0.8125rem' }}>{history}</div>}
+                  {history && (
+                    <div data-call-history style={{ fontSize: '0.8125rem' }}>
+                      <ValueSentence text={history} />
+                    </div>
+                  )}
                   <PermitAskFor name={call.name} city={city} lookup={call.lookup} unread={lookupsError != null} me={authUserId} nameOf={personOf} todayYmd={todayYmd} busyId={checkingId} onPress={(standing, verdict) => void checkFact(call, standing, verdict)} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: 6, flexWrap: 'wrap', gridColumn: isMobile ? '2' : undefined }}>
@@ -363,8 +381,8 @@ export function PermitCallList({
       )}
 
       {!loading && !error && showing === 'week' && list.length > shown.length && (
-        <div style={muted}>
-          {list.length - shown.length} more wait behind these. A name leaves the list when it is answered, the way a permit leaves the skim, and the next takes its place.
+        <div data-call-waiting style={muted}>
+          <ValueSentence text={callWaitingWords(list.length - shown.length)} />
         </div>
       )}
       {!loading && !error && showing !== 'week' && shown.length > visible.length && (
@@ -372,7 +390,11 @@ export function PermitCallList({
           Show {Math.min(PAGE, shown.length - visible.length)} more of {shown.length}
         </button>
       )}
-      {!loading && !error && builders.length > 0 && <div style={muted}>{callNoteWords({ city, trendKnown, hasApplications, recordsStart })}</div>}
+      {!loading && !error && builders.length > 0 && (
+        <div data-call-note style={muted}>
+          <ValueSentence text={callNoteWords({ city, trendKnown, hasApplications, recordsStart })} />
+        </div>
+      )}
 
       {answered.length > 0 && (
         <div style={{ display: 'grid', gap: 6 }}>
@@ -384,7 +406,9 @@ export function PermitCallList({
               {answered.map((a, i) => (
                 <div key={a.key} data-call-answered={a.key} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '9px 12px', borderTop: i === 0 ? 0 : '1px solid var(--border)', fontSize: '0.8125rem' }}>
                   <strong>{a.name}</strong>
-                  <span style={{ flex: '1 1 220px', minWidth: 0, color: 'var(--text-muted)' }}>{standingWords(a.standing, nameOf, todayYmd)}</span>
+                  <span style={{ flex: '1 1 220px', minWidth: 0, color: 'var(--text-muted)' }}>
+                    <ValueSentence text={standingWords(a.standing, nameOf, todayYmd)} />
+                  </span>
                   <button type="button" disabled={busyKey === a.key} aria-label={`Put ${a.name} back on the list`} onClick={() => void putBack(a.key, a.name)} style={linkPress}>
                     Put back
                   </button>

@@ -476,6 +476,19 @@ describe('DevelopmentTripsCard: deleted trips', () => {
     expect(screen.queryByText('Trip 3 is back.')).toBeNull()
   })
 
+  it('a put back of a trip somebody joined away since says where its days are, in the database’s words', async () => {
+    // A fold read before the join still offers Put back. The database refuses the trip (v2.8127), and the toast
+    // carries its words whole. The hook reads the site again after it, which the hook's own test holds.
+    const refusal = { code: '22023', message: 'Trip 3 was joined into Trip 7, which holds its days. To take the join back, press Split in two on Trip 7.' }
+    const trips = state({ deleted: [gone], save: vi.fn(async () => Promise.reject(refusal)) })
+    draw(trips)
+    fireEvent.click(screen.getByTestId('trips-deleted-fold'))
+    fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
+    await waitFor(() => expect(trips.save).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('The trip could not be put back: Trip 3 was joined into Trip 7, which holds its days. To take the join back, press Split in two on Trip 7.')).toBeTruthy()
+    expect(screen.queryByText('Trip 3 is back.')).toBeNull()
+  })
+
   it('the delete’s question says where the trip waits after its minute of Undo', () => {
     draw(state())
     fireEvent.click(screen.getByTestId('trip-row-press'))

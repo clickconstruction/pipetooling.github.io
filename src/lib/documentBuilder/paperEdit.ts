@@ -12,12 +12,11 @@
  *
  * Pure: no React, no supabase, no clock.
  */
-import { PAPER_OFF, type PaperDef, type PaperTopic, type PaperTopicLevel } from './documentBuilder'
+import { PAPER_NEW_LINE, PAPER_OFF, type PaperDef, type PaperTopic, type PaperTopicLevel } from './documentBuilder'
 import { paperDefProblems } from './definition'
 import { sameContents, type BuilderRecord } from './standing'
 
-/** What a new line reads until someone types over it. `paperDefProblems` does not let it be published. */
-export const PAPER_NEW_LINE = 'A new line.'
+export { PAPER_NEW_LINE }
 
 const BASIS_WORDS = ['basisAsk', 'basisHow', 'levelsTitle', 'siteFact'] as const
 type WordKey = keyof PaperDef['words']
@@ -75,7 +74,8 @@ function stricterThan(def: PaperDef, level: string): string[] {
  * The paper with the words at a path changed. A path that names nothing changes nothing.
  *
  * A breach line a stricter level keeps is the same words written again on that level. So a change to it here is made
- * there too, or the stricter level would show the old words as a rule of its own.
+ * there too, or the stricter level would show the old words as a rule of its own. A new line is on no other level:
+ * adding one writes it here alone, so a stricter level's own new line is left as it is.
  */
 export function withPaperWords(def: PaperDef, path: string, words: string): PaperDef {
   const was = paperWordsAt(def, path)
@@ -89,7 +89,7 @@ export function withPaperWords(def: PaperDef, path: string, words: string): Pape
   if (has(LEVEL_TEXT_FIELDS, c)) return withTopic(def, a, (t) => withLevel(t, b, (l) => ({ ...l, [c]: words })))
   if (c === 'site') return withTopic(def, a, (t) => withLevel(t, b, (l) => ({ ...l, site: setAt(l.site, Number(d), words) })))
   if (c === 'breach') {
-    const above = stricterThan(def, b)
+    const above = was === PAPER_NEW_LINE ? [] : stricterThan(def, b)
     return withTopic(def, a, (t) => {
       let next = withLevel(t, b, (l) => ({ ...l, breach: setAt(l.breach, Number(d), words) }))
       for (const id of above) next = withLevel(next, id, (l) => ({ ...l, breach: l.breach.map((x) => (x === was ? words : x)) }))
@@ -124,14 +124,14 @@ export function withPaperLine(def: PaperDef, listPath: string): PaperDef {
   return list && lines ? list.set(def, [...lines, PAPER_NEW_LINE]) : def
 }
 
-/** The paper with one line of a list gone. A breach line a stricter level keeps goes from that level too. */
+/** The paper with one line of a list gone. A breach line a stricter level keeps goes from that level too. A new line is on no other level. */
 export function withoutPaperLine(def: PaperDef, listPath: string, index: number): PaperDef {
   const list = listAt(listPath)
   const lines = list?.get(def)
   if (!list || !lines || index < 0 || index >= lines.length) return def
   const gone = lines[index]
   let next = list.set(def, lines.filter((_, i) => i !== index))
-  if (list.field === 'breach' && list.topic != null && list.level != null) {
+  if (list.field === 'breach' && gone !== PAPER_NEW_LINE && list.topic != null && list.level != null) {
     const topic = list.topic
     for (const id of stricterThan(def, list.level)) next = withTopic(next, topic, (t) => withLevel(t, id, (l) => ({ ...l, breach: l.breach.filter((x) => x !== gone) })))
   }

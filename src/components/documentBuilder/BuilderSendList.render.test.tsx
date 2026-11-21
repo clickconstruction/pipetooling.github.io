@@ -13,7 +13,7 @@ import { BuilderSendList } from './BuilderSendList'
 
 afterEach(cleanup)
 
-const sent = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: '2026-11-14', openedRevision: 1, ...over })
+const sent = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: '2026-11-14', openedRevision: 1, ...over })
 const party = (id: string, name: string, over: Partial<SendParty> = {}): SendParty => ({ id, name, page: { state: 'on' }, contacts: [{ name: `${name} Owner`, email: `owner@${id}.test`, role: 'owner' }], send: null, ...over })
 
 const PARTIES: SendParty[] = [
@@ -71,7 +71,7 @@ describe('BuilderSendList', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'A note to them' }), { target: { value: 'A made-up note.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send to Cy' }))
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
-    expect(props.onSend).toHaveBeenCalledWith(PARTIES[1], { name: 'Cy Doyle', email: 'cy@lonemesa.test', role: 'office' }, 'A made-up note.', 'first', false)
+    expect(props.onSend).toHaveBeenCalledWith(PARTIES[1], { name: 'Cy Doyle', email: 'cy@lonemesa.test', role: 'office' }, 'A made-up note.', 'first', false, null)
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'A note to them' })).toBeNull())
   })
 
@@ -141,6 +141,84 @@ describe('BuilderSendList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tell them it changed, Cedar Fork Drain' }))
     await waitFor(() => expect(next.onSend).toHaveBeenCalledTimes(1))
     expect(vi.mocked(next.onSend).mock.calls[0]?.[3]).toBe('changed')
+  })
+
+  it('sends again to the person the send went to, not a namesake, and says who', async () => {
+    const owner = { name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }
+    const office = { name: 'Ana Pruitt', email: 'office@cedarfork.test', role: 'office' }
+    const twoAnas = party('cedarfork', 'Cedar Fork Drain', { contacts: [owner, office], send: sent({ contactEmail: 'office@cedarfork.test' }) })
+    const props = draw({ parties: [twoAnas] })
+    const line = row('cedarfork').querySelector('[data-goes-to]') as HTMLElement
+    expect(line.textContent).toBe('It goes to Ana Pruitt at office@cedarfork.test.')
+    const again = screen.getByRole('button', { name: 'Send it again, Cedar Fork Drain' })
+    expect(again.getAttribute('aria-describedby')).toBe(line.id)
+    fireEvent.click(again)
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(props.onSend).mock.calls[0]?.[1]).toEqual(office)
+  })
+
+  it('does not send again to someone else once the person it went to is off the record', () => {
+    const gone = party('cedarfork', 'Cedar Fork Drain', { contacts: [{ name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }], send: sent({ contactEmail: 'office@cedarfork.test' }) })
+    const props = draw({ parties: [gone] })
+    const again = screen.getByRole('button', { name: 'Send it again, Cedar Fork Drain' }) as HTMLButtonElement
+    expect(again.disabled).toBe(true)
+    expect(again.style.background).toBe(DEAD_PRESS_FILL)
+    expect((row('cedarfork').querySelector('[data-goes-to="nobody"]') as HTMLElement).textContent).toBe('Ana Pruitt at office@cedarfork.test is no longer on the record of Cedar Fork Drain. Take it off their page, then send it to someone who is.')
+    fireEvent.click(again)
+    expect(props.onSend).not.toHaveBeenCalled()
+    expect((screen.getByRole('button', { name: 'Take it off the page of Cedar Fork Drain' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('asks a GC\u2019s send what it is about, and sends the job that was picked', async () => {
+    const gc = party('northgate', 'Northgate Builders', { contacts: [{ name: 'Dana Whitlock', email: 'dana@northgate.test' }], jobs: [{ id: 'j1', label: 'Pike Street clinic · Job 1180' }] })
+    const props = draw({ parties: [gc], showAbout: true, noun: ['GC', 'GCs'] })
+    fireEvent.click(screen.getByRole('button', { name: 'Send it to Northgate Builders' }))
+    const about = screen.getByRole('combobox', { name: 'What it is about' }) as HTMLSelectElement
+    expect([...about.options].map((o) => o.textContent)).toEqual(['All their jobs with you', 'Pike Street clinic · Job 1180'])
+    fireEvent.change(about, { target: { value: 'j1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana' }))
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(props.onSend).mock.calls[0]?.[5]).toBe('j1')
+  })
+
+  it('sends about all their jobs when nobody picks, and never asks a trade', async () => {
+    const gc = party('northgate', 'Northgate Builders', { contacts: [{ name: 'Dana Whitlock', email: 'dana@northgate.test' }], jobs: [{ id: 'j1', label: 'Pike Street clinic · Job 1180' }] })
+    const props = draw({ parties: [gc], showAbout: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Send it to Northgate Builders' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana' }))
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(props.onSend).mock.calls[0]?.[5]).toBeNull()
+    cleanup()
+    draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Send it to Lone Mesa Excavation' }))
+    expect(screen.queryByRole('combobox', { name: 'What it is about' })).toBeNull()
+  })
+
+  it('finds a party by name in a long list, and says how many more there are', () => {
+    const many = Array.from({ length: 15 }, (_, i) => party(`gc${i}`, `Made-up Builders ${i}`))
+    draw({ parties: [...many, party('northgate', 'Northgate Builders')], findWords: 'Find a GC' })
+    expect(document.querySelectorAll('[data-send-party]')).toHaveLength(12)
+    expect(screen.getByText('4 more. Find a GC to see the rest.')).toBeTruthy()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a GC' }), { target: { value: 'north' } })
+    expect([...document.querySelectorAll('[data-send-party]')].map((r) => r.getAttribute('data-send-party'))).toEqual(['northgate'])
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a GC' }), { target: { value: 'nobody at all' } })
+    expect(screen.getByText('Nobody matches \u2018nobody at all\u2019.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(document.querySelectorAll('[data-send-party]')).toHaveLength(12)
+    // The one press still counts everyone who is ready, found or not.
+    expect(screen.getByRole('button', { name: 'Send to 16 trades who are ready' })).toBeTruthy()
+  })
+
+  it('asks before the one press when its caller wants that, and sends nothing on a no', async () => {
+    const beforeBatch = vi.fn(async (_ready: SendParty[]) => false)
+    const props = draw({ beforeBatch })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to 2 trades who are ready' }))
+    await waitFor(() => expect(beforeBatch).toHaveBeenCalledTimes(1))
+    expect(beforeBatch.mock.calls[0]?.[0]?.map((p) => p.id)).toEqual(['lonemesa', 'pecos'])
+    expect(props.onSend).not.toHaveBeenCalled()
+    beforeBatch.mockResolvedValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Send to 2 trades who are ready' }))
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(2))
   })
 
   it('names the reason when one send is refused', async () => {

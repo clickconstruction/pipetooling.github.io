@@ -153,6 +153,9 @@ describe('the Schedule look', () => {
     const moved = Array.from(document.querySelectorAll('[role="img"] [data-time-line-moved]')) as HTMLElement[]
     expect(moved.length).toBeGreaterThan(0)
     expect(moved.every((m) => /^moved \d+ days?$/.test(m.textContent ?? ''))).toBe(true)
+    // They sit under the marks, slid back by the share they are anchored at, so they never leave the row at any width.
+    expect(moved.every((m) => /^\d+(\.\d+)?%$/.test(m.style.left) && m.style.transform === `translateX(-${m.style.left})`)).toBe(true)
+    expect(moved.every((m) => (m.parentElement as HTMLElement).dataset.moved === '')).toBe(true)
     expect(document.querySelector('.scLineName')?.textContent).not.toMatch(/moved/)
     // Today is a line on every row, and the legend names it.
     expect(document.querySelectorAll('[role="img"] .scLineToday').length).toBe(rows.length)
@@ -422,6 +425,22 @@ describe('the Schedule look', () => {
     fireEvent.click(within(card('top')).getByRole('button', { name: 'Open' }))
     expect(card('top').querySelector('[data-start-check-decide]')).toBeNull()
     expect(within(card('top')).queryByRole('button', { name: 'Go or hold' })).toBeNull()
+  })
+
+  it('a site where no stage has a day yet says so behind the line-of-time press, and what will draw one', async () => {
+    // Lists are written, and nobody has planned our days or kept a day of theirs: the line has nothing to draw.
+    const db = seeded({ lines: [line('top', 'j1', 'Top Out', null), line('under', 'j2', 'Underground', null)] })
+    db.rows = { ...db.rows, theirDays: [] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Show it on a line of time' }))
+    expect(document.querySelector('[data-schedule-time-line]')).toBeNull()
+    // The press opened something: before, the link turned to Hide and the screen stayed as it was.
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toContain('No stage here has a day to draw yet.')
+    expect(empty.textContent).toContain('Plan our days on a stage below, and its row shows here.')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the line of time' }))
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
   })
 
   it('a near site reads two days of notice by default', async () => {

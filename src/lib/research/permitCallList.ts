@@ -3,7 +3,9 @@
  * each with its reasons as tags and no score. The rules here: who may be on the list, what each
  * tag means, the order, the chips over it, and how an answer takes a name off. Every count is
  * defined on the card (`to-dos/permits-market-page/README.md`, How each number is counted), so
- * a hand count can check it. No React, no Supabase.
+ * a hand count can check it. A sentence here marks each count, day, amount and name in it with
+ * `val` (values in place, `src/lib/valuesInPlace.ts`), and the screen draws it with
+ * `ValueSentence`. A toast cannot draw a value apart, so its words stay plain. No React, no Supabase.
  */
 import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -12,6 +14,7 @@ import { BUILDER_KIND_WORDS, builderName, isBuilderKind, placeOf, type BuilderKi
 import { marketJobs, marketPermitsSince, type MarketPermit } from './permitMarket'
 import { lookupOrder, lookupTag, type BuilderLookup } from './builderLookups'
 import type { SitePermit } from './permitPublic'
+import { val } from '../valuesInPlace'
 
 // ---------- the answers ----------
 
@@ -402,19 +405,23 @@ export function callTags(row: CallRow, todayYmd: string): CallTag[] {
   return tags
 }
 
-/** "14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before." `reach` is `reachWords`. */
+/**
+ * "14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before." `reach` is
+ * `reachWords`, and the day in "since Aug 26" is a value too.
+ */
 export function callCountWords(row: Pick<CallRow, 'permits' | 'last90' | 'prior90'>, reach: string | null, known: boolean): string {
-  const first = `${row.permits} job${row.permits === 1 ? '' : 's'} ${reach ?? 'we can see'}`
-  return known ? `${first}, ${row.last90} in the last ${CALL_TREND_DAYS} days against ${row.prior90} in the ${CALL_TREND_DAYS} before.` : `${first}.`
+  const where = reach ? reach.replace(/^since (.+)$/, (_all, day: string) => `since ${val('since', day)}`) : 'we can see'
+  const first = `${val('jobs', `${row.permits} job${row.permits === 1 ? '' : 's'}`)} ${where}`
+  return known ? `${first}, ${val('last90', String(row.last90))} in the last ${CALL_TREND_DAYS} days against ${val('prior90', String(row.prior90))} in the ${CALL_TREND_DAYS} before.` : `${first}.`
 }
 
 /** "Mostly commercial remodels. Typical job $400k to $1.2M." Null when neither can be said. */
 export function callWorkWords(row: Pick<CallRow, 'mostly' | 'typical'>): string | null {
   const parts: string[] = []
-  if (row.mostly) parts.push(`Mostly ${row.mostly.toLowerCase()}.`)
+  if (row.mostly) parts.push(`Mostly ${val('mostly', row.mostly.toLowerCase())}.`)
   const low = row.typical ? shortMoney(row.typical.low) : null
   const high = row.typical ? shortMoney(row.typical.high) : null
-  if (low && high) parts.push(low === high ? `Typical job ${low}.` : `Typical job ${low} to ${high}.`)
+  if (low && high) parts.push(`Typical job ${val('typical', low === high ? low : `${low} to ${high}`)}.`)
   return parts.length > 0 ? parts.join(' ') : null
 }
 
@@ -426,8 +433,8 @@ export function openJobsTail(jobs: number): string {
 /** "We priced 4 of their jobs and won none. The last was Jun 3." Null when we never bid them. */
 export function callHistoryWords(row: Pick<CallRow, 'bids' | 'won' | 'lastBidOn'>, todayYmd: string): string | null {
   if (row.bids === 0) return null
-  const priced = `We priced ${row.bids} of their job${row.bids === 1 ? '' : 's'} and won ${row.won === 0 ? 'none' : row.won}.`
-  return row.lastBidOn ? `${priced} The last was ${shortDay(row.lastBidOn, todayYmd)}.` : priced
+  const priced = `We priced ${val('bids', String(row.bids))} of their job${row.bids === 1 ? '' : 's'} and won ${val('won', row.won === 0 ? 'none' : String(row.won))}.`
+  return row.lastBidOn ? `${priced} The last was ${val('day', shortDay(row.lastBidOn, todayYmd))}.` : priced
 }
 
 /** The two tiles the list fills: how many to call this week, and their jobs open now. */
@@ -437,6 +444,11 @@ export function callTiles(week: readonly CallRow[]): Array<{ value: string; word
     { value: String(week.length), words: week.length === 1 ? 'builder to call this week' : 'builders to call this week' },
     { value: String(open), words: open === 1 ? 'of their jobs is applied for, with no plumber yet' : 'of their jobs are applied for, with no plumber yet' },
   ]
+}
+
+/** Under This week's five: how many more names wait behind them, and how a name leaves. */
+export function callWaitingWords(waiting: number): string {
+  return `${val('waiting', String(waiting))} more wait${waiting === 1 ? 's' : ''} behind these. A name leaves the list when it is answered, the way a permit leaves the skim, and the next takes its place.`
 }
 
 /**
@@ -457,7 +469,7 @@ export const CALL_ANSWERS_UNREAD = 'A name already answered may be on this list 
 /** The line under the list: what the order is, and what a city's records leave out. */
 export function callNoteWords(input: { city: string; trendKnown: boolean; hasApplications: boolean; recordsStart: string | null }): string {
   const order = 'A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.'
-  const short = input.trendKnown ? '' : ` ${input.city}’s records${input.recordsStart ? ` start ${input.recordsStart}` : ' are short'}, so nothing here reads as picking up or new yet.`
+  const short = input.trendKnown ? '' : ` ${input.city}’s records${input.recordsStart ? ` start ${val('day', input.recordsStart)}` : ' are short'}, so nothing here reads as picking up or new yet.`
   const issued = input.hasApplications ? '' : ` ${input.city} shows only issued permits, so no job is open here by the time we see it.`
   return `${order}${short}${issued}`
 }
@@ -474,8 +486,8 @@ export function standingWords(standing: CallStanding, nameOf: (userId: string) =
   const said = standing.answer === 'pursue' ? 'Pursuing' : 'Not for us'
   const why = standing.row.reason.trim() ? `, ${standing.row.reason.trim()}` : ''
   const day = standing.row.look_again_on
-  const until = !day ? 'Off the list.' : day > todayYmd ? `Off the list until ${shortDay(day, todayYmd)}, and then until it applies for a new job.` : 'Off the list until it applies for a new job.'
-  return `${said}${why}. ${who}, ${shortDay(answeredDay(standing.row), todayYmd)}. ${until}`
+  const until = !day ? 'Off the list.' : day > todayYmd ? `Off the list until ${val('until', shortDay(day, todayYmd))}, and then until it applies for a new job.` : 'Off the list until it applies for a new job.'
+  return `${said}${why}. ${val('who', who)}, ${val('day', shortDay(answeredDay(standing.row), todayYmd))}. ${until}`
 }
 
 // ---------- pursue ----------

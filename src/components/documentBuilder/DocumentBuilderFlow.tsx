@@ -31,6 +31,7 @@ import {
   levelFacts,
   nextLabel,
   nextStep,
+  ownBreachLines,
   paperLevelLine,
   paperStops,
   prevStep,
@@ -219,7 +220,10 @@ function EditLines({ edit, listPath, lines, label, tone }: { edit: FlowEdit; lis
   )
 }
 
-export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen }) {
+/** Look only, as someone holding a builder's link walks it: the last step has no press, and says this under Back. */
+export type FlowLook = { lastStep: string }
+
+export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook }) {
   const [held, setHeld] = useState<Held>(() => ({ settings: startSettings(def), flow: startFlow() }))
   const { settings, flow } = held
   const steps = flowSteps(def)
@@ -307,6 +311,8 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
                 title={s.name}
                 aria-label={`Step ${i + 1}: ${s.name}`}
                 aria-current={now ? 'step' : undefined}
+                // A dash is the paper's shape and not a 44 px press: `index.css` leaves this class out of the tab's rule.
+                className="documentBuilderStep"
                 onClick={() => go(i)}
                 style={{ flex: '1 1 0', minWidth: 0, height: 24, border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
               >
@@ -363,7 +369,7 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
             onPick={(stop) => setTopic(topic.key, stop)}
           />
         ) : null}
-        <div style={{ display: 'grid', gridTemplateColumns: flow.step > 0 ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: flow.step > 0 && !(look && flow.step === last) ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 8 }}>
           {flow.step > 0 ? (
             <button type="button" style={SECOND_PRESS} onClick={() => go(prevStep(def, settings, flow))}>
               Back
@@ -373,14 +379,14 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
             <button type="button" disabled={nextShut} style={mainPress(nextShut)} onClick={() => go(nextStep(def, settings, flow))}>
               {nextLabel(def, settings, flow)}
             </button>
-          ) : (
+          ) : look ? null : (
             <button type="button" disabled={confirm.dead} style={mainPress(confirm.dead)} onClick={() => change({ flow: { ...flow, done: true } })}>
               {confirm.label}
             </button>
           )}
         </div>
         {step.kind === 'notice' && flow.ackAt == null ? <p style={MUTED}>Tick the box to go on.</p> : null}
-        {flow.step === last ? <p style={MUTED}>{confirm.note}</p> : null}
+        {flow.step === last ? <p style={MUTED}>{look ? look.lastStep : confirm.note}</p> : null}
       </div>
     </div>
   )
@@ -540,7 +546,6 @@ function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: Paper
   const site = siteLines(def, topic.key, at)
   const tone = levelTone(def, at)
   const here = `topic.${topic.key}.${at}`
-  const levelLines = at === PAPER_OFF ? [] : (topic.levels[at]?.breach ?? [])
   const where = `${topic.label} at ${stopShortName(def, at)}`
   return (
     <>
@@ -578,23 +583,24 @@ function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: Paper
                 </LevelChip>
               </li>
             ) : null}
-            {breach.own.map((line) =>
-              edit ? (
-                // Kept by its place in the level's own list, so the line being typed is never drawn anew.
-                <Line key={`own-${levelLines.indexOf(line)}`} tone={tone}>
-                  <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
-                    <W edit={edit} path={`${here}.breach.${levelLines.indexOf(line)}`} text={line} label={`A breach line of ${where}`} />
-                    <button type="button" aria-label={`Remove the breach line: ${line}`} onClick={() => edit.onRemoveLine(`${here}.breach`, levelLines.indexOf(line))} style={CTL}>
-                      ×
-                    </button>
-                  </span>
-                </Line>
-              ) : (
-                <Line key={line} glide={`breach:${line}`} tone={tone}>
-                  {line}
-                </Line>
-              ),
-            )}
+            {edit
+              ? // Named by its place in the level's own list, never looked up by its words: two new lines read the same
+                // and are two fields. Kept by that place too, so the line being typed is never drawn anew.
+                ownBreachLines(def, topic.key, at).map((line) => (
+                  <Line key={`own-${line.index}`} tone={tone}>
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'start', justifyContent: 'space-between' }}>
+                      <W edit={edit} path={`${here}.breach.${line.index}`} text={line.words} label={`A breach line of ${where}`} />
+                      <button type="button" aria-label={`Remove the breach line: ${line.words}`} onClick={() => edit.onRemoveLine(`${here}.breach`, line.index)} style={CTL}>
+                        ×
+                      </button>
+                    </span>
+                  </Line>
+                ))
+              : breach.own.map((line) => (
+                  <Line key={line} glide={`breach:${line}`} tone={tone}>
+                    {line}
+                  </Line>
+                ))}
             {edit ? (
               <li key="::add">
                 <button type="button" aria-label={`Add a breach line to ${where}`} onClick={() => edit.onAddLine(`${here}.breach`)} style={CTL}>

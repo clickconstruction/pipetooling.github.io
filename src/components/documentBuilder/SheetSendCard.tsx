@@ -40,7 +40,7 @@ type Props = {
   sheetId: string | null
   /** The sheet's published revision. 0 before the first publish. */
   revision: number
-  /** Why the usual is unread, or an empty string once the agent's check is marked. */
+  /** Why the sheet goes only with *Send it anyway*: nobody checked the revision of the usual it went out on (`sheetUnreadWords`). An empty string once someone did. */
   unread: string
   io?: SheetSendIo
 }

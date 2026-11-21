@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { FilledBuilder } from '../documentBuilder/FilledBuilder'
+import { BuilderGcSendCard } from '../documentBuilder/BuilderGcSendCard'
 import { WalkedBuilder as WalkedEditor } from '../documentBuilder/WalkedBuilder'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -31,7 +32,7 @@ import { parsePaperDef } from '../../lib/documentBuilder/definition'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
 import { filledRowChips } from '../../lib/documentBuilder/sheetScreen'
-import { builderRowPress, builderStandingChips, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import { builderRowPress, builderStandingChips, builderUnreadWords, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 
@@ -125,7 +126,8 @@ function WalkedBuilder({ entry, rec, onBack, onRecord }: { entry: DocumentBuilde
   if (parsed.ok) {
     return (
       <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} />
+        {/* Step 9: under the map on the left, the send of the published builder to GCs. */}
+        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} share={<BuilderGcSendCard builderKey={entry.id} revision={rec.revision} unread={builderUnreadWords(rec)} />} />
         <p style={FINE}>
           {`${parsed.def.title} on job ${parsed.def.job}, for ${parsed.def.protectedParty}. Nobody is asked to sign. The disclaimer, the breach lines, the site lines and the meanings are placeholders until an attorney has read them. No clause wording is on this page.`}
         </p>
@@ -160,7 +162,19 @@ function BuilderBar({ entry, rec, onBack }: { entry: DocumentBuilderEntry; rec: 
   )
 }
 
-export default function DocumentsBuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Props) {
+/**
+ * The tab, inside the one element `index.css` knows it by: `.documentBuilderTab` makes every press in it 44 px tall
+ * on a phone. The element draws nothing of its own.
+ */
+export default function DocumentsBuilderTab(props: Props) {
+  return (
+    <div className="documentBuilderTab" style={{ display: 'contents' }}>
+      <BuilderTab {...props} />
+    </div>
+  )
+}
+
+function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Props) {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const open = openBuilderFromSearch(location.search)

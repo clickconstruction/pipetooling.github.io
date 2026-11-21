@@ -33,6 +33,7 @@ vi.mock('../../lib/supabase', () => {
 
 import { PersonContractSignedRecordModal } from './PersonContractSignedRecordModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { paperSeal } from '../../lib/contracts/jobPaperSettings'
 
 const KEPT = {
   paperId: 'doc-msa',
@@ -62,6 +63,33 @@ describe('PersonContractSignedRecordModal · clauses', () => {
     expect(screen.getByText('Between Click Construction and Hillside Excavation.')).toBeTruthy()
     expect(screen.getByText('Version 3, with the Sitework exhibit.')).toBeTruthy()
     expect(screen.getByText('The full agreement')).toBeTruthy()
+  })
+
+  it('draws no settings for a paper built from clauses alone', async () => {
+    db.kept = KEPT
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-1" onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Utilities: a locate before any dig.')).toBeTruthy())
+    expect(document.querySelector('[data-signed-settings]')).toBeNull()
+  })
+
+  it('draws the settings a job’s paper was signed with, in the plain words kept on the copy, and that its seal holds (punch list #389)', async () => {
+    const paper = { ...KEPT, between: null, exhibit: [], exhibitFor: [], settings: { photos: 'standard' }, fields: {}, jobPaperId: 'row-1', settingsRevision: 2, said: [{ key: 'photos', label: 'Photos and video', choice: 'Standard', says: 'Placeholder line for the standard choice.', out: false }] }
+    db.kept = { ...paper, sha256: await paperSeal(paper) }
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-1" onClose={() => {}} />)
+    const block = await screen.findByRole('region', { name: 'The job’s settings when this was signed' })
+    expect(block.textContent).toContain('Photos and video')
+    expect(block.textContent).toContain('Standard')
+    expect(block.textContent).toContain('Placeholder line for the standard choice.')
+    expect(block.textContent).toContain('Revision 2')
+    await waitFor(() => expect(document.querySelector('[data-seal]')?.getAttribute('data-seal')).toBe('holds'))
+    expect(screen.getByText('Term: one year from signing.')).toBeTruthy()
+  })
+
+  it('says so when a signed copy’s words no longer match its seal', async () => {
+    const paper = { ...KEPT, between: null, exhibit: [], exhibitFor: [], settings: { photos: 'standard' }, fields: {}, jobPaperId: 'row-1', settingsRevision: 1, said: [] }
+    db.kept = { ...paper, sha256: '0'.repeat(64) }
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-1" onClose={() => {}} />)
+    expect((await screen.findByRole('alert')).textContent).toBe('The seal does not match these words. Tell the developer.')
   })
 
   it('draws the body as before for a copy that kept no clauses', async () => {

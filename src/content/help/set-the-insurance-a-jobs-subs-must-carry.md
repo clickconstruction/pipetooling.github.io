@@ -2,7 +2,7 @@
 title: set the insurance a job's subs must carry
 category: Office
 roles: dev
-keywords: insurance, send, send the sheet, send it again, tell them it changed, take it off their page, not opened yet, their page is off, send it anyway, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
+keywords: insurance, send, send the sheet, send it again, reminder, who it goes to, tell them it changed, take it off their page, not opened yet, their page is off, send it anyway, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
 where: /documents?tab=builder&builder=insurance
 ---
 The insurance builder makes one sheet for each job you run as the GC. The sheet tells a sub what insurance to carry on that job.
@@ -47,8 +47,12 @@ A list **Before this can be published** shows while something is missing. Fix ea
 - {{chip:green|Gets it, as revision 2}} means that job's sheet is published again with the change.
 - A held job keeps its sheet as it is. Its chip says why.
 - A job with changes of its own that are not published is held. Publish that job to bring it up.
+- Each job is read again when you press. A change a teammate saved a moment ago is kept, and that job is held.
+- After the press, the card counts the jobs held. Each held job's row says why.
 
 A field a job has changed keeps the job's own words.
+
+A yellow panel may say the sheet changed somewhere else. See [When someone else changed it](/help/use-the-document-builder#when-someone-else-changed-it).
 
 ## Set one job's sheet
 
@@ -70,6 +74,7 @@ The card on the left counts what this job changed from your usual. Each row has 
 
 - {{button:outline-blue|Back to the usual}} drops the job's own words for that field.
 - {{button:outline-blue|Make this the usual}} copies the job's words into your usual draft. Publish your usual to send them to the other jobs.
+- On the line under the title, it leaves this job's name out. Every other job then reads the line with its own name.
 - {{button:outline-blue|Put it back}} asks again for a coverage this job had stopped asking for.
 - {{button:outline-blue|Take it off}} removes a line added for this job.
 
@@ -138,6 +143,8 @@ The trade gets an email with a link to their own page. The sheet is on that page
 
 A sheet your agent has not checked goes only after you tick **Send it anyway**.
 
+The check is read on the revision of your usual that the job's sheet went out on. A newer usual your agent checked does not cover an older sheet. Publish the job's sheet again to bring it onto your newest usual.
+
 ## Send to every trade that is ready
 
 One press under the list sends to every trade that is ready. The button says how many.
@@ -154,6 +161,10 @@ A trade is ready when its page is on and someone there has an email. The rest ar
 - {{button:outline-blue|Send it again}} sends a reminder.
 - {{button:outline-blue|Tell them it changed}} tells them of the new revision.
 - {{button:outline-blue|Take it off their page}} ends the send. The sheet leaves their page.
+
+A reminder goes to the person the sheet was sent to. The line under the buttons names that person and their email.
+
+That person may have left the company record. The two buttons then go grey, and the line says so. Press **Take it off their page**, then send the sheet to someone who is on the record.
 
 Each send is kept under [Sent copies](/documents?tab=sent) on Documents.
 

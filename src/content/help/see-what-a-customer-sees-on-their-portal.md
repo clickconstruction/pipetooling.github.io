@@ -80,6 +80,18 @@ The **Dispatch inbox** gets visit requests, a GC's *Need other dates?*, and a GC
 
 The form already knows their number. The form shows ***We'll call you at (512) 555-0142***. The number comes from the customer record, or else the newest job's phone. A *use a different number* link sits beside it. A number is required, because it is what your Call button dials. After sending, they read *We'll call you at … as soon as we can during office hours*. So keep that promise. Push notifications go to the group. To also email specific people, the owner or a dev adds them. That is under **Settings → Emails & reports → Portal requests**.
 
+## A builder you sent a GC
+
+A GC you sent the Sub NDA finds it on their page. The block reads **Secrecy on your jobs**, or **Secrecy on this job** under a job's name.
+
+- {{chip:blue|New}} shows until they open it.
+- {{chip:yellow|Changed since you opened it}} shows after you publish a newer revision.
+- **Open the Sub NDA builder** opens it right there. The GC picks a level and reads what it asks.
+
+A GC can look only. Nothing they pick is sent to you. Opening it tells you the day, on the send's row in the builder.
+
+Sending it is in [use the document builder](/help/use-the-document-builder#send-the-sub-nda-to-a-gc).
+
 ## More on the portal
 
 - The link, the gear and whether they have looked are in [share a customer their portal](/help/share-a-customer-their-portal).

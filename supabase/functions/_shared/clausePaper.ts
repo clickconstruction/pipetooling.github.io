@@ -10,6 +10,11 @@
  * clauses in the trade's portal, with the exhibit for its package's one trade, and our contract in the customer's.
  * Their sign verbs check the revision in SQL (`20261013000000_gc_clause_papers.sql`).
  *
+ * Since punch list #389 step 3 a job's paper built from settings reads the same way. The copy names its required paper
+ * (`job_required_paper_id`), `job_paper_clauses` (`20261120163000_settings_on_the_job.sql`) puts the paper together for
+ * that row's picks, and the paper carries the picks, their plain words and a seal. The accept signs only at the seal the
+ * page showed, and the database refuses a frozen paper that is not what it reads at that moment.
+ *
  * No imports, so the app's tests import it as the functions do.
  */
 
@@ -32,6 +37,17 @@ export interface ClausePaperJson {
   exhibitFor: string[]
   /** *Click Construction and Hillside Excavation* on a company's paper, *y* in Spanish; null on a person's, which draws none. */
   between: string | null
+  /**
+   * A job's paper built from settings (#389 step 3) also carries these, exactly as `job_paper_clauses` hands them back:
+   * the job's picks and blanks, the picks in plain words, the seal of the words, and the required paper it is read for.
+   * Absent on every other paper.
+   */
+  settings?: unknown
+  fields?: unknown
+  said?: unknown
+  sha256?: string
+  jobPaperId?: string
+  settingsRevision?: number
 }
 
 /** What the signed copy keeps: the paper as it read when signed, with its heading. */
@@ -71,11 +87,31 @@ export function isSettingsPaperBare(e: unknown): boolean {
   return e instanceof Error && e.message === SETTINGS_PAPER_BARE
 }
 
+/**
+ * A job's paper built from settings that the database will not put together now: taken off the job, not read by an
+ * attorney at this revision, or a wording missing. The signer reads these words. The database's own reason rides on
+ * the error as `reason`, for the function's log and never for the page. Thrown, never answered as null.
+ */
+export const JOB_PAPER_NOT_READY = 'This paper is not ready to sign yet. Ask the office that sent it.'
+
+/** True for the refusal above. */
+export function isJobPaperNotReady(e: unknown): boolean {
+  return e instanceof Error && e.message === JOB_PAPER_NOT_READY
+}
+
+function notReady(reason: unknown): Error {
+  const e = new Error(JOB_PAPER_NOT_READY) as Error & { reason?: string }
+  e.reason = typeof reason === 'string' ? reason : ''
+  return e
+}
+
 /** A copy whose paper may be built from clauses. */
 export interface ClauseDoc {
   applied_contract_template_document_id: string | null
   company_id: string | null
   form_template_id: string | null
+  /** The required paper this copy is one person's copy of (`job_required_papers`). It carries a settings paper's picks. */
+  job_required_paper_id?: string | null
 }
 
 type Result = PromiseLike<{ data: unknown; error: unknown }>
@@ -99,7 +135,16 @@ export function readClausePaper(json: unknown): ClausePaperJson | null {
   if (!Array.isArray(o.clauses) || !Array.isArray(o.exhibit) || !Array.isArray(o.exhibitFor)) return null
   if (!o.clauses.every(isLine) || !o.exhibit.every(isLine) || !o.exhibitFor.every((t) => typeof t === 'string')) return null
   const between = typeof o.between === 'string' && o.between.trim() ? o.between : null
-  return { paperId: o.paperId, revision: o.revision, lang: o.lang, clauses: o.clauses, exhibit: o.exhibit, exhibitFor: o.exhibitFor, between }
+  return { paperId: o.paperId, revision: o.revision, lang: o.lang, clauses: o.clauses, exhibit: o.exhibit, exhibitFor: o.exhibitFor, between, ...jobPart(o) }
+}
+
+/**
+ * What a job's paper built from settings carries beside its clauses, untouched: the database compares the frozen copy
+ * with what it reads, so nothing here is trimmed, reordered or defaulted. Nothing for a paper with no seal.
+ */
+function jobPart(o: Partial<ClausePaperJson>): Partial<ClausePaperJson> {
+  if (typeof o.sha256 !== 'string' || typeof o.jobPaperId !== 'string' || typeof o.settingsRevision !== 'number') return {}
+  return { settings: o.settings, fields: o.fields, said: o.said, sha256: o.sha256, jobPaperId: o.jobPaperId, settingsRevision: o.settingsRevision }
 }
 
 /** A sign page's pair from its JSON, or null when it is not one: each language a paper's shape, both at its revision. */
@@ -122,13 +167,17 @@ export function readSignedClauses(json: unknown): SignedClauses | null {
 /**
  * The paper as it reads today for this copy, in this language. Null when the copy is not built from clauses: no library
  * document, a fillable form, nothing published yet, or no clause live. A read that fails throws, so a signing fails closed
- * rather than freezing nothing. A paper built from settings throws `SETTINGS_PAPER_BARE`, which a sign path must not
- * treat as a failed read.
+ * rather than freezing nothing. A paper built from settings is read for the job the copy names
+ * (`job_required_paper_id`). With no job it throws `SETTINGS_PAPER_BARE`, and when the database will not put the job's
+ * paper together it throws `JOB_PAPER_NOT_READY`. A sign path must treat neither as a failed read.
  */
 export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
   const paperId = doc.applied_contract_template_document_id
   if (!paperId) return null
-  await refuseSettingsPaper(admin, paperId)
+  if (await builtFromSettings(admin, paperId)) {
+    if (!doc.job_required_paper_id) throw new Error(SETTINGS_PAPER_BARE)
+    return jobPaper(admin, doc.job_required_paper_id, lang)
+  }
   if (doc.form_template_id) return null
   if (!(await builtFromClauses(admin, paperId))) return null
   let trades: string[] = []
@@ -165,11 +214,29 @@ export async function clausePaperPair(admin: ClauseAdmin, target: ClauseTarget):
   return en && es && en.revision === es.revision ? { revision: en.revision, en, es } : null
 }
 
-/** A paper with a settings list is refused before anything else is asked of it. */
-async function refuseSettingsPaper(admin: ClauseAdmin, paperId: string): Promise<void> {
+/** Whether the library document carries a settings list. Asked before anything else is asked of it. */
+async function builtFromSettings(admin: ClauseAdmin, paperId: string): Promise<boolean> {
   const paper = await admin.from('contract_template_documents').select('settings_def').eq('id', paperId).maybeSingle()
   if (paper.error) throw new Error('could not read the paper')
-  if ((paper.data as { settings_def?: unknown } | null)?.settings_def != null) throw new Error(SETTINGS_PAPER_BARE)
+  return (paper.data as { settings_def?: unknown } | null)?.settings_def != null
+}
+
+/** A portal's paper has no job to carry settings, so a paper with a settings list is refused there. */
+async function refuseSettingsPaper(admin: ClauseAdmin, paperId: string): Promise<void> {
+  if (await builtFromSettings(admin, paperId)) throw new Error(SETTINGS_PAPER_BARE)
+}
+
+/**
+ * A job's paper as the database puts it together for the required paper's picks, in this language, with its seal. The
+ * database refuses in words a row taken off, a paper the job cannot take and a paper that does not go together; each
+ * is `JOB_PAPER_NOT_READY` here. So is an answer that is not a sealed paper with a clause.
+ */
+async function jobPaper(admin: ClauseAdmin, requiredPaperId: string, lang: ClausePaperLang): Promise<ClausePaperJson> {
+  const res = await admin.rpc('job_paper_clauses', { p_required_paper_id: requiredPaperId, p_lang: lang })
+  if (res.error) throw notReady((res.error as { message?: unknown } | null)?.message)
+  const paper = readClausePaper(res.data)
+  if (!paper || typeof paper.sha256 !== 'string' || paper.revision < 1 || paper.clauses.length + paper.exhibit.length === 0) throw notReady('not a sealed paper')
+  return paper
 }
 
 /** Most library documents have no clauses: one small read settles it, and nothing more runs for them. */
@@ -190,11 +257,13 @@ async function assembled(admin: ClauseAdmin, target: ClauseTarget & { paperId: s
 
 /**
  * The accept's check. A paper not built from clauses signs as before. A paper built from clauses signs only at the
- * revision the page showed, and the update freezes what was signed.
+ * revision the page showed, and the update freezes what was signed. A job's paper built from settings signs only at
+ * the seal the page showed too: its picks can change with no new revision, and the seal is of the words read.
  */
-export function clauseFreeze(paper: ClausePaperJson | null, shownRevision: unknown, title: string): { ok: true; update: Record<string, unknown> } | { ok: false; error: string; code: 'paper_changed' } {
+export function clauseFreeze(paper: ClausePaperJson | null, shownRevision: unknown, title: string, shownSeal?: unknown): { ok: true; update: Record<string, unknown> } | { ok: false; error: string; code: 'paper_changed' } {
   if (!paper) return { ok: true, update: {} }
   if (shownRevision !== paper.revision) return { ok: false, error: PAPER_CHANGED, code: 'paper_changed' }
+  if (paper.sha256 !== undefined && shownSeal !== paper.sha256) return { ok: false, error: PAPER_CHANGED, code: 'paper_changed' }
   const kept: SignedClauses = { ...paper, title }
   return { ok: true, update: { paper_revision: paper.revision, clause_versions: kept } }
 }

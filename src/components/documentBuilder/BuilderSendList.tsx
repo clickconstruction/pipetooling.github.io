@@ -14,7 +14,9 @@ import type { BatchNoun } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { BuilderChip, BuilderChipTone } from '../../lib/documentBuilder/builders'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { resendPress, sendBatch, sendBatchOutcome, sendBox, sendChips, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { ABOUT_ALL_JOBS, aboutChoices, aboutJobId, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, shownParties, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { EmptyState } from '../EmptyState'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 type Props = {
   title: string
@@ -30,11 +32,16 @@ type Props = {
   noun: BatchNoun
   /** The note a send starts on. */
   defaultNote: string
-  /** For a GC: the row says what the send is about. */
+  /** For a GC: the row says what the send is about, and the box asks. */
   showAbout?: boolean
   /** What to say with nobody on the list. */
   emptyWords: string
-  onSend: (party: SendParty, to: PartyContact, note: string, why: 'first' | ResendWhy, anyway: boolean) => Promise<Landed<unknown>>
+  /** A long list's find box, by its label: *Find a GC*. With it the list shows who was sent to and the first few others until someone types. */
+  findWords?: string
+  /** Asked before the one press sends to everyone ready. A no sends nothing. */
+  beforeBatch?: (ready: SendParty[]) => Promise<boolean>
+  /** `about` is the job a first send to a GC is about, or null for all their jobs. A second send keeps what the first was about. */
+  onSend: (party: SendParty, to: PartyContact, note: string, why: 'first' | ResendWhy, anyway: boolean, about: string | null) => Promise<Landed<unknown>>
   onTakeOff: (party: SendParty) => Promise<Landed<unknown>>
   onTurnPageOn: (party: SendParty) => Promise<Landed<unknown>>
 }
@@ -78,16 +85,18 @@ function Chips({ chips }: { chips: BuilderChip[] }) {
   )
 }
 
-export function BuilderSendList({ title, lead, parties, revision, published, unpublishedWords, unread, noun, defaultNote, showAbout = false, emptyWords, onSend, onTakeOff, onTurnPageOn }: Props) {
+export function BuilderSendList({ title, lead, parties, revision, published, unpublishedWords, unread, noun, defaultNote, showAbout = false, emptyWords, findWords, beforeBatch, onSend, onTakeOff, onTurnPageOn }: Props) {
   /** The party whose box is open, with who it goes to and the note. */
-  const [box, setBox] = useState<{ partyId: string; email: string; note: string } | null>(null)
+  const [box, setBox] = useState<{ partyId: string; email: string; note: string; about: string } | null>(null)
   const [anyway, setAnyway] = useState(false)
+  const [find, setFind] = useState('')
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<{ partyId: string | null; words: string } | null>(null)
   const [outcome, setOutcome] = useState<{ line: string; failed: Array<{ name: string; why: string }> } | null>(null)
 
   const gate = { published, unpublishedWords, unread, anyway }
   const batch = sendBatch(parties, noun, gate)
+  const shown = shownParties(parties, findWords ? find : null)
 
   const run = async (partyId: string | null, act: () => Promise<Landed<unknown>>, after?: () => void) => {
     if (busy) return
@@ -105,6 +114,7 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
 
   const sendToEveryoneReady = async () => {
     if (busy || batch.press.dead) return
+    if (beforeBatch && !(await beforeBatch(batch.ready))) return
     setBusy(true)
     setRefusal(null)
     setOutcome(null)
@@ -115,7 +125,7 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
     for (const party of batch.ready) {
       const to = party.contacts[0]
       if (!to) continue
-      const res = await onSend(party, to, defaultNote, 'first', anyway)
+      const res = await onSend(party, to, defaultNote, 'first', anyway, null)
       if (res.ok) done += 1
       else failed.push({ name: party.name, why: res.error })
     }
@@ -136,14 +146,18 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
       <h3 style={CARD_TITLE}>{title}</h3>
       <p style={MUTED}>{lead}</p>
       {parties.length === 0 ? <p style={MUTED}>{emptyWords}</p> : null}
+      {findWords && parties.length > 0 ? <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={findWords} aria-label={findWords} style={INPUT} /> : null}
+      {parties.length > 0 && shown.rows.length === 0 ? <EmptyState compact main={`Nobody matches \u2018${find.trim()}\u2019.`} next={{ label: 'Clear the search', onPress: () => setFind('') }} /> : null}
       <div>
-        {parties.map((party, i) => {
+        {shown.rows.map((party, i) => {
           const open = box?.partyId === party.id && !party.send
           const to = open ? (party.contacts.find((c) => c.email === box?.email) ?? party.contacts[0] ?? null) : null
           const state = open ? sendBox(party, to, gate) : null
           const again = party.send ? resendPress(party.send, revision) : null
-          /** The second press on a sent row cannot go: nothing published, their page off, nobody to send to, or an unread revision not waved through. */
-          const againDead = !published || party.page.state === 'off' || party.contacts.length === 0 || (unread !== '' && !anyway)
+          /** Who the second press goes to: the person the send went to, by the address on the send's own row. */
+          const goesTo = resendTo(party)
+          /** The second press on a sent row cannot go: nothing published, their page off, the person it went to gone from the record, or an unread revision not waved through. */
+          const againDead = !published || party.page.state === 'off' || !goesTo?.to || (unread !== '' && !anyway)
           return (
             <div key={party.id} data-send-party={party.id} style={{ display: 'grid', gap: 6, padding: i === 0 ? '0 0 10px' : '10px 0', borderTop: i === 0 ? 0 : '1px solid var(--border)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'baseline', justifyContent: 'space-between', fontSize: '0.84rem' }}>
@@ -158,10 +172,11 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                       type="button"
                       disabled={busy || againDead}
                       aria-label={`${again.label}, ${party.name}`}
+                      aria-describedby={goesTo ? `goes-to-${party.id}` : undefined}
                       style={smallPress(busy || againDead)}
                       onClick={() => {
-                        const person = party.contacts.find((c) => c.name === party.send?.contactName) ?? party.contacts[0]
-                        if (person) void run(party.id, () => onSend(party, person, '', again.why, anyway))
+                        const person = goesTo?.to
+                        if (person) void run(party.id, () => onSend(party, person, '', again.why, anyway, null))
                       }}
                     >
                       {again.label}
@@ -171,11 +186,16 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                     </button>
                   </>
                 ) : !open ? (
-                  <button type="button" disabled={busy} aria-label={`Send it to ${party.name}`} style={smallPress(busy)} onClick={() => setBox({ partyId: party.id, email: party.contacts[0]?.email ?? '', note: defaultNote })}>
+                  <button type="button" disabled={busy} aria-label={`Send it to ${party.name}`} style={smallPress(busy)} onClick={() => setBox({ partyId: party.id, email: party.contacts[0]?.email ?? '', note: defaultNote, about: ABOUT_ALL_JOBS })}>
                     Send it to them
                   </button>
                 ) : null}
               </div>
+              {party.send && goesTo ? (
+                <p id={`goes-to-${party.id}`} data-goes-to={goesTo.to ? 'someone' : 'nobody'} style={goesTo.to ? FINE : { ...WARN, margin: 0 }}>
+                  <ValueSentence text={goesTo.words} />
+                </p>
+              ) : null}
 
               {open && state ? (
                 <div style={{ border: '1px dashed var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 10 }}>
@@ -186,6 +206,18 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                         {party.contacts.map((c) => (
                           <option key={c.email} value={c.email}>
                             {c.role ? `${c.name}, ${c.role}` : c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {showAbout ? (
+                    <label style={LABEL}>
+                      <span>What it is about</span>
+                      <select value={box?.about ?? ABOUT_ALL_JOBS} onChange={(e) => setBox((b) => (b ? { ...b, about: e.target.value } : b))} style={INPUT}>
+                        {aboutChoices(party).map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
                           </option>
                         ))}
                       </select>
@@ -215,7 +247,7 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
                       disabled={state.press.dead || busy}
                       style={mainPress(state.press.dead || busy)}
                       onClick={() => {
-                        if (to) void run(party.id, () => onSend(party, to, box?.note ?? '', 'first', anyway), () => setBox(null))
+                        if (to) void run(party.id, () => onSend(party, to, box?.note ?? '', 'first', anyway, showAbout ? aboutJobId(party, box?.about ?? ABOUT_ALL_JOBS) : null), () => setBox(null))
                       }}
                     >
                       {state.press.label}
@@ -235,6 +267,7 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
           )
         })}
       </div>
+      {shown.more > 0 && findWords ? <p style={MUTED}>{`${shown.more} more. ${findWords} to see the rest.`}</p> : null}
 
       {parties.length > 0 ? (
         <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 10, justifyItems: 'start' }}>

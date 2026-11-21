@@ -10,8 +10,11 @@
  * So the same idea shows as on the walked builder: a part that stays, a part that changes for one job, what differs
  * between them and the way back.
  *
- * Every piece of words on the sheet is a field with a path: `f.title`, `open.o2`, `cover.auto.limit`. Pure: no React,
- * no supabase, no clock.
+ * Every piece of words on the sheet is a field with a path: `f.title`, `open.o2`, `cover.auto.limit`. A line's key is
+ * its name for good: a job's change is kept against it, so a key is never given to a second line (`freshKey`).
+ *
+ * Pure: no React, no supabase, no clock. The one thing not worked out from what is handed in is the letters of a new
+ * line's key, which are made as a row's id is made, and a test hands its own maker in.
  */
 
 /** The standing sheet's own fields, in the order the page draws them. */
@@ -219,9 +222,49 @@ export function pathName(def: SheetDef, path: string): string {
   return path
 }
 
+/**
+ * The blank for the job's name, as the usual's line under the title holds it. The usual never holds a job's name:
+ * it holds this blank, and each job fills it with its own.
+ */
+export const SHEET_JOB_BLANK = "[the job's name]"
+
+/**
+ * The usual's line under the title with one job's name in it. A line with the blank takes the name there, as many
+ * times as the blank is written. A line with no blank takes the name at its end.
+ */
+export function subtitleWith(usualLine: string, jobName: string): string {
+  if (usualLine.includes(SHEET_JOB_BLANK)) return usualLine.split(SHEET_JOB_BLANK).join(jobName).trim()
+  return `${usualLine} ${jobName}`.trim()
+}
+
+/**
+ * A job's whole line under the title as the usual would hold it: the job's name becomes the blank. Null when the
+ * line does not say the job's name, since there is then no blank for another job to fill. `subtitleWith` of the
+ * answer and the same name reads as the line, word for word.
+ */
+export function subtitleAsUsual(line: string, jobName: string): string | null {
+  const name = jobName.trim()
+  if (!name || !line.includes(name) || line.includes(SHEET_JOB_BLANK)) return null
+  const blanked = line.split(name).join(SHEET_JOB_BLANK)
+  // A line that only ends on the name is kept as the words before it: the name goes at the end by itself.
+  const tail = ` ${SHEET_JOB_BLANK}`
+  const head = blanked.endsWith(tail) ? blanked.slice(0, -tail.length) : null
+  const usual = head && !head.includes(SHEET_JOB_BLANK) && head === head.trim() ? head : blanked
+  return subtitleWith(usual, name) === line ? usual : null
+}
+
+/**
+ * What the usual says at a path on one job. Every path reads as the usual's own words but the line under the title,
+ * which reads with the job's name in its blank. This is what a job's own words are held against.
+ */
+export function usualWordsOn(def: SheetDef, job: { name: string }, path: string): string | undefined {
+  return path === fieldPath('sub') ? subtitleWith(def.fields.sub, job.name) : usualWords(def, path)
+}
+
 /** What a job's sheet says at a path: the job's own words when it has any, else the usual. */
 export function sheetWords(def: SheetDef, job: JobSheet | null, path: string): string {
-  return job?.over[path] ?? usualWords(def, path) ?? ''
+  if (!job) return usualWords(def, path) ?? ''
+  return job.over[path] ?? usualWordsOn(def, job, path) ?? ''
 }
 
 /** Where a field's words come from, for its mark. */
@@ -233,7 +276,7 @@ export function fieldMark(job: JobSheet | null, path: string): FieldMark {
 /** A job's field typed over. Words that read as the usual are not kept, so a job holds only what differs. */
 export function withJobWords(def: SheetDef, job: JobSheet, path: string, words: string): JobSheet {
   const over = { ...job.over }
-  if (words === usualWords(def, path)) delete over[path]
+  if (words === usualWordsOn(def, job, path)) delete over[path]
   else over[path] = words
   return { ...job, over }
 }
@@ -255,22 +298,38 @@ export function withUsualWords(def: SheetDef, path: string, words: string): Shee
   return def
 }
 
-/** A key no line of the list holds yet: `o1`, `o2`, and so on. */
-export function freshKey(taken: ReadonlyArray<string>, prefix: string): string {
-  for (let n = taken.length + 1; ; n++) {
-    const key = `${prefix}${n}`
+/** Makes the letters of a new key. */
+export type KeyMint = () => string
+
+/** Letters nobody was given before, made as a row's id is made. */
+export const mintKey: KeyMint = () => {
+  const c = globalThis.crypto
+  if (typeof c.randomUUID === 'function') return c.randomUUID()
+  // A page not served over https has no randomUUID. The same strength, from the same source.
+  return Array.from(c.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * A key for a new line: `c-` and letters of its own. It is never a key the sheet gave out before, also not one whose
+ * line was since removed. A key that counted the lines was given out again after a line was removed, and a job's
+ * change kept against the old line then landed on the new one. The list handed in holds the keys in use now, and the
+ * letters are made again while they match one.
+ */
+export function freshKey(taken: ReadonlyArray<string>, prefix: string, mint: KeyMint = mintKey): string {
+  for (;;) {
+    const key = `${prefix}-${mint()}`
     if (!taken.includes(key)) return key
   }
 }
 
-export function withUsualOpenLine(def: SheetDef): SheetDef {
-  return { ...def, open: [...def.open, { key: freshKey(def.open.map((l) => l.key), 'o'), text: SHEET_NEW.line }] }
+export function withUsualOpenLine(def: SheetDef, mint: KeyMint = mintKey): SheetDef {
+  return { ...def, open: [...def.open, { key: freshKey(def.open.map((l) => l.key), 'o', mint), text: SHEET_NEW.line }] }
 }
 export function withoutUsualOpenLine(def: SheetDef, lineKey: string): SheetDef {
   return { ...def, open: def.open.filter((l) => l.key !== lineKey) }
 }
-export function withUsualCover(def: SheetDef, line?: { label: string; limit: string }): SheetDef {
-  const key = freshKey(def.cover.map((c) => c.key), 'c')
+export function withUsualCover(def: SheetDef, line?: { label: string; limit: string }, mint: KeyMint = mintKey): SheetDef {
+  const key = freshKey(def.cover.map((c) => c.key), 'c', mint)
   return { ...def, cover: [...def.cover, { key, label: line?.label ?? SHEET_NEW.coverLabel, limit: line?.limit ?? SHEET_NEW.coverLimit }] }
 }
 export function withoutUsualCover(def: SheetDef, coverKey: string): SheetDef {
@@ -295,8 +354,8 @@ export function withJobCoverOff(job: JobSheet, coverKey: string, off: boolean): 
   const rest = job.off.filter((k) => k !== coverKey)
   return { ...job, off: off ? [...rest, coverKey] : rest }
 }
-export function withJobExtra(job: JobSheet): JobSheet {
-  return { ...job, extra: [...job.extra, { key: freshKey(job.extra.map((x) => x.key), 'x'), label: SHEET_NEW.coverLabel, limit: SHEET_NEW.coverLimit }] }
+export function withJobExtra(job: JobSheet, mint: KeyMint = mintKey): JobSheet {
+  return { ...job, extra: [...job.extra, { key: freshKey(job.extra.map((x) => x.key), 'x', mint), label: SHEET_NEW.coverLabel, limit: SHEET_NEW.coverLimit }] }
 }
 export function withJobExtraWords(job: JobSheet, extraKey: string, part: 'label' | 'limit', words: string): JobSheet {
   return { ...job, extra: job.extra.map((x) => (x.key === extraKey ? { ...x, [part]: words } : x)) }
@@ -312,28 +371,55 @@ export function withoutJobExtra(job: JobSheet, extraKey: string): JobSheet {
  */
 export function usualFromJobField(def: SheetDef, job: JobSheet, path: string): SheetDef {
   const words = job.over[path]
-  return words == null ? def : withUsualWords(def, path, words)
+  if (words == null) return def
+  if (path !== fieldPath('sub')) return withUsualWords(def, path, words)
+  // The line under the title goes to the usual with the job's name as a blank, never as the filled words.
+  const usual = subtitleAsUsual(words, job.name)
+  return usual == null ? def : withUsualWords(def, path, usual)
+}
+
+/** Where a job's own words stand against the usual's draft: in it already, ready to be made the usual, or held. */
+export type UsualOffer = { kind: 'in-usual' } | { kind: 'offer' } | { kind: 'held'; why: string }
+
+/** Why a line under the title cannot be made the usual. */
+export const SUB_NOT_USUAL = "This line does not say this job's name, so no other job could put its own name in it."
+
+/** What the list of what differs offers beside **Back to the usual** for one field. */
+export function usualOffer(def: SheetDef, job: JobSheet, path: string): UsualOffer {
+  const words = job.over[path]
+  if (words != null && usualWordsOn(def, job, path) === words) return { kind: 'in-usual' }
+  if (path === fieldPath('sub') && words != null && subtitleAsUsual(words, job.name) == null) return { kind: 'held', why: SUB_NOT_USUAL }
+  return { kind: 'offer' }
 }
 /** A line added for one job made a usual line: every job then asks for it, once the usual is published. */
-export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string): SheetDef {
+export function usualFromJobExtra(def: SheetDef, job: JobSheet, extraKey: string, mint: KeyMint = mintKey): SheetDef {
   const line = job.extra.find((x) => x.key === extraKey)
   if (!line || usualHasCover(def, line)) return def
-  return withUsualCover(def, { label: line.label, limit: line.limit })
+  return withUsualCover(def, { label: line.label, limit: line.limit }, mint)
 }
 /** True when the standing sheet already asks for this coverage, word for word. */
 export function usualHasCover(def: SheetDef, line: { label: string; limit: string }): boolean {
   return def.cover.some((c) => c.label === line.label && c.limit === line.limit)
 }
 /**
- * A job's own part with everything let go that now reads as the usual: a field typed the same, and an added line the
- * usual asks for word for word. So a job keeps only what differs, also after the usual moves toward it.
+ * A job's own part as it is published, with everything let go that no longer differs from the usual it goes out on.
+ * A field typed the same as the usual, and an added line the usual asks for word for word, read as the usual. A
+ * change to a line the usual no longer has, and a line left off that the usual no longer asks for, have nothing left
+ * to differ from. So a job keeps only what differs, also after the usual moves toward it or drops a line.
  */
 export function pruneJobSheet(def: SheetDef, job: JobSheet): JobSheet {
-  const over = Object.fromEntries(Object.entries(job.over).filter(([path, words]) => usualWords(def, path) !== words))
+  const over = Object.fromEntries(
+    Object.entries(job.over).filter(([path, words]) => {
+      const usual = usualWordsOn(def, job, path)
+      return usual != null && usual !== words
+    }),
+  )
+  const off = job.off.filter((key) => def.cover.some((c) => c.key === key))
   const extra = job.extra.filter((x) => !usualHasCover(def, x))
-  if (Object.keys(over).length === Object.keys(job.over).length && extra.length === job.extra.length) return job
-  return { ...job, over, extra }
+  if (Object.keys(over).length === Object.keys(job.over).length && off.length === job.off.length && extra.length === job.extra.length) return job
+  return { ...job, over, off, extra }
 }
+
 
 // ---------------------------------------------------------------------------
 // What differs
@@ -353,7 +439,7 @@ export function sheetDiffers(def: SheetDef, job: JobSheet): SheetDiffer[] {
   const order = [...SHEET_FIELD_KEYS.map(fieldPath), ...def.open.map((l) => openPath(l.key)), ...def.cover.flatMap((c) => [coverPath(c.key, 'label'), coverPath(c.key, 'limit')])]
   const fields: SheetDiffer[] = order.flatMap((path): SheetDiffer[] => {
     const words = job.over[path]
-    const usual = usualWords(def, path)
+    const usual = usualWordsOn(def, job, path)
     return words != null && usual != null && words !== usual ? [{ kind: 'field', path, name: pathName(def, path), usual, words }] : []
   })
   const off: SheetDiffer[] = def.cover.filter((c) => job.off.includes(c.key)).map((c) => ({ kind: 'off', coverKey: c.key, name: c.label }))
@@ -379,8 +465,8 @@ export function layOver(def: SheetDef, job: JobSheet): ResolvedSheet {
     addr1: w('addr1'),
     addr2: w('addr2'),
     title: w('title'),
-    // The line under the title is the usual words and then the job's name, unless the job wrote the whole line.
-    subtitle: job.over[fieldPath('sub')] ?? `${def.fields.sub} ${job.name}`.trim(),
+    // The line under the title is the usual's line with the job's name in its blank, unless the job wrote the whole line.
+    subtitle: sheetWords(def, job, fieldPath('sub')),
     open: def.open.map((l) => sheetWords(def, job, openPath(l.key))),
     lead: w('lead'),
     insured: [...job.insured],
@@ -482,24 +568,35 @@ export function asksOutdated(checked: ReadonlyArray<string>, now: ReadonlyArray<
 // The usual's publish: which jobs get it
 // ---------------------------------------------------------------------------
 
-/** One job as the usual's publish sees it. `revision` 0 is a job with no published sheet. */
-export type UsualPublishJob = { id: string; name: string; revision: number; changed: boolean }
+/** Why the usual's publish holds a job. */
+export type UsualHeldWhy = 'no-sheet' | 'own-changes' | 'moved'
 
-export type UsualPublishRow = { id: string; name: string; gets: true; asRevision: number } | { id: string; name: string; gets: false; why: 'no-sheet' | 'own-changes' }
+/**
+ * One job as the usual's publish sees it. `revision` 0 is a job with no published sheet. `changed` is read from the
+ * job's sheet as the database holds it. `here` is what the page that publishes holds for the job beyond that: words
+ * typed on it and not saved (`own-changes`), or a sheet that moved on somewhere else with the choice not yet made
+ * (`moved`).
+ */
+export type UsualPublishJob = { id: string; name: string; revision: number; changed: boolean; here?: 'own-changes' | 'moved' | null }
+
+export type UsualPublishRow = { id: string; name: string; gets: true; asRevision: number } | { id: string; name: string; gets: false; why: UsualHeldWhy }
 
 /**
  * Where a change to the usual goes. A job with a published sheet and no changes of its own waiting gets it, as its
  * next revision. A job with no sheet yet, or with changes of its own waiting, is held: its half-made changes must not
- * go out with the usual.
+ * go out with the usual. So is a job whose sheet moved on somewhere else while the person has not chosen what to keep.
  */
 export function usualPublishPlan(jobs: ReadonlyArray<UsualPublishJob>): UsualPublishRow[] {
   return jobs.map((j): UsualPublishRow => {
     if (j.revision < 1) return { id: j.id, name: j.name, gets: false, why: 'no-sheet' }
-    if (j.changed) return { id: j.id, name: j.name, gets: false, why: 'own-changes' }
+    if (j.here === 'moved') return { id: j.id, name: j.name, gets: false, why: 'moved' }
+    if (j.changed || j.here === 'own-changes') return { id: j.id, name: j.name, gets: false, why: 'own-changes' }
     return { id: j.id, name: j.name, gets: true, asRevision: j.revision + 1 }
   })
 }
 
-export function usualHeldWords(why: 'no-sheet' | 'own-changes'): string {
-  return why === 'no-sheet' ? 'Held. It has no sheet yet.' : 'Held. It has changes of its own waiting.'
+export function usualHeldWords(why: UsualHeldWhy): string {
+  if (why === 'no-sheet') return 'Held. It has no sheet yet.'
+  if (why === 'moved') return 'Held. It changed somewhere else. Choose on its panel first.'
+  return 'Held. It has changes of its own waiting.'
 }

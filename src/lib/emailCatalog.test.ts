@@ -56,9 +56,10 @@ describe('EMAIL_CATALOG', () => {
     // 58 since v2.6603: Your people's week, the Monday email about the people a reader picks (people-week-email).
     // 57 since v2.6902: the Bridge's Monday sheet to whoever pressed for it left with its function (bridge-sheet-email).
     // 58 since v2.7506: a sub's papers, mailed from the papers window (send-sub-paper-email, punch list #350).
-    // 59 since v2.8013: a reminder to sign a staff or sub paper (remind-person-papers, punch list #376).
-    // 60 since v2.8016: the signer's own copy of a paper they signed (accept-contract, punch list #376).
-    expect(EMAIL_CATALOG).toHaveLength(60)
+    // 59 since v2.8151: a builder sent to a GC from the Document builder (document-builder-send, punch list #404).
+    // 60 since v2.8013: a reminder to sign a staff or sub paper (remind-person-papers, punch list #376).
+    // 61 since v2.8016: the signer's own copy of a paper they signed (accept-contract, punch list #376).
+    expect(EMAIL_CATALOG).toHaveLength(61)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

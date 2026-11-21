@@ -14,6 +14,8 @@ import { paperForName } from '../../../supabase/functions/_shared/companyPaper'
 import { isPartyPaperName, paperSaysLine } from '../../lib/contracts/paperParty'
 import { signedClauseView, type ClausePaperView } from '../../lib/contracts/clauseSign'
 import { ClausePaper } from './ClausePaper'
+import { SignedJobSettings } from './SignedJobSettings'
+import { readKeptJobSettings, sealHolds, type KeptJobSettings } from '../../lib/contracts/jobPaperSettings'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -79,6 +81,8 @@ export function PersonContractSignedRecordModal({
   const [pdfError, setPdfError] = useState<string | null>(null)
   // Messages, cut 4c (v2.5294): the clauses a paper built from clauses was signed with, frozen on the copy.
   const [signedClauses, setSignedClauses] = useState<ClausePaperView | null>(null)
+  // Punch list #389 step 3: the settings a job's paper built from settings was signed with, and whether its seal holds.
+  const [keptSettings, setKeptSettings] = useState<{ kept: KeptJobSettings; holds: boolean | null } | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -89,6 +93,7 @@ export function PersonContractSignedRecordModal({
       setFormSchema(null)
       setPdfError(null)
       setSignedClauses(null)
+      setKeptSettings(null)
       return
     }
     if (!documentId?.trim()) {
@@ -130,7 +135,12 @@ export function PersonContractSignedRecordModal({
         setRow(doc)
         // Not in the generated types yet: a read of its own, and a copy with none draws its body as before.
         const kept = await supabase.from('person_contract_documents' as never).select('clause_versions').eq('id', id).maybeSingle()
-        if (!cancelled) setSignedClauses(kept.error ? null : signedClauseView((kept.data as unknown as { clause_versions?: unknown } | null)?.clause_versions))
+        const clauseVersions = kept.error ? null : (kept.data as unknown as { clause_versions?: unknown } | null)?.clause_versions
+        if (!cancelled) setSignedClauses(signedClauseView(clauseVersions))
+        const jobSettings = readKeptJobSettings(clauseVersions)
+        // A browser with no SHA-256 of its own checks no seal: the settings draw without the line.
+        const holds = jobSettings ? await sealHolds(clauseVersions).catch(() => null) : null
+        if (!cancelled) setKeptSettings(jobSettings ? { kept: jobSettings, holds } : null)
         if (doc.form_template_id) {
           const { data: tpl } = await supabase.from('contract_form_templates' as never).select('schema').eq('id', doc.form_template_id).maybeSingle()
           if (!cancelled) setFormSchema(((tpl as unknown as { schema?: FormSchema } | null)?.schema) ?? null)
@@ -397,6 +407,8 @@ export function PersonContractSignedRecordModal({
                   </a>
                 </p>
               ) : null}
+
+              {keptSettings && signedClauses ? <SignedJobSettings kept={keptSettings.kept} sealHolds={keptSettings.holds} lang={signedClauses.lang} /> : null}
 
               {signedClauses ? (
                 <div data-signed-clauses style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)', marginBottom: '0.75rem' }}>
