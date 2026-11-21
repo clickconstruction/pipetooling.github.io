@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, walk this line, draw this line, open the line, line length, how long, another photo, more photos, second photo, before and after, open and covered, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, walk this line, draw this line, open the line, line length, how long, no signal, kept on this phone, send now, waits on this phone, offline, another photo, more photos, second photo, before and after, open and covered, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -447,6 +447,20 @@ When your phone gives only an area, the dot is not moved. Drag the dot onto the 
 Picked an older photo? The dot is not put where you stand. A line at the top of the sheet says so. Drag the dot onto the spot.
 
 The photo is the place's photo. The photo shows beside the place in **Places on this job**.
+
+### A place set with no signal
+
+A yard is where the signal drops. A place you set there is not lost.
+
+Press {{button:blue|Add this place}} as usual. The sheet closes, and an amber line reads *Kept on this phone. It goes to the job when the signal is back.*
+
+The place and its photos wait on your phone. A line near the bottom of the app says how many wait.
+
+The app sends them when the signal is back. Press {{button:outline|Send now}} to try at once.
+
+A place waits seven days. After that the phone drops it, so open the app with signal before then.
+
+Only a new place waits. A change to a saved place says it did not save. Press {{button:blue|Save the place}} again when you have signal.
 
 ### See the places on the job
 

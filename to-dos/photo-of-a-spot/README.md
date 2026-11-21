@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, a photo's own spot is v2.8201, more photos and a buried line's length are v2.8203, and the office's Map tab is v2.8204
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, a photo's own spot is v2.8201, more photos and a buried line's length are v2.8203, the office's Map tab is v2.8204, and a place that waits for a signal is v2.8205
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -267,9 +267,11 @@ is never read when the photo sends. Setting a place must not need the map's pict
    forms, Leave Report alone has the press: New report, Turnaway and the edit of a saved report do
    not.
 
-2b. **A spot set with no signal waits on the phone (S).** A new kind of waiting press, with the
-   photo's bytes kept as a job photo's are (`src/lib/offline/outbox.ts`,
-   `src/lib/offline/keptPhotos.ts`).
+2b. **A spot set with no signal waits on the phone (S). Built in v2.8205.** Kept the way a walk that was
+   never saved is, in the phone's own storage, with the photo's bytes where a job photo's wait
+   (`src/lib/offline/keptPhotos.ts`), and sent by the painted maps' own host. It is not a kind of
+   press in the waiting queue (`src/lib/offline/outbox.ts`), so the line at the top of the app does
+   not count it: the host says how many places wait.
 
 The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
 2026-11-21 is to build the later steps too.

@@ -54,6 +54,8 @@ import {
   type PlacePhoto,
 } from '../../lib/paintedMap/paintedMap'
 import { PLACE_LINE_WORDS, paintLineForPlace } from '../../lib/paintedMap/paintedPlaceLineIo'
+import { KEPT_SPOT_WORDS, saveLostSignal, type KeptSpot } from '../../lib/paintedMap/paintedKeptSpot'
+import { keepSpot } from '../../lib/paintedMap/paintedKeptSpotIo'
 import { JOB_LIST_WORDS, jobListPlaces, jobListsOf, placeLetter, type JobPlace } from '../../lib/paintedMap/paintedJobList'
 import { onPaintedMapsChanged, openPaintedMap, paintedMapsChanged, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import {
@@ -247,6 +249,10 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [spotFile, setSpotFile] = useState<File | null>(() => spot?.file ?? null)
   // Why the dot was not put where the person stands: the photo is not of this moment.
   const [spotNote, setSpotNote] = useState<string | null>(null)
+  // A place set with no signal was kept on this phone (#413, step 2b): the window says so until the next act.
+  const [keptHere, setKeptHere] = useState(false)
+  // Why the map itself did not save, for the place that was waiting on it.
+  const ensureError = useRef<string | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -498,9 +504,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (saved && whole) return whole
     const made = await createPaintedMap({ id: map.id, name: map.name, words: map.words, jobId: map.jobId, developmentId: map.developmentId, jobList: map.jobList === true, by: user.id })
     if (!made.ok) {
+      ensureError.current = made.error
       setError(made.error)
       return null
     }
+    ensureError.current = null
     const current: PaintedMapWhole = { map: made.value, lines: [], places: [] }
     setSaved(true)
     setWhole(current)
@@ -623,12 +631,50 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const placingOnReading = !!placing?.fix && haversineMeters(placing.fix, placing.point) <= OFF_READING_METERS
   const placingAccuracy = placing?.fix && placingOnReading ? placing.fix.accuracyM : null
 
+  /**
+   * A new place that could not be sent for want of a signal is kept on this phone (#413, step 2b): its photos' bytes
+   * and its record, under ids made here, so it goes to the job when the signal is back and is never made twice. True
+   * when it was kept. A change to a saved place is not kept: it has a row to go back to.
+   */
+  const keepForLater = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice; more?: PaintedPlaceMorePhotos }): Promise<boolean> => {
+    if (!map || !user?.id || !placing || placing.place) return false
+    const photos = [...(input.photo.kind === 'new' ? [{ id: input.photo.id, blob: input.photo.blob }] : []), ...(input.more?.add ?? [])]
+    const kept: KeptSpot = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      userId: user.id,
+      savedAtMs: Date.now(),
+      map: { id: map.id, jobId: map.jobId, developmentId: map.developmentId, name: map.name, words: map.words, jobList: map.jobList === true, saved },
+      place: { name: input.name.trim() || 'A place', words: input.words, kind: input.kind, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy },
+      photoId: input.photo.kind === 'new' ? input.photo.id : null,
+      moreIds: (input.more?.add ?? []).map((p) => p.id),
+    }
+    if (!(await keepSpot(kept, photos))) {
+      setError(KEPT_SPOT_WORDS.cannotKeep)
+      return false
+    }
+    // The press that began this place hears it is kept: it will go, and a second press would make a second place.
+    if (spotFile) spot?.onKept?.()
+    setError(null)
+    setKeptHere(true)
+    stopPlacing(true)
+    return true
+  }
+
   const savePlace = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice; more?: PaintedPlaceMorePhotos }) => {
     if (!map || !user?.id || !placing || busy) return
     setBusy(true)
     setError(null)
+    setKeptHere(false)
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false
+    // The phone says there is no signal: a new place is kept at once, and nothing is tried.
+    if (!placing.place && !online) {
+      await keepForLater(input)
+      setBusy(false)
+      return
+    }
     const current = await ensureSaved()
     if (!current) {
+      if (!placing.place && saveLostSignal(ensureError.current, online)) await keepForLater(input)
       setBusy(false)
       return
     }
@@ -637,6 +683,10 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (input.photo.kind === 'new') {
       const up = await uploadPaintedPlacePhoto(map.id, input.photo.id, input.photo.blob)
       if (!up.ok) {
+        if (!old && saveLostSignal(up.error, online) && (await keepForLater(input))) {
+          setBusy(false)
+          return
+        }
         setBusy(false)
         setError(up.error)
         return
@@ -653,6 +703,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       for (const p of input.more.add) {
         const up = await uploadPaintedPlacePhoto(map.id, p.id, p.blob)
         if (!up.ok) {
+          // The signal went: the place waits on the phone, and what already went up is found there on the next try.
+          if (!old && saveLostSignal(up.error, online) && (await keepForLater(input))) {
+            setBusy(false)
+            return
+          }
           // One did not go up: what went up for this save is taken back out, and nothing is written.
           for (const path of sentMore) void removePaintedPlacePhotoFile(path)
           if (input.photo.kind === 'new') void removePaintedPlacePhotoFile(photoPath)
@@ -670,6 +725,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     const res = old
       ? await savePaintedPlace(old.id, { name: input.name, words: input.words, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy, photoPath, ...kindChange, ...moreChange })
       : await addPaintedPlace(map.id, { ...placing.point, name: input.name, words: input.words, accuracyM: placingAccuracy, photoPath, kind: input.kind, ...moreChange }, user.id)
+    if (!res.ok && !old && saveLostSignal(res.error, online) && (await keepForLater(input))) {
+      // The signal went on the last step: the place waits on the phone, and its photos are found in the bucket on the next try.
+      setBusy(false)
+      return
+    }
     setBusy(false)
     if (!res.ok) {
       // The pictures went up for a place that did not save: they are taken back out.
@@ -1185,6 +1245,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
                   {savedBand ? <PaintedMapSavedBand mapId={map.id} mapName={map.name} head={savedBand.head} under={savedBand.under} offersText={savedBand.offersText} /> : null}
 
+                  {keptHere ? (
+                    // A place set with no signal (#413, step 2b): kept on this phone, to go when the signal is back.
+                    <p role="status" data-painted-spot-kept style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+                      <b>{KEPT_SPOT_WORDS.kept}</b>
+                    </p>
+                  ) : null}
                   {spotFile ? (
                     // The photo came first and the sheet has nowhere to put its dot yet: the photo waits for the press.
                     <p role="status" data-painted-spot-waits style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>

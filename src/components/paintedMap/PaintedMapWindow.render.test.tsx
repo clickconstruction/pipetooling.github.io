@@ -123,6 +123,15 @@ vi.mock('../../lib/paintedMap/paintedPlaceLineIo', () => ({
     return true
   },
 }))
+/** The phone's own keeping of a place set with no signal, stood in for (punch list #413, step 2b). */
+const keptSpots = vi.hoisted(() => ({ kept: [] as Array<{ spot: Record<string, unknown>; photos: Array<{ id: string }> }>, full: false }))
+vi.mock('../../lib/paintedMap/paintedKeptSpotIo', () => ({
+  keepSpot: async (spot: Record<string, unknown>, photos: Array<{ id: string }>) => {
+    if (keptSpots.full) return false
+    keptSpots.kept.push({ spot, photos })
+    return true
+  },
+}))
 /** The count of opens, stood in for: it keeps each place somebody came looking for (punch list #413). */
 const looked = vi.hoisted(() => ({ at: [] as string[] }))
 vi.mock('../../lib/paintedMap/paintedAddressPlacesIo', () => ({ notePaintedPlaceOpened: (placeId: string) => looked.at.push(placeId) }))
@@ -207,6 +216,9 @@ afterEach(() => {
   looked.at = []
   morePhotos.added = []
   lineAsks.asked = []
+  keptSpots.kept = []
+  keptSpots.full = false
+  Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   geo.asked = 0
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
@@ -1543,5 +1555,102 @@ describe('a place with more photos, and a buried line with its length (#413)', (
     io.jobWholes = [{ map: LIST, lines: [], places: [place] }, { map: WAY, lines: [RUN], places: [] }]
     render(<PaintedMapWindow ask={{ mapId: 'run' }} onClose={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('canvas').getAttribute('data-line-colors')).toBe('run-line:#16a34a,other:paint'))
+  })
+})
+
+/** A place set with no signal waits on the phone (punch list #413, step 2b). */
+describe('a place set with no signal (#413)', () => {
+  const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'me', createdAt: '2026-11-18T15:00:00Z' }
+  const MINE = { id: 'jp1', mapId: 'list', name: 'Meter', words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: 'meter' as const, setBy: 'me', setAt: '2026-11-18T15:01:00Z' }
+  const offline = () => Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+  const openSheet = async () => {
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+  }
+  const add = () => fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+
+  it('with the phone offline, keeps the place and its photo and asks the server nothing', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:first' }
+    offline()
+    await openSheet()
+    fireEvent.click(document.querySelector('[data-place-kind="cleanout"]') as HTMLElement)
+    fireEvent.change(screen.getByLabelText('Describe it'), { target: { value: '4 ft off the front walk.' } })
+    add()
+    await waitFor(() => expect(keptSpots.kept).toHaveLength(1))
+    expect(names().filter((n) => n !== 'loadPaintedMap')).toEqual([])
+    const { spot, photos } = keptSpots.kept[0]!
+    expect(spot).toMatchObject({ userId: 'me', photoId: 'shot-1', moreIds: [], map: { id: 'list', jobId: 'j1', jobList: true, saved: true }, place: { name: 'Cleanout', words: '4 ft off the front walk.', kind: 'cleanout', lat: 29.55, lng: -98.25, accuracyM: null } })
+    expect(String(spot.id)).toMatch(/.{8,}/)
+    expect(photos.map((p) => p.id)).toEqual(['shot-1'])
+    // The sheet closes and the window says where the place is.
+    expect(await screen.findByRole('heading', { name: 'Places on this job' })).toBeTruthy()
+    expect(document.querySelector('[data-painted-spot-kept]')?.textContent).toBe('Kept on this phone. It goes to the job when the signal is back.')
+  })
+
+  it('a job’s first place, kept before its list was ever saved, carries the list to make', async () => {
+    offline()
+    render(<PaintedMapWindow ask={{ start: { id: 'new-list', name: 'Places on this job', words: '', home: { jobId: 'j1', address: '1 Made Up Road' }, first: 'place', jobList: true } }} address="1 Made Up Road" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    fireEvent.click(document.querySelector('[data-place-kind="meter"]') as HTMLElement)
+    add()
+    await waitFor(() => expect(keptSpots.kept).toHaveLength(1))
+    expect(keptSpots.kept[0]!.spot).toMatchObject({ map: { id: 'new-list', jobId: 'j1', name: 'Places on this job', jobList: true, saved: false }, photoId: null })
+    expect(names()).not.toContain('createPaintedMap')
+  })
+
+  it('keeps the place when the signal goes on the last step, and takes nothing back out of the bucket', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:first' }
+    io.refuse = 'TypeError: Failed to fetch'
+    await openSheet()
+    add()
+    await waitFor(() => expect(keptSpots.kept).toHaveLength(1))
+    expect(names()).toContain('addPaintedPlace')
+    expect(names()).not.toContain('removePaintedPlacePhotoFile')
+    expect(document.querySelector('[data-painted-spot-kept]')).not.toBeNull()
+  })
+
+  it('does not keep a place the database refused: it says why, as before', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    io.refuse = 'A training account cannot change this.'
+    await openSheet()
+    add()
+    expect(await screen.findByText('A training account cannot change this.')).toBeTruthy()
+    expect(keptSpots.kept).toEqual([])
+    expect(screen.getByRole('heading', { name: 'A place on the map' })).toBeTruthy()
+  })
+
+  it('does not keep a change to a saved place: it has a row to go back to', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    io.refuse = 'TypeError: Failed to fetch'
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    await placeRow()
+    fireEvent.click(screen.getByRole('button', { name: 'Change this place' }))
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    expect(await screen.findByText('TypeError: Failed to fetch')).toBeTruthy()
+    expect(keptSpots.kept).toEqual([])
+  })
+
+  it('says so when the phone could not keep it either, and leaves the sheet open with what was typed', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    keptSpots.full = true
+    offline()
+    await openSheet()
+    fireEvent.change(document.querySelector('[data-place-name]') as HTMLInputElement, { target: { value: 'Septic tank lid' } })
+    add()
+    expect(await screen.findByText('There is no signal, and this phone could not keep the place. Stay on this screen and press Add this place again when the signal is back.')).toBeTruthy()
+    expect((document.querySelector('[data-place-name]') as HTMLInputElement).value).toBe('Septic tank lid')
+  })
+
+  it('tells the press that began the place it is kept, so a second press does not make a second place', async () => {
+    io.whole = { map: LIST, lines: [], places: [MINE] }
+    offline()
+    let kept = 0
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={{ file: new File(['x'], 'spot.jpg'), reading: Promise.resolve({ ok: false as const, why: 'failed' as const }), takenMs: Date.now(), onKept: () => (kept += 1) }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    add()
+    await waitFor(() => expect(keptSpots.kept).toHaveLength(1))
+    expect(kept).toBe(1)
   })
 })
