@@ -139,6 +139,8 @@ The trade gets an email with a link to their own page. The sheet is on that page
 
 A sheet your agent has not checked goes only after you tick **Send it anyway**.
 
+The check is read on the revision of your usual that the job's sheet went out on. A newer usual your agent checked does not cover an older sheet. Publish the job's sheet again to bring it onto your newest usual.
+
 ## Send to every trade that is ready
 
 One press under the list sends to every trade that is ready. The button says how many.

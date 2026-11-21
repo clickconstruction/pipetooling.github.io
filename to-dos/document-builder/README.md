@@ -582,7 +582,7 @@ Found and not fixed. No PR holds any of these.
   teammate's later changes to a job are lost.
 - A removed coverage line's key is used again, so a job's old change lands on a new line (`sheet.ts`).
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
-  on, on the screen and in `document-builder-send`. A sheet on unchecked words can go with no
+  on, on the screen and in `document-builder-send` (**fixed**, v2.8142, by one rule: `sheetWentOutChecked`). A sheet on unchecked words can go with no
   *Send it anyway* box.
 - **Fixed, v2.8135.** **Make this the usual** on the line under the title doubled the job's name on every job. The
   usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
