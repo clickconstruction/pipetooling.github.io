@@ -190,6 +190,7 @@ when_to_read:
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
    - [permit-pull](#permit-pull)
+   - [license-roll-pull](#license-roll-pull)
    - [permit-lookup](#permit-lookup)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
@@ -3830,6 +3831,22 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Points** (v2.6958, punch list #310): a reader with `fillPoints` (Austin's: `TRAVIS_PARCEL_POINTS` and, since v2.6985, `WILLIAMSON_PARCEL_POINTS` for the R ids of Austin over the county line, asked by `QuickRefID` 50 a request, in `_shared/permitParcelPoints.ts`) has its rows that came without a point filled from the parcel layer their id belongs to, a page at a time, after the dedupe and before the upsert, because the upsert writes `lat` and `lng` on every read and would wipe a point filled anywhere else. The row's `raw.tcad_id` is the layer's `geo_id`; the ids go 100 a request by POST (the county's firewall turns away a long list in a URL), the answer's rings give a point inside the lot (`pointOfRings`), and a row whose id the layer does not hold stays without one. A layer that refuses, sends something that is not JSON or takes over 20 seconds never stops the pull: the asking of that layer ends for that run, the rows it was not answered for are upserted without the two point columns so a point filled earlier stands, and `permit_pulls.error` stays clear. The feed's outcome carries `points: { asked, filled, held, error }`. A dry run fills too and writes nothing.
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ city?: string, since?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, history, city, feeds: [{ source, since, seen, kept, pages, error, points? }], builderKeys, ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
+
+### license-roll-pull
+
+**Purpose** (v2.8164, punch list #411): read one of the Texas State Board of Plumbing Examiners' free licensee files and bring the kept roll (`license_roll`) up to date. The board's files say what is true today and keep no history, so the pull compares each file with the rows the last pull kept and writes what changed to `license_roll_changes`. The rule is [`_shared/licenseRoll.ts`](../supabase/functions/_shared/licenseRoll.ts) (`tsbpeRows` reads a file into rows, `planRollPull` says what to add, patch, mark gone and take off), tested from `src/lib/licenseRoll/licenseRoll.test.ts`.
+
+**Files**: `RMP` (responsible master), `MP` (master), `JP` (journeyman) and `TP` (tradesman), from `https://tsbpe.texas.gov/free-licensee-list/`. One file a call, so a call stays inside the edge's CPU limit. `JP` is a zip, read by [`_shared/zipFirst.ts`](../supabase/functions/_shared/zipFirst.ts), which checks the entry's checksum. The apprentice file is not pulled.
+
+**What is kept**: a row whose county is in `license_roll_counties`, and never a row that matches `license_roll_left_off` by number or by name key. The name, the number, the class, the status, the two dates, the ZIP, the county and the endorsements; on a responsible master, the company and the day the insurance on file ends. No phone, street address or email: the board gives none for a person, and a responsible master's business address and phone are read past.
+
+**What changes**: a new row is added with a `first_seen` change. A kept row the file still has is stamped as seen and patched where it differs, with a change for each difference a person would read: `renewed`, `lapsed`, `current_again`, `moved`, `endorsement`, `named`. A kept row that leaves our counties or is left off is deleted, and its history goes with it. A kept row the file no longer has is marked `gone` and deleted after 28 days (`GONE_KEPT_DAYS`).
+
+**Guards**: a file without a column the pull needs is refused, naming the column. A file of fewer than 200 rows is refused. A file that would mark over a third of the kept rows gone is refused as cut short (`fileLooksCutShort`). A refused pull changes no roll row and keeps its reason on its `license_roll_pulls` row.
+
+**Not one transaction**: the writes are batched requests. A pull that stops partway leaves the roll short of the file, and the next pull brings it level. Only the lines of history between the two can be missed.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (four pg_cron jobs, `license-roll-pull-rmp`, `-mp`, `-jp` and `-tp`, Mondays from 12:30 UTC five minutes apart, migration `20261121141000`), or a signed-in person who holds the Hiring switch: the function checks `user_can_read_license_roll()` under the caller's JWT. `verify_jwt = false` in `config.toml`. **Body**: `{ file: 'RMP' | 'MP' | 'JP' | 'TP', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, file, seen, kept, added, changed, gone, skipped, ms }`, or `{ ok: false, error, file, ms }` with status 502. **Deploy**: `supabase functions deploy license-roll-pull`, after migration `20261121140000` is pushed.
 
 ### permit-lookup
 

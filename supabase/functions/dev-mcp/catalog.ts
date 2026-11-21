@@ -2180,6 +2180,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "legal-notify-dispatch",
   "legal-portal",
   "legal-send-firm-link",
+  "license-roll-pull",
   "lien-pay-offer",
   "log-estimate-option-view",
   "login-as-user",
