@@ -93,6 +93,9 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
   }
 })
 
+/** The count of opens, stood in for: it keeps each place somebody came looking for (punch list #413). */
+const looked = vi.hoisted(() => ({ at: [] as string[] }))
+vi.mock('../../lib/paintedMap/paintedAddressPlacesIo', () => ({ notePaintedPlaceOpened: (placeId: string) => looked.at.push(placeId) }))
 /** The map, stood in for: it says what it draws, and its two presses add a corner to the draft. */
 const canvas = vi.hoisted(() => ({ draft: null as null | PaintedCanvasDraft, /** Each use the window told the canvas, in order. */ uses: [] as string[] }))
 vi.mock('./PaintedMapCanvas', async () => {
@@ -171,6 +174,7 @@ afterEach(() => {
   io.jobWholes = []
   io.jobReads = []
   camera.shot = null
+  looked.at = []
   geo.asked = 0
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
@@ -1370,5 +1374,41 @@ describe('a place that starts from a photo (#413)', () => {
     fireEvent.click(document.querySelector('[data-painted-place]') as HTMLElement)
     await screen.findByRole('heading', { name: 'A place on the map' })
     expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('after')
+  })
+})
+
+/** A map opened on one of its places, and a place somebody came looking for (punch list #413, steps 3 and 5). */
+describe('a map opened on a place, and the count of opens (#413)', () => {
+  const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+  const at = (id: string, name: string, setAt: string, more: Record<string, unknown> = {}) => ({ id, mapId: 'list', name, words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: null, setBy: 'dana', setAt, ...more })
+  const listWhole = () => ({ map: LIST, lines: [], places: [at('jp1', 'Meter', '2026-11-18T15:01:00Z'), at('jp2', 'Cleanout', '2026-11-18T15:02:00Z', { photoPath: 'list/clean.jpg', lat: 29.52, lng: -98.22 })] })
+  const picked = () => [...document.querySelectorAll('[data-painted-place-row][data-picked="true"]')].map((r) => r.getAttribute('data-painted-place-id'))
+
+  it('opens with that place picked in the list', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} pickPlace="jp2" onClose={() => {}} />)
+    await placeRow()
+    expect(picked()).toEqual(['jp2'])
+    // Opening the window is not itself a look at a place: the press that opened it counted that.
+    expect(looked.at).toEqual([])
+  })
+
+  it('opens as it always did with no place named, or one the map does not hold', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} pickPlace="gone" onClose={() => {}} />)
+    await placeRow()
+    expect(document.querySelectorAll('[data-painted-place-row]')).toHaveLength(2)
+    expect(picked()).toEqual([])
+  })
+
+  it('counts an open when a dot is pressed on the map, and when a place’s photo is opened', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    await placeRow()
+    fireEvent.click(screen.getByRole('button', { name: 'dot A' }))
+    expect(picked()).toEqual(['jp1'])
+    expect(looked.at).toEqual(['jp1'])
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the photo of Cleanout' }))
+    expect(looked.at).toEqual(['jp1', 'jp2'])
   })
 })

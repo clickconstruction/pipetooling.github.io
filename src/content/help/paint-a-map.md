@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -416,6 +416,28 @@ When your phone gives only an area, the dot is not moved. Drag the dot onto the 
 Picked an older photo? The dot is not put where you stand. A line at the top of the sheet says so. Drag the dot onto the spot.
 
 The photo is the place's photo. The photo shows beside the place in **Places on this job**.
+
+### See the places on the job
+
+A job's window lists its places under the address. Each place is a row with its photo, its mark and the start of its words.
+
+Press a row. **Places on this job** opens on that place, with the map on its dot.
+
+A long list shows four rows. Press **＋ 3 more** to open the rest.
+
+### Places an earlier job kept at this address
+
+The next job at a house is a different job. The cleanout is where it was.
+
+A job reads the places an earlier job kept at the same customer address. They sit under a dashed line named **Kept at this address**.
+
+The line says how many places there are and when they were kept. The office also reads which job kept them.
+
+Press the line or a row to open that list. A new place you set goes on your own job.
+
+Only a job's list of places follows the address. A painted map of the way in stays on its own job.
+
+A job with no customer address on file shares nothing. Ask the office to pick the customer's address on the job.
 
 Adding a photo to the job anyway? Each new photo in **Job photos** has {{button:outline|＋ Keep this spot on the job}}. A photo on **Leave Report** has {{button:outline|Keep this spot}}. Either press opens the same sheet with that photo in it.
 

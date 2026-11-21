@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191 and Keep this spot on the job is v2.8193
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, and a photo's own spot is v2.8201
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -274,14 +274,15 @@ is never read when the photo sends. Setting a place must not need the map's pict
 The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
 2026-11-21 is to build the later steps too.
 
-3. **A photo keeps the phone's reading by itself (S, one migration).** Columns for the point, the
+3. **A photo keeps the phone's reading by itself (S). Built in v2.8201, on the columns of v2.8195.** Columns for the point, the
    margin and where it came from on `job_photo_notes` and `report_photos`. No new table. The column
    ships alone first. The reading rides in the waiting photo's own record
    (`src/lib/offline/outbox.ts`). This is the step that serves proof. It also counts how often a
    place is opened.
-4. **Places follow the address (M).** A job reads the places kept by earlier jobs at the same
+4. **Places follow the address (M). Built in v2.8200, on the read rule of v2.8195.** A job reads the places kept by earlier jobs at the same
    customer address.
-5. **The crew's window draws them (S).** Rows with photos in the **Where** section of
+5. **The crew's window draws them (S). Built in v2.8200, as rows with photos. The small picture from above
+   is not built: a row opens the list's own map on that place.** Rows with photos in the **Where** section of
    `src/components/jobs/DetailJobModal.tsx`, with a small picture from above on the old map.
 6. **A buried line with its length (S).** A walked line tied to a photo taken before backfill. The
    app can walk a line and say its length today.

@@ -9,6 +9,8 @@ import type { KeptJobPhoto } from '../lib/offline/outbox'
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
 import { readTakenAt } from '../lib/photos/photoTakenAt'
 import { fileTimeOrNow, sendLostSignal, type ShotTileBase } from '../lib/photos/shotTiles'
+import { TAKEN_POINT_WAIT_MS, spotPhotoIsFresh, takenPointOf, type SpotReading, type TakenPoint } from '../lib/paintedMap/paintedSpot'
+import { readSpotNow, readSpotSoon } from '../lib/paintedMap/paintedSpotIo'
 
 /**
  * Shot tiles (punch list #244): the state a camera-first form holds from the shutter to its press, written once for
@@ -65,6 +67,11 @@ export interface ShotTileEngineInput<T extends ShotTileBase> {
   pickedAt: (file: File) => string
   /** The hidden input's test id. */
   testId: string
+  /**
+   * Keep where the phone was when each shot was taken (punch list #413, step 3): the phone is read once on the pick,
+   * and a fresh shot's row takes the reading. Off for a host whose rows have nowhere to keep one.
+   */
+  keepPoint?: boolean
 }
 
 export interface ShotTileEngine<T extends ShotTileBase> {
@@ -191,25 +198,28 @@ export function useShotTileEngine<T extends ShotTileBase>(input: ShotTileEngineI
    * Read the camera's time, shrink on the device, keep the bytes, then send: the tile reads each step. A send lost to
    * the signal leaves the tile kept on the phone, to go with the press; any other failure keeps the tile with Retry.
    */
-  async function shrinkAndSend(id: string, file: File, pickedAt: string) {
+  async function shrinkAndSend(id: string, file: File, pickedAt: string, spot: { reading: Promise<SpotReading> | null; point?: TakenPoint | null } = { reading: null }) {
     const host = hostRef.current
     let held = false
     try {
       // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else the host's pickedAt.
       const takenAt = await readTakenAt(file, Date.parse(pickedAt) || Date.now())
+      // Where the phone was (#413): the reading of the pick, for a shot of this moment. A shot from the phone's library
+      // takes none, and the send never waits long for one. A retry keeps the point its first try read.
+      const takenPoint = spot.point !== undefined ? spot.point : spot.reading ? takenPointOf(await readSpotSoon(spot.reading, TAKEN_POINT_WAIT_MS), spotPhotoIsFresh(Date.parse(takenAt), Date.now())) : null
       const shot = await shrinkReportPhoto(file, photoSize)
       if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
       const preview = shot.shrunk ? keepUrl(URL.createObjectURL(shot.blob)) : null
       setTiles((prev) =>
         prev.map((t) =>
-          t.id === id ? { ...t, status: 'sending' as const, takenAt, bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t,
+          t.id === id ? { ...t, status: 'sending' as const, takenAt, takenPoint, bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t,
         ),
       )
       setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
       if (!authUserId) throw new Error('Sign in again to send a photo.')
       if (!jobId) throw new Error(host.noJobWords)
       held = await bytes.keep(id, shot.blob)
-      const sent = await host.io.send({ id, jobId, blob: shot.blob, byUserId: authUserId, byName, takenAt, originalBytes: file.size, width: shot.width, height: shot.height })
+      const sent = await host.io.send({ id, jobId, blob: shot.blob, byUserId: authUserId, byName, takenAt, originalBytes: file.size, width: shot.width, height: shot.height, takenPoint })
       setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'sent' as const, storagePath: sent.storagePath, failWhy: null } : t)))
       void bytes.drop([id])
     } catch (err) {
@@ -233,6 +243,8 @@ export function useShotTileEngine<T extends ShotTileBase>(input: ShotTileEngineI
     cameraStageRef.current = null
     const fresh: T[] = []
     const sends: Array<[string, File, string]> = []
+    // One reading of the phone for the pick (#413): asked for now, while the person stands where the shot was taken.
+    const reading = host.keepPoint ? readSpotNow() : null
     for (const file of files) {
       const id = newPhotoId()
       const pickedAt = host.pickedAt(file)
@@ -258,7 +270,7 @@ export function useShotTileEngine<T extends ShotTileBase>(input: ShotTileEngineI
       sends.push([id, file, pickedAt])
     }
     setTiles((prev) => [...prev, ...fresh])
-    for (const [id, file, at] of sends) void shrinkAndSend(id, file, at)
+    for (const [id, file, at] of sends) void shrinkAndSend(id, file, at, { reading })
   }
 
   function retry(id: string) {
@@ -266,7 +278,7 @@ export function useShotTileEngine<T extends ShotTileBase>(input: ShotTileEngineI
     const tile = tilesRef.current.find((t) => t.id === id)
     if (!file || !tile) return
     setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'shrinking' as const, failWhy: null } : t)))
-    void shrinkAndSend(id, file, tile.takenAt)
+    void shrinkAndSend(id, file, tile.takenAt, { reading: null, point: tile.takenPoint ?? null })
   }
 
   function remove(id: string) {
@@ -388,6 +400,7 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
     kept: input.kept,
     tile: (base) => ({ ...base, description: '' }),
     multiple: !input.cameraFirst,
+    keepPoint: true,
     sendErrorName: 'PhotoSendError',
     noJobWords: 'A photo goes on a job.',
     pickedAt: (file) => fileTimeOrNow(file),
@@ -410,6 +423,7 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
         questionId: null,
         questionWords: null,
         takenAt: t.takenAt,
+        takenPoint: t.takenPoint ?? null,
         bytes: t.bytes,
         originalBytes: t.originalBytes,
         width: t.width,

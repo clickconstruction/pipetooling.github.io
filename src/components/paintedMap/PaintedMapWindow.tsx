@@ -83,6 +83,7 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { readingMovesDot } from '../../lib/paintedMap/paintedPlaceDot'
 import { spotPhotoIsFresh, spotStaleWords, spotStart, type PaintedSpot } from '../../lib/paintedMap/paintedSpot'
+import { notePaintedPlaceOpened } from '../../lib/paintedMap/paintedAddressPlacesIo'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
@@ -126,6 +127,8 @@ type Props = {
    * phone's reading of that moment when the reading is good and the photo is fresh.
    */
   spot?: PaintedSpot | null
+  /** A place to open on (#413): it is picked in the list, brought into view, and the map goes to it. */
+  pickPlace?: string | null
   onClose: () => void
 }
 
@@ -175,7 +178,7 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, onClose }: Props) {
+export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, pickPlace = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
@@ -219,7 +222,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const openedOnPlace = useRef(placeFirst && !!givenCenter)
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
   const [viewing, setViewing] = useState<string | null>(null)
-  const [pickedPlace, setPickedPlace] = useState<string | null>(null)
+  const [pickedPlace, setPickedPlace] = useState<string | null>(pickPlace)
   const [sharing, setSharing] = useState(false)
   // A picture of the map is on the screen, in the Share sheet. It is Esri's photograph (punch list #387).
   const [pictureUp, setPictureUp] = useState(false)
@@ -895,6 +898,23 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // A dot pressed on the map picks its place in the list. Someone came looking for it, so the place counts an open (#413).
+  const pickAPlace = useCallback((placeId: string) => {
+    setPickedPlace(placeId)
+    notePaintedPlaceOpened(placeId)
+  }, [])
+  // Opened on a place (#413): once the map is read, the map goes to that place and its row comes into view.
+  const loadedMapId = whole?.map.id ?? null
+  useEffect(() => {
+    if (!pickPlace || !whole) return
+    const at = whole.places.find((p) => p.id === pickPlace)
+    if (!at) return
+    setFly({ lat: at.lat, lng: at.lng })
+    window.requestAnimationFrame(() => document.querySelector(`[data-painted-place-id="${pickPlace}"]`)?.scrollIntoView?.({ block: 'nearest' }))
+    // Once, when the map this window opened on has been read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickPlace, loadedMapId])
+
   const canvasLines = useMemo(
     () => [
       ...lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how })),
@@ -972,7 +992,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} google={canvasGoogle} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={pickAPlace} time={mode === 'view' ? { name: title } : null} google={canvasGoogle} />
               </Suspense>
               {mode === 'walk' && painting && walkMe?.area ? (
                 // The map has pulled back to the whole of what the phone knows. The pill says what the dashed circle is.
@@ -1209,11 +1229,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                         const by = p.setBy ? names.get(p.setBy) : null
                         const sure = taskPlaceAccuracyWords(p.accuracyM)
                         return (
-                          <div key={p.id} data-painted-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
+                          <div key={p.id} data-painted-place-row data-painted-place-id={p.id} data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
                             <PaintedPlaceMark number={isList ? (letterOf.get(p.id) ?? placeLetter(p.number)) : p.number} kind={p.kind} size={28} style={{ gridRow: '1 / 4' }} />
                             <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
                             {url ? (
-                              <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setViewing(url)} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>
+                              <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => { setViewing(url); notePaintedPlaceOpened(p.id) }} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>
                                 <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                               </button>
                             ) : null}

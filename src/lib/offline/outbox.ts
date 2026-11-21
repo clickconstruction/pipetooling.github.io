@@ -147,6 +147,8 @@ export interface KeptShot {
   id: string
   sent: boolean
   takenAt: string
+  /** Where the phone was when the shot was taken (punch list #413), read then and carried here: a shot that waits for a signal keeps the spot of that moment. */
+  takenPoint?: { lat: number; lng: number; accuracyM: number | null } | null
   bytes: number
   originalBytes: number
   width: number

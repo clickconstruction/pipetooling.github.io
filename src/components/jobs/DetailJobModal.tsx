@@ -2561,6 +2561,7 @@ export default function DetailJobModal({
             <JobPaintedMapsStrip
               jobId={jobId}
               addCentred={phoneShape}
+              rows
               developmentId={detailJob?.development_id ?? null}
               jobLabel={(fullJob ?? limitedJob)?.job_name ?? null}
               developmentLabel={detailJob ? ('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null)) : null}
