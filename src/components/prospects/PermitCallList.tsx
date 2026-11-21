@@ -130,14 +130,15 @@ export function PermitCallList({
   const shown = useMemo(() => callRowsShowing(list, showing), [list, showing])
   const visible = showing === 'week' ? shown : shown.slice(0, more)
   const nameOf = (userId: string) => (userId === authUserId ? 'You' : (researchers.find((r) => r.id === userId)?.name ?? null))
-  // The answers that still hold a name off the list, the newest first, for this city's names.
+  // The answers that still hold a name off the list, the newest first, for this city's names. An answer whose day has come holds its name off until the name has a new job, so a name not offered is still listed here.
   const answered = useMemo(() => {
     const byKey = new Map(builders.map((b) => [b.key, b]))
+    const offered = new Set(list.map((r) => r.key))
     return [...standings.entries()]
-      .filter(([key, s]) => s.off && (byKey.has(key) || s.row.city === city))
+      .filter(([key, s]) => (s.off || !offered.has(key)) && (byKey.has(key) || s.row.city === city))
       .map(([key, s]) => ({ key, standing: s, name: byKey.get(key) ? builderName(byKey.get(key) as BuilderRow) : key }))
       .sort((a, b) => b.standing.row.answered_at.localeCompare(a.standing.row.answered_at))
-  }, [standings, builders, city])
+  }, [standings, builders, city, list])
 
   const pick = (s: CallShowing) => {
     setShowing(s)

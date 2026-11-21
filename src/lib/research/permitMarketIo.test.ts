@@ -52,7 +52,7 @@ describe('loadMarketPermits', () => {
     expect(new Set(rows.map((r) => (r as unknown as { n: number }).n)).size).toBe(3645)
     expect(log.map((l) => [l.lo, l.counted])).toEqual([[0, true], [1000, false], [2000, false], [3000, false]])
     expect(from).toHaveBeenCalledWith('permits')
-    expect(log[0]?.select).toBe('builder_key, stage, work_type, submitted_on, issued_on, declared_value')
+    expect(log[0]?.select).toBe('builder_key, stage, work_type, submitted_on, issued_on, declared_value, address_key')
     expect(log[0]?.eq).toEqual([['city', 'San Antonio'], ['kind', 'building'], ['residential', false]])
     // Issued since the day, or applied for since then and not issued: the permit's own day.
     expect(log[0]?.or).toEqual([['issued_on.gte.2025-11-19,and(issued_on.is.null,submitted_on.gte.2025-11-19)']])

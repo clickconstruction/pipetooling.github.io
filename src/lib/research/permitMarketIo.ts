@@ -45,7 +45,7 @@ export async function loadBuildersOfCities(cities: readonly string[]): Promise<C
   return await Promise.all(cities.map(async (city) => ({ city, rows: (await loadBuilders(city)) ?? [] })))
 }
 
-const MARKET_PERMIT_COLUMNS = 'builder_key, stage, work_type, submitted_on, issued_on, declared_value'
+const MARKET_PERMIT_COLUMNS = 'builder_key, stage, work_type, submitted_on, issued_on, declared_value, address_key'
 const MARKET_PERMITS_DOING = 'read the year of permits'
 
 /**

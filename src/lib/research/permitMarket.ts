@@ -294,7 +294,52 @@ export type ClockPermit = { stage: string; submitted_on: string | null; issued_o
  * `permits`. The rows read back as history are among them: the skim's read leaves those out, and
  * most of a year is history. The call list, the clock and the charts all count these.
  */
-export type MarketPermit = ClockPermit & { builder_key: string | null; work_type: string | null; declared_value: number | null }
+export type MarketPermit = ClockPermit & { builder_key: string | null; work_type: string | null; declared_value: number | null; address_key: string | null }
+
+/**
+ * The permits with a job counted once (v2.8112, the owner's answer of 2026-11-20). One name's
+ * rows of one day at one address are one job. San Antonio keeps an application and its permit
+ * as two rows, the application taking the permit's issued day, and a project of several
+ * buildings as a row a building, each carrying the whole project's value. Counted as rows, one
+ * project read as a dozen permits and a name read as picking up on it.
+ *
+ * A job is issued once any of its rows is, takes an issued row's kind of work, its earliest
+ * applied day and its largest value. A row with no day or no address is a job by itself: there
+ * is nothing to tell it from another by.
+ */
+export function marketJobs(permits: readonly MarketPermit[]): MarketPermit[] {
+  const out: MarketPermit[] = []
+  const at = new Map<string, number>()
+  for (const p of permits) {
+    const day = p.issued_on ?? p.submitted_on
+    if (!day || !p.address_key) {
+      out.push(p)
+      continue
+    }
+    const key = `${p.builder_key ?? ''}|${day}|${p.address_key}`
+    const i = at.get(key)
+    const held = i == null ? undefined : out[i]
+    if (i == null || !held) {
+      at.set(key, out.length)
+      out.push({ ...p })
+      continue
+    }
+    const heldIssued = held.stage !== 'applied'
+    const rowIssued = p.stage !== 'applied'
+    const earliest = [held.submitted_on, p.submitted_on].filter((d): d is string => Boolean(d)).sort()[0] ?? null
+    out[i] = {
+      builder_key: held.builder_key,
+      address_key: held.address_key,
+      stage: heldIssued ? held.stage : p.stage,
+      // The kind of work is the permit's. An application names only that it is a project.
+      work_type: heldIssued && rowIssued ? (held.work_type ?? p.work_type) : heldIssued ? held.work_type : rowIssued ? (p.work_type ?? held.work_type) : (held.work_type ?? p.work_type),
+      submitted_on: earliest,
+      issued_on: held.issued_on ?? p.issued_on,
+      declared_value: Math.max(held.declared_value ?? 0, p.declared_value ?? 0) || null,
+    }
+  }
+  return out
+}
 
 /**
  * Application to permit: the applications submitted in twelve months that carry an issued day,

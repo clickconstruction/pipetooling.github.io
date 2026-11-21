@@ -56,7 +56,7 @@ const BUILDERS: CityBuilders[] = [
   { city: 'Austin', rows: [builder('harborfitouts', 'Harbor Fitouts', 2, { plumber: 'Copperline Mechanical', plumber_jobs: 2 })] },
   { city: 'New Braunfels', rows: [] },
 ]
-const permit = (over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'harborfitouts', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-10-05', declared_value: null, ...over })
+const permit = (over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'harborfitouts', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-10-05', declared_value: null, address_key: null, ...over })
 /** Five applications that waited 30, 40, 45, 50 and 80 days, and three issued permits in October. */
 const PERMITS: MarketPermit[] = [
   ...['2026-07-01', '2026-07-11', '2026-07-16', '2026-07-21', '2026-08-20'].map((issued) => permit({ builder_key: 'juniperhospitalitygroup', stage: 'applied', work_type: 'Commercial project', submitted_on: '2026-06-01', issued_on: issued })),

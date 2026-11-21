@@ -153,17 +153,17 @@ Is the right customer not shown? Press **Tie to a customer** and search our cust
 
 ## Call five builders this week
 
-Press **Market** on the strip, beside **Builders**. Market says what the permits mean for us. The list on top is **Call this week**. Each name is a builder who keeps pulling commercial permits here.
+Press **Market** on the strip, beside **Builders**. Market says what the permits mean for us. The list on top is **Call this week**. Each name is a builder who keeps starting commercial jobs here. A job is counted once. An application and its permit are one job. So are the buildings of one project filed on one day.
 
 Each row says why the name is on the list.
 
-- {{chip:green|Picking up}} means two or more permits more in the last 90 days than in the 90 before.
-- {{chip:green|New and busy}} means three or more permits in the last 90 days and none before.
+- {{chip:green|Picking up}} means two or more jobs more in the last 90 days than in the 90 before.
+- {{chip:green|New and busy}} means three or more jobs in the last 90 days and none before.
 - {{chip:blue|Never bid}} means we have never priced a job for them.
 - {{chip:yellow|2 jobs open now}} means two jobs applied for with no plumbing permit yet.
 - {{chip:red|We bid 4, won 0}} means we priced four of their jobs and won none.
 
-Five names show, so one person can call them all. A name that reads as a builder comes first. Then a job open now, then a name picking up or new, then a name never bid. No number is a score.
+Five names show, so one person can call them all. A name with a building word comes first, such as Construction, Contracting or Builders. The other companies follow. Then a job open now, then a name picking up or new, then a name never bid. No number is a score.
 
 {{chip:gray|May file for others}} marks a name that reads like a permit service or a design firm. {{chip:gray|Could be a person}} marks a name with no company in it. Those names wait behind the builders. Say what a name is on its builder's sheet to settle it.
 
@@ -171,7 +171,7 @@ Press an address after **Open now** to open the building. Press **Open builder**
 
 Press {{button:blue|Pursue}} to go after a builder. Say what for, who follows up and what they are. The lead goes on a calling deck, as a pursue on the skim does. Press **Not for us** to pass on the name. Say why in one press, or leave it unsaid.
 
-Either answer takes the name off the list for everyone. The next name takes its place. A pursued name may come back after 90 days. A passed name may come back after a year. Press **Answered** under the list to see the answered names. Press **Put back** to undo one.
+Either answer takes the name off the list for everyone. The next name takes its place. A pursued name may come back after 90 days. A passed name may come back after a year. Either comes back only once it applies for a new job. Press **Answered** under the list to see the answered names. Press **Put back** to undo one.
 
 The chips over the list filter it. Each chip shows its count. A chip is left out in a city whose records cannot fill it.
 
