@@ -260,6 +260,7 @@ last_updated: 2026-11-20
 > The money is one block: `LienClaimBox`'s read view is the total line (`.lienLedgerClaim`, the figure at the card's right edge), `LienDeskMonths` hands it the foot of the column through `claimNode(foot)` (`data-lien-grid-foot`, the months the notice names and their count), and `LienClaimBills` draws the bills under it on the same edge.
 > The `tfoot` of v2.7430 and its second total (`data-lien-grid-total`) are gone, so the figure is said once.
 > Under 560 px of card a row is its own grid: the month over its window, an earlier paper as a mark with its letter (`.lienLedgerMarkLetter`), and the tick in a 6.5rem column at the right edge.
+> Since v2.8116 (the owner's pick of 2026-11-20) the column of this notice is pinned to the frame's right edge in a wider card (`position: sticky; right: 0`), so earlier papers slide under it, and the frame carries `data-slides` while the grid is wider than it, which draws the column's edge.
 > The empty card goes through `EmptyState`.
 > `LienDeskMonths.render.test.tsx` holds the order, the words, the hooks and the doors.
 > A width observer fires only when a frame is drawn, so a measurement in a hidden browser pane reloads at each width.
