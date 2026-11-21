@@ -79,13 +79,13 @@ describe('BuilderLinkCard', () => {
 
   it('lists who opened it: an account by name, someone with none by where the open came from', async () => {
     const opens: DocumentBuilderLinkOpen[] = [
-      { at: '2026-11-21T18:30:00Z', viewer: 'outside' as const, name: null, ip: '203.0.113.7', agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', device: { timeZone: 'America/Chicago' } },
+      { at: '2026-11-21T18:30:00Z', viewer: 'outside' as const, name: null, ip: '203.0.113.7', agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', device: { timeZone: 'America/Phoenix' } },
       { at: '2026-11-21T17:00:00Z', viewer: 'staff' as const, name: 'Dana Whitlock', ip: null, agent: null, device: {} },
     ]
     open({ read: vi.fn(async () => landed({ ...ON('abcdefgh23456789', 1), opens, opensTotal: 31 })) })
     const list = await screen.findByTestId('builder-link-opens')
     expect(list.textContent).toContain('Who opened it: 31 in all, the newest 2 below')
-    expect(list.textContent).toContain('Someone with no account · 203.0.113.7 · Safari on iPhone · America/Chicago')
+    expect(list.textContent).toContain('Someone with no account · 203.0.113.7 · Safari on iPhone · America/Phoenix')
     expect(list.textContent).toContain('Dana Whitlock · Has an account')
     expect(list.querySelectorAll('.vipLineLabel')).toHaveLength(2)
   })

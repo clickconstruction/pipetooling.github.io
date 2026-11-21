@@ -30,7 +30,7 @@ const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (K
 
 describe('the device a page reports with an open', () => {
   it('keeps the few named details, as short plain text', () => {
-    expect(documentBuilderLinkDevice({ language: 'en-US', timeZone: 'America/Chicago', screen: '390x844', platform: 'iPhone', touch: 'yes' })).toEqual({ language: 'en-US', timeZone: 'America/Chicago', screen: '390x844', platform: 'iPhone', touch: 'yes' })
+    expect(documentBuilderLinkDevice({ language: 'en-US', timeZone: 'America/Phoenix', screen: '390x844', platform: 'iPhone', touch: 'yes' })).toEqual({ language: 'en-US', timeZone: 'America/Phoenix', screen: '390x844', platform: 'iPhone', touch: 'yes' })
     expect(Object.keys(documentBuilderLinkDevice({ language: 'x'.repeat(500) }))).toEqual(['language'])
     expect(documentBuilderLinkDevice({ language: 'x'.repeat(500) }).language).toHaveLength(80)
   })
@@ -42,7 +42,7 @@ describe('the device a page reports with an open', () => {
   })
 
   it('is read from what the browser tells every site, and leaves out what it hides', () => {
-    expect(linkDeviceOf({ language: 'es-MX', timeZone: 'America/Chicago', screenWidth: 390, screenHeight: 844.4, platform: 'iPhone', touchPoints: 5 })).toEqual({ language: 'es-MX', timeZone: 'America/Chicago', screen: '390x844', platform: 'iPhone', touch: 'yes' })
+    expect(linkDeviceOf({ language: 'es-MX', timeZone: 'America/Phoenix', screenWidth: 390, screenHeight: 844.4, platform: 'iPhone', touchPoints: 5 })).toEqual({ language: 'es-MX', timeZone: 'America/Phoenix', screen: '390x844', platform: 'iPhone', touch: 'yes' })
     expect(linkDeviceOf({ language: 'en-US', touchPoints: 0 })).toEqual({ language: 'en-US', touch: 'no' })
     expect(linkDeviceOf({ screenWidth: 0, screenHeight: 844 })).toEqual({})
     expect(linkDeviceOf({})).toEqual({})
@@ -85,7 +85,7 @@ describe('one open on the card', () => {
   })
 
   it('says someone has no account, with where the open came from and their browser', () => {
-    expect(documentBuilderLinkOpenWords(open({ ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Chicago' } }))).toEqual({ who: 'Someone with no account', detail: '203.0.113.7 · Safari on iPhone · America/Chicago' })
+    expect(documentBuilderLinkOpenWords(open({ ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Phoenix' } }))).toEqual({ who: 'Someone with no account', detail: '203.0.113.7 · Safari on iPhone · America/Phoenix' })
     expect(documentBuilderLinkOpenWords(open())).toEqual({ who: 'Someone with no account', detail: '' })
   })
 
@@ -149,8 +149,8 @@ describe('a sheet’s link and its trades', () => {
 
 describe('the link as the function hands it to the tab', () => {
   it('reads a link that is off with when and why, and who opened it', () => {
-    const state = stateFrom({ on: false, endedAt: '2026-11-21T15:00:00Z', endedWhy: 'last_send_off', opens: [{ at: '2026-11-21T14:00:00Z', viewer: 'outside', ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Chicago', canvas: 'no' } }, { viewer: 'staff' }, 'not an open'], opensTotal: 9 })
-    expect(state).toEqual({ on: false, endedAt: '2026-11-21T15:00:00Z', endedWhy: 'last_send_off', opens: [{ at: '2026-11-21T14:00:00Z', viewer: 'outside', name: null, ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Chicago' } }], opensTotal: 9 })
+    const state = stateFrom({ on: false, endedAt: '2026-11-21T15:00:00Z', endedWhy: 'last_send_off', opens: [{ at: '2026-11-21T14:00:00Z', viewer: 'outside', ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Phoenix', canvas: 'no' } }, { viewer: 'staff' }, 'not an open'], opensTotal: 9 })
+    expect(state).toEqual({ on: false, endedAt: '2026-11-21T15:00:00Z', endedWhy: 'last_send_off', opens: [{ at: '2026-11-21T14:00:00Z', viewer: 'outside', name: null, ip: '203.0.113.7', agent: IPHONE, device: { timeZone: 'America/Phoenix' } }], opensTotal: 9 })
   })
 
   it('reads an older function’s answer, which says nothing of opens or of why', () => {
