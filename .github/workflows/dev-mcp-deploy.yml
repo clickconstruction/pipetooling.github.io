@@ -1,0 +1,97 @@
+name: dev-mcp deploy (bundled, by hand)
+
+# THE WAY dev-mcp DEPLOYS (v2.8117). Every other function deploys with `scripts/deploy-functions.sh` as before.
+#
+# Supabase takes a function two ways: raw source files that its server bundles, held to 5 MB, and a bundle the CLI
+# builds with Docker before it uploads, held to 20 MB. The repo's script sends raw files, and dev-mcp stood at 4.49 MB
+# of them on 2026-11-20, growing about 0.25 MB a day. A hosted runner has Docker; the Mac the sessions run on does not
+# reach its daemon. So the seat alone deploys here: main alone, dev-mcp alone, bundled.
+#
+# A person or a session runs it once the seat's change is on main:
+#
+#   bash scripts/deploy-functions.sh dev-mcp        (dispatches this job and waits for it)
+#   gh workflow run dev-mcp-deploy.yml --ref main   (the same, by hand)
+#
+# A refused deploy leaves the live function as it was. The summary carries the commit, the seat's version and three
+# sizes: the raw upload `check:edge-bundles` measures, the bundle as the CLI prints it (compressed) and the bundle
+# unpacked. Which of the last two Supabase holds to 20 MB is not known (2026-11-20: 3.46 MB and 14.85 MB, accepted),
+# so the seat's ceiling in `scripts/lib/edgeUploadGraph.mjs` keeps the unpacked one under 20 MB.
+#
+# Requires the SUPABASE_ACCESS_TOKEN repo secret, the one the two drift workflows use.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time. GitHub keeps one waiting run a group: a newer one replaces it, and it deploys the same main or
+# a newer one, so `scripts/deploy-functions.sh` follows the newest run when its own is cancelled.
+concurrency:
+  group: dev-mcp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The version the sessions deploy every other function with.
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.72.7
+
+      # With no daemon the CLI warns and sends raw files instead, which Supabase holds to 5 MB. Stop here first.
+      - name: Docker is up
+        run: docker info --format 'Docker {{.ServerVersion}}'
+
+      - name: What the raw upload would be
+        run: node scripts/lib/edgeUploadGraph.mjs dev-mcp | tee raw.log
+
+      - name: Deploy dev-mcp, bundled with Docker
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -o pipefail
+          supabase functions deploy dev-mcp --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw --use-docker 2>&1 | tee deploy.log
+
+      # The bundle as Supabase stores it, unpacked: the second size the 20 MB might be counted on.
+      - name: The bundle unpacked
+        if: success()
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          curl -s --max-time 120 -o /dev/null -w '%{http_code} %{size_download}\n' \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            https://api.supabase.com/v1/projects/yewfzhbofbbyvkvtaatw/functions/dev-mcp/body | tee unpacked.log || true
+
+      - name: What happened
+        if: always()
+        run: |
+          mb() { awk -v b="$1" 'BEGIN { printf "%.2f MB", b / 1000000 }'; }
+          {
+            echo '### dev-mcp, bundled with Docker'
+            echo "- commit: \`${GITHUB_SHA:0:10}\`"
+            echo "- seat version: $(grep -m1 -oE "SERVER_VERSION = '[^']+'" supabase/functions/dev-mcp/index.ts | cut -d"'" -f2)"
+            [ -f raw.log ] && echo "- raw upload: $(tr -s ' ' < raw.log | sed 's/ dev-mcp$//')"
+            if [ -f unpacked.log ] && grep -qE '^200 [0-9]+$' unpacked.log; then
+              echo "- bundle unpacked: $(mb "$(cut -d' ' -f2 unpacked.log)")"
+            fi
+            echo '```'
+            if [ -f deploy.log ]; then
+              grep -E 'Bundling Function|script size|Deployed Functions|Uploading asset|Docker is not running|exceeds|unexpected|[Ee]rror' deploy.log | head -40 || echo 'no line of the deploy matched'
+            else
+              echo 'the deploy step did not run'
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # A raw upload means the CLI fell back to the 5 MB path: not the deploy this job is for.
+          if [ -f deploy.log ] && grep -qE 'Uploading asset|Docker is not running' deploy.log; then
+            echo '::error::The CLI sent raw source files, not a Docker bundle.'
+            exit 1
+          fi

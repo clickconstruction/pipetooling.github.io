@@ -8,7 +8,8 @@
  * and photo-save, for a `_shared/driveSettings.ts` export that never landed). And every function's upload stays under
  * `UPLOAD_CEILING_BYTES` (v2.7256): `supabase functions deploy` uploads each file a relative import names, a type-only
  * import too, and refuses 5 MB with HTTP 413 (dev-mcp at 5.02 MB on 2026-11-13), so the five biggest are printed and a
- * function past the ceiling fails with its biggest files (`lib/edgeUploadGraph.mjs`). Both take about a second for
+ * function past the ceiling fails with its biggest files (`lib/edgeUploadGraph.mjs`). dev-mcp deploys as a bundle built
+ * with Docker, which Supabase holds to 20 MB, so it has its own ceiling there (v2.8117). Both take about a second for
  * the 190 functions, so ci.yml runs them on every pull request and merge-queue build.
  *
  *   node scripts/check-edge-bundles.mjs [functions-dir]    (default supabase/functions)
@@ -52,8 +53,8 @@ if (failed.length > 0) {
 
 if (uploads.over.length > 0) {
   console.error(
-    `\nEDGE FUNCTION UPLOADS TOO BIG: ${uploads.over.length} of ${slugs.length} would upload more than the ${uploads.ceiling} ceiling ` +
-      '(the deploy uploads every file a relative import names, a type-only import too, and refuses 5 MB with HTTP 413):\n' +
+    `\nEDGE FUNCTION UPLOADS TOO BIG: ${uploads.over.length} of ${slugs.length} would upload more than the ${uploads.ceiling} ceiling, or its own ` +
+      '(the deploy uploads every file a relative import names, a type-only import too, and refuses 5 MB with HTTP 413; a function that deploys bundled is held to its own ceiling):\n' +
       uploads.lines.join('\n') +
       '\n\nImport the one file a function needs instead of a file that reaches many (`node scripts/lib/edgeUploadGraph.mjs <slug>` ' +
       "lists an upload; its `via` names the chain to a file). The five biggest:\n" +
@@ -65,4 +66,5 @@ if (uploads.over.length > 0) {
 if (failed.length > 0 || uploads.over.length > 0) process.exit(1)
 
 console.log(`edge-function link check OK: all ${slugs.length} functions bundle (esbuild, remote imports external).`)
-console.log(`edge-function upload check OK: every upload is under the ${uploads.ceiling} ceiling. The five biggest:\n${uploads.biggest.join('\n')}`)
+console.log(`edge-function upload check OK: every upload is under the ${uploads.ceiling} ceiling, or its own. The five biggest:\n${uploads.biggest.join('\n')}`)
+for (const line of uploads.bundledLines) console.log(line)

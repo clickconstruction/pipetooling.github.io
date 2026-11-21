@@ -5,7 +5,8 @@
  * (257 files, 4,213,815 bytes). The API refuses a deploy over its 5 MB limit with HTTP 413: legal-portal was refused
  * at about 4.74 MB of source on 2026-11-12, and dev-mcp went through at about 4.71 MB, then was refused at 5.02 MB on
  * 2026-11-13 (v2.7256: the copy of the kernels named the whole generated database types, 1.48 MB, by type imports).
- * `check:edge-bundles` fails a PR when any function's upload passes `UPLOAD_CEILING_BYTES` (`uploadReport`).
+ * `check:edge-bundles` fails a PR when any function's upload passes `UPLOAD_CEILING_BYTES` (`uploadReport`), or, for a
+ * function that deploys bundled, its own ceiling in `BUNDLED_UPLOAD_CEILINGS` (v2.8117: dev-mcp).
  *
  *   node scripts/lib/edgeUploadGraph.mjs [slug …]    (every function when none is named), largest first
  */
@@ -80,22 +81,43 @@ export function edgeUploads(functionsDir = 'supabase/functions', root = process.
  */
 export const UPLOAD_CEILING_BYTES = 4_500_000
 
+/**
+ * The functions that deploy as a bundle the CLI builds with Docker, not as raw files, each with its own ceiling in raw
+ * source (v2.8117). Supabase holds a bundle to 20 MB where it holds raw files to 5 MB, so `dev-mcp` deploys from the
+ * `dev-mcp-deploy.yml` job. On 2026-11-20 its 4.49 MB of raw source made a bundle the CLI printed as 3.46 MB
+ * (compressed) and Supabase stores as 14.85 MB (unpacked, 3.31 times the source: the files, their JavaScript and their
+ * source maps). Which of the two is held to 20 MB is not known, so the ceiling keeps the unpacked one under it:
+ * 5.8 MB of source is about 19.2 MB unpacked. A deploy accepted past 20 MB unpacked would show the compressed size is
+ * the one counted, and this number could then rise to about 12 MB.
+ */
+export const BUNDLED_UPLOAD_CEILINGS = { 'dev-mcp': 5_800_000 }
+
 const mb = (bytes) => `${(bytes / 1e6).toFixed(2)} MB`
 
 /**
- * What `check:edge-bundles` says of the uploads (`edgeUploads`' rows): `over`, the slugs past the ceiling, and `lines`,
- * each of those with its three biggest files, then the five biggest uploads.
+ * What `check:edge-bundles` says of the uploads (`edgeUploads`' rows): `over`, the slugs past their ceiling, and `lines`,
+ * each of those with its three biggest files, then the five biggest uploads. A slug in `bundled` is held to its own
+ * ceiling and named in `bundledLines`; every other slug to `ceiling`.
  */
-export function uploadReport(uploads, ceiling = UPLOAD_CEILING_BYTES) {
+export function uploadReport(uploads, ceiling = UPLOAD_CEILING_BYTES, bundled = BUNDLED_UPLOAD_CEILINGS) {
   const sorted = [...uploads].sort((a, b) => b.bytes - a.bytes)
-  const over = sorted.filter((u) => u.bytes > ceiling)
+  const own = (slug) => (Object.hasOwn(bundled, slug) ? bundled[slug] : null)
+  const limit = (u) => own(u.slug) ?? ceiling
+  const over = sorted.filter((u) => u.bytes > limit(u))
   const row = (u) => `${mb(u.bytes).padStart(8)}  ${String(u.files).padStart(4)} files  ${u.slug}`
   const lines = []
   for (const u of over) {
-    lines.push(`  - ${u.slug}: ${mb(u.bytes)}, ${mb(u.bytes - ceiling)} past the ceiling. Its biggest files:`)
+    const past =
+      own(u.slug) === null
+        ? `${mb(u.bytes - ceiling)} past the ceiling`
+        : `${mb(u.bytes - limit(u))} past its ${mb(limit(u))} ceiling (it deploys bundled)`
+    lines.push(`  - ${u.slug}: ${mb(u.bytes)}, ${past}. Its biggest files:`)
     for (const [path, bytes] of u.biggest ?? []) lines.push(`      ${mb(bytes).padStart(8)}  ${path}`)
   }
-  return { over: over.map((u) => u.slug), lines, biggest: sorted.slice(0, 5).map(row), ceiling: mb(ceiling) }
+  const bundledLines = sorted
+    .filter((u) => own(u.slug) !== null)
+    .map((u) => `${u.slug} deploys bundled and is held to ${mb(limit(u))}: ${mb(u.bytes)}, ${mb(Math.max(0, limit(u) - u.bytes))} of room`)
+  return { over: over.map((u) => u.slug), lines, biggest: sorted.slice(0, 5).map(row), ceiling: mb(ceiling), bundledLines }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

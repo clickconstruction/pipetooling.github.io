@@ -9,8 +9,13 @@ type Upload = { files: string[]; bytes: number; via: (path: string) => string[] 
 type Row = { slug: string; files: number; bytes: number; biggest: [string, number][] }
 const edgeUpload = kernel.edgeUpload as (entry: string, root?: string) => Upload
 const edgeUploads = kernel.edgeUploads as (dir?: string, root?: string) => Row[]
-const uploadReport = kernel.uploadReport as (rows: Row[], ceiling?: number) => { over: string[]; lines: string[]; biggest: string[]; ceiling: string }
+const uploadReport = kernel.uploadReport as (
+  rows: Row[],
+  ceiling?: number,
+  bundled?: Record<string, number>,
+) => { over: string[]; lines: string[]; biggest: string[]; ceiling: string; bundledLines: string[] }
 const CEILING = kernel.UPLOAD_CEILING_BYTES as number
+const BUNDLED = kernel.BUNDLED_UPLOAD_CEILINGS as Record<string, number>
 
 /**
  * v2.7135: `supabase functions deploy` uploads a function's index.ts and every file reached by a relative import,
@@ -52,6 +57,25 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(r.lines).toEqual(['  - big: 4.60 MB, 0.10 MB past the ceiling. Its biggest files:', '       4.60 MB  fn/big/index.ts', '       0.00 MB  fn/_shared/x.ts'])
     expect(r.biggest.map((l) => l.trim().split(/\s+/).pop())).toEqual(['big', 'edge', 'small', 'c', 'b'])
     expect(uploadReport(rows, 50).over).toEqual(['big', 'edge', 'small'])
+  })
+
+  it('holds a function that deploys bundled to its own ceiling, and every other one to the common one (v2.8117)', () => {
+    const row = (slug: string, bytes: number): Row => ({ slug, files: 3, bytes, biggest: [[`fn/${slug}/index.ts`, bytes]] })
+    // The seat alone deploys bundled: 5.8 MB of source is about 19.2 MB of bundle unpacked, under Supabase's 20 MB.
+    expect(BUNDLED).toEqual({ 'dev-mcp': 5_800_000 })
+    // Past the common ceiling and under its own, the seat passes. A portal at the same size does not.
+    const r = uploadReport([row('dev-mcp', 5_000_000), row('customer-portal', 5_000_000), row('small', 100)])
+    expect(r.over).toEqual(['customer-portal'])
+    expect(r.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 5.80 MB: 5.00 MB, 0.80 MB of room'])
+    // At its ceiling passes; past it the line names the seat's own number.
+    expect(uploadReport([row('dev-mcp', 5_800_000)]).over).toEqual([])
+    const past = uploadReport([row('dev-mcp', 5_900_000)])
+    expect(past.over).toEqual(['dev-mcp'])
+    expect(past.lines[0]).toBe('  - dev-mcp: 5.90 MB, 0.10 MB past its 5.80 MB ceiling (it deploys bundled). Its biggest files:')
+    expect(past.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 5.80 MB: 5.90 MB, 0.00 MB of room'])
+    // A list of its own replaces the default, and a name like `constructor` is no ceiling.
+    expect(uploadReport([row('dev-mcp', 5_000_000), row('constructor', 10)], CEILING, {}).over).toEqual(['dev-mcp'])
+    expect(uploadReport([row('constructor', 10)]).bundledLines).toEqual([])
   })
 
   it('no function uploads the whole generated database types: the copy holds the parts it names (v2.7256)', () => {
