@@ -37,7 +37,7 @@ vi.mock('../../../supabase/functions/_shared/subPapers', async (actual) => {
 const auth = vi.hoisted(() => ({ role: 'assistant', readOnly: false }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, readOnly: auth.readOnly }) }))
 
-import type { PaperContext } from '../../../supabase/functions/_shared/subPapers'
+import { paperDay, type PaperContext } from '../../../supabase/functions/_shared/subPapers'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
@@ -47,6 +47,8 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** The connected window reads today from the clock; a month's statement closes on it. */
 const todayYmdForTest = () => todayYmdInAppTz()
+const paperDayForTest = (ymd: string) => paperDay(ymd)
+const dayAfter = (ymd: string) => new Date(Date.parse(`${ymd}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
 
 // Made-up people, jobs and money.
 const ROSTER: NeedsWorkOrderRosterPerson[] = [{ id: 'harlan', name: 'Harlan Mechanical', kind: 'sub', accountRole: 'subcontractor' }]
@@ -287,6 +289,11 @@ describe('SubPapersWindowView: the send step', () => {
     expect(screen.getByRole('dialog').textContent).toContain('Nov 11, 2026 to Nov 16, 2026.')
     expect(screen.getByRole('dialog').textContent).toContain('The last statement, SA-0003, ended Nov 10, 2026.')
   })
+
+  it('a period never starts after it ends: a last statement that ended today leaves the statement to date', () => {
+    render(<SubPapersWindowView open={{ kind: 'statement' }} sheets={SHEETS} ctx={CTX} contact={{ email: null, phone: null, portalUrl: null }} canSend={false} lastStatement={{ number: 'SA-0009', endedOn: CTX.today }} onDownload={vi.fn()} onPrint={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(`To date, ${paperDay(CTX.today)}`)
+  })
 })
 
 describe('SubPapersWindow, on real rows', () => {
@@ -410,6 +417,31 @@ describe('SubPapersWindow, with the register on the database', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'cedar-1' } })
     expect(screen.getByTestId('sub-paper-preview').textContent).toContain('No. WS-2041-1')
     expect(screen.getByRole('dialog').textContent).toContain('The file is WS-2041-1.pdf')
+  })
+
+  it('opened again the day a statement was made, the period still starts after the statement before it, never tomorrow', async () => {
+    const today = todayYmdForTest()
+    db.rows = [
+      NUMBERED,
+      { kind: 'statement_of_account', number: 'SA-0003', revision: 1, labor_job_id: null, period_to: '2026-11-10', issued_at: '2026-11-10T15:00:00Z', replaced_by: null, voided_at: null },
+      { kind: 'statement_of_account', number: 'SA-0004', revision: 1, labor_job_id: null, period_to: today, issued_at: new Date().toISOString(), replaced_by: null, voided_at: null },
+    ]
+    open('statement')
+    await waitFor(() => expect(screen.getByRole('dialog').textContent).toContain('SA-0004 was made today. The statement before it, SA-0003, ended Nov 10, 2026.'))
+    expect(screen.getByRole('button', { name: 'Since the last statement' }).getAttribute('aria-pressed')).toBe('true')
+    // The paper's own period line: it starts the day after SA-0003 ended and ends today.
+    const period = screen.getByTestId('sub-paper-preview').textContent ?? ''
+    expect(period).toContain(`Nov 11, 2026 to ${paperDayForTest(today)}`)
+    expect(period).not.toContain(`${paperDayForTest(dayAfter(today))} to ${paperDayForTest(today)}`)
+  })
+
+  it('a first statement made today leaves the next one to date, and says so', async () => {
+    db.rows = [{ kind: 'statement_of_account', number: 'SA-0001', revision: 1, labor_job_id: null, period_to: null, issued_at: new Date().toISOString(), replaced_by: null, voided_at: null }]
+    open('statement')
+    await waitFor(() => expect(screen.getByRole('dialog').textContent).toContain('SA-0001 was made today and is their first, so this one runs to date as well.'))
+    expect(screen.getByRole('button', { name: 'To date' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Since the last statement' })).toHaveProperty('disabled', true)
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(`To date, ${paperDayForTest(todayYmdForTest())}`)
   })
 
   it('Print registers the paper while its tab waits, and files it under its number', async () => {

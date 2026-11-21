@@ -9,12 +9,13 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { SITE_BOX_COUNT_KEY } from '../../lib/materials/siteBoxCount'
 
 const JOB_C = '00000000-0000-0000-0000-00000000cccc'
-const scenario: { openSession: Record<string, unknown> | null; role: string; on: boolean; tail: Array<{ direction: string; at: string; body: string }>; siteBoxes: number } = {
+const scenario: { openSession: Record<string, unknown> | null; role: string; on: boolean; tail: Array<{ direction: string; at: string; body: string }>; siteBoxes: number; doorFacts: { boxes: number; due: number; stickers: number } | null } = {
   openSession: { id: 'sess-1', job_ledger_id: JOB_C, bid_id: null },
   role: 'primary',
   on: false,
   tail: [],
   siteBoxes: 0,
+  doorFacts: null,
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -47,7 +48,7 @@ vi.mock('../../lib/supabase', () => {
     ch.subscribe = () => ch
     return ch
   }
-  return { supabase: { from: (t: string) => makeBuilder(t), channel, removeChannel: () => undefined, rpc: () => Promise.resolve({ data: null, error: null }), functions: { invoke: () => Promise.resolve({ data: { ok: true }, error: null }) }, auth: { getSession: () => Promise.resolve({ data: { session: null } }) } } }
+  return { supabase: { from: (t: string) => makeBuilder(t), channel, removeChannel: () => undefined, rpc: (name: string) => Promise.resolve({ data: name === 'on_site_door_facts' ? scenario.doorFacts : null, error: null }), functions: { invoke: () => Promise.resolve({ data: { ok: true }, error: null }) }, auth: { getSession: () => Promise.resolve({ data: { session: null } }) } } }
 })
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: scenario.role, profileName: 'Luis Ortega' }) }))
 // The details are their own component with their own tests. Here only where they are drawn matters.
@@ -56,6 +57,7 @@ vi.mock('./JobModeDetailsSection', () => ({ default: ({ jobId }: { jobId: string
 afterEach(() => {
   cleanup()
   scenario.siteBoxes = 0
+  scenario.doorFacts = null
   window.localStorage.removeItem(SITE_BOX_COUNT_KEY)
 })
 
@@ -96,6 +98,35 @@ describe('DashboardJobModeCard — short', { timeout: 15_000 }, () => {
     const press = screen.getByTestId('job-mode-materials-on-site')
     expect(press.getAttribute('aria-label')).toBe('Materials on site, 14 cages and boxes on this site')
     expect(press.contains(count)).toBe(true)
+  })
+
+  it('a site with news says it on one line under the press: the boxes due a count and the stickers waiting', async () => {
+    scenario.doorFacts = { boxes: 14, due: 2, stickers: 6 }
+    await mount(false)
+    await screen.findByLabelText('Leave Report')
+    expect((await screen.findByTestId('job-mode-materials-count')).textContent).toBe('14')
+    const news = screen.getByTestId('job-mode-materials-news')
+    expect(news.textContent).toBe('2 due a count · 6 stickers ready for a box')
+    expect(news.getAttribute('aria-label')).toBe('Materials on site: 2 due a count, 6 stickers ready for a box')
+    // Each number is a value drawn apart from its words.
+    expect(within(news).getAllByText(/^(2|6)$/).every((el) => el.getAttribute('data-value') === 'worked-out')).toBe(true)
+  })
+
+  it('stickers handed out before the first box say so, with no count on the press', async () => {
+    scenario.doorFacts = { boxes: 0, due: 0, stickers: 6 }
+    await mount(false)
+    await screen.findByLabelText('Leave Report')
+    expect((await screen.findByTestId('job-mode-materials-news')).textContent).toBe('6 stickers ready for a box')
+    expect(screen.queryByTestId('job-mode-materials-count')).toBeNull()
+    expect(screen.queryByTestId('job-mode-materials-due')).toBeNull()
+  })
+
+  it('a site with nothing due and no stickers draws no line', async () => {
+    scenario.doorFacts = { boxes: 14, due: 0, stickers: 0 }
+    await mount(false)
+    await screen.findByLabelText('Leave Report')
+    expect((await screen.findByTestId('job-mode-materials-count')).textContent).toBe('14')
+    expect(screen.queryByTestId('job-mode-materials-news')).toBeNull()
   })
 
   it('with short the lower half sits behind Open this job, and the press bar stays', async () => {

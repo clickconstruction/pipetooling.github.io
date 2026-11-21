@@ -21,6 +21,9 @@ const W = 612
 const H = 792
 const M = 48
 const RIGHT = W - M
+/** Where a box that runs over a page ends on one page and starts on the next: above the foot's rule, over the first line. */
+const BOX_FOOT = M + 22
+const BOX_HEAD = H - M + 10
 
 /** Helvetica holds WinAnsi only: a true minus and a tick are not in it. */
 export function subPaperPdfSafe(s: string): string {
@@ -125,15 +128,26 @@ class Writer {
     this.text(right, 0, 14, { bold: true, right: RIGHT - 10 })
     this.y -= 26
   }
+  /**
+   * A titled box round what `body` draws. A body that runs over a page gets a box on each page it is on: one from
+   * the title to that page's foot, one from the next page's head to the last line. One rectangle from the first
+   * page's top to the last page's bottom would be drawn upside down on the last page, round nothing.
+   */
   boxed(title: string, body: () => void) {
     this.need(34)
     this.y -= 6
     const top = this.y + 10
+    const first = this.pages.length - 1
     this.label(title, M + 8)
     this.y -= 13
     body()
     const bottom = this.y + 4
-    this.page.drawRectangle({ x: M, y: bottom, width: RIGHT - M, height: top - bottom, borderColor: this.c.rule, borderWidth: 0.7 })
+    const last = this.pages.length - 1
+    for (let i = first; i <= last; i += 1) {
+      const from = i === first ? top : BOX_HEAD
+      const to = i === last ? bottom : BOX_FOOT
+      this.pages[i]!.drawRectangle({ x: M, y: to, width: RIGHT - M, height: from - to, borderColor: this.c.rule, borderWidth: 0.7 })
+    }
     this.y -= 10
   }
   counsel(list: readonly CounselSentence[]) {
@@ -261,11 +275,13 @@ export async function buildPaymentRecordPdf(lib: PdfLibLike, b: PaymentRecord): 
   w.boxed('After this payment', () => {
     if (b.after.length === 0) w.para('Nothing is still open.', 9, { x: M + 8 })
     for (const x of b.after) {
+      w.need(14)
       w.text(`${x.sheetName} · ${x.job}`, M + 8, 9)
       w.text(paperMoney(x.open), 0, 9, { right: RIGHT - 8 })
       w.y -= 13
     }
     if (b.after.length) {
+      w.need(14)
       w.text(`Still open across ${b.after.length} ${b.after.length === 1 ? 'statement' : 'statements'}`, M + 8, 9.5, { bold: true })
       w.text(paperMoney(b.stillOpenAfter), 0, 9.5, { bold: true, right: RIGHT - 8 })
       w.y -= 13
@@ -308,6 +324,7 @@ export async function buildStatementOfAccountPdf(lib: PdfLibLike, s: StatementOf
       w.y -= 13
     }
     if (s.lastPayments.length) {
+      w.need(14)
       w.text('Paid in this period', M + 8, 9.5, { bold: true })
       w.text(paperMoney(s.paidInPeriod), 0, 9.5, { bold: true, right: RIGHT - 8 })
       w.y -= 13

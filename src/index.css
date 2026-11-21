@@ -7734,3 +7734,17 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
     display: none;
   }
 }
+
+/* The note that shows while an on-demand window's code loads (`WindowOpening`). It waits a quarter second
+   before it shows, so a window already on the device opens with no flash of words. */
+.windowOpening {
+  animation: windowOpeningIn 0.01s linear 0.25s both;
+}
+@keyframes windowOpeningIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

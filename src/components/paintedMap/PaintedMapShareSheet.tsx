@@ -409,6 +409,9 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
                         {PAINTED_MAP_SHARE_WORDS.seeWhere}
                       </a>
                     </span>
+                  ) : line.where ? (
+                    // Their phone gave only an area: its middle is nobody's place, so there is no place to open.
+                    <span data-painted-share-visit-area style={{ fontSize: '0.8125rem' }}>{line.where}</span>
                   ) : null}
                 </div>
               )

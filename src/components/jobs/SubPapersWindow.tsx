@@ -61,6 +61,8 @@ export type SubPapersWindowViewProps = {
   contact: SubPaperContact
   /** The last statement of account sent to this person, from the register; null before one has gone. Absent while no register records one: the period offers no *Since the last statement* then. */
   lastStatement?: { number: string; endedOn: string } | null
+  /** A statement that ended today, from the register. It is said beside the period and does not move it. */
+  statementToday?: { number: string } | null
   /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
   canSend: boolean
@@ -86,7 +88,7 @@ const seg = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78r
 const k: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', marginBottom: 3 }
 const field: CSSProperties = { marginTop: 10 }
 
-export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, paymentRecords = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
+export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
   const [view, setView] = useState<SubPapersOpen>(open)
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
@@ -95,6 +97,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   // The last statement as it stood when the window opened. A paper made here is registered at once, and it must
   // not move this window's own period under the person: a second press sends the period they are looking at.
   const [lastStatement] = useState(lastStatementNow)
+  const [statementToday] = useState(statementTodayNow)
   const [period, setPeriod] = useState<PeriodKey>(lastStatement ? 'since' : 'all')
   const [custom, setCustom] = useState<{ from: string; to: string }>({ from: '', to: ctx.today })
   const [attachOpen, setAttachOpen] = useState(true)
@@ -103,7 +106,8 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const [by, setBy] = useState<SubPaperSendBy>(ways[0]?.key ?? 'email')
 
   const range: StatementRange = useMemo(() => {
-    if (period === 'since') return lastStatement ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
+    // A period never starts after it ends: a last statement that ended today or later leaves the statement to date.
+    if (period === 'since') return lastStatement && nextDay(lastStatement.endedOn) <= ctx.today ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
     if (period === 'all') return { from: null, to: null }
     if (period === 'custom') return { from: custom.from || null, to: custom.to || null }
     // The ledger's month and year run to the period's last day as a filter. A paper closes on a real day, today at the latest.
@@ -208,7 +212,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                 )
                   .filter(([key]) => key !== 'since' || lastStatement !== undefined)
                   .map(([key, label]) => (
-                  <button key={key} type="button" aria-pressed={period === key} disabled={key === 'since' && !lastStatement} title={key === 'since' && !lastStatement ? 'No statement has been sent to them yet' : undefined} style={{ ...seg(period === key), opacity: key === 'since' && !lastStatement ? 0.55 : 1 }} onClick={() => setPeriod(key)}>
+                  <button key={key} type="button" aria-pressed={period === key} disabled={key === 'since' && !lastStatement} title={key === 'since' && !lastStatement ? (statementToday ? 'Their first statement was made today' : 'No statement has been sent to them yet') : undefined} style={{ ...seg(period === key), opacity: key === 'since' && !lastStatement ? 0.55 : 1 }} onClick={() => setPeriod(key)}>
                     {label}
                   </button>
                 ))}
@@ -225,7 +229,15 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
               ) : null}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                 {statement.period}.
-                {lastStatement ? ` The last statement, ${lastStatement.number}, ended ${paperDay(lastStatement.endedOn)}.` : lastStatement === null ? ' This is their first statement, so it runs to date.' : ''}
+                {lastStatement
+                  ? statementToday
+                    ? ` ${statementToday.number} was made today. The statement before it, ${lastStatement.number}, ended ${paperDay(lastStatement.endedOn)}.`
+                    : ` The last statement, ${lastStatement.number}, ended ${paperDay(lastStatement.endedOn)}.`
+                  : lastStatement === null
+                    ? statementToday
+                      ? ` ${statementToday.number} was made today and is their first, so this one runs to date as well.`
+                      : ' This is their first statement, so it runs to date.'
+                    : ''}
               </div>
             </div>
             <div style={field}>

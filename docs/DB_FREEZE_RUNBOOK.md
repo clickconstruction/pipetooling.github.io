@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-11-01
+last_updated: 2026-11-20
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -92,8 +92,13 @@ FATAL: (ECIRCUITBREAKER) failed to retrieve database credentials after multiple 
 ```
 
 `EAUTHQUERY` comes first; after a few attempts Supavisor trips its breaker and
-returns `ECIRCUITBREAKER` until it cools down. When Postgres cannot answer a
-single-row credential lookup, you are in **Mode B** — skip to the restart.
+returns `ECIRCUITBREAKER` until it cools down. A stall can also time out before
+either comes back: the pooler then says `FATAL: Failed to connect to database:
+{:error, :timeout}`, and a CLI run with no `SUPABASE_DB_PASSWORD` says
+`unexpected login role status 544 … Connection terminated due to connection
+timeout`, because the Management API cannot reach Postgres to make its login
+role. When Postgres cannot answer a single-row credential lookup, you are in
+**Mode B** — skip to the restart.
 
 **The direct connection is not a workaround.** `db.<ref>.supabase.co` resolves
 **IPv6-only** on this project (no IPv4 add-on), so `--db-url` on port 5432 fails
@@ -540,6 +545,74 @@ green the whole time** — this is the first partial stall on record.
   single CREATE OR REPLACE FUNCTION each, lock_timeout 3s) and a ~530-row
   backfill transaction (18:0x) all completed cleanly well before onset;
   no DDL was in flight during the window.
+
+### 2026-11-20 — Mode B (24-minute stall 20:05–20:29 UTC, ended by an instance restart; eight restarts in the day)
+
+Found because a dev seat write timed out: `dev-mcp` answered `The operation
+timed out` to an apply and then to every read, `whoami` included. The
+second-longest stall on record, after 08-19.
+
+- **Step 0** (20:13–20:15): `http-only` **401 in 0.12s**, `db-touching` **000
+  at 20–25s** on five probes. A 15-second probe loop got its first HTTP answer
+  (401) at **20:28:47**.
+- **Every new-connection path was dead, in two wordings the playbook did not
+  list**: the three `supabase inspect db` commands, run with no
+  `SUPABASE_DB_PASSWORD`, each failed with `unexpected login role status 544 …
+  Connection terminated due to connection timeout`, and psql on the session
+  pooler got `FATAL: Failed to connect to database: {:error, :timeout}` in 5s
+  (the 08-24 wording). status.supabase.com: "All Systems Operational".
+- **Step 2**: one `monitoring.health_checks` gap **20:05:01 → 20:29:00
+  (1,438s)**. The 20:05:01 sample is the onset caught in the act: sampler
+  **3,749.7ms** (8–35ms in the minutes before), 84 conns, 11 `active` with NULL
+  wait event, 10 `idle in transaction`, and **zero `Lock` rows** (none in 3
+  hours). The 20:05 cron batch took 7–11s a job and succeeded; then no cron row
+  until 20:29, with no failed rows: the silent gap.
+- **Ended by a restart nobody asked for.** The log reads `database system was
+  interrupted; last known up at 2026-11-20 20:01:13 UTC` → `not properly shut
+  down; automatic recovery in progress` → `starting PostgreSQL 17.6` at
+  **20:28:33**, with no `shutdown request`, no `terminated by signal`, no `out
+  of memory` and no `could not fork` anywhere in the day. That is the 09-06
+  fingerprint: the whole instance restarted. 46 conns at 20:29 (rebuilding),
+  86 by 20:30.
+- **Two precursors in the eleven minutes before.** The 19:54 → 19:56 gap was
+  another instance restart (`starting PostgreSQL` 19:55:02, last known up
+  19:50:55). The 19:59 → 20:01 gap was not a restart: **18 cron jobs failed
+  `job startup timeout` at 20:00:10–20:00:15**, the decisive Mode B signal seen
+  with no restart beside it. The checkpoint that began at 20:00:03 completed at
+  20:01:13, which is the long stall's `last known up`; the next began at
+  20:05:03 and never completed.
+- **And one after.** `pg_postmaster_start_time()` read **20:33:53** at 20:37,
+  with a 20:33 → 20:35 sampler gap and 46 conns at 20:35: the instance
+  restarted again five minutes after it came back.
+- **The day**: the checkpoint-counter query (09-06 entry) names restarts before
+  the samples of 12:15, 14:39, 16:09, 16:12, 16:26, 19:56 and 20:29, and misses
+  20:33:53, because a counter reset minutes after another reset is not below
+  its small predecessor. Eight restarts, against one each on 11-12 and 11-18 in
+  the 30 days before. The sampler ran over 250ms sixteen times in the 24 hours
+  before the stall. `scripts/pg-logs.sh` showed startup lines for only five of
+  the eight (14:38:34, 16:07:42, 16:25:24, 19:55:02, 20:28:33).
+- **What was in flight from the session that found it**: reads of eleven rows
+  and a few Drive file facts, two dry-run plans at 20:01 (0.4s and 3.8s) and one
+  single-row apply, the call that timed out. `dev_mcp_calls` holds no row for
+  that apply: it never reached the database, and the log write needs the
+  database too. Not surveyed: what the office and the other agent sessions were
+  running.
+- **The write that timed out**: nothing was re-sent blind. After recovery the
+  row read unchanged, a fresh plan gave the same hash, and the apply landed at
+  20:30:03 and read back intact after the 20:33:53 restart.
+- **No restart was issued by a person**: none from this session, and the log
+  has no shutdown request, which a dashboard restart writes.
+- **Lessons**: (1) a dev seat that times out on `whoami` is Step 0's cue, not a
+  seat fault; (2) a write that timed out in a stall is read before it is sent
+  again, and plan then apply by hash makes the second send safe; (3) recovery
+  is not the all-clear, so read a write back once `pg_postmaster_start_time()`
+  has stopped moving; (4) count a day's restarts from the sampler and
+  `pg_postmaster_start_time()` together, since the checkpoint counter and the
+  log each missed some.
+- **What this needs**: the Supabase support ticket the 09-06 entry asks for,
+  now with today's `last known up` → `starting PostgreSQL` pairs: 14:35:08 →
+  14:38:34, 16:04:44 → 16:07:42, 16:21:27 → 16:25:24, 19:50:55 → 19:55:02,
+  20:01:13 → 20:28:33.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 

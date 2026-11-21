@@ -14,9 +14,12 @@ import {
   KEPT_WORDS_MAX,
   decideBody,
   dropKeptPlanInput,
+  hrEntryReplacedKinds,
   keepAsk,
   keepBody,
   keptPlanByHashQuery,
+  keptPlanOffQuery,
+  keptPlanOffWords,
   keptPlanPersonOfArgs,
   keptPlanStoredArgs,
   keptPlanVerbOfApply,
@@ -31,6 +34,7 @@ import {
   sameKeptArgs,
   settledWords,
   staleCandidates,
+  withReplaces,
   type KeptPlanRead,
 } from '../../../supabase/functions/_shared/devMcpKeptPlans'
 import { WRITE_VERBS, isWriteVerb, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
@@ -221,6 +225,58 @@ describe('an apply settles the kept plan, and drop_kept_plan takes one off', () 
   })
 })
 
+describe('v2.8102: a plan taken off is not applied, a replaced document is committed to, and the log keeps the hash', () => {
+  const sent = { entry: ENTRY, plan_hash: HASH }
+
+  it('reads every kept plan under the verb and hash that waits or was taken off', () => {
+    expect(keptPlanOffQuery('plan_hr_entry', HASH)).toBe(`select=id,args,state,decided_label,decided_why&verb=eq.plan_hr_entry&plan_hash=eq.${HASH}&state=in.(waiting,dropped,stale)&order=kept_at.desc&limit=20`)
+    expect(keptPlanOffQuery('plan_case', HASH)).toBeNull()
+    expect(keptPlanOffQuery('plan_hr_entry', `${HASH}&state=eq.applied`)).toBeNull()
+  })
+
+  it('refuses a dropped plan with who and why, and a stale one with why', () => {
+    const dropped = keptPlanOffWords([{ args: { entry: ENTRY }, state: 'dropped', decided_label: 'Dev One', decided_why: 'Not this week' }], sent)
+    expect(dropped).toBe('Nothing written: this plan was kept for a yes and dropped by Dev One: Not this week. A dropped plan is never applied. If it is wanted after all, plan it again with keep: true and wait for the yes.')
+    const stale = keptPlanOffWords([{ args: { entry: ENTRY }, state: 'stale', decided_why: 'The narrative was saved since.' }], sent)
+    expect(stale).toBe('Nothing written: this plan was kept for a yes and went stale: The narrative was saved since. Plan again, and keep the new plan if it still needs a yes.')
+  })
+
+  it('lets through a plan never kept, one that still waits, one kept again after a drop, and another plan under the same hash', () => {
+    expect(keptPlanOffWords([], sent)).toBeNull()
+    expect(keptPlanOffWords([{ args: { entry: ENTRY }, state: 'waiting' }], sent)).toBeNull()
+    expect(keptPlanOffWords([{ args: { entry: ENTRY }, state: 'waiting' }, { args: { entry: ENTRY }, state: 'dropped', decided_why: 'x' }], sent)).toBeNull()
+    expect(keptPlanOffWords([{ args: { entry: { ...ENTRY, person_id: OTHER } }, state: 'dropped', decided_why: 'x' }], sent)).toBeNull()
+  })
+
+  it('an HR entry plan names the fixed documents it replaces or adds to, and its reply carries when each last changed', () => {
+    expect(hrEntryReplacedKinds(ENTRY)).toEqual([])
+    expect(hrEntryReplacedKinds({ ...ENTRY, summary: 'S' })).toEqual(['summary'])
+    expect(hrEntryReplacedKinds({ ...ENTRY, narrative: '' })).toEqual(['narrative'])
+    expect(hrEntryReplacedKinds({ ...ENTRY, summary: 'S', narrative_append: 'more' })).toEqual(['summary', 'narrative'])
+    expect(hrEntryReplacedKinds(null)).toEqual([])
+    const reply = { entries_inserted: 0, narrative_written: true }
+    expect(withReplaces(reply, [], [])).toBe(reply)
+    expect(withReplaces(reply, ['summary', 'narrative'], [{ kind: 'narrative', updated_at: '2026-11-13T05:22:32+00:00' }])).toEqual({ ...reply, replaces: { summary: null, narrative: '2026-11-13T05:22:32+00:00' } })
+  })
+
+  it('the server checks the kept plan before it writes, commits an entry plan to what it replaces, and keeps the hash on a cut log row', () => {
+    // The check sits after the hash matched and before the one-apply check and the write.
+    const gate = SERVER.indexOf('const off = await keptPlanOff(session, name, args, fresh)')
+    const write = SERVER.indexOf('const prior = stateGuarded(name) ? null : await hooks.priorApply(name, fresh)')
+    expect(gate).toBeGreaterThan(0)
+    expect(write).toBeGreaterThan(gate)
+    expect(SERVER).toContain("if (off) return refused(off, { target: built.target })")
+    // A read of the kept plans that fails refuses the apply: the drop is the owner's no.
+    expect(SERVER).toContain('so this plan is not known to still stand')
+    // The same reply at plan and at apply, so the two hash alike.
+    expect(SERVER).toContain('res.body = await hrEntryReply(session, name, built.body.p, res.body)')
+    expect(SERVER).toContain('dry.body = await hrEntryReply(session, name, built.body.p, dry.body)')
+    expect(SERVER).toContain("{ truncated: true, ...(typeof args.plan_hash === 'string' ? { plan_hash: args.plan_hash.trim().toLowerCase() } : {}), preview: text.slice(0, 3900) }")
+    // A log that cannot be read refuses the apply instead of letting a second one through.
+    expect(SERVER).toContain('so whether this plan was already applied is not known')
+  })
+})
+
 describe('the seat, its docs and the migration carry the list', () => {
   it('the catalog knows the table and both doors, and the migration grants them to a dev alone', () => {
     expect(CATALOG_RPCS.dev_kept_plan_keep).toBeTruthy()
@@ -247,5 +303,8 @@ describe('the seat, its docs and the migration carry the list', () => {
     expect(README).toContain('`keep: true`')
     expect(EDGE).toContain('a plan kept for a yes from the seat')
     expect(HR).toContain('`list_kept_plans`')
+    expect(README).toContain('refused before anything is written (v2.8102 / 0.122.0)')
+    expect(EDGE).toContain('**v2.8102 (server 0.122.0) — a plan taken off is not applied**')
+    expect(HR).toContain('v2.8102')
   })
 })
