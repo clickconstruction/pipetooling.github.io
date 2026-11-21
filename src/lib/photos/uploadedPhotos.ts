@@ -1,7 +1,7 @@
 /**
  * Every photo uploaded, one list (punch list #232): the rules of Documents → Photos, pure. The `uploaded_photos` view
- * (`20261101084330_uploaded_photos_view.sql`, the job branch `20261102171500`, the task branch `20261107093000`) reads
- * the six photo tables as one shape, newest first; this file says
+ * (`20261101084330_uploaded_photos_view.sql`, the job branch `20261102171500`, the task branch `20261107093000`, the
+ * bid branch `20261121222237`) reads the seven photo tables as one shape, newest first; this file says
  * which chips a role sees, what the server is asked, how a row reads (its source, who took it, its job, where it is),
  * how the rows group by day, and where a thumbnail's bytes come from. The reads are `uploadedPhotosIo.ts`; the screen
  * is `components/documents/DocumentsPhotosTab.tsx`.
@@ -9,14 +9,17 @@
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 import { bytesWords } from './shrink'
 import { senderOf } from './photoRows'
+import { appFiledNameParts } from '../bids/bidPhotoWindow'
 
 /**
  * `job` (punch list #244): a photo added to the job with a description from the Job photos window, `job_photo_notes`.
  * `task` (punch list #273, v2.6635): a photo taken on a task card, `task_photos`; the card has no job, so the row's
  * `caption` is the card's title, its `stage_name` the shot's own caption (*75%*, *finish*, a line's words) and its
  * `status` the shot's kind (`progress`, `finish`, `line`).
+ * `bid` (punch list #306, PR 9): a photo added to a bid from the Bid Board's photos icon, `bid_photos`; the row's
+ * `bid_id` is the bid and its `job_id` is null, won or not, and its `caption` is the photo's name.
  */
-export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'job' | 'task' | 'message'
+export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'job' | 'task' | 'bid' | 'message'
 
 /** One row of the view. */
 export interface UploadedPhotoRow {
@@ -70,6 +73,14 @@ export function canSeeMessagePhotos(role: string | null | undefined): boolean {
   return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
 }
 
+/**
+ * Who reads a bid's photo: whoever can read a bid, as `bid_photos`' policy says (the office, an estimator, and a primary
+ * on a bid they estimate, manage or made). Everyone else reads no such row, so they are offered no chip for it.
+ */
+export function canSeeBidPhotos(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator' || role === 'primary'
+}
+
 /** The source chips a role sees, in order. */
 export function sourceChips(role: string | null | undefined): ReadonlyArray<{ key: SourcePick; label: string }> {
   const base: Array<{ key: SourcePick; label: string }> = [
@@ -80,6 +91,7 @@ export function sourceChips(role: string | null | undefined): ReadonlyArray<{ ke
     { key: 'job', label: 'Job photos' },
     { key: 'task', label: 'Task cards' },
   ]
+  if (canSeeBidPhotos(role)) base.push({ key: 'bid', label: 'Bid photos' })
   if (canSeeMessagePhotos(role)) base.push({ key: 'message', label: 'Texts & email' })
   return base
 }
@@ -127,6 +139,8 @@ export function sourceWords(row: Pick<UploadedPhotoRow, 'source' | 'channel' | '
       return 'Job photo'
     case 'task':
       return 'Task card'
+    case 'bid':
+      return 'Bid photo'
     case 'message':
       return row.channel === 'email' ? 'Email' : row.channel === 'text' || row.channel === 'sms' ? 'Text' : 'Message'
   }
@@ -168,9 +182,11 @@ export function firstName(name: string): string {
 /**
  * Who took it, as the row says: the user's name as kept at the time; for a picture on a line, the sender on the line
  * (*from Greg Paulk*) or, on a line we sent, *sent by Carla Nguyen*.
+ * A bid's photo with nobody on it is one the app filed from a text and the bid's window took on: its sender is in
+ * its name (`bidFiledParts`).
  */
-export function whoWords(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 'direction'>): string {
-  const name = row.source === 'message' ? senderOf(row.by_name) : row.by_name.trim()
+export function whoWords(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 'direction'> & Partial<Pick<UploadedPhotoRow, 'caption'>>): string {
+  const name = row.source === 'message' ? senderOf(row.by_name) : row.by_name.trim() || (bidFiledParts({ source: row.source, by_name: row.by_name, caption: row.caption ?? '' })?.sender ?? '')
   if (!name) return row.source === 'message' ? 'from a number with no name' : 'someone'
   if (row.source !== 'message') return name
   return row.direction === 'out' ? `sent by ${name}` : `from ${name}`
@@ -190,9 +206,19 @@ export function jobWords(row: Pick<UploadedPhotoRow, 'job_id' | 'bid_id' | 'job_
   return parts.length ? parts.join(' · ') : 'No job tied'
 }
 
+/**
+ * A bid's photo that the app filed itself is named by its day, its sender and its caption, *2026-11-01 Priya Raman ·
+ * Gas meter*, and its row names nobody. It is read as its parts, the way the bid's own window reads it: the caption is
+ * the name and the sender is who. Null for any other row, and for a photo a person added and named.
+ */
+export function bidFiledParts(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 'caption'>): { sender: string; caption: string } | null {
+  if (row.source !== 'bid' || row.by_name.trim()) return null
+  return appFiledNameParts(row.caption)
+}
+
 /** The caption in bold on the row: the stage, the box's words, the question, the file's own name, else *Photo*. */
-export function captionWords(row: Pick<UploadedPhotoRow, 'source' | 'caption' | 'stage_name'>): string {
-  const caption = row.caption.trim()
+export function captionWords(row: Pick<UploadedPhotoRow, 'source' | 'caption' | 'stage_name'> & Partial<Pick<UploadedPhotoRow, 'by_name'>>): string {
+  const caption = (bidFiledParts({ source: row.source, by_name: row.by_name ?? '', caption: row.caption })?.caption ?? row.caption).trim()
   if (caption) return caption
   const stage = row.stage_name.trim()
   if (stage) return stage
@@ -270,16 +296,22 @@ function ymdBefore(ymd: string): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
 }
 
-export type ThumbSource = { kind: 'bucket'; bucket: string; path: string } | { kind: 'drive'; jobId: string; fileId: string } | { kind: 'none' }
+export type ThumbSource = { kind: 'bucket'; bucket: string; path: string } | { kind: 'drive'; jobId: string; fileId: string } | { kind: 'bid-drive'; bidId: string; fileId: string } | { kind: 'none' }
 
 /**
  * Where a thumbnail's bytes come from: a shot still in a bucket through a signed URL on it; a filed one through the
  * `job-photos` function on its Drive id, which answers only for a file inside a Pipeline job's two photo folders; a
  * text's picture whose copy we keep from its bucket even once filed, since a bid's or a project's folder is outside
  * the function's reach; a task card's shot from its bucket the same way, since the Tasks folder is outside it too and
- * the sweep leaves the bucket copy; nothing for a photo with no copy anywhere we can read.
+ * the sweep leaves the bucket copy; a bid's photo through the `bid-photos` function on its Drive id once filed, which
+ * answers whoever can read the bid and only for a picture in that bid's photo folder, and from its bucket while it
+ * waits; nothing for a photo with no copy anywhere we can read.
  */
-export function thumbSource(row: Pick<UploadedPhotoRow, 'source' | 'job_id' | 'bucket' | 'storage_path' | 'drive_file_id'>): ThumbSource {
+export function thumbSource(row: Pick<UploadedPhotoRow, 'source' | 'job_id' | 'bucket' | 'storage_path' | 'drive_file_id'> & Partial<Pick<UploadedPhotoRow, 'bid_id'>>): ThumbSource {
+  if (row.source === 'bid') {
+    if (row.drive_file_id && row.bid_id) return { kind: 'bid-drive', bidId: row.bid_id, fileId: row.drive_file_id }
+    return row.storage_path ? { kind: 'bucket', bucket: row.bucket, path: row.storage_path } : { kind: 'none' }
+  }
   if (row.source === 'message' || row.source === 'task') {
     return row.storage_path ? { kind: 'bucket', bucket: row.bucket, path: row.storage_path } : { kind: 'none' }
   }
@@ -306,6 +338,8 @@ export function sourceDoorWords(row: Pick<UploadedPhotoRow, 'source'>): string {
       return 'Open the job'
     case 'task':
       return 'Open the checklist'
+    case 'bid':
+      return 'Open the bid'
     case 'message':
       return 'Open the thread'
   }
@@ -326,6 +360,11 @@ export function threadPath(row: Pick<UploadedPhotoRow, 'contact_id' | 'message_i
   return `/messages?thread=${encodeURIComponent(row.contact_id)}${at}`
 }
 
+/** The Bid Board on one bid, where a bid's photo opens: the board's camera on that row is the bid's photos. */
+export function bidBoardPath(bidId: string): string {
+  return `/bids?tab=bid-board&bidId=${encodeURIComponent(bidId)}`
+}
+
 /** The job window's address, for a press outside the window's own opener. */
 export function jobWindowPath(jobId: string): string {
   return `/jobs?jobDetail=${encodeURIComponent(jobId)}`
@@ -335,7 +374,7 @@ export function jobWindowPath(jobId: string): string {
 export function photosEmptyWords(narrowed: boolean): { main: string; tail: string } {
   return narrowed
     ? { main: 'No photo matches.', tail: 'Try another source, another place or fewer words.' }
-    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box, a checklist or a task card, or added to a job, shows here within a minute.' }
+    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box, a checklist or a task card, or added to a job or a bid, shows here within a minute.' }
 }
 
 /** The line under the list. */

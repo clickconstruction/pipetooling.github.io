@@ -71,6 +71,16 @@ Type in the box **Find a photo on this job** to narrow the grid. The search read
 
 When photos came through more than one door, chips sit over the grid. Press a chip to see one kind. The chips carry counts.
 
+## The bid's photos on a job you won
+
+A job won from a bid shows the bid's photos in the same grid. Each one reads **From the bid** under it. The line under the grid counts them, as in *6 are from the bid*.
+
+Press the chip **Bid photos** to see them alone. Type *from the bid* in the search box to do the same.
+
+You see the bid's photos only when you can open that bid. The office and the estimator can. A primary can on their own bids. A crew member sees the job's own photos.
+
+A bid's photo is looked at here and changed on the bid. Its viewer has no **Edit the words**. See [add photos to a bid](/help/add-photos-to-a-bid).
+
 ## Open one photo
 
 1. Press a tile. The photo opens at full size with its words as the title.

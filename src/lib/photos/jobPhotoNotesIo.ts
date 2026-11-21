@@ -183,6 +183,21 @@ export async function countJobUploadedPhotos(jobId: string): Promise<number | nu
   }
 }
 
+/**
+ * The photos of the bid a job was won from (punch list #306, PR 9): the job's `bid_id`, then the view's rows for that
+ * bid, every source, newest first, at most `limit`. Empty for a job made from no bid. The view reads each row under
+ * its own table's policy, so a reader who cannot read the bid is handed none. Throws with the reason.
+ */
+export async function loadJobBidPhotos(jobId: string, limit = 500): Promise<UploadedPhotoRow[]> {
+  const { data: job, error: jobError } = await db.from('jobs_ledger').select('bid_id').eq('id', jobId).maybeSingle()
+  if (jobError) throw new Error(formatErrorMessage(jobError, 'The bid’s photos did not read.'))
+  const bidId = (job as { bid_id?: string | null } | null)?.bid_id
+  if (!bidId) return []
+  const { data, error } = await db.from('uploaded_photos').select(UPLOADED_PHOTOS_SELECT).eq('bid_id', bidId).order('taken_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
+  if (error) throw new Error(formatErrorMessage(error, 'The bid’s photos did not read.'))
+  return (data ?? []) as UploadedPhotoRow[]
+}
+
 export type JobPhotoLinks = { google_drive_link: string | null; job_pictures_link: string | null }
 
 /** The job's two folder links, for a door that opens the window without the job's row in hand; null when the read fails. */
@@ -200,6 +215,8 @@ export async function loadJobPhotoLinks(jobId: string): Promise<JobPhotoLinks | 
 /** The reads and writes the Job photos window makes (PR 3; the links and the thread line PR 4); a test hands its own. */
 export interface JobPhotosWindowIo {
   rows: (jobId: string) => Promise<UploadedPhotoRow[]>
+  /** The photos of the bid the job was won from (punch list #306, PR 9); a window handed no such read lists the job's alone. */
+  bidRows?: (jobId: string) => Promise<UploadedPhotoRow[]>
   drive: JobPhotosIo
   photos: UploadedPhotosIo
   shots: ShotIo
@@ -212,5 +229,5 @@ export interface JobPhotosWindowIo {
 }
 
 export function supabaseJobPhotosWindowIo(): JobPhotosWindowIo {
-  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords, links: loadJobPhotoLinks, thread: postJobThreadNoteBody }
+  return { rows: loadJobUploadedPhotos, bidRows: loadJobBidPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords, links: loadJobPhotoLinks, thread: postJobThreadNoteBody }
 }

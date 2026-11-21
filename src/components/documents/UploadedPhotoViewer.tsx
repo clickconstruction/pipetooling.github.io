@@ -135,7 +135,7 @@ export function UploadedPhotoViewer({
             <span style={v}>{[captionWords(row), sizeWords(row)].filter(Boolean).join(' · ')}</span>
           </li>
           <li>
-            <span style={k}>{row.source === 'task' ? 'Card' : 'Job'}</span>
+            <span style={k}>{row.source === 'task' ? 'Card' : row.source === 'bid' ? 'Bid' : 'Job'}</span>
             <span style={v}>{aboutWords(row)}</span>
           </li>
           <li>

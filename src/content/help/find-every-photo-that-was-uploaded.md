@@ -2,7 +2,7 @@
 title: find every photo that was uploaded
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: photos, pictures, uploaded, newest, who took it, where saved, google drive, not in drive, documents, photos tab, report photo, box photo, checklist photo, job photo, task card photo, text photo
+keywords: photos, pictures, uploaded, newest, who took it, where saved, google drive, not in drive, documents, photos tab, report photo, box photo, checklist photo, job photo, task card photo, bid photo, from the bid, text photo
 where: /documents?tab=photos
 order: 47
 ---
@@ -14,9 +14,11 @@ Open **Documents** from the gear menu. Press the **Photos** tab. The newest phot
 
 ## Read a row
 
-Each row shows a small picture, its caption, the job and the customer. Under the caption you see where the photo came from and who took it. A chip names the source. The chip reads **Report**, **Tally box**, **Checklist**, **Job photo**, **Task card**, **Text** or **Email**.
+Each row shows a small picture, its caption, the job and the customer. Under the caption you see where the photo came from and who took it. A chip names the source. The chip reads **Report**, **Tally box**, **Checklist**, **Job photo**, **Task card**, **Bid photo**, **Text** or **Email**.
 
 A task card's photo has no job. The row shows the card's title and where the card stood, as in *At 75%* or *The finishing photo*. Read [add a photo to a task card](/help/add-a-photo-to-a-task-card) for how those photos are taken.
+
+A bid's photo shows its bid where the job would be. The row reads the bid's number, its name and the customer. You see a bid's photos only when you can open that bid. Read [add photos to a bid](/help/add-photos-to-a-bid) for how those photos are added.
 
 The time is the moment the camera fired. A photo kept on a phone with no signal and sent the next morning keeps its own time.
 
@@ -41,7 +43,13 @@ Press **Not in Drive yet**. Every photo the app could not file is on this list w
 
 Press the small picture. The viewer opens with the photo at full size. Its facts sit under it. Press {{button:outline|Next ›}} to move to the next photo on the list.
 
-The viewer has doors too. Press {{button:blue|Open in Drive}} to see the file there. Press **Open the report**, **Open the box** or **Open the thread** to see what the photo came with. Press **Open the checklist** for a task card's photo. Press **Open the job** for the job window. Press **Only Mateo's photos** to see one person's photos alone.
+The viewer has doors too. Press {{button:blue|Open in Drive}} to see the file there. Press **Open the report**, **Open the box** or **Open the thread** to see what the photo came with. Press **Open the checklist** for a task card's photo. Press **Open the bid** for a bid's photo. Press **Open the job** for the job window. Press **Only Mateo's photos** to see one person's photos alone.
+
+## A bid's photos after the bid is won
+
+A bid's photo stays on this list after the bid is won. It still reads **Bid photo** and names the bid.
+
+The job shows it too. Open the job's photos and look for the words **From the bid** under a photo. See [the bid's photos on the job](/help/add-a-photo-to-a-job#the-bid-s-photos-on-a-job-you-won).
 
 ## Photos put in Drive by hand
 

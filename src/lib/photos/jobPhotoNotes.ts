@@ -10,6 +10,7 @@ import { countedLabel } from '../batchWords'
 import type { JobPhoto } from './jobPhotos'
 import { cardPhotoWords } from './reportPhotos'
 import { sourceChips, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
+import { FROM_THE_BID, fromBidFootWords, fromBidTileWords, isFromBid } from './jobPhotosFromBid'
 
 /** Where a shot stands on the window. */
 /** `kept` (PR 5): the shot waits on the phone with no signal and goes with the press. */
@@ -221,8 +222,11 @@ export function addedWords(input: { added: number; failed: ReadonlyArray<string>
 // The window's grid (PR 3): Drive is the list, our rows are the words.
 // ---------------------------------------------------------------------------
 
-/** One tile of the grid: a row of ours, or a file put in the folder by hand (`hand`), drawn from Drive's list alone. */
-export type JobPhotoGridItem = { row: UploadedPhotoRow; hand: boolean }
+/**
+ * One tile of the grid: a row of ours, or a file put in the folder by hand (`hand`), drawn from Drive's list alone.
+ * `fromBid` (punch list #306, PR 9): a photo of the bid the job was won from, listed as *from the bid*.
+ */
+export type JobPhotoGridItem = { row: UploadedPhotoRow; hand: boolean; fromBid?: boolean }
 
 /** The words that stand in for a person on a file put in the folder by hand. */
 export const ADDED_IN_DRIVE = 'Added in Drive'
@@ -232,11 +236,13 @@ type GridJob = { id: string; hcp_number?: string | null; click_number?: string |
 /**
  * The grid: every row of ours on the job (every source, the view's rows), then every picture in the job's Drive photo
  * folders that no row of ours names, as a hand-added tile with the file's name for its words; newest first, a row with
- * no time last. A row still in a bucket has no Drive id and so is never doubled.
+ * no time last. A row still in a bucket has no Drive id and so is never doubled. The rows may carry the photos of
+ * the bid the job was won from (`withBidRows`): each is marked `fromBid`, and a bid's filed photo is a known Drive
+ * file, so a job whose photo folder is the bid's never draws it a second time as a hand-added tile.
  */
 export function gridItems(input: { rows: ReadonlyArray<UploadedPhotoRow>; drive: ReadonlyArray<JobPhoto> | null | undefined; job: GridJob }): JobPhotoGridItem[] {
   const known = new Set(input.rows.map((r) => r.drive_file_id).filter((id): id is string => Boolean(id)))
-  const items: JobPhotoGridItem[] = input.rows.map((row) => ({ row, hand: false }))
+  const items: JobPhotoGridItem[] = input.rows.map((row) => (isFromBid(row, input.job.id) ? { row, hand: false, fromBid: true } : { row, hand: false }))
   for (const p of input.drive ?? []) {
     if (known.has(p.id)) continue
     items.push({
@@ -286,7 +292,7 @@ export function gridItems(input: { rows: ReadonlyArray<UploadedPhotoRow>; drive:
 export function gridSearch(items: ReadonlyArray<JobPhotoGridItem>, typed: string): JobPhotoGridItem[] {
   const q = typed.trim().toLowerCase()
   if (q.length < 2) return [...items]
-  return items.filter((it) => [it.row.caption, it.row.by_name, it.row.stage_name, it.hand ? ADDED_IN_DRIVE : sourceWords(it.row)].some((w) => w.toLowerCase().includes(q)))
+  return items.filter((it) => [it.row.caption, it.row.by_name, it.row.stage_name, it.hand ? ADDED_IN_DRIVE : sourceWords(it.row), it.fromBid ? FROM_THE_BID : ''].some((w) => w.toLowerCase().includes(q)))
 }
 
 /** The source chip filter: a hand-added file counts under Job photos. */
@@ -315,6 +321,7 @@ export function gridChips(items: ReadonlyArray<JobPhotoGridItem>, role: string |
 /** The words under a grid tile: the caption as the view holds it (the description, the stage, the box's words, the file's name). */
 export function gridTileWords(item: JobPhotoGridItem): { text: string; none: boolean; who: string } {
   if (item.hand) return { text: item.row.caption || 'A file in Drive', none: true, who: ADDED_IN_DRIVE }
+  if (item.fromBid) return fromBidTileWords(item.row, JOB_PHOTO_WORDS.noDescription)
   const w = tileWords({ description: item.row.caption, stage_name: item.row.stage_name })
   const who = [item.row.by_name.trim(), item.row.source === 'job' ? '' : sourceWords(item.row)].filter(Boolean).join(' · ')
   return { ...w, who }
@@ -325,12 +332,12 @@ export function gridNarrowed(input: { typed: string; source: SourcePick }): bool
   return input.source !== 'all' || input.typed.trim().length >= 2
 }
 
-/** The line under the grid: the count, the folder and the hand-added note. */
-export function gridFootWords(input: { count: number; hand: number; folderKind: 'pictures' | 'photos' | 'none' | null }): string {
+/** The line under the grid: the count, the folder, the hand-added note and how many are the bid's. */
+export function gridFootWords(input: { count: number; hand: number; folderKind: 'pictures' | 'photos' | 'none' | null; fromBid?: number }): string {
   const n = input.count === 1 ? '1 photo' : `${input.count} photos`
   const folder = input.folderKind === 'pictures' ? 'In Drive: Customer Pictures' : input.folderKind === 'photos' ? 'In Drive: Team only › Photos' : ''
   const hand = input.hand > 0 ? `${input.hand === 1 ? '1 was' : `${input.hand} were`} put in the folder by hand and read by file name` : ''
-  return [n, folder, hand].filter(Boolean).join(' · ')
+  return [n, folder, hand, fromBidFootWords(input.fromBid ?? 0)].filter(Boolean).join(' · ')
 }
 
 /** Who may change a photo's words later: the taker, or the office and the estimator (the policy's rule). */

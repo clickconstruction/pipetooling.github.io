@@ -1,7 +1,8 @@
 /**
  * Every photo uploaded, one list (punch list #232): the reads behind Documents → Photos. The `uploaded_photos` view
  * is read newest first with the chips and the search asked of the server; a thumbnail's bytes come from a signed URL
- * on the shot's bucket while it waits, or through `job-photos` on its Drive id once filed (`thumbSource`). Browser io,
+ * on the shot's bucket while it waits, or through `job-photos` on its Drive id once filed, a bid's photo through
+ * `bid-photos` (`thumbSource`). Browser io,
  * not pure; the rules are `uploadedPhotos.ts`. The view is not in the generated types until the push and the types PR,
  * so the client is cast once here, and a database ahead of the push answers a refusal in words.
  */
@@ -9,6 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { jobPhotoThumb, jobPhotoFull } from './jobPhotosIo'
+import { bidPhotoFull, bidPhotoThumb } from '../bids/bidPhotoBytesIo'
 import { PHOTOS_PAGE, UPLOADED_PHOTOS_SELECT, photoSearchFilter, thumbSource, type UploadedPhotoRow, type UploadedPhotosQuery } from './uploadedPhotos'
 
 const db = supabase as unknown as SupabaseClient
@@ -52,6 +54,7 @@ export async function uploadedPhotoThumb(row: UploadedPhotoRow): Promise<string 
   const src = thumbSource(row)
   if (src.kind === 'none') return null
   if (src.kind === 'drive') return jobPhotoThumb(src.jobId, src.fileId)
+  if (src.kind === 'bid-drive') return bidPhotoThumb(src.bidId, src.fileId)
   const { data } = await db.storage.from(src.bucket).createSignedUrl(src.path, 3600)
   return data?.signedUrl ?? null
 }
@@ -61,6 +64,7 @@ export async function uploadedPhotoFull(row: UploadedPhotoRow): Promise<string |
   const src = thumbSource(row)
   if (src.kind === 'none') return null
   if (src.kind === 'drive') return jobPhotoFull(src.jobId, src.fileId)
+  if (src.kind === 'bid-drive') return bidPhotoFull(src.bidId, src.fileId)
   const { data } = await db.storage.from(src.bucket).createSignedUrl(src.path, 3600)
   return data?.signedUrl ?? null
 }

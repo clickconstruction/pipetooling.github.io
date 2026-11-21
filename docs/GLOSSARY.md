@@ -7227,6 +7227,7 @@ A photo waits in the `bid-photos` bucket with a `bid_photos` row and the photo s
 **Not in Drive yet** marks a photo the sweep has not filed;
 a bid folder the app cannot file into holds photos in the app with the reason.
 Since v2.7097 a photo taken with no signal is kept on the phone (*Kept on this phone.*), its press goes through the [outbox](#the-waiting-bar-the-outbox) as a `bid-photos` press, the window counts what still waits (*1 photo waits on this phone.*) and a window opened with no signal still offers the camera.
+Since v2.8215 (PR 9) the `uploaded_photos` view lists a bid's standing photo as a seventh source, `bid`, to whoever can read the bid: Documents → Photos shows it under a **Bid photos** chip with the bid where the job would read and **Open the bid** as its door, and the Job photos window of a job won from the bid lists it as *From the bid* (`lib/photos/jobPhotosFromBid.ts`), counted on the line under the grid.
 Guide: `add-photos-to-a-bid`.
 
 ### Files window (bids, punch list #306)

@@ -226,8 +226,8 @@ describe('an estimator, on the overview door', () => {
     expect(sitePhotosEmptyWords(false, 'Gray Fox Trail', 'overview')).toEqual({ main: 'No picture sent by text or email on Gray Fox Trail yet.', tail: 'The crews’ photos on the jobs are for the office.' })
     expect(sitePhotosEmptyWords(true, 'Gray Fox Trail', 'overview')).toEqual({ main: 'No picture matches.', tail: 'Pick another job.' })
   })
-  it('no source chips for an estimator, whose only source is a text or an email; the office keeps the Photos tab’s', () => {
+  it('no source chips for an estimator, whose sources are a bid’s photo and a text’s picture; the office keeps the Photos tab’s', () => {
     expect(siteSourceChips('estimator', 'overview')).toEqual([])
-    expect(siteSourceChips('assistant').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'message'])
+    expect(siteSourceChips('assistant').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'bid', 'message'])
   })
 })

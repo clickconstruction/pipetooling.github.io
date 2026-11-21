@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133 · both walked live on clicktooling.com on 2026-11-13 in headless Chrome at phone width, each test photo taken back, two filed copies left in the ZZ Test bid's Drive folder
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133 · both walked live on clicktooling.com on 2026-11-13 in headless Chrome at phone width, each test photo taken back, two filed copies left in the ZZ Test bid's Drive folder · PR 9 (a bid's photos after the win) built as v2.8215 on 2026-11-21: the view's `bid` branch, the job's photo window and Documents → Photos; its migration goes up with `supabase db push` after the merge
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 9, the bid's photos after the win, needs no further word. PR 8 wants one walk on a real phone with no signal: a photo on the ZZ Test bid, kept, sent when the signal is back, then taken back.
-size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; left: PRs 4, 6 and 9 (S · M · S)
-blocker: None for PR 9. Call 6 gates PR 4 and call 11 gates PR 6.
-opinion: build — the owner's two calls next, since they gate the removal and the job's pair; PR 9 can go meanwhile
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 9 left one new call, 12: whether a crew member on a won job sees the bid's photos. PR 8 wants one walk on a real phone with no signal: a photo on the ZZ Test bid, kept, sent when the signal is back, then taken back.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; PR 9 is the bid's photos after the win; left: PRs 4 and 6 (S · M)
+blocker: Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — the owner's two calls next, since they gate the removal and the job's pair
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -313,6 +313,12 @@ answered.
     pick: both pairs wear them, a B camera and folder and a J camera and folder, since the J camera is the door
     that shows an estimator the job's photos whatever their Drive access. The smaller build is the two folders
     alone, with the job's photos reached through Drive.
+12. **Does a crew member on a won job see the bid's photos?** New with PR 9 (2026-11-21). The job's photo window
+    lists the bid's photos to whoever can read the bid: the office, the estimator, and a primary on their own bids.
+    A helper, a subcontractor and a superintendent read no bid, so their window shows the job's own photos, as
+    before. My pick: leave it until a crew asks. A site walk's photos are the estimator's notes.
+    The other choice widens who reads `bid_photos` to the job's crew once the
+    bid has a job, which is a policy change on the table and its bucket.
 
 ## Where it plugs in
 
@@ -478,13 +484,23 @@ v2.6929 (2026-11-11):
 - *Not the best yet*: from the shutter to the blue button the photo is only a tile, so a tab the phone ends in between
   loses it; and a waiting photo is sent only while the app is open. Both are named in the fragment.
 
-**PR 9 · the bid's photos after the win, and on Documents → Photos (S).**
+**PR 9 · the bid's photos after the win, and on Documents → Photos (S). Built, v2.8215, 2026-11-21.**
 - *Migration*: `CREATE OR REPLACE VIEW uploaded_photos` with a `bid_photos` branch (the live
   definition dumped first, never rebuilt from the baseline). The branch leaves out a
   row whose Drive file a text's attachment already carries, since the window adopts those too.
 - *Client*: the job's photo window lists the bid's photos as *from the bid*.
 - *Docs*: `docs/migrations/`, `docs/ACCESS_CONTROL.md` (the view's line), the guide
   `find-every-photo-that-was-uploaded`.
+- *As built* (`docs/recent-features/v2.8215.md`): the branch names the bid and no job, since two jobs can name one
+  bid and a join would hand a photo back twice; the job's window reads its own `bid_id` and then the view's rows for
+  that bid (`loadJobBidPhotos`, the kernel `src/lib/photos/jobPhotosFromBid.ts`). A bid's tile reads *From the bid*,
+  the line under the grid counts them, and a **Bid photos** chip shows them alone, there and on Documents → Photos.
+  A bid's filed photo draws through `bid-photos`, which answers whoever can read the bid. The view is
+  `security_invoker`, so `bid_photos`' own policy decides every row; the SQL bed `bid-photos` asserts who reads one.
+- *Not in it*: a crew member sees no bid photo on the job (call 12); the Job Mode card's **Photos · N** counts the
+  job's own photos; a bid's photo is not renamed or removed from the job's window (PR 4 does that on the bid).
+- *To walk once the migration is pushed*: the ZZ Test bid (BP398) has six standing photos and two ZZ Test jobs made
+  from it. Open either job's photos as the office and see six tiles read *From the bid*.
 
 ## How to verify
 

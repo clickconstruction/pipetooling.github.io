@@ -4,17 +4,20 @@
  * window closed without the press discards its rows and objects. The window's read is the `bid-photos` function's
  * `list` (where the photos go, why they are held, the rows, after it adopts what the Drive folder holds); when the
  * function does not answer, the rows are read straight from the table so the photos still show, with the reason.
- * A filed photo's thumbnail and bytes stream through the function; one still in the bucket shows by a signed URL.
+ * A filed photo's thumbnail and bytes stream through the function (`bidPhotoBytesIo.ts`); one still in the bucket shows
+ * by a signed URL.
  * Browser io, not pure.
  */
 import { supabase } from '../supabase'
 import { databaseErrorFromResult, errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import { PhotoSendError, type SendShotInput, type ShotIo } from '../photos/jobPhotoNotesIo'
-import { makeBytesQueue, type BytesQueue } from '../photos/photoBytesQueue'
 import { bytesAlreadyThere } from '../photos/shotTiles'
 import { BID_PHOTOS_BUCKET, type BidPhotoFolderState } from './bidPhotos'
 import { bidPhotoStoragePath, type BidPhotoAddWrite, type BidPhotoRow } from './bidPhotoWindow'
+import { bidPhotoFull, bidPhotoThumb } from './bidPhotoBytesIo'
+
+export { resetBidPhotoBytes } from './bidPhotoBytesIo'
 
 const FN = 'bid-photos'
 const ROW_COLUMNS = 'id, name, by_name, by_user_id, taken_at, added_at, bytes, storage_path, drive_file_id, filed_at, fail_why'
@@ -157,37 +160,6 @@ export async function loadBidPhotos(bidId: string): Promise<BidPhotosRead> {
   return { folder, driveWhy, photos, previews: await previewsFor(photos), adopted }
 }
 
-let thumbQueue: BytesQueue = makeBytesQueue({ concurrency: 6, retries: 4, cacheSize: 300 })
-let fullQueue: BytesQueue = makeBytesQueue({ concurrency: 2, retries: 4, cacheSize: 6 })
-
-/** Forget every kept picture, with a sleep of the test's own when given. */
-export function resetBidPhotoBytes(sleep?: (ms: number) => Promise<void>): void {
-  thumbQueue = makeBytesQueue({ concurrency: 6, retries: 4, cacheSize: 300, sleep })
-  fullQueue = makeBytesQueue({ concurrency: 2, retries: 4, cacheSize: 6, sleep })
-}
-
-/**
- * A filed photo's thumbnail or full picture as an object URL, or null when the function refuses. A plain fetch under
- * the caller's sign-in, as `jobPhotosIo` does it: `functions.invoke` reads an image answer as text. The caller revokes
- * its own URL; the bytes stay kept in the queue.
- */
-async function photoBytes(bidId: string, fileId: string, action: 'thumb' | 'full'): Promise<string | null> {
-  const { data } = await supabase.auth.getSession()
-  const jwt = data.session?.access_token
-  if (!jwt) return null
-  const queue = action === 'thumb' ? thumbQueue : fullQueue
-  const bytes = await queue.get(`${action}:${bidId}:${fileId}`, async () => {
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action, bid_id: bidId, file_id: fileId }),
-    })
-    const retryAfter = Number(res.headers?.get?.('Retry-After') ?? '')
-    return { status: res.status, blob: res.ok ? await res.blob() : null, retryAfterSec: Number.isFinite(retryAfter) ? retryAfter : null }
-  })
-  return bytes ? URL.createObjectURL(bytes) : null
-}
-
 /** The reads and writes the window makes; a test hands its own. */
 export interface BidPhotosWindowIo {
   load: (bidId: string) => Promise<BidPhotosRead>
@@ -199,7 +171,7 @@ export interface BidPhotosWindowIo {
 }
 
 export function supabaseBidPhotosWindowIo(): BidPhotosWindowIo {
-  return { load: loadBidPhotos, shots: bidPhotoShotIo, add: addBidPhotos, thumb: (b, f) => photoBytes(b, f, 'thumb'), full: (b, f) => photoBytes(b, f, 'full') }
+  return { load: loadBidPhotos, shots: bidPhotoShotIo, add: addBidPhotos, thumb: bidPhotoThumb, full: bidPhotoFull }
 }
 
 /**

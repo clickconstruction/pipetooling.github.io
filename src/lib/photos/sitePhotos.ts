@@ -26,7 +26,7 @@ export type SitePhotoCensusRow = Pick<UploadedPhotoRow, 'id' | 'job_id' | 'bid_i
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * PostgREST's `or` for the site's pieces: a photo on one of its jobs, or a text's picture on one of its bids. Null
+ * PostgREST's `or` for the site's pieces: a photo on one of its jobs, or a photo or a text's picture on one of its bids. Null
  * for a site with no piece, which reads nothing. The ids are the page's own, already read.
  */
 export function siteFilter(jobIds: ReadonlyArray<string>, bidIds: ReadonlyArray<string>): string | null {
@@ -89,7 +89,7 @@ export const CREWS_PHOTOS_FOR_THE_OFFICE = 'the crews’ photos are for the offi
 
 /**
  * The source chips the look offers: the Photos tab's for the office, less the task cards' (a task card's photo is on no
- * job, so a site never holds one; v2.6635); none for an estimator, whose only source is a text or an email.
+ * job, so a site never holds one; v2.6635); none for an estimator, whose sources are a bid's photo and a text's or an email's picture.
  */
 export function siteSourceChips(role: string | null | undefined, door: DevelopmentDoor = 'office'): ReadonlyArray<{ key: SourcePick; label: string }> {
   return door === 'office' ? sourceChips(role).filter((c) => c.key !== 'task') : []

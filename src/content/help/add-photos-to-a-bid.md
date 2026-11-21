@@ -120,4 +120,6 @@ A training account can look at a bid's photos. It cannot add one.
 
 Nothing moves. The bid's folder becomes the job's folder, and the photos stay in **Team only**, in **Photos**.
 
+The job shows the bid's photos too. Open the job's photos and each one reads **From the bid**. They stay on the bid's camera as well. See [the bid's photos on the job](/help/add-a-photo-to-a-job#the-bid-s-photos-on-a-job-you-won).
+
 A job has photos of its own too. See [add a photo to a job](/help/add-a-photo-to-a-job).
