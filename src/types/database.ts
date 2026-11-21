@@ -10961,6 +10961,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           draft: Json
+          draft_no: number
           id: string
           project_id: string
           published: Json | null
@@ -10977,6 +10978,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft: Json
+          draft_no?: number
           id?: string
           project_id: string
           published?: Json | null
@@ -10993,6 +10995,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft?: Json
+          draft_no?: number
           id?: string
           project_id?: string
           published?: Json | null
@@ -11047,6 +11050,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           draft: Json
+          draft_no: number
           key: string
           kind: string
           published: Json | null
@@ -11065,6 +11069,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft: Json
+          draft_no?: number
           key: string
           kind: string
           published?: Json | null
@@ -11083,6 +11088,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft?: Json
+          draft_no?: number
           key?: string
           kind?: string
           published?: Json | null
