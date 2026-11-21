@@ -126,6 +126,17 @@ export function sheetUnreadWords(input: { readRevision: number | null; sheetUsua
 /** The kind a sent sheet's email is filed as under Sent copies. */
 export const SHEET_SEND_SENT_KIND = 'insurance_sheet_email'
 
+/**
+ * The jobs a filed copy is about. Sent copies knows a job as a row of `jobs_ledger`, and the Document builder's
+ * papers are about a GC project. A project that bills through a job (`gc_projects.billing_job_id`) files under it,
+ * and a builder sent about one of a customer's jobs files under that one. A project with no such job files under
+ * none, and its copy is found by its title, which names it.
+ */
+export function sentCopyJobIds(jobId: string | null | undefined): string[] {
+  const id = (jobId ?? '').trim()
+  return id ? [id] : []
+}
+
 /** A job's sheet as a trade's own page reads it. */
 export type TradePageSheet = {
   sheetId: string

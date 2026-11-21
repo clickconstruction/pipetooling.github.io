@@ -9,7 +9,8 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildGcTradeEmail } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { sentCopyKeptHtml } from '../../../supabase/functions/_shared/sentCopyEmail'
-import { BUILDER_SEND_SENT_KIND, SHEET_SEND_SENT_KIND, builderSendEmail, customerPageUrl, sheetSendEmail } from './sendWords'
+import { sentKindGroup } from '../sent/sentCopies'
+import { BUILDER_SEND_SENT_KIND, SHEET_SEND_SENT_KIND, builderSendEmail, customerPageUrl, sentCopyJobIds, sheetSendEmail } from './sendWords'
 
 const SOURCE = readFileSync(resolve(__dirname, '../../../supabase/functions/document-builder-send/index.ts'), 'utf8')
 
@@ -52,5 +53,32 @@ describe('the filed copy of a sheet\u2019s send', () => {
       if (!args.includes('html:')) continue
       expect(args).toContain('html: sentCopyKeptHtml(SENT_COPY_KEPT_AS, email.html)')
     }
+  })
+
+  it('files both sends under Contracts and estimates, not Other', () => {
+    expect(sentKindGroup(SHEET_SEND_SENT_KIND)).toBe('contracts')
+    expect(sentKindGroup(BUILDER_SEND_SENT_KIND)).toBe('contracts')
+  })
+
+  it('files a copy under the job it is about, and under none when there is none', () => {
+    expect(sentCopyJobIds('00000000-0000-0000-0000-0000004043f1')).toEqual(['00000000-0000-0000-0000-0000004043f1'])
+    expect(sentCopyJobIds(' 00000000-0000-0000-0000-0000004043f1 ')).toEqual(['00000000-0000-0000-0000-0000004043f1'])
+    expect(sentCopyJobIds(null)).toEqual([])
+    expect(sentCopyJobIds(undefined)).toEqual([])
+    expect(sentCopyJobIds('  ')).toEqual([])
+  })
+
+  it('has the function name the job on every copy it files, and the customer on a GC\u2019s', () => {
+    const filings = SOURCE.split('fileSentEmailBestEffort(').slice(1).map((call) => call.slice(0, call.indexOf('\n  )')))
+    expect(filings).toHaveLength(2)
+    for (const args of filings) expect(args).toContain('jobIds: sentCopyJobIds(')
+    const [sheet, builder] = filings as [string, string]
+    expect(sheet).toContain('kind: SHEET_SEND_SENT_KIND')
+    expect(sheet).toContain('billing_job_id')
+    expect(builder).toContain('kind: BUILDER_SEND_SENT_KIND')
+    expect(builder).toContain('jobIds: sentCopyJobIds(aboutJobId)')
+    expect(builder).toContain('customerId: m.customerId')
+    // The project's billing job is read with the project, in the one read that was already there.
+    expect(SOURCE).toContain(".select('project_manager_user_id, billing_job_id')")
   })
 })
