@@ -534,6 +534,20 @@ describe('while Google’s script is on its way', () => {
     mount()
     expect(words()).toBeNull()
   })
+
+  it('draws the lines and the places for the wait, and says it is loading under them (punch list #387)', () => {
+    lib.loads = false
+    mount({ lines: [DRAWN], places: [PLAIN], framed: DRAWN.points })
+    expect(document.querySelector('[data-painted-wait-sketch]')).not.toBeNull()
+    // At the bottom, in the room the first view keeps clear, so the words never sit on a line.
+    expect((words() as HTMLElement).style.alignItems).toBe('flex-end')
+  })
+
+  it('an empty map keeps the words in the middle of its frame', () => {
+    lib.loads = false
+    mount()
+    expect((words() as HTMLElement).style.alignItems).toBe('center')
+  })
 })
 
 describe('its doors to Leaflet', () => {

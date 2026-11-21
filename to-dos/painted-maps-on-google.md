@@ -186,7 +186,7 @@ Two mends, each its own pull request, both merged the same day:
 - **A key refused earlier on the page** (v2.8076, #9089). Google says no once for a page. A painted map opened after a page's own map had fallen back waited eight seconds on an empty frame.
 - **A blank frame while Google loads** (v2.8078, #9090). With the script slow, the frame was a white box with no word for up to ten seconds. It now says *Loading the map…*.
 
-Left for the owner:
+Left for the owner at the audit, and mended since on Taunya's word of 2026-11-21 (v2.8213). Of four choices, shown with a timing table and pictures, Taunya picked *lines at once*: while Google's script is on its way the lines and the numbered places are drawn as a plain drawing, each on the pixel Google's map will put it, and the photograph comes in under them. It makes no map and fetches nothing, so Google's count is untouched. The ten seconds itself is unchanged, for this canvas and for every map of dots. With the script held back on a scratch page the lines showed at 0.1 s whether the script took half a second, eight seconds or never came. The call as the audit wrote it:
 
 - **The ten seconds.** A painted map is read in the field. On a slow signal the reader now waits up to ten seconds for a map that used to show its lines at once. A shorter wait for this canvas, or the lines drawn on the Leaflet canvas while Google loads, would mend it.
 
