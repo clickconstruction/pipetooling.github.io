@@ -1,6 +1,20 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { ADD_TO_A_LIST_LABEL, addToListTitle, addedToListWords, listChoiceRefusal, listConfirmLabel, listOptions, listPlan, papersComeWords, type ListChoice, type ListPlan } from '../../lib/documents/paperPartyList'
+import {
+  ADD_TO_A_LIST_LABEL,
+  addToListTitle,
+  addedToListWords,
+  listChoiceRefusal,
+  listConfirmLabel,
+  listMadeKey,
+  listOptions,
+  listPlan,
+  papersComeWords,
+  writeOnce,
+  type ListChoice,
+  type ListPlan,
+  type MadeRecord,
+} from '../../lib/documents/paperPartyList'
 import type { PartyBusiness, PartyCustomer, PartySupplyHouse } from '../../lib/documents/paperPartyPick'
 import { addSupplyHouse, keepSignerWithBusiness, namePartyContact, readListPerson, readPartyPaperNames, readPartyShortLists, searchPartyCustomers, type ListPersonRead } from '../../lib/documents/paperPartyIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -16,7 +30,8 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
  * them and nothing is copied (`name_contact`, the act Messages calls *Who is this?*).
  *
  * A new customer is made in the app's own New customer form, opened on their name, so a customer is made one way.
- * Nothing is written until the last press.
+ * Nothing is written until the last press. A press that fails partway leaves the window open, and the next press goes
+ * on from what the first one wrote: it never makes a second supply house, customer or person on file.
  */
 
 const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714, paddingTop: 'var(--app-top-chrome, 0px)' }
@@ -58,6 +73,8 @@ export function PaperPartyAddToList({
   const [error, setError] = useState<string | null>(null)
   /** The app's own New customer form, open on the plan it finishes. */
   const [newCustomer, setNewCustomer] = useState<Extract<ListPlan, { kind: 'new-customer' }> | null>(null)
+  /** What earlier presses wrote: the supply house, the customer and the person kept, each by what it was for. */
+  const made = useRef(new Map<string, MadeRecord>())
 
   // Who they are and which papers come with them, read when the window opens.
   useEffect(() => {
@@ -132,6 +149,10 @@ export function PaperPartyAddToList({
     ]
   }, [customers, houses, typed])
 
+  /** Keep the signer with a company once: a press after a failure finds the row the first press kept. */
+  const keepOnce = (business: PartyBusiness, signer: { name: string; email: string }) =>
+    writeOnce(made.current, listMadeKey('kept', [business.table, business.id, signer.name, signer.email]), () => keepSignerWithBusiness(business, signer, user?.id))
+
   /** Put them on the list: keep them under the company when there is one, then say what their contact is. */
   const finish = async (plan: ListPlan, customerId: string | null) => {
     if (!person) return
@@ -142,19 +163,19 @@ export function PaperPartyAddToList({
       if (plan.kind === 'new-customer') {
         if (!customerId) return
         const business: PartyBusiness = { table: 'customers', id: customerId, name: plan.customerName, party: 'customer' }
-        const record = plan.person ? await keepSignerWithBusiness(business, plan.person, user?.id) : { table: 'customers' as const, id: customerId }
+        const record = plan.person ? await keepOnce(business, plan.person) : { table: 'customers' as const, id: customerId }
         await namePartyContact(person.contactId, record, 'customer')
         where = plan.customerName
       } else if (plan.kind === 'new-supply-house') {
-        const houseId = await addSupplyHouse(plan.houseName)
-        const business: PartyBusiness = { table: 'supply_houses', id: houseId, name: plan.houseName, party: 'supply_house' }
+        const house = await writeOnce(made.current, listMadeKey('house', [plan.houseName]), async () => ({ table: 'supply_houses', id: await addSupplyHouse(plan.houseName) }))
+        const business: PartyBusiness = { table: 'supply_houses', id: house.id, name: plan.houseName, party: 'supply_house' }
         // A rep is kept by their address. With none on the paper, they are named on the house's own row.
-        const record = plan.person.email ? await keepSignerWithBusiness(business, plan.person, user?.id) : { table: 'supply_houses' as const, id: houseId }
+        const record = plan.person.email ? await keepOnce(business, plan.person) : { table: 'supply_houses' as const, id: house.id }
         await namePartyContact(person.contactId, record, 'supply_house', plan.person.email ? undefined : plan.person.name)
         where = plan.houseName
       } else {
         const keepsARow = plan.business.table === 'customers' || plan.person.email !== ''
-        const record = keepsARow ? await keepSignerWithBusiness(plan.business, plan.person, user?.id) : { table: plan.business.table, id: plan.business.id }
+        const record = keepsARow ? await keepOnce(plan.business, plan.person) : { table: plan.business.table, id: plan.business.id }
         await namePartyContact(person.contactId, record, plan.business.party, keepsARow ? undefined : plan.person.name)
         where = plan.business.name
       }
@@ -175,9 +196,13 @@ export function PaperPartyAddToList({
     const plan = listPlan(choice, who, picked)
     if (!plan) return
     setError(null)
-    // A customer is made in the app's own form, on their name. The rest happens once it is saved.
-    if (plan.kind === 'new-customer') setNewCustomer(plan)
-    else void finish(plan, null)
+    if (plan.kind === 'new-customer') {
+      // A customer is made in the app's own form, on their name. The rest happens once it is saved. One an earlier
+      // press saved is theirs already, so the form opens once and a press after a failure goes on from it.
+      const saved = made.current.get(listMadeKey('customer', [plan.customerName]))
+      if (saved) void finish({ ...plan, customerName: saved.name ?? plan.customerName }, saved.id)
+      else setNewCustomer(plan)
+    } else void finish(plan, null)
   }
 
   if (newCustomer) {
@@ -191,8 +216,10 @@ export function PaperPartyAddToList({
             onCancel={() => setNewCustomer(null)}
             onCreated={(customer) => {
               const plan = newCustomer
+              const customerName = customer.name?.trim() || plan.customerName
+              made.current.set(listMadeKey('customer', [plan.customerName]), { table: 'customers', id: customer.id, name: customerName })
               setNewCustomer(null)
-              void finish({ ...plan, customerName: customer.name?.trim() || plan.customerName }, customer.id)
+              void finish({ ...plan, customerName }, customer.id)
             }}
           />
         </div>
