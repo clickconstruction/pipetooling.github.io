@@ -424,6 +424,22 @@ describe('the Schedule look', () => {
     expect(within(card('top')).queryByRole('button', { name: 'Go or hold' })).toBeNull()
   })
 
+  it('a site where no stage has a day yet says so behind the line-of-time press, and what will draw one', async () => {
+    // Lists are written, and nobody has planned our days or kept a day of theirs: the line has nothing to draw.
+    const db = seeded({ lines: [line('top', 'j1', 'Top Out', null), line('under', 'j2', 'Underground', null)] })
+    db.rows = { ...db.rows, theirDays: [] }
+    await mount(db)
+    await waitFor(() => expect(cards().length).toBe(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Show it on a line of time' }))
+    expect(document.querySelector('[data-schedule-time-line]')).toBeNull()
+    // The press opened something: before, the link turned to Hide and the screen stayed as it was.
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toContain('No stage here has a day to draw yet.')
+    expect(empty.textContent).toContain('Plan our days on a stage below, and its row shows here.')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the line of time' }))
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+  })
+
   it('a near site reads two days of notice by default', async () => {
     await mount(seeded(), false)
     await waitFor(() => expect(cards().length).toBe(4))

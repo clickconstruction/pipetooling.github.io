@@ -185,6 +185,8 @@ Red words beside a row say how many days they have moved, like *moved 11 days*.
 
 A stage with no days of ours has a row with no bar.
 
+A site where no stage has a day yet has nothing to draw. The line says so. Plan our days on a stage, and its row shows.
+
 ## Print the days they gave
 
 The office can print every day the customer gave, as one sheet for the site.
