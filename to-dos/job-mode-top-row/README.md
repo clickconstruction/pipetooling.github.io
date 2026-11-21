@@ -2,27 +2,37 @@
 name: "Job Mode's top row: named squares that follow the day"
 number: 409
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked C, the day's row · built as v2.8047, merged and live · the hours square seen with real hours the same day, read only, and one fault found and fixed in a PR of its own (#9127) · the Short view of Job Mode drawn with and without the row · carded after the build, so the mock-up has a home · left: one call for the owner, and a look on a crew's phone
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked C, the day's row · built as v2.8047, merged and live · the hours square seen with real hours the same day, read only, and one fault found and fixed as v2.8113 · carded after the build, so the mock-up has a home · the Short view of Job Mode drawn three ways side by side, and the owner picked the whole row · built as v2.8124 · left: a look on a real phone
 summary: >
   In Job Mode on a phone the row under the header was a blue square with no name and a Paint a map
   card as wide as the screen. The owner asked what better use the row could have. Three ways were
   drawn beside it, and he picked the third. The row is now equal named squares. Two belong to the
   job the day points at and change with the day. Two are the person's own and never move. A fifth
-  shows only on a site that holds boxes. The Short view of Job Mode still draws no row, and whether
-  it should is the one call left.
-next: The owner answers the call on the Short view. Then somebody looks at the row on a crew's phone at the end of a day, and the card is deleted.
-size: S, built as one client-only PR, with an XS fix after it
-blocker: The owner's answer on the Short view.
-ver: v2.8047
-opinion: your call — the row is built as picked, and my pick for the Short view is no row
+  shows only on a site that holds boxes. The Short view of Job Mode draws the same row, which the
+  owner picked from a second drawing.
+next: Look at the row on a crew's phone at the end of a day, and on the Short view once a superintendent is on it. Then delete the card.
+size: S as three client-only PRs (S · XS · S), all built; left: a look on a real phone (XS)
+blocker: A real phone in a hand.
+ver: v2.8047 · 8113 · 8124
+opinion: close — built as picked; left is a look on a real phone
 ---
 
 # Job Mode's top row: named squares that follow the day (#409)
 
-The mock-up is [`mockup.html`](mockup.html). Its names, job numbers and addresses are made up. The repo is
-public, so nothing on it or below is a real name. The page the owner saw held two tables of counts from the
-app's press record. They are written here as words on his word of 2026-11-20, *Yes, counts as words*.
-The page as he saw it is a private artifact: *Job Mode top row* — https://claude.ai/artifact/V27DkNqo3ThWrtxoajjkYM
+Two mock-ups sit beside this card. Their names, job numbers and addresses are made up. The repo is public,
+so nothing on them or below is a real name.
+
+- [`mockup.html`](mockup.html) is the row drawn three ways, the page the owner picked C from. It held two
+  tables of counts from the app's press record. They are written here as words on his word of 2026-11-20,
+  *Yes, counts as words*.
+- [`short-view-mockup.html`](short-view-mockup.html) is the Short view drawn three ways side by side, the
+  page he picked the whole row from. Three figures on it were one superintendent's own: his hours, his count
+  for tomorrow and his owed course. Here they are made up.
+
+The pages as he saw them are private artifacts:
+
+- *Job Mode top row* — https://claude.ai/artifact/V27DkNqo3ThWrtxoajjkYM
+- *Short view row* — https://claude.ai/artifact/GeR59cUjaEGbWdaVi2R3oN
 
 This card was written after the build. The session that built the row made no card, so the mock-up sat
 untracked in its worktree. It is here so the three options and the reasons do not live on a chat link alone.
@@ -71,6 +81,11 @@ Built as v2.8047 (PR #9051). The fragment `docs/recent-features/v2.8047.md` is t
 
 Each square records its press as `job-mode-row`, so the next look at this row has counts of its own.
 
+Two changes followed the same day:
+
+- **v2.8113** (PR #9127): the hours square counts the day just worked. See *The look that followed*.
+- **v2.8124** (PR #9143): the Short view of Job Mode draws the whole row. See *The Short view*.
+
 ## The look that followed
 
 The build closed with a note that the hours square had never been seen with a number. It was seen the same
@@ -83,42 +98,49 @@ app's own View as. Nothing was written as them. It was looked at 390 and 320 px 
 - A very long number did not clip at 320 px wide.
 - The press brought the hours card into view above the pinned bar.
 - **One fault.** The hours card read its week once, when the page opened. A person who clocked in and out
-  on the same page saw the square read a day short. PR #9127 makes the card read again when the clock
-  changes, with three tests for a hand-off that had none.
+  on the same page saw the square read a day short. Fixed as v2.8113 (PR #9127): the card reads again
+  when the clock changes, with three tests for a hand-off that had none.
 
 Not fixed, and small: while a person is clocked in, the number is the hours up to the last read. The square
 says *jobs* for tomorrow and the Short view's own line says *stops*.
 
-## The call for the owner
+## The Short view
 
-**Should the Short view of Job Mode get the row, some of it, or none?**
+The question this card was left with: **should the Short view of Job Mode get the row, some of it, or none?**
 
 The Short view is what a superintendent on the Short Dashboard view sees with Job Mode on (#384, closed). It
 was built as one screen for a man who said the page overwhelmed him: the job card's top, what waits on him,
-tomorrow in one line and one door, **Everything else**. It draws no row, by design. Nobody is on Short yet.
+tomorrow in one line and one door, **Everything else**. It drew no row, by design. Nobody is on Short yet.
 
-The Short view was drawn with the row and without it, on a morning with five stops, read only.
+It was drawn three ways side by side for three kinds of day: no row, the job's two squares alone, and the
+whole row. What the drawing showed, measured read only on the real page:
 
-- The row costs about 80 px and four presses. On the bigger phone that pushes **Tomorrow** and
+- The row costs 78 px and four presses. On a morning with five stops it pushes **Tomorrow** and
   **Everything else** off the first screen. On a small phone the row alone is over a quarter of what shows
   between the header and the pinned bar.
-- With no job left, the row is wrong for this page. **This week** has no number, because the Short view
-  never reads the hours, and its press has nowhere to land. **Tomorrow** is said twice.
-- What the Short view lacks today is narrow: Directions and the job's window before a job is on the clock.
-  Everything else the row holds is one press away, in **Open this job** or behind **Everything else**.
+- With no job left, **Tomorrow** is said twice, once by the square and once by the page's own line.
+- What the Short view lacked was narrow: Directions and the job's window before a job is on the clock.
+  Everything else the row holds was one press away.
 
-**The pick: no row.** The page was made to take things away, and nobody has used it yet. The first
-superintendent on Short should be asked what he looks for first, as #384 left it. If something is wanted
-before then, the smallest honest piece is the job's two squares alone, shown only while the day names a job.
-Paint a map on the short pages is the same question as call 11 of #392, and one answer can settle both.
+The recommendation was no row for now, or the job's two squares if something was wanted. **The owner picked
+the whole row** on 2026-11-20.
+
+Built as v2.8124 (PR #9143). The fragment `docs/recent-features/v2.8124.md` is the full record. The Short view
+has no hours card, so there the row reads the week itself, only while **This week** is drawn and again on
+every punch. There **This week** opens the full Dashboard, as **Everything else** does, and lands on
+**My Time**.
+
+Paint a map on the short pages is call 11 of #392. The whole row puts it on the Short view of Job Mode. The
+short Dashboard still has none, so that half of call 11 is still open on #392.
 
 ## Where it plugs in
 
 - The rule and every word: `src/lib/jobMode/topRow.ts`. The reads: `src/lib/jobMode/topRowIo.ts`.
-- The row: `src/components/jobMode/JobModeTopRow.tsx`, mounted by `DashboardPinnedQuickRow` in the Job Mode
-  return of `src/pages/Dashboard.tsx`, which hands it `jobModeDay`.
-- The hours come from `DashboardMyHoursBlock` through `onWeek`. The square has no read of its own, so a page
-  that does not mount that card shows the square with no number.
+- The row: `src/components/jobMode/JobModeTopRow.tsx`. On the long page `DashboardPinnedQuickRow` mounts it
+  in the Job Mode return of `src/pages/Dashboard.tsx` and hands it `jobModeDay`. On the Short view the
+  Dashboard hands it straight to `JobModeShortPage` as its `row`.
+- The hours: on the long page they come from `DashboardMyHoursBlock` through `onWeek`. On the Short view the
+  row reads them itself, `loadHours` over `loadTopRowWeekHours`, and `onHours` says where the square goes.
 - The Short view: `src/lib/jobMode/jobModeShort.ts`, `src/components/jobMode/JobModeShortPage.tsx` and
   `shortPageFor` in `src/lib/dashboard/shortDashboard.ts`.
 
@@ -128,4 +150,5 @@ Start the dev server and sign in with the dev-login. Use the app's own View as f
 refuse every write to a table in the browser so nothing is saved as them. Turn Job Mode on. The square
 shows only on a day with no job left. A day's states can be drawn with no write by answering the page's own
 reads: today's schedule blocks left out, and the open clock read as closed. For the Short view, answer the
-read of the person's Dashboard view with Short.
+read of the person's Dashboard view with Short. There **This week** should open the full Dashboard at
+**My Time**.
