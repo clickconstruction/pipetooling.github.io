@@ -340,7 +340,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
               <WorkedOutValue>{d.person.name}</WorkedOutValue>
             </ValueLine>
             <ValueLine label={WRITE_UP_WORDS.when}>
-              <ChangeableValue text={writeUpDayWords(d.date, today)} label="the day it happened" type="date" value={d.date} max={today} onKeep={(v) => patch((d) => ({ date: v }))} />{' '}
+              <ChangeableValue text={writeUpDayWords(d.date, today)} label="the day it happened" type="date" value={d.date} max={today} onKeep={(v) => patch(() => ({ date: v }))} />{' '}
               <ChangeableValue
                 text={timeWords(d.time) || 'no time'}
                 label="the time it happened"
@@ -349,7 +349,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
                 canClear
                 hint="Like 12:20 pm"
                 check={(v) => (v.trim() === '' || parseWriteUpTime(v) ? null : 'Type a time like 12:20 pm.')}
-                onKeep={(v) => patch((d) => ({ time: parseWriteUpTime(v) ?? '' }))}
+                onKeep={(v) => patch(() => ({ time: parseWriteUpTime(v) ?? '' }))}
               />
             </ValueLine>
             <ValueLine label={WRITE_UP_WORDS.job}>
@@ -370,7 +370,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           </span>
           <div role="group" aria-labelledby="write-up-kind" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {WRITE_UP_KINDS.map((k) => (
-              <button key={k.key} type="button" aria-pressed={d.kind === k.key} onClick={() => patch((d) => ({ kind: k.key }))} style={chip(d.kind === k.key)}>
+              <button key={k.key} type="button" aria-pressed={d.kind === k.key} onClick={() => patch(() => ({ kind: k.key }))} style={chip(d.kind === k.key)}>
                 {k.label}
               </button>
             ))}
@@ -379,7 +379,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           <label style={fieldHead} htmlFor="write-up-words">
             {WRITE_UP_WORDS.words}
           </label>
-          <textarea id="write-up-words" rows={5} value={d.words} maxLength={WRITE_UP_MAX_WORDS} onChange={(e) => patch((d) => ({ words: e.target.value }))} placeholder={WRITE_UP_WORDS.wordsPlaceholder} style={{ ...textBox, resize: 'vertical', lineHeight: 1.45 }} />
+          <textarea id="write-up-words" rows={5} value={d.words} maxLength={WRITE_UP_MAX_WORDS} onChange={(e) => patch(() => ({ words: e.target.value }))} placeholder={WRITE_UP_WORDS.wordsPlaceholder} style={{ ...textBox, resize: 'vertical', lineHeight: 1.45 }} />
           <button type="button" onClick={voice.press} aria-label={voicePressLabel(voice.state)} style={{ ...quietPress, flex: 'none', width: '100%', minHeight: 48, marginTop: '0.5rem', color: 'var(--text-link)', fontWeight: 650, textAlign: 'left' }}>
             {voiceWords.title}
           </button>
