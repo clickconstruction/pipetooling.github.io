@@ -14,7 +14,7 @@ Write someone up, the photos (punch list #410, PR 5; `to-dos/write-someone-up/`)
   - Read: a dev, or the row's own author. Nobody else, so not the person written about and not another leader.
   - Insert: as oneself, when `can_write_someone_up()`, and only with a path under one's own folder and that press.
   - Delete: one's own row while no report has landed on that press. Once the write-up is sent its photos stay.
-  - No update. `SELECT`, `INSERT` and `DELETE` to `authenticated`, nothing to `anon`.
+  - No update. Every right is revoked from `anon` and `authenticated` first, since a new table in `public` starts with all of them, then `SELECT`, `INSERT` and `DELETE` are granted to `authenticated`.
 - **The `person-report-photos` bucket**: private, 2 MB a file, images only.
   - Insert: the object's first folder is the caller's own id, and `can_write_someone_up()`.
   - Read: a dev, or the caller's own folder.

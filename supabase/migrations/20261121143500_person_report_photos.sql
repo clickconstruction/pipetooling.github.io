@@ -75,7 +75,9 @@ CREATE POLICY person_report_photos_delete ON public.person_report_photos
     AND NOT EXISTS (SELECT 1 FROM public.person_reports r WHERE r.press_id = person_report_photos.press_id)
   );
 
-REVOKE ALL ON TABLE public.person_report_photos FROM anon;
+-- A new table in public starts with every right for signed-in users, by the project's default privileges. Take them
+-- all away first, so a row can never be changed: there is no UPDATE right to go with the missing UPDATE policy.
+REVOKE ALL ON TABLE public.person_report_photos FROM anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.person_report_photos TO authenticated;
 
 -- Private, 2 MB a file, images only.
