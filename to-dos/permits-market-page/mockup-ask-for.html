@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permits · Market: Ask for, drawn before it is built</title>
+<style>
+  :root { --ink:#16283c; --muted:#5b6777; --line:#d5dae1; --bg:#f3f5f7; --card:#fff; --blue:#2563eb; --chip:#e6e9ee; --green:#166534; --green-bg:#e7f6ec; --amber-bg:#fff7e6; --amber-line:#f0c36d; --amber-ink:#7a4b00; --red-ink:#9b1c1c; --red-bg:#fdecec; --grey:#6b7684; --door:#f6f8fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:1080px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:34px 0 8px; } h3 { font-size:14.5px; margin:0 0 2px; }
+  .lede { color:var(--muted); margin:0 0 14px; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0 0 12px; }
+  .rec { border-left:4px solid var(--blue); }
+  table { border-collapse:collapse; width:100%; font-size:14px; } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:600; } tr:last-child td { border-bottom:0; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .scroll { overflow-x:auto; }
+  .cap { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
+  ul, ol { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+  code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; background:#eef1f5; border-radius:4px; padding:0 4px; }
+
+  .state { margin:0 0 18px; }
+  .state > .cap { margin-bottom:6px; }
+  .state > .say { font-size:13px; color:var(--muted); margin:6px 2px 0; }
+  .tag { display:inline-block; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:600; white-space:nowrap; margin:0 3px 3px 0; }
+  .tag.g { background:var(--green-bg); color:var(--green); } .tag.a { background:var(--amber-bg); color:var(--amber-ink); } .tag.b { background:#e8f0fe; color:#1d4ed8; } .tag.k { background:var(--chip); color:var(--ink); }
+  /* A tag that comes from a lookup nobody checked: an outline, not a fill. */
+  .tag.lk { background:transparent; color:var(--grey); border:1px dashed #9aa5b3; font-weight:500; }
+  .call { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:grid; grid-template-columns:28px minmax(0,1fr) auto; gap:10px; align-items:start; }
+  .call .rank { width:26px; height:26px; border-radius:999px; background:var(--ink); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .call .name { font-weight:700; font-size:15px; }
+  .call .f { font-size:13px; margin-top:3px; } .call .f b { font-weight:700; }
+  .call .acts { display:flex; flex-direction:column; gap:6px; }
+  .btn { border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; background:#fff; white-space:nowrap; text-align:center; }
+  .btn.pri { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+
+  /* The Ask for block. */
+  .door { font-size:13px; margin-top:6px; padding:8px 10px; background:var(--door); border-radius:8px; }
+  .door .top { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:4px; }
+  .door .top b { font-weight:700; }
+  .pill { display:inline-block; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .pill.not { background:transparent; color:var(--grey); border:1px dashed #9aa5b3; }
+  .pill.ok { background:var(--green-bg); color:var(--green); }
+  .facts { display:grid; grid-template-columns:86px minmax(0,1fr) auto; gap:6px 10px; align-items:baseline; }
+  .facts .lab { color:var(--muted); }
+  .facts .v { min-width:0; overflow-wrap:anywhere; }
+  /* Looked up, not checked: grey, regular weight. */
+  .v .un { color:var(--grey); font-weight:400; }
+  /* Checked: the same look as a permit fact, plain bold. */
+  .v .ck { color:var(--ink); font-weight:700; }
+  .v .src { display:block; font-size:12px; color:var(--muted); }
+  .v .src a { color:var(--muted); text-decoration:underline; text-underline-offset:2px; }
+  .facts .do { display:flex; gap:6px; white-space:nowrap; }
+  .mini { border:1px solid var(--line); border-radius:7px; padding:3px 9px; font-size:12.5px; background:#fff; }
+  .mini.yes { border-color:#9bc7a8; color:var(--green); font-weight:600; }
+  .lnk { color:#1d4ed8; font-weight:600; font-size:12.5px; }
+  .gone { color:var(--muted); font-style:italic; }
+  .foot { font-size:12px; color:var(--muted); margin-top:6px; }
+  .gbtn { display:inline-block; border:1px solid var(--line); border-radius:7px; padding:3px 9px; font-size:12.5px; background:#fff; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:13px; margin:0 0 12px; }
+  .legend span b { font-weight:700; } .legend .un { color:var(--grey); }
+  @media (max-width:640px) {
+    .call { grid-template-columns:28px minmax(0,1fr); } .call .acts { grid-column:2; flex-direction:row; flex-wrap:wrap; }
+    .facts { grid-template-columns:70px minmax(0,1fr); } .facts .do { grid-column:2; margin-bottom:4px; }
+  }
+</style></head><body><main>
+
+<h1>Ask for: who to ask for at each company, drawn before it is built</h1>
+<p class="lede">Prospects → Permits → Market · punch list #405, step three · nothing here is built yet · every company, person, phone, web address and day on this page is made up.</p>
+
+<div class="box rec"><b>What you agreed to on Nov 20.</b> An agent looks up the next 25 San Antonio companies on the call list, once. Companies only, never a name that reads as one person. For each: what kind of company it is, an office phone, and one person and title to ask for. Each fact keeps the page it came from and the day. Every fact shows as <b>Looked up, not checked</b> until a person presses <b>Checked</b>. This page draws how that looks, where it is kept and how it gets there. Two things at the end are yours to say.</div>
+
+<h2>1. The Ask for block on a call-list row, in each state</h2>
+<div class="legend">
+  <span><b>14 jobs</b> · a permit fact, plain bold as today</span>
+  <span><span class="un">(210) 555-0142</span> · looked up, not checked: grey</span>
+  <span><b>(210) 555-0142</b> · looked up and checked: the same look as a permit fact</span>
+</div>
+
+<div class="state">
+  <p class="cap">A. Looked up, not checked · what all 25 look like the day after the run</p>
+  <div class="call">
+    <div class="rank">1</div>
+    <div>
+      <div class="name">Ridgeway Builders</div>
+      <div><span class="tag g">Picking up</span><span class="tag b">Never bid</span><span class="tag a">3 jobs open now</span><span class="tag lk">Looked up: a builder</span></div>
+      <div class="f"><b>14 jobs</b> in the last year, <b>6</b> in the last 90 days against <b>2</b> in the 90 before. Mostly commercial remodels.</div>
+      <div class="f"><b>Open now:</b> 2100 Sample Pkwy, applied Nov 4 · 77 Kiln St, applied Oct 28 · 5 Aster Rdg, applied Oct 9. They have no plumbing permit yet.</div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span class="pill not">Looked up, not checked</span></div>
+        <div class="facts">
+          <span class="lab">What it is</span>
+          <span class="v"><span class="un">A builder</span><span class="src">from <a>ridgewaybuilders.example/about</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+          <span class="lab">Office</span>
+          <span class="v"><span class="un">(210) 555-0142</span><span class="src">from <a>ridgewaybuilders.example/contact</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+          <span class="lab">Ask for</span>
+          <span class="v"><span class="un">Dana Whitlock</span><span class="un">, Director of Preconstruction</span><span class="src">from <a>ridgewaybuilders.example/team</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+        </div>
+        <div class="foot">Looked up by an agent on Nov 20. Nobody was called or written to.</div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+  <p class="say">Each fact has its own two presses, since each is checked a different way. You check the phone by calling it. You check the person by asking for them. The page each fact came from opens in a new tab.</p>
+</div>
+
+<div class="state">
+  <p class="cap">B. Partly checked · after your first call</p>
+  <div class="call">
+    <div class="rank">1</div>
+    <div>
+      <div class="name">Ridgeway Builders</div>
+      <div><span class="tag g">Picking up</span><span class="tag b">Never bid</span><span class="tag a">3 jobs open now</span><span class="tag k">A builder, checked</span></div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span class="pill ok">2 of 3 checked</span></div>
+        <div class="facts">
+          <span class="lab">What it is</span>
+          <span class="v"><span class="ck">A builder</span><span class="src">Checked by you, Nov 23 · from <a>ridgewaybuilders.example/about</a></span></span>
+          <span class="do"><span class="lnk">Not right</span></span>
+          <span class="lab">Office</span>
+          <span class="v"><span class="ck">(210) 555-0142</span><span class="src">Checked by you, Nov 23 · from <a>ridgewaybuilders.example/contact</a></span></span>
+          <span class="do"><span class="lnk">Not right</span></span>
+          <span class="lab">Ask for</span>
+          <span class="v"><span class="un">Dana Whitlock</span><span class="un">, Director of Preconstruction</span><span class="src">from <a>ridgewaybuilders.example/team</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+  <p class="say">A checked fact turns plain bold and says who checked it and when. It keeps a quiet <b>Not right</b> press, since a person leaves a company and a number changes.</p>
+</div>
+
+<div class="state">
+  <p class="cap">C. A fact marked wrong · it is cleared, and says so</p>
+  <div class="call">
+    <div class="rank">2</div>
+    <div>
+      <div class="name">Tall Pine Construction</div>
+      <div><span class="tag g">New and busy</span><span class="tag b">Never bid</span><span class="tag lk">Looked up: a builder</span></div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span class="pill not">Looked up, not checked</span></div>
+        <div class="facts">
+          <span class="lab">What it is</span>
+          <span class="v"><span class="un">A builder</span><span class="src">from <a>tallpine.example</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+          <span class="lab">Office</span>
+          <span class="v"><span class="gone">Marked wrong by you, Nov 23.</span></span>
+          <span class="do"><span class="lnk">Put back</span></span>
+          <span class="lab">Ask for</span>
+          <span class="v"><span class="un">Sam Ortega</span><span class="un">, Estimator</span><span class="src">from <a>tallpine.example/people</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+        </div>
+        <div class="foot"><span class="gbtn">Google the builder</span> opens a search for what is missing.</div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+  <p class="say">The wrong number is gone from the row for everyone. The line stays, so nobody wonders where the phone went, and <b>Put back</b> undoes a slip. The wrong value itself is kept in the table, not shown.</p>
+</div>
+
+<div class="state">
+  <p class="cap">D. Looked up, and it is not a builder · the name stays on the list</p>
+  <div class="call">
+    <div class="rank">6</div>
+    <div>
+      <div class="name">Halden &amp; Associates, Inc.</div>
+      <div><span class="tag b">Never bid</span><span class="tag a">1 job open now</span><span class="tag lk">Looked up: a design firm</span></div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span class="pill not">Looked up, not checked</span></div>
+        <div class="facts">
+          <span class="lab">What it is</span>
+          <span class="v"><span class="un">A design firm</span><span class="un">, architects for restaurant chains</span><span class="src">from <a>haldenassociates.example/services</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+          <span class="lab">Office</span>
+          <span class="v"><span class="un">(210) 555-0177</span><span class="src">from <a>haldenassociates.example/contact</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+        </div>
+        <div class="foot">No person to ask for was found on a public business page.</div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+  <p class="say">A lookup never takes a name off the list and never sets the office's own kind. Taking it off is still your press: <b>Not for us</b>, or the kind on the builder's sheet. A design firm may still be worth one call, to ask who builds its jobs.</p>
+</div>
+
+<div class="state">
+  <p class="cap">E. Looked up, and the kind could not be settled · nothing is guessed</p>
+  <div class="call">
+    <div class="rank">9</div>
+    <div>
+      <div class="name">Copperline Group LLC</div>
+      <div><span class="tag b">Never bid</span></div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span class="pill not">Looked up, not checked</span></div>
+        <div class="facts">
+          <span class="lab">What it is</span>
+          <span class="v"><span class="gone">Could not tell from a public page. Looked Nov 20.</span></span>
+          <span class="do"></span>
+          <span class="lab">Office</span>
+          <span class="v"><span class="un">(210) 555-0119</span><span class="src">from <a>its Google Maps listing</a> · Nov 20</span></span>
+          <span class="do"><span class="mini yes">Checked</span><span class="mini">Wrong</span></span>
+        </div>
+        <div class="foot"><span class="gbtn">Google the builder</span> opens a search for what is missing.</div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+  <p class="say">The trial got two of twenty kinds wrong by inferring. So a kind is kept only when a page says it in plain words. Otherwise the row says it could not tell, and gets no tag.</p>
+</div>
+
+<div class="state">
+  <p class="cap">F. Nobody looked this name up · as today, for every name past the 25</p>
+  <div class="call">
+    <div class="rank">31</div>
+    <div>
+      <div class="name">Juniper Contracting</div>
+      <div><span class="tag b">Never bid</span></div>
+      <div class="door">
+        <div class="top"><b>Ask for</b><span>Nobody looked this name up yet.</span><span class="gbtn">Google the builder</span><span class="sub">opens a search for who to ask for.</span></div>
+      </div>
+    </div>
+    <div class="acts"><span class="btn pri">Pursue</span><span class="btn">Not for us</span><span class="btn">Open builder</span></div>
+  </div>
+</div>
+
+<h2>2. Where the facts are kept</h2>
+<div class="box">
+  <p>Two small new tables, apart from the office's own word. Nothing in them touches a builder's kind (<code>builders.kind</code>), its mark (<code>builder_marks</code>) or an answer (<code>builder_call_answers</code>).</p>
+  <p class="cap" style="margin-top:10px">builder_lookups · one row a fact, only ever added to</p>
+  <div class="scroll"><table>
+    <tr><th>Column</th><th>Holds</th><th>Made-up example</th></tr>
+    <tr><td><code>builder_key</code></td><td>The name's key, the one permits and answers use. So a fact follows the name into every city.</td><td>ridgewaybuilders</td></tr>
+    <tr><td><code>fact</code></td><td>Which fact: the kind, the office phone, or the person.</td><td>person</td></tr>
+    <tr><td><code>value</code></td><td>The fact. A kind is one of five: a builder, an owner, a design firm, a permit service, a trade. Or <i>could not tell</i>.</td><td>Dana Whitlock</td></tr>
+    <tr><td><code>detail</code></td><td>The person's title, or a few words on the kind. Empty for a phone.</td><td>Director of Preconstruction</td></tr>
+    <tr><td><code>source_url</code></td><td>The page the fact came from. The table refuses a fact with no page.</td><td>https://ridgewaybuilders.example/team</td></tr>
+    <tr><td><code>looked_up_on</code></td><td>The day it was read off that page.</td><td>2026-11-20</td></tr>
+    <tr><td><code>looked_up_by</code>, <code>looked_up_how</code></td><td>The account that wrote it, and that an agent did the looking.</td><td>the dev's account · agent</td></tr>
+    <tr><td><code>city</code></td><td>The city whose list it was looked up for.</td><td>San Antonio</td></tr>
+  </table></div>
+  <p class="cap" style="margin-top:14px">builder_lookup_checks · one row a press, only ever added to</p>
+  <div class="scroll"><table>
+    <tr><th>Column</th><th>Holds</th><th>Made-up example</th></tr>
+    <tr><td><code>lookup_id</code></td><td>The fact the press was on.</td><td>the phone row above</td></tr>
+    <tr><td><code>verdict</code></td><td><b>checked</b>, <b>wrong</b>, or <b>back</b> (a press undone).</td><td>checked</td></tr>
+    <tr><td><code>said_by</code>, <code>said_at</code></td><td>Who pressed, and when.</td><td>you · Nov 23, 9:14 AM</td></tr>
+  </table></div>
+  <p class="sub" style="margin-top:8px">The newest press on a fact is its state, the same way the newest answer on a name is. Nothing is edited or deleted, so who said what stays on record. A newer lookup of the same fact replaces the older one on the row and starts as not checked.</p>
+</div>
+
+<h2>3. How the lookups get written, and who may write</h2>
+<div class="box">
+  <ul>
+    <li><b>A fact:</b> only a dev account may add one, and only under its own name. The table's own rule holds that, not the screen. Nobody may change or delete one.</li>
+    <li><b>A press (Checked, Wrong, Put back):</b> anyone who reads Permits, as themself. That is the office and the estimators, the same people who answer the call list.</li>
+    <li><b>Reading:</b> the same people. Closed to the public, to a read-only training account, to a twin and to an archived account, as every new table is.</li>
+    <li><b>The run:</b> one agent session, signed in to the app as the dev, adds the rows through the app's own connection. The call-list answers table was proven the same way. No new function, no nightly job, no new dev-seat verb, no paid service.</li>
+    <li><b>Before anything is written,</b> the 25 names and every fact with its page are put in one list for you, outside the repo. The rows written are that list and nothing else.</li>
+  </ul>
+</div>
+
+<h2>4. What the run reads, and what it never keeps</h2>
+<div class="box">
+  <ul>
+    <li><b>Which 25:</b> the first 25 names on San Antonio's call list, in the list's own order, once today's order change is live. A name that reads as one person is skipped and never searched.</li>
+    <li><b>Reads:</b> the company's own website, its Google Maps business listing, a state licence or registration record, a trade association's member page. Public business pages only.</li>
+    <li><b>Keeps:</b> the kind, one office phone, one person with a title. Each with its page and day.</li>
+    <li><b>Never keeps:</b> a mobile or home number, a home address, a personal email, a social profile, or a person named only on a social site. No email at all in this step.</li>
+    <li><b>Never guesses:</b> a kind is kept only when a page says it in plain words. A person is kept only when a business page names them in a role that takes bids.</li>
+    <li><b>Contacts nobody.</b> No form is filled, no call is made, no mail is sent.</li>
+  </ul>
+</div>
+
+<h2>5. Is the app's own Google lookup reused?</h2>
+<div class="box">
+  <p><b>As a source, yes. As the place to keep these facts, no.</b></p>
+  <ul>
+    <li>The skim card's <i>Who pulled it</i> already asks Google Places for a company and keeps the answer a month (<code>permit_lookups</code>). It keeps one answer a name and writes over it. It has no page for each fact and no check. Its match can be loose, which may be another company.</li>
+    <li>So the run may read that answer for a name. It takes the office phone from it only on an <b>exact</b> match, and cites the Google Maps listing as the page. A loose match is not used.</li>
+    <li>That is about 25 asks on the Google key the app already has. Nothing is copied from it by itself, then or later.</li>
+  </ul>
+</div>
+
+<h2>6. What a looked-up fact may do to the list</h2>
+<div class="box">
+  <ul>
+    <li><b>Tag the name.</b> <span class="tag lk">Looked up: a design firm</span> is an outline until checked, then a filled tag like the others.</li>
+    <li><b>Order, only once checked.</b> A checked builder leads with the names that say they build. A checked design firm, permit service or trade waits behind the other companies. A fact nobody checked moves nothing.</li>
+    <li><b>Never remove.</b> Every name stays on the list until you answer it.</li>
+    <li><b>Never the office's word.</b> Where the office has said a kind on the builder's sheet, that tag shows and that kind orders. The looked-up kind still sits in the block, with its page.</li>
+  </ul>
+</div>
+
+<h2>7. The build, once you say yes</h2>
+<div class="box">
+  <ol>
+    <li><b>The two tables, alone.</b> One migration, merged and pushed before any screen names them.</li>
+    <li><b>The screen.</b> The block as drawn, the tag, the order rule, the guide's lines, with tests.</li>
+    <li><b>The run.</b> The 25 lookups, your list of them outside the repo, then the rows. I say how many of the 25 I could not settle.</li>
+    <li><b>The card.</b> Step three says what was built. Left for later: the other cities, the names past 25, the block on the builder's sheet.</li>
+  </ol>
+</div>
+
+<div class="box rec">
+  <h3>Yours to say</h3>
+  <ul>
+    <li><b>Build it as drawn?</b></li>
+    <li><b>The order.</b> I drew that a fact moves a name only after someone checks it, since two of twenty kinds were wrong in the trial. The other way is that a looked-up kind orders the list from day one. I would keep it as drawn.</li>
+  </ul>
+</div>
+
+</main></body></html>
