@@ -618,7 +618,9 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   )
                 })}
               </div>
+              {/* Each job has its own card: a card kept across a job switch showed the last job's link, live, under this one. */}
               <BuilderLinkCard
+                key={`link-${job.projectId}`}
                 builderKey={entry.id}
                 sheetId={jobState.id}
                 published={jobState.revision > 0 && jobState.id != null}
@@ -645,7 +647,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                   <p style={MUTED}>Publish this job's sheet first. It then prints as subs see it.</p>
                 )}
               </div>
-              <SheetSendCard builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={isBuilderRead(rec) ? '' : 'Your insurance agent has not checked your usual sheet.'} io={io.sends} />
+              <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} unread={isBuilderRead(rec) ? '' : 'Your insurance agent has not checked your usual sheet.'} io={io.sends} />
             </>
           ) : (
             <div style={CARD}>
