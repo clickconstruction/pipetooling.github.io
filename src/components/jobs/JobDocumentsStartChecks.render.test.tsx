@@ -460,6 +460,45 @@ describe('JobDocumentsStartChecks', () => {
     expect(document.body.textContent).toContain('after we plan our days')
   })
 
+  it('a press that landed is never called lost: when the read after it fails the list offers Retry, and the four cannot be added twice', async () => {
+    const db = seeded()
+    const io = memoryStartChecksIo(db)
+    // The signal drops between the write and the read after it: the four are kept, and the read never arrives.
+    let dropNextRead = false
+    const flaky: ReturnType<typeof memoryStartChecksIo> = {
+      ...io,
+      addBullets: async (...args) => {
+        await io.addBullets(...args)
+        dropNextRead = true
+      },
+      readRows: async (jobIds) => {
+        if (dropNextRead) {
+          dropNextRead = false
+          throw new TypeError('Failed to fetch')
+        }
+        return io.readRows(jobIds)
+      },
+    }
+    await renderSettled(<JobDocumentsStartChecks job={JOB} io={flaky} todayYmd={TODAY} />, { loaded: () => screen.findAllByRole('button', { name: /Top Out/ }) })
+    fireEvent.click(screen.getByRole('button', { name: /^Trim Set/ }))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Use the four' }))
+    // The read failed, so the section says so and offers to read again. Nothing says the press failed.
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toContain('No connection, so this could not load. Nothing was lost.')
+    expect(document.body.textContent).not.toContain('was not added')
+    expect(db.calls).toEqual(['addBullets'])
+    // The starter is gone with the list that is out of date, so its press cannot write a second four.
+    expect(screen.queryByRole('button', { name: 'Use the four' })).toBeNull()
+    expect(document.querySelector('[data-start-check-starter]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-start-check-stage="f2"] [data-start-check-bullet]')).toHaveLength(4))
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Use the four' })).toBeNull()
+    expect(db.rows.bullets.filter((b) => b.fixture_id === 'f2')).toHaveLength(4)
+    expect(db.calls).toEqual(['addBullets'])
+  })
+
   it('offers the company’s list for the stage’s kind, and the office adds to it and takes off it', async () => {
     const db = seeded({ templates: [{ id: 't1', stage_kind: 'trim_set', sort_order: 1, words: 'The rooms are painted.', waits_on: 'them', wants_photo: true, reads: null, retired_at: null }] })
     await mount(db)
