@@ -62,7 +62,7 @@ function path(ctx: CanvasRenderingContext2D, pts: ReadonlyArray<{ x: number; y: 
  * shoulder. It leaves the canvas as it found it, so the caller's type and colours still stand.
  */
 function drawKindMark(ctx: CanvasRenderingContext2D, at: { x: number; y: number }, r: number, ring: number, number: number, mark: PictureKindMark): void {
-  const color = mark.warns ? PLACE_WARN_COLOR : INK
+  const color = mark.color ?? (mark.warns ? PLACE_WARN_COLOR : INK)
   ctx.save()
   ctx.beginPath()
   ctx.arc(at.x, at.y, r, 0, Math.PI * 2)

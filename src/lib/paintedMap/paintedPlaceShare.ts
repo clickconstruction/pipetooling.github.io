@@ -16,6 +16,7 @@
  */
 import { smsHref } from '../gc/followUpSheet'
 import { placeSaysWords } from './paintedPlaceKind'
+import { shortPlaceWords } from './paintedPlaceWords'
 
 export const PLACE_SHARE_WORDS = {
   /** On a phone. */
@@ -49,7 +50,8 @@ export function placeShareWords(place: Point & { name: string; words?: string | 
   const url = placePointUrl(place)
   if (!url) return null
   const says = placeSaysWords({ name: place.name, kind: place.kind })
-  const words = (place.words ?? '').trim()
+  // A text carries the short form of a long description (#413): the whole of it is on the place.
+  const words = shortPlaceWords(place.words)
   const lead = /[.!?]$/.test(says) ? says : `${says}.`
   return `${words ? `${lead} ${words}` : lead}\n${url}`
 }

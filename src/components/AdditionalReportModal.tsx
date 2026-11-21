@@ -649,6 +649,7 @@ export default function AdditionalReportModal({
                   onRemove={photos.remove}
                   onRetry={photos.retry}
                   captureWords={cameraFirst ? (photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
+                  spotJob={{ jobId, label: [hcpNumber, jobName].filter((x) => x && x !== '—').join(' ') || null }}
                 />
               </div>
             )

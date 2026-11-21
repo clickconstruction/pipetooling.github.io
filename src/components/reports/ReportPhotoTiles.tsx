@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import { CameraGlyph } from '../materials/PhotoPress'
+import { KeepSpotPress } from '../paintedMap/KeepSpotPress'
+import type { SpotJob } from '../../lib/paintedMap/paintedSpotIo'
 import { REPORT_PHOTO_WORDS, type ReportPhotoTile } from '../../lib/photos/reportPhotos'
 import { CHECKLIST_PHOTO_WORDS, tileAsk, type ChecklistPhotoChip } from '../../lib/photos/reportPhotoChecklist'
 import { shrinkWords } from '../../lib/photos/shrink'
@@ -71,6 +73,7 @@ export function ReportPhotoTiles({
   onRemove,
   onRetry,
   captureWords,
+  spotJob = null,
 }: {
   tiles: ReadonlyArray<ReportPhotoTile>
   stages: ReadonlyArray<ReportPhotoStage>
@@ -83,6 +86,8 @@ export function ReportPhotoTiles({
   onRetry: (tileId: string) => void
   /** The camera tile's words: Take a photo with no tile yet, else Take another; Add a photo at a desk. */
   captureWords: string
+  /** The job these photos are for, when a photo's spot may be kept on it (punch list #413): each tile then has the press. */
+  spotJob?: SpotJob | null
 }) {
   let asking: ReportPhotoTile | null = null
   let ask: ReturnType<typeof tileAsk> = null
@@ -127,6 +132,7 @@ export function ReportPhotoTiles({
                   {REPORT_PHOTO_WORDS.remove}
                 </button>
               </div>
+              {spotJob ? <KeepSpotPress compact job={spotJob} previewUrl={t.previewUrl} takenAt={t.takenAt} waiting={t.status === 'shrinking'} /> : null}
             </div>
           )
         })}

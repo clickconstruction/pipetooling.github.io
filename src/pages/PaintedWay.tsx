@@ -30,6 +30,7 @@ import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMa
 import { roughCircleWords, wayRoughWords, wayWeakWords } from '../lib/paintedMap/preciseLocation'
 import { usePhoneKind, useRoughHeld } from '../hooks/usePreciseLocation'
 import { PaintedPlaceMark } from '../components/paintedMap/PaintedPlaceMark'
+import { PaintedPlaceWords } from '../components/paintedMap/PaintedPlaceWords'
 import { PreciseSteps, PreciseTick } from '../components/paintedMap/PreciseLocationLine'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
@@ -356,7 +357,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                       <PaintedPlaceMark number={p.number} kind={p.kind} size={30} ink={INK} paper={CARD} />
                       <div>
                         <b>{p.name}</b>
-                        {p.words ? <div style={{ color: MUTED }}>{p.words}</div> : null}
+                        <PaintedPlaceWords words={p.words} name={p.name} style={{ color: MUTED }} />
                       </div>
                       {p.photo && code ? (
                         <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setPhoto({ url: io.photoUrl(code, p.id, deviceId.current), name: p.name })} style={{ padding: 0, border: `1px solid ${HAIR}`, borderRadius: 8, overflow: 'hidden', background: NOTE_BAND, cursor: 'pointer', width: 84, height: 63 }}>

@@ -85,6 +85,18 @@ Open Settings → **My Reports** and press {{button:blue|Edit}} on the report. T
 
 A photo already on the report stays. Take one back in the job's Drive folder.
 
+## Keep a photo's spot on the job
+
+On **Leave Report**, each photo has {{button:outline|Keep this spot}} under it.
+
+Press it for a photo of something the next crew must find, such as a cleanout or a shutoff.
+
+The place sheet opens with the photo in it. Press what it is, then {{button:blue|Add this place}}.
+
+The press then reads *Kept*. The report and its photos are sent as usual.
+
+[Keep a photo's spot on the job](/help/add-a-photo-to-a-job#keep-a-photo-s-spot-on-the-job) says what happens to the dot.
+
 ## The size the office picks
 
 The office picks the size once in Settings → Jobs, bills and liens → **Photos**. Small is 1200 px, Medium 1600 px and Large 2400 px on the long edge. Medium is the default. It reads fine on a desktop and goes up on one bar of signal. The app refuses any photo over 2 MB.
