@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { answerDayWords, noteAnsweredWords, noteFlagWords, notesForSheet, NO_SUB_PAPER_ANSWERS, paymentReceivedDay, receivedChipWords, subPaperAnswers, waitingNotes, type SubPaperAckRow } from './subPaperAnswers'
+import { answerDayWords, noteAnsweredWords, noteFlagWords, notesForSheet, NO_SUB_PAPER_ANSWERS, paymentReceivedDay, paymentRecordReceived, receivedChipWords, subPaperAnswers, waitingNotes, type SubPaperAckRow } from './subPaperAnswers'
 
 // Made-up rows. An instant late in the evening UTC is still the same day in Central time; 03:00 UTC is the day before.
 const dayOf = (iso: string) => calendarYmdInAppTzFromIso(iso)
@@ -40,6 +40,34 @@ describe('a payment marked received', () => {
     expect(receivedChipWords('2026-11-13', TODAY)).toBe('Received Nov 13 · from their page')
     expect(receivedChipWords('2025-12-30', TODAY)).toBe('Received Dec 30, 2025 · from their page')
     expect(receivedChipWords('', TODAY)).toBe('Received · from their page')
+  })
+})
+
+describe('the office’s payment record reads the same marks', () => {
+  it('a sending by its id and a payment from before sendings by `row:<its id>`, on the day of the first answer', () => {
+    expect(paymentRecordReceived(answers, 's231')).toEqual({ at: 'Nov 13, 2026' })
+    expect(paymentRecordReceived(answers, 'row:p-old')).toEqual({ at: 'Sep 5, 2026' })
+    // The Pay view's chip and the paper agree on the day.
+    expect(paymentReceivedDay(answers, { id: 'p1', amount: 1000, sending_id: 's231' })).toBe('2026-11-13')
+  })
+
+  it('a payment nobody marked hands the paper nothing, so it reads Not marked yet', () => {
+    expect(paymentRecordReceived(answers, 's226')).toBeNull()
+    expect(paymentRecordReceived(answers, 'row:p-other')).toBeNull()
+    expect(paymentRecordReceived(NO_SUB_PAPER_ANSWERS, 's231')).toBeNull()
+    expect(paymentRecordReceived(answers, 'row:')).toBeNull()
+    expect(paymentRecordReceived(answers, '')).toBeNull()
+  })
+
+  it('a sending’s id is never read as a lone payment’s, nor the other way', () => {
+    // `p-old` was marked as a lone payment. A sending that happened to share the id is not marked.
+    expect(paymentRecordReceived(answers, 'p-old')).toBeNull()
+    expect(paymentRecordReceived(answers, 'row:s231')).toBeNull()
+  })
+
+  it('a mark with no time still counts, on a day not recorded', () => {
+    const undated = subPaperAnswers([row({ id: 'r9', sending_id: 's300', created_at: '' })], dayOf)
+    expect(paymentRecordReceived(undated, 's300')).toEqual({ at: 'a day not recorded' })
   })
 })
 

@@ -15,7 +15,12 @@
  * hands the function none: the function reads the roster again itself. The papers of one email are registered as a
  * set (`registerSubPaperSet`), so the statement names each work statement by the number on the file beside it.
  * Email is the one way built, so the view is handed `sendBy` with email alone. The office roles who see sub pay
- * may send, and an account in training may not.
+ * may send, and an account in training may not. The subject is built again from the lead paper as numbered, so a
+ * sheet's first work statement goes out under a subject that names the number on its file.
+ *
+ * A payment record says whether the sub marked it received: the window reads this person's Got it marks
+ * (`sub_paper_acks`) before it draws, and hands them to the view and to the set that is made. A read that fails
+ * leaves every record at *Not marked yet*, and the view says it could not tell.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PaperCompany, PaperContext, StatementRange } from '../../../supabase/functions/_shared/subPapers'
@@ -29,9 +34,10 @@ import { supabase } from '../../lib/supabase'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { mintRefusal, mintSubPaperArgs, mintedFrom, registerSubPaperSet, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type MintedSubPaper, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
+import { NO_SUB_PAPER_ANSWERS, paymentRecordReceived, subPaperAnswers, SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED, type SubPaperAckRow } from '../../lib/subWorkOrders/subPaperAnswers'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import { drawSubPaperPdf } from '../../lib/subWorkOrders/subPaperPdfDraw'
-import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendUnknownWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
+import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendSubject, subPaperSendUnknownWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -80,6 +86,10 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   const [rows, setRows] = useState<SubPaperRow[] | null>(null)
   /** The window waits for the first read: the period it opens on is *Since the last statement* when there is one. */
   const [registerRead, setRegisterRead] = useState(false)
+  /** This person's Got it marks from their page. Null while they are not read, or where the read failed. */
+  const [acks, setAcks] = useState<SubPaperAckRow[] | null>(null)
+  /** The window waits for the marks too: a payment record drawn ahead of them would say *Not marked yet* and be made so. */
+  const [marksRead, setMarksRead] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [said, setSaid] = useState<{ tone: 'ok' | 'bad'; words: string } | null>(null)
   /** A send is under way. A ref, since a second click can land before the dead press is drawn, and a paper must not go twice. */
@@ -115,6 +125,21 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     void loadRegister()
   }, [loadRegister])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      // The marks alone: the notes a sub sent are the Pay view's to show. The older columns do, so one read serves every database.
+      const read = personId ? await supabase.from('sub_paper_acks').select(SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED).eq('person_id', personId) : { data: [], error: null }
+      if (cancelled) return
+      setAcks(read.error ? null : ((read.data ?? []) as unknown as SubPaperAckRow[]))
+      setMarksRead(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [personId])
+  const answers = useMemo(() => (acks && acks.length > 0 ? subPaperAnswers(acks, (iso) => calendarYmdInAppTzFromIso(iso)) : NO_SUB_PAPER_ANSWERS), [acks])
+
   // Today is handed in, so a statement made today does not start *Since the last statement* tomorrow.
   const register = useMemo(() => subPaperRegister(rows ?? [], (iso) => calendarYmdInAppTzFromIso(iso).slice(0, 10), todayYmdInAppTz()), [rows])
   const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: register.bySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, register])
@@ -125,8 +150,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   }
   const filingOf = (paper: SubPaper) => ({ kind: SUB_PAPER_SENT_KIND[paper.kind], title: subPaperTitle(paper), recipientName: name, personId, jobIds: jobIdsOf(paper), source: paper.kind === 'work_statement' ? { table: 'people_labor_jobs', id: paper.sheetId } : null })
 
-  // The window's frame while the letterhead and the register are read, so the press is seen to have opened something.
-  if (!ctx || !registerRead) return <SubPapersWaiting name={name} onClose={onClose} />
+  // The window's frame while the letterhead, the register and the marks are read, so the press is seen to have opened something.
+  if (!ctx || !registerRead || !marksRead) return <SubPapersWaiting name={name} onClose={onClose} />
   /** Register one paper. Null where the register did not answer with a paper; throws the register's reason when it refuses. */
   const mint = async (paper: SubPaper, range: StatementRange): Promise<MintedSubPaper | null> => {
     if (!personId) return null
@@ -142,7 +167,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   /** Register the papers that go out together, then hand each back as it reads under its number, in the order given. */
   const makeSet = async (papers: readonly SubPaper[], range: StatementRange): Promise<SubPaper[]> => {
     try {
-      return await registerSubPaperSet(papers, { mint: (p) => mint(p, range), sheets, ctx, range, register })
+      return await registerSubPaperSet(papers, { mint: (p) => mint(p, range), sheets, ctx, range, register, received: (key) => paymentRecordReceived(answers, key) })
     } finally {
       // Read again even after a refusal part way: a work statement registered ahead of it keeps its number.
       void loadRegister()
@@ -159,6 +184,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       lastStatement={rows === null ? undefined : register.lastStatement}
       statementToday={rows === null ? undefined : register.statementToday}
       paymentRecords
+      answers={answers}
+      marksUnread={acks === null}
       canSend={maySend}
       sendBy={SEND_BY}
       emailDoor={subPaperEmailDoor()}
@@ -174,8 +201,11 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
           made = await makeSet(papers, sendRange)
           // Only the registering needs an order: the PDFs are drawn together.
           const files = await Promise.all(made.map(async (p) => ({ kind: SUB_PAPER_SENT_KIND[p.kind], number: p.number, title: subPaperTitle(p), file_name: subPaperAttachmentName(p), job_ids: jobIdsOf(p), pdf_base64: await blobBase64(await drawSubPaperPdf(p, sendRange)) })))
+          // The subject from the lead paper as numbered: a first work statement had no number when the step was drawn.
+          const lead = made[0]
+          const subject = lead ? subPaperSendSubject(lead, ctx.company.name) : plan.subject
           // No address rides in the body: the function sends to the roster's own, read under the caller's policies.
-          const { data, error } = await supabase.functions.invoke('send-sub-paper-email', { body: { person_id: personId, by, subject: plan.subject, message: plan.body, papers: files } })
+          const { data, error } = await supabase.functions.invoke('send-sub-paper-email', { body: { person_id: personId, by, subject, message: plan.body, papers: files } })
           if (error) {
             // An answer with a refusal means nothing went. No answer at all means the email may have gone.
             if (!(error instanceof FunctionsHttpError)) {
