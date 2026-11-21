@@ -28,7 +28,7 @@ The shape of `research_builders` did not change, so no client and no type change
 
 ## Not changed
 
-- `research_contact_history`, the skim card's *warm · cold · new name* word, still counts every bid ever made under a name. It is another read with another caller and is left as it was.
+- `research_contact_history`, the skim card's *warm · cold · new name* word, was left as it was here. It took the same rule in [`20261121152000`](./20261121152000_research_contact_history_our_bids.md).
 - `permit_funnel`'s *became a bid* asks whether any bid to the lead's name was made after a pursue. That is not a count of our bids with a name.
 
 ## Safety
