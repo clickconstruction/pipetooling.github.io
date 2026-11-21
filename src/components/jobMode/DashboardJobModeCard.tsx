@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -106,6 +106,16 @@ type Props = {
    * sheet are as they are without it.
    */
   short?: boolean
+  /**
+   * The bands page (design spike, 2026-11-20): the card is the top of **My job**. Its lower half sits behind
+   * **Open this job** as on the short page, Materials on site stays on the card, and a person whose clock is
+   * written for them with no job on it reads the day's scheduled job where the card said *No job or bid linked yet*.
+   */
+  bands?: boolean
+  /** The job the card is about, for the bands under it. Null when the card names no job. */
+  onDayJob?: (jobId: string | null) => void
+  /** The bands page: the day's row of squares, drawn under the job's name and its two doors. */
+  underHead?: ReactNode
 }
 
 type OpenSessionState = {
@@ -385,7 +395,7 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut, knownJobs, short = false }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut, knownJobs, short = false, bands = false, onDayJob, underHead }: Props) {
   // The short page's fold over the card's lower half. It closes again when the job on the card changes.
   const [shortJobOpen, setShortJobOpen] = useState<string | null>(null)
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -775,6 +785,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   ) : null
 
   // Header content depends on state.
+  /** The bands page: clocked in with no job on the clock while the day has a scheduled job. That job, else null. */
+  const bandsAheadBlock = bands && picked.state === 'on-off-schedule-job' && openSession != null && !currentJobInfo ? picked.nextBlock : null
+
   function renderHeader() {
     // Clocked into a job that matches today's schedule.
     if (picked.currentBlock) {
@@ -805,6 +818,22 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerAddr}>{maskedJobs.has(currentJobInfo.id) ? 'Sign them below and the job opens.' : safeTrim(currentJobInfo.job_address) || '—'}</div>
           {legLine}
           <div style={headerStatusLine}>Not on today&rsquo;s schedule</div>
+        </div>
+      )
+    }
+    // The bands page: the clock is running with no job on it and the day has a job. The card names that job.
+    if (bandsAheadBlock) {
+      const nb = bandsAheadBlock
+      const num = jobNumberLabel(nb.service_type_id, nb.hcp_number, nb.click_number)
+      return (
+        <div style={headerWrap}>
+          <div style={headerStatusLine}>Clocked in · today&rsquo;s job</div>
+          <div style={headerNum}>
+            {num}
+            <span style={headerNumNameSep}>|</span>
+            <span style={headerName}>{maskedJobs.has(nb.job_id) ? 'Papers to sign' : jobNameWithPlainDates(safeTrim(nb.job_name)) || '—'}</span>
+          </div>
+          <div style={headerAddr}>{maskedJobs.has(nb.job_id) ? 'Sign them below and the job opens.' : safeTrim(nb.job_address) || '—'}</div>
         </div>
       )
     }
@@ -922,8 +951,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       const cj = currentJobInfo
       return identity(cj.id, cj.hcp_number, cj.click_number, cj.job_name, cj.job_address, cj.service_type_id)
     }
-    if (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) {
-      const nb = picked.nextBlock
+    if ((picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) || bandsAheadBlock) {
+      const nb = (bandsAheadBlock ?? picked.nextBlock)!
       return identity(nb.job_id, nb.hcp_number, nb.click_number, nb.job_name, nb.job_address, nb.service_type_id)
     }
     return null
@@ -1122,12 +1151,16 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   // Details for the clocked-in job, else the Ready-to-start next job.
   const detailsTarget =
     leaveReportTarget ??
-    (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock
+    ((picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) || bandsAheadBlock
       ? {
-          id: picked.nextBlock.job_id,
-          jobAddress: safeTrim(picked.nextBlock.job_address),
+          id: (bandsAheadBlock ?? picked.nextBlock)!.job_id,
+          jobAddress: safeTrim((bandsAheadBlock ?? picked.nextBlock)!.job_address),
         }
       : null)
+  const dayJobId = detailsTarget?.id ?? null
+  useEffect(() => {
+    onDayJob?.(loading ? null : dayJobId)
+  }, [onDayJob, dayJobId, loading])
   // The job the short page's Open this job row opens: the details' job, unless its papers still close it.
   const shortDetailsTarget = detailsTarget && !closedJobs.has(detailsTarget.id) ? detailsTarget : null
   const openMaterialsOnSite = () => navigate(siteBoxDoorHref(jobCalendarTarget?.id ?? leaveReportTarget?.id))
@@ -1180,6 +1213,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           )}
         </div>
       ) : null}
+      {dayOnScreen && underHead ? <div style={{ margin: '0.6rem 0 0.2rem', textAlign: 'left' }}>{underHead}</div> : null}
       {jobCalendarOpen && jobCalendarTarget ? (
         <JobCalendarModal
           job={jobCalendarTarget}
@@ -1432,7 +1466,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             onMessageCustomer={!loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? () => setMessageDoorRev((n) => n + 1) : undefined}
           />
         )
-        if (!short) {
+        if (!short && !bands) {
           return (
             <>
               {paceCard}
@@ -1448,7 +1482,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             <JobModeShortRow testId="job-mode-short-open-job" title={open ? w.openTitle : w.title} note={open ? w.openNote : w.note} expanded={open} onPress={() => setShortJobOpen(open ? null : detailsTarget.id)} />
             {open ? (
               <div data-testid="job-mode-short-job" style={{ display: 'grid', gap: '0.5rem', minWidth: 0 }}>
-                {dayOnScreen ? materialsOnSiteLink : null}
+                {dayOnScreen && short ? materialsOnSiteLink : null}
                 {details}
               </div>
             ) : null}

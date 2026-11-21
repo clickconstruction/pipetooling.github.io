@@ -51,6 +51,8 @@ type Props = {
   load?: (userId: string) => Promise<TopRowDay>
   /** For a smoke: the site's box count. */
   loadBoxes?: (jobId: string) => Promise<number>
+  /** The bands page (design spike): the hours card sits behind a line, so the hours square opens that line. */
+  onHours?: () => void
 }
 
 const row: CSSProperties = { display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }
@@ -107,7 +109,7 @@ const RECEIPT = glyph(
   </>,
 )
 
-export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs = null, load = loadTopRowDay, loadBoxes = loadSiteBoxCount }: Props) {
+export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs = null, load = loadTopRowDay, loadBoxes = loadSiteBoxCount, onHours }: Props) {
   const navigate = useNavigate()
   const jobDetailModal = useJobDetailModal()
   const subscribeSessionChanges = useSessionChanges()
@@ -197,7 +199,7 @@ export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs
         )
       case 'hours':
         return (
-          <button key={square} type="button" data-top-row-square={square} aria-label={TOP_ROW_ARIA.hours(hours)} style={quiet} onClick={() => { pressed(square); document.getElementById(JOB_MODE_HOURS_ANCHOR)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>
+          <button key={square} type="button" data-top-row-square={square} aria-label={TOP_ROW_ARIA.hours(hours)} style={quiet} onClick={() => { pressed(square); if (onHours) onHours(); else document.getElementById(JOB_MODE_HOURS_ANCHOR)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>
             {hours ? <span style={value}>{hours}</span> : CLOCK}
             <span>{hours ? TOP_ROW_WORDS.hours : TOP_ROW_WORDS.hoursUnread}</span>
           </button>

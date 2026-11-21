@@ -108,6 +108,8 @@ export interface DashboardPinnedQuickRowProps {
   hideJobReport?: boolean
   /** The two values the day's row shows on a day with no job left: this week's hours and tomorrow's stops. Each `null` until read. */
   jobModeDay?: { hoursThisWeek: number | null; tomorrowJobs: number | null }
+  /** The bands page (design spike): the day's row is drawn inside My job, so this mount draws the pins and quick buttons alone. */
+  jobModeRowElsewhere?: boolean
 }
 
 
@@ -301,6 +303,7 @@ export function DashboardPinnedQuickRow({
   quietSquares = false,
   hideJobReport = false,
   jobModeDay,
+  jobModeRowElsewhere = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
@@ -396,7 +399,7 @@ export function DashboardPinnedQuickRow({
           <PaintAMapPress userId={authUserId} role={role} shape="link" />
         </div>
       </div>
-      ) : clockSlot == null && hideJobReport ? (
+      ) : clockSlot == null && hideJobReport && jobModeRowElsewhere ? null : clockSlot == null && hideJobReport ? (
         // Job Mode: the day's row. Two squares for the job, then Paint a map and My spend, each with its name.
         <JobModeTopRow userId={authUserId} role={role} hoursThisWeek={jobModeDay?.hoursThisWeek ?? null} tomorrowJobs={jobModeDay?.tomorrowJobs ?? null} />
       ) : (

@@ -46,6 +46,8 @@ type HeldVehicle = {
 
 export type DashboardMyVehicleCardProps = {
   userId: string
+  /** The bands page (design spike): the first vehicle whose reading is asked for, as words for the waiting list. Null when none is. */
+  onReadingAsked?: (ask: { vehicle: string; age: string | null } | null) => void
 }
 
 function todayYmd(): string {
@@ -53,7 +55,7 @@ function todayYmd(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCardProps) {
+export default function DashboardMyVehicleCard({ userId, onReadingAsked }: DashboardMyVehicleCardProps) {
   const { showToast } = useToastContext()
   const [vehicles, setVehicles] = useState<HeldVehicle[]>([])
   const [latestByVehicle, setLatestByVehicle] = useState<Record<string, FleetOdometerEntry>>({})
@@ -227,6 +229,19 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
   }
 
   const anyVehicle = useMemo(() => vehicles.length > 0, [vehicles])
+  const readingAsked = useMemo(() => {
+    if (loadFailure) return null
+    for (const v of vehicles) {
+      const latest = latestByVehicle[v.id] ?? null
+      if (odometerFreshness(latest, today) !== 'fresh') return { vehicle: vehicleDisplayName(v), age: latest ? odometerAgeLabel(latest, today) : null }
+    }
+    return null
+  }, [vehicles, latestByVehicle, today, loadFailure])
+  const readingAskedKey = readingAsked ? `${readingAsked.vehicle}|${readingAsked.age ?? ''}` : ''
+  useEffect(() => {
+    onReadingAsked?.(readingAsked)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key is the ask's whole content
+  }, [onReadingAsked, readingAskedKey])
   if (!anyVehicle && !loadFailure) return null
 
   return (

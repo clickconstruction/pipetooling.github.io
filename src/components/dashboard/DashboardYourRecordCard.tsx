@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
@@ -85,7 +85,7 @@ async function loadYourRecord(userId: string): Promise<YourRecordItem[]> {
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.6rem', alignItems: 'center', padding: '0.55rem 0.7rem', borderLeft: '4px solid #f59e0b', background: 'var(--surface)', borderRadius: 6 }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: '#b45309', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }
 
-export default function DashboardYourRecordCard({ userId, role, displayName, isSalary, title = 'Your record' }: { userId: string; role: UserRole | null; displayName: string; isSalary: boolean; /** The card's name. The short Job Mode page (punch list #384) calls it Waiting on you. */ title?: string }) {
+export default function DashboardYourRecordCard({ userId, role, displayName, isSalary, title = 'Your record', bare = false, omitReportJobs, onCount, onReportHours }: { userId: string; role: UserRole | null; displayName: string; isSalary: boolean; /** The card's name. The short Job Mode page (punch list #384) calls it Waiting on you. */ title?: string; /** The bands page (design spike): the rows alone, inside the waiting list. */ bare?: boolean; /** The bands page: the report rows of these jobs are left out, since a day the person led already asks for them. */ omitReportJobs?: ReadonlySet<string>; /** How many rows are drawn. */ onCount?: (n: number) => void; /** The hours worked this week on each job that owes a report, for the row that asks instead. */ onReportHours?: (hoursByJob: Record<string, number>) => void }) {
   const [items, setItems] = useState<YourRecordItem[] | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [pctJob, setPctJob] = useState<YourRecordJob | null>(null)
@@ -114,7 +114,17 @@ export default function DashboardYourRecordCard({ userId, role, displayName, isS
     return () => window.removeEventListener('focus', onFocus)
   }, [refresh])
 
-  if (!items || items.length === 0) return null
+  const shown = useMemo(() => (items ?? []).filter((i) => !(i.key === 'no-report' && omitReportJobs?.has(i.jobId))), [items, omitReportJobs])
+  useEffect(() => {
+    if (!onReportHours || !items) return
+    const hours: Record<string, number> = {}
+    for (const i of items) if (i.key === 'no-report') hours[i.jobId] = i.hours
+    onReportHours(hours)
+  }, [onReportHours, items])
+  useEffect(() => {
+    onCount?.(shown.length)
+  }, [onCount, shown.length])
+  if (shown.length === 0) return null
 
   const open = (item: YourRecordItem) => {
     if (item.key === 'no-pct') setPctJob(item.job)
@@ -123,13 +133,13 @@ export default function DashboardYourRecordCard({ userId, role, displayName, isS
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.75rem' }} data-testid="dashboard-your-record">
-      <DashboardCardHead card={{ top: '0.7rem', side: '0.9rem', radius: 8 }} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem' }}>
+    <div style={bare ? { display: 'contents' } : { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.75rem' }} data-testid="dashboard-your-record">
+      {bare ? null : <DashboardCardHead card={{ top: '0.7rem', side: '0.9rem', radius: 8 }} below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem' }}>
         <DashboardCardTitle nowrap>{title}</DashboardCardTitle>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>this week · {items.length === 1 ? 'one thing' : `${items.length} things`} only you can fix</span>
-      </DashboardCardHead>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>this week · {shown.length === 1 ? 'one thing' : `${shown.length} things`} only you can fix</span>
+      </DashboardCardHead>}
       <div style={{ display: 'grid', gap: '0.45rem' }}>
-        {items.map((item) => {
+        {shown.map((item) => {
           const c = yourRecordItemCopy(item)
           const k = item.key === 'clock-open' ? `open:${item.sessionId}` : `${item.key}:${item.jobId}`
           return (

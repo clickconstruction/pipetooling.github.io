@@ -1,0 +1,438 @@
+<title>A Crew Lead's Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style data-inline>
+/* Layout: one column of rows. Each row is a phone (or phones) on the left at true proportions and plain notes on the right. A tape measure runs through it: lengths are in screens. */
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --ink: #15202b; --muted: #556270; --line: #d3dae1; --tape: #f2b705; --tape-ink: #2a2100; --pick: #0b6b4f; --pick-bg: #e2f3ec;
+  --c-tool: #2563eb; --c-story: #0d9488; --c-ask: #d97706; --c-none: #9aa3ad; --c-repeat: #c4b5fd;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif; --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* The phone screens keep the app's light look in both themes, like a screenshot. */
+  --p-bg: #f3f4f6; --p-surface: #ffffff; --p-text: #111827; --p-muted: #6b7280; --p-border: #e2e5ea; --p-blue: #2563eb; --p-green: #16a34a; --p-orange: #b45309; --p-red: #dc2626; --p-dead: #e5e7eb; --p-dead-ink: #4b5563; --p-amber: #f59e0b;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #10151b; --panel: #19212a; --ink: #e7ecf1; --muted: #9ba8b5; --line: #2b3641; --tape: #f2b705; --tape-ink: #2a2100; --pick: #5fd3aa; --pick-bg: #12332a; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #10151b; --panel: #19212a; --ink: #e7ecf1; --muted: #9ba8b5; --line: #2b3641; --tape: #f2b705; --tape-ink: #2a2100; --pick: #5fd3aa; --pick-bg: #12332a; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5 }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px }
+h1 { font-family: var(--font-display); font-size: clamp(1.6rem, 4.5vw, 2.3rem); line-height: 1.1; margin: 0; text-wrap: balance }
+h2 { font-family: var(--font-display); font-size: 1.3rem; margin: 0; text-wrap: balance }
+h3 { font-size: 0.95rem; margin: 0 }
+p { margin: 0; max-width: 66ch }
+.lede { color: var(--muted); display: grid; gap: 8px }
+.eyebrow { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted) }
+.row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px 28px; align-items: start; border-top: 2px solid var(--ink); padding-top: 18px }
+.row.side { grid-template-columns: auto minmax(0, 1fr) }
+.row:not(.side) .notes dl, .row:not(.side) .pinlist { display: block; columns: 2 300px; column-gap: 32px }
+.row:not(.side) .notes dt { break-after: avoid }
+.row:not(.side) .notes dd { break-inside: avoid; margin-bottom: 10px }
+.row:not(.side) .pinlist li { break-inside: avoid; margin-bottom: 9px }
+.row > header { grid-column: 1 / -1; display: grid; gap: 4px }
+.phones { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start }
+.notes { display: grid; gap: 14px; min-width: 0 }
+.notes dl { margin: 0; display: grid; gap: 10px }
+.notes dt { font-weight: 700; font-size: 0.85rem }
+.notes dd { margin: 0; color: var(--muted) }
+.notes ol, .notes ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; color: var(--muted) }
+.notes li b, .notes dd b { color: var(--ink) }
+.cost { font-family: var(--font-data); font-size: 0.8rem; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 8px 10px; color: var(--ink) }
+.pick { background: var(--pick-bg); border-left: 5px solid var(--pick); padding: 14px 16px; display: grid; gap: 8px }
+.pick h2 { color: var(--pick) }
+.tag { display: inline-block; font-family: var(--font-data); font-size: 0.7rem; padding: 1px 7px; border-radius: 99px; background: var(--pick); color: var(--bg); vertical-align: middle; margin-left: 6px }
+@media (max-width: 780px) { .row.side { grid-template-columns: minmax(0, 1fr) } }
+
+/* ---- the length map ---- */
+.map { display: grid; gap: 10px }
+.strips { display: flex; gap: 18px; align-items: flex-start; overflow-x: auto; padding-bottom: 6px }
+.strip { display: grid; gap: 6px; justify-items: start; flex: none }
+.strip .cap { font-size: 0.78rem; font-weight: 600; max-width: 120px; line-height: 1.25 }
+.strip .len { font-family: var(--font-data); font-size: 0.72rem; color: var(--muted) }
+.col { width: 64px; position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+.col::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 39px, var(--tape) 39px 41px) }
+.col i { display: block; width: 100%; border-bottom: 1px solid var(--panel) }
+.t-tool { background: var(--c-tool) } .t-story { background: var(--c-story) } .t-ask { background: var(--c-ask) } .t-none { background: var(--c-none) } .t-repeat { background: repeating-linear-gradient(135deg, var(--c-repeat) 0 4px, var(--c-none) 4px 8px) }
+.key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--muted) }
+.key span { display: inline-flex; align-items: center; gap: 6px }
+.key i { width: 14px; height: 14px; border-radius: 3px; display: inline-block }
+
+/* ---- a phone ---- */
+.ph { --pw: 300px; --ph: 650px; width: var(--pw); height: var(--ph); background: var(--p-bg); color: var(--p-text); border: 2px solid #1f2937; border-radius: 22px; overflow: hidden; position: relative; font-size: 11px; line-height: 1.3; flex: none; display: flex; flex-direction: column }
+.ph.sm { --pw: 232px; --ph: 500px; font-size: 10px }
+.ph .scroll { flex: 1; min-height: 0; overflow: hidden; padding: 8px; display: grid; gap: 7px; align-content: start }
+.phcap { font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; max-width: 300px }
+.phcap small { display: block; font-weight: 400; color: var(--muted) }
+.p-banner { background: #fff4e5; color: #7c2d12; padding: 6px 8px; display: flex; gap: 6px; align-items: center; justify-content: space-between; flex: none }
+.p-banner em { font-style: normal; background: #f97316; color: #fff; border-radius: 4px; padding: 2px 6px; font-weight: 700 }
+.p-hd { background: var(--p-surface); border-bottom: 1px solid var(--p-border); padding: 8px; display: flex; gap: 6px; align-items: center; flex: none }
+.p-hd i { width: 20px; height: 20px; border-radius: 4px; background: #d1d5db; display: block }
+.p-hd i.g { background: #16a34a } .p-hd i.b { background: #0369a1 } .p-hd i.p { background: #9333ea } .p-hd i.c { background: #2563eb } .p-hd span { flex: 1 }
+.p-hd.quiet i.g, .p-hd.quiet i.b, .p-hd.quiet i.p, .p-hd.quiet i.c { background: #d1d5db }
+.p-sq { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 5px }
+.p-sq b { border: 1px solid var(--p-border); background: var(--p-surface); border-radius: 7px; padding: 8px 2px; text-align: center; font-weight: 600; position: relative; color: var(--p-text) }
+.p-sq b.on { background: var(--p-blue); border-color: var(--p-blue); color: #fff }
+.p-sq b u { position: absolute; top: -5px; right: -3px; background: var(--p-orange); color: #fff; border-radius: 99px; padding: 0 4px; font-size: 0.8em; text-decoration: none }
+.p-qb { display: flex; flex-wrap: wrap; gap: 5px }
+.p-qb b { background: var(--p-blue); color: #fff; border-radius: 6px; padding: 5px 9px; font-weight: 600 }
+.p-qb.quiet b { background: transparent; color: var(--p-muted); border: 1px solid var(--p-border); font-weight: 500 }
+.p-card { background: var(--p-surface); border: 1px solid var(--p-border); border-radius: 9px; padding: 9px 10px; display: grid; gap: 5px }
+.p-card.center { text-align: center }
+.p-card h4 { margin: 0; font-size: 1.25em; line-height: 1.2 }
+.p-card .big { font-size: 1.45em; font-weight: 700; line-height: 1.15 }
+.p-m { color: var(--p-muted) }
+.p-eye { font-size: 0.85em; letter-spacing: 0.07em; text-transform: uppercase; color: var(--p-muted); font-weight: 600 }
+.p-line { display: flex; gap: 8px; align-items: center; justify-content: space-between; border-top: 1px solid var(--p-border); padding-top: 6px }
+.p-line:first-of-type { border-top: 0; padding-top: 0 }
+.p-line > div { min-width: 0 }
+.p-line strong { display: block }
+.p-btn { flex: none; border-radius: 6px; padding: 4px 9px; font-weight: 700; background: var(--p-surface); border: 1px solid #9ca3af; color: var(--p-text); white-space: nowrap }
+.p-btn.or { background: var(--p-orange); border-color: var(--p-orange); color: #fff }
+.p-btn.bl { background: var(--p-blue); border-color: var(--p-blue); color: #fff }
+.p-warn { border-left: 3px solid var(--p-amber); padding-left: 7px }
+.p-red { background: #fee2e2; color: #b91c1c; border-radius: 5px; padding: 4px 7px; font-weight: 700 }
+.p-prog { height: 5px; border-radius: 9px; background: #e5e7eb; overflow: hidden }
+.p-prog i { display: block; height: 100%; width: 75%; background: var(--p-blue) }
+.p-stage { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px }
+.p-stage i { display: block; height: 5px; border-radius: 9px; background: #e5e7eb }
+.p-stage i.d { background: var(--p-green) } .p-stage i.n { background: var(--p-blue) }
+.p-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px }
+.p-grid3 b { border: 1px solid var(--p-border); border-radius: 7px; padding: 9px 2px; text-align: center; font-weight: 600; background: #f9fafb }
+.p-grid3 b small { display: block; font-weight: 400; color: var(--p-muted) }
+.p-bar { background: var(--p-surface); border-top: 1px solid var(--p-border); padding: 6px 8px; display: grid; gap: 6px; flex: none }
+.p-bar .r { display: grid; grid-template-columns: 2fr 3fr; gap: 6px }
+.p-bar .r.one { grid-template-columns: 1fr auto }
+.p-bar b { border-radius: 8px; text-align: center; font-weight: 700; padding: 12px 4px; font-size: 1.15em }
+.p-bar b.s { padding: 7px 4px; font-size: 1em; border: 1px solid var(--p-border); color: var(--p-dead-ink); font-weight: 600 }
+.p-bar b.dead { background: var(--p-dead); color: var(--p-dead-ink) }
+.p-bar b.go { background: var(--p-green); color: #fff }
+.p-bar b.rep { background: var(--p-blue); color: #fff }
+.p-bar b.more { background: var(--p-surface); border: 1px solid #9ca3af; color: var(--p-text); padding-inline: 14px }
+.p-tabs { background: var(--p-surface); border-top: 1px solid var(--p-border); display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; padding: 8px 0 10px; color: var(--p-muted); font-weight: 600; font-size: 0.9em; flex: none }
+.p-tabs b { color: var(--p-blue) }
+.p-band { font-size: 0.85em; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--p-muted); display: flex; justify-content: space-between; margin-top: 2px }
+.p-band u { text-decoration: none; background: var(--p-orange); color: #fff; border-radius: 99px; padding: 0 6px }
+.p-chip { display: inline-block; border: 1px solid var(--p-border); border-radius: 99px; padding: 1px 7px; background: #f9fafb }
+.pin { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--tape); color: var(--tape-ink); font: 700 11px/20px var(--font-data); text-align: center; box-shadow: 0 0 0 2px #1f2937; z-index: 2 }
+.pinlist { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; color: var(--muted) }
+.pinlist li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px }
+.pinlist li i { width: 20px; height: 20px; border-radius: 50%; background: var(--tape); color: var(--tape-ink); font: 700 11px/20px var(--font-data); text-align: center; font-style: normal }
+.pinlist b { color: var(--ink) }
+</style>
+
+<div class="wrap">
+  <header class="lede">
+    <div class="eyebrow">Mock-up · names, jobs and counts on the screens are made up · lengths are measured</div>
+    <h1>A crew lead's Dashboard on his phone</h1>
+    <p>He runs one job for weeks with one partner. His hours are written from his schedule. He opens this page about twice a day and presses almost nothing on it.</p>
+    <p>Today's page is built for a day of several stops. Below is that page as he sees it, then three shapes for it, then a pick.</p>
+  </header>
+
+  <!-- ============ TODAY ============ -->
+  <section class="row">
+    <header>
+      <div class="eyebrow">Today</div>
+      <h2>What he opens</h2>
+    </header>
+    <div class="phones">
+      <div>
+        <div class="phcap">First screen, before the job<small>390 by 844, drawn at three quarters size</small></div>
+        <div class="ph" style="position:relative">
+          <span class="pin" style="top:60px;left:-2px">1</span>
+          <span class="pin" style="top:158px;right:4px">2</span>
+          <span class="pin" style="top:236px;left:-2px">3</span>
+          <span class="pin" style="top:330px;right:4px">4</span>
+          <span class="pin" style="top:520px;left:-2px">5</span>
+          <span class="pin" style="top:520px;right:4px">6</span>
+          <span class="pin" style="top:104px;right:4px">7</span>
+          <div class="p-banner"><span>＋ Add a one-tap <b>Add Task</b> icon to your Home Screen.</span><em>Add</em></div>
+          <div class="p-hd"><i></i><i></i><i></i><span></span><i class="g"></i><i class="b"></i><i class="p"></i><i class="c"></i><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-sq"><b class="on">Directions</b><b class="on">Job details</b><b>Paint a map</b><b>My spend<u>5</u></b></div>
+            <div class="p-qb"><b>Bid</b><b>Inspections</b><b>Builder Review</b><b>Bills sent</b></div>
+            <div class="p-card center">
+              <div class="big" style="font-size:1.25em">Clocked in</div>
+              <div class="p-m">No job or bid linked yet</div>
+              <div class="p-eye" style="text-align:left">Today · 0 of 1 done</div>
+              <div style="text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">○ &nbsp;<span class="p-m">8:00 AM</span> &nbsp;<b>PLUM 2207 · Pump station rebuild, Ced…</b></div>
+            </div>
+            <div class="p-card">
+              <h4>Your record <span class="p-m" style="font-size:0.75em;font-weight:400">this week · one thing only you can fix</span></h4>
+              <div class="p-line p-warn"><div><strong>No report on 2207 Pump station rebuild</strong><span class="p-m">You worked it Thursday (16h this week); no field report from you yet.</span></div><span class="p-btn or">Report</span></div>
+            </div>
+          </div>
+          <div class="p-bar"><b class="s">Turnaway</b><div class="r"><b class="dead">Leave report</b><b class="go">On my way</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+      <div class="map"><div class="phcap">How long the page is, to scale<small>each yellow line is one phone screen</small></div><div class="strips"><div class="strip"><div class="col"><i class="t-none" style="height:7px"></i><i class="t-tool" style="height:3px"></i><i class="t-none" style="height:5px"></i><i class="t-tool" style="height:6px"></i><i class="t-ask" style="height:8px"></i><i class="t-none" style="height:8px"></i><i class="t-tool" style="height:17px"></i><i class="t-repeat" style="height:18px"></i><i class="t-ask" style="height:15px"></i><i class="t-none" style="height:15px"></i></div><div class="cap">Today, before the job</div><div class="len">2.5 screens</div></div><div class="strip"><div class="col"><i class="t-none" style="height:7px"></i><i class="t-tool" style="height:3px"></i><i class="t-none" style="height:5px"></i><i class="t-tool" style="height:22px"></i><i class="t-story" style="height:29px"></i><i class="t-ask" style="height:8px"></i><i class="t-none" style="height:8px"></i><i class="t-repeat" style="height:35px"></i><i class="t-ask" style="height:15px"></i><i class="t-none" style="height:15px"></i></div><div class="cap">Today, on site</div><div class="len">3.7 screens</div></div><div class="strip"><div class="col"><i class="t-none" style="height:7px"></i><i class="t-tool" style="height:4px"></i><i class="t-ask" style="height:8px"></i><i class="t-tool" style="height:35px"></i><i class="t-none" style="height:122px"></i><i class="t-none" style="height:39px"></i><i class="t-story" style="height:5px"></i><i class="t-none" style="height:4px"></i><i class="t-story" style="height:21px"></i><i class="t-none" style="height:14px"></i><i class="t-story" style="height:52px"></i><i class="t-ask" style="height:43px"></i><i class="t-none" style="height:67px"></i><i class="t-story" style="height:33px"></i><i class="t-tool" style="height:20px"></i><i class="t-none" style="height:22px"></i><i class="t-ask" style="height:48px"></i><i class="t-none" style="height:44px"></i><i class="t-ask" style="height:25px"></i></div><div class="cap">Today, behind Show full dashboard</div><div class="len">about 15 screens</div></div><div class="strip"><div class="col"><i class="t-none" style="height:5px"></i><i class="t-tool" style="height:13px"></i><i class="t-ask" style="height:11px"></i><i class="t-story" style="height:4px"></i><i class="t-none" style="height:7px"></i></div><div class="cap">Shape A</div><div class="len">1 screen</div></div><div class="strip"><div class="col"><i class="t-none" style="height:4px"></i><i class="t-tool" style="height:20px"></i><i class="t-story" style="height:9px"></i><i class="t-ask" style="height:14px"></i><i class="t-story" style="height:8px"></i><i class="t-none" style="height:9px"></i></div><div class="cap">Shape B</div><div class="len">1.6 screens</div></div></div><div class="key"><span><i class="t-tool"></i>a tool for the job</span><span><i class="t-story"></i>the story around him</span><span><i class="t-ask"></i>an ask</span><span><i class="t-repeat"></i>said again</span><span><i class="t-none"></i>none of the three</span></div></div>
+    </div>
+    <div class="notes">
+      <ul class="pinlist">
+        <li><i>1</i><span><b>A third of the screen passes before the job.</b> A banner, nine header icons, four squares and four blue buttons come first.</span></li>
+        <li><i>2</i><span><b>Four blue buttons ahead of the job.</b> He switched six others off himself. These four still outweigh the job card under them.</span></li>
+        <li><i>3</i><span><b>The card does not say where he is going.</b> It says Clocked in and No job linked. The job's name is cut off and there is no address and no partner.</span></li>
+        <li><i>4</i><span><b>The report is asked four times, three ways.</b> Report in orange here, Leave report in the bar, Leave Report on today's schedule card and again on tomorrow's.</span></li>
+        <li><i>5</i><span><b>The bar's Leave report is dead</b> while the orange Report above it is live. After work it is dead again, the hour a report is written.</span></li>
+        <li><i>6</i><span><b>The biggest press is On my way.</b> He pressed it once in two weeks. On site with one job it turns into a dead grey Last job of the day.</span></li>
+        <li><i>7</i><span><b>A 5 with no words.</b> Five card charges wait for a job. It is his largest ask and it is a badge.</span></li>
+      </ul>
+      <dl>
+        <dt>What is missing from every screen</dt>
+        <dd>Who is with him today. What changed on the job since he last looked. What the rest of the week holds. The page behind Show full dashboard has all three, 14 screens down, inside the office's cards.</dd>
+        <dt>What he is asked that this page never shows</dt>
+        <dd>Reports for each day he led a crew, his crew to rate, a truck mileage reading, hours to look at, overdue tasks. They sit at the foot of the full Dashboard.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ============ A ============ -->
+  <section class="row side">
+    <header>
+      <div class="eyebrow">Shape A</div>
+      <h2>Thin it: the same page, the job first, each thing once</h2>
+    </header>
+    <div class="phones">
+      <div>
+        <div class="phcap">Before the job<small>one screen, nothing under the fold he needs</small></div>
+        <div class="ph">
+          <div class="p-hd quiet"><i></i><i></i><i></i><span></span><i class="g"></i><i class="b"></i><i class="p"></i><i class="c"></i><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-card">
+              <div class="p-eye">Today · 8:00 to 4:00</div>
+              <div class="big">Pump station rebuild</div>
+              <div>J2207 · 410 Quarry Rd, Cedar Bend</div>
+              <div class="p-m">With <b style="color:var(--p-text)">Rosa</b> · day 9 on this job</div>
+              <div class="p-sq" style="margin-top:3px"><b class="on">Directions</b><b>Job details</b><b>Photo</b><b>On site<u>48</u></b></div>
+            </div>
+            <div class="p-band"><span>Waiting on you</span><u>3</u></div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>Report for Thursday</strong><span class="p-m">J2207, with Rosa</span></div><span class="p-btn or">Write it</span></div>
+              <div class="p-line"><div><strong>5 card charges need a job</strong><span class="p-m">oldest is 3 days old</span></div><span class="p-btn">Open</span></div>
+              <div class="p-line"><div><strong>OSHA 30 refresher</strong><span class="p-m">30 short lessons</span></div><span class="p-btn">Start</span></div>
+            </div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>Tomorrow</strong><span class="p-m">Here again at 8:00, with Rosa</span></div><span class="p-m">›</span></div>
+              <div class="p-line"><div><strong>This week</strong><span class="p-m">31.5 of 40 h</span></div><span class="p-m">›</span></div>
+            </div>
+            <div class="p-qb quiet"><b>Bid</b><b>Inspections</b><b>Builder Review</b><b>Bills sent</b><b>Paint a map</b></div>
+          </div>
+          <div class="p-bar"><div class="r"><b class="rep">Leave report</b><b class="go">On my way</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl>
+        <dt>What moves</dt>
+        <dd>The job card goes to the top and says the job, the place and the partner. The four squares move inside it. His quick buttons drop to a quiet row at the foot.</dd>
+        <dt>Behind a door</dt>
+        <dd>Tomorrow and This week are one line each and open what they open today. The two optional courses sit behind the training line. My Schedule's cards live on the Schedule tab.</dd>
+        <dt>Removed</dt>
+        <dd>The dead Turnaway and dead Leave report. Leave Report on tomorrow's card. The second Materials on site, Paint a map and Photo presses on site.</dd>
+        <dt>What it does not fix</dt>
+        <dd>The story. He still learns nothing about his crew or the job. The bar still leads with On my way.</dd>
+      </dl>
+      <div class="cost">Cost: small. Four or five client PRs, no database change. A short Job Mode page already exists for a superintendent and is most of this layout.</div>
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section class="row side">
+    <header>
+      <div class="eyebrow">Shape B <span class="tag">the pick</span></div>
+      <h2>Three bands: my job, around me, waiting on me</h2>
+    </header>
+    <div class="phones">
+      <div>
+        <div class="phcap">On site, first screen</div>
+        <div class="ph">
+          <div class="p-hd quiet"><i></i><i></i><i></i><span></span><i class="g"></i><i class="b"></i><i class="p"></i><i class="c"></i><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-band"><span>My job</span><span>on site since 8:00</span></div>
+            <div class="p-card">
+              <div class="big">Pump station rebuild</div>
+              <div>J2207 · 410 Quarry Rd, Cedar Bend · with <b>Rosa</b></div>
+              <div class="p-stage"><i class="d"></i><i class="d"></i><i class="n"></i><i></i></div>
+              <div class="p-m">Stage 3 of 4, setting the tanks · 75% done</div>
+              <div class="p-grid3">
+                <b>Photo<small>9 so far</small></b><b>Plans<small>changed Wed</small></b><b>Materials<small>48 boxes</small></b>
+                <b>Directions</b><b>Customer</b><b>Job notes<small>4</small></b>
+              </div>
+            </div>
+            <div class="p-band"><span>Around me</span><span>since yesterday</span></div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>Rosa got here at 6:40.</strong></div></div>
+              <div class="p-line"><div><strong>Kim changed the plans link.</strong><span class="p-m">Wednesday, 1:15</span></div><span class="p-m">›</span></div>
+              <div class="p-line"><div><strong>Inspection here Tuesday at 10.</strong></div><span class="p-m">›</span></div>
+            </div>
+            <div class="p-band"><span>Waiting on me</span><u>5</u></div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>4 days here with no report</strong><span class="p-m">Tue to Fri, with Rosa</span></div><span class="p-btn or">Write today's</span></div>
+            </div>
+          </div>
+          <div class="p-bar"><div class="r one"><b class="rep">Photo</b><b class="more">More</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="phcap">The same page, scrolled once<small>it ends here</small></div>
+        <div class="ph">
+          <div class="scroll">
+            <div class="p-band"><span>Waiting on me</span><u>5</u></div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>4 days here with no report</strong><span class="p-m">Tue to Fri, with Rosa</span></div><span class="p-btn or">Write today's</span></div>
+              <div class="p-line"><div><strong>Rate your crew for November</strong><span class="p-m">2 people, a minute each</span></div><span class="p-btn">Rate</span></div>
+              <div class="p-line"><div><strong>5 card charges need a job</strong><span class="p-m">oldest is 3 days old</span></div><span class="p-btn">Open</span></div>
+              <div class="p-line"><div><strong>Truck mileage</strong><span class="p-m">the office asked 60 days ago</span></div><span class="p-btn">Send</span></div>
+              <div class="p-line"><div><strong>OSHA 30 refresher</strong><span class="p-m">lesson 1 of 30, 6 minutes</span></div><span class="p-btn">Start</span></div>
+            </div>
+            <div class="p-band"><span>My week</span><span>31.5 of 40 h</span></div>
+            <div class="p-card">
+              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;text-align:center">
+                <div><div class="p-m">Mon</div><span class="p-chip">2207</span></div>
+                <div><div class="p-m">Tue</div><span class="p-chip">2207</span></div>
+                <div><div class="p-m">Wed</div><span class="p-chip">2207</span></div>
+                <div><div class="p-m">Thu</div><span class="p-chip">2207</span></div>
+                <div><div><b>Fri</b></div><span class="p-chip" style="border-color:var(--p-blue);color:var(--p-blue)">2207</span></div>
+                <div><div class="p-m">Sat</div><span class="p-chip">2207</span></div>
+              </div>
+              <div class="p-m">Next week: here Monday to Wednesday, then J2231 Creekside.</div>
+            </div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>The company today</strong><span class="p-m">12 people on 8 jobs</span></div><span class="p-m">›</span></div>
+              <div class="p-line"><div><strong>Everything else</strong><span class="p-m">Hours, training, quick buttons, the full Dashboard</span></div><span class="p-m">›</span></div>
+            </div>
+          </div>
+          <div class="p-bar"><div class="r one"><b class="rep">Photo</b><b class="more">More</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl>
+        <dt>What moves</dt>
+        <dd><b>My job</b> holds the name, the place, the partner, the stage and six tools in one grid. Each tool says its own state: 12 photos, plans changed Wednesday, 48 boxes.</dd>
+        <dd><b>Around me</b> is three plain sentences at most: his crew, what the office changed, what is coming to this job. Clock punches stay out of it.</dd>
+        <dd><b>Waiting on me</b> is one list with one count. Every ask he has comes here, in his words, with what it costs him. Nothing is asked anywhere else on the page.</dd>
+        <dt>Behind a door</dt>
+        <dd>Hours, the training list, his quick buttons and the full Dashboard, behind Everything else. The whole job feed, behind Job notes. Turnaway and On my way, behind More.</dd>
+        <dt>Removed for him</dt>
+        <dd>The four squares, the blue quick buttons, the hours card, both schedule cards, the red training banner, the Add Task banner while a job is on.</dd>
+        <dt>The bar</dt>
+        <dd>One press that follows his day: Directions before he is there, Photo on site, Leave report from mid afternoon. This one rule is borrowed from Shape C.</dd>
+      </dl>
+      <div class="cost">Cost: medium. Five or six client PRs. The waiting list gathers five reads that exist. Around me is the new read: the job's feed without clock lines, who shares his schedule, and next week.</div>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section class="row">
+    <header>
+      <div class="eyebrow">Shape C</div>
+      <h2>The page follows the day</h2>
+    </header>
+    <div class="phones">
+      <div>
+        <div class="phcap">Before work</div>
+        <div class="ph sm">
+          <div class="p-hd quiet"><i></i><i></i><span></span><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-card">
+              <div class="p-eye">Today at 8:00</div>
+              <div class="big">Pump station rebuild</div>
+              <div>410 Quarry Rd, Cedar Bend</div>
+              <div class="p-m">With Rosa. She is on her way.</div>
+            </div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>New since yesterday</strong><span class="p-m">Kim changed the plans link.</span></div><span class="p-m">›</span></div>
+              <div class="p-line"><div><strong>Bring</strong><span class="p-m">2 boxes are still at the shop.</span></div><span class="p-m">›</span></div>
+            </div>
+            <div class="p-m" style="text-align:center">5 things wait on you. They will keep.</div>
+          </div>
+          <div class="p-bar"><div class="r one"><b class="go">Directions</b><b class="more">More</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="phcap">On site</div>
+        <div class="ph sm">
+          <div class="p-hd quiet"><i></i><i></i><span></span><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-card">
+              <div class="p-eye">On site since 8:00</div>
+              <div class="big">Pump station rebuild</div>
+              <div class="p-stage"><i class="d"></i><i class="d"></i><i class="n"></i><i></i></div>
+              <div class="p-grid3"><b>Plans</b><b>Materials<small>48</small></b><b>Customer</b></div>
+            </div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>Inspection here Tuesday at 10.</strong></div></div>
+            </div>
+          </div>
+          <div class="p-bar"><div class="r one"><b class="rep">Photo</b><b class="more">More</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="phcap">Wrapping up, from 2:30</div>
+        <div class="ph sm">
+          <div class="p-hd quiet"><i></i><i></i><span></span><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-card">
+              <div class="p-eye">How did today go?</div>
+              <div class="big">Pump station rebuild</div>
+              <div class="p-m">Where is the job now?</div>
+              <div class="p-qb quiet"><b>75%</b><b style="border-color:var(--p-blue);color:var(--p-blue)">80%</b><b>85%</b><b>90%</b></div>
+              <div class="p-m">What got done? Say it or type it.</div>
+              <div style="border:1px solid var(--p-border);border-radius:6px;height:44px;background:#f9fafb"></div>
+              <div class="p-m">3 photos from today go with it.</div>
+            </div>
+            <div class="p-m" style="text-align:center">This is what the customer and the office read tonight.</div>
+          </div>
+          <div class="p-bar"><div class="r one"><b class="rep">Send report</b><b class="more">More</b></div></div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="phcap">Off the clock</div>
+        <div class="ph sm">
+          <div class="p-hd quiet"><i></i><i></i><span></span><i></i><i></i></div>
+          <div class="scroll">
+            <div class="p-card">
+              <div class="p-eye">Tomorrow at 8:00</div>
+              <div class="big">Here again, with Rosa</div>
+              <div class="p-m">This week 38 of 40 h.</div>
+            </div>
+            <div class="p-band"><span>Waiting on me</span><u>4</u></div>
+            <div class="p-card">
+              <div class="p-line"><div><strong>Rate your crew</strong><span class="p-m">2 people</span></div><span class="p-btn">Rate</span></div>
+              <div class="p-line"><div><strong>5 card charges</strong></div><span class="p-btn">Open</span></div>
+              <div class="p-line"><div><strong>Truck mileage</strong></div><span class="p-btn">Send</span></div>
+              <div class="p-line"><div><strong>OSHA 30, lesson 1</strong><span class="p-m">6 minutes</span></div><span class="p-btn">Start</span></div>
+            </div>
+          </div>
+          <div class="p-tabs"><b>Dashboard</b><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl>
+        <dt>What moves</dt>
+        <dd>One hero card and one press, and both change four times a day. Asks are held to the hours he can answer them: the report at wrap up, everything else off the clock.</dd>
+        <dt>Behind a door</dt>
+        <dd>Whatever is not this hour's. More opens the other three faces and the full page.</dd>
+        <dt>Removed</dt>
+        <dd>The report as a separate window. It is the page itself for the last hour of the day.</dd>
+        <dt>What it risks</dt>
+        <dd>The page moves under him, so a press is not where it was this morning. His clock is written for him, so the hour is guessed from the schedule and it will guess wrong on a short day.</dd>
+      </dl>
+      <div class="cost">Cost: large. A day rule for a person who never presses the clock, asks held by hour, the report built into the page. Eight PRs or more, and the report form is its own design.</div>
+    </div>
+  </section>
+
+  <!-- ============ PICK ============ -->
+  <section class="pick">
+    <div class="eyebrow">Is this the best we can do?</div>
+    <h2>Build B, starting with A's cuts, and borrow one rule from C</h2>
+    <p>A is worth doing whatever is picked, and its PRs are B's first PRs. B is the only shape that answers all three questions: the tools sit together under the job's name, the story is three sentences he can take in, and every ask is on one list with one count. C is the better phone in the end, but it moves the page under a man who barely presses it today. Take C's one safe rule now: the bar's single press follows his day.</p>
+    <p>Decide by the day, not by the person. A day with one job gets this page. A day with three stops keeps On my way and the route it has now.</p>
+  </section>
+</div>

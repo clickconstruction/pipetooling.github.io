@@ -22,6 +22,9 @@ import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
+import { JobModeBandsPage } from '../components/jobMode/bands/JobModeBandsPage'
+import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
+import { readBandsSpike, writeBandsSpike } from '../lib/jobMode/bandsSpike'
 import { JOB_MODE_SHORT_WORDS, jobModeShortOn, jobModeShortScheduleRead, jobModeShortTomorrow } from '../lib/jobMode/jobModeShort'
 import { useTrainingCoursesOwed } from '../hooks/useTrainingCoursesOwed'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
@@ -515,6 +518,9 @@ export default function Dashboard() {
   const jobModeShort = jobModeShortOn({ view: dashboardView, role, jobModeOn: jobModeEnabled })
   const jobModeShortNavigate = useNavigate()
   const jobModeShortCoursesOwed = useTrainingCoursesOwed(authUser?.id ?? null, role, jobModeShort)
+  // The bands page (design spike, to-dos/crew-lead-dashboard): a device switch, never a rule. The dev server draws its Before and After strip.
+  const [jobModeBands, setJobModeBands] = useState(() => readBandsSpike())
+  const jobModeBandsCoursesOwed = useTrainingCoursesOwed(authUser?.id ?? null, role, jobModeBands && jobModeEnabled)
   // Read through a ref so the way back keeps one identity: the tab's effect below must fire on a press alone,
   // never because the view or Job Mode changed while the last press's mark was still on the location.
   const jobModeShortRef = useRef(jobModeShort)
@@ -1327,8 +1333,89 @@ export default function Dashboard() {
         />
       )
     }
+    // The spike's own strip: the page as it is, and the bands page, on the same data. Dev server only.
+    const bandsSwitch = import.meta.env.DEV ? (
+      <div data-bands-spike-switch style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.6rem', padding: '0.35rem 0.6rem', border: '1px dashed var(--border-strong)', borderRadius: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <span style={{ flex: 1 }}>Spike: Job Mode</span>
+        {([false, true] as const).map((on) => (
+          <button
+            key={String(on)}
+            type="button"
+            aria-pressed={jobModeBands === on}
+            onClick={() => {
+              writeBandsSpike(on)
+              setJobModeBands(on)
+              window.scrollTo(0, 0)
+            }}
+            style={{ fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 32, padding: '0.2rem 0.7rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: jobModeBands === on ? 'var(--text)' : 'var(--surface)', color: jobModeBands === on ? 'var(--surface)' : 'var(--text)' }}
+          >
+            {on ? 'After' : 'Before'}
+          </button>
+        ))}
+      </div>
+    ) : null
+    // Job Mode in three bands (design spike): every piece of the page below, each in a place of its own.
+    if (jobModeBands) {
+      const todayCount = subScheduleDayPartition.todayBlocks.length
+      const tomorrowCount = subScheduleDayPartition.tomorrowBlocks.length
+      return (
+        <JobModeBandsPage
+          userId={authUser.id}
+          role={role}
+          displayName={clockDisplayName ?? ''}
+          isSalary={dashboardSelfIsSalary}
+          spikeSwitch={bandsSwitch}
+          top={jobModeTop}
+          card={(onDayJob, openFold) => (
+            <DashboardJobModeCard
+              userId={authUser.id}
+              onLeaveReport={(j) => setLeaveReportJob(j)}
+              onTurnaway={(j) => setTurnawayJob(j)}
+              canClockOut={!dashboardSelfIsSalary}
+              knownJobs={jobsForVisitLabels}
+              bands
+              onDayJob={onDayJob}
+              underHead={<JobModeTopRow userId={authUser.id} role={role} hoursThisWeek={jobModeWeekHours} tomorrowJobs={jobModeTomorrowJobs} onHours={() => openFold('hours')} />}
+            />
+          )}
+          companyDay={isCrewDayRole(role) ? { headline: crewDayFoldHeadline(crewDaySummary)?.words ?? null, node: <DashboardCrewDaySection authUserId={authUser.id} role={role} onSummary={setCrewDaySummary} /> } : null}
+          yourWeek={<DashboardYourWeekCard userId={authUser.id} />}
+          coursesOwed={jobModeBandsCoursesOwed}
+          onLeaveReport={(j) => setLeaveReportJob(j)}
+          onFullDashboard={() => setJobModeShowFullDashboard(true)}
+          tail={jobModeWindows}
+          folds={[
+            { section: 'schedule', title: 'My Schedule', headline: `${todayCount} today · ${tomorrowCount} tomorrow`, node: myScheduleSection },
+            {
+              section: 'hours',
+              title: 'My hours',
+              headline: jobModeWeekHours != null ? `${Math.round(jobModeWeekHours * 10) / 10} h this week` : null,
+              node: (
+                <>
+                  <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed onWeek={setJobModeWeekHours} />
+                  {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
+                </>
+              ),
+            },
+            {
+              section: 'training',
+              title: 'Training',
+              headline: jobModeBandsCoursesOwed > 0 ? `${jobModeBandsCoursesOwed} ${jobModeBandsCoursesOwed === 1 ? 'course' : 'courses'} to do` : 'at your own pace',
+              tone: jobModeBandsCoursesOwed > 0 ? 'red' : 'quiet',
+              node: (
+                <div data-job-mode-training>
+                  <DashboardTrainingSection userId={authUser.id} role={role} />
+                </div>
+              ),
+            },
+            { section: 'quick', title: 'Quick buttons and pins', headline: 'the buttons you chose', node: <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport jobModeRowElsewhere /> },
+          ]}
+        />
+      )
+    }
     return (
       <div>
+        {bandsSwitch}
         {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
             hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
             hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
