@@ -93,6 +93,36 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
   }
 })
 
+/** A place's other photos, stood in for (punch list #413, step 7): the saved ones, and what a test puts in as picked. */
+const morePhotos = vi.hoisted(() => ({ added: [] as Array<{ id: string; blob: Blob; previewUrl: string }> }))
+vi.mock('../../hooks/usePlaceMorePhotos', async () => {
+  const { useState } = await import('react')
+  return {
+    usePlaceMorePhotos: (saved: ReadonlyArray<{ path: string; at: string | null; by: string | null }> | null | undefined) => {
+      const [kept, setKept] = useState([...(saved ?? [])])
+      const [added, setAdded] = useState(morePhotos.added)
+      return {
+        kept,
+        added,
+        shrinking: false,
+        error: null,
+        canAdd: kept.length + added.length < 12,
+        pick: async (file: File) => setAdded((a) => [...a, { id: `new-${a.length + 1}`, blob: file, previewUrl: `blob:new-${a.length + 1}` }]),
+        removeKept: (path: string) => setKept((k) => k.filter((p) => p.path !== path)),
+        removeAdded: (id: string) => setAdded((a) => a.filter((p) => p.id !== id)),
+      }
+    },
+  }
+})
+/** A buried place's line, stood in for (punch list #413, step 6): each ask to paint one is kept. */
+const lineAsks = vi.hoisted(() => ({ asked: [] as Array<{ place: { id: string }; listId: string; jobId: string; first: string }> }))
+vi.mock('../../lib/paintedMap/paintedPlaceLineIo', () => ({
+  PLACE_LINE_WORDS: { walk: '＋ Walk this line', draw: '＋ Draw this line', open: 'Open the line', takeOff: 'Take the line off' },
+  paintLineForPlace: (input: { place: { id: string }; listId: string; jobId: string; first: string }) => {
+    lineAsks.asked.push(input)
+    return true
+  },
+}))
 /** The count of opens, stood in for: it keeps each place somebody came looking for (punch list #413). */
 const looked = vi.hoisted(() => ({ at: [] as string[] }))
 vi.mock('../../lib/paintedMap/paintedAddressPlacesIo', () => ({ notePaintedPlaceOpened: (placeId: string) => looked.at.push(placeId) }))
@@ -110,7 +140,7 @@ vi.mock('./PaintedMapCanvas', async () => {
         onView?.({ lat: 29.55, lng: -98.25 })
       }, [onView])
       return (
-        <div data-testid="canvas" data-time={props.time?.name ?? ''} data-google-screen={props.google?.screen ?? ''} data-google-use={props.google?.use ?? ''} data-google-picture={props.google?.pictureUp ? 'up' : 'no'}>
+        <div data-testid="canvas" data-line-colors={props.lines.map((l) => `${l.id}:${(l as { color?: string }).color ?? 'paint'}`).join(',')} data-time={props.time?.name ?? ''} data-google-screen={props.google?.screen ?? ''} data-google-use={props.google?.use ?? ''} data-google-picture={props.google?.pictureUp ? 'up' : 'no'}>
           lines:{props.lines.map((l) => l.id).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} dots:{props.places.map((p) => p.number).join(',')} dot:{props.dot ? `${props.dot.point.lat},${props.dot.point.lng}` : 'none'}
           {props.draft ? <button type="button" onClick={() => props.draft!.onAdd({ lat: 29.5 + props.draft!.points.length * 0.001, lng: -98.2 })}>add a corner</button> : null}
           {props.dot ? <button type="button" onClick={() => props.dot!.onMove({ lat: 29.7, lng: -98.4 })}>drag the dot</button> : null}
@@ -175,6 +205,8 @@ afterEach(() => {
   io.jobReads = []
   camera.shot = null
   looked.at = []
+  morePhotos.added = []
+  lineAsks.asked = []
   geo.asked = 0
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
@@ -1410,5 +1442,106 @@ describe('a map opened on a place, and the count of opens (#413)', () => {
     expect(looked.at).toEqual(['jp1'])
     fireEvent.click(await screen.findByRole('button', { name: 'Open the photo of Cleanout' }))
     expect(looked.at).toEqual(['jp1', 'jp2'])
+  })
+})
+
+/** More than one photo on a place, and a buried place's line (punch list #413, steps 6 and 7). */
+describe('a place with more photos, and a buried line with its length (#413)', () => {
+  const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'me', createdAt: '2026-11-18T15:00:00Z' }
+  const WAY: PaintedMap = { id: 'run', name: 'Buried sewer line', words: '', jobId: 'j1', developmentId: null, createdBy: 'me', createdAt: '2026-11-18T16:00:00Z' }
+  const RUN = LINE({ id: 'run-line', mapId: 'run', how: 'walked', lengthM: 18.9, marginM: 2 })
+  const at = (id: string, name: string, more: Record<string, unknown> = {}) => ({ id, mapId: 'list', name, words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: null, setBy: 'me', setAt: '2026-11-18T15:01:00Z', ...more })
+  const rowOf = (id: string) => document.querySelector(`[data-painted-place-id="${id}"]`) as HTMLElement
+
+  it('sends each new photo, then writes the place with the list whole', async () => {
+    io.whole = { map: LIST, lines: [], places: [at('jp1', 'Meter')] }
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:first' }
+    morePhotos.added = [{ id: 'more-1', blob: new Blob(['y']), previewUrl: 'blob:more-1' }, { id: 'more-2', blob: new Blob(['z']), previewUrl: 'blob:more-2' }]
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.filter((c) => c.fn === 'uploadPaintedPlacePhoto').map((c) => c.args[1])).toEqual(['shot-1', 'more-1', 'more-2'])
+    const added = io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1] as { morePhotos: Array<{ path: string; by: string; at: string }> }
+    expect(added.morePhotos.map((m) => m.path)).toEqual(['list/more-1.jpg', 'list/more-2.jpg'])
+    expect(added.morePhotos.every((m) => m.by === 'me' && !!m.at)).toBe(true)
+  })
+
+  it('takes back what went up when one photo does not send, and writes nothing', async () => {
+    io.whole = { map: LIST, lines: [], places: [at('jp1', 'Meter')] }
+    morePhotos.added = [{ id: 'more-1', blob: new Blob(['y']), previewUrl: 'blob:more-1' }]
+    io.refuseUpload = 'The photo is over 2 MB.'
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    expect(await screen.findByText('The photo is over 2 MB.')).toBeTruthy()
+    expect(names()).not.toContain('addPaintedPlace')
+  })
+
+  it('draws a place’s other photos in its row, and takes a dropped one out of the bucket on a save', async () => {
+    const place = at('jp1', 'Cleanout', { photoPath: 'list/first.jpg', morePhotos: [{ path: 'list/open.jpg', at: null, by: 'me' }, { path: 'list/covered.jpg', at: null, by: 'me' }] })
+    io.whole = { map: LIST, lines: [], places: [place] }
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    await placeRow()
+    await waitFor(() => expect(rowOf('jp1').querySelectorAll('[data-painted-place-more] button')).toHaveLength(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Open photo 3 of Cleanout' }))
+    expect(looked.at).toEqual(['jp1'])
+    fireEvent.click(screen.getByRole('button', { name: 'Change this place' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove photo 2' }))
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    await waitFor(() => expect(names()).toContain('savePaintedPlace'))
+    const change = io.calls.find((c) => c.fn === 'savePaintedPlace')!.args[1] as { morePhotos: Array<{ path: string }> }
+    expect(change.morePhotos.map((m) => m.path)).toEqual(['list/covered.jpg'])
+    await waitFor(() => expect(io.calls.filter((c) => c.fn === 'removePaintedPlacePhotoFile').map((c) => c.args[0])).toContain('list/open.jpg'))
+  })
+
+  it('offers to walk or draw the line of a buried place that has none, and asks for it by the place and its list', async () => {
+    Object.defineProperty(navigator, 'geolocation', { value: {}, configurable: true })
+    try {
+      io.whole = { map: LIST, lines: [], places: [at('jp1', 'Buried sewer line', { kind: 'buried_sewer' }), at('jp2', 'Meter', { kind: 'meter' })] }
+      render(<PaintedMapWindow ask={{ mapId: 'list' }} address="1 Made Up Road" onClose={() => {}} />)
+      await placeRow()
+      expect(rowOf('jp1').querySelector('[data-painted-place-line]')?.getAttribute('data-painted-place-line')).toBe('none')
+      // A place that is no buried line is offered no line.
+      expect(rowOf('jp2').querySelector('[data-painted-place-line]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: '＋ Walk this line' }))
+      fireEvent.click(screen.getByRole('button', { name: '＋ Draw this line' }))
+      expect(lineAsks.asked.map((a) => `${a.place.id} ${a.listId} ${a.jobId} ${a.first}`)).toEqual(['jp1 list j1 walk', 'jp1 list j1 line'])
+    } finally {
+      delete (navigator as unknown as { geolocation?: unknown }).geolocation
+    }
+  })
+
+  it('offers no line on another person’s place', async () => {
+    io.whole = { map: LIST, lines: [], places: [at('jp1', 'Buried sewer line', { kind: 'buried_sewer', setBy: 'dana' })] }
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    await placeRow()
+    expect(rowOf('jp1').querySelector('[data-painted-place-line]')).toBeNull()
+  })
+
+  it('says the length of the line a buried place runs along, how it was made, and opens it', async () => {
+    const asks: PaintedMapAsk[] = []
+    const stop = onPaintedMapAsk((a) => asks.push(a))
+    try {
+      const place = at('jp1', 'Buried sewer line', { kind: 'buried_sewer', lineId: 'run-line' })
+      io.whole = { map: LIST, lines: [], places: [place] }
+      io.jobWholes = [{ map: LIST, lines: [], places: [place] }, { map: WAY, lines: [RUN], places: [] }]
+      render(<PaintedMapWindow ask={{ mapId: 'list' }} address="1 Made Up Road" onClose={() => {}} />)
+      await placeRow()
+      await waitFor(() => expect(rowOf('jp1').querySelector('[data-painted-place-line]')?.getAttribute('data-painted-place-line')).toBe('tied'))
+      expect(rowOf('jp1').querySelector('[data-painted-place-line]')?.textContent).toBe('About 60 ft, give or take 10 ft · walked · Open the line')
+      fireEvent.click(screen.getByRole('button', { name: 'Open the line' }))
+      expect(asks).toEqual([{ kind: 'open', mapId: 'run', address: '1 Made Up Road' }])
+    } finally {
+      stop()
+    }
+  })
+
+  it('draws that line in the color a locator paints for what is buried, on the line’s own map', async () => {
+    const place = at('jp1', 'Buried sewer line', { kind: 'buried_sewer', lineId: 'run-line' })
+    io.whole = { map: WAY, lines: [RUN, LINE({ id: 'other', mapId: 'run' })], places: [] }
+    io.jobWholes = [{ map: LIST, lines: [], places: [place] }, { map: WAY, lines: [RUN], places: [] }]
+    render(<PaintedMapWindow ask={{ mapId: 'run' }} onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('canvas').getAttribute('data-line-colors')).toBe('run-line:#16a34a,other:paint'))
   })
 })
