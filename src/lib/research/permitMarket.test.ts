@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { answerBook } from './builderAnswers'
 import type { NameAnswerRow } from './nameAnswers'
 import type { BuilderRow } from './permitBuilders'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import {
   BID_COMPANY_PERMITS_HEAD,
   BID_COMPANY_SHOWING_WORDS,
@@ -23,6 +24,7 @@ import {
   marketBidsSince,
   marketClocks,
   marketPermitsSince,
+  companyCountsWords,
   permitsWhereWords,
   plumberClockDays,
   readsWords,
@@ -162,7 +164,20 @@ describe('the chips and the words', () => {
     expect(readsWords({ reads: 'early', bids: 1, looksLike: null }).tag).toBe('Builds, one try')
     expect(readsWords({ reads: 'early', bids: 2, looksLike: null })).toEqual({ tag: 'Builds, two tries', tone: 'amber', hint: 'too early to say' })
     expect(readsWords({ reads: 'no_permit', bids: 9, looksLike: null })).toEqual({ tag: 'No permit on record', tone: 'grey', hint: 'may build elsewhere, or file under another name' })
-    expect(readsWords({ reads: 'no_permit', bids: 1, looksLike: 'Aster Ridge Contracting of Texas' }).hint).toBe('Aster Ridge Contracting of Texas on the permits may be them')
+    const maybe = readsWords({ reads: 'no_permit', bids: 1, looksLike: 'Aster Ridge Contracting of Texas' }).hint
+    expect(plainSentence(maybe)).toBe('Aster Ridge Contracting of Texas on the permits may be them')
+    // The name is a value in the sentence, marked for the screen to draw apart.
+    expect(sentenceParts(maybe)).toEqual([{ kind: 'name', text: 'Aster Ridge Contracting of Texas' }, ' on the permits may be them'])
+  })
+
+  it('folds a company’s three counts into one line for a phone, each one a value', () => {
+    expect(plainSentence(companyCountsWords({ bids: 3, won: 0, permits: 11 }))).toBe('3 bids, 0 won · 11 permits')
+    expect(plainSentence(companyCountsWords({ bids: 1, won: 1, permits: 1 }))).toBe('1 bid, 1 won · 1 permit')
+    expect(sentenceParts(companyCountsWords({ bids: 3, won: 0, permits: 11 })).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'bids', text: '3 bids' },
+      { kind: 'won', text: '0 won' },
+      { kind: 'permits', text: '11 permits' },
+    ])
   })
 
   it('writes the first tile', () => {
@@ -237,8 +252,14 @@ describe('the clock', () => {
     const plumber = { kind: 'plumber' as const, city: 'Austin', spread: { n: 80, q1: 1, median: 5, q3: 9 } }
     expect(clockTitle(application)).toBe('San Antonio · application to permit')
     expect(clockTitle(plumber)).toBe('Austin · building permit to the plumber’s permit')
-    expect(clockNote(application)).toBe('Half of the applications wait 45 days or more for the permit. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
-    expect(clockNote(plumber)).toBe('Half of the jobs have a plumber’s permit within 5 days of the building permit. The job is taken by the time the city shows it. Read Austin for who builds. The middle half took 1 to 9 days, over 80 jobs.')
+    expect(plainSentence(clockNote(application))).toBe('Half of the applications wait 45 days or more for the permit. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
+    // The middle wait, the middle half and how many it is over are the note's values.
+    expect(sentenceParts(clockNote(application)).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'median', text: '45 days' },
+      { kind: 'middle', text: '25 to 80 days' },
+      { kind: 'over', text: '1,200 applications' },
+    ])
+    expect(plainSentence(clockNote(plumber))).toBe('Half of the jobs have a plumber’s permit within 5 days of the building permit. The job is taken by the time the city shows it. Read Austin for who builds. The middle half took 1 to 9 days, over 80 jobs.')
     expect(clockNote({ ...plumber, spread: { n: 80, q1: 0, median: 0, q3: 4 } })).toContain('by the day of the building permit')
     expect(clockTile([application, plumber])).toEqual({ value: '~6 weeks', words: 'from an application to its permit' })
     expect(clockTile([plumber])).toEqual({ value: '5 days', words: 'from a building permit to the plumber’s permit' })

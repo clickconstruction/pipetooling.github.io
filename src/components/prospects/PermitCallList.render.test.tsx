@@ -149,15 +149,20 @@ describe('the call list', () => {
     expect(called()).toEqual(['ridgewaybuilders', 'tallpinebuilders', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting'])
     const first = document.querySelector('[data-call-row="ridgewaybuilders"]') as HTMLElement
     for (const tag of ['Picking up', 'Never bid', '2 jobs open now']) expect(within(first).getByText(tag)).toBeTruthy()
-    expect(within(first).getByText('8 jobs in the last year, 6 in the last 90 days against 2 in the 90 before. Mostly commercial remodel.')).toBeTruthy()
+    // The line reads as before, and each value in it is drawn apart, bold: worked out, so none is a press.
+    expect(first.querySelector('[data-call-count]')?.textContent).toBe('8 jobs in the last year, 6 in the last 90 days against 2 in the 90 before. Mostly commercial remodel.')
+    expect([...first.querySelectorAll('[data-call-count] [data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['8 jobs', '6', '2', 'commercial remodel'])
+    expect(first.querySelector('.vipChange')).toBeNull()
     expect(first.textContent).toContain('Open now: 2100 SAMPLE PKWY, applied Nov 4 · 77 KILN ST, applied Oct 28. They have no plumbing permit yet.')
-    expect(screen.getByText(/^3 more wait behind these\./)).toBeTruthy()
-    expect(screen.getByText('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')).toBeTruthy()
+    expect(document.querySelector('[data-call-waiting]')?.textContent).toMatch(/^3 more wait behind these\./)
+    expect(document.querySelector('[data-call-waiting] [data-value="worked-out"]')?.textContent).toBe('3')
+    expect(document.querySelector('[data-call-note]')?.textContent).toBe('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')
     // Our history with a name we bid, on the chip that holds it.
     fireEvent.click(screen.getByRole('button', { name: 'New and busy 7' }))
     const juniper = document.querySelector('[data-call-row="juniperhospitalitygroup"]') as HTMLElement
     expect(within(juniper).getByText('We bid 4, won 0')).toBeTruthy()
-    expect(within(juniper).getByText('We priced 4 of their jobs and won none. The last was Jun 3.')).toBeTruthy()
+    expect(juniper.querySelector('[data-call-history]')?.textContent).toBe('We priced 4 of their jobs and won none. The last was Jun 3.')
+    expect([...juniper.querySelectorAll('[data-call-history] [data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['4', 'none', 'Jun 3'])
   })
 
   it('stands Ask for empty until a name is looked up, with the Google press beside it', () => {
@@ -193,8 +198,9 @@ describe('the call list', () => {
     draw({ city: 'Austin', recordsStart: '2026-08-27', rows: [] })
     expect(screen.queryByRole('button', { name: /^Picking up/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Has a job open now/ })).toBeNull()
-    expect(screen.getByText(/Austin’s records start Aug 27, so nothing here reads as picking up or new yet\./)).toBeTruthy()
-    expect(screen.getAllByText('8 jobs since Aug 27. Mostly commercial remodel.').length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-call-note]')?.textContent).toMatch(/Austin’s records start Aug 27, so nothing here reads as picking up or new yet\./)
+    expect(document.querySelector('[data-call-note] [data-value="worked-out"]')?.textContent).toBe('Aug 27')
+    expect([...document.querySelectorAll('[data-call-count]')].map((el) => el.textContent)).toContain('8 jobs since Aug 27. Mostly commercial remodel.')
   })
 
   it('says why a city has no list, and waits while the year reads', () => {
@@ -304,8 +310,10 @@ describe('answering a name', () => {
     expect(called()).toEqual(['tallpinebuilders', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting', 'juniperhospitalitygroup'])
     fireEvent.click(screen.getByRole('button', { name: /^Answered 2/ }))
     const larkspur = document.querySelector('[data-call-answered="larkspurbuilders"]') as HTMLElement
-    expect(within(larkspur).getByText('Not for us, Too far for us. Sam, Nov 18. Off the list until Nov 19, 2027, and then until it applies for a new job.')).toBeTruthy()
-    expect(within(document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).getByText('Pursuing, Pursued for this job.. You, Nov 18. Off the list until Feb 17, 2027, and then until it applies for a new job.')).toBeTruthy()
+    expect(larkspur.textContent).toContain('Not for us, Too far for us. Sam, Nov 18. Off the list until Nov 19, 2027, and then until it applies for a new job.')
+    // Who answered, the day, and the day it is off the list until: each drawn apart.
+    expect([...larkspur.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['Sam', 'Nov 18', 'Nov 19, 2027'])
+    expect((document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).textContent).toContain('Pursuing, Pursued for this job.. You, Nov 18. Off the list until Feb 17, 2027, and then until it applies for a new job.')
     fireEvent.click(within(larkspur).getByRole('button', { name: 'Put Larkspur Builders back on the list' }))
     await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith({ builderKey: 'larkspurbuilders', answer: 'back', reason: '', lookAgainOn: null, city: 'San Antonio' }))
     expect(await screen.findByText('Larkspur Builders may be offered on the list again.')).toBeTruthy()
@@ -318,7 +326,7 @@ describe('answering a name', () => {
     expect(called()).not.toContain('larkspurbuilders')
     fireEvent.click(screen.getByRole('button', { name: /^Answered 1/ }))
     const larkspur = document.querySelector('[data-call-answered="larkspurbuilders"]') as HTMLElement
-    expect(within(larkspur).getByText('Not for us, Too far for us. Sam, Aug 1. Off the list until it applies for a new job.')).toBeTruthy()
+    expect(larkspur.textContent).toContain('Not for us, Too far for us. Sam, Aug 1. Off the list until it applies for a new job.')
     expect(within(larkspur).getByRole('button', { name: 'Put Larkspur Builders back on the list' })).toBeTruthy()
   })
 
@@ -350,7 +358,8 @@ describe('Ask for, once a name is looked up', () => {
       ['person', 'unchecked'],
     ])
     expect(row.querySelectorAll('[data-value="looked-up"]')).toHaveLength(3)
-    expect(row.querySelector('[data-value="worked-out"]')).toBeNull()
+    // No looked-up fact reads as worked out before a person checks it. The row's own counts above the block do.
+    expect(row.querySelector('[data-ask-for] [data-value="worked-out"]')).toBeNull()
     expect(within(row).getByRole('link', { name: '(210) 555-0142' }).getAttribute('href')).toBe('tel:+12105550142')
     expect(within(row).getByRole('link', { name: 'ridgewaybuilders.example/team' }).getAttribute('href')).toBe('https://ridgewaybuilders.example/team')
     expect(within(row).getByText(/Director of Preconstruction/)).toBeTruthy()

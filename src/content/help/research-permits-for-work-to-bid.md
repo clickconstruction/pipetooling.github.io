@@ -163,6 +163,8 @@ Each row says why the name is on the list.
 - {{chip:yellow|2 jobs open now}} means two jobs applied for with no plumbing permit yet.
 - {{chip:red|We bid 4, won 0}} means we priced four of their jobs in two years and won none. The table under the list counts the same bids.
 
+A bold number, day, amount or name in a line is worked out by the app. Nothing on **Market** is typed in, so no value there is underlined.
+
 Five names show, so one person can call them all. A name with a building word comes first, such as Construction, Contracting or Builders. The other companies follow. Then a job open now, then a name picking up or new, then a name never bid. No number is a score.
 
 {{chip:gray|May file for others}} marks a name that reads like a permit service or a design firm. {{chip:gray|Could be a person}} marks a name with no company in it. Those names wait behind the builders. Say what a name is on its builder's sheet to settle it.

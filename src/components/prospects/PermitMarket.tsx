@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { PermitChip } from '../bids/PermitChip'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { FindNamesSheet } from '../bids/FindNamesSheet'
 import { BuilderSheet } from './PermitBuilders'
 import { PermitCallList } from './PermitCallList'
@@ -33,6 +34,7 @@ import {
   clockScaleDays,
   clockTile,
   clockTitle,
+  companyCountsWords,
   marketClocks,
   readsWords,
   type BidCompany,
@@ -54,6 +56,11 @@ import {
  * the quarter marks of the days between two dates on the city's permits. **Who holds the work**
  * is drawn only where the permits name plumbers. **How much is being built** counts the city's
  * commercial permits by month, kind and size. Four tiles sit over them.
+ *
+ * Values in place: every count, span of days, amount and name on the page is worked out by the
+ * app, so each is drawn plain bold and none is a press. The tiles, the table's columns and the
+ * bars stand apart already. A sentence comes from a kernel that marked its values, and is drawn
+ * with `ValueSentence`.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
 const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
@@ -193,7 +200,9 @@ export function PermitMarket({
     return (
       <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <PermitChip chip={{ words: r.tag, tone: r.tone }} />
-        <span style={muted}>{r.hint}</span>
+        <span style={muted}>
+          <ValueSentence text={r.hint} />
+        </span>
         {c.reads === 'no_permit' && c.customerIds.length > 0 && (
           <button type="button" onClick={() => setTying(c)} aria-label={`Tie a name to ${c.name}`} style={linkPress}>
             Tie a name
@@ -278,8 +287,8 @@ export function PermitMarket({
             {list.map((c, i) => (
               <div key={c.key} data-market-company={c.key} style={{ display: 'grid', gap: 4, padding: '11px 14px', borderTop: i === 0 ? 0 : '1px solid var(--border)' }}>
                 <strong style={{ fontSize: '0.9375rem' }}>{c.name}</strong>
-                <span style={{ fontSize: '0.8125rem' }}>
-                  {c.bids} bid{c.bids === 1 ? '' : 's'}, {c.won} won · {c.permits} permit{c.permits === 1 ? '' : 's'}
+                <span data-company-counts style={{ fontSize: '0.8125rem' }}>
+                  <ValueSentence text={companyCountsWords(c)} />
                 </span>
                 {whereLine(c)}
                 {readsCell(c)}
@@ -412,7 +421,9 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
         {!near && <strong style={{ ...days, position: 'absolute', left: `${Math.min(80, mid)}%`, transform: 'translateX(-50%)' }}>{clockDaysWords(median)}</strong>}
         <span style={{ position: 'absolute', right: 0 }}>{scale} days</span>
       </div>
-      <div style={{ ...muted, marginTop: 4 }}>{clockNote(clock)}</div>
+      <div data-clock-note style={{ ...muted, marginTop: 4 }}>
+        <ValueSentence text={clockNote(clock)} />
+      </div>
     </div>
   )
 }

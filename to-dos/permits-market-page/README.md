@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20, built in v2.8112, v2.8114 and v2.8121 · step three built in its smallest form, v2.8118 and v2.8121, with the first 25 San Antonio companies looked up · the owner makes the calls
+status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20, built in v2.8112, v2.8114 and v2.8121 · step three built in its smallest form, v2.8118 and v2.8121, with the first 25 San Antonio companies looked up · the audit's three lines built 2026-11-20, v2.8134, v2.8138 with v2.8147, and v2.8149 · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -207,6 +207,14 @@ The four calls were put to the owner with a read of the live permits behind each
 - Whether the lookups go past the first 25 names and past San Antonio, once he has called from them.
 - Whether Austin's list is worth calling from, on a second read after 2027-02-22.
 
+The audit of 2026-11-20 left five smaller things. Each is his to say, and each has a pick.
+
+- **Two of the week's five read as likely design firms.** The name has a building word, so it leads. Pick: look the two up and press **Checked** on what they are, which moves a design firm behind the other companies. Changing the order's rule for two names is not worth it.
+- **Pursue pressed twice on one name can leave the same note on its lead twice.** A pursue that finds the lead already there adds a note each time (`approachFromPermit`). Pick: leave it until it is seen on a real lead, then skip a note the lead already holds.
+- **Some presses are small for a thumb.** The city counts under a company, **Tie a name** and **Put back** are words in a line, under the 44 px a phone press wants. Pick: grow them on a phone only, in one PR for the whole Permits tab, since Builders draws the same presses.
+- **Austin's second tile always reads 0.** Austin's feed has no applications, so *of their jobs are applied for* can never count one there. Pick: leave the tile out where the city has no applications, as the chips already are.
+- **The read of where a city's records start stops at 1,000 pull runs** (`loadRecordsStart`). It reads the oldest first, so it holds for years at one run a night. Pick: leave it, and page it the next time that read is touched.
+
 ## Seen while building, not done
 
 Each is a change of its own, noted here for whoever picks it up.
@@ -217,4 +225,5 @@ Each is a change of its own, noted here for whoever picks it up.
 - **The practice bids count as our bids on the call list. Fixed in v2.8138 and v2.8147.** Found by the audit of 2026-11-20. `research_builders` counted every bid of any age under a name, the robots' practice bids among them. The table of companies leaves them out and looks back two years, so one name could read two counts. Migration `20261120150000` gave the rule one home on the database (`research_bid_counts`, `research_bid_party_key`), and `ourBids.ts` is its one home in the client, which the table and a tied customer's count both read ([v2.8138](../../docs/recent-features/v2.8138.md), [v2.8147](../../docs/recent-features/v2.8147.md)).
 - **The skim card's *warm · cold · new name* word still counts every bid ever made.** Seen while fixing the line above. It reads `research_contact_history`, which has its own count of our bids under a name, of any age and with the practice bids. Moving it to `research_bid_counts` is a migration of its own.
 - **One count says *here* and means every city. Fixed in v2.8134.** Found by the same audit. The tile and the table's column count a company's permits in all five cities and are drawn on each city's page. The count stands, since [How each number is counted](#how-each-number-is-counted) says all five cities. The words changed: the tile says *in the cities we read*, the column *Permits, all cities, 12 mo*, the chip *Builds* ([fragment](../../docs/recent-features/v2.8134.md)).
-- **Market does not draw its values in place.** The rule reached `CLAUDE.md` while the page was being built, in v2.7985. Its counts, days, amounts and names sit inside plain sentences. To meet it, `permitMarket.ts`, `permitCallList.ts` and `permitMarketShape.ts` mark each value with `val`, and the screens draw them with `ValueSentence`. The table's columns and the tiles already stand apart. Every value here is worked out, so each draws plain bold.
+- **Market does not draw its values in place. Built in v2.8149.** The rule reached `CLAUDE.md` while the page was being built, in v2.7985. Its counts, days, amounts and names sat inside plain sentences. `permitMarket.ts`, `permitCallList.ts` and `permitMarketShape.ts` now mark each value with `val`, and the screens draw them with `ValueSentence`. The table's columns and the tiles already stood apart. Every value here is worked out, so each draws plain bold and none is a press ([fragment](../../docs/recent-features/v2.8149.md), with before and after pictures on made-up data).
+- **An answered name's line can end a reason with two full stops.** Seen while building the line above. A pursue keeps its reason with a full stop, and the line under **Answered** adds its own: *Pursuing, Pursued for this job..* One line in `standingWords`.

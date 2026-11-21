@@ -135,7 +135,9 @@ describe('Market, the companies we bid', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'No permit on record 2' }))
     expect(companyRows()).toEqual(['asterridgecontracting', 'larkspurcommercial'])
     const aster = document.querySelector('[data-market-company="asterridgecontracting"]') as HTMLElement
-    expect(within(aster).getByText('Aster Ridge Contracting of Texas on the permits may be them')).toBeTruthy()
+    expect(aster.textContent).toContain('Aster Ridge Contracting of Texas on the permits may be them')
+    // The name that may be theirs is a value: drawn apart from the words, and no press.
+    expect([...aster.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['Aster Ridge Contracting of Texas'])
     expect(within(aster).getByRole('button', { name: 'Tie a name to Aster Ridge Contracting' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Tie a name 1' }))
     expect(companyRows()).toEqual(['asterridgecontracting'])
@@ -174,7 +176,9 @@ describe('Market, the companies we bid', () => {
 
   it('draws cards on a phone', async () => {
     draw({ isMobile: true })
-    expect(await screen.findByText('3 bids, 0 won · 11 permits')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('[data-company-counts]')?.textContent).toBe('3 bids, 0 won · 11 permits'))
+    // The table's three columns fold into one line on a phone, each count still drawn apart.
+    expect([...(document.querySelector('[data-company-counts]') as HTMLElement).querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['3 bids', '0 won', '11 permits'])
     expect(document.querySelector('table')).toBeNull()
     expect(companyRows()).toEqual(['juniperhospitalitygroup', 'harborfitouts'])
   })
@@ -200,10 +204,14 @@ describe('Market, the clock', () => {
     draw()
     expect(await screen.findByText('San Antonio · application to permit')).toBeTruthy()
     const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
-    expect(within(clock).getByText('45 days')).toBeTruthy()
+    expect(within(clock).getByText('45 days', { selector: 'strong' })).toBeTruthy()
     // A middle well along the bar is said under its mark, apart from the bar's first word.
     expect((clock.querySelector('[data-clock-start]') as HTMLElement).textContent).toBe('applied')
-    expect(within(clock).getByText(/Half of the applications wait 45 days or more for the permit\./)).toBeTruthy()
+    const note = clock.querySelector('[data-clock-note]') as HTMLElement
+    expect(note.textContent).toMatch(/^Half of the applications wait 45 days or more for the permit\./)
+    // The note's days and its count are drawn apart from its words: worked out, so bold and no press.
+    expect([...note.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent?.replace(/[\d,]+ applications/, 'N applications'))).toEqual(['45 days', expect.stringMatching(/^\d+ to \d+ days$/), 'N applications'])
+    expect(document.querySelector('.vipChange')).toBeNull()
     expect(marketIo.loadMarketPermits).toHaveBeenCalledWith('San Antonio', '2025-11-19')
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
     expect(document.querySelector('[data-market-clock="plumber"]')).toBeNull()
@@ -264,7 +272,9 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     expect(within(holds).getByText('Copperline Mechanical')).toBeTruthy()
     expect(within(holds).getByText('Blue Heron Plumbing')).toBeTruthy()
     // One builder with five named jobs: three of them with one plumber is a lean.
-    expect(within(holds).getByText('Of 1 builder with 3 or more named jobs: 0 use one plumber nearly every time, 1 leans to one and 0 shop around.')).toBeTruthy()
+    const tiesNote = holds.querySelector('[data-market-ties]') as HTMLElement
+    expect(tiesNote.textContent).toBe('Of 1 builder with 3 or more named jobs: 0 use one plumber nearly every time, 1 leans to one and 0 shop around.')
+    expect([...tiesNote.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['1 builder', '0', '1', '0'])
   })
 
   it('draws how much is being built: the months, the kinds and the size', async () => {
