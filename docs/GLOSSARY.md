@@ -2396,6 +2396,19 @@ Kernel `src/lib/people/openReports.ts`.
 Deep-link `?view=ledger&person=<name>` (the key kept its old name).
 Sibling view: **Pay run**.
 
+### Write someone up (Dashboard, v2.8160)
+The one press a leader, a superintendent or a dev has on the Dashboard to write a person up from a phone, a named line under the row of squares (`WriteSomeoneUpDoor`, punch list #410, Taunya's ask of 2026-11-20).
+It opens a sheet of four steps (`WriteUpSheet`, the rules and every word in `src/lib/people/writeUp.ts`).
+The first step asks who it is about, with the crew on the job today first.
+The second asks what happened, with who, when and which job filled in.
+The third is **Read it back**, and the fourth is **Your write-ups**.
+Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
+The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
+**Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
+→ *HR files*
+guide `write-someone-up`.
+
 ### Attendance card (People → Paperwork → Write-ups, v2.6140)
 The Write-ups tab's attendance card for one person in Subject, drawn while *Show attendance (derived)* is ticked (off when the tab opens since v2.6433) (punch list #217, people-docs-3;
 was *Late 6× (1 excused) · median 18m · …* as a sentence): ninety days to today as one cell a day — an on-time ring, a late amber dot sized by its minutes past the 15-minute grace (≤15 small, ≤45 mid, else big), an excused grey slash, an NCNS red diamond, a faint ring for a block with no clock-in — with the last thirty days shaded, today outlined, the counts as chips with hover words, the axis labels, and a press on a marked day opening its receipt under the strip (the block's start and job, the first clock-in, the minutes past grace, the excuse with who and when, the NCNS with who filed it).
