@@ -78,6 +78,33 @@ describe('the press', () => {
   })
 })
 
+describe('a draft across a reload', () => {
+  const KEY = 'write-up-draft:u-1'
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+  it('the press says one is not finished when the tab kept a draft', async () => {
+    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: 'conduct', date: TODAY, time: '10:15', job: null, words: 'Kept across a reload.', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
+    window.sessionStorage.setItem(KEY, JSON.stringify(kept))
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.getByText('1 not finished')).toBeTruthy()
+  })
+  it('says nothing of the kind with nothing kept, or with something that is not a draft', async () => {
+    window.sessionStorage.setItem(KEY, 'not a draft')
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.queryByText('1 not finished')).toBeNull()
+  })
+  it('another person’s kept draft is not this person’s', async () => {
+    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: null, date: TODAY, time: '', job: null, words: 'Someone else’s.', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
+    window.sessionStorage.setItem('write-up-draft:u-2', JSON.stringify(kept))
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.queryByText('1 not finished')).toBeNull()
+  })
+})
+
 describe('the sheet', () => {
   beforeEach(() => {
     vi.clearAllMocks()

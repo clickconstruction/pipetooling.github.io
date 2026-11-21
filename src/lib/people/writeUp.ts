@@ -357,6 +357,49 @@ export function additionDraft(parent: { id: string; kind: string | null }, perso
   return { ...newWriteUpDraft(person, list, now), kind: isWriteUpKind(parent.kind) ? parent.kind : 'other', addsTo: parent.id }
 }
 
+/**
+ * A draft as the tab keeps it across a reload (the app's own *A new version is ready* toast offers one mid-form): the
+ * words and the picks, without the photos, whose bytes cannot be kept this way.
+ */
+export function draftToKeep(draft: WriteUpDraft): string {
+  return JSON.stringify({ ...draft, photos: [] })
+}
+
+/** A kept draft read back with care. Anything that is not a whole draft is no draft. */
+export function draftFromKept(raw: string | null | undefined): WriteUpDraft | null {
+  if (!raw) return null
+  let o: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    o = parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const person = parseWriteUpList({ people: [o.person] }).people[0]
+  if (!person || typeof o.date !== 'string' || typeof o.words !== 'string') return null
+  const job = o.job && typeof o.job === 'object' ? (o.job as Record<string, unknown>) : null
+  const seen = Array.isArray(o.seenBy) ? o.seenBy : []
+  return {
+    person,
+    kind: isWriteUpKind(o.kind) ? o.kind : null,
+    date: o.date,
+    time: typeof o.time === 'string' ? o.time : '',
+    job: job && typeof job.id === 'string' && typeof job.label === 'string' ? { id: job.id, label: job.label } : null,
+    words: o.words,
+    sawIt: o.sawIt !== false,
+    seenBy: seen
+      .filter((s): s is Record<string, unknown> => s != null && typeof s === 'object' && typeof (s as { name?: unknown }).name === 'string')
+      .map((s) => (typeof s.person_id === 'string' ? { person_id: s.person_id, name: s.name as string } : { name: s.name as string })),
+    talked: typeof o.talked === 'boolean' ? o.talked : null,
+    addsTo: typeof o.addsTo === 'string' ? o.addsTo : null,
+    photos: [],
+  }
+}
+
+/** Where the tab keeps a person's unfinished write-up. */
+export const keptDraftKey = (userId: string): string => `write-up-draft:${userId}`
+
 /** What the button says while the draft cannot be read back, or null when it can. */
 export function writeUpMissing(draft: Pick<WriteUpDraft, 'kind' | 'words'>): string | null {
   const noKind = draft.kind == null

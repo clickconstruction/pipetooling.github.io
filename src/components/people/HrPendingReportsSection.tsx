@@ -200,7 +200,7 @@ export function HrPendingReportsSection({
     borderRadius: 8,
     border: primary ? 'none' : '1px solid var(--border)',
     background: primary ? '#2563eb' : 'transparent',
-    color: primary ? 'var(--surface)' : 'var(--text-link)',
+    color: primary ? '#fff' : 'var(--text-link)',
     cursor: 'pointer',
   })
 
