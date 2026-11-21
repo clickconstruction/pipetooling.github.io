@@ -153,6 +153,9 @@ describe('the Schedule look', () => {
     const moved = Array.from(document.querySelectorAll('[role="img"] [data-time-line-moved]')) as HTMLElement[]
     expect(moved.length).toBeGreaterThan(0)
     expect(moved.every((m) => /^moved \d+ days?$/.test(m.textContent ?? ''))).toBe(true)
+    // They sit under the marks, slid back by the share they are anchored at, so they never leave the row at any width.
+    expect(moved.every((m) => /^\d+(\.\d+)?%$/.test(m.style.left) && m.style.transform === `translateX(-${m.style.left})`)).toBe(true)
+    expect(moved.every((m) => (m.parentElement as HTMLElement).dataset.moved === '')).toBe(true)
     expect(document.querySelector('.scLineName')?.textContent).not.toMatch(/moved/)
     // Today is a line on every row, and the legend names it.
     expect(document.querySelectorAll('[role="img"] .scLineToday').length).toBe(rows.length)

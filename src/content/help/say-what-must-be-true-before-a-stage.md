@@ -181,7 +181,7 @@ The Schedule look can draw its stages on one line of days.
 | A dotted line | The day we decide. |
 | A red line | Today. |
 
-Red words beside a row say how many days they have moved, like *moved 11 days*.
+Red words under a row's line say how many days they have moved, like *moved 11 days*. The words sit under the solid diamond.
 
 A stage with no days of ours has a row with no bar.
 
