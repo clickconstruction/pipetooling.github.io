@@ -113,14 +113,16 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
   // The note of a hold that just landed, to send from Messages or another way.
   const [holdNote, setHoldNote] = useState<string | null>(null)
 
-  /** A press on a row: the row waits, and a failure says why in a toast. */
-  const act = async (what: string, write: (io: StartChecksIo) => Promise<void>) => {
-    if (busy) return
+  /** A press on a row: the row waits, and a failure says why in a toast. True only when the write ran and landed. */
+  const act = async (what: string, write: (io: StartChecksIo) => Promise<void>): Promise<boolean> => {
+    if (busy) return false
     setBusy(true)
     try {
       await press(write)
+      return true
     } catch (e) {
       showToast(`${what} ${formatErrorMessage(e)}`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
@@ -129,7 +131,10 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
   const add = () => {
     const text = words.trim()
     if (!text) return
-    void act('The bullet was not added.', (w) => w.addBullets([{ fixtureId: line.fixtureId, jobId: line.jobId, order: nextBulletOrder(rows, line.fixtureId), words: text, on, wantsPhoto: false, reads: on === 'us' ? 'hand' : null, templateId: null }], me)).then(() => setWords(''))
+    void act('The bullet was not added.', (w) => w.addBullets([{ fixtureId: line.fixtureId, jobId: line.jobId, order: nextBulletOrder(rows, line.fixtureId), words: text, on, wantsPhoto: false, reads: on === 'us' ? 'hand' : null, templateId: null }], me)).then((kept) => {
+      // The words leave the box only once the bullet is kept. A failed add keeps them, and so does one skipped while another row waits.
+      if (kept) setWords('')
+    })
   }
   const addRow = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
@@ -371,7 +376,7 @@ type RowProps = {
   kind: StartStageKind | null
   canCompany: boolean
   busy: boolean
-  act: (what: string, write: (io: StartChecksIo) => Promise<void>) => Promise<void>
+  act: (what: string, write: (io: StartChecksIo) => Promise<void>) => Promise<boolean>
   press: (write: (io: StartChecksIo) => Promise<void>) => Promise<void>
   io: StartChecksIo
 }
