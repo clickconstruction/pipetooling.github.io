@@ -324,6 +324,21 @@ describe('FilledBuilder', () => {
     expect(await screen.findByText(/^Checked by Jo Ferris, /)).toBeTruthy()
   })
 
+  it('asks for Send it anyway by the revision of the usual the job’s sheet went out on, not the usual’s newest', async () => {
+    const trade = { id: 'cedarfork', name: 'Cedar Fork Drain', page: { state: 'on' as const }, contacts: [{ name: 'Ana Pruitt', email: 'ana@cedarfork.test' }], send: null }
+    const sends = { ...SENDS, readParties: vi.fn(async () => [trade]) } as unknown as FilledBuilderIo['sends']
+    const checked = { read_by_name: 'Jo Ferris', read_on: '2026-11-20' }
+    // The job went out on revision 1, which nobody checked. The usual is now on revision 2, which was checked.
+    open({ rec: builder({ revision: 2, read_revision: 2, ...checked }), sheets: [sheetRow({ usualRevision: 1 })], io: { sends } })
+    expect(await screen.findByRole('checkbox', { name: "Your insurance agent has not checked revision 1 of your usual sheet. This job's sheet went out on that revision. Send it anyway." })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Send to 1 trade who is ready' }) as HTMLButtonElement).disabled).toBe(true)
+    cleanup()
+    // The reverse: the job went out on the checked revision 1, and the usual has a newer revision nobody checked.
+    open({ rec: builder({ revision: 2, read_revision: 1, ...checked }), sheets: [sheetRow({ usualRevision: 1 })], io: { sends } })
+    expect(((await screen.findByRole('button', { name: 'Send to 1 trade who is ready' })) as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.queryByRole('checkbox', { name: /Send it anyway/ })).toBeNull()
+  })
+
   it('reads as a sub sees it with the marks off: no field, no small press', async () => {
     open({ sheets: [sheetRow()] })
     await screen.findByText('This job is on your usual sheet')

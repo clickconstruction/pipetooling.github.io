@@ -7,12 +7,14 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ConfirmDialogProvider } from '../../contexts/ConfirmDialogContext'
 import { DOCUMENT_BUILDERS } from '../../lib/documentBuilder/builders'
 import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, type Landed } from '../../lib/documentBuilder/documentBuildersIo'
 import { MOVED_ON_KEEP, MOVED_ON_LOAD } from '../../lib/documentBuilder/movedOn'
 import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fixture'
 import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import type { BuilderLinkCardIo } from './BuilderLinkCard'
 import { WalkedBuilder, type WalkedBuilderIo } from './WalkedBuilder'
 
 afterEach(cleanup)
@@ -39,8 +41,14 @@ function draw(over: Partial<WalkedBuilderIo> = {}) {
     ...over,
   }
   const onRecord = vi.fn()
+  // The builder's link card reads no link here: it has its own smoke. It asks through the confirm window's provider.
+  const linkIo = { read: vi.fn(async () => ({ ok: true as const, value: { on: false as const } })), make: vi.fn(), end: vi.fn(), copy: vi.fn(async () => true) } as unknown as BuilderLinkCardIo
   function Host() {
-    return <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={(next) => { onRecord(next); rec = next; view.rerender(<Host />) }} io={io as unknown as WalkedBuilderIo} />
+    return (
+      <ConfirmDialogProvider>
+        <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={(next) => { onRecord(next); rec = next; view.rerender(<Host />) }} io={io as unknown as WalkedBuilderIo} linkIo={linkIo} />
+      </ConfirmDialogProvider>
+    )
   }
   const view = render(<Host />)
   return { io, onRecord }

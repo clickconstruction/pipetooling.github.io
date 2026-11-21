@@ -219,7 +219,10 @@ function EditLines({ edit, listPath, lines, label, tone }: { edit: FlowEdit; lis
   )
 }
 
-export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen }) {
+/** Look only, as someone holding a builder's link walks it: the last step has no press, and says this under Back. */
+export type FlowLook = { lastStep: string }
+
+export function DocumentBuilderFlow({ def, style, edit, open, look }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook }) {
   const [held, setHeld] = useState<Held>(() => ({ settings: startSettings(def), flow: startFlow() }))
   const { settings, flow } = held
   const steps = flowSteps(def)
@@ -365,7 +368,7 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
             onPick={(stop) => setTopic(topic.key, stop)}
           />
         ) : null}
-        <div style={{ display: 'grid', gridTemplateColumns: flow.step > 0 ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: flow.step > 0 && !(look && flow.step === last) ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 8 }}>
           {flow.step > 0 ? (
             <button type="button" style={SECOND_PRESS} onClick={() => go(prevStep(def, settings, flow))}>
               Back
@@ -375,14 +378,14 @@ export function DocumentBuilderFlow({ def, style, edit, open }: { def: PaperDef;
             <button type="button" disabled={nextShut} style={mainPress(nextShut)} onClick={() => go(nextStep(def, settings, flow))}>
               {nextLabel(def, settings, flow)}
             </button>
-          ) : (
+          ) : look ? null : (
             <button type="button" disabled={confirm.dead} style={mainPress(confirm.dead)} onClick={() => change({ flow: { ...flow, done: true } })}>
               {confirm.label}
             </button>
           )}
         </div>
         {step.kind === 'notice' && flow.ackAt == null ? <p style={MUTED}>Tick the box to go on.</p> : null}
-        {flow.step === last ? <p style={MUTED}>{confirm.note}</p> : null}
+        {flow.step === last ? <p style={MUTED}>{look ? look.lastStep : confirm.note}</p> : null}
       </div>
     </div>
   )
