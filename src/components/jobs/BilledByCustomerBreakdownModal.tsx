@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import {
   billedBreakdownTotal,
+  billedInKindLine,
   buildBilledByCustomerBreakdown,
   type BilledBreakdownBill,
 } from '../../lib/jobs/billedByCustomerBreakdown'
@@ -51,6 +52,8 @@ export default function BilledByCustomerBreakdownModal({
 }) {
   const groups = useMemo(() => buildBilledByCustomerBreakdown(rows), [rows])
   const total = billedBreakdownTotal(groups)
+  // Punch list #301: what a deal pays is in no customer's Owed above, so the window says where it went.
+  const inKindLine = useMemo(() => billedInKindLine(rows), [rows])
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
   const cellStyle: React.CSSProperties = { padding: '0.5rem 0.75rem' }
 
@@ -147,6 +150,11 @@ export default function BilledByCustomerBreakdownModal({
             </tfoot>
           </table>
         )}
+        {inKindLine ? (
+          <p data-who-owes-in-kind style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {inKindLine}.
+          </p>
+        ) : null}
         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <button
             type="button"

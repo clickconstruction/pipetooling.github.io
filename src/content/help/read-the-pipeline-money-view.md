@@ -56,6 +56,8 @@ Below the cards, the system writes your to-do list from the live numbers. Each r
 
 The no-bill-line rows are also always reachable from the Billed header's {{chip:gray|No line · 65 · $48k}} chip. It sits next to the 30+/90+ aging chips. Each filtered row wears a {{chip:yellow|No bill line}} tag. The fix is creating the job's bill line, not just setting a date.
 
+A bill an in kind arrangement pays is in neither aging chip. It is on a schedule, so it is not late. A chip named **In kind** counts those bills, and pressing it lists them. See [keep track of work paid in kind](/help/keep-track-of-work-paid-in-kind#where-those-bills-are-left-out).
+
 While that filter is on, {{button:outline-blue|Fix bill lines…}} opens the one-sitting repair. It is the same idea as the customer classifier. Every job is listed biggest dollars first. Each has a date input for when the bill actually went out. {{button:blue|Create line}} puts the full open amount on a backdated bill line. The job immediately starts aging, chasing, and showing up in the payment forecast. You work down the list. The counter tracks *N of M fixed*.
 
 :::example Why the date matters

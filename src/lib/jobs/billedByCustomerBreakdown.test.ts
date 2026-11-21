@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { billedBreakdownTotal, buildBilledByCustomerBreakdown } from './billedByCustomerBreakdown'
+import { billedBreakdownTotal, billedInKindLine, buildBilledByCustomerBreakdown } from './billedByCustomerBreakdown'
 
 const NOW = new Date('2026-08-20T12:00:00Z')
 
@@ -239,5 +239,40 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0]!.customerName).toBe('No customer')
     expect(groups[0]!.total).toBe(300)
+  })
+})
+
+describe('Who owes what leaves out a bill an in kind deal pays (punch list #301)', () => {
+  const NOW_NOV = new Date('2026-11-21T12:00:00Z')
+  const landlord = (id: string, deal: string | null) => job({ id, customer_id: 'c9', customer_name: 'Harbor Row Rentals', hcp_number: id, in_kind_arrangement_id: deal } as Partial<JobWithDetails>)
+
+  it('a covered bill is under no customer, and the line says where it went', () => {
+    const rows = [invRow(landlord('901', 'deal-1'), { id: 'i1', amount: 4200, billed_at: '2026-04-01T15:00:00Z' })]
+    expect(buildBilledByCustomerBreakdown(rows, NOW_NOV)).toEqual([])
+    expect(billedInKindLine(rows)).toBe('$4,200 on 1 bill is scheduled in kind, not money owed')
+  })
+
+  it('a payer part covered: the bill off the deal is still owed and still aged', () => {
+    const rows = [
+      invRow(landlord('901', 'deal-1'), { id: 'i1', amount: 4200, billed_at: '2026-04-01T15:00:00Z' }),
+      invRow(landlord('902', null), { id: 'i2', amount: 900, billed_at: '2026-04-01T15:00:00Z' }),
+    ]
+    const groups = buildBilledByCustomerBreakdown(rows, NOW_NOV)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]).toMatchObject({ customerName: 'Harbor Row Rentals', total: 900, count: 1, worstAgeDays: 234 })
+    expect(billedBreakdownTotal(groups)).toBe(900)
+    expect(billedInKindLine(rows)).toBe('$4,200 on 1 bill is scheduled in kind, not money owed')
+  })
+
+  it('an ordinary late bill is untouched, and there is no line', () => {
+    const rows = [invRow(landlord('902', null), { id: 'i2', amount: 1800, billed_at: '2026-04-01T15:00:00Z' })]
+    expect(buildBilledByCustomerBreakdown(rows, NOW_NOV)[0]).toMatchObject({ total: 1800, worstAgeDays: 234 })
+    expect(billedInKindLine(rows)).toBeNull()
+  })
+
+  it('a paid-off bill on a deal stays, since it still needs its Mark Paid', () => {
+    const j = job({ id: 'js', customer_id: 'c9', customer_name: 'Harbor Row Rentals', in_kind_arrangement_id: 'deal-1', payments: [{ id: 'p1', job_id: 'js', invoice_id: 'i3', amount: 400, paid_on: '2026-04-01' }] } as unknown as Partial<JobWithDetails>)
+    const groups = buildBilledByCustomerBreakdown([invRow(j, { id: 'i3', amount: 400, billed_at: '2026-04-01T15:00:00Z' })], NOW_NOV)
+    expect(groups[0]?.bills[0]).toMatchObject({ settled: true, amount: 0, ageDays: null })
   })
 })

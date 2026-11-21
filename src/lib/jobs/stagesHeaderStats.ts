@@ -124,10 +124,12 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
 /**
  * Every column any header formula reads. The board-lists builder additionally
  * touches hcp_number/click_number (sort order — irrelevant to sums, but the
- * sort comparator dereferences them).
+ * sort comparator dereferences them). `in_kind_arrangement_id` (punch list #301)
+ * is what `jobIsScheduledInKind` reads: without it the lean rows aged a bill a deal
+ * pays into the cached 30+ and 90+ chips, Quickfill's station and Call mode's count.
  */
 export const LEAN_STATS_JOB_COLUMNS =
-  'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, job_name, customer_name'
+  'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, job_name, customer_name, in_kind_arrangement_id'
 export const LEAN_STATS_INVOICE_COLUMNS =
   'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at, bill_to_party, bill_to_email'
 export const LEAN_STATS_PAYMENT_COLUMNS = 'id, job_id, invoice_id, amount, paid_on'
@@ -152,6 +154,8 @@ export type LeanStatsJobRow = {
   /** The ZZ test-job rule reads both names (punch list #61, v2.5116); optional so older fixtures stand. */
   job_name?: string | null
   customer_name?: string | null
+  /** The in kind deal that pays this job's bills (punch list #301), which `jobIsScheduledInKind` reads; optional so older fixtures stand. */
+  in_kind_arrangement_id?: string | null
 }
 export type LeanStatsInvoiceRow = {
   id: string

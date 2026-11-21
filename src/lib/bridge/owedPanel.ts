@@ -26,6 +26,8 @@ export type OwedPanelInput = {
   cashUsd: number | null
   ar: { total: number; count: number; items: ReadonlyArray<{ amount: number; dateYmd: string | null }> }
   arCollections: { total: number; count: number }
+  /** The bills an in kind deal pays (punch list #301): out of `ar`, shown and not counted. Absent or zero: no row. */
+  arInKind?: { total: number; count: number }
   ap: { total: number; supplyTotal: number; payrollTotal: number; subLaborTotal: number; upcomingTotal: number }
   unbilled: { total: number; count: number }
   /** The forecast's scheduled outflows in the window, by day. */
@@ -40,6 +42,7 @@ export type OwedPanelInput = {
 export const OWED_DOORS = {
   billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
   collections: { to: '/jobs?tab=collections', label: 'Open Collections' },
+  inKind: { to: '/in-kind', label: 'Open In kind' },
   jobs: { to: '/jobs?tab=stages', label: 'Price the jobs' },
   banking: { to: '/banking', label: 'Sort' },
   approvals: { to: '/people?tab=hours&approvals=1', label: 'Approve' },
@@ -115,6 +118,9 @@ export function buildOwedPanel(input: OwedPanelInput): OwedPanel {
   const sources: OwedSourceRow[] = [
     { input: 'owed to you', from: 'invoices sent and not paid, with the jobs parked in Collections left out', risk: lateCount > 0 ? `${lateCount} ${plural(lateCount, 'is', 'are')} late and the forecast assumes they land within their pace; a payment recorded late keeps a paid invoice open` : 'nothing is late; a payment recorded late keeps a paid invoice open', tone: lateCount > 0 ? 'amber' : 'green', door: OWED_DOORS.billing },
     { input: 'collections', from: `billed jobs the office flagged as hard to collect: ${shortK(input.arCollections.total)} on ${input.arCollections.count}, shown and not counted`, risk: input.arCollections.count > 0 ? 'a parked job that pays stays parked until someone un-flags it' : 'nothing is parked', tone: input.arCollections.count > 0 ? 'amber' : 'green', door: OWED_DOORS.collections },
+    ...(input.arInKind && input.arInKind.count > 0
+      ? [{ input: 'in kind', from: `bills an in kind arrangement pays: ${shortK(input.arInKind.total)} on ${input.arInKind.count}, shown and not counted`, risk: 'a credit pays these down and is never cash, so none of it is in owed to you or late', tone: 'green' as const, door: OWED_DOORS.inKind }]
+      : []),
     { input: 'not yet billed', from: `the percent done times the contract, less what is billed or paid, on the working and ready-to-bill jobs the app can read: ${shortK(input.unbilled.total)} on ${input.unbilled.count} ${plural(input.unbilled.count, 'job', 'jobs')}`, risk: input.noContractJobs > 0 || input.noPctJobs > 0 ? `${input.noContractJobs} open ${plural(input.noContractJobs, 'job has', 'jobs have')} no contract price, so finished work there reads $0; ${input.noPctJobs} have no %` : 'every open job carries a price and a %', tone: input.noContractJobs > 0 || input.noPctJobs > 0 ? 'amber' : 'green', door: OWED_DOORS.jobs },
     { input: 'supply bills', from: `supply-house invoices not yet paid, ${shortK(input.ap.supplyTotal)}`, risk: (input.unattributedNoncard ?? 0) > 0 ? `a bill paid by card and never matched stays open; ${(input.unattributedNoncard ?? 0).toLocaleString('en-US')} bank rows are not sorted` : 'every bank row is sorted', tone: (input.unattributedNoncard ?? 0) > 0 ? 'amber' : 'green', door: OWED_DOORS.banking },
     { input: 'payroll owed', from: `stubbed weeks not yet paid, plus an estimate for weeks worked and not reported, ${shortK(payroll)}`, risk: input.pendingClosedHours > 0 ? `${Math.round(input.pendingClosedHours)}h unapproved: the estimate stands in for the real figure` : 'every hour is approved', tone: input.pendingClosedHours > 0 ? 'amber' : 'green', door: OWED_DOORS.approvals },

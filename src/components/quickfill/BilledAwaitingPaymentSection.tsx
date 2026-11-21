@@ -10,7 +10,7 @@ import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import { buildBilledByCustomerBreakdown, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
+import { billedInKindLine, buildBilledByCustomerBreakdown, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
 import { DEFAULT_SNOOZE_DAYS, parseChaseTouchesRpc, type ChaseTouch } from '../../lib/jobs/paymentChase'
 import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
@@ -107,6 +107,8 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
   const [error, setError] = useState<string | null>(null)
   const [groups, setGroups] = useState<BilledBreakdownCustomerGroup[]>([])
   const [excluded, setExcluded] = useState<{ count: number; total: number }>({ count: 0, total: 0 })
+  // Punch list #301: the bills an in kind deal pays are in no customer's row here. One line says so.
+  const [inKindLine, setInKindLine] = useState<string | null>(null)
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
   const [openFolds, setOpenFolds] = useState<ReadonlySet<LeanState>>(new Set<LeanState>(['needs']))
   const [touches, setTouches] = useState<ChaseTouch[] | null>(null)
@@ -177,6 +179,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
           setDueByBill(leanDueByBill(decorated, { payCalendars, acceptedByInvoice }))
           setGroups(built)
           setExcluded({ count: res.billTruth.excludedOwed.count, total: res.billTruth.excludedOwed.total })
+          setInKindLine(billedInKindLine(decorated))
         }
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e, 'Failed to load'))
@@ -250,6 +253,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
           {' · '}
           {counts.bills} bill{counts.bills === 1 ? '' : 's'} · ${formatCurrency(counts.total)} open · {groups.length} customer{groups.length === 1 ? '' : 's'}
           {excluded.count > 0 ? ` · ${excluded.count} bill${excluded.count === 1 ? '' : 's'} on paid or missing jobs excluded ($${formatCurrency(excluded.total)})` : ''}
+          {inKindLine ? ` · ${inKindLine}` : ''}
         </span>
         <Link to={LEAN_CALL_MODE_HREF} style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
           Call mode →

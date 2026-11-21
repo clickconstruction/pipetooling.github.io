@@ -1,6 +1,6 @@
 import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
-import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
+import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type BilledListFilter, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { useStagesManHours } from '../../hooks/useStagesManHours'
 import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
@@ -64,6 +64,7 @@ import { sendGcStatementEmail } from '../../lib/sendGcStatementEmail'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import {
   buildBilledAgingBuckets,
+  buildBilledInKindBucket,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
   billedRowsRemainingTotal,
@@ -807,7 +808,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // narrows the section list to rows the matching chip counts. 'no_line'
   // (v2.1931) = open rows with no bill line to age by — the shells the
   // Pipeline money card's "no bill line" money move points at.
-  const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | 'no_line' | null>(null)
+  const [billedAgingFilter, setBilledAgingFilter] = useState<BilledListFilter>(null)
   // "Fix bill lines" one-sitting modal (v2.1933): creates each shell's
   // missing billed line via create_billed_shell_invoice, backdated.
   const [fixBillLinesOpen, setFixBillLinesOpen] = useState(false)
@@ -3495,6 +3496,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
             const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
+            // Punch list #301: the bills an in kind deal pays are in neither aging chip, so their own chip says where they went.
+            const billedInKindBucket = buildBilledInKindBucket(billedActiveRows)
             const billedListRows = billedListRowsFor(billedActiveRows, billedAgingFilter)
             const collectionsTotal = billedRowsRemainingTotal(collectionsRows)
             // v2.1824: sections whose scope isn't fetched render header numbers
@@ -3783,6 +3786,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by bill date; a hand-set est. bill date wins) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
                       { key: '90' as const, label: `90+ · ${billedAgingBuckets.count90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)}`, title: 'Billed over 90 days ago (by bill date; a hand-set est. bill date wins) with money still owed — click to show only these rows', bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)', count: billedAgingBuckets.count90 },
                       { key: 'no_line' as const, label: `No line · ${billedNoLineBucket.count} · $${formatCurrencyAbbrevTruncated(billedNoLineBucket.sum)}`, title: "Billed jobs whose open money is on no bill line — it can't age, be chased, or be forecast. Click to show only these rows", bg: 'var(--bg-subtle)', fg: 'var(--text-700)', count: billedNoLineBucket.count },
+                      ...(billedInKindBucket.count > 0
+                        ? [{ key: 'in_kind' as const, label: `In kind · ${billedInKindBucket.count} · $${formatCurrencyAbbrevTruncated(billedInKindBucket.sum)}`, title: 'Bills an in kind arrangement pays. They are on a schedule, so they are in neither aging chip. Click to show only these rows', bg: 'var(--bg-blue-tint)', fg: 'var(--text-link)', count: billedInKindBucket.count }]
+                        : []),
                     ]).map((chip) => {
                       const active = billedAgingFilter === chip.key
                       const empty = chip.count === 0
@@ -3963,7 +3969,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   >
                     {billedAgingFilter === 'no_line'
                       ? 'Showing only jobs with no bill line — Bill Customer or Edit Job creates the line their money should ride on'
-                      : `Showing only ${billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows`}{' '}
+                      : billedAgingFilter === 'in_kind'
+                        ? 'Showing only bills an in kind arrangement pays. They are scheduled, not late'
+                        : `Showing only ${billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows`}{' '}
                     ({billedListRows.length} of {billedActiveRows.length}) ·{' '}
                     {billedAgingFilter === 'no_line' && canMarkPromisedPay && billedListRows.length > 0 ? (
                       <>

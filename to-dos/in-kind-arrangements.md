@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep was started 2026-11-12 and stopped at its map: the senders on the server are traced under Left, the screens are not, and nothing of it is built
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · left of the sweep: the senders (PR 2) and the screens listed under *Traced, not built*
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,9 +11,9 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: The sweep of the readers, from the map under Left. Trace the screens first, then two small PRs, the screens and the senders. December 2026's credit comes from its Needs you line.
+next: The senders, PR 2 of the sweep, from the table under Left. Then the screens under *Traced, not built*, each with its own small design. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
@@ -88,8 +88,8 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 ## Left
 
 - **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again. The customer's one job that was off the deal was put on it and its bill recorded in kind the same day, on the owner's word.
-- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips. Each has its own row list and select. (The Customers list's open balance is split since v2.6845.) None of these screens is traced yet: see *The sweep, where it stopped* below.
-- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. Still open beside them: the Pay speeds window's **By customer** list colours a deal's bill late, and the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips. Two more emails do the same, found 2026-11-12: the office's statement week and the Monday Bridge sheet, both in the table below.
+- **Readers that read these bills as open and aged, closed in v2.8218 (2026-11-21)**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list. Each leaves a deal's bill out and says so in one line. (The Customers list's open balance is split since v2.6845.) The screens still open are in the table *The screens, traced 2026-11-21* below.
+- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. The Pay speeds window's **By customer** list left it out in v2.8218. Still open beside them: the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips. Two more emails do the same, found 2026-11-12: the office's statement week and the Monday Bridge sheet, both in the table below.
 - **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history, so the Paid step reads late. Read on prod 2026-11-12: that step is set to *offer*, so a person is asked each morning and nothing sends by itself. A hold on the contact stops the offer until the hold's day, then it comes back.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
 - **A combine of two jobs** carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables).
@@ -121,11 +121,30 @@ The lien months and deadlines stay as they are, on the desk and in counsel's lie
 
 **A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state.
 
-**The screens are not traced.** For each one the next session still needs its select, its kernel and what it shows: the four in the first bullet above, the Pay speeds window's By customer list, Accounts Receivable and its aging chips, Quickfill's Billed awaiting payment, GC Review's statements, the customer's profile window, Call mode and the map's pins.
+**The screens, traced 2026-11-21.** Three loaders feed them. The Dashboard's own read (`loadDashboardFinancials`) did not select the column. The Pipeline's full board read selects `*`, so its rows had the column and no kernel read it. The Pipeline's lean read (`LEAN_STATS_JOB_COLUMNS`) did not select it, so even the chase queue's own skip could never fire on lean rows.
+
+| Screen | Where its rows load | The kernel that aged a deal's bill | Where it stands |
+|---|---|---|---|
+| The Dashboard's receivables card, its bars, its drill-down and its Customers view | `loadDashboardFinancials` | `buildArBuckets`, then `financeAgingBuckets` and `buildArCustomerRollup` on each item's date | built, v2.8218: a fourth bucket `arInKind`, its items with no date |
+| The Bridge: the Collect pile, receipts and doubtful, the Money owed panel, the two balances | the same read, through `fin.ar` | `collectBillsFromAr`, `buildCollectPile`, `buildReceipts`, `buildOwedPanel` | built, v2.8218, by the bucket; the page and the panel name it |
+| The Pipeline's 30+ and 90+ chips, the chip filter, the money card's age bar, *Chase the 90+ tail*, Total by name | the board read, or the lean read before it merges | `stageRowBilledAgeReference`, the board's one clock | built, v2.8218: no clock for a deal's bill, and an **In kind** chip |
+| *Who owes what* | the board read | `buildBilledByCustomerBreakdown` | built, v2.8218 |
+| Quickfill's Billed Awaiting Payment | the lean read | the same kernel, then `leanRows` | built, v2.8218 |
+| Pay speeds, By customer | the board read | `buildPaySpeedsBreakdown`, `openBillsForCustomers` | built, v2.8218 |
+| Call mode | the board read for the window, the lean read for its count | `buildPaymentChaseQueue`, which already skips | the count is right since v2.8218, by the lean read's column |
+| Accounts Receivable (`/accounts-receivable`) | the board read | none: it matches deposits and ages no bill | nothing to do; a deal's bill is still offered as a target for a deposit |
+| The Pipeline's map: the rail's *Billed 215 d*, its ask list and its to-collect dollars | the board read; the rewound view's own read has no column | `jobBilledAgeDays`, `jobsMapRail`, `jobsMapJobsAsOf` | traced, not built |
+| The customer's profile window: the job list's *billed · 215d* in red, and a strip with no in kind words | `fetchCustomerProfile`, which has the column | `profileJobRowMoney` (`_shared/customerProfileStats.ts`, so dev-mcp reads it too) | traced, not built |
+| The customer page's Invoices tab: *Billed · 215d* | `fetchCustomerInvoices`, no column | `buildCustomerInvoiceRows` | traced, not built |
+| A development's Money look: *Nd past* in red | `fetchDevelopmentPage`, no column | `datesFor`, `moneyPastDays` (`siteMoney.ts`) | traced, not built |
+| The aging chart and the printed Billed awaiting payment report | the board read | `printBilledRowReferenceDate`, a second clock beside the board's | traced, not built |
+| GC Review's statements, its print and its call sheet | the board read, or the lean read | `buildGcReviewRollup` | waits for the owner's call below |
+
+**Traced, not built.** Each of the five needs more than a skip. The map's rail sums dollars to collect, so it needs its own line. The profile window's kernel is shared with dev-mcp, so it ships with a deploy. The printed report is the twin of the report email and should change with it.
 
 **Neighbours.** Pay calendar (#323) edits the Stages row, the chase and the Pipeline's money windows. The Bridge's train (#334) edits its Collect desk and money card, and redeploys `bridge-weekly-sheet`. Read main and the open PRs for a file before touching it. A reader held by an open PR is left and named.
 
-**The plan.** Two small PRs, one armed at a time. The screens first: one helper beside `jobIsScheduledInKind` that splits rows into the money and the in kind count with its line, read by each screen's kernel. Then the senders: the report email and the statement week stamped through `_shared/inKindPayloadRows.ts`, as v2.6931 did, and the column added to the reminder flow's job select so `paidRounds` passes a deal's bill over. Each reader gets three tests: a covered bill, a payer part covered, an ordinary late bill. Then a walk on prod with every write refused.
+**The plan.** Two small PRs, one armed at a time. The screens first, built in v2.8218: one helper beside `jobIsScheduledInKind` that splits rows into the money and the in kind count with its line (`splitInKind`, `inKindApartWords`, in `supabase/functions/_shared/inKindApart.ts` so the senders read the same file), read by each screen's kernel. Then the senders: the report email and the statement week stamped through `_shared/inKindPayloadRows.ts`, as v2.6931 did, and the column added to the reminder flow's job select so `paidRounds` passes a deal's bill over. Each reader gets three tests: a covered bill, a payer part covered, an ordinary late bill. Then a walk on prod with every write refused.
 
 ## Where it plugs in
 

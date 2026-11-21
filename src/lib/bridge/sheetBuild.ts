@@ -38,6 +38,7 @@ import { buildFlowStrip } from './flowStrip'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall } from './weekCall'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from './moneyCard'
 import type { WeekMail } from './weekMail'
+import { arInKindLine } from '../dashboardFinancials'
 
 /** Everything the mail reads, as the page loads it; a read that failed is null and named in `gaps`. */
 export type MondaySheetReads = {
@@ -265,6 +266,10 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
     foot: runwayFoot(burnPerDayUsd),
   }
   const marketIsWorth = marketPaceIsWorth(stageInput)
+  // Punch list #301: the bills an in kind deal pays are in no receipt, no pile and no balance above (`fin.ar` leaves
+  // them out), so the mail says so beside what the owner chose to leave out.
+  const inKindLine = arInKindLine(fin?.arInKind)
+  const leftOut = [reads.leftOut?.length ? leftOutWords(reads.leftOut) : '', inKindLine ? `${inKindLine}.` : ''].filter(Boolean).join(' ')
   const strip = buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth })
-  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, money, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], leftOut: reads.leftOut?.length ? leftOutWords(reads.leftOut) : '', gaps: reads.gaps }
+  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, money, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], leftOut, gaps: reads.gaps }
 }
