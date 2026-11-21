@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import type { MarketPermit } from './permitMarket'
 import { builderTies, builderTiesWords, noValueBandsWords, permitsByKind, permitsByMonth, plumbersByJobs, tieOf, valueBands, valueBandsWords } from './permitMarketShape'
 
@@ -66,7 +67,14 @@ describe('builderTies', () => {
       { key: 'harborfitouts', name: 'Harbor Fitouts', jobs: 5, plumbers: 4 },
       { key: 'juniperhospitalitygroup', name: 'Juniper Hospitality Group', jobs: 3, plumbers: 3 },
     ])
-    expect(builderTiesWords(ties)).toBe('Of 4 builders with 3 or more named jobs: 1 uses one plumber nearly every time, 1 leans to one and 2 shop around. The ones that shop around are the open doors.')
+    expect(plainSentence(builderTiesWords(ties))).toBe('Of 4 builders with 3 or more named jobs: 1 uses one plumber nearly every time, 1 leans to one and 2 shop around. The ones that shop around are the open doors.')
+    // Values in place: the four counts are the sentence's values.
+    expect(sentenceParts(builderTiesWords(ties)).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'judged', text: '4 builders' },
+      { kind: 'uses_one', text: '1' },
+      { kind: 'leans', text: '1' },
+      { kind: 'shops', text: '2' },
+    ])
   })
 
   it('says so when no builder can be judged', () => {
@@ -111,7 +119,13 @@ describe('how much is being built', () => {
     const values = Array.from({ length: 40 }, (_, i) => 60_000 * (i + 1))
     const bands = valueBands([...values.map((v) => permit({ declared_value: v })), permit({ declared_value: null }), permit({ declared_value: 0 })])
     expect(bands).toEqual({ valued: 40, ge250k: 36, ge1m: 24, median: 1_230_000 })
-    expect(valueBandsWords(bands as never)).toBe('Of 40 with a value on the permit: 36 are $250k or more, 24 are $1M or more. The middle one is $1.2M.')
+    expect(plainSentence(valueBandsWords(bands as never))).toBe('Of 40 with a value on the permit: 36 are $250k or more, 24 are $1M or more. The middle one is $1.2M.')
+    expect(sentenceParts(valueBandsWords(bands as never)).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'valued', text: '40' },
+      { kind: 'ge250k', text: '36' },
+      { kind: 'ge1m', text: '24' },
+      { kind: 'median', text: '$1.2M' },
+    ])
   })
 
   it('draws no size where the values are missing or repeat one figure', () => {

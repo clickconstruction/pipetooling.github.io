@@ -5,7 +5,9 @@
  * with the permits its names pulled in every city the pull reads, and says what that reads as.
  * The clock is the quarter marks of the days between two dates on a permit. Every count here is
  * defined on the card (`to-dos/permits-market-page/README.md`, How each number is counted), so a
- * hand count can check it. No React, no Supabase.
+ * hand count can check it. A sentence here marks each count, span of days and name in it with
+ * `val` (values in place, `src/lib/valuesInPlace.ts`), and the screen draws it with
+ * `ValueSentence`. No React, no Supabase.
  */
 import { ymdPlusDays, type ResearchPermitRow } from './permitResearch'
 import { OUR_BID_DAYS, bidCounts, bidPartyKey, bidWon, isBidPlatformBucket, ourBidsSince } from './ourBids'
@@ -14,6 +16,7 @@ import type { AnswerBook } from './builderAnswers'
 import { lookAlikePairs, type PermitName } from './nameLikeness'
 import { nameGrade } from './nameAnswers'
 import { daysBetween } from './permitSkim'
+import { val } from '../valuesInPlace'
 
 // ---------- the companies we bid ----------
 
@@ -236,7 +239,12 @@ export function readsWords(c: Pick<BidCompany, 'reads' | 'bids' | 'looksLike'>):
   if (c.reads === 'wins') return { tag: 'Builds, and we win', tone: 'green', hint: 'keep close' }
   if (c.reads === 'never_win') return { tag: 'Builds, we never win', tone: 'red', hint: 'ask why' }
   if (c.reads === 'early') return { tag: `Builds, ${TRIES[c.bids] ?? `${c.bids} tries`}`, tone: 'amber', hint: 'too early to say' }
-  return { tag: 'No permit on record', tone: 'grey', hint: c.looksLike ? `${c.looksLike} on the permits may be them` : 'may build elsewhere, or file under another name' }
+  return { tag: 'No permit on record', tone: 'grey', hint: c.looksLike ? `${val('name', c.looksLike)} on the permits may be them` : 'may build elsewhere, or file under another name' }
+}
+
+/** A company's three counts on a phone, where the table's columns fold into one line: "3 bids, 0 won · 11 permits". */
+export function companyCountsWords(c: Pick<BidCompany, 'bids' | 'won' | 'permits'>): string {
+  return `${val('bids', `${c.bids} bid${c.bids === 1 ? '' : 's'}`)}, ${val('won', `${c.won} won`)} · ${val('permits', `${c.permits} permit${c.permits === 1 ? '' : 's'}`)}`
 }
 
 /** "San Antonio 9 · Austin 2", and "under Ridgeway Permits" where a tied name pulled them. */
@@ -397,13 +405,13 @@ export function clockTitle(clock: Pick<MarketClock, 'kind' | 'city'>): string {
 /** The note under a clock: what the days mean for a call. */
 export function clockNote(clock: MarketClock): string {
   const { q1, median, q3, n } = clock.spread
-  const jobs = `${n.toLocaleString('en-US')} ${clock.kind === 'application' ? 'applications' : 'jobs'}`
-  const middle = `The middle half took ${q1} to ${q3} days, over ${jobs}.`
+  const jobs = val('over', `${n.toLocaleString('en-US')} ${clock.kind === 'application' ? 'applications' : 'jobs'}`)
+  const middle = `The middle half took ${val('middle', `${q1} to ${q3} days`)}, over ${jobs}.`
   if (clock.kind === 'application') {
-    const wait = median <= 0 ? 'Half of the applications get their permit the same day.' : `Half of the applications wait ${clockDaysWords(median)} or more for the permit.`
+    const wait = median <= 0 ? 'Half of the applications get their permit the same day.' : `Half of the applications wait ${val('median', clockDaysWords(median))} or more for the permit.`
     return `${wait} That is the time to call in. ${middle}`
   }
-  const taken = median <= 0 ? 'Half of the jobs have a plumber’s permit by the day of the building permit.' : `Half of the jobs have a plumber’s permit within ${clockDaysWords(median)} of the building permit.`
+  const taken = median <= 0 ? 'Half of the jobs have a plumber’s permit by the day of the building permit.' : `Half of the jobs have a plumber’s permit within ${val('median', clockDaysWords(median))} of the building permit.`
   return `${taken} The job is taken by the time the city shows it. Read ${clock.city} for who builds. ${middle}`
 }
 
