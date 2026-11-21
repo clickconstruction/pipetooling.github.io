@@ -147,4 +147,15 @@ describe('DocumentBuilderFlow', () => {
     press(/Elevated.*Aligned with hospitals/)
     expect(screen.getByText('Every page is on Elevated.')).toBeTruthy()
   })
+
+  it('has no press on the last step for someone who only looks, and says so under Back', () => {
+    render(<DocumentBuilderFlow def={DEF} look={{ lastStep: 'A made-up last line.' }} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I have read this.' }))
+    press('Step 11: Review')
+    expect(screen.queryByRole('button', { name: DEF.words.confirmPress })).toBeNull()
+    expect(screen.queryByText(DEF.words.beforeConfirm)).toBeNull()
+    expect(screen.getByText('A made-up last line.')).toBeTruthy()
+    press('Back')
+    expect(screen.getByText('Step 10 of 11')).toBeTruthy()
+  })
 })

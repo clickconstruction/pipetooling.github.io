@@ -1,18 +1,22 @@
 /**
- * A Document builder link, opened (punch list #404, step 4): `/d/:code`, a public page outside the app's frame, with
- * no login. It shows one published sheet to whoever holds the link: a sub, or the insurance agent a sub sent it on
- * to. The page is always light, and it prints as the one sheet.
+ * A Document builder link, opened (punch list #404, steps 4 and 8): `/d/:code`, a public page outside the app's
+ * frame, with no login. It shows what the link opens to whoever holds it. A sheet's link shows one published sheet: to
+ * a sub, or the insurance agent a sub sent it on to, and it prints as the one sheet. A builder's link shows the
+ * published builder as a flow to walk, page by page, look only: nothing picked on it is saved or sent. The page is
+ * always light.
  *
  * The code is the capability. A wrong code, a link switched off and a link a new one replaced all read the same. What
  * shows is the published copy and never a draft.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
+import { DocumentBuilderFlow } from '../components/documentBuilder/DocumentBuilderFlow'
 import { SheetPaperRead } from '../components/documentBuilder/SheetPaper'
 import { SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { INSURANCE_SHEET_FIXTURE } from '../lib/documentBuilder/insuranceSheet.fixture'
 import { DOCUMENT_BUILDER_LINK_WORDS as WORDS } from '../lib/documentBuilder/link'
 import { openBuilderLink, type BuilderLinkView } from '../lib/documentBuilder/linkIo'
+import { WALKED_LINK_WORDS, walkedLinkPage } from '../lib/documentBuilder/linkPage'
 import { layOver, startJobSheet } from '../lib/documentBuilder/sheet'
 
 type Props = {
@@ -62,6 +66,9 @@ export default function BuilderLink({ open = openBuilderLink }: Props) {
     }
   }, [open, code, tries, sample])
 
+  // A builder's link: the published paper to walk, or null when what the link holds is not one.
+  const walked = view.kind === 'builder' ? walkedLinkPage(view) : null
+
   return (
     <div data-theme="light" data-builder-link={view.kind} style={PAGE}>
       {/* The page is the sheet and little else, so printing it is hiding what is not the sheet. */}
@@ -105,7 +112,18 @@ export default function BuilderLink({ open = openBuilderLink }: Props) {
             </p>
           </>
         ) : null}
-        {view.kind === 'builder' ? (
+        {walked ? (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'baseline' }}>
+              <h1 style={{ margin: 0, fontSize: '1.15rem', lineHeight: 1.25, fontWeight: 800, color: 'var(--text-strong)' }}>{walked.name}</h1>
+              <span style={FINE}>{walked.stamp}</span>
+            </div>
+            {/* The frame ends at the bottom of the screen, so the slider and Next stay in reach on a phone. */}
+            <DocumentBuilderFlow def={walked.def} look={{ lastStep: WALKED_LINK_WORDS.lastStep }} style={{ height: 'min(780px, calc(100dvh - 8.5rem))', minHeight: 420 }} />
+            <p style={FINE}>{WALKED_LINK_WORDS.lookOnly}</p>
+          </>
+        ) : null}
+        {view.kind === 'builder' && !walked ? (
           <div style={CARD} role="status">
             {WORDS.nothing}
           </div>
