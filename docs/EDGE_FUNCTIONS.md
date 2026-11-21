@@ -6938,6 +6938,8 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 
 **Implementation**: [`supabase/functions/document-builder-send/index.ts`](../supabase/functions/document-builder-send/index.ts); the refusals, the ask and the email's words in [`_shared/documentBuilderSend.ts`](../supabase/functions/_shared/documentBuilderSend.ts), the caller check in [`_shared/documentBuilderCaller.ts`](../supabase/functions/_shared/documentBuilderCaller.ts) and the link's code in [`_shared/documentBuilderLinkCode.ts`](../supabase/functions/_shared/documentBuilderLinkCode.ts), both shared with `document-builder-link`. The email's frame is `gc-trade-email`'s own (`buildGcTradeEmail`). **Deploy**: `supabase functions deploy document-builder-send`, with `gc-trade-portal` and `document-builder-link`.
 
+**The filed copy** (**v2.8152**): the email carries the company's own page link, which is a key, and four office roles read Sent copies. The function files the copy with that link cut to `/t/…`, by the trade email's rule (`sentCopyKeptHtml`). The sheet's own link stays, since it is made to be handed on.
+
 **Used by**: [`SheetSendCard.tsx`](../src/components/documentBuilder/SheetSendCard.tsx) through [`sendIo.ts`](../src/lib/documentBuilder/sendIo.ts), and the trade's page [`GcTradePortal.tsx`](../src/pages/GcTradePortal.tsx) for `opened`.
 
 ---
