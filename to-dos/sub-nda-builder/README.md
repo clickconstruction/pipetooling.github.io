@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · steps 4 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156, two more deploys to go) · steps 4 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The owner's calls on the look, which hold step 4, the office's settings page. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*. Step 3's two functions wait on a redeploy by name.
+next: The owner's calls on the look, which hold step 4, the office's settings page. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*. Step 3's signing link waits on a redeploy of `send-contract-for-signature` and `get-contract-signing-link-for-self` by name (v2.8156).
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -310,7 +310,7 @@ paper until an entry has a settings list, and the first one is a test entry.
    `white-space: pre-line` before it). It waited on nothing.
 2. **The summary, the level and the sample (S). Built, v2.8020.** The kernel `paperSummary.ts`. *Summary* beside *Paper*
    in the preview, and *Print the sample* through `printRoot.ts`.
-3. **Settings on the job, the ground (M). Built, v2.8145 and v2.8154.** The columns on
+3. **Settings on the job, the ground (M). Built, v2.8145, v2.8154 and v2.8156.** The columns on
    `job_required_papers`, `job_papers_require` accepting a clause-built entry with settings, a function
    that sets them and locks at the first signature (`job_paper_set_settings`), the read-revision rule,
    the freeze with the hash, and the signature's *Signing for* line. Card #403 built that line's column
@@ -500,7 +500,7 @@ Sizes for this card's own steps are the train's above.
 | 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Its first four PRs are done, v2.7977 to v2.7998. Its steps 4 to 6 are left, and step 5 fills *signing for* from a sub's company. |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
-| 11 | Steps 3 to 7 here | M · M · M · M · S | Step 3 is **done**, v2.8145 and v2.8154. The look for step 4. Counsel before a real job. |
+| 11 | Steps 3 to 7 here | M · M · M · M · S | Step 3 is **done**, v2.8145, v2.8154 and v2.8156. The look for step 4. Counsel before a real job. |
 | 12 | The company's own signature on a paper | M | Wider call 4 |
 | 13 | Step 8 here, the company's own secrecy paper to a vendor or partner | M | Rows 8 and 12, and its own clause set from counsel |
 | 14 | The gate's leftovers: the six unchecked list functions, the Spanish read of the sub's card | S | Nothing |
@@ -538,9 +538,14 @@ settings behaves as before, and the bed proves it (`supabase/tests/job_paper_set
 
 Step 3 has no screen that sets a job's settings: that is step 4, which waits on the look. Until then
 a job takes such a paper only through the database's function.
-The sign path's two functions, `accept-contract` and `get-contract-for-signer`, read a job's paper
-once they are redeployed, on Taunya's go by name. Until then they refuse every paper built from
-settings, so such a paper can be required and nobody can open or sign it.
+The sign path's functions, `accept-contract` and `get-contract-for-signer`, were deployed on
+2026-11-21 on Taunya's go, with `gc-trade-portal`. A ZZ Test paper was then signed on prod, on a ZZ
+Test job: read in both languages, signed only at the seal the page showed, frozen with its settings,
+locked after the signature, and drawn on the signed record.
+That walk found one gap: the two functions that hand out a signing link refused a paper with no body
+of its own. v2.8156 fixes it. `send-contract-for-signature` and `get-contract-signing-link-for-self`
+wait on a redeploy, on Taunya's go by name. Until then the office cannot copy such a paper's link and
+a person with a login cannot open it from the job. The page of a sub with no login hands it out today.
 
 Step 2 (v2.8020) put **Summary** beside **Paper** in the Book's preview, with
 the level in words and **Print the sample**. The *Signing for*

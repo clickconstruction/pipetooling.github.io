@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { jobPaperBuiltFromSettings, type JobPaperSettingsReader } from '../_shared/contractSigningSend.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -201,7 +202,9 @@ serve(async (req) => {
       })
     }
 
-    if (!hasSigningContent(doc)) {
+    // A job's paper built from settings (#389 step 3) has no body of its own: its words are the Book's clauses. So the
+    // job's row is asked whether it carries settings, and only for a copy with nothing else to sign.
+    if (!hasSigningContent(doc) && !(await jobPaperBuiltFromSettings(admin as unknown as JobPaperSettingsReader, doc.job_required_paper_id))) {
       return new Response(
         JSON.stringify({
           error:
