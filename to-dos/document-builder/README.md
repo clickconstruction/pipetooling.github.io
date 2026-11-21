@@ -2,7 +2,7 @@
 name: "Document builder: a tab on Documents where the Sub NDA and a job's insurance requirements are made, published and sent"
 number: 404
 group: ready
-status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · left: steps 6, 8, 9 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
+status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · step 8, the Sub NDA's link, built that night (v2.8150) · step 9, the send to a GC, built 2026-11-21 (v2.8151), its two function deploys waiting on a go · left: steps 6 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
 summary: >
   One more tab on Documents, for a dev only for now. It holds builders. A builder makes one kind of paper.
   The first is the Sub NDA from #389: someone walks it and picks a level, page by page. The second is
@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 8, the Sub NDA's link, then the send to a GC (step 9). Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024).
+next: Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151). Step 9's send reaches a GC once `document-builder-send` and `customer-portal` are deployed.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -45,8 +45,8 @@ To run the spike: check the branch out, `npm install`, `npm run dev`, sign in as
 `/paper-builder`. No link in the app opens it. It reads and writes nothing in the database. On `main`
 that address is gone, and the flow opens from Documents → Document builder.
 
-**Six of the ten steps are built.** The certificate check, the Sub NDA's link, the send to a GC and a
-GC's picks exist as the mock-up and this card, and nowhere else.
+**Eight of the ten steps are built.** The certificate check and a GC's picks exist as the mock-up and
+this card, and nowhere else.
 
 ## Not legal advice, not insurance advice, and no legal text here
 
@@ -546,22 +546,9 @@ of it. The same day he said to build it.
 | 5 · Send it to a job's trades | **Built**, v2.8009. A card on a published sheet lists the job's trades, each with where its send stands. A box sends to one person at one trade, and one press sends to every trade that is ready and lists the ones it held. A send never turns a page back on, and a trade with no page gets one only from a send to that trade alone. The trade reads the sheet on its own page. The function is `document-builder-send`. |
 | 6 · A certificate for each job | Not built. It waits on the owner's call on *A certificate for each job, or one for each company*, in *Calls still open*. Its migration adds columns to `person_contract_documents`, and no other card's migration holds it. Card 403's `20261120010000_paper_party.sql` is on prod since 2026-11-20, and card 376's two unpushed migrations (`20261120060000`, `20261120061000`) add columns only. Stamp it from `origin/main` as usual, and leave the columns those cards add alone. |
 | 7 · Edit on the GC's view, and Publish | **Built**, v2.8024. The words on the Sub NDA's flow are fields: the disclaimer, a level's meaning, the breach lines, the site lines. The review of 2026-11-20 found that not every piece is one yet, and names section names, fact labels, some of the flow's own words and the title, the job, the company and the party. The map opens a page at a level. The pages changed since the published revision are listed with the way back. **Publish revision N** makes the draft what everyone outside sees, and an attorney's read is marked on a revision. The levels' names are not fields. |
-| 8 · The link | Not built. `document-builder-link` already answers a published builder (`kind: 'builder'`). Left: the page at `/d/<code>` draws a walked builder read-only, and the editor's left side takes a `BuilderLinkCard` for `sub-nda` with no sheet. |
-| 9 · Send it to a GC | Not built. Step 5's `BuilderSendList` pointed at GCs, and a block on the customer portal placed by job. Card #382's PR 9 changed `customer-portal`, `submit-portal-request` and `CustomerPortal.tsx` too, and it merged first (v2.8018), so this step starts from those files as they are now. |
+| 8 · The link | **Built**, v2.8150. A published Sub NDA has one live link, made, copied, replaced and switched off from a card under the map. Anyone who holds it walks the published revision at `/d/<code>`, named *Secrecy on your jobs*, look only: no field, no press on the last step, nothing saved or sent. No function changed. Not walked on prod: the Sub NDA there was never published, and a live walk needs a published revision. |
+| 9 · Send it to a GC | **Built**, v2.8151. The Sub NDA's editor has a card under its link, **Send it to a GC**: a row for each customer who is the GC on a job with us, a box to find one, and a send to one person about one job or all their jobs. The GC gets an email with one press to their own page, where the builder sits under that job to open and walk, look only. The row says the day it went and the day they opened it. Two things the drawing does not have: the one press asks first by its count, and the list shows the first twelve GCs until someone types. It takes a deploy of `document-builder-send` and of `customer-portal`. Not on Settings → What customers see yet. |
 | 10 · Send their picks | Not built. The default for *What a GC can do with the Sub NDA at first* is look only, so it waits on the owner's yes. |
-
-**Step 9 is built on a branch and not merged**, as of 2026-11-20: `claude/404-sub-nda-to-a-gc-5197d0`, pushed, with
-no PR yet. On it: the send pointed at GCs with the job it is about, a find box for the long list, the function's
-side of both, the customer portal's answer and its block, both guides and the tests. It waits on three things.
-
-- Step 8's look-only flow. Without it a GC's last step would show the review's own press.
-- The two send fixes it is stacked on: PR #9173, and the agent's-check fix that follows it.
-- Two deploys after its merge, each on Taunya's go by name: `document-builder-send`, then `customer-portal`.
-
-Still to do on it after those: rebase onto `main`, hand the block step 8's look-only flow, the lines in
-`docs/DOCUMENTS_PAGE_ARCHITECTURE.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md`, this table's row, and a walk
-on prod with a `ZZ Test` customer. It adds two things the drawing does not have: the one press on the GC list asks
-first by its count, and the list shows the first twelve GCs until someone types in **Find a GC**.
 
 ### What the review of 2026-11-20 left
 

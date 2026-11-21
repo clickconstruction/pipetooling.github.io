@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { customerBuildersFrom, type CustomerBuilder } from '../../lib/documentBuilder/customerPageBuilders'
+import { WALKED_LINK_WORDS } from '../../lib/documentBuilder/linkPage'
 import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fixture'
 import { PortalBuilders } from './PortalBuilders'
 
@@ -71,6 +72,22 @@ describe('PortalBuilders', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open the Sub NDA builder' }))
     await screen.findByText(SECRECY_PAPER_FIXTURE.notice.title)
     expect(calls).toHaveLength(1)
+  })
+
+  it('is a look only: the last step has no press of its own, and says so', async () => {
+    render(<PortalBuilders builders={[sent()]} token={TOKEN} company="Made-up Plumbing" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open the Sub NDA builder' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: SECRECY_PAPER_FIXTURE.notice.tick }))
+    // Walk to the end: every step but the last has a Next.
+    for (let i = 0; i < 12; i += 1) {
+      const next = screen.queryByRole('button', { name: /^Next/ })
+      if (!next) break
+      fireEvent.click(next)
+    }
+    expect(screen.queryByRole('button', { name: /^Next/ })).toBeNull()
+    expect(screen.getByText(WALKED_LINK_WORDS.lastStep)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: SECRECY_PAPER_FIXTURE.words.confirmPress })).toBeNull()
+    expect(screen.queryByRole('button', { name: SECRECY_PAPER_FIXTURE.words.nothingPress })).toBeNull()
   })
 
   it('says it changed since they opened it, with the day they did', () => {

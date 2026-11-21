@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.8151',
-  date: '2026-11-20',
+  date: '2026-11-21',
   title: 'Document builder: send the Sub NDA to a GC',
   kind: 'feature',
   highlights: [

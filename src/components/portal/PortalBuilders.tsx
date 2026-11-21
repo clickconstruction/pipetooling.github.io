@@ -11,6 +11,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { customerBuilderWords, placeCustomerBuilders, type CustomerBuilder } from '../../lib/documentBuilder/customerPageBuilders'
+import { WALKED_LINK_WORDS } from '../../lib/documentBuilder/linkPage'
 import { CARD, HAIR, INK, MUTED, PAPER } from '../../lib/portal/portalTheme'
 import { staffAwarePublicHeaders } from '../../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../../lib/publicViewCounting'
@@ -57,7 +58,8 @@ function BuilderBlock({ builder, company, onOpened }: { builder: CustomerBuilder
       <div style={{ fontSize: '0.8rem', color: MUTED }}>{w.fine}</div>
       {open ? (
         <Suspense fallback={<div style={{ fontSize: '0.85rem', color: MUTED }}>Opening the builder…</div>}>
-          <DocumentBuilderFlow def={builder.def} style={{ height: 'min(780px, calc(100dvh - 96px))' }} />
+          {/* Look only (step 8's flow): the last step has no press, so nothing on a GC's page reads as an ask to require the paper. */}
+          <DocumentBuilderFlow def={builder.def} look={{ lastStep: WALKED_LINK_WORDS.lastStep }} style={{ height: 'min(780px, calc(100dvh - 96px))', minHeight: 420 }} />
         </Suspense>
       ) : null}
     </div>

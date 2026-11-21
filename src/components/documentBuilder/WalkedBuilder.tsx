@@ -2,7 +2,8 @@
  * A walked builder, open in the Document builder tab (punch list #404, step 7): the Sub NDA. Two sides. On the right,
  * what a GC sees: the flow, where every piece of words is a field a dev presses and types over. On the left, the map
  * (a row a topic, a column a level), the pages changed since the published revision with the way back, and the press
- * that publishes the draft as the next revision.
+ * that publishes the draft as the next revision. Under them, the builder's link (step 8): switched on, anyone who holds
+ * it walks the published revision at `/d/<code>`, look only.
  *
  * A change is to the draft, saved a moment after the typing rests. Nobody outside sees a draft. No clause wording is
  * typed here: a clause stays grey bars, and its wording stays in the Contract Book. Every rule is
@@ -15,11 +16,13 @@ import { DOCUMENT_BUILDER_WORDS as WORDS } from '../../lib/documentBuilder/build
 import { readPaperDef } from '../../lib/documentBuilder/definition'
 import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
+import { walkedLinkCardWords } from '../../lib/documentBuilder/linkPage'
 import { changedPages, isPathChanged, mapRows, pageName, pageOpens, revertPage, walkedNote, walkedPublishPress, withPaperLine, withPaperWords, withoutPaperLine } from '../../lib/documentBuilder/paperEdit'
 import { readPress } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import type { BuilderRecord } from '../../lib/documentBuilder/standing'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { BUILDER_LINK_CARD_IO, BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 import { DocumentBuilderFlow, type FlowEdit, type FlowOpen } from './DocumentBuilderFlow'
 import { LevelBars } from './DocumentBuilderSlider'
 import { levelTone } from './levelTone'
@@ -34,9 +37,11 @@ type Props = {
   def: PaperDef
   onBack: () => void
   onRecord: (rec: BuilderRecord) => void
-  /** What sits under the map on the left: the link and the send, as later steps add them. */
+  /** What sits under the link on the left: the send, as a later step adds it. */
   share?: ReactNode
   io?: WalkedBuilderIo
+  /** The link card's own reads and presses. A smoke hands its own in. */
+  linkIo?: BuilderLinkCardIo
 }
 
 /** How long the typing rests before the draft is saved. */
@@ -72,7 +77,7 @@ function Chip({ chip }: { chip: BuilderChip }) {
   return <span style={{ ...CHIP, ...CHIP_TONES[chip.tone] }}>{chip.words}</span>
 }
 
-export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo }: Props) {
+export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
   const [draft, setDraft] = useState<PaperDef>(def)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -300,6 +305,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
               </div>
             ))}
           </div>
+          {/* The builder's own link, with no sheet: it opens the published revision and never the draft on the right. */}
+          <BuilderLinkCard builderKey={entry.id} sheetId={null} published={rec.revision > 0} io={linkIo} words={walkedLinkCardWords(rec.revision)} />
           {share}
         </div>
 
