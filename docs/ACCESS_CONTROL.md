@@ -855,10 +855,10 @@ It is `SECURITY DEFINER` over `email_send_log`, a dev's and since v2.6762 the ow
 no delete policy (a cleared pick is `''`).
 Read-only training mode and the twin write fence apply.
 
-### Punch list ticks — one person's "working on it" marks (v2.8196, `20261121193000_punch_list_ticks.sql`)
+### Punch list ticks — a person's claim on a card (v2.8196, `20261121193000_punch_list_ticks.sql`; read by all since v2.8224, `20261122000500_punch_list_claims.sql`)
 
-`punch_list_ticks` (one row per person and card number: the section the card was in when ticked, the build's newest version, `ticked_at` stamped by trigger): select / insert / update / delete each ask for `user_id = auth.uid()` and `is_master_or_dev()`.
-A person reads and writes only their own ticks, and nobody reads another person's, a dev included.
+`punch_list_ticks` (one row per person and card number: the section the card was in when ticked, the build's newest version, and `ticked_at` and `claimer_name` stamped by trigger): insert / update / delete each ask for `user_id = auth.uid()` and `is_master_or_dev()`, and select asks for `is_master_or_dev()` alone.
+Every dev and master reads every claim, so the page can say who is working on a card, and a person writes only their own.
 `anon` has nothing.
 Read-only training mode, the twin write fence and the archived read fence apply.
 
