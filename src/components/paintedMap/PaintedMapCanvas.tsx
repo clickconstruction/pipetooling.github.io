@@ -769,7 +769,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         // The boundary is out here as well as in the canvas: a file that does not arrive on a weak signal falls back too.
         <GoogleCanvasBoundary onUnavailable={googleUnavailable}>
           <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} frameMargin={frameMargin} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
+            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} frameMargin={frameMargin} frameMe={frameMe} light={googleAsk?.screen === 'way'} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
           </Suspense>
         </GoogleCanvasBoundary>
       ) : (

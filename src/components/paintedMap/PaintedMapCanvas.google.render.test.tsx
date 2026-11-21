@@ -118,6 +118,28 @@ describe('a caller that says nothing about Google', () => {
   })
 })
 
+describe('the public page (step 4)', () => {
+  const WAY: PaintedCanvasGoogleAsk = { screen: 'way', use: 'looking' }
+
+  it('stays on the Leaflet map with a good key, and makes no Google map, until the rule says the page may', () => {
+    // Every outside reader's open counts with Google. The page hands its ask already, and `PAINTED_GOOGLE_REACH` holds the yes.
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height={360} google={WAY} />)
+    expect(provider()).toBe('osm')
+    expect(screen.getByTestId('leaflet')).toBeTruthy()
+    expect(screen.queryByTestId('google')).toBeNull()
+    expect(google.mounts).toBe(0)
+  })
+
+  it('hands Google’s canvas the frame that keeps a reader and the line together, and holds only the page light', async () => {
+    const me = { lat: 30.201, lng: -98.099, accuracyM: 6 }
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} me={me} frameMe />)
+    await screen.findByTestId('google')
+    expect(google.props?.frameMe).toBe(true)
+    // The painting window follows the app's theme.
+    expect(google.props?.light).toBe(false)
+  })
+})
+
 describe('the painting window, reading a saved map', () => {
   it('opens on the Leaflet map at once when Google refused the key under another map of this page', () => {
     // A job's map or the Dashboard's heard the refusal before any painted map was opened. Google does not say it twice.
