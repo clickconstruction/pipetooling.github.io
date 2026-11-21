@@ -902,6 +902,17 @@ Created from templates or built from scratch.
 
 **Relationship**: One per project (1:1)
 
+### State roll (Prospects, v2.8198)
+
+The state's public roll of licensed tradespeople, kept for our counties, and the Prospects tab that shows it (`/prospects?tab=roll`, punch list #411).
+A **pull** is one read of one of the state's files by `license-roll-pull`, logged in `license_roll_pulls`.
+**Kept** means a row's county is in `license_roll_counties`.
+**Gone** means the state's file no longer has the row.
+A gone row is taken off 28 days later.
+**Left off** means a person asked not to be listed, and no pull keeps them.
+The roll holds no phone, street address or email, since the state gives none for a person.
+It is not People → Licenses, which holds our own team's licenses.
+
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
 Can be assigned to people, have start/complete dates, and track status (pending, in_progress, completed, approved, rejected).

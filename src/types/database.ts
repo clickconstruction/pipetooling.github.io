@@ -27014,6 +27014,258 @@ export type Database = {
           },
         ]
       }
+      license_roll: {
+        Row: {
+          company: string
+          county: string
+          created_at: string
+          endorsements: string[]
+          expires_on: string | null
+          first_name: string
+          first_seen_on: string
+          gone_on: string | null
+          id: string
+          insurance_ends_on: string | null
+          last_name: string
+          last_seen_on: string
+          license_class: string
+          license_number: string
+          licensed_on: string | null
+          middle_name: string
+          name_key: string
+          ours: boolean
+          source: string
+          status: string
+          suffix: string
+          trade: string
+          updated_at: string
+          zip: string
+        }
+        Insert: {
+          company?: string
+          county?: string
+          created_at?: string
+          endorsements?: string[]
+          expires_on?: string | null
+          first_name?: string
+          first_seen_on: string
+          gone_on?: string | null
+          id?: string
+          insurance_ends_on?: string | null
+          last_name?: string
+          last_seen_on: string
+          license_class: string
+          license_number: string
+          licensed_on?: string | null
+          middle_name?: string
+          name_key: string
+          ours?: boolean
+          source: string
+          status: string
+          suffix?: string
+          trade: string
+          updated_at?: string
+          zip?: string
+        }
+        Update: {
+          company?: string
+          county?: string
+          created_at?: string
+          endorsements?: string[]
+          expires_on?: string | null
+          first_name?: string
+          first_seen_on?: string
+          gone_on?: string | null
+          id?: string
+          insurance_ends_on?: string | null
+          last_name?: string
+          last_seen_on?: string
+          license_class?: string
+          license_number?: string
+          licensed_on?: string | null
+          middle_name?: string
+          name_key?: string
+          ours?: boolean
+          source?: string
+          status?: string
+          suffix?: string
+          trade?: string
+          updated_at?: string
+          zip?: string
+        }
+        Relationships: []
+      }
+      license_roll_changes: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          now_is: Json
+          pull_id: string | null
+          roll_id: string
+          seen_on: string
+          was: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          now_is?: Json
+          pull_id?: string | null
+          roll_id: string
+          seen_on: string
+          was?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          now_is?: Json
+          pull_id?: string | null
+          roll_id?: string
+          seen_on?: string
+          was?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_changes_pull_id_fkey"
+            columns: ["pull_id"]
+            isOneToOne: false
+            referencedRelation: "license_roll_pulls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "license_roll_changes_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "license_roll"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_counties: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          county: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          county: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          county?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_counties_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_left_off: {
+        Row: {
+          id: string
+          license_class: string | null
+          license_number: string | null
+          name_key: string | null
+          note: string
+          noted_at: string
+          noted_by: string | null
+          source: string | null
+        }
+        Insert: {
+          id?: string
+          license_class?: string | null
+          license_number?: string | null
+          name_key?: string | null
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          source?: string | null
+        }
+        Update: {
+          id?: string
+          license_class?: string | null
+          license_number?: string | null
+          name_key?: string | null
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_left_off_noted_by_fkey"
+            columns: ["noted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_pulls: {
+        Row: {
+          added: number
+          changed: number
+          error: string
+          file: string
+          finished_at: string | null
+          gone: number
+          id: string
+          pulled_by: string | null
+          rows_kept: number
+          rows_seen: number
+          source: string
+          started_at: string
+          trade: string
+        }
+        Insert: {
+          added?: number
+          changed?: number
+          error?: string
+          file: string
+          finished_at?: string | null
+          gone?: number
+          id?: string
+          pulled_by?: string | null
+          rows_kept?: number
+          rows_seen?: number
+          source: string
+          started_at?: string
+          trade: string
+        }
+        Update: {
+          added?: number
+          changed?: number
+          error?: string
+          file?: string
+          finished_at?: string | null
+          gone?: number
+          id?: string
+          pulled_by?: string | null
+          rows_kept?: number
+          rows_seen?: number
+          source?: string
+          started_at?: string
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_pulls_pulled_by_fkey"
+            columns: ["pulled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       license_targets: {
         Row: {
           opening_amount: number
@@ -53346,6 +53598,7 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: boolean
       }
+      user_can_read_license_roll: { Args: never; Returns: boolean }
       user_can_research_permits: { Args: never; Returns: boolean }
       user_can_work_team_prospect: {
         Args: { p_prospect_id: string }
