@@ -50,6 +50,10 @@ export interface StageCheckWindowProps {
   onReplyAndClose: () => void
   onOpenJob: (() => void) | null
   onOpenCheck: (() => void) | null
+  /** The name of that door when it opens something other than a check (punch list #382: a No on arrival opens the list). */
+  openCheckLabel?: string
+  /** The foot's words for a line nothing closes by itself (a No on arrival). With them the sender may close it too. */
+  footWords?: string
   /** Drawn on a check that leads the inbox, when the mount may change a priority. */
   onLower: (() => void) | null
   onClose: () => void
@@ -69,7 +73,7 @@ const box: CSSProperties = { width: '100%', minHeight: 64, boxSizing: 'border-bo
 const closedBlock: CSSProperties = { ...note, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' }
 const lowerBtn: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 
-export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, draft, onDraftChange, saving, onReply, onReplyAndClose, onOpenJob, onOpenCheck, onLower, onClose, io }: StageCheckWindowProps) {
+export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, draft, onDraftChange, saving, onReply, onReplyAndClose, onOpenJob, onOpenCheck, openCheckLabel, footWords, onLower, onClose, io }: StageCheckWindowProps) {
   const payload = useMemo(() => stageCheckPayloadFrom(row.pending_payload), [row.pending_payload])
   const [live, setLive] = useState<StageCheckLiveContext | null>(null)
   const jobId = row.job_ledger_id
@@ -110,21 +114,22 @@ export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, d
   const waiting = !isClosed && isCustomerWaiting(row)
   const isSender = !!viewerId && row.from_user_id === viewerId
   const mayReply = canAct && !isClosed
-  const mayClose = mayReply && !isSender
+  // A check closes itself once it is settled, so its sender never closes it. Nothing closes a No on arrival, so anyone who may reply may.
+  const mayClose = mayReply && (!isSender || !!footWords)
   const hasWords = draft.trim().length > 0
   const fromLabel = row.sender?.name?.trim() || row.sender?.email?.trim() || 'The crew'
   const sentMeta = row.created_at ? getDispatchNoteDisplayMeta(row.created_at) : null
 
   const foot = (
     <div style={{ width: '100%', display: 'grid', gap: '0.4rem' }}>
-      <p style={meta}>{isClosed ? '' : isSender && canAct ? STAGE_CHECK_WORDS.senderCannotClose : STAGE_CHECK_WORDS.windowFoot}</p>
+      <p style={meta}>{isClosed ? '' : footWords ? footWords : isSender && canAct ? STAGE_CHECK_WORDS.senderCannotClose : STAGE_CHECK_WORDS.windowFoot}</p>
       <div style={{ ...S.footerRow, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         <button type="button" style={{ ...S.secondaryBtn, marginRight: 'auto' }} onClick={onClose} disabled={saving}>
           {STAGE_CHECK_WORDS.notNow}
         </button>
         {onOpenCheck && !isClosed ? (
           <button type="button" style={S.secondaryBtn} onClick={onOpenCheck} data-stage-check-window-open-check>
-            {STAGE_CHECK_WORDS.openCheck}
+            {openCheckLabel ?? STAGE_CHECK_WORDS.openCheck}
           </button>
         ) : null}
         {mayReply ? (

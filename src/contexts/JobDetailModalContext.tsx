@@ -39,6 +39,8 @@ export type OpenJobDetailOptions = {
   openSupplyHouseShare?: boolean
   /** Open a stage's checklist sheet on a check once the window loads (punch list #245: the Dispatch inbox's Open the check). */
   openStageChecklist?: OpenStageChecklistAsk | null
+  /** The tab the window opens on, Job when not given (punch list #382: a No on arrival opens Documents, where the list is). */
+  initialTab?: JobWindowTab
 }
 
 export type JobDetailModalContextValue = {
@@ -125,7 +127,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       kind: 'open',
       instanceKey: jobDetailModalInstanceSeed,
       jobId: options.jobId,
-      initialTab: 'job',
+      initialTab: options.initialTab ?? 'job',
       scheduleContext: options.scheduleContext ?? null,
       prefillRowLabel: options.prefillRowLabel,
       prefillAddress: options.prefillAddress,

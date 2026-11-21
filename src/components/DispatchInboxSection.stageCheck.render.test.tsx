@@ -271,3 +271,71 @@ describe('the context window (PR 2b)', () => {
     expect(windowEl()).toBeNull()
   })
 })
+
+/** A No on arrival (punch list #382, PR 10): `start_check_arrive` sends it down the stage check's road with no check behind it. */
+const noRow = (overrides: Partial<DispatchInboxRow> = {}) =>
+  row({
+    title: 'Rough In · “The slab is poured.” · something else: not as told on arrival, and 1 more. Ray Ortiz told us it was ready',
+    priority: 'high',
+    pending_payload: { stage_check: { fixture_id: 'f1', question_id: null, reason: 'other', stage_name: 'Rough In', words: 'Not as told on arrival', start_check_arrival_id: 'a1', not_as_told: ['b1', 'b2'], told_by: 'Ray Ortiz' } },
+    ...overrides,
+  })
+
+describe('a No on arrival in the Dispatch inbox (punch list #382)', () => {
+  it('wears the tag and leads the inbox as a stage check does, with Open the list where a check has Open the check', async () => {
+    renderSection([noRow()])
+    await settle()
+    expect(screen.getByText('Stage check')).toBeTruthy()
+    // High priority, and still its own row under the red wait line: never the portal's Customer waiting card.
+    expect(screen.queryByTestId('customer-waiting-card')).toBeNull()
+    expect(document.querySelector('[data-dispatch-stage-check-waiting="r1"]')?.textContent).toMatch(/^Waiting/)
+    // There is no check behind it, so no door to one.
+    expect(screen.queryByRole('button', { name: /^Open the check:/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Open the list:/ }))
+    expect(openJobDetail).toHaveBeenLastCalledWith({ jobId: 'job-1', initialTab: 'documents' })
+    fireEvent.click(screen.getByRole('button', { name: /^Open the job:/ }))
+    expect(openJobDetail).toHaveBeenLastCalledWith({ jobId: 'job-1' })
+  })
+
+  it('opens its window with the bullet and who told us, the list as its door, and words that say who closes it', async () => {
+    vi.mocked(liveIo.questions).mockClear()
+    renderSection([noRow()])
+    await settle()
+    fireEvent.click(screen.getByText(/something else: not as told on arrival/))
+    const win = await waitFor(() => {
+      const el = windowEl()
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    expect(within(win).getByText('The slab is poured.')).toBeTruthy()
+    expect(win.textContent).toContain('Ray Ortiz told us it was ready')
+    // The live read is the checklist's, and this line has no check: it is never made.
+    expect(liveIo.questions).not.toHaveBeenCalled()
+    expect(within(win).getByText('Close it once the site is as told, or the list has changed.')).toBeTruthy()
+    expect(within(win).queryByRole('button', { name: 'Open the check' })).toBeNull()
+    fireEvent.click(within(win).getByRole('button', { name: 'Open the list' }))
+    expect(openJobDetail).toHaveBeenLastCalledWith({ jobId: 'job-1', initialTab: 'documents' })
+    await waitFor(() => expect(windowEl()).toBeNull())
+  })
+
+  it('lets the person who sent it close it, since nothing closes it by itself', async () => {
+    auth.userId = 'u2'
+    renderSection([noRow()])
+    await settle()
+    fireEvent.click(screen.getByText(/something else: not as told on arrival/))
+    const win = await waitFor(() => {
+      const el = windowEl()
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    expect(within(win).getByRole('button', { name: 'Reply and close' })).toBeTruthy()
+    expect(within(win).queryByText('You sent this check. Answer it on the sheet and it closes itself.')).toBeNull()
+  })
+
+  it('draws neither door once closed', async () => {
+    renderSection([noRow({ status: 'closed', closed_at: '2026-11-20T16:00:00Z', closed_note: 'The slab was poured Friday.' })])
+    await settle()
+    expect(screen.queryByRole('button', { name: /^Open the list:/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Open the job:/ })).toBeNull()
+  })
+})

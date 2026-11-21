@@ -6733,6 +6733,13 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .scDot[data-light='green'] { background: #16a34a; }
 .scDot[data-light='amber'] { background: #f59e0b; }
 .scDot[data-light='red'] { background: #dc2626; }
+/* Is it as told? on the crew's phone (punch list #382, PR 10): a bullet's No and the one send, each a full thumb. */
+.scArrivalNo { flex: none; min-width: 4.25rem; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); font-family: inherit; font-size: 0.9375rem; font-weight: 700; cursor: pointer; }
+.scArrivalNo[aria-pressed='true'] { border-color: #dc2626; background: #dc2626; color: #fff; }
+.scArrivalSend { width: 100%; min-height: 48px; padding: 0 1.1rem; border: none; border-radius: 8px; background: #16a34a; color: #fff; font-family: inherit; font-size: 1rem; font-weight: 800; cursor: pointer; }
+.scArrivalSend[data-no='yes'] { background: #dc2626; }
+.scArrivalNo:disabled, .scArrivalSend:disabled { opacity: 0.6; cursor: default; }
+.scArrivalNo:focus-visible, .scArrivalSend:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .scAdd { flex: 1 1 14rem; min-width: 0; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-base); font: inherit; font-size: 0.875rem; }
 @media (pointer: coarse), (max-width: 640px) {
   .scReady { min-height: 32px; }

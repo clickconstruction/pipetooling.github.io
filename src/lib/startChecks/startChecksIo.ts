@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { checkSupabaseError, withSupabaseRetry } from '../../utils/errorHandling'
+import { notifyDispatchRequestsChanged } from '../dispatchRequestHelpers'
 import type { Know, UsReads } from './startChecks'
 import {
   NO_START_ROWS,
@@ -39,6 +40,8 @@ export type BulletPatch = Partial<{ words: string; wantsPhoto: boolean; shownToG
 export type NewYes = { id?: string; bulletId: string; jobId: string; know: Know; who: string; how: string; day: string; photo?: StartPhoto | null }
 export type YesPatch = Partial<{ know: Know; who: string; how: string; day: string }>
 export type StartPhoto = { path: string; fileName: string; bytes: number; takenAt: string }
+/** What the crew is asked on arrival: a stage and the bullets on them nobody of ours has seen. */
+export type ArrivalAsk = { fixtureId: string; name: string; bullets: Array<{ id: string; words: string }> }
 /** How an ask went out. */
 export type AskHow = 'text' | 'email' | 'phone'
 /** One ask to keep: one message to one person, a row for each bullet it covers, or a hold note that names a stage alone. */
@@ -73,6 +76,10 @@ export interface StartChecksIo {
   takeBackDecision: (decisionId: string) => Promise<void>
   /** The days of notice on a site's row or a job's own. Null puts the default back. */
   setNotice: (home: { developmentId: string } | { jobId: string }, days: number | null, who: StartWho) => Promise<void>
+  /** What the crew is asked on arrival at this job: the one stage whose days have come, with what nobody of ours has seen. Null: nothing to ask. */
+  readArrival: (jobId: string) => Promise<ArrivalAsk | null>
+  /** The crew's answer. A No opens its bullet again and sends Dispatch one stage check; the id of that line comes back. */
+  arrive: (fixtureId: string, notAsTold: readonly string[]) => Promise<{ dispatchRequestId: string | null }>
   /** The job's second switch: show what we need before each stage on the GC's page. The job's row alone. */
   setShowsOnGcPage: (jobId: string, on: boolean, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
@@ -299,6 +306,26 @@ export const supabaseStartChecksIo: StartChecksIo = {
     const key = 'developmentId' in home ? { development_id: home.developmentId } : { job_id: home.jobId }
     const result = await db.from('start_check_settings').upsert({ ...key, notice_days: days, updated_by: who.userId, updated_by_name: who.name.slice(0, 120) }, { onConflict: 'developmentId' in home ? 'development_id' : 'job_id' })
     checkSupabaseError(result, 'keep the days of notice')
+  },
+
+  readArrival: async (jobId) => {
+    const { data, error } = await db.rpc('start_check_arrival_state', { p_job_id: jobId })
+    if (error) throw error
+    const stage = (data as { ok?: boolean; stage?: { fixture_id?: string; name?: string; bullets?: Array<{ id?: string; words?: string }> } | null } | null)?.stage
+    if (!stage?.fixture_id) return null
+    return { fixtureId: stage.fixture_id, name: stage.name ?? 'Stage', bullets: (stage.bullets ?? []).filter((b) => b.id && b.words).map((b) => ({ id: b.id as string, words: b.words as string })) }
+  },
+
+  arrive: async (fixtureId, notAsTold) => {
+    const result = await db.rpc('start_check_arrive', { p_fixture_id: fixtureId, p_not_as_told: [...notAsTold] })
+    checkSupabaseError(result, 'keep what you found')
+    const id = (result.data as { dispatch_request_id?: string | null } | null)?.dispatch_request_id ?? null
+    if (id) {
+      // A No is a stage check to Dispatch, on the road #245 built: the inbox is told, and the push goes out.
+      notifyDispatchRequestsChanged()
+      void supabase.functions.invoke('notify-dispatch-request', { body: { dispatch_request_id: id } }).catch(() => {})
+    }
+    return { dispatchRequestId: id }
   },
 
   setShowsOnGcPage: async (jobId, on, who) => {

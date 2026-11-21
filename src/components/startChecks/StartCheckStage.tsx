@@ -308,13 +308,13 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
         {openList.length ? W.stillOpen(openList.length) : W.nothingOpen}
       </div>
       {openList.map((b) => (
-        <BulletRow key={b.id} b={b} stage={stage} line={line} rows={rows} site={site} today={today} me={me} kind={kind} canCompany={can.company} busy={busy} act={act} press={press} io={io} />
+        <BulletRow key={b.id} b={b} stage={stage} line={line} rows={rows} site={site} today={today} me={me} kind={kind} canCompany={can.company} busy={busy} act={act} press={press} io={io} templates={templates} />
       ))}
       {metList.length ? (
         <div style={{ marginTop: 14, opacity: 0.62 }} data-start-check-met={metList.length}>
           <div style={cap}>{W.hasAYes(metList.length)}</div>
           {metList.map((b) => (
-            <BulletRow key={b.id} b={b} stage={stage} line={line} rows={rows} site={site} today={today} me={me} kind={kind} canCompany={can.company} busy={busy} act={act} press={press} io={io} />
+            <BulletRow key={b.id} b={b} stage={stage} line={line} rows={rows} site={site} today={today} me={me} kind={kind} canCompany={can.company} busy={busy} act={act} press={press} io={io} templates={templates} />
           ))}
         </div>
       ) : null}
@@ -365,6 +365,8 @@ export function StartCheckStage({ stage, line, rows, site, notice, noticeKey, to
 
 type RowProps = {
   b: Bullet
+  /** The company's lists, so a No already on its kind's list is not offered to it again. */
+  templates?: readonly StartTemplateRow[]
   stage: Stage
   line: StageLine
   rows: StartCheckRows
@@ -444,7 +446,7 @@ function OursRow({ b, line, rows, me, kind, canCompany, busy, act, press }: RowP
   )
 }
 
-function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, busy, act, press, io }: RowProps & { b: ThemBullet }) {
+function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, busy, act, press, io, templates }: RowProps & { b: ThemBullet }) {
   const { showToast } = useToastContext()
   const [more, setMore] = useState(false)
   const file = useRef<HTMLInputElement | null>(null)
@@ -453,6 +455,7 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
   const needsPhoto = waitsOnPhoto(b)
   const no = saidNo(stage, b)
   const asked = lastAsk(b)
+  const onCompanyList = (templates ?? []).some((t) => !t.retired_at && t.stage_kind === kind && t.words.trim().toLowerCase() === b.words.trim().toLowerCase())
 
   const say = (know: Know, photo: Parameters<StartChecksIo['sayYes']>[0]['photo'] = null, id?: string) =>
     act('The yes was not kept.', (w) =>
@@ -496,6 +499,15 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
         {no ? (
           <div style={{ ...rowLine, color: 'var(--text-red-700)', fontWeight: 600 }}>
             {stage.arrival?.by} said No on site, {stage.arrival ? monthDay(stage.arrival.day) : ''}. It was not as told.
+            {/* A thing that was not as told on one site is worth asking on every job of this kind: the office is offered it here (PR 10). */}
+            {canCompany && kind && !onCompanyList ? (
+              <>
+                {' '}
+                <button type="button" className="scWord" disabled={busy} onClick={() => void act('It was not added to the company’s list.', (w) => w.addTemplate({ kind, order: nextBulletOrder(rows, line.fixtureId), words: b.words, on: 'them', wantsPhoto: b.wantsPhoto, reads: null }, me))}>
+                  {W.toCompany(kind)}
+                </button>
+              </>
+            ) : null}
           </div>
         ) : (
           <div style={{ ...rowLine, color: needsPhoto ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
