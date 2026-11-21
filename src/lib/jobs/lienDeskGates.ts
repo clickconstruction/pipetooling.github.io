@@ -162,6 +162,12 @@ export type LienSentGatesFold = {
   sentOn: string
   /** "Sent Oct 14" */
   head: string
+  /**
+   * "Jul + Aug": the months the notice named, off its own record. *no month named* when the record keeps none.
+   * The pane's strip and its Months on this job head read this (v2.8167). Nobody picks a month on a paper that went,
+   * so neither may fall to the draft's empty words.
+   */
+  months: string
   /** "Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug" */
   line: string
   rows: Array<{ n: 1 | 2 | 3 | 4; key: Exclude<LienGateKey, 'billed'>; label: string; value: string }>
@@ -180,6 +186,7 @@ export function lienSentGatesFold(input: { sentOn: string; gates: ReadonlyArray<
   return {
     sentOn: input.sentOn,
     head,
+    months,
     line: [head, ownerWords, gcWords, kindWords, months].join(' · '),
     rows: [
       { n: 1, key: 'owner', label: 'Owner of record', value: ownerWords },

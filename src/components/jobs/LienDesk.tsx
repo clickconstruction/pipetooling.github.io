@@ -2277,6 +2277,8 @@ export default function LienDesk({
         gates: gatesFold ? { sentOn: gatesFold.sentOn } : { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
         houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
         months: monthsList,
+        // A notice that went names its own months (v2.8167): the pane picks none on it, so the head read *no months* over a paper sent for two.
+        sentMonths: gatesFold?.months ?? null,
         claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
         pages: pageTotal,
         gcEmail: Boolean(gc?.email),

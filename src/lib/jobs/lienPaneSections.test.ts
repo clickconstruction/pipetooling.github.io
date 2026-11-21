@@ -31,6 +31,17 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
     expect(heads[1]).toEqual({ key: 'gates', label: 'The four gates', fact: 'Sent Oct 14', tail: 'as the notice went' })
   })
 
+  it('on a sent notice the months head reads the months the notice named, not the draft’s empty words (v2.8167)', () => {
+    const sent = { nextWords: null, gates: { sentOn: 'Oct 14' }, houses: null, months: [], claimWords: '$285', pages: 1, gcEmail: false, monthShort, money }
+    // The pane picks no month on a paper that went, so `months` is empty. The head read *no months · $285* off it.
+    expect(lienPaneSections({ ...sent, sentMonths: 'Jul + Aug' }).find((h) => h.key === 'months')).toEqual({ key: 'months', label: 'Months on this job', fact: 'Jul + Aug · $285', tail: '' })
+    // A record that keeps no month reads the fold's own words for it.
+    expect(lienPaneSections({ ...sent, sentMonths: 'no month named' }).find((h) => h.key === 'months')!.fact).toBe('no month named · $285')
+    // A notice still being drafted passes none and keeps its own months.
+    expect(lienPaneSections({ ...sent, gates: null, months: ['2026-07'], sentMonths: null }).find((h) => h.key === 'months')!.fact).toBe('Jul · $285')
+    expect(lienPaneSections({ ...sent, gates: null }).find((h) => h.key === 'months')!.fact).toBe('no months · $285')
+  })
+
   it('leaves the houses out when the job bought nothing, says all paid when it did and paid, and reads the gaps', () => {
     const base = { nextWords: null, gates: { ready: false, headline: 'Not ready', summary: '2 to fix' }, months: [], claimWords: '$0', pages: 1, gcEmail: false, monthShort, money }
     const none = lienPaneSections({ ...base, houses: null })

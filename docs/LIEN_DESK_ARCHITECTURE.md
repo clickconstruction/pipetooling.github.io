@@ -287,6 +287,7 @@ last_updated: 2026-11-20
 
 > **v2.7318 (the scrolled strip says less and every chip is a press, the owner's word of 2026-11-15 on JP372):** the strip that pins to a notice pane's top past `STRIP_COLLAPSE_PX` repeated the footer and the Next band in `<span>`s that did nothing.
 > [`lienStripChips.ts`](../src/lib/jobs/lienStripChips.ts) words it: one red chip per blocking gate in `lienGateShortWords`' words (*Owner of record missing ›*) and no *Can't go out yet*, one green *Ready to go out ›* with none, an amber chip for a check, the next step only when it is another paper or nothing blocks (a blocked notice's own step repeats the red chip), the months and the claim as quiet presses, a sent notice's *Sent Oct 14 ›* back to the top, every chip ending in ›.
+> Since **v2.8167** a sent notice's months chip reads the months the notice named, `lienSentGatesFold`'s `months` (*Jul + Aug ›*, or *No month named ›* when the record keeps none), and `lienPaneSections` takes the same words as `sentMonths` for the Months on this job head, because the pane's own months belong to a draft and are empty on a paper that went.
 > `LienDesk.tsx` draws them as `<button class="lienStripChip" data-lien-strip-chip={key} data-tone>` and `pressStripChip(act)` wires each to the door the gate box has: `gate:owner` → `setPaneFix` (the property window at the owner) for the office, `gate:gc` → Edit Job, `gate:kind` / `gate:billed` → `pickGate`, `months` → the grid, `claim` → the claim box, `wording` → the envelope line, `next` → `goToSection('path')`, `ready` → the footer's primary, `top` → the gates.
 > `data-lien-desk-strip` / `data-lien-desk-strip-next` / `data-lien-strip-sent` keep their places.
 
@@ -698,7 +699,7 @@ last_updated: 2026-11-20
 > The fuller version is #235, the lien month.
 
 > **v2.6625 (the gates fold on a sent notice with nothing due, punch list #248 PR 2, the owner's rule A):** region E's gates judged a notice that had already gone — 890 read *Can't go out yet · 3 blockers* and gate 4 *No month picked* over an empty grid.
-> `lienSentGatesFold` (`lienDeskGates.ts`) → `{ sentOn, head, line, rows }`: *Sent Oct 14 · the owner · the GC · the kind · the months the notice named*, each gate's value in plain words with no tone, the four as rows for *Details ∨* (*More details ∨* / *Fewer details ∧* since v2.7423, `LIEN_GATES_FOLD_WORDS`, read by both drawings).
+> `lienSentGatesFold` (`lienDeskGates.ts`) → `{ sentOn, head, months, line, rows }`: *Sent Oct 14 · the owner · the GC · the kind · the months the notice named*, each gate's value in plain words with no tone, the four as rows for *Details ∨* (*More details ∨* / *Fewer details ∧* since v2.7423, `LIEN_GATES_FOLD_WORDS`, read by both drawings).
 > `LienDeskModal` computes `gatesFold` when `selected.pile === 'sent'`, `dueMonths` is empty and the entry's item is the sent record;
 > the pane body draws `LienGatesSentFold` (`LienDeskGates.tsx`, `data-lien-gates-sent`) instead of `LienDeskGates`, the sticky strip a quiet *Sent Oct 14* chip instead of the verdict and the blocker chips, `lienPaneSections` the head *Sent Oct 14 · as the notice went* (`gates: { sentOn }`), and the stop window's *before* list is empty.
 > A Sent row with months still due keeps the four gates on the next notice (rule C of the card's face two).
