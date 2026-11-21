@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, walk this line, draw this line, open the line, line length, how long, another photo, more photos, second photo, before and after, open and covered, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -336,6 +336,37 @@ Never type a gate code or a lock code on a place. Anyone the map is shared with 
 To change a place you set, press **Change this place** beside it. Drag its dot, change its words or take another photo. Then press {{button:blue|Save the place}}. **Remove this place** takes it off the map for everyone.
 
 Press a photo in the list to see it large.
+
+### More than one photo
+
+A place can hold more photos after its first. Show the trench open, then show it filled.
+
+1. Press **Change this place** beside the place.
+2. Press {{button:outline|＋ Another photo}}. On a phone the camera opens.
+3. Press {{button:blue|Save the place}}.
+
+The extra photos sit under the place's words in the list. Press one to see it large.
+
+Press **Remove** under a photo to take it off. A place holds twelve more photos.
+
+A shared link shows a place's first photo only.
+
+### Walk the line of a buried place
+
+A buried line has a length. Walk it before the trench is filled, and the place keeps that length.
+
+1. Open **Places on this job** and find the buried place.
+2. Press {{button:outline|＋ Walk this line}}. Or press {{button:outline|＋ Draw this line}} to press it out on the map.
+3. Walk the line and press **Done**. Then press **Save the map**.
+4. Close the map. **Places on this job** opens again on the place.
+
+The line is on a painted map of its own, named for the place.
+
+The place's row now says the length, such as *About 60 ft, give or take 10 ft*. Press **Open the line** to see it.
+
+The line is drawn in the color of what is buried. A sewer line is green.
+
+You see the two presses on a place you set. The office sees them on every buried place.
 
 ## Send one place to someone
 

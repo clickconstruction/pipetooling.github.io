@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, and a photo's own spot is v2.8201
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, a photo's own spot is v2.8201, and more photos and a buried line's length are v2.8203
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -284,9 +284,9 @@ The card's first pick was to stop here and watch for three or four weeks. Taunya
 5. **The crew's window draws them (S). Built in v2.8200, as rows with photos. The small picture from above
    is not built: a row opens the list's own map on that place.** Rows with photos in the **Where** section of
    `src/components/jobs/DetailJobModal.tsx`, with a small picture from above on the old map.
-6. **A buried line with its length (S).** A walked line tied to a photo taken before backfill. The
+6. **A buried line with its length (S). Built in v2.8203.** A walked line tied to a photo taken before backfill. The
    app can walk a line and say its length today.
-7. **More than one photo on a place (S).** Open and covered.
+7. **More than one photo on a place (S). Built in v2.8203.** Open and covered.
 8. **A Map tab for the office (M).** Once a job commonly holds five or more places.
 
 ## Left out
