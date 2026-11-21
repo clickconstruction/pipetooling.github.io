@@ -4865,6 +4865,8 @@ The papers of one email are registered as one set (`registerSubPaperSet`), every
 One email carries 12 papers (`subPaperSendSet`, the function's own limit), and what does not fit is held and named.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
+Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
+Since v2.8217 the last press's line goes when the window moves to another paper or another step, and a new line always shows (`subPaperSaid.ts`).
 Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
@@ -4875,6 +4877,8 @@ Print on the sub's page still prints the Today paper, whichever view shows.
 Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
 The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
 A note also lands in the dispatch inbox with a push, and a payment nobody marked says nothing.
+Since v2.8217 the office's payment record reads the same marks (`paymentRecordReceived`): the window reads the person's `sub_paper_acks` before it draws, and the *Received* box says the day the sub pressed Got it, on the preview and on the paper as made.
+Marks that could not be read leave the record at *Not marked yet*, and the window says it could not tell.
 
 ### Sub payment trace (move / remove / undo)
 

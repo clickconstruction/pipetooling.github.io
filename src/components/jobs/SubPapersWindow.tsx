@@ -16,6 +16,10 @@
  * address has a dead press, the reason and the door its caller hands in (`emailDoor`). Papers past what one email
  * carries are held and named. Once it went, the step says so and offers Done in place of a second Send.
  *
+ * A payment record's *Received* box reads the sub's own Got it marks once its caller hands them in (`answers`),
+ * as the Pay view's chip does. The last press's line goes when the window moves to another paper or another step
+ * (`subPaperSaid.ts`).
+ *
  * The set is checked before any paper is drawn (`subPapersAddUp`). A set that does not add up shows what is off in
  * place of the paper, and its presses are dead.
  */
@@ -37,6 +41,8 @@ import {
   type StatementRange,
 } from '../../../supabase/functions/_shared/subPapers'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { paymentRecordReceived, type SubPaperAnswers } from '../../lib/subWorkOrders/subPaperAnswers'
+import { subPaperPlace, subPaperSaidHeld, subPaperSaidShown } from '../../lib/subWorkOrders/subPaperSaid'
 import { paymentRecordHtml, statementOfAccountHtml, SUB_PAPER_CSS, workStatementHtml } from '../../lib/subWorkOrders/subPapersHtml'
 import { subPaperSendPlan, subPaperSendSet, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
 import { ledgerPeriodRange } from '../../lib/subWorkOrders/subPaymentsLedger'
@@ -66,6 +72,10 @@ export type SubPapersWindowViewProps = {
   statementToday?: { number: string } | null
   /** Offer a payment record beside the other two papers. */
   paymentRecords?: boolean
+  /** What the sub said back from their page. A payment record says whether they marked it received. Absent where nothing reads the marks: every record then reads *Not marked yet*. */
+  answers?: SubPaperAnswers
+  /** The marks could not be read just now: a payment record still reads *Not marked yet*, and the window says that it could not tell. */
+  marksUnread?: boolean
   canSend: boolean
   /** The ways a paper may go. Only what is built is handed in: a texted link is not, and the By row is left out when there is one way. */
   sendBy?: readonly SubPaperSendBy[]
@@ -74,7 +84,7 @@ export type SubPapersWindowViewProps = {
   /** Start on the send step (the window after Record payment does). */
   startOnSend?: boolean
   busy?: string | null
-  /** What the last press said back: a failure's reason, or what went. */
+  /** What the last press said back: a failure's reason, or what went. It is drawn until the window moves to another paper or another step. */
   said?: { tone: 'ok' | 'bad'; words: string } | null
   onDownload: (paper: SubPaper, range: StatementRange) => void
   onPrint: (paper: SubPaper, range: StatementRange) => void
@@ -89,7 +99,7 @@ const seg = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78r
 const k: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', marginBottom: 3 }
 const field: CSSProperties = { marginTop: 10 }
 
-export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
+export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, answers, marksUnread = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
   const [view, setView] = useState<SubPapersOpen>(open)
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
@@ -105,6 +115,12 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const [attachPayments, setAttachPayments] = useState(false)
   const ways = SUB_PAPER_SEND_BY.filter((o) => sendBy.includes(o.key))
   const [by, setBy] = useState<SubPaperSendBy>(ways[0]?.key ?? 'email')
+  // The last press's line belongs to the paper and the step it arrived on, so it goes when either changes.
+  const place = subPaperPlace(view, step)
+  const [saidHeld, setSaidHeld] = useState(() => subPaperSaidHeld(null, said, place))
+  const saidNow = subPaperSaidHeld(saidHeld, said, place)
+  if (saidNow !== saidHeld) setSaidHeld(saidNow)
+  const saidShown = subPaperSaidShown(saidNow)
 
   const range: StatementRange = useMemo(() => {
     // A period never starts after it ends: a last statement that ended today or later leaves the statement to date.
@@ -120,10 +136,11 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const built = useMemo(() => {
     const work = sheets.map((s) => buildWorkStatement(s, ctx))
     const sendings = paperSendings(sheets)
-    const payments = sendings.map((s) => buildPaymentRecord(s, sheets, ctx))
+    // The sub's own mark, as the Pay view's chip reads it: without it every record would say *Not marked yet*.
+    const payments = sendings.map((s) => buildPaymentRecord(s, sheets, ctx, answers ? paymentRecordReceived(answers, s.key) : null))
     const everyDate = buildStatementOfAccount(sheets, { from: null, to: null }, ctx)
     return { work, payments, sendings, check: subPapersAddUp({ statement: everyDate, work, payments }) }
-  }, [sheets, ctx])
+  }, [sheets, ctx, answers])
   const statement = useMemo(() => buildStatementOfAccount(sheets, range, ctx), [sheets, range, ctx])
 
   const paper: SubPaper | null = view.kind === 'statement' ? statement : view.kind === 'work' ? (built.work.find((w) => w.sheetId === view.sheetId) ?? null) : (built.payments.find((p) => p.key === view.sendingKey) ?? null)
@@ -279,6 +296,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
               <div dangerouslySetInnerHTML={{ __html: html }} />
             </div>
             {SUB_PAPER_COUNSEL_PENDING ? <div style={{ fontSize: '0.75rem', color: 'var(--text-violet-700)', marginTop: 4 }}>§ The boxed sentences are draft wording. They wait on counsel, and every copy prints them marked.</div> : null}
+            {marksUnread && paper?.kind === 'payment_record' ? <div data-testid="sub-papers-marks-unread" style={{ fontSize: '0.75rem', color: 'var(--text-amber-900)', marginTop: 4 }}>Whether {ctx.sub.name} pressed Got it could not be read just now. This paper says Not marked yet either way.</div> : null}
           </div>
         ) : null}
 
@@ -316,7 +334,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                       ))}
                     </div>
                     {/* Where the register is live, a paper with no number yet takes one as it is made, and its file is named for it. */}
-                    {lastStatement !== undefined && [paper, ...attached].some((p) => !p.number && p.kind !== 'payment_record') ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>A paper with no number yet takes one as it is made, and its file is named for it.</div> : null}
+                    {lastStatement !== undefined && [paper, ...attached].some((p) => !p.number && p.kind !== 'payment_record') ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>A paper with no number yet takes one as it is made, and its file is named for it.{paper.kind === 'work_statement' && !paper.number ? ' The subject names it too.' : ''}</div> : null}
                   </>
                 ) : (
                   plan.text
@@ -361,9 +379,9 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
           </>
         ) : null}
 
-        {said ? (
-          <div role={said.tone === 'bad' ? 'alert' : 'status'} style={{ ...field, fontSize: '0.8125rem', color: said.tone === 'bad' ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
-            {said.words}
+        {saidShown ? (
+          <div role={saidShown.tone === 'bad' ? 'alert' : 'status'} style={{ ...field, fontSize: '0.8125rem', color: saidShown.tone === 'bad' ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
+            {saidShown.words}
           </div>
         ) : null}
 

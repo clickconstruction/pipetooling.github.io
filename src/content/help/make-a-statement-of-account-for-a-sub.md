@@ -59,6 +59,7 @@ A payment record shows one payment. It can be one check that paid several sheets
 - A row reads **Part payment** or **Paid in full**.
 - **After this payment** lists every sheet still open and the total.
 - The office's note to the sub prints under it. A hidden memo is left off.
+- **Received** says whether the sub pressed **Got it** on their page, and on which day. A payment nobody marked reads *Not marked yet*.
 
 Money paid from a sub's credit has no payment record. No money left the bank for it.
 
@@ -69,6 +70,8 @@ A memo the office hid from the sub is left off. The amounts always show.
 ## Print it or save it
 
 Press {{button:outline|Print}} to open the PDF in a new tab, ready to print. Press {{button:outline|Download the PDF}} to save the file. The file is named for the paper's number.
+
+After a download, a green line names the file. The line goes when you pick another paper or open the send step.
 
 Each print and each download files a copy. You find it on [Documents → Sent copies](/documents?tab=sent), under **Statements and reports**. The copy is filed on the sub and on each job.
 
@@ -88,7 +91,9 @@ Then press the blue press under them. The press reads {{button:blue|Send 3 paper
 2. One email goes to the sub with every PDF attached.
 3. A copy of each paper is filed on the sub and on each job.
 
-A green line says how many papers went, and to which address. The press turns into {{button:blue|Done}}. Press {{button:outline|Back to the paper}} to print the paper as well.
+A sheet's first work statement takes its number on this press. The subject of the email names that number, and so does the file.
+
+A green line says how many papers went, and to which address. The press turns into {{button:blue|Done}}. Press {{button:outline|Back to the paper}} to print the paper as well. The green line goes when you leave the send step.
 
 The copies are on [Documents → Sent copies](/documents?tab=sent). Each paper has a copy of its own, with the message the sub got.
 
