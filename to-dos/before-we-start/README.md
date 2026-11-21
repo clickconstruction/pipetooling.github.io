@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · left: the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · PR 10 and PR 11 audited 2026-11-20, five faults fixed in four PRs (#9167, #9168, #9170, #9174) · left: the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -422,3 +422,97 @@ all eleven PRs were on main by 2026-11-21.
     customer owes us…* there, while the Schedule look names the GC.
 - **Next:** the dev seat's verb, once the seat has room and the owner says what it reads.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
+
+## The audit
+
+Taunya asked for it on 2026-11-20: PR 10 (#9123, v2.8110) and PR 11 (#9131, v2.8111) had been read by nobody but
+the session that built them. A second session read both diffs whole against this card and against the code they
+call into: the tables' migration, the trips tables, the stage check's road to Dispatch, the push function and the
+rules in `startChecks.ts`. PRs 1 to 9 are not in it.
+
+Five faults were found, fixed in four small PRs. Nobody met one: production held one arrival, on a ZZ test
+job, and no real job has a list.
+
+### Found, each with its fix
+
+Most serious first. Each PR carries its release note, its fragment and a test that fails on the old code. All four
+were armed for the merge queue on 2026-11-20. #9167 is a migration and is pushed right after its merge.
+
+| # | The fault | The case that shows it | Where | Fixed in |
+|---|---|---|---|---|
+| 1 | **A second answer replaced a No.** `start_check_arrive` took a lock *to hold two arrivals apart* and never looked for the first arrival. | Two of ours reach a site with the card open. Hector says **No** on the slab. Luis, on the older card, presses **Yes, all as told**. The slab was still on the list to look at, so it became a yes we saw in Luis's name on a second arrival. The office reads the newest arrival: the red and the No were gone, and Dispatch's line was the only trace. | `supabase/migrations/20261120100000_start_check_arrive.sql:129` | #9167, a migration alone. The door refuses a second answer by name: *Hector Helper already answered for this stage.* |
+| 2 | **A card no press could answer.** A refused send left the card as it was. It read again only when the signal came back or the page returned to the front. | The second of two people at a site, every time: someone answered first, each press is refused the same way, and the card stays. The same after the office changes a bullet. | `src/components/jobMode/JobModeArrivalCheck.tsx:86` | #9168. A refused send reads again, so the card shows the list as it is now or leaves. |
+| 3 | **The card left when a later read failed.** A read that failed set the card to nothing, the first read or not. | A person presses two Nos, the phone goes to the pocket, and it comes back to the front with no signal. The card and its Nos are gone until the signal returns. | `src/components/jobMode/JobModeArrivalCheck.tsx:34` | #9168, with fault 2. A later read that fails keeps the card that is up. |
+| 4 | **A wrong number on the line of time.** *moved N days* was hung before a row's first mark whenever its last mark was past 70% of the line. On a row that runs the whole line that is the left edge. | One stage, first said ready the day after today, now ready a month later. At 320 px the words were 55 px off the left of the screen and *moved 32 days* read *2 days*. At 760 px they sat 70 px over the stage's name and the today line. The stage that moved the most is the one it hit. | `src/lib/startChecks/timeLine.ts:97` | #9170. The words sit under the row's marks, anchored on the day they say now and slid by the same share (`movedSlide`), so they cannot leave the row. |
+| 5 | **A press that did nothing.** `timeLine` answers null when no stage ahead has a day, and the look drew nothing for null. | A site as the office first sets it up, lists written and no day planned: **Show it on a line of time** turned to **Hide** and the screen stayed as it was. | `src/lib/startChecks/timeLine.ts:57`, `src/components/developments/DevelopmentScheduleCard.tsx:130` | #9174. An empty state says what is missing and that **Plan our days** on a stage draws its row. |
+
+Fault 4 was measured, not judged by eye: the real `ScheduleTimeLine` over the real `timeLine` and the app's own
+stylesheet in headless Chrome, with made-up stages, at 320, 390, 760 and 1400 px, before and after.
+
+### Calls for the owner, each with a pick
+
+None of these is built.
+
+| # | The call | As built | The pick |
+|---|---|---|---|
+| A | After a No, is the stage asked about again on the next trip? | Never. A stage is asked about once, and since #9167 the door holds that too. Only a dev deleting the arrival opens it again. | Ask again, about the bullets that had a No alone, once the office has a new yes on them. That is the trip where the yes most needs one of ours to see it. |
+| B | Two of ours answer, the first says **Yes, all**, the second says **No**. | The second is refused by name. Their No is not kept. | Let a later No through as its own arrival, and keep refusing a later Yes. A No is the dearer of the two. |
+| C | Who is the crew for an answer? | `start_checks_crew` counts anyone who was ever clocked in on the job, with no limit of days (`20261120033820_start_checks.sql:82`, PR 3's gate). PR 10 is the first write through it. | Hold the clock-in to the last 14 days. A person who worked the job last year should not answer for a stage today. |
+| D | A first read that fails is silent (PR 10's own fourth default). | It asks nothing, for a lost signal and for a refusal alike. `CLAUDE.md` asks a failed read on a crew screen to draw on `OfflineRetryPanel`. | Keep silence for a lost signal, as built. Draw a refusal, since that one is a fault of ours and not of the site. |
+| E | Values in place on the crew's card and the office's red line. | The stage's name is plain words in the card's lead (`JobModeArrivalCheck.tsx:96`). The name and the day in *Luis said No on site, Nov 20.* are plain words (`StartCheckStage.tsx:501`, a line from PR 4 that PR 10 added a press to). | Draw each as a worked-out value. Small, and it touches the kernel's words. |
+| F | The trip an arrival keeps. | Only a trip on the job's site (`trips.development_id`). A trip made on the job itself, or on a job with no site, is not kept (`20261120100000_start_check_arrive.sql:154`). | Match `trips.job_id` too, when #379's tie from a No to a wasted trip is built. |
+
+### Read, and found clean
+
+- **The migration.** It opens with `SET lock_timeout = '3s';`. It is `CREATE OR REPLACE` with its grants restated,
+  so a second run changes nothing. It makes no table, so it owes no fence calls.
+- **Who may call.** Both functions are definer with `search_path = public`. `PUBLIC` and `anon` hold no grant on
+  either, and `authenticated` and `service_role` do. Read from production's own catalog, not from the file.
+- **Who may write.** The crew holds no insert or update grant on any `start_check_*` table. Both functions ask
+  `start_checks_crew` or `start_checks_desk`. The door refuses an archived caller, training mode and a digital
+  twin itself. The line to Dispatch is written in the caller's own name.
+- **The road to Dispatch.** The one-open-check index does not hold a No back, since its question is null. The three
+  self-close triggers key on a question and never match one. `notify-dispatch-request` reads the title alone and
+  needed no change. Only Dispatch or a dev may close a line, so *the sender may close it* holds for a sender in the
+  Dispatch group.
+- **Production.** `20261120100000 start_check_arrive` is in the ledger. The types are on main (#9151).
+  `npm run check:edge-drift` reads all 199 functions as current, and neither PR changed one. No deploy is owed.
+- **The rules on the lines they wrote.** Error words go through `formatErrorMessage`. No raw neutral colour, and
+  the reds and greens are status colours. The new styles take `font-family: inherit`. Both guides pass the plain
+  words, content and links tests. The Schedule look draws a failed read on `OfflineRetryPanel`. The sheet's print
+  is listed as not a send, with its reason.
+- **The line of time's rules.** The span, the Monday it opens on, the ticks, a stage with no day, and the days
+  moved against `movedDays`. The printed sheet escapes every name it prints.
+
+### What the tests leave unproved
+
+- **The bed, `30_arrive.sql`.** Its job is on no site, so the trip lookup never runs there. It ran once on
+  production without error, for the ZZ arrival. The bed has no two stages both due, no stage at 100%, no sub, no
+  primary, no job shut by its papers, no photo yes replaced by a yes we saw, and no title with *and 1 more* or two
+  names. One transaction cannot show the lock holding two callers apart: #9167's check shows the second is refused
+  once the first is in.
+- **`movedSheetHtml`** has no test of its own. A day that moved earlier (*-5 days*) and a name that needs escaping
+  are read only by eye.
+- **The mounts.** No test holds that Job Mode's details draw the card, or that the Development page hands the look
+  the site's name.
+
+### The live look
+
+- **The office's Schedule look, on production**, signed in as the dev, on the ZZ test site, at 1280 and 375 px in
+  the dark theme. The banner, the five cards, the line of time with its bar, both diamonds, the day we decide, today
+  and *moved 2 days*, and no sideways scroll at either width. Nothing was pressed but **Show it on a line of time**,
+  which writes nothing.
+- **The crew's card was not seen on production with a question on it.** The ZZ stage has been answered, and a new
+  question needs rows on production that only a dev can take back. It was drawn from the real component on a
+  scratch page with a made-up list, at 320 and 390 px, light and dark: the question, a No pressed, both answers
+  kept, and a refusal. Every press is 44 px tall or more and nothing runs past the edge.
+- **No ZZ row was made**, so none was left to delete.
+
+### Not checked
+
+The light theme on production. The printed sheet as a page. A No's line in the live Dispatch inbox, since production
+holds none. The office's look as a sample assistant, a superintendent or a crew member through **View as**. The
+whole unit suite and the typecheck ran in CI for each fix and not on the Mac, which was under heavy load.
+
+One thing seen in passing and not this card's: `team-scores` runs on production with `verify_jwt` off while
+`config.toml` has it on, so a plain redeploy would change its gate.
