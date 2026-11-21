@@ -209,10 +209,14 @@ export default function LienDeskMonths({
   const lateRows = grid.rows.filter((r) => r.thisNotice.late)
   // A tick is asked for only where one can be made: a notice past editing, or one whose months are all closed, has none.
   const canTick = grid.rows.some((r) => !r.thisNotice.locked)
+  // This notice's column is drawn where it says something: a month can be ticked, or one is ticked already (a notice past
+  // editing shows the months it carries). A missed notice with nothing due has neither, so a column of empty locked boxes
+  // stood there under *This notice* for a notice nobody is drafting (v2.8125, the live walk of the audit of punch list #361).
+  const thisShown = thisPaper != null && (canTick || onCount > 0)
 
   // The foot of this notice's column (v2.7430): the months it names and their count, under the total they make.
   const foot: ReactNode =
-    thisPaper && (onCount > 0 || onPreviewThis) ? (
+    thisShown && (onCount > 0 || onPreviewThis) ? (
       <span className="lienLedgerClaimFoot" data-lien-grid-foot>
         {onCount ? <>This notice names <strong style={strong}>{onNames}</strong>{' · '}{onCount} {onCount === 1 ? 'month' : 'months'}</> : null}
         {onCount && onPreviewThis ? ' · ' : null}
@@ -235,15 +239,15 @@ export default function LienDeskMonths({
         </div>
       ) : (
         <>
-          {(thisPaper && canTick) || filings.length > 0 ? (
+          {(thisShown && canTick) || filings.length > 0 ? (
             <p className="lienLedgerLead" data-lien-ledger-lead>
-              {thisPaper && canTick ? 'Tick a month to put it on this notice.' : null}
-              {thisPaper && canTick && filings.length > 0 ? ' ' : null}
+              {thisShown && canTick ? 'Tick a month to put it on this notice.' : null}
+              {thisShown && canTick && filings.length > 0 ? ' ' : null}
               {filings.length > 0 ? 'A check is a paper that already names the month.' : null}
             </p>
           ) : null}
           <div className="lienLedgerGridFrame" ref={frameRef} data-slides={slides ? 'yes' : undefined}>
-            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)} data-this={thisPaper ? 'yes' : 'no'}>
+            <table className="lienLedgerGrid" data-papers={Math.min(filings.length, 3)} data-this={thisShown ? 'yes' : 'no'}>
               <thead>
                 <tr>
                   <th data-col="month">Month</th>
@@ -258,7 +262,7 @@ export default function LienDeskMonths({
                       </span>
                     </th>
                   ))}
-                  {thisPaper ? (
+                  {thisShown && thisPaper ? (
                     <th data-col="this" data-lien-grid-paper="this">
                       <span className="lienLedgerLetter" data-tone="this">{thisPaper.letter}</span>
                       This notice
@@ -292,7 +296,7 @@ export default function LienDeskMonths({
                           </td>
                         )
                       })}
-                      {thisPaper ? (
+                      {thisShown ? (
                         <td data-col="this" data-cell={r.cells.this ?? 'blank'}>
                           <label className="lienLedgerTick" style={{ cursor: r.thisNotice.locked ? 'default' : 'pointer' }}>
                             <input type="checkbox" checked={r.thisNotice.on} disabled={r.thisNotice.locked} onChange={(ev) => onToggle(r.month, ev.target.checked)} aria-label={workMonthLabel(r.month)} title={r.thisNotice.locked ? (r.window.noticed && !r.thisNotice.on ? 'Already noticed' : r.window.state === 'closed' ? 'The window closed' : r.pendingOnly ? 'Nothing approved yet' : 'The draft is past editing') : undefined} />
