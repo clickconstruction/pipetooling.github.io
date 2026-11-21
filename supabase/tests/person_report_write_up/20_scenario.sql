@@ -31,9 +31,11 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
 END $$;
 -- What the bed reads past RLS: a person's reports as "kind status by role", oldest first.
+-- The scenario is one transaction, so every row's created_at is the same now(). The press ids are fixed and rise
+-- in the order they are pressed, so they break the tie; the row's own id is random and would toss a coin.
 CREATE FUNCTION wup.rows(p_person uuid) RETURNS text LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $$
   SELECT COALESCE(string_agg(COALESCE(r.kind, 'none') || ' ' || r.status || ' by ' || COALESCE(r.author_role, 'none')
-           || CASE WHEN r.adds_to IS NOT NULL THEN ' adds' ELSE '' END, ' | ' ORDER BY r.created_at, r.id), 'none')
+           || CASE WHEN r.adds_to IS NOT NULL THEN ' adds' ELSE '' END, ' | ' ORDER BY r.created_at, r.press_id, r.id), 'none')
   FROM public.person_reports r WHERE r.subject_person_id = p_person $$;
 CREATE FUNCTION wup.one(p_press uuid) RETURNS jsonb LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $$
   SELECT to_jsonb(r) FROM public.person_reports r WHERE r.press_id = p_press $$;
