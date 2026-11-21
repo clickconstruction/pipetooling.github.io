@@ -49,6 +49,9 @@ done
 # the old one. The file above makes the old one again, so the newer file runs after it, as on prod.
 LATER="$(ls supabase/migrations/*_settings_on_the_job.sql)"
 psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# And the ground under #389's step 4, which replaces job_papers_require once more.
+GROUND="$(ls supabase/migrations/*_settings_page_ground.sql)"
+psql_as postgres -f - < "$GROUND" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $GROUND"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/job_required_papers/20_scenario.sql 2>&1 || true)"
 if ! grep -q "job_required_papers PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
