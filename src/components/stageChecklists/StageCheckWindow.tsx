@@ -54,6 +54,8 @@ export interface StageCheckWindowProps {
   openCheckLabel?: string
   /** The foot's words for a line nothing closes by itself (a No on arrival). With them the sender may close it too. */
   footWords?: string
+  /** Where the line came from, when that is not a checklist's sheet (a No on arrival is sent from the crew's card). */
+  sentFromWords?: string
   /** Drawn on a check that leads the inbox, when the mount may change a priority. */
   onLower: (() => void) | null
   onClose: () => void
@@ -73,7 +75,7 @@ const box: CSSProperties = { width: '100%', minHeight: 64, boxSizing: 'border-bo
 const closedBlock: CSSProperties = { ...note, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' }
 const lowerBtn: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 
-export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, draft, onDraftChange, saving, onReply, onReplyAndClose, onOpenJob, onOpenCheck, openCheckLabel, footWords, onLower, onClose, io }: StageCheckWindowProps) {
+export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, draft, onDraftChange, saving, onReply, onReplyAndClose, onOpenJob, onOpenCheck, openCheckLabel, footWords, sentFromWords, onLower, onClose, io }: StageCheckWindowProps) {
   const payload = useMemo(() => stageCheckPayloadFrom(row.pending_payload), [row.pending_payload])
   const [live, setLive] = useState<StageCheckLiveContext | null>(null)
   const jobId = row.job_ledger_id
@@ -185,7 +187,7 @@ export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, d
           <div style={note}>
             <div style={who}>
               <strong style={{ color: 'var(--text-strong)' }}>{fromLabel}</strong>
-              {sentMeta ? ` · ${sentMeta.weekdayTimeChicago} · ${sentMeta.daysAgoLabel}` : ''} · {STAGE_CHECK_WORDS.sentFromSheet}
+              {sentMeta ? ` · ${sentMeta.weekdayTimeChicago} · ${sentMeta.daysAgoLabel}` : ''} · {sentFromWords ?? STAGE_CHECK_WORDS.sentFromSheet}
             </div>
             {ctx.words || ctx.reasonLabel}
           </div>

@@ -7648,6 +7648,7 @@ A company truck with no insurance, registration, service or replacement value on
   and a `stage_check` request on *Questions on this job* wears the inbox's *Stage check* tag (`readRequestsWhere` selects `pending_action` on the Dispatch table alone, since the estimators' table has no such column);
   the guides *send a check to Dispatch*, *answer a check the crew sent* and *read the Pipeline's money view*.
   A **No on arrival** rides the same road with no check behind it (v2.8110, punch list #382): `question_id` is null and the payload carries `start_check_arrival_id`, so the row keeps the tag, the red wait line and the window, wears **Open the list** where a check has **Open the check**, and is closed by Dispatch or its sender since nothing closes it by itself.
+  Since v2.8161 its window's first line reads *sent on arrival* where a check's reads *sent from the sheet*.
 - **Draw** (Stage Plan) — an Order stage's invoice, numbered by its stage: *Draw 2 · Top-out*.
   Draws follow the stages: nothing bills out of order (a passed stage **waits** while the one above it is unbilled;
   a bill made by amount that covers it counts as billed);
