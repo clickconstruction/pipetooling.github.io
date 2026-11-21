@@ -11,6 +11,8 @@ import {
   jobHasOwnChanges,
   jobHasSomethingToPublish,
   jobIsBehind,
+  jobIsOnUsual,
+  jobsOnUsual,
   jobPublishPress,
   readPress,
   sheetBarChips,
@@ -18,6 +20,7 @@ import {
   sheetNote,
   sheetStamp,
   USUAL_PRESS_MOVED,
+  usualJobsHead,
   usualPlanChip,
   usualPlanFor,
   usualPublishPress,
@@ -123,6 +126,34 @@ describe('the usual’s publish', () => {
       { tone: 'warn', words: 'Held. It has changes of its own waiting.' },
     ])
     expect(usualPlanChip(plan[0]!, false, 1)).toEqual({ tone: 'ok', words: 'Revision 1' })
+  })
+
+  it('says a job is behind on its row when no change waits, and still says it gets a change that does', () => {
+    const plan = usualPlanFor(jobs, sheets)
+    expect(usualPlanChip(plan[0]!, false, 1, true)).toEqual({ tone: 'warn', words: 'Revision 1, behind your usual' })
+    expect(usualPlanChip(plan[0]!, true, 1, true)).toEqual({ tone: 'ok', words: 'Gets it, as revision 2' })
+    expect(usualPlanChip(plan[2]!, false, 1, true)).toEqual({ tone: 'warn', words: 'Held. It has changes of its own waiting.' })
+  })
+
+  it('counts a job as on the usual only while its published sheet is on the newest revision', () => {
+    expect(jobIsOnUsual(out(), 1)).toBe(true)
+    expect(jobIsOnUsual(out({ own: withJobWords(USUAL, OWN(), coverPath('umb', 'limit'), 'Made-up amount 9') }), 1)).toBe(true)
+    expect(jobIsOnUsual(out(), 2)).toBe(false)
+    expect(jobIsOnUsual(job(), 1)).toBe(false)
+    expect(jobIsOnUsual(undefined, 1)).toBe(false)
+    expect(jobsOnUsual(jobs, sheets, 1)).toBe(2)
+    expect(jobsOnUsual(jobs, sheets, 2)).toBe(0)
+    expect(jobsOnUsual(jobs, new Map([['cedar', out({ usualRevision: 2 })], ['pike', out()]]), 2)).toBe(1)
+  })
+
+  it('heads the list of jobs with how many are on the usual, and says every only when every one is', () => {
+    expect(usualJobsHead(true, 0, 3)).toBe('Where this change goes')
+    expect(usualJobsHead(false, 3, 3)).toBe('Every job is on your usual')
+    expect(usualJobsHead(false, 2, 3)).toBe('2 of 3 jobs are on your usual')
+    expect(usualJobsHead(false, 1, 2)).toBe('1 of 2 jobs is on your usual')
+    expect(usualJobsHead(false, 0, 2)).toBe('No job is on your usual yet')
+    expect(usualJobsHead(false, 0, 0)).toBe('No job is on your usual yet')
+    expect(['Every job is on your usual', '2 of 3 jobs are on your usual', 'No job is on your usual yet', 'Revision 1, behind your usual'].flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 })
 

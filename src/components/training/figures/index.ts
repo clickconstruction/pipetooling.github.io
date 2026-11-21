@@ -137,6 +137,14 @@ import { TheCard } from './TheCard'
 import { CondensateDrain } from './CondensateDrain'
 import { PanAndFloat } from './PanAndFloat'
 import { HeatPumpReverse } from './HeatPumpReverse'
+import { FurnaceCutaway } from './FurnaceCutaway'
+import { GasToAppliance } from './GasToAppliance'
+import { ClosetAir } from './ClosetAir'
+import { SharedVent } from './SharedVent'
+import { CoPath } from './CoPath'
+import { SupplyAndReturn } from './SupplyAndReturn'
+import { FilterAndStat } from './FilterAndStat'
+import { WaterMeetsAir } from './WaterMeetsAir'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -259,4 +267,12 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'condensate-drain': CondensateDrain,
   'pan-and-float': PanAndFloat,
   'heat-pump-reverse': HeatPumpReverse,
+  'furnace-cutaway': FurnaceCutaway,
+  'gas-to-appliance': GasToAppliance,
+  'closet-air': ClosetAir,
+  'shared-vent': SharedVent,
+  'co-path': CoPath,
+  'supply-and-return': SupplyAndReturn,
+  'filter-and-stat': FilterAndStat,
+  'water-meets-air': WaterMeetsAir,
 }

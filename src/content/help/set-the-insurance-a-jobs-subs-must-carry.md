@@ -50,6 +50,8 @@ A list **Before this can be published** shows while something is missing. Fix ea
 - Each job is read again when you press. A change a teammate saved a moment ago is kept, and that job is held.
 - If a job changed since your page read it, nothing is published. The button then shows where your usual goes. Press it again.
 - After the press, the card counts the jobs held. Each held job's row says why.
+- With no change waiting, the card's heading counts the jobs on your usual. The heading reads **Every job is on your usual** only when every one is.
+- {{chip:yellow|Revision 1, behind your usual}} marks a job the last publish left behind. Publish that job to bring it up.
 
 A field a job has changed keeps the job's own words.
 

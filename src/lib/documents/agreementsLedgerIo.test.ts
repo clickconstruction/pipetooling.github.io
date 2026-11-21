@@ -64,6 +64,15 @@ describe('readAgreements', () => {
     ])
   })
 
+  it('asks for an estimator’s kinds under their chips, and for no kind under a chip they do not have', async () => {
+    await readAgreements({ kind: 'outside', state: 'live', typed: '', limit: 100, reader: 'estimator' })
+    expect(calls()[1]).toEqual(['in', ['kind', ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement']]])
+    await readAgreements({ kind: 'people', state: 'live', typed: '', limit: 100, reader: 'estimator' })
+    expect(calls()[1]).toEqual(['in', ['kind', []]])
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100, reader: 'estimator' })
+    expect(calls().filter(([op, args]) => op === 'in' && args[0] === 'kind')).toEqual([])
+  })
+
   it('asks for every state under the Search tab', async () => {
     await readAgreements({ kind: 'all', state: 'any', typed: 'pierce', limit: 100 })
     expect(calls()).toEqual([
@@ -121,6 +130,12 @@ describe('countAgreementsWaiting', () => {
     db.answer = { data: null, error: null, count: 1 }
     expect(await countAgreementsWaiting('orders')).toBe(1)
     expect(calls()[2]).toEqual(['in', ['kind', ['work_order']]])
+  })
+
+  it('counts an estimator’s kinds under their chip', async () => {
+    db.answer = { data: null, error: null, count: 2 }
+    expect(await countAgreementsWaiting('outside', 'estimator')).toBe(2)
+    expect(calls()[2]).toEqual(['in', ['kind', ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement']]])
   })
 
   it('answers zero for no count, and null when the count cannot be read', async () => {
