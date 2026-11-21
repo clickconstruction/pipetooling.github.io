@@ -50687,6 +50687,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: Json
       }
+      on_site_door_facts: { Args: { p_job_id: string }; Returns: Json }
       on_site_job_counts: { Args: { p_job_id: string }; Returns: Json }
       on_site_job_in_development: {
         Args: { p_development_id: string; p_job_id: string }

@@ -1652,6 +1652,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "on_site_can_tie_parts": [{"args":{},"returns":"boolean"}],
   "on_site_can_touch_job": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "on_site_carry_job": [{"args":{"p_from":"string","p_to":"string"},"returns":"Json"}],
+  "on_site_door_facts": [{"args":{"p_job_id":"string"},"returns":"Json"}],
   "on_site_job_counts": [{"args":{"p_job_id":"string"},"returns":"Json"}],
   "on_site_job_in_development": [{"args":{"p_development_id":"string","p_job_id":"string"},"returns":"boolean"}],
   "on_site_job_summary": [{"args":{"p_job_id":"string","p_since?":"string"},"returns":"Json"}],
