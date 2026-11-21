@@ -609,6 +609,8 @@ Press {{button:blue|Draw a line}} or {{button:outline|＋ Place}} and the pictur
 
 The map then stays on that picture until you close it. Your new line stays on the photograph you drew it over.
 
+On a weak signal Google's map can take a few seconds to load. Your lines and numbered places show at once on a blank ground. The photograph comes in under them, and nothing moves. You can tap a place while you wait.
+
 The two photographs were taken on different days. A line can sit a few feet to one side on the other one.
 
 **Time** changes the picture too, since the older photographs are not Google's. Press **Time** again to go back to Google Maps.
