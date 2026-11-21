@@ -330,6 +330,17 @@ export function lienApplyMonthsOffered(input: { pile: string; months: ReadonlyAr
 }
 
 /**
+ * Whether the step opens with no paper picked and no month ticked (the owner's answer of 2026-11-20 to the audit of
+ * punch list #361): on a missed notice with no month still due. The months offered there are closed ones the desk is
+ * not asking for, so the office says which the paper stood for. Ticked on arrival, one typed reason cleared the
+ * warnings for all of them, and the record and the affidavit then read every one as noticed. Everywhere else the
+ * months are the notice's own, so they start ticked and a lone paper starts picked.
+ */
+export function lienApplyStartsBlank(input: { pile: string; dueMonths: ReadonlyArray<string> }): boolean {
+  return input.pile === 'missed' && input.dueMonths.length === 0
+}
+
+/**
  * Whether the notice waiting on the desk is set aside with the record: only when every month it names has a notice
  * afterwards. A waiting notice that names another month too stays where it is, so that month is not lost.
  */

@@ -86,10 +86,15 @@ const promiseMock = vi.fn()
 const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
 // A notice that already went (v2.7508): the papers on record at the property, empty unless a test puts one there, and the one write (v2.8027).
-const applyIo = vi.hoisted(() => ({ papers: [] as unknown[], apply: vi.fn(async (_input: unknown) => ({ filingId: 'applied1', setAside: false })) }))
+// `hold` keeps the read open until a test lets it go, and `load` counts the reads (the owner's answers of 2026-11-20).
+const applyIo = vi.hoisted(() => ({ papers: [] as unknown[], hold: null as Promise<void> | null, load: vi.fn(), apply: vi.fn(async (_input: unknown) => ({ filingId: 'applied1', setAside: false })) }))
 vi.mock('../../lib/jobs/lienNoticeApplyIo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/jobs/lienNoticeApplyIo')>()),
-  loadLienApplyContext: async () => ({ papers: applyIo.papers, noticedMonths: [] }),
+  loadLienApplyContext: async () => {
+    applyIo.load()
+    if (applyIo.hold) await applyIo.hold
+    return { papers: applyIo.papers, noticedMonths: [] }
+  },
   applyLienNoticePaper: (input: unknown) => applyIo.apply(input),
 }))
 // Is this public property? (v2.7443): the window's read and the one write.
@@ -4263,7 +4268,79 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     }
   })
 
-  it('on a missed notice with nothing due, the step offers the closed month to tick, and a paper on record applies to it (v2.8027)', async () => {
+  // The step grows when its read of the property's papers ends, and the watch on the footer's growth stops after 4 s
+  // (the owner's answer 4 of 2026-11-20 to the audit of punch list #361): with the read held 6 s the step's Apply ended
+  // at 1,087 px of a 900 px window. The step now says when it has its final pane, and the pane lands on it again.
+  it('on a computer the pane lands on the step again when its read of the papers ends, after the 4 s watch has stopped', async () => {
+    const scrollTo = vi.fn()
+    const had = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo')
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true, writable: true })
+    // A watch that records its stop, so the test can see the footer's one has ended before the read does.
+    const g = globalThis as { ResizeObserver?: unknown }
+    const hadWatch = g.ResizeObserver
+    const watches: Array<{ stopped: boolean }> = []
+    g.ResizeObserver = class {
+      state = { stopped: false }
+      constructor() { watches.push(this.state) }
+      observe() {}
+      unobserve() {}
+      disconnect() { this.state.stopped = true }
+    }
+    const stopped = () => watches.filter((w) => w.stopped).length
+    let release: () => void = () => {}
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} initialKind="notice" initialJobId="j650" />)
+      await settle()
+      const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+      const landings = () => scrollTo.mock.contexts.filter((c) => c === pane).length
+      applyIo.hold = new Promise<void>((resolve) => { release = resolve })
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      fireEvent.click(monthsDoor())
+      // The read is held: the step is its short box, and the press has landed the pane on it.
+      expect(document.querySelector('[data-lien-pane-body="sign"] [data-testid="lien-already-went-loading"]')).not.toBeNull()
+      expect(landings()).toBeGreaterThan(0)
+      const stoppedAtOpen = stopped()
+      vi.advanceTimersByTime(4100)
+      // Past 4 s the watch on the footer's growth has stopped, and the read is still out.
+      expect(stopped()).toBe(stoppedAtOpen + 1)
+      expect(screen.getByTestId('lien-already-went-loading')).toBeTruthy()
+      vi.useRealTimers()
+      scrollTo.mockClear()
+      release()
+      await screen.findByTestId('lien-notice-by-hand')
+      // One more landing, made by the step's own word that its final pane is drawn.
+      expect(landings()).toBe(1)
+    } finally {
+      vi.useRealTimers()
+      release()
+      applyIo.hold = null
+      g.ResizeObserver = hadWatch
+      if (had) Object.defineProperty(HTMLElement.prototype, 'scrollTo', had)
+      else delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo
+    }
+  })
+
+  // With no month to apply the step is the by-hand record at once, and the property's papers are not read (the owner's answer 3 of 2026-11-20).
+  it('on a notice in Sent, Record it… is the by-hand record at once, with no read of the papers and no paper list', async () => {
+    applyIo.papers = [{ key: 'sent:2026-09-14:certified_mail:9407 0001', sourceFilingId: 'f1', sourceJobId: 'j650', sourceJobLabel: '650', sentOn: '2026-09-14', method: 'certified_mail', tracking: '9407 0001', toOwner: true, toContractor: true, claimAsPrinted: 9_000, monthsPrinted: ['2026-06'], jobLabels: ['650'], documentUrl: '', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0001', sent_on: '2026-09-14' }], packetId: 'p1', fields: {} }]
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={sentData()} initialKind="notice" initialJobId="j650" initialPile="sent" />)
+      await settle()
+      await waitFor(() => expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull())
+      applyIo.load.mockClear()
+      fireEvent.click(monthsDoor())
+      // On the press itself: no loading box and no *Which paper went?* over a dead Apply.
+      expect(screen.getByTestId('lien-notice-by-hand')).toBeTruthy()
+      expect(screen.queryByTestId('lien-already-went-loading')).toBeNull()
+      await settle()
+      expect(screen.queryByTestId('lien-notice-apply')).toBeNull()
+      expect(applyIo.load).not.toHaveBeenCalled()
+    } finally {
+      applyIo.papers = []
+    }
+  })
+
+  it('on a missed notice with nothing due, the step offers the closed month with nothing picked or ticked, and a paper on record applies to the month the office ticks (v2.8027, the owner’s answer 1 of 2026-11-20)', async () => {
     // Made-up: a paper of Jul 10 on record on job 651 at the same property, naming May.
     applyIo.papers = [{ key: 'sent:2026-07-10:certified_mail:11', sourceFilingId: 'f9', sourceJobId: 'j651', sourceJobLabel: '651', sentOn: '2026-07-10', method: 'certified_mail', tracking: '11', toOwner: true, toContractor: true, claimAsPrinted: 9_000, monthsPrinted: ['2026-05'], jobLabels: ['651'], documentUrl: '', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '11', sent_on: '2026-07-10' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '12', sent_on: '2026-07-10' }], packetId: 'p9', fields: {} }]
     applyIo.apply.mockClear()
@@ -4272,10 +4349,22 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
       await settle()
       fireEvent.click(monthsDoor())
       const months = await screen.findByRole('group', { name: /months it named/ })
-      // May is the closed month the desk calls missed: offered and ticked, where the step said it was asking for no month.
+      // May is the closed month the desk calls missed: offered, where the step said it was asking for no month.
       const may = within(months).getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement
-      expect(may.checked).toBe(true)
       expect(months.textContent).not.toContain('The desk is not asking this job for a month.')
+      // It is a closed month the desk is not asking for, so it is not ticked for the office, and the lone paper is not picked.
+      expect(may.checked).toBe(false)
+      const paper = screen.getByRole('radio', { name: /^The notice of Jul 10/ }) as HTMLInputElement
+      expect(paper.checked).toBe(false)
+      const press = screen.getByTestId('lien-apply-record') as HTMLButtonElement
+      expect(press.textContent).toContain('Pick the paper that went')
+      expect(press.disabled).toBe(true)
+      // The paper picked with no month ticked is refused. The month ticked, Apply writes it.
+      fireEvent.click(paper)
+      expect(screen.getByTestId('lien-apply-checks').textContent).toContain('Tick the month this paper stands for.')
+      expect(press.disabled).toBe(true)
+      fireEvent.click(may)
+      expect(press.disabled).toBe(false)
       fireEvent.click(screen.getByRole('button', { name: /^Apply the Jul 10 notice to job 650/ }))
       await waitFor(() => expect(applyIo.apply).toHaveBeenCalledTimes(1))
       const input = applyIo.apply.mock.calls[0]![0] as { months: string[]; setAside: unknown }

@@ -226,13 +226,13 @@ Each envelope has its own mail number. Certified mail or a courier to both recip
 
 Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
-The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}. The months card has it too, as **Record it…** under the bills. It opens this step at the foot of the pane on every notice, sent and missed ones too.
+The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}. The months card has it too, as **Record it…** under the bills. It opens this step at the foot of the pane on every notice, sent and missed ones too. When the desk is asking for no month, the step opens on the record of a notice sent by hand.
 
 ## A notice already on record
 
 Sometimes the paper that went is already on record. One paper went for several jobs at a property. The paper was recorded on some of those jobs and not on this one. Or the desk moved this job's money to a later month after the paper went. The desk then keeps asking this job for a notice. Do not print and mail a second one. Press **Already mailed? Record it…** on the notice.
 
-When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job. On a missed notice with no month still due, the closed months are there to tick.
+When the property has a notice on record, the step first asks **Which paper went?** The list shows each paper on record at this property under the same contractor. Each line gives the day, how it went and its total. Under that it names the jobs, the months and who received it. Pick the paper. Then tick the month it stands for on this job. On a missed notice with no month still due, the closed months are there to tick. On that notice no paper starts picked. No month starts ticked. You pick the paper, and you tick the month it stood for.
 
 The desk checks the paper against the job. A green line says the owner of record and the contractor match. A red line stops the record and says why. A paper that went before the month began is one. An amber line is a warning. The month may not be printed on the paper. The copy to the contractor may not be on record. With a warning, type why the paper stands for the month. The reason stays on the record with your name and the day.
 
