@@ -15,6 +15,7 @@ import {
   freshKey,
   jobSheetMissing,
   layOver,
+  mintKey,
   openPath,
   parseJobSheet,
   parseResolvedSheet,
@@ -51,6 +52,7 @@ import {
   withoutUsualCover,
   withoutUsualOpenLine,
   type JobSheet,
+  type KeyMint,
   type SheetDef,
 } from './sheet'
 
@@ -64,6 +66,12 @@ const USUAL: SheetDef = {
 const CEDAR = (): JobSheet => startJobSheet({ name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', insured: ['Pecan Ridge Holdings, Ltd.', 'Lone Oak Property Management, Inc.'] })
 
 const asStored = (v: unknown): unknown => JSON.parse(JSON.stringify(v))
+
+/** A key maker a test can read: 1, 2, 3. The app's own makes letters nobody was given before. */
+const counting = (): KeyMint => {
+  let n = 0
+  return () => String(++n)
+}
 
 describe('reading a sheet out of the database', () => {
   it('reads the first draft back whole', () => {
@@ -124,13 +132,70 @@ describe('the standing sheet', () => {
   })
 
   it('adds and removes a line, each new line on a key of its own', () => {
-    const more = withUsualOpenLine(withUsualOpenLine(USUAL))
-    expect(more.open.map((l) => l.key)).toEqual(['o1', 'o2', 'o3', 'o4', 'o5'])
-    expect(withoutUsualOpenLine(more, 'o2').open.map((l) => l.key)).toEqual(['o1', 'o3', 'o4', 'o5'])
-    expect(freshKey(['o1', 'o3', 'o4'], 'o')).toBe('o5')
-    const cover = withUsualCover(USUAL, { label: 'Pollution liability', limit: 'Made-up amount 6' })
-    expect(cover.cover[5]).toEqual({ key: 'c6', label: 'Pollution liability', limit: 'Made-up amount 6' })
-    expect(withoutUsualCover(cover, 'umb').cover.map((c) => c.key)).toEqual(['cgl', 'auto', 'wc', 'el', 'c6'])
+    const mint = counting()
+    const more = withUsualOpenLine(withUsualOpenLine(USUAL, mint), mint)
+    expect(more.open.map((l) => l.key)).toEqual(['o1', 'o2', 'o3', 'o-1', 'o-2'])
+    expect(withoutUsualOpenLine(more, 'o2').open.map((l) => l.key)).toEqual(['o1', 'o3', 'o-1', 'o-2'])
+    const cover = withUsualCover(USUAL, { label: 'Pollution liability', limit: 'Made-up amount 6' }, mint)
+    expect(cover.cover[5]).toEqual({ key: 'c-3', label: 'Pollution liability', limit: 'Made-up amount 6' })
+    expect(withoutUsualCover(cover, 'umb').cover.map((c) => c.key)).toEqual(['cgl', 'auto', 'wc', 'el', 'c-3'])
+  })
+})
+
+describe('a line’s key is never given out twice', () => {
+  it('gives a new line a key of its own after a line was removed, so a job’s old change does not land on it', () => {
+    // The usual gains a line, a job changes its amount and leaves another job's copy of it off, and the usual drops it.
+    const withLine = withUsualCover(USUAL, { label: 'Pollution liability', limit: 'Made-up amount 6' })
+    const oldKey = withLine.cover[5]!.key
+    const changed = withJobWords(withLine, CEDAR(), coverPath(oldKey, 'limit'), 'Made-up amount 60')
+    const leftOff = withJobCoverOff(CEDAR(), oldKey, true)
+    const dropped = withoutUsualCover(withLine, oldKey)
+    // A new line comes onto the usual. It is another line, on another key.
+    const again = withUsualCover(dropped, { label: 'Riggers liability', limit: 'Made-up amount 7' })
+    const newKey = again.cover[5]!.key
+    expect(newKey).not.toBe(oldKey)
+    // The first job reads the new line as the usual has it, and the second job still asks for it.
+    expect(layOver(again, changed).cover[5]).toEqual({ label: 'Riggers liability', limit: 'Made-up amount 7' })
+    expect(layOver(again, leftOff).cover.map((c) => c.label)).toContain('Riggers liability')
+    expect(sheetDiffers(again, changed)).toEqual([])
+    expect(sheetDiffers(again, leftOff)).toEqual([])
+  })
+
+  it('does the same for an opening line and for a line added on one job', () => {
+    const more = withUsualOpenLine(USUAL)
+    const oldKey = more.open[3]!.key
+    const job = withJobWords(more, CEDAR(), openPath(oldKey), 'This job’s own fourth line.')
+    const again = withUsualOpenLine(withoutUsualOpenLine(more, oldKey))
+    expect(again.open[3]!.key).not.toBe(oldKey)
+    expect(layOver(again, job).open[3]).toBe(SHEET_NEW.line)
+    const added = withJobExtra(CEDAR())
+    expect(withJobExtra(withoutJobExtra(added, added.extra[0]!.key)).extra[0]!.key).not.toBe(added.extra[0]!.key)
+  })
+
+  it('makes every key apart from the last, and makes the letters again while they match a key in use', () => {
+    const made = new Set(Array.from({ length: 200 }, () => freshKey([], 'c')))
+    expect(made.size).toBe(200)
+    expect([...made].every((k) => /^c-[0-9a-f-]{32,36}$/.test(k))).toBe(true)
+    expect(mintKey()).not.toBe(mintKey())
+    const letters = ['a', 'a', 'b']
+    expect(freshKey(['c-a'], 'c', () => letters.shift() as string)).toBe('c-b')
+    // A key is one piece of a path, so it holds no dot.
+    expect(freshKey([], 'o')).not.toContain('.')
+  })
+
+  it('lets go, at a publish, of a job’s change to a line the usual no longer has', () => {
+    let job = withJobWords(USUAL, CEDAR(), coverPath('umb', 'limit'), 'Made-up amount 9')
+    job = withJobWords(USUAL, job, openPath('o2'), 'This job’s own second line.')
+    job = withJobCoverOff(withJobCoverOff(job, 'auto', true), 'el', true)
+    const dropped = withoutUsualCover(withoutUsualCover(withoutUsualOpenLine(USUAL, 'o2'), 'umb'), 'auto')
+    const pruned = pruneJobSheet(dropped, job)
+    // What still differs is kept: the line it leaves off that the usual still asks for.
+    expect(pruned.over).toEqual({})
+    expect(pruned.off).toEqual(['el'])
+    expect(pruneJobSheet(dropped, pruned)).toBe(pruned)
+    // The page reads the same before and after: a change to a line that is gone was never on it.
+    expect(layOver(dropped, pruned)).toEqual(layOver(dropped, job))
+    expect(pruneJobSheet(USUAL, job)).toBe(job)
   })
 })
 
@@ -171,12 +236,12 @@ describe('what differs on a job', () => {
     let job = withJobWords(USUAL, CEDAR(), coverPath('umb', 'limit'), 'Made-up amount 9')
     job = withJobWords(USUAL, job, fieldPath('co'), 'Acme Plumbing of Cedar Park')
     job = withJobCoverOff(job, 'auto', true)
-    job = withJobExtraWords(withJobExtra(job), 'x1', 'label', 'Pollution liability')
+    job = withJobExtraWords(withJobExtra(job, counting()), 'x-1', 'label', 'Pollution liability')
     expect(sheetDiffers(USUAL, job)).toEqual([
       { kind: 'field', path: 'f.co', name: 'Your name at the top', usual: 'Acme Plumbing', words: 'Acme Plumbing of Cedar Park' },
       { kind: 'field', path: 'cover.umb.limit', name: 'Umbrella, its amount', usual: 'Made-up amount 5', words: 'Made-up amount 9' },
       { kind: 'off', coverKey: 'auto', name: 'Commercial auto liability' },
-      { kind: 'extra', extraKey: 'x1', name: 'Pollution liability' },
+      { kind: 'extra', extraKey: 'x-1', name: 'Pollution liability' },
     ])
     expect(differsLine(4)).toBe('4 things differ on this job')
     expect(differsLine(1)).toBe('1 thing differs on this job')
@@ -193,9 +258,10 @@ describe('what differs on a job', () => {
     expect(off.off).toEqual(['umb'])
     expect(withJobCoverOff(off, 'umb', true).off).toEqual(['umb'])
     expect(withJobCoverOff(off, 'umb', false).off).toEqual([])
-    const added = withJobExtra(withJobExtra(CEDAR()))
-    expect(added.extra.map((x) => x.key)).toEqual(['x1', 'x2'])
-    expect(withoutJobExtra(added, 'x1').extra.map((x) => x.key)).toEqual(['x2'])
+    const mint = counting()
+    const added = withJobExtra(withJobExtra(CEDAR(), mint), mint)
+    expect(added.extra.map((x) => x.key)).toEqual(['x-1', 'x-2'])
+    expect(withoutJobExtra(added, 'x-1').extra.map((x) => x.key)).toEqual(['x-2'])
   })
 
   it('makes a job’s own words the usual: the standing sheet takes them, and the job keeps reading the same', () => {
@@ -217,11 +283,11 @@ describe('what differs on a job', () => {
   })
 
   it('makes a line added for one job a usual line, once, and lets the job’s copy go', () => {
-    const job = withJobExtraWords(withJobExtraWords(withJobExtra(CEDAR()), 'x1', 'label', 'Pollution liability'), 'x1', 'limit', 'Made-up amount 6')
-    const made = usualFromJobExtra(USUAL, job, 'x1')
-    expect(made.cover[made.cover.length - 1]).toEqual({ key: 'c6', label: 'Pollution liability', limit: 'Made-up amount 6' })
+    const job = withJobExtraWords(withJobExtraWords(withJobExtra(CEDAR(), counting()), 'x-1', 'label', 'Pollution liability'), 'x-1', 'limit', 'Made-up amount 6')
+    const made = usualFromJobExtra(USUAL, job, 'x-1', counting())
+    expect(made.cover[made.cover.length - 1]).toEqual({ key: 'c-1', label: 'Pollution liability', limit: 'Made-up amount 6' })
     expect(usualHasCover(made, { label: 'Pollution liability', limit: 'Made-up amount 6' })).toBe(true)
-    expect(usualFromJobExtra(made, job, 'x1')).toBe(made)
+    expect(usualFromJobExtra(made, job, 'x-1')).toBe(made)
     expect(usualFromJobExtra(USUAL, job, 'nope')).toBe(USUAL)
     const pruned = pruneJobSheet(made, job)
     expect(pruned.extra).toEqual([])
@@ -309,7 +375,7 @@ describe('the page a sub reads', () => {
     let job = withJobWords(USUAL, CEDAR(), coverPath('umb', 'limit'), 'Made-up amount 9')
     job = withJobWords(USUAL, job, fieldPath('sub'), 'For every trade at the Cedar Park job')
     job = withJobCoverOff(job, 'auto', true)
-    job = withJobExtraWords(withJobExtraWords(withJobExtra(job), 'x1', 'label', 'Pollution liability'), 'x1', 'limit', 'Made-up amount 6')
+    job = withJobExtraWords(withJobExtraWords(withJobExtra(job, counting()), 'x-1', 'label', 'Pollution liability'), 'x-1', 'limit', 'Made-up amount 6')
     const sheet = layOver(USUAL, job)
     expect(sheet.subtitle).toBe('For every trade at the Cedar Park job')
     expect(sheet.cover).toEqual([
