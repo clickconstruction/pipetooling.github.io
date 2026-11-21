@@ -92,18 +92,19 @@ describe('JobModeArrivalCheck', () => {
     expect((screen.getByRole('button', { name: 'Yes, all as told' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('a send refused because one of the crew answered first says who, reads again, and the card leaves', async () => {
-    // Two of ours had the card open. The other one answered: the stage is asked about once, so this card is over.
+  it('a send refused because one of the crew answered first says why, reads again, and the card leaves', async () => {
+    // Two of ours had the card open. The other one answered Yes, all as told: nothing is left to look at, the door's
+    // own words for it, and the stage is asked about once, so this card is over.
     let answered = false
     const readArrival = vi.fn(async () => (answered ? null : ASK))
     const arrive = vi.fn(async () => {
       answered = true
-      throw new Error('Hector Helper already answered for this stage.')
+      throw new Error('There is nothing left to look at on this stage.')
     })
     renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive }} />)
     await screen.findByRole('region', { name: 'Is it as told?' })
     fireEvent.click(screen.getByRole('button', { name: 'Yes, all as told' }))
-    expect(await screen.findByText('Hector Helper already answered for this stage.')).toBeTruthy()
+    expect(await screen.findByText('There is nothing left to look at on this stage.')).toBeTruthy()
     await waitFor(() => expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull())
     expect(readArrival).toHaveBeenCalledTimes(2)
     expect(arrive).toHaveBeenCalledTimes(1)
