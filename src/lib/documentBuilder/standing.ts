@@ -83,6 +83,15 @@ export function isBuilderRead(rec: BuilderRecord | null): boolean {
 }
 
 /**
+ * Why a builder's send asks for the box *Send it anyway*, or an empty string once its published revision is read. A
+ * builder goes out as its newest published revision, so the mark is read on that one.
+ */
+export function builderUnreadWords(rec: BuilderRecord | null): string {
+  if (!rec || rec.revision < 1 || isBuilderRead(rec)) return ''
+  return `No attorney has read revision ${rec.revision}.`
+}
+
+/**
  * The same JSON whatever order its keys were written in, so two copies of one definition compare equal. A key
  * holding `undefined` is left out, as `JSON.stringify` leaves it out: the published copy came back from JSON, so
  * it never has such a key, and a draft that has one holds the same contents.

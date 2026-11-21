@@ -2,7 +2,7 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, map, publish, publish revision, changed, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, send to a gc, send it to a gc, find a gc, what it is about, all their jobs, secrecy on your jobs, map, publish, publish revision, changed, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.
@@ -78,6 +78,42 @@ A list **Before this can be published** shows while something is missing. Fix ea
 Press **Marks are on** to read the flow as a GC does. Press it again to type.
 
 To mark a revision as read, press **Mark it read** on the bar. Type the attorney's name and press the blue button. A new revision is unread again.
+
+## Send the Sub NDA to a GC
+
+A GC here is a customer who is the GC on a job with you. The card **Send it to a GC** lists each one.
+
+1. Publish the builder.
+2. Type a name in **Find a GC** when the list is long.
+3. Press {{button:outline-blue|Send it to them}} on the GC's row.
+4. Pick who at the GC gets the email.
+5. Pick what it is about. *All their jobs with you* is the choice it starts on.
+6. Read the note and change it if you want.
+7. Press the blue button. The button names the person, like {{button:blue|Send to Dana}}.
+
+The GC gets an email with a link to their own page. The builder is on that page. One about a job sits under that job's name. One about all their jobs sits at the top.
+
+A GC can look only. The GC walks the builder and reads each level. Nothing they pick comes back to you.
+
+- {{chip:gray|No page yet}} means the GC never had a page. Sending to that GC alone makes one.
+- {{chip:yellow|Their page is off}} means someone turned the page off. A send never turns a page back on.
+- A revision no attorney has read goes only after you tick **Send it anyway**.
+
+One button under the list sends to every GC whose page is on. The button asks first and says how many. Each of those sends is about all their jobs.
+
+## Read where a GC's send stands
+
+- {{chip:gray|Sent Nov 20 to Dana Whitlock}} names the day and the person.
+- {{chip:yellow|Not opened yet}} means they have not opened this revision.
+- {{chip:green|Opened Nov 21}} names the day they opened it.
+- {{chip:gray|All their jobs}} or a job's name says what the send is about.
+- {{chip:yellow|Changed since they opened it}} means you published a newer revision since.
+
+- {{button:outline-blue|Send it again}} sends a reminder to the same person.
+- {{button:outline-blue|Tell them it changed}} tells them of the new revision.
+- {{button:outline-blue|Take it off their page}} ends the send. The builder leaves their page.
+
+Each send is kept under [Sent copies](/documents?tab=sent) on Documents.
 
 ## Walk the Sub NDA
 
