@@ -59,8 +59,8 @@ vi.mock('../supabase', () => ({ supabase: db.client }))
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, WRITE_GONE } from './documentBuildersIo'
 import { startJobSheet, type JobSheet } from './sheet'
 import { INSURANCE_SHEET_FIXTURE } from './insuranceSheet.fixture'
-import { layOver, withUsualWords, fieldPath, type SheetDef } from './sheet'
-import { markBuilderRead, publishBuilder, publishSheet, publishUsualToJobs, readBuilder, readBuilderSheets, saveBuilderDraft, saveSheetDraft, startSheet } from './sheetsIo'
+import { layOver, sameJobsGetIt, withUsualWords, fieldPath, type SheetDef } from './sheet'
+import { markBuilderRead, publishBuilder, publishSheet, publishUsualToJobs, readBuilder, readBuilderSheets, readSheetsNow, saveBuilderDraft, saveSheetDraft, startSheet, usualPlanOfSheets, type HeldHere, type SheetRecord } from './sheetsIo'
 import type { BuilderRecord } from './standing'
 
 const USUAL = { fields: { title: 'A made-up sheet' } }
@@ -170,41 +170,61 @@ describe('the usual, published to every job', () => {
     { projectId: 'mesa', name: 'Mesa Verde Retail Shell' },
     { projectId: 'oak', name: 'Oak Hollow Offices' },
   ]
-  const io = { readBuilderSheets, publishSheet }
-  const ask = { builderKey: 'insurance', def: NEW_USUAL, usualRevision: 2, jobs: JOBS }
   /** Two jobs with a sheet out on the old usual and nothing of their own waiting. The third has no sheet. */
   const seed = () => {
     const out = (id: string, projectId: string, own: JobSheet) => ({ id, builder_key: 'insurance', project_id: projectId, draft: own, published: own, published_sheet: layOver(OLD_USUAL, own), revision: 1, usual_revision: 1, draft_no: 3 })
     db.tables.document_builder_sheets = [out('sheet-cedar', 'cedar', CEDAR()), out('sheet-mesa', 'mesa', MESA())]
   }
+  /** The jobs' sheets as they stand now, read as the press reads them before it publishes anything. */
+  const readNow = async (): Promise<Map<string, SheetRecord>> => {
+    const read = await readSheetsNow({ readBuilderSheets }, 'insurance')
+    if (!read.ok) throw new Error(read.error)
+    return read.value
+  }
+  /** The usual sent on to the jobs just read. */
+  const send = async (over: { publish?: typeof publishSheet; heldHere?: HeldHere } = {}) =>
+    publishUsualToJobs({ publishSheet: over.publish ?? publishSheet }, { def: NEW_USUAL, usualRevision: 2, jobs: JOBS, sheets: await readNow(), heldHere: over.heldHere })
 
   it('goes to each job that is ready as its next revision, and holds the job with no sheet', async () => {
     seed()
-    const went = await publishUsualToJobs(io, ask)
-    expect(went.ok && { done: went.value.done, failed: went.value.failed, held: went.value.held }).toEqual({ done: 2, failed: [], held: [{ name: 'Oak Hollow Offices', why: 'Held. It has no sheet yet.' }] })
+    const went = await send()
+    expect({ done: went.done, failed: went.failed, held: went.held }).toEqual({ done: 2, failed: [], held: [{ name: 'Oak Hollow Offices', why: 'Held. It has no sheet yet.' }] })
     expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 2, usual_revision: 2, published_sheet: { foot: 'A new foot line.' } })
-    expect(went.ok && went.value.sheets.get('mesa')?.revision).toBe(2)
+    expect(went.sheets.get('mesa')?.revision).toBe(2)
   })
 
   it('reads each job as it stands at that moment: a draft a teammate saved since the page loaded is kept, and the job is held', async () => {
     seed()
     // The page loaded here. Then a teammate changed Cedar Park's place, and did not publish.
     await saveSheetDraft('sheet-cedar', CEDAR('414 Sample Street'), 3)
-    const went = await publishUsualToJobs(io, ask)
-    expect(went.ok && { done: went.value.done, failed: went.value.failed }).toEqual({ done: 1, failed: [] })
-    expect(went.ok && went.value.held).toContainEqual({ name: 'Cedar Park Medical Office', why: 'Held. It has changes of its own waiting.' })
+    const went = await send()
+    expect({ done: went.done, failed: went.failed }).toEqual({ done: 1, failed: [] })
+    expect(went.held).toContainEqual({ name: 'Cedar Park Medical Office', why: 'Held. It has changes of its own waiting.' })
     // The teammate's draft stands, and subs still read revision 1 of that job.
     expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1, draft: { place: '414 Sample Street' }, published: { place: '410 Sample Street' } })
     // The page takes the job as it now reads, the teammate's draft with it.
-    expect(went.ok && went.value.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
+    expect(went.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
     expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 2 })
+  })
+
+  it('says, before anything is published, that the jobs are no longer as the press said', async () => {
+    seed()
+    // What the press and the rows showed: both jobs get the change.
+    const shown = usualPlanOfSheets(JOBS, await readNow())
+    expect(shown.map((row) => row.gets)).toEqual([true, true, false])
+    expect(sameJobsGetIt(shown, usualPlanOfSheets(JOBS, await readNow()))).toBe(true)
+    // A teammate changes one job. The jobs read at the press no longer match, though one job still gets it.
+    await saveSheetDraft('sheet-cedar', CEDAR('414 Sample Street'), 3)
+    expect(sameJobsGetIt(shown, usualPlanOfSheets(JOBS, await readNow()))).toBe(false)
+    // A job this page holds words for is not one that gets it either.
+    expect(sameJobsGetIt(shown, usualPlanOfSheets(JOBS, new Map([...(await readNow())].filter(([projectId]) => projectId !== 'cedar')), () => null))).toBe(false)
   })
 
   it('goes out from the copy a teammate published since the page loaded', async () => {
     seed()
     await publishSheet('sheet-mesa', 1, MESA('79 Placeholder Parkway'), layOver(OLD_USUAL, MESA('79 Placeholder Parkway')), 1, 3)
-    const went = await publishUsualToJobs(io, ask)
-    expect(went.ok && went.value.done).toBe(2)
+    const went = await send()
+    expect(went.done).toBe(2)
     expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 3, published: { place: '79 Placeholder Parkway' }, published_sheet: { place: '79 Placeholder Parkway', foot: 'A new foot line.' } })
   })
 
@@ -215,17 +235,17 @@ describe('the usual, published to every job', () => {
       if (id === 'sheet-cedar') await saveSheetDraft('sheet-cedar', CEDAR('414 Sample Street'), 3)
       return publishSheet(id, ...rest)
     }
-    const went = await publishUsualToJobs({ readBuilderSheets, publishSheet: racing }, ask)
-    expect(went.ok && { done: went.value.done, failed: went.value.failed }).toEqual({ done: 1, failed: [{ name: 'Cedar Park Medical Office', why: MOVED_ON_PUBLISH }] })
+    const went = await send({ publish: racing })
+    expect({ done: went.done, failed: went.failed }).toEqual({ done: 1, failed: [{ name: 'Cedar Park Medical Office', why: MOVED_ON_PUBLISH }] })
     expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1, draft: { place: '414 Sample Street' } })
-    expect(went.ok && went.value.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
+    expect(went.sheets.get('cedar')?.draft.place).toBe('414 Sample Street')
     expect(sheetRow('sheet-mesa')).toMatchObject({ revision: 2 })
   })
 
   it('holds a job the page has words of its own for, with the reason', async () => {
     seed()
-    const went = await publishUsualToJobs(io, { ...ask, heldHere: (projectId) => (projectId === 'cedar' ? 'moved' : projectId === 'mesa' ? 'own-changes' : null) })
-    expect(went.ok && { done: went.value.done, held: went.value.held }).toEqual({
+    const went = await send({ heldHere: (projectId) => (projectId === 'cedar' ? 'moved' : projectId === 'mesa' ? 'own-changes' : null) })
+    expect({ done: went.done, held: went.held }).toEqual({
       done: 0,
       held: [
         { name: 'Cedar Park Medical Office', why: 'Held. It changed somewhere else. Choose on its panel first.' },
@@ -236,10 +256,8 @@ describe('the usual, published to every job', () => {
     expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1 })
   })
 
-  it('says so when the jobs did not read, and publishes to none', async () => {
+  it('says so when the jobs did not read', async () => {
     seed()
-    const went = await publishUsualToJobs({ readBuilderSheets: async () => Promise.reject(new Error('The network is down.')), publishSheet }, ask)
-    expect(went).toEqual({ ok: false, error: 'The network is down.' })
-    expect(sheetRow('sheet-cedar')).toMatchObject({ revision: 1 })
+    expect(await readSheetsNow({ readBuilderSheets: async () => Promise.reject(new Error('The network is down.')) }, 'insurance')).toEqual({ ok: false, error: 'The network is down.' })
   })
 })

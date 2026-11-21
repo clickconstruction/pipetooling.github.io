@@ -76,6 +76,13 @@ export function usualPlanFor(
   )
 }
 
+/**
+ * Said when the usual's publish read the jobs again and they no longer were as the press said: a teammate changed or
+ * published one since this page read it. Nothing is published, the rows and the press are drawn again from what was
+ * just read, and the person presses again knowing where it goes.
+ */
+export const USUAL_PRESS_MOVED = { line: 'Nothing was published yet.', why: 'A job changed since this page read it. The rows and the button now say where your usual goes. Press it again.' } as const
+
 /** One row of where a change to the usual goes: the job, and a chip. */
 export function usualPlanChip(row: UsualPublishRow, usualDirty: boolean, revisionNow: number): BuilderChip {
   if (!row.gets) return { tone: row.why === 'no-sheet' ? 'wait' : 'warn', words: usualHeldWords(row.why) }
