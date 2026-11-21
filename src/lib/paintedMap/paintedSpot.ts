@@ -25,6 +25,16 @@ export const SPOT_WORDS = {
   hint: 'The camera opens. The dot is put where you stand.',
   /** While the phone shrinks the photo and the window opens. */
   opening: 'Opening the photo…',
+  /** The press on a photo that is being added anyway: the Job photos window, a report. */
+  keep: '＋ Keep this spot on the job',
+  /** The same press under a small tile, where the long words do not fit. */
+  keepShort: 'Keep this spot',
+  keptShort: '✓ Kept',
+  openingShort: 'Opening…',
+  /** That press once its place is saved. */
+  kept: '✓ Kept on this job',
+  /** The map's window could not be reached from this screen. */
+  noDoor: 'The map could not open from this screen. Open the job and press Photo of a spot.',
 } as const
 
 /** What the phone said when the press was made: a reading, or why none came. */
@@ -34,7 +44,7 @@ export type SpotReading = { ok: true; fix: MyFix } | { ok: false; why: MyFixFail
  * The camera's photo and the phone's reading of the same moment, handed from the press to the
  * place sheet. The reading may still be on its way when the photo is back, so it is a promise.
  */
-export type PaintedSpot = { file: File; reading: Promise<SpotReading>; /** When the photo was taken, as the file says. Null when it does not say. */ takenMs: number | null }
+export type PaintedSpot = { file: File; reading: Promise<SpotReading>; /** When the photo was taken, as the file says. Null when it does not say. */ takenMs: number | null; /** Called once when the place this photo began is saved, so the press that began it can say so. */ onKept?: () => void }
 
 /** A photo this old is not of where the person stands: five minutes covers a slow camera and a second try. */
 export const SPOT_FRESH_MS = 5 * 60_000

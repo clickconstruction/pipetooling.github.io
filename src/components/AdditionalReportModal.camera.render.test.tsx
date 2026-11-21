@@ -200,6 +200,11 @@ describe('AdditionalReportModal, camera first on a phone', () => {
     await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sent'))
     expect(screen.getByText('4.2 MB → 310 KB · 1600 px')).toBeTruthy()
     expect(sent[0]).toMatchObject({ id: expect.any(String), jobId: 'job-1', byUserId: 'u1', byName: 'Luis Ortega', originalBytes: 4_200_000, width: 1600, height: 1200 })
+    // The tile offers to keep this photo's spot on the job (punch list #413), in the short words a 96 px tile holds.
+    const keep = screen.getByTestId('report-photo-tile').querySelector('[data-keep-spot] button') as HTMLButtonElement
+    expect(keep.textContent).toBe('Keep this spot')
+    expect(keep.getAttribute('aria-label')).toBe('Keep this spot on the job')
+    expect(keep.disabled).toBe(false)
 
     // Move the stage, then save: the button names the job's number and the photo.
     fireEvent.click(screen.getByRole('button', { name: 'Set Rough In to 50 percent' }))

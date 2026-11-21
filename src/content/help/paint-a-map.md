@@ -417,6 +417,8 @@ Picked an older photo? The dot is not put where you stand. A line at the top of 
 
 The photo is the place's photo. The photo shows beside the place in **Places on this job**.
 
+Adding a photo to the job anyway? Each new photo in **Job photos** has {{button:outline|＋ Keep this spot on the job}}. A photo on **Leave Report** has {{button:outline|Keep this spot}}. Either press opens the same sheet with that photo in it.
+
 :::example A cleanout, before the trench is filled
 Photo of a spot → take the photo → {{button:outline|Cleanout}} → **Add this place**.
 :::

@@ -1299,6 +1299,23 @@ describe('a place that starts from a photo (#413)', () => {
     expect(added).toMatchObject({ lat: 29.6, lng: -98.3, accuracyM: 6, kind: 'cleanout', name: 'Cleanout' })
   })
 
+  it('tells the press that began it once the place is saved, and not when the place is put down', async () => {
+    io.whole = listWhole()
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:shot' }
+    let kept = 0
+    const first = render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={{ ...spot(HERE), onKept: () => (kept += 1) }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(kept).toBe(0)
+    first.unmount()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={{ ...spot(HERE), onKept: () => (kept += 1) }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    await dotAt('29.6,-98.3')
+    fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLElement)
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    await waitFor(() => expect(kept).toBe(1))
+  })
+
   it('a rough reading moves no dot: it starts where the map is looking, and the sheet shows the way to the switch', async () => {
     io.whole = listWhole()
     render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" spot={spot({ ok: true, fix: { lat: 31, lng: -99, accuracyM: 3200 } })} onClose={() => {}} />)

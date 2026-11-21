@@ -646,6 +646,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       return
     }
     if (old?.photoPath && old.photoPath !== res.value.photoPath) void removePaintedPlacePhotoFile(old.photoPath)
+    // The place a photo began (#413) is saved: the press that began it hears so, once.
+    if (!old && spotFile) spot?.onKept?.()
     const places = old ? current.places.map((p) => (p.id === res.value.id ? res.value : p)) : [...current.places, res.value]
     setWhole({ ...current, places })
     setPhotoUrls(await paintedPlacePhotoUrls(places.map((p) => p.photoPath)))
