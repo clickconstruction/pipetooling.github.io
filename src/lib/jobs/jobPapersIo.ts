@@ -51,7 +51,7 @@ export const supabaseJobPapersIo: JobPapersIo = {
       () =>
         supabase
           .from('contract_template_documents')
-          .select('id, document_name, book_body_html, book_body_format, canonical_document_url, form_template_id, book_version_date, updated_at, audience, flow_kind')
+          .select('id, document_name, book_body_html, book_body_format, canonical_document_url, form_template_id, book_version_date, updated_at, audience, flow_kind, settings_def')
           .order('document_name'),
       'read the Contract Book',
     )

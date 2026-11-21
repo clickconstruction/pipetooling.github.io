@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAPER_CHANGED, SETTINGS_PAPER_BARE, isSettingsPaperBare, clauseBetween, clauseFreeze, clausePaperFor, clausePaperOf, clausePaperPair, readClausePaper, readClausePaperPair, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
+import { JOB_PAPER_NOT_READY, PAPER_CHANGED, SETTINGS_PAPER_BARE, isJobPaperNotReady, isSettingsPaperBare, clauseBetween, clauseFreeze, clausePaperFor, clausePaperOf, clausePaperPair, readClausePaper, readClausePaperPair, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
 import { plainWordsFailures } from '../plainWords'
 
 /**
@@ -94,7 +94,7 @@ describe('clausePaperFor', () => {
   })
 })
 
-/** A paper built from settings (punch list #389) goes only with a job's settings, which nothing carries yet. */
+/** A paper built from settings (punch list #389) goes only with a job's settings. A copy that names no job is refused. */
 describe('a paper built from settings', () => {
   const LIST = { settings: [{ key: 'photos', label: 'Photos and video', choices: [] }] }
   const withList = (more: Record<string, unknown> = {}) => fakeAdmin({ ...more, settingsDef: LIST } as never)
@@ -130,6 +130,90 @@ describe('a paper built from settings', () => {
     const { admin, paperReads } = fakeAdmin()
     expect(await clausePaperFor(admin, { ...DOC, company_id: null }, 'en')).toEqual({ ...PAPER, between: null })
     expect(paperReads).toEqual(['settings_def:doc-msa'])
+  })
+})
+
+/**
+ * Step 3: a job carries the settings on its required paper's row, and the copy names that row. The database puts the
+ * job's paper together (`job_paper_clauses`), and the copy keeps it exactly as read. Every word is a made-up placeholder.
+ */
+describe('a job’s paper built from settings', () => {
+  const LIST = { settings: [{ key: 'photos', label: 'Photos and video', choices: [] }] }
+  const JOB_DOC = { ...DOC, company_id: null, job_required_paper_id: 'row-1' }
+  /** The database's answer, as `job_paper_clauses` hands it back. */
+  const JOB_PAPER = {
+    paperId: 'doc-msa',
+    revision: 3,
+    lang: 'en',
+    clauses: [{ id: 'c1', v: 1, n: 1, text: 'Fixed placeholder one.' }],
+    exhibit: [],
+    exhibitFor: [],
+    settings: { photos: 'standard', term: 'short' },
+    fields: {},
+    jobPaperId: 'row-1',
+    settingsRevision: 2,
+    said: [{ key: 'photos', label: 'Photos and video', choice: 'Standard', says: 'Placeholder line.', out: false }],
+    sha256: 'a'.repeat(64),
+  }
+  const forJob = (more: Record<string, unknown> = {}) => fakeAdmin({ paper: JOB_PAPER, ...more, settingsDef: LIST } as never)
+
+  it('is read for the required paper the copy names, in the language asked, and no other read is made', async () => {
+    const { admin, calls, reads } = forJob()
+    const paper = await clausePaperFor(admin, JOB_DOC, 'es')
+    expect(calls).toEqual([{ fn: 'job_paper_clauses', args: { p_required_paper_id: 'row-1', p_lang: 'es' } }])
+    expect(reads).toEqual([])
+    expect(paper).toEqual({ ...JOB_PAPER, between: null })
+  })
+
+  it('is still refused bare when the copy names no job', async () => {
+    const { admin, calls } = forJob()
+    await expect(clausePaperFor(admin, { ...JOB_DOC, job_required_paper_id: null }, 'en')).rejects.toThrow(SETTINGS_PAPER_BARE)
+    expect(calls).toEqual([])
+  })
+
+  it('is not ready when the database will not put it together, and the reason stays off the page', async () => {
+    const refused = await clausePaperFor(forJob({ rpcError: true }).admin, JOB_DOC, 'en').catch((e: unknown) => e)
+    expect(isJobPaperNotReady(refused)).toBe(true)
+    expect(isSettingsPaperBare(refused)).toBe(false)
+    expect((refused as Error).message).toBe(JOB_PAPER_NOT_READY)
+    expect((refused as { reason?: string }).reason).toBe('no')
+    expect(plainWordsFailures(JOB_PAPER_NOT_READY)).toEqual([])
+  })
+
+  it('is not ready when the answer is not a sealed paper with a clause', async () => {
+    const { sha256: _seal, ...unsealed } = JOB_PAPER
+    for (const paper of [unsealed, { ...JOB_PAPER, clauses: [] }, { ...JOB_PAPER, revision: 0 }, { nonsense: true }, null]) {
+      const got = await clausePaperFor(forJob({ paper }).admin, JOB_DOC, 'en').catch((e: unknown) => e)
+      expect(isJobPaperNotReady(got)).toBe(true)
+    }
+  })
+
+  it('signs only at the seal the page showed, as well as the revision', async () => {
+    const paper = (await clausePaperFor(forJob().admin, JOB_DOC, 'en'))!
+    expect(clauseFreeze(paper, 3, 'Sample NDA (job J900)').ok).toBe(false)
+    expect(clauseFreeze(paper, 3, 'Sample NDA (job J900)', 'b'.repeat(64))).toEqual({ ok: false, error: PAPER_CHANGED, code: 'paper_changed' })
+    expect(clauseFreeze(paper, 2, 'Sample NDA (job J900)', JOB_PAPER.sha256).ok).toBe(false)
+    expect(clauseFreeze(paper, 3, 'Sample NDA (job J900)', JOB_PAPER.sha256).ok).toBe(true)
+  })
+
+  it('freezes exactly what the database read: under the heading, nothing trimmed, reordered or defaulted', async () => {
+    const paper = (await clausePaperFor(forJob().admin, JOB_DOC, 'en'))!
+    const freeze = clauseFreeze(paper, 3, 'Sample NDA (job J900)', JOB_PAPER.sha256)
+    if (!freeze.ok) throw new Error('the freeze was refused')
+    // What the database compares: the copy's frozen paper without its heading and between line, against its own read.
+    const { title, between, ...kept } = JSON.parse(JSON.stringify(freeze.update.clause_versions)) as Record<string, unknown>
+    expect(title).toBe('Sample NDA (job J900)')
+    expect(between).toBeNull()
+    expect(kept).toEqual(JOB_PAPER)
+    expect(freeze.update.paper_revision).toBe(3)
+    expect(readSignedClauses(freeze.update.clause_versions)?.sha256).toBe(JOB_PAPER.sha256)
+  })
+
+  it('asks no seal of a paper that carries none', () => {
+    const plain = { ...readClausePaper(PAPER)!, between: null }
+    expect(clauseFreeze(plain, 3, 'Master services agreement').ok).toBe(true)
+    expect(clauseFreeze(plain, 3, 'Master services agreement', 'anything').ok).toBe(true)
+    expect(readClausePaper(PAPER)).not.toHaveProperty('sha256')
   })
 })
 

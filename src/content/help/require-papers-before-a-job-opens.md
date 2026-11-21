@@ -29,6 +29,8 @@ The line under the button counts the people who can open the job today. That is 
 
 :::example A paper that cannot be picked
 A paper with no words is grey in the list. Write it in the Contract Book first. A third-party PDF becomes a form in the Form Studio.
+
+A paper built from settings is grey too. A job takes it with its settings. The page that sets them is not built yet.
 :::
 
 ## Sign your own
