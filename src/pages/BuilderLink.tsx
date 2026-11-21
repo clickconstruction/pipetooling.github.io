@@ -24,7 +24,7 @@ const PAGE: CSSProperties = { minHeight: '100vh', background: 'var(--bg-page)', 
 const COLUMN: CSSProperties = { maxWidth: 760, margin: '0 auto', display: 'grid', gap: 12 }
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', fontSize: '0.9rem' }
 const PRESS: CSSProperties = { border: 0, background: '#2563eb', color: 'white', borderRadius: 9, padding: '10px 16px', fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 700, minHeight: 44, cursor: 'pointer', justifySelf: 'start' }
-const QUIET_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 9, padding: '8px 14px', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, minHeight: 40, cursor: 'pointer', justifySelf: 'start' }
+const QUIET_PRESS: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 9, padding: '8px 14px', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, minHeight: 44, cursor: 'pointer', justifySelf: 'start' }
 const FINE: CSSProperties = { margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }
 
 type View = BuilderLinkView | { kind: 'reading' }
