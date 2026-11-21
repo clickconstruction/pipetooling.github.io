@@ -43,6 +43,7 @@ import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanvasDoors'
 import { GoogleCanvasBoundary } from './GoogleCanvasBoundary'
+import { MapLoadingLine } from './MapLoadingLine'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -267,7 +268,10 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
   const scrollwheel = googleScrollwheelOption({ isMobile, afterClick: gated, clicked: mapClicked })
   return (
     <GoogleCanvasBoundary onUnavailable={onUnavailable}>
-      <div ref={frameRef} style={{ width: '100%', height }} onPointerDownCapture={gated && !mapClicked ? () => setMapClicked(true) : undefined}>
+      <div ref={frameRef} style={{ position: 'relative', width: '100%', height }} onPointerDownCapture={gated && !mapClicked ? () => setMapClicked(true) : undefined}>
+        {/* Until the script is in, the library draws an empty div. On a slow connection that can last the whole
+            load timeout, so the frame says what it is doing, in the words the frame used before this canvas came. */}
+        {loaded ? null : <MapLoadingLine />}
         <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${formatErrorMessage(e)}`)}>
           <GoogleMap
             style={{ width: '100%', height }}
