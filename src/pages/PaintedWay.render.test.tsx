@@ -17,8 +17,8 @@ import type { PaintedWayAsk, PaintedWayIo, PaintedWayView } from '../lib/painted
 import type { SharedPaintedMap } from '../lib/paintedMap/paintedMapLink'
 
 vi.mock('../components/paintedMap/PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number; kind?: string | null }>; me?: { lat: number; area?: boolean } | null; frameMe?: boolean; frameMargin?: boolean; time?: unknown }) {
-    return <div data-testid="canvas" data-kinds={props.places.map((p) => p.kind ?? 'plain').join(',')}>lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'} area:{props.me?.area ? 'yes' : 'no'} circle:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'}</div>
+  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number; kind?: string | null }>; me?: { lat: number; area?: boolean } | null; frameMe?: boolean; frameMargin?: boolean; time?: unknown; google?: { screen: string; use: string } | null }) {
+    return <div data-testid="canvas" data-google-ask={props.google ? `${props.google.screen} ${props.google.use}` : 'none'} data-kinds={props.places.map((p) => p.kind ?? 'plain').join(',')}>lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'} area:{props.me?.area ? 'yes' : 'no'} circle:{props.frameMargin ? 'yes' : 'no'} time:{props.time ? 'yes' : 'no'}</div>
   },
 }))
 /** Which phone the page takes itself to be on. The wait is the real one. */
@@ -141,6 +141,12 @@ describe('PaintedWay', () => {
     expect(rows[0]!.textContent).toContain('1Open trenchKeep the truck off it.')
     expect(rows[1]!.textContent).toContain('2Meter')
     expect((await screen.findByTestId('canvas')).getAttribute('data-kinds')).toBe('hazard,plain,plain')
+  })
+
+  it('tells the canvas it is the public page and is only read, so the one rule decides which map is under it (#387)', async () => {
+    open(fakeIo([OPEN]))
+    // The page decides nothing itself: `paintedMapProvider.ts` keeps it on the Leaflet canvas until its yes.
+    expect((await screen.findByTestId('canvas')).getAttribute('data-google-ask')).toBe('way looking')
   })
 
   it('points Directions at the start of the first line', async () => {
