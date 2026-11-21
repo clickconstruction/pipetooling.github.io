@@ -338,7 +338,8 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
                 // A dash is the paper's shape and not a 44 px press: `index.css` leaves this class out of the tab's rule.
                 className="documentBuilderStep"
                 onClick={() => go(i)}
-                style={{ flex: '1 1 0', minWidth: 0, height: 24, border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
+                // The dash takes 24 px of the bar and a 44 px press: the press reaches 10 px over the title above and the bar's own foot.
+                style={{ flex: '1 1 0', minWidth: 0, height: 44, margin: '-10px 0', border: 0, padding: 0, background: 'none', display: 'grid', alignItems: 'center', opacity: shut ? 0.4 : 1, cursor: shut ? 'not-allowed' : 'pointer' }}
               >
                 <span style={{ display: 'block', height: now ? 14 : 6, borderRadius: 999, background: fill, transition: 'height 160ms, background-color 220ms' }} />
               </button>

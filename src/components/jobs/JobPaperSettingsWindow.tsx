@@ -105,6 +105,10 @@ const DEAD: CSSProperties = {
   color: DEAD_PRESS_TEXT,
   cursor: 'not-allowed',
 }
+// Every press and field here is at least a finger tall (Taunya, 2026-11-21: the buttons easy to press).
+const CLOSE: CSSProperties = { ...clauseButtonStyle, minHeight: 44, minWidth: 64 }
+const PRIMARY: CSSProperties = { ...clausePrimaryStyle, minHeight: 44, padding: '0.5rem 1.1rem', fontSize: '0.95rem' }
+const FIELD: CSSProperties = { ...clauseInputStyle, minHeight: 44, fontSize: '1rem' }
 const tidy = (
   typed: Record<string, string>,
   keys: readonly string[],
@@ -180,7 +184,7 @@ function Shell({
             </div>
           </div>
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={onClose} style={clauseButtonStyle}>
+          <button type="button" onClick={onClose} style={CLOSE}>
             Close
           </button>
         </div>
@@ -227,7 +231,7 @@ function Blanks({
             aria-label={f.label || f.key}
             value={typed[f.key] ?? ''}
             onChange={(e) => onTyped({ ...typed, [f.key]: e.target.value })}
-            style={clauseInputStyle}
+            style={FIELD}
           />
         </label>
       ))}
@@ -641,7 +645,7 @@ function OnePage({
             aria-label="The basis"
             value={basis ?? ''}
             onChange={(e) => setBasis(e.target.value || null)}
-            style={clauseInputStyle}
+            style={FIELD}
           >
             {book.def.levels.map((l) => (
               <option key={l.key} value={l.key}>
@@ -679,7 +683,7 @@ function OnePage({
                 onChange={(e) =>
                   setPicks((p) => ({ ...p, [s.key]: e.target.value }))
                 }
-                style={clauseInputStyle}
+                style={FIELD}
               >
                 {s.choices.map((c) => (
                   <option key={c.key} value={c.key}>
@@ -725,7 +729,7 @@ function OnePage({
             disabled={dead}
             onClick={() => void save()}
             style={
-              dead ? { ...clausePrimaryStyle, ...DEAD } : clausePrimaryStyle
+              dead ? { ...PRIMARY, ...DEAD } : PRIMARY
             }
           >
             {press}
