@@ -131,8 +131,139 @@ export type DocumentBuilderLinkAnswer =
   | { kind: 'sheet'; revision: number; sheet: unknown; job: string }
   | { kind: 'builder'; revision: number; builder: string; contents: unknown }
 
+/** Why a link ended: a dev switched it off, a new link replaced it, or its sheet came off the last trade's page. */
+export type DocumentBuilderLinkEndedWhy = 'off' | 'replaced' | 'last_send_off'
+
+export function documentBuilderLinkEndedWhy(raw: unknown): DocumentBuilderLinkEndedWhy | null {
+  return raw === 'off' || raw === 'replaced' || raw === 'last_send_off' ? raw : null
+}
+
+/** One open of a link, as the tab reads it. A person with an account is named. Someone with none is not. */
+export type DocumentBuilderLinkOpen = {
+  at: string
+  viewer: 'outside' | 'staff' | 'preview'
+  /** The account's name, for someone signed in. */
+  name: string | null
+  /** Where the open came from, for someone with no account. */
+  ip: string | null
+  /** The browser's own name for itself, for someone with no account. */
+  agent: string | null
+  /** What the page reported about the device, for someone with no account. */
+  device: Record<string, string>
+}
+
 /**
- * A link as the tab shows it: on with its code, or off. The code is null for a link that is on and whose address
- * cannot be made again (`documentBuilderLinkCodeAgain`).
+ * A link as the tab shows it: on with its code, or off with when and why it ended. The code is null for a link that
+ * is on and whose address cannot be made again (`documentBuilderLinkCodeAgain`). `opens` are the newest opens of the
+ * link that is on, or of the last one that was, and `opensTotal` is how many there are in all.
  */
-export type DocumentBuilderLinkState = { on: true; code: string | null; madeAt: string; opened: number; lastOpenedAt: string | null } | { on: false }
+export type DocumentBuilderLinkState =
+  | { on: true; code: string | null; madeAt: string; opened: number; lastOpenedAt: string | null; opens?: DocumentBuilderLinkOpen[]; opensTotal?: number }
+  | { on: false; endedAt?: string | null; endedWhy?: DocumentBuilderLinkEndedWhy | null; opens?: DocumentBuilderLinkOpen[]; opensTotal?: number }
+
+/** How many opens the tab is handed. The count beside them says how many there are in all. */
+export const DOCUMENT_BUILDER_LINK_OPENS_SHOWN = 20
+
+/** What a page may report about its device with an open: a few plain details the browser already tells every site. */
+export const DOCUMENT_BUILDER_LINK_DEVICE_KEYS = ['language', 'timeZone', 'screen', 'platform', 'touch'] as const
+
+/**
+ * The device details kept from an open. Only the named keys, only short plain text, and never more: whatever else a
+ * page sends is dropped. This is what the browser tells every site, not a fingerprint made by a script.
+ */
+export function documentBuilderLinkDevice(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return out
+  const bag = raw as Record<string, unknown>
+  for (const key of DOCUMENT_BUILDER_LINK_DEVICE_KEYS) {
+    const value = bag[key]
+    if (typeof value !== 'string') continue
+    const text = [...value].map((ch) => (ch < ' ' || ch === '\u007f' ? ' ' : ch)).join('').trim().slice(0, 80)
+    if (text) out[key] = text
+  }
+  return out
+}
+
+/** A request's own text, cut to what the row keeps, or null when there is none. */
+function keptText(raw: string | null | undefined, max: number): string | null {
+  const text = (raw ?? '').trim().slice(0, max)
+  return text || null
+}
+
+/**
+ * The row one open writes (`document_builder_link_opens`). A person with an account is kept by the account alone.
+ * Someone with no account is kept by where the open came from, the browser's name for itself and the device.
+ */
+export function documentBuilderLinkOpenRow(input: {
+  linkId: string
+  viewer: 'outside' | 'staff' | 'preview'
+  userId: string | null
+  revision: number
+  ip: string | null
+  agent: string | null
+  device: unknown
+}): { link_id: string; viewer: string; user_id: string | null; revision: number | null; client_ip: string | null; user_agent: string | null; device: Record<string, string> } {
+  const hasAccount = input.userId != null
+  return {
+    link_id: input.linkId,
+    viewer: input.viewer,
+    user_id: input.userId,
+    revision: Number.isInteger(input.revision) && input.revision >= 1 ? input.revision : null,
+    client_ip: hasAccount ? null : keptText(input.ip, 64),
+    user_agent: hasAccount ? null : keptText(input.agent, 400),
+    device: hasAccount ? {} : documentBuilderLinkDevice(input.device),
+  }
+}
+
+/**
+ * True when a send makes a sheet's link again. Every link of the sheet has ended, and the newest ended because the
+ * sheet came off the last trade's page. A link a dev switched off stays off: switching it on is the dev's own press.
+ */
+export function documentBuilderLinkSendRemakes(rows: ReadonlyArray<{ made_at: string; ended_at: string | null; ended_why?: string | null }>): boolean {
+  if (rows.length === 0 || rows.some((r) => r.ended_at == null)) return false
+  const newest = [...rows].sort((a, b) => b.made_at.localeCompare(a.made_at))[0]
+  return newest?.ended_why === 'last_send_off'
+}
+
+/** A browser in a few words, from its own name for itself: *Safari on iPhone*. Empty when it says nothing we read. */
+export function documentBuilderLinkAgentWords(agent: string | null | undefined): string {
+  const ua = agent ?? ''
+  if (!ua) return ''
+  const on = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : ''
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) || /CriOS\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : ''
+  return browser && on ? `${browser} on ${on}` : browser || on
+}
+
+/**
+ * One open as the card reads it: who it was, and what is known of them. A person with an account is named. Someone
+ * with none is said to have none, with where the open came from and their browser.
+ */
+export function documentBuilderLinkOpenWords(open: DocumentBuilderLinkOpen): { who: string; detail: string } {
+  if (open.viewer === 'preview') return { who: open.name ? `${open.name}, in a preview` : "The office's preview", detail: '' }
+  if (open.name) return { who: open.name, detail: 'Has an account' }
+  if (open.viewer === 'staff') return { who: 'Someone signed in', detail: 'Has an account' }
+  const detail = [open.ip ?? '', documentBuilderLinkAgentWords(open.agent), open.device.timeZone ?? ''].filter(Boolean).join(' · ')
+  return { who: 'Someone with no account', detail }
+}
+
+/**
+ * What the card says of a link that is off: when it ended and why. `day` is the day it ended in the office's words.
+ * A link that never was, and one that ended before the why was kept, read as the card's own plain words (`base`).
+ */
+export function documentBuilderLinkOffWords(state: { endedAt?: string | null; endedWhy?: DocumentBuilderLinkEndedWhy | null }, day: string, base: string): string {
+  if (!state.endedAt || !day) return base
+  if (state.endedWhy === 'last_send_off') return `The link is off. It closed on ${day}, when the sheet came off the last trade's page. The next send switches it on again.`
+  if (state.endedWhy === 'off') return `The link is off. It was switched off on ${day}.`
+  return base
+}
+
+/**
+ * The line on the send card that says what taking the sheet off a page does to the sheet's link (Taunya, 2026-11-21:
+ * the link closes with the last trade, and the person sees where it stands at all times). `have` is how many trades
+ * have the sheet now. Empty when none does.
+ */
+export function documentBuilderLinkWithSendsWords(have: number): string {
+  if (have <= 0) return ''
+  if (have === 1) return "1 trade has this sheet. Taking it off their page also switches the sheet's link off."
+  return `${have} trades have this sheet. The sheet's link stays on until the sheet is off the last trade's page.`
+}
