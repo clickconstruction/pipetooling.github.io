@@ -589,7 +589,8 @@ Against the mock-up, the built steps still lack:
   **Fixed**, v2.8144: there a head is the level's bars and a cell is a 44 px square.
 - The card of changed pages has no counts and no legend, and the open cell has no outline.
 - A trade's row does not say where its certificate stands. That is step 6.
-- Most presses in the tab are under 44 px tall on a phone.
+- Most presses in the tab are under 44 px tall on a phone. **Fixed**, v2.8146: one rule makes every
+  press in the tab 44 px there. The step bar's dashes stay 24 px.
 
 Two things the review asks the owner: whether **Take it off their page** should also close the
 sheet's link, which is in the email, and whether the one press should reach a trade that was asked

@@ -160,7 +160,19 @@ function BuilderBar({ entry, rec, onBack }: { entry: DocumentBuilderEntry; rec: 
   )
 }
 
-export default function DocumentsBuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Props) {
+/**
+ * The tab, inside the one element `index.css` knows it by: `.documentBuilderTab` makes every press in it 44 px tall
+ * on a phone. The element draws nothing of its own.
+ */
+export default function DocumentsBuilderTab(props: Props) {
+  return (
+    <div className="documentBuilderTab" style={{ display: 'contents' }}>
+      <BuilderTab {...props} />
+    </div>
+  )
+}
+
+function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Props) {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const open = openBuilderFromSearch(location.search)

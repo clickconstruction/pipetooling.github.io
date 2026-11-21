@@ -7747,6 +7747,20 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
     animation: none;
   }
 }
+/* A press in the Document builder tab is 44 px tall on a phone (punch list #404). The tab's presses set their own
+   heights inline, from 24 to 40 px, and an inline style outranks a class. So this one rule is marked important and
+   raises every press in the tab, the pickers too, where each would otherwise be raised by hand. A press gets the
+   width with it, so a line's × is a square. The step bar's dashes stay out: they draw the paper's shape, and Back
+   and Next under them are the presses that move a step. */
+@media (max-width: 720px) {
+  .documentBuilderTab button:not(.documentBuilderStep),
+  .documentBuilderTab select {
+    min-height: 44px !important;
+  }
+  .documentBuilderTab button:not(.documentBuilderStep) {
+    min-width: 44px;
+  }
+}
 /* Send a paper → Who is it with? (punch list #403): a row lights under the pointer and the keyboard. An inline background would win over these, so the row's rest state lives here too. */
 .paper-party-row { background: transparent; }
 .paper-party-row:hover:not(:disabled), .paper-party-row:focus-visible { background: var(--bg-blue-tint); outline: none; }

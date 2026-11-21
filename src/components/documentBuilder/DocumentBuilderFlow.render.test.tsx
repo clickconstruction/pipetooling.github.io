@@ -133,6 +133,20 @@ describe('DocumentBuilderFlow', () => {
     expect(facts()).toBeNull()
   })
 
+  it('gives every stop under a slider a 44 px press, with or without the basis marked, and leaves the step bar its dashes', () => {
+    open()
+    press('Next: The basis')
+    const stops = () => Array.from(screen.getByRole('slider').parentElement?.nextElementSibling?.querySelectorAll('button') ?? [])
+    // The basis page marks no basis, and a topic's page does. Both rows are the height of a press.
+    expect(stops()).toHaveLength(5)
+    expect(stops().map((b) => b.style.minHeight)).toEqual(Array(5).fill('44px'))
+    press('Step 4: Photos and video')
+    expect(stops().map((b) => b.style.minHeight)).toEqual(Array(5).fill('44px'))
+    const dashes = Array.from(document.querySelectorAll('button.documentBuilderStep'))
+    expect(dashes).toHaveLength(11)
+    expect(dashes.every((b) => /^Step \d+: /.test(b.getAttribute('aria-label') ?? ''))).toBe(true)
+  })
+
   it('skips from the basis to the review when the paper is switched Off', () => {
     open()
     press('Next: The basis')
