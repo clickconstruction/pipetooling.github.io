@@ -34,7 +34,7 @@ The card leaves *a change after signing starts* open, with the pick *allowed, as
 ## Safe under what is deployed
 
 - The app on Pages calls `job_papers_require` with two names. It gets the default, and a plain paper is required as before.
-- The edge functions deployed today refuse every paper built from settings before they read anything else (`SETTINGS_PAPER_BARE`). So until they are redeployed a job can require such a paper and nobody can open or sign it. Nothing is signed bare in the meantime: the trigger refuses a signature with no frozen paper.
+- The edge functions deployed on the day of the push refused every paper built from settings before they read anything else (`SETTINGS_PAPER_BARE`), so a job could require such a paper and nobody could open or sign it. Nothing was signed bare in the meantime: the trigger refuses a signature with no frozen paper. The sign path's functions were deployed on 2026-11-21, and a ZZ Test paper was signed on prod (v2.8156's fragment has the walk).
 - No Book entry but a ZZ test one has a settings list, and no job on prod requires a paper, so nothing changes for anyone on the day this is pushed.
 
 ## One thing to know

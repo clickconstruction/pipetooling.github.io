@@ -29,6 +29,7 @@ import {
   usualFromJobExtra,
   usualFromJobField,
   usualHasCover,
+  sameJobsGetIt,
   usualOffer,
   withJobCoverOff,
   withoutJobExtra,
@@ -36,6 +37,7 @@ import {
   type JobSheet,
   type ResolvedSheet,
   type SheetDef,
+  type UsualPublishRow,
 } from '../../lib/documentBuilder/sheet'
 import { SHEET_SENT_KIND, sheetPrintHtml, sheetPrintTitle } from '../../lib/documentBuilder/sheetPrint'
 import {
@@ -46,12 +48,13 @@ import {
   sheetNote,
   sheetStamp,
   usualPlanChip,
+  USUAL_PRESS_MOVED,
   usualPlanFor,
   usualPublishPress,
   type JobSheetState,
 } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
-import { publishUsualToJobs } from '../../lib/documentBuilder/sheetsIo'
+import { publishUsualToJobs, readSheetsNow, usualPlanOfSheets } from '../../lib/documentBuilder/sheetsIo'
 import type { GcJob, SheetRecord } from '../../lib/documentBuilder/sheetsIo'
 import { MOVED_ON_USUAL, movedOnJobName, movedOnWords } from '../../lib/documentBuilder/movedOn'
 import { sheetUnreadWords } from '../../lib/documentBuilder/sendWords'
@@ -435,13 +438,41 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     setSheets(new Map(sheetsRef.current).set(job.projectId, stateFrom(res.value)))
   }
 
-  const publishUsual = async () => {
+  /** The usual published. `shown` is the plan the press and the rows showed when it was pressed. */
+  const publishUsual = async (shown: ReadonlyArray<UsualPublishRow>) => {
     if (busy || holdsRef.current.has(USUAL_KEY)) return
     setBusy(true)
     setRefusal(null)
     setOutcome(null)
     await flush()
     const def = usualRef.current ?? usual
+    // Every job is read again before anything is published. The press said which jobs get the change from what this
+    // page knew. When a teammate changed or published one since, nothing is published: the page takes the jobs as
+    // just read, the press and the rows are drawn again, and the person presses knowing where it goes.
+    const typedAtRead = new Map([...sheetsRef.current].map(([projectId, s]) => [projectId, s.own]))
+    const read = await readSheetsNow(io, entry.id)
+    if (!here.current) return
+    if (!read.ok) {
+      setBusy(false)
+      setRefusal(`${read.error} Nothing was published.`)
+      return
+    }
+    /** The page takes each job's sheet as it now stands, but for a job it holds words of its own for. */
+    const take = (fresh: ReadonlyMap<string, SheetRecord>) => {
+      const next = new Map(sheetsRef.current)
+      for (const [projectId, s] of fresh) {
+        const now = next.get(projectId)
+        const typedSince = now != null && typedAtRead.has(projectId) && now.own !== typedAtRead.get(projectId)
+        if (heldHere(projectId) == null && !pending.current.has(projectId) && !typedSince) next.set(projectId, stateFrom(s))
+      }
+      setSheets(next)
+    }
+    if (!sameJobsGetIt(shown, usualPlanOfSheets(jobs, read.value, heldHere))) {
+      take(read.value)
+      setBusy(false)
+      setOutcome({ line: USUAL_PRESS_MOVED.line, tone: 'warning', head: USUAL_PRESS_MOVED.why, failed: [] })
+      return
+    }
     const res = await io.publishBuilder(entry.id, recRef.current.revision, def, usualNo.current)
     if (!res.ok) {
       setBusy(false)
@@ -450,22 +481,15 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
     }
     usualNo.current = res.value.draftNo
     onRecord(res.value)
-    // The usual goes to every job that is ready, each read as it stands now and never as this page loaded it. A job
-    // this page holds words for, typed and not saved or waiting on a choice, is held. One that fails is named, and
-    // the rest still go.
-    const out = await publishUsualToJobs(io, { builderKey: entry.id, def, usualRevision: res.value.revision, jobs, heldHere })
+    // The usual goes to every job that is ready, each as just read and never as this page loaded it. A job this page
+    // holds words for, typed and not saved or waiting on a choice, is held. One that fails is named, and the rest
+    // still go.
+    const { done, failed, held, sheets: after } = await publishUsualToJobs(io, { def, usualRevision: res.value.revision, jobs, sheets: read.value, heldHere })
     if (!here.current) return
     setBusy(false)
-    if (!out.ok) {
-      setOutcome({ line: 'Published your usual. It went to no job yet.', tone: 'warning', head: `${out.error} Publish each job to bring it up.`, failed: [] })
-      return
-    }
-    const { done, failed, held } = out.value
-    // The page takes each job's sheet as it now stands, but for a job it holds words of its own for. The rows of
-    // where the change goes are drawn from them, so each held job reads there with its reason.
-    const next = new Map(sheetsRef.current)
-    for (const [projectId, s] of out.value.sheets) if (heldHere(projectId) == null) next.set(projectId, stateFrom(s))
-    setSheets(next)
+    // The rows of where the change goes are drawn from the jobs as they now stand, so each held job reads there with
+    // its reason.
+    take(after)
     const words = batchOutcomeWords({ verb: 'publish', past: 'published to', done, failed: failed.length, noun: 'job' })
     const went = done + failed.length === 0 ? 'Published your usual.' : words.line
     setOutcome({ line: `${went}${held.length > 0 ? ` Held ${held.length}.` : ''}`, tone: done + failed.length === 0 ? 'success' : words.tone, head: words.head, failed })
@@ -518,7 +542,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
         <span style={saveState === 'failed' ? { ...FINE, fontWeight: 600, color: 'var(--text-red-700)' } : FINE} aria-live="polite">
           {SAVE_WORDS[saveState]}
         </span>
-        <button type="button" disabled={press.dead || busy || heldOnScreen} style={mainPress(press.dead || busy || heldOnScreen)} onClick={() => void (mode === 'usual' ? publishUsual() : publishJob())}>
+        <button type="button" disabled={press.dead || busy || heldOnScreen} style={mainPress(press.dead || busy || heldOnScreen)} onClick={() => void (mode === 'usual' ? publishUsual(plan) : publishJob())}>
           {press.label}
         </button>
       </Bar>
