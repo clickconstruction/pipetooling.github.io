@@ -2,6 +2,8 @@
  * Agreements on the Customer page (v2.4301): every signed paper filed for this customer's jobs —
  * as the customer or as the GC — with the jobs it covers, Change the jobs and Take it off; then
  * their open jobs that have no agreement. A paper covers the jobs it names, never all of theirs.
+ * Since punch list #403, step 4, the papers that are with the customer or a person there are listed too, under
+ * *Papers with this customer*: every kind and every state, read only (`PartyPapersList`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -9,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import AddJobContractSheet from '../jobs/AddJobContractSheet'
+import { PartyPapersList, partyPapersQuiet, usePartyPapers } from '../contracts/PartyPapers'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 import { buildJobContractCoverage, type JobContractRowLike, type SignedEstimateLike } from '../../lib/jobs/jobContractCoverage'
 import { allOfCount, jobNumberLabel, jobNumberSortKey, jobStatusWord, streetOf, type CoversPaper } from '../../lib/jobs/jobContractCovers'
@@ -53,6 +56,9 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
   const [adding, setAdding] = useState(false)
   const [confirmOff, setConfirmOff] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // The papers that are with this customer or a person there (punch list #403): an outside party's own papers.
+  const party = useMemo(() => ({ kind: 'customer' as const, id: customerId }), [customerId])
+  const partyPapers = usePartyPapers(party)
 
   const load = useCallback(async () => {
     try {
@@ -100,7 +106,8 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
       .sort((a, b) => jobNumberSortKey(jobNumberLabel(a)) - jobNumberSortKey(jobNumberLabel(b)))
   }, [jobs, rows, estimates])
 
-  if (!loaded || (papers.length === 0 && uncovered.length === 0)) return null
+  const partyQuiet = partyPapersQuiet(partyPapers)
+  if (!loaded || (papers.length === 0 && uncovered.length === 0 && partyQuiet)) return null
 
   const openScan = async (paper: CoversPaper) => {
     const path = (paper.source.paper_upload_path ?? '').trim()
@@ -200,6 +207,12 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
             </div>
           )
         })}
+        {!partyQuiet ? (
+          <div data-testid="customer-party-papers">
+            <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>Papers with this customer</div>
+            <PartyPapersList read={partyPapers} canSend surface="party-papers-customer" />
+          </div>
+        ) : null}
         {uncovered.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>Open jobs with no agreement</div>

@@ -2,7 +2,7 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer, w-9, certificate, papers section, papers with this customer, not sent
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders. It also holds a paper sent to a customer or a supply house.
@@ -184,12 +184,33 @@ A job can require papers before it opens, such as an NDA or site rules. Each per
 
 Type the job's number to see every paper signed for that job. The job's own **Papers before this job opens** section shows who has not signed yet.
 
+## See a company's papers on its own page
+
+A supply house and a customer each list the papers that are with them.
+
+- For a supply house, open [Materials](/materials?tab=supply-houses) and press **Edit** on its row. The list is under **Papers**.
+- For a customer, open their page. The list is in the **Agreements** card, under **Papers with this customer**.
+
+The list holds every kind of paper. A W-9 and an insurance certificate are there with the agreements.
+
+Each line says who signs and where the paper stands. A paper that was made and never sent reads *not sent*.
+
+:::example A supply house's papers
+{{chip:blue|Agreement}} **Mutual secrecy agreement**, signed by Lena Park, Branch manager. {{chip:green|signed ✓}} Signed Nov 20.
+
+{{chip:blue|W-9}} **W-9**. {{chip:gray|not sent}} Made Nov 21.
+:::
+
+Press the name of a signed paper to open its signed record. A paper that is not signed has no press.
+
+Nothing is sent from these lists. To send a paper, press **Send a paper** on the Agreements tab.
+
 ## What is not on this tab
 
 - A draft. A draft stays in the window that made it until it is sent.
 - A job with no contract. That list is the Contract sweep, under Tools on the [Pipeline](/jobs?tab=stages).
 - An accepted estimate. It is on the [Estimates](/documents?tab=estimates) tab.
-- A W-9, an insurance certificate or a licence. They are papers, not agreements, and stay on People.
+- A W-9, an insurance certificate or a licence. They are papers, not agreements. A person's stay on People, and an outside company's is on that company's own page.
 - A lien waiver. It is under its job on the [Jobs](/documents?tab=jobs) tab.
 
 ## Who can see the tab

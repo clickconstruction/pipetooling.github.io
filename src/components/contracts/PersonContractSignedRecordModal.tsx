@@ -74,6 +74,10 @@ export function PersonContractSignedRecordModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signatureSignedUrl, setSignatureSignedUrl] = useState<string | null>(null)
+  /** The signature's image was asked for and did not open (punch list #403): said in words, not as a wait. */
+  const [signatureDidNotOpen, setSignatureDidNotOpen] = useState(false)
+  /** The form's layout was asked for. A reader it is closed to gets no layout, and reads that. */
+  const [formSchemaAsked, setFormSchemaAsked] = useState(false)
   /** Two-party forms (v2.2802): the office-section modal. */
   const [officeOpen, setOfficeOpen] = useState(false)
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null)
@@ -91,6 +95,7 @@ export function PersonContractSignedRecordModal({
       setLoading(false)
       setSignatureSignedUrl(null)
       setFormSchema(null)
+      setFormSchemaAsked(false)
       setPdfError(null)
       setSignedClauses(null)
       setKeptSettings(null)
@@ -143,7 +148,10 @@ export function PersonContractSignedRecordModal({
         if (!cancelled) setKeptSettings(jobSettings ? { kept: jobSettings, holds } : null)
         if (doc.form_template_id) {
           const { data: tpl } = await supabase.from('contract_form_templates' as never).select('schema').eq('id', doc.form_template_id).maybeSingle()
-          if (!cancelled) setFormSchema(((tpl as unknown as { schema?: FormSchema } | null)?.schema) ?? null)
+          if (!cancelled) {
+            setFormSchema(((tpl as unknown as { schema?: FormSchema } | null)?.schema) ?? null)
+            setFormSchemaAsked(true)
+          }
         }
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e, 'Could not load document'))
@@ -159,6 +167,7 @@ export function PersonContractSignedRecordModal({
 
   useEffect(() => {
     const path = row?.signer_signature_storage_path?.trim()
+    setSignatureDidNotOpen(false)
     if (!path) {
       setSignatureSignedUrl(null)
       return
@@ -173,8 +182,13 @@ export function PersonContractSignedRecordModal({
         )
         if (cancelled) return
         setSignatureSignedUrl(signed?.signedUrl ?? null)
+        setSignatureDidNotOpen(!signed?.signedUrl)
       } catch {
-        if (!cancelled) setSignatureSignedUrl(null)
+        if (!cancelled) {
+          setSignatureSignedUrl(null)
+          // The image is the office's to open. A reader it is closed to reads that, never a wait that does not end.
+          setSignatureDidNotOpen(true)
+        }
       }
     })()
     return () => {
@@ -460,7 +474,7 @@ export function PersonContractSignedRecordModal({
                     </p>
                   ) : null}
                   {facts.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : 'Loading the form’s layout…'}</p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : formSchemaAsked ? 'The form’s layout is the office’s to read, so its answers are not listed here. The PDF holds them.' : 'Loading the form’s layout…'}</p>
                   ) : (
                     <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, max-content) 1fr', gap: '0.25rem 0.9rem', margin: 0, fontSize: '0.875rem' }}>
                       {facts.map((f) => (
@@ -475,7 +489,7 @@ export function PersonContractSignedRecordModal({
                     </dl>
                   )}
                   <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    Sensitive answers are never stored on the row. Opening the signed PDF is limited to devs, controllers, and pay-approved masters, and each open is logged.
+                    Sensitive answers are never stored on the row. Opening the signed PDF is limited to devs, controllers, and pay-approved masters, and each open is logged. An estimator opens an outside company’s.
                   </p>
                 </div>
               ) : null}
@@ -502,8 +516,8 @@ export function PersonContractSignedRecordModal({
                       }}
                     />
                   ) : (
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                      Loading signature…
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }} data-testid="signed-record-signature-wait">
+                      {signatureDidNotOpen ? 'The signature’s image did not open. It is kept for the office.' : 'Loading signature…'}
                     </p>
                   )
                 ) : row.signer_printed_name?.trim() ? (
