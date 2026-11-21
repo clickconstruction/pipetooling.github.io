@@ -6675,6 +6675,8 @@ The insurance builder's read mark is **checked**, by an insurance agent, where t
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
 A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
+A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
+Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.

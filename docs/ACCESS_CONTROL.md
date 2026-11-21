@@ -915,6 +915,7 @@ A dev writes `document_builders` and `document_builder_sheets` directly, under t
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
+Since v2.8150 a published Sub NDA opens at `/d/<code>` the same way, as a flow to walk with no field and no press that writes: whoever holds the link reads the published revision and can change, save or send nothing.
 Since v2.8009 a dev sends a published sheet to a trade on its job through `document-builder-send`, which refuses anyone else, a training account, a twin and an archived account itself, and refuses a company whose page was turned off.
 A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing of another company's.
 Since v2.8024 a dev also types on a walked builder's draft, publishes it as the next revision and marks a revision as read by an attorney, through the same row and the same trigger.
