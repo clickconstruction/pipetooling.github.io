@@ -567,7 +567,8 @@ Found and not fixed. No PR holds any of these.
   revision (`sheetsIo.ts`).
 - The usual's publish to every job writes each job's draft from the page as it was loaded, so a
   teammate's later changes to a job are lost.
-- A removed coverage line's key is used again, so a job's old change lands on a new line (`sheet.ts`).
+- **Fixed, v2.8139.** A removed coverage line's key was used again, so a job's old change landed on a new line
+  (`sheet.ts`). A new line's key is now letters of its own, and a publish lets go of a job's change to a line that is gone.
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
   on, on the screen and in `document-builder-send`. A sheet on unchecked words can go with no
   *Send it anyway* box.
