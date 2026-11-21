@@ -559,7 +559,10 @@ PR #9087, #9095, #9096, #9100, #9105, #9108 and #9109.
 
 Not walked on prod: the one press with more than one trade, *Tell them it changed*, a trade with no
 page, a page that is off, and the Sub NDA's **Publish** and its attorney's mark. On prod the Sub NDA
-is a draft that was never published, and the usual sheet is at revision 1 with no agent's check.
+is a draft that was never published, and the usual sheet is at revision 3 with no agent's check.
+Revision 3 reads as revision 1 did. On 2026-11-21 the walk of the four saving fixes below published
+it twice: once with a test line at its foot, then again to take that line out. That walk also found
+the jobs card under the usual saying every job was on it while one was held, fixed in v2.8180.
 
 Found by the review, and not fixed in it. A line marked **Fixed** names the version that fixed it since. A line
 with no mark is still open, and no PR holds it.
@@ -567,9 +570,11 @@ with no mark is still open, and no PR holds it.
 - **Fixed, v2.8143 (the database) and v2.8148 (the tab).** A tab left open could publish over a newer revision, in
   both builders. A draft save named no revision (`sheetsIo.ts`). A save and a publish now name the draft's number
   (`draft_no`), and a refused one is held with **Load the newer one** and **Save mine over it**.
-- **Fixed, v2.8153.** The usual's publish to every job wrote each job's draft from the page as it was loaded, so a
-  teammate's later changes to a job were lost. It now reads each job at the press (`publishUsualToJobs`,
-  `sheetsIo.ts`), holds a job whose draft moved, and each held job's row says why.
+- **Fixed, v2.8153 and v2.8155.** The usual's publish to every job wrote each job's draft from the page as it was
+  loaded, so a teammate's later changes to a job were lost. It now reads every job at the press, before anything is
+  published (`readSheetsNow`, `sheetsIo.ts`), holds a job whose draft moved, and each held job's row says why. If
+  the jobs that would get it are not the ones the button counted, nothing is published and the button is drawn
+  again (v2.8155, `sameJobsGetIt`).
 - **Fixed, v2.8139.** A removed coverage line's key was used again, so a job's old change landed on a new line
   (`sheet.ts`). A new line's key is now letters of its own, and a publish lets go of a job's change to a line that is gone.
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
