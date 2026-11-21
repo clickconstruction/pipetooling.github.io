@@ -79,7 +79,7 @@ export const SUPPLY_MOVE_WINDOW_CLOSE: { redWithinDays: number; amberWithinDays:
 
 /** Needs-You min ages (the v2.2671 shape): the card only nags once the OLDEST item is this old. */
 export const DISPATCH_REQUESTS_MIN_AGE_DAYS = 3
-/** 0 since v2.8162 (punch list #410, Taunya's pick): a report from the field shows the same day it is sent. */
+/** 0 since v2.8160 (punch list #410, Taunya's pick): a report from the field shows the same day it is sent. */
 export const HR_REPORTS_MIN_AGE_DAYS = 0
 
 const DAY_MS = 86_400_000
