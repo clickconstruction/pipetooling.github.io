@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, Suspense, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import CustomerProfileModal from '../components/customers/CustomerProfileModal'
+import { WindowOpening } from '../components/WindowOpening'
+import { lazyWindow } from '../lib/lazyWindow'
 import type { CustomerProfileView } from '../lib/customers/customerProfileView'
 import { readCustomerTimelineParam } from '../lib/customers/customerTimelineSearch'
 
@@ -22,6 +23,10 @@ export type CustomerProfileModalContextValue = {
 }
 
 const CustomerProfileModalContext = createContext<CustomerProfileModalContextValue | null>(null)
+
+// The window is a chunk of its own (`lazyWindow`): this provider is mounted for everyone signed in.
+const CustomerProfileModal = lazyWindow(() => import('../components/customers/CustomerProfileModal'))
+const CUSTOMER_OPENING = <WindowOpening words="Opening the customer…" />
 
 export function CustomerProfileModalProvider({ children }: { children: ReactNode }) {
   const [openState, setOpenState] = useState<{ customerId: string; instanceKey: number; view?: CustomerProfileView } | null>(null)
@@ -49,12 +54,14 @@ export function CustomerProfileModalProvider({ children }: { children: ReactNode
     >
       {children}
       {openState != null && (
+        <Suspense fallback={CUSTOMER_OPENING}>
         <CustomerProfileModal
           key={`${openState.customerId}-${openState.instanceKey}`}
           customerId={openState.customerId}
           initialView={openState.view}
           onClose={closeCustomerProfile}
         />
+        </Suspense>
       )}
     </CustomerProfileModalContext.Provider>
   )

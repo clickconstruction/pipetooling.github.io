@@ -1,4 +1,4 @@
-import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
+import { createElement, lazy, useState, type ComponentType } from 'react'
 
 /**
  * A window loaded on demand (the main chunk's split, 2026-11-20).
@@ -11,17 +11,46 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
  * Two things keep a first open from feeling slower. The service worker precaches every chunk, so an
  * installed app reads the window from the device. And `warmWhenIdle` loads it a moment after the app
  * has drawn, while nothing else wants the processor, so the open finds it ready.
+ *
+ * It does two things `React.lazy` alone does not. A window whose code has already loaded is drawn at
+ * once, with no loading step in between, so a warmed window opens in the same frame as the press. And a
+ * load that failed is asked for again on the next open, where `React.lazy` keeps the failure for good.
  */
 
 type Loaded<P> = { default: ComponentType<P> }
 
-/** A lazy window with its loader beside it, so it can be warmed before anyone presses. */
-export type LazyWindow<P> = LazyExoticComponent<ComponentType<P>> & { preload: () => Promise<unknown> }
+/** A window loaded on demand, with its loader beside it so it can be warmed before anyone presses. */
+export type LazyWindow<P> = ComponentType<P> & { preload: () => Promise<unknown> }
 
-export function lazyWindow<P>(load: () => Promise<Loaded<P>>): LazyWindow<P> {
-  const component = lazy(load) as LazyWindow<P>
-  component.preload = load
-  return component
+export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): LazyWindow<P> {
+  let loaded: ComponentType<P> | null = null
+  let pending: Promise<Loaded<P>> | null = null
+  const once = (): Promise<Loaded<P>> => {
+    if (!pending) {
+      pending = load().then(
+        (module) => {
+          loaded = module.default
+          return module
+        },
+        (error: unknown) => {
+          // Ask again next time: a new lazy for the next mount, since the old one holds this failure.
+          pending = null
+          suspended = lazy(once)
+          throw error
+        },
+      )
+    }
+    return pending
+  }
+  let suspended = lazy(once)
+  // One mount keeps the component it started with, so a window never remounts when its code lands.
+  const Window = (props: P) => {
+    const [Chosen] = useState<ComponentType<P>>(() => loaded ?? (suspended as unknown as ComponentType<P>))
+    return createElement(Chosen, props)
+  }
+  const out = Window as LazyWindow<P>
+  out.preload = () => once()
+  return out
 }
 
 /** What `warmWhenIdle` needs from the page: the browser's idle callback where there is one, a timer where not. */

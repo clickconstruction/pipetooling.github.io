@@ -346,7 +346,8 @@ export default defineConfig({
         // so the cap is 10 MiB. About 86 kB of that step was not growth: v2.8015's start-check readers import the
         // permit research list statically, which moved it and what it reads out of a lazy chunk into this one.
         // Six days took this MiB, so the split began the same day: the three job windows load on demand (v2.8098,
-        // `lazyWindow`), which took the main chunk from 9,465,107 bytes on the live site to 5,671,756.
+        // `lazyWindow`), which took the main chunk from 9,465,107 bytes on the live site to 5,671,756, and six more
+        // windows (v2.8104) took it to 4,307,275. The Settings page's chunk, 5,608,888 bytes, is now the largest file.
         // `src/lib/entryGraph.repo.test.ts` now holds the entry's eager imports to a budget in PR CI, so growth
         // is refused on the PR that brings it. The cap stays here until the next cuts are in, then comes down.
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,

@@ -150,11 +150,18 @@ export const ON_DEMAND_WINDOWS: ReadonlyArray<string> = [
   'src/components/jobs/JobWindowModal.tsx',
   'src/components/jobs/DetailJobModal.tsx',
   'src/components/jobs/JobFormModal.tsx',
+  'src/components/bids/BidPreviewModal.tsx',
+  'src/components/customers/CustomerProfileModal.tsx',
+  'src/components/personDesk/PersonDeskDrawer.tsx',
+  'src/components/UserReviewModal.tsx',
+  'src/components/paintedMap/PaintedMapWindow.tsx',
+  'src/components/paintedMap/PaintAMapStartSheet.tsx',
+  'src/components/EditCustomerForm.tsx',
 ]
 
 /**
- * The most source the entry may reach eagerly. On 2026-11-20, 14.2 MB of source here built a main chunk of
- * 5,671,756 bytes, so a megabyte of source is about 0.4 MB of chunk. Lower this as more windows move out;
- * raise it only with the reason beside it, as the precache cap's comment asks.
+ * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
+ * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. Lower this as
+ * more windows move out; raise it only with the reason beside it, as the precache cap's comment asks.
  */
-export const ENTRY_SOURCE_BUDGET_BYTES = 16 * 1024 * 1024
+export const ENTRY_SOURCE_BUDGET_BYTES = 12.5 * 1024 * 1024
