@@ -51,8 +51,10 @@ export type PaintedGoogleReach = {
  * Each step of the train adds its own word here, in the change that builds the part.
  * - Drawing on Google adds `drawing`, `placing` and `walking`. A line drawn by hand over Google's
  *   photograph also waits on a reading of Google's terms on content made from its imagery (3.2.3 (c)).
- * - The public page adds `way`, and never before the billing look says yes. It also needs the frame
- *   that keeps a reader and the line in the picture together.
+ * - The public page adds `way`, and never before the billing look says yes. Everything else it
+ *   needs is in place since v2.8208: the page hands its ask, and the Google canvas keeps a reader
+ *   and the line in the picture together (`frameMe.ts`) and stays light on the page's paper. So the
+ *   yes is this one word, with the test's line that holds it.
  */
 export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window'], uses: ['looking'] }
 

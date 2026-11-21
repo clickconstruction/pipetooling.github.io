@@ -29,12 +29,15 @@ import { WAY_AREA_PRIVACY_WORDS, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRI
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
 import { roughCircleWords, wayRoughWords, wayWeakWords } from '../lib/paintedMap/preciseLocation'
 import { usePhoneKind, useRoughHeld } from '../hooks/usePreciseLocation'
+import type { PaintedCanvasGoogleAsk } from '../components/paintedMap/PaintedMapCanvas'
 import { PaintedPlaceMark } from '../components/paintedMap/PaintedPlaceMark'
 import { PreciseSteps, PreciseTick } from '../components/paintedMap/PreciseLocationLine'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 
 const PaintedMapCanvasLazy = lazy(() => import('../components/paintedMap/PaintedMapCanvas'))
+/** The page is read, never drawn on: Google's map when the rule allows it (`paintedMapProvider.ts`), the Leaflet canvas otherwise. */
+const WAY_ON_GOOGLE: PaintedCanvasGoogleAsk = { screen: 'way', use: 'looking' }
 
 type View = PaintedWayView | { kind: 'loading' }
 type Me = { lat: number; lng: number; accuracyM: number | null }
@@ -298,7 +301,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
             </div>
             <div style={{ marginTop: 12, position: 'relative' }}>
               <Suspense fallback={<p style={{ ...pad, color: MUTED }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={lines} places={places} height={360} me={reading.kind === 'finding' ? null : reading.me} frameMe={reading.kind === 'spot' && reading.together} frameMargin={reading.kind === 'area' && reading.circle} onTilesFailed={() => setMapFailed(true)} onPlaceTap={(id) => document.getElementById(`way-place-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+                <PaintedMapCanvasLazy lines={lines} places={places} height={360} google={WAY_ON_GOOGLE} me={reading.kind === 'finding' ? null : reading.me} frameMe={reading.kind === 'spot' && reading.together} frameMargin={reading.kind === 'area' && reading.circle} onTilesFailed={() => setMapFailed(true)} onPlaceTap={(id) => document.getElementById(`way-place-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
               </Suspense>
             </div>
             <div style={pad}>

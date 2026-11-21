@@ -202,6 +202,19 @@ describe('the map it asks Google for', () => {
     expect(lib.mapProps && 'tilt' in lib.mapProps).toBe(false)
   })
 
+  it('follows the app’s theme, and stays light on a screen that is always light', () => {
+    document.documentElement.dataset.theme = 'dark'
+    try {
+      const { rerender } = mount()
+      expect(lib.mapProps?.colorScheme).toBe('DARK')
+      // The public page wears the portal's light paper whatever the app's theme.
+      rerender({ light: true })
+      expect(lib.mapProps?.colorScheme).toBe('LIGHT')
+    } finally {
+      delete document.documentElement.dataset.theme
+    }
+  })
+
   it('keeps one map for the page: Google bills by the map made', () => {
     mount()
     expect(lib.mapProps?.reuseMaps).toBe(true)
@@ -401,6 +414,46 @@ describe('a rough reading (punch list #402)', () => {
 
   it('moves nothing for a rough reading without frameMargin', () => {
     mount({ lines: [DRAWN], me: ROUGH })
+    expect(lib.moves).toHaveLength(0)
+  })
+})
+
+describe('a reader and the line together (step 4, the public page)', () => {
+  const BOX = { width: 600, height: 400 }
+  // Off the map's first picture, which opens on the line.
+  const AWAY = { lat: 29.556, lng: -98.292, accuracyM: 6 }
+
+  it('frames the whole map with the reader on the first reading, by the kernel’s own numbers', () => {
+    mount({ lines: [DRAWN], places: [GATE], me: AWAY, frameMe: true })
+    expect(lib.moves).toEqual([paintedFitView([...DRAWN.points, GATE, AWAY], BOX)])
+  })
+
+  it('leaves the map as the reader has it while their dot is well inside, and frames again at its edge', () => {
+    const { rerender } = mount({ lines: [DRAWN], me: AWAY, frameMe: true })
+    expect(lib.moves).toHaveLength(1)
+    // A step along the way: the dot is still well inside what the map shows.
+    rerender({ lines: [DRAWN], me: { ...AWAY, lat: AWAY.lat - 0.0005 }, frameMe: true })
+    expect(lib.moves).toHaveLength(1)
+    // Off the picture altogether.
+    const gone = { ...AWAY, lat: 29.59 }
+    rerender({ lines: [DRAWN], me: gone, frameMe: true })
+    expect(lib.moves).toHaveLength(2)
+    expect(lib.moves[1]).toEqual(paintedFitView([...DRAWN.points, gone], BOX))
+  })
+
+  it('reads the box as it is now, not as the map last measured it', () => {
+    lib.box = { width: 360, height: 360 }
+    mount({ lines: [DRAWN], me: AWAY, frameMe: true })
+    expect(lib.moves).toEqual([paintedFitView([...DRAWN.points, AWAY], { width: 360, height: 360 })])
+  })
+
+  it('moves nothing without frameMe: the painting window never asks for it', () => {
+    mount({ lines: [DRAWN], me: AWAY })
+    expect(lib.moves).toHaveLength(0)
+  })
+
+  it('never frames an area as if it were a spot', () => {
+    mount({ lines: [DRAWN], me: { ...AWAY, accuracyM: 3200, area: true }, frameMe: true })
     expect(lib.moves).toHaveLength(0)
   })
 })
