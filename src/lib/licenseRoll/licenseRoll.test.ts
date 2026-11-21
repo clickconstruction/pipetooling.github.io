@@ -4,11 +4,14 @@ import {
   GONE_KEPT_DAYS,
   isLeftOff,
   nameKeyOf,
+  ownPlumbingNumbers,
   parseCsv,
   planRollPull,
   pullErrorWords,
+  rollNumberKey,
   rowChanges,
   TSBPE_FILES,
+  TSBPE_OWN_ONLY_FILES,
   TSBPE_WEEKLY_FILES,
   tsbpeFile,
   tsbpeRows,
@@ -192,7 +195,7 @@ describe('planRollPull', () => {
     expect(p.markedGone).toBe(0)
   })
   it('keeps one of our own numbers whatever the county', () => {
-    const p = plan({ rows: [row({ license_number: '000777', county: 'HARRIS' })], ours: new Set(['000777']) })
+    const p = plan({ rows: [row({ license_number: '000777', county: 'HARRIS' })], ours: new Set(['777']) })
     expect(p.inserts).toHaveLength(1)
     expect(p.inserts[0]!.ours).toBe(true)
   })
@@ -246,10 +249,49 @@ describe('planRollPull', () => {
     expect(p.counts.changed).toBe(1)
   })
   it('turns ours on and off with no line of history', () => {
-    const on = plan({ rows: [row()], kept: [kept()], ours: new Set(['000412']) })
+    const on = plan({ rows: [row()], kept: [kept()], ours: new Set(['412']) })
     expect(on.patches).toEqual([{ id: 'kept-1', patch: { ours: true } }])
     expect(on.changes).toEqual([])
     expect(on.counts.changed).toBe(0)
+  })
+})
+
+describe('our own people’s numbers', () => {
+  it('compares a number as digits with no leading zeros, however it is written', () => {
+    expect(rollNumberKey('000412')).toBe('412')
+    expect(rollNumberKey('#412')).toBe('412')
+    expect(rollNumberKey('J-00412')).toBe('412')
+    expect(rollNumberKey(' 412 ')).toBe('412')
+    expect(rollNumberKey('none')).toBe('')
+    expect(rollNumberKey(null)).toBe('')
+  })
+  it('sorts our plumbing numbers by the class of file each would be found in', () => {
+    const own = ownPlumbingNumbers([
+      { trade: 'plumbing', cls: 'apprentice', number: '000901' },
+      { trade: 'plumbing', cls: 'journeyman', number: '#412' },
+      { trade: 'plumbing', cls: 'master', number: 'M-087' },
+      { trade: 'plumbing', cls: 'tradesman', number: null },
+      { trade: 'electrical', cls: 'journeyman', number: '555' },
+      { trade: null, cls: null, number: '777' },
+    ])
+    expect([...own.apprentice!]).toEqual(['901'])
+    expect([...own.journeyman!]).toEqual(['412'])
+    // A master may be a responsible master, so the number is looked for in both files.
+    expect([...own.master!]).toEqual(['87'])
+    expect([...own.responsible_master!]).toEqual(['87'])
+    expect(own.tradesman).toBeUndefined()
+  })
+  it('reads the apprentice file for our own numbers alone', () => {
+    expect(TSBPE_OWN_ONLY_FILES).toEqual(['PA'])
+    const apprentices = [row({ license_class: 'apprentice', license_number: '000901' }), row({ license_class: 'apprentice', license_number: '000902', name_key: 'voss|calder||78130' })]
+    // No county is kept from this file: the one who stays is ours, though both live in Comal.
+    const p = plan({ rows: apprentices, counties: new Set<string>(), ours: new Set(['901']) })
+    expect(p.inserts.map((r) => [r.license_number, r.ours])).toEqual([['000901', true]])
+    expect(p.counts).toMatchObject({ seen: 2, kept: 1, added: 1 })
+  })
+  it('takes one of ours off when the number is no longer ours and the county is not one we keep', () => {
+    const p = plan({ rows: [row({ county: 'HARRIS' })], kept: [kept({ county: 'HARRIS', ours: true })] })
+    expect(p.deletes).toEqual(['kept-1'])
   })
 })
 

@@ -63,8 +63,44 @@ export const TSBPE_FILES: readonly TsbpeFile[] = [
   { file: 'PA', license_class: 'apprentice', url: 'https://tsbpe.texas.gov/wp-content/uploads/2015/03/PA.csv.zip', zipped: true, says: 'Plumbing · apprentice' },
 ]
 
-/** The files a weekly pull reads. The apprentice file is read only for our own people's numbers, which is step two. */
+/** The files a weekly pull keeps our counties from. */
 export const TSBPE_WEEKLY_FILES: readonly TsbpeFileKey[] = ['RMP', 'MP', 'JP', 'TP']
+
+/**
+ * The files read only for our own people's numbers: no county's rows are kept from them. The apprentice file gives
+ * no age and an apprentice can be 16, so the only apprentices on the roll are our own.
+ */
+export const TSBPE_OWN_ONLY_FILES: readonly TsbpeFileKey[] = ['PA']
+
+/**
+ * A license number as it is compared: digits only, with no leading zeros. The state writes `012345`; our own records
+ * write `#12345`, `J-12345` or `12345`. Empty when the text holds no digit.
+ */
+export function rollNumberKey(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '').replace(/^0+/, '')
+}
+
+/** One of our own people's licenses, as the app's own reader makes it out (`parseLicenseType`). */
+export type OwnLicense = { trade: string | null; cls: string | null; number: string | null }
+
+/**
+ * Our own people's plumbing numbers, by the class of the state file each would be found in. A master may be on
+ * either master file, since a responsible master is a master who contracts with the public, so a master's number is
+ * looked for in both. A license with no number, or of another trade, names nothing.
+ */
+export function ownPlumbingNumbers(licenses: readonly OwnLicense[]): Partial<Record<RollClass, Set<string>>> {
+  const out: Partial<Record<RollClass, Set<string>>> = {}
+  const add = (cls: RollClass, key: string) => (out[cls] ??= new Set<string>()).add(key)
+  for (const l of licenses) {
+    const key = rollNumberKey(l.number)
+    if (l.trade !== 'plumbing' || !key) continue
+    if (l.cls === 'master') {
+      add('master', key)
+      add('responsible_master', key)
+    } else if (l.cls === 'apprentice' || l.cls === 'tradesman' || l.cls === 'journeyman') add(l.cls, key)
+  }
+  return out
+}
 
 export function tsbpeFile(key: string): TsbpeFile | null {
   const k = key.trim().toUpperCase()
@@ -222,7 +258,7 @@ export type RollPullInput = {
   kept: readonly KeptRow[]
   /** The counties kept, upper case. */
   counties: ReadonlySet<string>
-  /** Our own people's and subs' numbers at this class. Kept whatever the county. */
+  /** Our own people's and subs' numbers at this class, each as `rollNumberKey` writes it. Kept whatever the county. */
   ours: ReadonlySet<string>
   leftOff: LeftOff
   today: string
@@ -323,7 +359,8 @@ export function planRollPull(input: RollPullInput): RollPullPlan {
   let markedGone = 0
 
   for (const row of rows) {
-    const isOurs = ours.has(row.license_number)
+    const numberKey = rollNumberKey(row.license_number)
+    const isOurs = numberKey !== '' && ours.has(numberKey)
     const qualifies = !isLeftOff(row, leftOff) && (isOurs || counties.has(row.county))
     const was = keptByNumber.get(row.license_number)
     met.add(row.license_number)
