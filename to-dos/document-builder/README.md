@@ -575,6 +575,7 @@ Found and not fixed. No PR holds any of these.
   usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
 - **Send it again** picks the contact by name and does not say who.
+  **Fixed**, v2.8131: it goes to the address on the send's own row, and a line under it names the person.
 - The link's code is made from the service key unless `DOCUMENT_BUILDER_LINK_SECRET` is set, so a new
   key would leave a link that does not open.
 - A sent sheet's copy carries no job, and Sent copies files it under *Other*.

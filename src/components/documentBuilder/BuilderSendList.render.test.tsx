@@ -13,7 +13,7 @@ import { BuilderSendList } from './BuilderSendList'
 
 afterEach(cleanup)
 
-const sent = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: '2026-11-14', openedRevision: 1, ...over })
+const sent = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: '2026-11-14', openedRevision: 1, ...over })
 const party = (id: string, name: string, over: Partial<SendParty> = {}): SendParty => ({ id, name, page: { state: 'on' }, contacts: [{ name: `${name} Owner`, email: `owner@${id}.test`, role: 'owner' }], send: null, ...over })
 
 const PARTIES: SendParty[] = [
@@ -141,6 +141,32 @@ describe('BuilderSendList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tell them it changed, Cedar Fork Drain' }))
     await waitFor(() => expect(next.onSend).toHaveBeenCalledTimes(1))
     expect(vi.mocked(next.onSend).mock.calls[0]?.[3]).toBe('changed')
+  })
+
+  it('sends again to the person the send went to, not a namesake, and says who', async () => {
+    const owner = { name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }
+    const office = { name: 'Ana Pruitt', email: 'office@cedarfork.test', role: 'office' }
+    const twoAnas = party('cedarfork', 'Cedar Fork Drain', { contacts: [owner, office], send: sent({ contactEmail: 'office@cedarfork.test' }) })
+    const props = draw({ parties: [twoAnas] })
+    const line = row('cedarfork').querySelector('[data-goes-to]') as HTMLElement
+    expect(line.textContent).toBe('It goes to Ana Pruitt at office@cedarfork.test.')
+    const again = screen.getByRole('button', { name: 'Send it again, Cedar Fork Drain' })
+    expect(again.getAttribute('aria-describedby')).toBe(line.id)
+    fireEvent.click(again)
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(props.onSend).mock.calls[0]?.[1]).toEqual(office)
+  })
+
+  it('does not send again to someone else once the person it went to is off the record', () => {
+    const gone = party('cedarfork', 'Cedar Fork Drain', { contacts: [{ name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }], send: sent({ contactEmail: 'office@cedarfork.test' }) })
+    const props = draw({ parties: [gone] })
+    const again = screen.getByRole('button', { name: 'Send it again, Cedar Fork Drain' }) as HTMLButtonElement
+    expect(again.disabled).toBe(true)
+    expect(again.style.background).toBe(DEAD_PRESS_FILL)
+    expect((row('cedarfork').querySelector('[data-goes-to="nobody"]') as HTMLElement).textContent).toBe('Ana Pruitt at office@cedarfork.test is no longer on the record of Cedar Fork Drain. Take it off their page, then send it to someone who is.')
+    fireEvent.click(again)
+    expect(props.onSend).not.toHaveBeenCalled()
+    expect((screen.getByRole('button', { name: 'Take it off the page of Cedar Fork Drain' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('names the reason when one send is refused', async () => {

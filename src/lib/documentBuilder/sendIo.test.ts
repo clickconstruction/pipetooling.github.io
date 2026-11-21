@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('../supabase', () => ({ supabase: {} }))
 
 import { contactsOf, pageFromLinks, sendRecordFromRow, sendRefusalWords } from './sendIo'
-import { DOCUMENT_BUILDER_SEND_REFUSALS, parseSheetSend, sheetSendEmail, sheetSendMessageKey } from './sendWords'
+import { DOCUMENT_BUILDER_SEND_REFUSALS, parseSheetSend, resendGoesToWhoItWentTo, sheetSendEmail, sheetSendMessageKey } from './sendWords'
 import { plainWordsFailures } from '../plainWords'
 
 describe('where a party’s own page stands', () => {
@@ -33,7 +33,11 @@ describe('who a send can go to', () => {
 
 describe('a send as the table keeps it', () => {
   it('reads its days in the company’s own zone', () => {
-    expect(sendRecordFromRow({ id: 's1', contact_name: 'Ana Pruitt', sent_at: '2026-11-13T03:30:00Z', sent_revision: 1, times_sent: 2, opened_at: null, opened_revision: null })).toEqual({ id: 's1', contactName: 'Ana Pruitt', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 2, openedOn: null, openedRevision: null })
+    expect(sendRecordFromRow({ id: 's1', contact_name: 'Ana Pruitt', sent_at: '2026-11-13T03:30:00Z', sent_revision: 1, times_sent: 2, opened_at: null, opened_revision: null })).toEqual({ id: 's1', contactName: 'Ana Pruitt', contactEmail: '', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 2, openedOn: null, openedRevision: null })
+  })
+
+  it('keeps the address it went to, which is what says who a reminder goes to', () => {
+    expect(sendRecordFromRow({ id: 's1', contact_name: 'Ana Pruitt', contact_email: ' ana@cedarfork.test ', sent_at: '2026-11-13T03:30:00Z', sent_revision: 1, times_sent: 1, opened_at: null, opened_revision: null }).contactEmail).toBe('ana@cedarfork.test')
   })
 })
 
@@ -60,6 +64,16 @@ describe('the send’s shared rules', () => {
     expect(changed.subject).toBe('The insurance requirements for Cedar Park Medical Office changed')
     expect(changed.lines[0]).toBe('The insurance requirements for Cedar Park Medical Office changed since you opened them. The new sheet is on your page.')
     expect(changed.lines).toHaveLength(2)
+  })
+
+  it('holds a reminder to the address the send went to, and lets a first send pick anyone', () => {
+    expect(resendGoesToWhoItWentTo('again', 'ana@cedarfork.test', ' Ana@CedarFork.test ')).toBe(true)
+    expect(resendGoesToWhoItWentTo('again', 'ana@cedarfork.test', 'office@cedarfork.test')).toBe(false)
+    expect(resendGoesToWhoItWentTo('changed', 'ana@cedarfork.test', 'office@cedarfork.test')).toBe(false)
+    expect(resendGoesToWhoItWentTo('first', 'ana@cedarfork.test', 'office@cedarfork.test')).toBe(true)
+    // No live send, or a row that kept no address: nothing to hold it to.
+    expect(resendGoesToWhoItWentTo('again', null, 'office@cedarfork.test')).toBe(true)
+    expect(resendGoesToWhoItWentTo('again', '  ', 'office@cedarfork.test')).toBe(true)
   })
 
   it('keys the message on the company’s thread by the send and the time it went', () => {
