@@ -237,6 +237,11 @@ export const COURSE_TRADE_TERMS: Readonly<Record<string, readonly string[]>> = {
     'gas utility',
     'wet vacuum',
     'walkway',
+    'TDLR',
+    'endorsement',
+    'registered technician',
+    'certified technician',
+    'start-up',
   ],
 }
 
