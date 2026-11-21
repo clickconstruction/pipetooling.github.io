@@ -1666,6 +1666,7 @@ A tech reads only their own row;
   INSERT, UPDATE and DELETE behind `is_dev()` and, since v2.6762 (punch list #188 row 6, `20261109005500_dev_gates_settings_doors.sql`), `is_master_or_dev()`, the policy Settings → Training (v2.5569, a dev's tab) writes through.
   Anon revoked, authenticated granted, the service role everything.
   Seeded `osha-30-refresher`, off, required for helpers, subcontractor, primary, master_technician and superintendent, `intro-to-plumbing` (v2.5610), off, required for helpers, offered, good for 120 months, and `intro-electrical` (v2.5614, `20261018020000`), off, required of nobody, offered, good for 120 months.
+  Seeded `intro-hvac` too (v2.8158, `20261121074500`), off, required of nobody, offered, good for 120 months.
   The lessons are not in the database: they ship in the bundle under `src/content/training/<slug>/` (v2.5564).
   The course page `/training/<slug>` is on every listed role's allowed paths (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS` and `estimatorAllowedPaths`;
   the office roles pass every route) in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) since v2.5592 (before it, Layout's guard bounced a helper's Start back to the Dashboard);

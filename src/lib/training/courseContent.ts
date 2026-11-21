@@ -417,6 +417,29 @@ export function instructionFailures(lesson: CourseLesson): string[] {
   return out
 }
 
+/**
+ * Intro to HVAC (Taunya, 2026-11-20: HVAC is the company's trade): its lessons instruct, as the plumbing course's
+ * do. One line still holds, because it is federal law and not the company's call: opening a refrigerant loop takes
+ * the EPA's Section 608 card. So a Must know or Traps item that begins with one of these verbs fails unless the
+ * sentence names the carded or certified technician who does it. Held for the courses listed here alone.
+ */
+export const CARD_WORK_COURSES: readonly string[] = ['intro-hvac']
+export const CARD_WORK_VERBS: readonly string[] = ['charge', 'recover', 'braze', 'add refrigerant', 'top off', 'hook gauges', 'connect gauges', 'cut the line']
+const NAMES_THE_CARD = /\b(carded|certified|technician|the card)\b/i
+
+export function cardWorkFailures(lesson: CourseLesson): string[] {
+  const out: string[] = []
+  const hold = (where: string, item: string) => {
+    const words = itemWords(item).trim()
+    const lower = words.toLowerCase()
+    const verb = CARD_WORK_VERBS.find((v) => lower === v || lower.startsWith(`${v} `))
+    if (verb && !NAMES_THE_CARD.test(words)) out.push(`${lesson.key} ${where} begins with "${verb}" and does not name the carded technician who does it: ${words}`)
+  }
+  lesson.mustKnow.forEach((p, i) => hold(`must know ${i + 1}`, p))
+  lesson.traps.forEach((p, i) => hold(`trap ${i + 1}`, p))
+  return out
+}
+
 /** A question whose ask stands on an Appendix B quirk. */
 export function appendixBFailures(questions: readonly CourseQuestion[]): string[] {
   const out: string[] = []

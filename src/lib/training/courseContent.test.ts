@@ -15,6 +15,8 @@ import {
   APPENDIX_B_BANNED_ASKS,
   appendixBFailures,
   buildCourseRegistry,
+  CARD_WORK_COURSES,
+  cardWorkFailures,
   contentVersionOf,
   courseProgress,
   askKey,
@@ -196,6 +198,28 @@ describe('no lesson instructs (punch list #120, the owner\'s call 6)', () => {
     for (const f of lessonFiles().filter((x) => NO_INSTRUCTION_COURSES.includes(x.slug))) {
       const failures = instructionFailures(parseLesson(f.source, f.key))
       expect(failures, `lesson "${f.key}" reads as an instruction to do electrical work:\n  - ${failures.join('\n  - ')}`).toEqual([])
+    }
+  })
+})
+
+describe('work on the refrigerant loop names the carded technician (Intro to HVAC)', () => {
+  it('an item that begins with a loop verb fails unless it names the carded or certified technician; a word that only starts the same passes', () => {
+    const l = parseLesson(FIXTURE, '01-a')
+    const bare = cardWorkFailures({ ...l, mustKnow: ['Recover the refrigerant into a tank first.'], traps: ['Add refrigerant until the line sweats.'] })
+    expect(bare).toHaveLength(2)
+    expect(bare[0]).toMatch(/^01-a must know 1 begins with "recover"/)
+    expect(bare[1]).toMatch(/^01-a trap 1 begins with "add refrigerant"/)
+    expect(cardWorkFailures({ ...l, mustKnow: ['Recover the refrigerant only as a carded technician, into a tank.'], traps: ['Braze a joint only when a certified technician has emptied the loop.'] })).toEqual([])
+    expect(cardWorkFailures({ ...l, mustKnow: ['Recovery is pumping the refrigerant into a tank.', 'Charges on a capacitor outlast the power.', 'Rinse the outdoor coil with a hose.'] })).toEqual([])
+  })
+
+  it('holds every lesson of the courses listed, and the list names a course on disk; the HVAC course instructs, so it is not on the no-instruction list', () => {
+    expect(CARD_WORK_COURSES).toEqual(['intro-hvac'])
+    expect(courseFolders()).toContain('intro-hvac')
+    expect(NO_INSTRUCTION_COURSES).not.toContain('intro-hvac')
+    for (const f of lessonFiles().filter((x) => CARD_WORK_COURSES.includes(x.slug))) {
+      const failures = cardWorkFailures(parseLesson(f.source, f.key))
+      expect(failures, `lesson "${f.key}" tells a reader to open a refrigerant loop without naming the carded technician:\n  - ${failures.join('\n  - ')}`).toEqual([])
     }
   })
 })
