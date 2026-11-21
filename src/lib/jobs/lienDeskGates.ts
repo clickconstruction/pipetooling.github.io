@@ -156,43 +156,95 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
  * the paper went, so no verdict judges it — the day it went, then the owner, the GC, the kind and the months the notice
  * named, each in plain words with no tone (a missing owner reads *not on file*, not a blocker). `rows` are the same four
  * as rows for *More details ∨*. A Sent row with months still due keeps the four gates on the next notice instead.
+ *
+ * Since v2.8206 (punch list #361, Taunya's pick of 2026-11-21) a missed notice that can no longer go folds the same way,
+ * `kind: 'closed'` (`lienClosedGatesFold`): every window closed with nothing sent and no late notice can go, so no
+ * notice is about to go out there either. Its pane read *Can't go out yet* and a red *No month picked* over months
+ * nobody could tick.
  */
 export type LienSentGatesFold = {
-  /** "Oct 14" — the day the notice went, for the pane's head and the strip. */
+  /** `sent`: the notice went. `closed`: a missed notice that can no longer go. */
+  kind: 'sent' | 'closed'
+  /** "Oct 14" — the day the notice went, for the pane's head and the strip. On a closed fold, the day its last window closed. */
   sentOn: string
-  /** "Sent Oct 14" */
+  /** "Sent Oct 14", or "Window closed Aug 15" */
   head: string
+  /** The muted words after the head on the pane's gates bar: *as the notice went*, or *nothing sent*. */
+  tail: string
   /**
    * "Jul + Aug": the months the notice named, off its own record. *no month named* when the record keeps none.
    * The pane's strip and its Months on this job head read this (v2.8167). Nobody picks a month on a paper that went,
-   * so neither may fall to the draft's empty words.
+   * so neither may fall to the draft's empty words. On a closed fold, the months whose window closed.
    */
   months: string
+  /** The months as the Months on this job head says them: `months` on a sent fold, "May, closed" on a closed one. */
+  monthsHead: string
   /** "Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug" */
   line: string
   rows: Array<{ n: 1 | 2 | 3 | 4; key: Exclude<LienGateKey, 'billed'>; label: string; value: string }>
 }
 
-export function lienSentGatesFold(input: { sentOn: string; gates: ReadonlyArray<Pick<LienGate, 'key' | 'tone' | 'value'>>; noticeMonths: ReadonlyArray<string>; monthShort: (key: string) => string }): LienSentGatesFold {
-  const by = (k: LienGateKey) => input.gates.find((g) => g.key === k) ?? null
+type LienFoldGate = Pick<LienGate, 'key' | 'tone' | 'value'>
+
+/** The owner, the GC and the kind as a fold says them: the gate's value when clear, plain words with no tone when not. */
+function lienFoldFacts(gates: ReadonlyArray<LienFoldGate>): { ownerWords: string; gcWords: string; kindWords: string } {
+  const by = (k: LienGateKey) => gates.find((g) => g.key === k) ?? null
   const owner = by('owner')
   const gc = by('gc')
   const kind = by('kind')
-  const ownerWords = !owner ? '—' : owner.tone === 'ok' ? owner.value : owner.value === 'Missing' ? 'owner not on file' : owner.value.toLowerCase()
-  const gcWords = !gc ? '—' : gc.tone === 'ok' ? gc.value : 'no GC on the job'
-  const kindWords = !kind ? '—' : kind.tone === 'ok' ? kind.value : 'kind unknown'
+  return {
+    ownerWords: !owner ? '—' : owner.tone === 'ok' ? owner.value : owner.value === 'Missing' ? 'owner not on file' : owner.value.toLowerCase(),
+    gcWords: !gc ? '—' : gc.tone === 'ok' ? gc.value : 'no GC on the job',
+    kindWords: !kind ? '—' : kind.tone === 'ok' ? kind.value : 'kind unknown',
+  }
+}
+
+export function lienSentGatesFold(input: { sentOn: string; gates: ReadonlyArray<LienFoldGate>; noticeMonths: ReadonlyArray<string>; monthShort: (key: string) => string }): LienSentGatesFold {
+  const { ownerWords, gcWords, kindWords } = lienFoldFacts(input.gates)
   const months = input.noticeMonths.map(input.monthShort).join(' + ') || 'no month named'
   const head = `Sent ${input.sentOn}`.trim()
   return {
+    kind: 'sent',
     sentOn: input.sentOn,
     head,
+    tail: 'as the notice went',
     months,
+    monthsHead: months,
     line: [head, ownerWords, gcWords, kindWords, months].join(' · '),
     rows: [
       { n: 1, key: 'owner', label: 'Owner of record', value: ownerWords },
       { n: 2, key: 'gc', label: 'Original contractor', value: gcWords },
       { n: 3, key: 'kind', label: 'Property kind', value: kindWords },
       { n: 4, key: 'months', label: 'Months the notice named', value: months },
+    ],
+  }
+}
+
+/**
+ * The same one line on a missed notice that can no longer go (v2.8206): the day its window closed, then the owner, the
+ * GC, the kind and the months whose window closed. `closedOn` is the last of those windows' days, "Aug 15". With two or
+ * more months the head says so (*Windows closed, the last Oct 15*). The desk folds a Missed row only when its footer
+ * says the window closed too (`lienMissedNoticeStillGoes` is false): a month still due, or a late notice that can
+ * still go (v2.4708), keeps the four gates, because a notice is still to be sent there.
+ */
+export function lienClosedGatesFold(input: { closedOn: string; gates: ReadonlyArray<LienFoldGate>; closedMonths: ReadonlyArray<string>; monthShort: (key: string) => string }): LienSentGatesFold {
+  const { ownerWords, gcWords, kindWords } = lienFoldFacts(input.gates)
+  const named = input.closedMonths.map(input.monthShort).join(' + ')
+  const months = named || 'no month named'
+  const head = (input.closedMonths.length > 1 ? `Windows closed, the last ${input.closedOn}` : `Window closed ${input.closedOn}`).trim().replace(/, the last$/, '')
+  return {
+    kind: 'closed',
+    sentOn: input.closedOn,
+    head,
+    tail: 'nothing sent',
+    months,
+    monthsHead: named ? `${named}, closed` : months,
+    line: [head, ownerWords, gcWords, kindWords, months].join(' · '),
+    rows: [
+      { n: 1, key: 'owner', label: 'Owner of record', value: ownerWords },
+      { n: 2, key: 'gc', label: 'Original contractor', value: gcWords },
+      { n: 3, key: 'kind', label: 'Property kind', value: kindWords },
+      { n: 4, key: 'months', label: 'Months whose window closed', value: months },
     ],
   }
 }

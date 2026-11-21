@@ -4,11 +4,12 @@ import { LIEN_GATES_FOLD_WORDS, lienGateMark, type LienGate, type LienGateKey, t
 /**
  * The gates folded to one line on a sent notice with nothing due (v2.6625, punch list #248): the day it went and the four
  * facts as the paper went, no verdict and no tone — nothing is about to go out. *More details ∨* opens the four as plain rows.
+ * A missed notice that can no longer go draws the same line since v2.8206 (`data-kind="closed"`): the day its window closed.
  */
 export function LienGatesSentFold({ fold }: { fold: LienSentGatesFold }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="lienGates" data-lien-gates-sent data-open={open ? 'yes' : 'no'}>
+    <div className="lienGates" data-lien-gates-sent data-kind={fold.kind} data-open={open ? 'yes' : 'no'}>
       <div className="lienGatesHead" style={{ gap: '0.4rem 0.8rem' }}>
         <span data-lien-gates-sent-line style={{ minWidth: 0, fontSize: '0.8125rem' }}>
           <strong>{fold.head}</strong>

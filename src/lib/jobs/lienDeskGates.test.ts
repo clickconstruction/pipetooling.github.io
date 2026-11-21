@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienFootBlockedSentence, buildLienDeskGates, lienSentGatesFold, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
+import { lienFootBlockedSentence, buildLienDeskGates, lienClosedGatesFold, lienSentGatesFold, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sablow Texas Holdings Lp',
@@ -203,5 +203,53 @@ describe('lienSentGatesFold — the gates as one line on a sent notice (v2.6625,
     // A record that keeps no month says so. It never says a month is still to pick (v2.8167).
     expect(fold.months).toBe('no month named')
     expect(lienSentGatesFold({ sentOn: 'Oct 14', gates: buildLienDeskGates({ ...clear, ownerMailingAddress: '' }).gates, noticeMonths: ['2026-07'], monthShort }).rows[0]!.value).toBe('no mailing address')
+  })
+  it('a sent fold says its kind, its tail and its months for the Months on this job head (v2.8206)', () => {
+    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates: buildLienDeskGates(clear).gates, noticeMonths: ['2026-07', '2026-08'], monthShort })
+    expect(fold).toMatchObject({ kind: 'sent', tail: 'as the notice went', months: 'Jul + Aug', monthsHead: 'Jul + Aug' })
+  })
+})
+
+describe('lienClosedGatesFold — the same one line on a missed notice that can no longer go (v2.8206, punch list #361)', () => {
+  const monthShort = (k: string) => ({ '2026-05': 'May', '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
+  // The gates as the desk builds them on such a notice: months on the job, none picked, so gate 4 blocks with *No month picked*.
+  const dead = buildLienDeskGates({ ...clear, ownerName: 'Elwick Holdings LLC', gcName: 'Lowbeck Contracting', county: 'Guadalupe', monthLabels: ['May'], pickedMonthsCount: 0, monthsOnJob: 1 })
+  it('the gates it folds are the ones that asked for a month nobody could pick', () => {
+    expect(dead.gates[3]).toMatchObject({ tone: 'blocker', value: 'No month picked' })
+    expect(dead.verdict.ready).toBe(false)
+  })
+  it('reads the day the window closed, then the owner, the GC, the kind and the month whose window closed, with no verdict', () => {
+    const fold = lienClosedGatesFold({ closedOn: 'Aug 15', gates: dead.gates, closedMonths: ['2026-05'], monthShort })
+    expect(fold.kind).toBe('closed')
+    expect(fold.head).toBe('Window closed Aug 15')
+    expect(fold.tail).toBe('nothing sent')
+    expect(fold.line).toBe('Window closed Aug 15 · Elwick Holdings LLC · Lowbeck Contracting · Commercial · Guadalupe · May')
+    expect(fold.months).toBe('May')
+    expect(fold.monthsHead).toBe('May, closed')
+    expect(fold.rows.map((r) => [r.n, r.label, r.value])).toEqual([
+      [1, 'Owner of record', 'Elwick Holdings LLC'],
+      [2, 'Original contractor', 'Lowbeck Contracting'],
+      [3, 'Property kind', 'Commercial · Guadalupe'],
+      [4, 'Months whose window closed', 'May'],
+    ])
+    // Nothing in it asks for a month, and nothing judges.
+    expect(JSON.stringify(fold)).not.toContain('No month picked')
+    expect(JSON.stringify(fold)).not.toContain('go out')
+  })
+  it('with two or more months the head says so, and names the last day', () => {
+    const fold = lienClosedGatesFold({ closedOn: 'Oct 15', gates: dead.gates, closedMonths: ['2026-07', '2026-08'], monthShort })
+    expect(fold.head).toBe('Windows closed, the last Oct 15')
+    expect(fold.months).toBe('Jul + Aug')
+    expect(fold.monthsHead).toBe('Jul + Aug, closed')
+    expect(fold.line.endsWith(' · Jul + Aug')).toBe(true)
+  })
+  it('a gate that is not clear reads in plain words, and a missing day or month does not break the line', () => {
+    const { gates } = buildLienDeskGates({ ...clear, ownerName: '', ownerMailingAddress: '', gcName: '', propertyKind: '', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 1 })
+    expect(lienClosedGatesFold({ closedOn: 'Aug 15', gates, closedMonths: ['2026-05'], monthShort }).line).toBe('Window closed Aug 15 · owner not on file · no GC on the job · kind unknown · May')
+    const bare = lienClosedGatesFold({ closedOn: '', gates, closedMonths: [], monthShort })
+    expect(bare.head).toBe('Window closed')
+    expect(bare.months).toBe('no month named')
+    expect(bare.monthsHead).toBe('no month named')
+    expect(lienClosedGatesFold({ closedOn: '', gates, closedMonths: ['2026-07', '2026-08'], monthShort }).head).toBe('Windows closed')
   })
 })

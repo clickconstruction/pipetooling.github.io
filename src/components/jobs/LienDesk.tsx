@@ -194,7 +194,7 @@ import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienStripChips, type LienStripChipAct, type LienStripChipTone } from '../../lib/jobs/lienStripChips'
-import { buildLienDeskGates, lienSentGatesFold, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienClosedGatesFold, lienSentGatesFold, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { lienBillsCountWords } from '../../lib/jobs/lienClaimBills'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionSendGate, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
@@ -2138,7 +2138,16 @@ export default function LienDesk({
   // gates judge nothing — they fold to one line, the day it went and the owner, the GC, the kind and the months as the paper went
   // (890 read *Can't go out yet · 3 blockers* and *No month picked* over an empty grid). A Sent row with months still due keeps the four.
   const sentForFold = selected?.pile === 'sent' && selected.dueMonths.length === 0 && selected.item?.status === 'sent' ? selected.item : null
-  const gatesFold = sentForFold ? lienSentGatesFold({ sentOn: sentForFold.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(sentForFold.sent_at)) : '', gates, noticeMonths: sentForFold.months ?? [], monthShort: workMonthShort }) : null
+  // A missed notice that can no longer go folds the same way (v2.8206, punch list #361, Taunya's pick of 2026-11-21): every window closed with
+  // nothing sent and no late notice can go, so no notice is about to go out and the gates judge nothing. The test is the footer's own, so the
+  // fold and *Window closed · Nothing to sign* arrive together. A month still due, or a late notice that can still go (v2.4708), keeps the four.
+  const closedForFold = selected?.pile === 'missed' && !lienMissedNoticeStillGoes({ dueMonths: selected.dueMonths.length, lateUntil }) ? selected : null
+  const lastClosedDay = closedForFold ? closedForFold.months.filter((m) => closedForFold.missedMonths.includes(m.key)).map((m) => m.deadline).sort().pop() ?? '' : ''
+  const gatesFold = sentForFold
+    ? lienSentGatesFold({ sentOn: sentForFold.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(sentForFold.sent_at)) : '', gates, noticeMonths: sentForFold.months ?? [], monthShort: workMonthShort })
+    : closedForFold
+      ? lienClosedGatesFold({ closedOn: lastClosedDay ? formatYmdMonthDay(lastClosedDay) : '', gates, closedMonths: closedForFold.missedMonths, monthShort: workMonthShort })
+      : null
 
   // A book row opens the job on the pane its next step belongs to; a job the desk does not list yet opens its Lien window (v2.3768).
   /** One job's paper where the desk opens it: the affidavit's pane, the notice's pane (its own page on a stacked screen), else the job's Lien window. */
@@ -2274,11 +2283,11 @@ export default function LienDesk({
   const paneHeads = selected
     ? lienPaneSections({
         nextWords: timeline?.next.words ?? null,
-        gates: gatesFold ? { sentOn: gatesFold.sentOn } : { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
+        gates: gatesFold ? { sentOn: gatesFold.sentOn, head: gatesFold.head, tail: gatesFold.tail } : { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
         houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
         months: monthsList,
         // A notice that went names its own months (v2.8167): the pane picks none on it, so the head read *no months* over a paper sent for two.
-        sentMonths: gatesFold?.months ?? null,
+        sentMonths: gatesFold?.monthsHead ?? null,
         claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
         pages: pageTotal,
         gcEmail: Boolean(gc?.email),
