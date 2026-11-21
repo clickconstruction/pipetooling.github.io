@@ -157,6 +157,23 @@ import { SixTouchPoints } from './SixTouchPoints'
 import { RoughSetStart } from './RoughSetStart'
 import { InspectorMechanical } from './InspectorMechanical'
 import { HvacMistakes } from './HvacMistakes'
+import { GaugeAndChart } from './GaugeAndChart'
+import { VentOrRecover } from './VentOrRecover'
+import { DrainEnd } from './DrainEnd'
+import { FourDefences } from './FourDefences'
+import { Defrost } from './Defrost'
+import { FurnaceOrder } from './FurnaceOrder'
+import { TwoFurnaces } from './TwoFurnaces'
+import { TwoFlames } from './TwoFlames'
+import { LeftAloneOnTheVent } from './LeftAloneOnTheVent'
+import { CoScale } from './CoScale'
+import { DuctFaults } from './DuctFaults'
+import { LineSetCare } from './LineSetCare'
+import { BackdraftSigns } from './BackdraftSigns'
+import { AtticWay } from './AtticWay'
+import { TwoPowerCuts } from './TwoPowerCuts'
+import { ClearTheDrain } from './ClearTheDrain'
+import { IceOnTheLine } from './IceOnTheLine'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -299,4 +316,21 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'rough-set-start': RoughSetStart,
   'inspector-mechanical': InspectorMechanical,
   'hvac-mistakes': HvacMistakes,
+  'gauge-and-chart': GaugeAndChart,
+  'vent-or-recover': VentOrRecover,
+  'drain-end': DrainEnd,
+  'four-defences': FourDefences,
+  'defrost': Defrost,
+  'furnace-order': FurnaceOrder,
+  'two-furnaces': TwoFurnaces,
+  'two-flames': TwoFlames,
+  'left-alone-on-the-vent': LeftAloneOnTheVent,
+  'co-scale': CoScale,
+  'duct-faults': DuctFaults,
+  'line-set-care': LineSetCare,
+  'backdraft-signs': BackdraftSigns,
+  'attic-way': AtticWay,
+  'two-power-cuts': TwoPowerCuts,
+  'clear-the-drain': ClearTheDrain,
+  'ice-on-the-line': IceOnTheLine,
 }

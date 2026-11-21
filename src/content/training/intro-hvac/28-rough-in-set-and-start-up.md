@@ -9,7 +9,7 @@ An HVAC crew comes to a new house three times, like the plumbers. Knowing which 
 
 ## Must know
 - An HVAC crew visits a new house three times. Rough-in, set and start-up.
-- Rough-in comes before the drywall. The ducts go in, with a boot at each room where a register will sit.
+- Rough-in comes before the drywall. The ducts go in, each ending at the metal box a register will fit.
 - At rough-in the line set is run and capped, and the thermostat cable is pulled.
 - The condensate drain, the flue and the gas stub go in at rough-in too. So does the attic walkway.
 - The rough is inspected before the walls close. After the drywall, a mistake is a hole in a wall.
@@ -27,7 +27,7 @@ An HVAC crew comes to a new house three times, like the plumbers. Knowing which 
 
 ## Numbers
 - **3** visits, rough-in, set and start-up
-- **before** the drywall is when the rough is inspected
+- **before the drywall** is when the rough is inspected
 - **last** comes start-up, run by a carded technician
 
 ## Check yourself

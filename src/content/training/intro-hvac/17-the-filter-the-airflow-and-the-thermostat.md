@@ -21,13 +21,13 @@ Most no-cooling calls are not a broken machine. They are a filter nobody changed
 - The float switch from lesson 9 is wired into that cable. When it trips, the call never reaches the outdoor unit.
 
 ## Traps
-- A filter in backwards still fits. It also sags, leaks dust past and loads up fast.
+- A filter in backwards still fits. The arrow is the only thing that says it is wrong.
 - The thermostat cable is not phone wire to cut out of the way. Cut it and the system is dead or shorted.
 - 24 V will not hurt you. The same unit holds house power a few inches away.
 
 ## Numbers
 - **24 V** runs the thermostat and its cable
-- **5** common wires, R, C, Y, G and W
+- **5** common wires, R, Y, G, W and C
 - **1 to 3 months** is a common time between filter changes
 
 ## Check yourself

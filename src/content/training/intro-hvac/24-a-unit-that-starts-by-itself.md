@@ -17,6 +17,7 @@ Nothing in an HVAC system waits for a person. The thermostat calls and a fan, a 
 - The one who puts a lock on is the one who takes it off.
 - Then the wires are tested dead with a tester that was just proved on a live outlet.
 - The outdoor disconnect does not cut the indoor unit. The **24 V** and the blower have their own power.
+- {{figure:two-power-cuts|The outdoor disconnect cuts the outdoor unit only. The indoor unit has its own switch or breaker.}}
 - A fan coasts after the power is cut. Hands wait until the blade has stopped.
 - The capacitor holds a charge after the power is off. Emptying it is a technician's step.
 

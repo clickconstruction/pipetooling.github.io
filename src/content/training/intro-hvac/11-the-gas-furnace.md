@@ -17,8 +17,10 @@ A gas furnace makes heat with a flame inside a metal box. The house's air never 
 - Next the inducer, a small fan, pulls the flame's gas through. A pressure switch proves that the inducer is pulling.
 - Then the igniter glows, the gas valve opens and the burners light. A flame sensor proves that the flame is there.
 - Last, the blower starts, once the heat exchanger is warm.
+- {{figure:furnace-order|The thermostat calls. The inducer pulls and is proved. The burners light and the flame is proved. Then the blower starts.}}
 - A standard furnace's vent runs hot and dry. The code calls that a Category I appliance.
 - A condensing furnace takes so much heat that water forms in its vent. That is Category IV, vented in plastic pipe.
+- {{figure:two-furnaces|A standard furnace vents hot and dry in metal. A condensing furnace vents cool and wet in plastic, and it needs a drain.}}
 
 ## Traps
 - A furnace that starts and then stops is not broken by that alone. One of its proving switches is doing its job.

@@ -16,6 +16,8 @@ This is the air conditioning call a plumbing crew gets most. The drain blocks, t
 - The first step is the thermostat, set to off. A coil that is not cooling makes no more water.
 - The clog is cleared through the capped tee, or pulled out from the far end with a wet vacuum.
 - The pipe is never cut to clear it. The code wants the line built so a clog comes out without a cut.
+- The clog always moves away from the unit, toward the far end. Air blown the other way pushes it back.
+- {{figure:clear-the-drain|A wet vacuum at the far end pulls the slime out. Blown toward the unit, the slime can land in the pan.}}
 - The proof is water. Pour some in the pan and watch it leave at the far end.
 - The float drops when the pan empties, and the unit can run again.
 - A drain that clogs every month has a flat spot or no trap. Then the pipe is the fix, not the vacuum.

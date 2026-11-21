@@ -19,6 +19,7 @@ In Texas the indoor unit is often in the attic, and so is the water heater. An a
 - The walkway is no longer than **20 ft**. At the unit there is a level work space **30 in** by 30 in.
 - The attic opening is at least 20 in by 30 in. It is also big enough for the largest unit to come out.
 - There is a light with its switch at the opening, and an outlet near the unit.
+- {{figure:attic-way|The opening, the walkway, the work space, the light and the outlet, as the code sizes them.}}
 
 ## Traps
 - Feeling fine is not a reading. Heat stroke can start with confusion, and the person does not notice.

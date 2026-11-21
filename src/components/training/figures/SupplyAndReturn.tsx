@@ -28,6 +28,9 @@ export function SupplyAndReturn({ titleId }: FigureProps) {
       <Label x={150} y={46} anchor="middle" size={7}>
         indoor unit
       </Label>
+      <Label x={150} y={69} anchor="middle" size={6}>
+        plenum
+      </Label>
       <Label x={100} y={86} anchor="middle" bold color="currentColor" size={8}>
         return
       </Label>
