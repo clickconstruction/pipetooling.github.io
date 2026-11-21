@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import type { SuperintendentLine } from '../../lib/jobs/superintendentLine'
+import { paceGapShort, type SuperintendentLine } from '../../lib/jobs/superintendentLine'
 import { PACE_CARD_WORDS, paceStageList } from '../../lib/jobMode/paceCard'
 
 /**
@@ -61,7 +61,7 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
   const moneyFill = moneyPct != null ? Math.min(100, Math.max(0, moneyPct)) : null
   const behind = line.tone === 'behind'
   const fill = behind ? '#ef4444' : '#f59e0b'
-  const chip = line.tone === 'early' ? null : line.money?.wrong ? 'budget?' : line.money?.leads && line.days <= 0 ? 'money ahead' : line.tone === 'even' ? 'on pace' : `${line.days > 0 ? '+' : ''}${line.days} d`
+  const chip = line.tone === 'early' ? null : line.money?.wrong ? 'budget?' : line.money?.leads && line.days <= 0 ? 'money ahead' : line.tone === 'even' ? 'on pace' : paceGapShort(line)
   const chipColor = behind ? 'var(--text-red-700)' : line.tone === 'ahead' ? 'var(--text-green-700)' : 'var(--text-700)'
   const budget = hoursBudget && hoursBudget > 0 ? hoursBudget : 0
   // The work done sits on the plan, not on the track: 100% done is the expected hours, or the budget's edge when the

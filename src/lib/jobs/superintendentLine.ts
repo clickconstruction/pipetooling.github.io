@@ -14,6 +14,9 @@
  *   work.*, with both percents on the money line (the word *points* left the screens on 2026-11-20: nobody on a
  *   job or in the office says it); spend over three times the money budget reads *The money budget looks wrong.*
  *   instead of a verdict. The crew's own card reads hours, never money (`lib/jobMode/paceReading.ts`);
+ * - a gap under a crew day still counts when it is a tenth of the hours budget or more (`PACE_SHARE_PTS`, the
+ *   owner's word of 2026-11-20 after the walk): a small job 40% over its hours read *On pace.* because the gap
+ *   was under one assumed 24 h crew day. Such a gap is said in hours, *6 hours behind.*, since it is no day;
  * - no percent yet, under 8 h in or no hours budget is too early to call;
  * - the proof line is the office's sign-off on the percent (the owner's first call of 2026-11-07:
  *   the office's sign-off is the certified percent, never a pay app), then the checklist count,
@@ -72,8 +75,10 @@ export type SuperintendentLine = {
   headline: string
   donePct: number
   hoursPct: number
-  /** Days ahead (positive) or behind (negative) at this pace. */
+  /** Days ahead (positive) or behind (negative) at this pace. Zero for a gap that is real but under a crew day. */
   days: number
+  /** Whole hours ahead (positive) or behind (negative) of the work done; zero while too early to call. */
+  hoursAhead: number
   finishWords: string
   proofWords: string
   hoursWords: string
@@ -112,6 +117,31 @@ export function dayWords(ymd: string): string {
   return new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
+/** A gap this many percentage points of the hours budget, or more, is ahead or behind even when it is under a crew day. */
+export const PACE_SHARE_PTS = 10
+
+/**
+ * Ahead, behind or even on hours, the one rule the office's line and the crew's card both read. A crew day or
+ * more either way decides it, as it always did. Under a crew day, a gap of a tenth of the budget or more decides
+ * it too, so a small job cannot hide a large share of its hours inside one assumed crew day.
+ */
+export function hoursVerdict(a: { donePct: number; hoursPct: number; hoursBudget: number; crewDay: number }): { days: number; side: -1 | 0 | 1; hoursAhead: number } {
+  const hoursAhead = ((a.donePct - a.hoursPct) / 100) * a.hoursBudget
+  // `|| 0`: a quarter day behind rounds to minus zero, and a day count must be a plain 0.
+  const days = a.crewDay > 0 ? Math.round(hoursAhead / a.crewDay) || 0 : 0
+  const pts = a.donePct - a.hoursPct
+  const side = days >= 1 ? 1 : days <= -1 ? -1 : pts >= PACE_SHARE_PTS ? 1 : pts <= -PACE_SHARE_PTS ? -1 : 0
+  return { days, side, hoursAhead }
+}
+
+const hoursWordsOf = (n: number): string => `${Math.round(n)} hour${Math.round(n) === 1 ? '' : 's'}`
+
+/** The short words for a strip's chip or the Dashboard's worst line: *+2 d*, *-3 d*, or hours when the gap is under a crew day. */
+export function paceGapShort(line: Pick<SuperintendentLine, 'days' | 'hoursAhead'>): string {
+  if (line.days !== 0) return `${line.days > 0 ? '+' : ''}${line.days} d`
+  return `${line.hoursAhead > 0 ? '+' : line.hoursAhead < 0 ? '-' : ''}${Math.abs(line.hoursAhead)} h`
+}
+
 export function superintendentLine(i: SuperintendentLineInput): SuperintendentLine {
   // The job's own crew day where it has worked days; the assumption otherwise.
   const workedDays = (i.laborDays ?? []).filter((d) => d.hours > 0)
@@ -127,9 +157,9 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const frozenWords = i.budgetFrozen && i.budgetSource !== 'target' ? ', frozen at award' : ''
   const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]}${frozenWords} · ${used != null ? Math.round(used) : '—'} h in${subWords}` : 'no hours budget yet'
   const early = i.pctDone == null || used == null || used < 8 || i.hoursBudget <= 0
-  // Hours saved or lost against the work done, read in crew days.
-  const hoursAhead = ((donePct - hoursPct) / 100) * i.hoursBudget
-  const daysByHours = early ? 0 : Math.round(hoursAhead / crewDay)
+  // Hours saved or lost against the work done, read in crew days, and as a share of the budget when under a day.
+  const verdict = early ? { days: 0, side: 0 as const, hoursAhead: 0 } : hoursVerdict({ donePct, hoursPct, hoursBudget: i.hoursBudget, crewDay })
+  const daysByHours = verdict.days
   // The money reading, the same one the Pipeline's burning card makes; it outranks the hours when spend leads the work.
   const spentPct = i.money && i.money.budgetUsd > 0 ? (i.money.spentUsd / i.money.budgetUsd) * 100 : null
   const leadPts = spentPct != null && i.pctDone != null ? spentPct - donePct : null
@@ -142,7 +172,8 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
       ? { words: `${Math.round(spentPct)}% of the money spent at ${Math.round(donePct)}% done`, leads: moneyLeads, spentPct, wrong: false }
       : null
   const days = moneyLeads && daysByHours > 0 ? 0 : daysByHours
-  const tone: SuperintendentLine['tone'] = early ? 'early' : budgetWrong || moneyLeads ? 'behind' : days >= 1 ? 'ahead' : days <= -1 ? 'behind' : 'even'
+  const tone: SuperintendentLine['tone'] = early ? 'early' : budgetWrong || moneyLeads ? 'behind' : verdict.side > 0 ? 'ahead' : verdict.side < 0 ? 'behind' : 'even'
+  const hoursAhead = Math.round(verdict.hoursAhead)
   const headline =
     tone === 'early'
       ? i.pctDone == null
@@ -153,9 +184,13 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
         : moneyLeads
         ? 'Money is ahead of the work.'
         : tone === 'ahead'
-          ? `${days} day${days === 1 ? '' : 's'} ahead at this pace.`
+          ? days >= 1
+            ? `${days} day${days === 1 ? '' : 's'} ahead at this pace.`
+            : `${hoursWordsOf(verdict.hoursAhead)} ahead at this pace.`
           : tone === 'behind'
-            ? `${-days} day${days === -1 ? '' : 's'} behind.`
+            ? days <= -1
+              ? `${-days} day${days === -1 ? '' : 's'} behind.`
+              : `${hoursWordsOf(-verdict.hoursAhead)} behind.`
             : 'On pace.'
   const finishWords = i.plannedFinishYmd
     ? tone === 'early'
@@ -182,5 +217,5 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const targetLine = i.budgetSource === 'target' && i.target ? targetWords(i.target, i.hoursBudget) : null
   const daysUsed = used != null && crewDay > 0 ? used / crewDay : null
   const daysLeft = used != null && crewDay > 0 && i.hoursBudget > 0 ? Math.max(0, i.hoursBudget - used) / crewDay : null
-  return { tone, headline, donePct, hoursPct, days, finishWords, proofWords, hoursWords, targetLine, hoursPerDay: crewDay, hoursPerDayRead, daysUsed, daysLeft, money, move }
+  return { tone, headline, donePct, hoursPct, days, hoursAhead, finishWords, proofWords, hoursWords, targetLine, hoursPerDay: crewDay, hoursPerDayRead, daysUsed, daysLeft, money, move }
 }

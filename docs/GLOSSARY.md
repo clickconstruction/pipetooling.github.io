@@ -1513,6 +1513,7 @@ Since **v2.8122** the card also draws for his next stop when the Job Mode card h
 It draws **Hours used** and **Work done** as two bars on one scale, with the gap hatched on the hours bar.
 Its headlines are *Hours are ahead of the work.*, *On track.*, *The work is ahead of the hours.* and, when hours went in after the percent was last said, *Is 40% still right?* in amber with **Still 40%**.
 Money that leads is one grey line on the phone, and the word *points* is on no screen that reads the line.
+Since **v2.8120** a gap under a crew day still reads ahead or behind when it is a tenth of the hours budget or more (`hoursVerdict`), said in hours, *6 hours behind.*, so a small job cannot read on pace at 140% of its hours.
 
 Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
 The short page's folded pace line carries two thin bars and the finish day.

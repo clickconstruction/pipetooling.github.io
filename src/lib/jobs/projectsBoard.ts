@@ -237,5 +237,6 @@ export function worstWords(line: SuperintendentLine): string | null {
   if (line.tone !== 'behind') return null
   if (line.money?.wrong) return 'budget?'
   if (line.money?.leads && line.days >= 0) return 'money ahead'
-  return `${-line.days} d behind`
+  // A gap under a crew day is said in hours: it is no day.
+  return line.days !== 0 ? `${-line.days} d behind` : `${-line.hoursAhead} h behind`
 }
