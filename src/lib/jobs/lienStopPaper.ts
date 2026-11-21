@@ -29,6 +29,16 @@ export function lienStopPaperKind(step: Pick<LienTimelineStep, 'kind'>): LienSto
   }
 }
 
+/**
+ * What a notice stop says when its window closed with nothing sent (v2.8170). The lien right on that work is gone only
+ * once the affidavit's own window has closed too (v2.4708). While the timeline's next step is the late notice, a late
+ * one can still go, so the stop says that and not that the right is gone. The three stop windows read this one sentence.
+ */
+export function lienClosedNoticeStopNote(next: { kind: string } | null | undefined): string {
+  if (next?.kind === 'late_notice') return 'The window closed with nothing sent. A late notice can still go, and the affidavit can follow it.'
+  return 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.'
+}
+
 /** The rule the window links, where the rules guide has a row for it. */
 export function lienStopRuleCite(step: Pick<LienTimelineStep, 'kind'>): LienRuleCite | null {
   switch (step.kind) {

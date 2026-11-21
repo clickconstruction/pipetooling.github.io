@@ -25,7 +25,7 @@ import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopP
 import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { lienServeStage, lienServeStageDoor, type LienServePrinted } from '../../lib/jobs/lienServeStage'
-import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import { lienClosedNoticeStopNote, lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
@@ -306,7 +306,7 @@ export default function LienDeskAffidavitPane({
     if (kind === 'notice') {
       const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
       if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`, { envelope })
-      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      if (step.state === 'missed' || step.fold) return { ...none, note: lienClosedNoticeStopNote(timeline.next) }
       return { ...none, envelope, act: { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Monthly notices, where its pages are.' }
     }
     if (kind === 'retainage') {
