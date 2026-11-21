@@ -10,6 +10,7 @@ import {
   parseSheetSend,
   sheetSendEmail,
   sheetSendMessageKey,
+  sheetWentOutChecked,
   type DocumentBuilderSendRefusal,
 } from '../_shared/documentBuilderSend.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
@@ -73,15 +74,16 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
   if (!m) return refuse('badRequest')
 
   // The sheet, as published. A draft is never sent.
-  const { data: sheetRow } = await admin.from('document_builder_sheets').select('id, builder_key, project_id, revision, published_sheet').eq('id', m.sheetId).eq('builder_key', m.builderKey).maybeSingle()
-  const sheet = sheetRow as { id: string; builder_key: string; project_id: string; revision: number; published_sheet: unknown } | null
+  const { data: sheetRow } = await admin.from('document_builder_sheets').select('id, builder_key, project_id, revision, usual_revision, published_sheet').eq('id', m.sheetId).eq('builder_key', m.builderKey).maybeSingle()
+  const sheet = sheetRow as { id: string; builder_key: string; project_id: string; revision: number; usual_revision: number | null; published_sheet: unknown } | null
   if (!sheet) return refuse('notFound')
   if (sheet.revision < 1 || !sheet.published_sheet) return refuse('notPublished')
-  const { data: builder } = await admin.from('document_builders').select('revision, read_revision').eq('key', m.builderKey).maybeSingle()
-  const usual = builder as { revision: number; read_revision: number | null } | null
+  const { data: builder } = await admin.from('document_builders').select('read_revision').eq('key', m.builderKey).maybeSingle()
+  const usual = builder as { read_revision: number | null } | null
   if (!usual) return refuse('notFound')
-  // A revision nobody has read goes only when the sender ticked Send it anyway.
-  if (usual.read_revision !== usual.revision && !m.anyway) return refuse('unread')
+  // A sheet that went out on a usual nobody checked goes only when the sender ticked Send it anyway. The mark is read
+  // on the revision of the usual this sheet was published on, not on the usual's newest.
+  if (!sheetWentOutChecked(usual.read_revision, sheet.usual_revision) && !m.anyway) return refuse('unread')
 
   // The company is on a trade of this job, and the person is on the company's record.
   const { data: company } = await admin.from('gc_companies').select('id, name, contact_name, email').eq('id', m.companyId).maybeSingle()

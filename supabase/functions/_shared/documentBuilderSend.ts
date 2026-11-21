@@ -86,6 +86,29 @@ export function sheetSendMessageKey(sendId: string, timesSent: number): string {
   return `builder-send:${sendId}:${timesSent}`
 }
 
+/**
+ * Whether a job's sheet went out on a usual someone checked. The read mark names one revision of the usual. A job's
+ * sheet is published on one revision of the usual, and stays on it until the job is published again. So the question
+ * is asked of the revision the sheet went out on, never of the usual's newest: a newer usual that was checked does
+ * not check an older sheet, and a newer usual nobody checked does not uncheck a sheet that went out on the checked
+ * one. The screen's warning and the function's refusal both ask here.
+ */
+export function sheetWentOutChecked(readRevision: number | null | undefined, sheetUsualRevision: number | null | undefined): boolean {
+  return typeof sheetUsualRevision === 'number' && sheetUsualRevision >= 1 && readRevision === sheetUsualRevision
+}
+
+/**
+ * Why a job's sheet goes only with the box *Send it anyway*, or an empty string once the revision of the usual it went
+ * out on is checked. A sheet behind the usual names its revision, since the mark on the bar speaks of the newest. A
+ * job with no sheet published yet is asked of the usual's newest, the one it would go out on.
+ */
+export function sheetUnreadWords(input: { readRevision: number | null; sheetUsualRevision: number | null; usualRevision: number }): string {
+  const on = typeof input.sheetUsualRevision === 'number' && input.sheetUsualRevision >= 1 ? input.sheetUsualRevision : input.usualRevision
+  if (sheetWentOutChecked(input.readRevision, on)) return ''
+  if (on >= 1 && on < input.usualRevision) return `Your insurance agent has not checked revision ${on} of your usual sheet. This job's sheet went out on that revision.`
+  return 'Your insurance agent has not checked your usual sheet.'
+}
+
 /** The kind a sent sheet's email is filed as under Sent copies. */
 export const SHEET_SEND_SENT_KIND = 'insurance_sheet_email'
 

@@ -6931,6 +6931,8 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 
 **The order it checks in**, each refusal `{ error: <key>, words }` with the key's status: the sheet is published (`notPublished`, 409). The builder's revision is marked as read, or `anyway` is true (`unread`, 409). The company is on a trade of this job (`notOnJob`, 409). The person is on the company's record with that email (`noSuchContact`, 409). The company's page: a page that is on is used, a company that never had one gets one, and a page that was turned off stays off (`pageOff`, 409), since a send never turns a page back on. Then the sheet's own link, made when the sheet never had one. Then the email (`noEmail` 409, `sendFailed` 502). Only after it went: the row in `document_builder_sends`, a line on the company's thread (`gc_trade_messages`, kind `coi`) and the sent copy (`insurance_sheet_email`).
 
+**The read mark, since v2.8142**: `unread` asks of the revision of the usual this sheet was published on (`document_builder_sheets.usual_revision`), not of the usual's newest. One rule, `sheetWentOutChecked`, which the screen's warning asks too.
+
 **A trade page's ask** (no sign-in, the page's own token):
 - `{ action: "opened", token, sheetId }` → `{ ok }`: the day and the revision they opened, kept on their live send. A signed-in teammate's look and a preview are not counted (`publicViewDecision`). A token that is off answers **404** `linkOff`.
 
