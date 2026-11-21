@@ -12,7 +12,7 @@ summary: >
   the magnifying glass and the walk are all written against Leaflet. One canvas serves the painting
   window and the public `/way` page, so those two move together. The picture and the print stitch map
   tiles into an image, which Google does not allow for its tiles, so they need their own call.
-next: Before step 3, the owner's word on call 6. Step 4 is not started, and the count is looked at again before it, since every outside reader's open counts. Step 5 is built (v2.8032) and was walked on the live site on 2026-11-21, and its count is worth a look about a week after it shipped. A phone in a hand has not seen it. Three things are the owner's call, each below. Google's own place labels over the photograph, which the task map carries too. A map that is not Google's on the page behind the window. The ten seconds a slow phone waits before the fall back.
+next: Before step 3, the owner's word on call 6. Step 4 is not started, and the count is looked at again before it, since every outside reader's open counts. Step 5 is built (v2.8032) and was walked on the live site on 2026-11-21, and its count is worth a look about a week after it shipped. A phone in a hand has not seen it. Two things are the owner's call, each below. Google's own place labels over the photograph, which the task map carries too. The ten seconds a slow phone waits before the fall back. A map that is not Google's on the page behind the window stays as it is, on Taunya's word of 2026-11-21, and is not asked again.
 size: L as a train of five (S · M · L · S to M · S)
 ver: v2.7979 · v2.7981 · v2.7990 · v2.8032 · v2.8049 · v2.8076 · v2.8078 · v2.8179
 blocker: One call. Step 3 waits on call 6, drawing by hand over Google's photograph. Step 4 wants the count looked at again first, since `/way` counts every outside reader.
@@ -184,9 +184,12 @@ Two mends, each its own pull request, both merged the same day:
 
 Left for the owner:
 
-- **A map that is not Google's on the page behind the window.** At a desk the window is 1,080 px wide over a dimmed page. Opened from the Map page or from Materials on site, that page's Leaflet map shows beside Google's map, at the window's edge. The rule takes Google down for Time and for a picture because of the terms' clause on maps that are not Google's (3.2.3 (e)), and by that same reading this is the one place the two still share a screen. A page that cannot be seen behind the window while Google is up would end it. This is a reading and not legal advice.
 - **The ten seconds.** A painted map is read in the field. On a slow signal the reader now waits up to ten seconds for a map that used to show its lines at once. A shorter wait for this canvas, or the lines drawn on the Leaflet canvas while Google loads, would mend it.
 - **Google's own place labels**, as the risk above says. In the walk a park's name and its one-line description sat beside the line.
+
+Settled, and not to be asked again:
+
+- **A map that is not Google's on the page behind the window stays as it is.** Taunya's word on 2026-11-21: leave it up. At a desk the window is 1,080 px wide over a dimmed page. Opened from the Map page or from Materials on site, that page's Leaflet map shows beside Google's map, at the window's edge. The rule takes Google down for Time and for a picture because of the terms' clause on maps that are not Google's (3.2.3 (e)), and by that same reading this is the one place the two still share a screen. A page that cannot be seen behind the window while Google is up would end it. This is a reading and not legal advice.
 
 ## How to verify
 
