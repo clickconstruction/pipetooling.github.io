@@ -6,9 +6,9 @@ keywords: state roll, license roll, licensed plumbers, plumbing board, journeyma
 where: /prospects?tab=roll
 order: 127
 ---
-The State roll tab keeps the state's public list of licensed plumbers who live near us. It shows when the list was last read and what changed.
+The State roll tab keeps the state's public list of licensed plumbers who live near us. The tab shows when the list was last read and what changed.
 
-The state plumbing board publishes who holds a license. The app reads that list every Monday morning. It keeps the plumbers who live in our counties.
+The state plumbing board publishes who holds a license. The app reads that list every Monday morning. The app keeps the plumbers who live in our counties.
 
 ## Who sees it
 
@@ -20,14 +20,14 @@ Go to [Prospects](/prospects?tab=roll). Press **State roll** in the top row.
 
 ## What is kept
 
-The top line names the counties the app keeps. Under it are four counts.
+The top line names the counties the app keeps. Four counts sit under that line.
 
 - Journeymen kept.
 - Masters kept. A responsible master counts as a master.
 - Tradesmen kept.
 - How many of them hold a lapsed license.
 
-Each person's row has a name, a license, its dates, a county and a ZIP. It has no phone, street address or email. The state does not publish those.
+Each person's row has a name, a license, its dates, a county and a ZIP. A row has no phone, street address or email. The state does not publish those.
 
 ## Read the pulls
 
@@ -55,7 +55,7 @@ The app pulls every Monday morning. You can pull sooner.
 
 Press {{button:outline|Pull 4 files}}. The app reads each file in turn. The press shows which file it is reading.
 
-A file can fail. The state's site may be down. The app goes on to the next file. Then it lists each file that failed with the reason. A file that failed changes nothing on the roll.
+A file can fail. The state's site may be down. The app goes on to the next file. Then the app lists each file that failed with the reason. A file that failed changes nothing on the roll.
 
 ## When a read fails
 
