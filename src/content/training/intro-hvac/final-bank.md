@@ -257,3 +257,99 @@ title: Final check bank
 - [ ] A flue
 > right: It cools by wetting a pad and blowing air through it, so it needs a water line.
 > wrong: An evaporative cooler wets a pad to cool the air. It needs a water line.
+
+33. What grows in a condensate drain all summer?
+- [ ] Rust
+- [x] Slime
+- [ ] Ice
+- [ ] Roots
+> right: Slime grows in the drain and collects in the trap and at any flat spot.
+> wrong: Slime is what blocks a condensate drain. It collects in the trap.
+
+34. What does ice on the coil do to the air?
+- [ ] Cools it more
+- [x] Blocks it, so the coil gets colder still
+- [ ] Cleans it
+- [ ] Nothing
+> right: The ice blocks the air, and with less air the coil gets colder still.
+> wrong: Ice blocks the air. A frozen coil never fixes itself while it runs.
+
+35. What does a technician hold at the draft hood to test the draft?
+- [ ] A wet rag
+- [ ] A thermometer
+- [x] Smoke
+- [ ] A magnet
+> right: Smoke at the hood should be pulled in, a few minutes after the burner lights.
+> wrong: The draft is tested with smoke at the hood. The smoke should be pulled in.
+
+36. What is added to natural gas as a warning?
+- [ ] A colour
+- [x] A smell, like rotten eggs
+- [ ] A sound
+- [ ] Water
+> right: The smell is added on purpose. It is the warning.
+> wrong: Natural gas has a smell added to it, like rotten eggs, so a leak gives a warning.
+
+37. What does refrigerant break down into in a fire?
+- [ ] Water
+- [ ] Carbon monoxide only
+- [x] Hydrogen fluoride, a poison gas
+- [ ] Nothing
+> right: In a fire or on a very hot surface, refrigerant breaks down into hydrogen fluoride.
+> wrong: Heat breaks refrigerant down into hydrogen fluoride, a poison gas.
+
+38. Who takes a lock off a disconnect?
+- [ ] Anyone who needs the power
+- [ ] The homeowner
+- [x] The one who put it on
+- [ ] The newest person on the crew
+> right: The one who puts a lock on is the one who takes it off.
+> wrong: Only the person who put the lock on takes it off.
+
+39. How big is the level work space at an attic unit?
+- [ ] 12 in by 12 in
+- [x] 30 in by 30 in
+- [ ] 6 ft by 6 ft
+- [ ] The code sets no size
+> right: At the unit there is a level work space 30 in by 30 in.
+> wrong: The code gives the unit a level work space of 30 in by 30 in.
+
+40. Where is the switch for the attic's light?
+- [ ] At the unit
+- [ ] In the kitchen
+- [x] At the attic opening
+- [ ] On the roof
+> right: The light's switch is at the opening, so nobody crosses a dark attic to find it.
+> wrong: The code puts the light's switch at the attic opening.
+
+41. Which class of licence covers a system of any size?
+- [x] Class A
+- [ ] Class B
+- [ ] Class C
+- [ ] Every class
+> right: A Class A licence covers a system of any size. Class B stops at 25 tons of cooling.
+> wrong: Class A covers any size. Class B covers cooling up to 25 tons.
+
+42. Who stays with a worker under 18 on a job?
+- [ ] Nobody
+- [ ] Any adult
+- [x] The contractor or a certified technician, at all times
+- [ ] The homeowner
+> right: A worker under 18 is with the contractor or a certified technician at all times on a job.
+> wrong: Under 18, a worker is never alone. The contractor or a certified technician is there at all times.
+
+43. When is the HVAC rough inspected?
+- [x] Before the walls close
+- [ ] After the paint
+- [ ] At start-up
+- [ ] A year later
+> right: The rough is inspected before the walls close, while a mistake is still easy to reach.
+> wrong: The rough is inspected before the drywall. After it, a mistake is a hole in a wall.
+
+44. What is emptied out of the loop at start-up before the refrigerant goes in?
+- [ ] Oil
+- [x] Air and water
+- [ ] Dust from the ducts
+- [ ] Nothing
+> right: The loop is tested for leaks and emptied of air and water first.
+> wrong: Air and water are emptied out of the loop before the refrigerant goes in.

@@ -141,6 +141,16 @@ describe('aging queues (journey-map #40): dispatch requests + HR reports', () =>
     expect(buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: null })).some((i) => i.key === 'hr-reports-pending')).toBe(false)
   })
 
+  it('hr reports: with no wait a report from the field shows the same day (punch list #410)', () => {
+    const today = buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: { count: 1, total: 1, oldestAgeDays: 0 }, hrReportsMinAgeDays: 0, hrReportsRedDays: 7 }))
+    const item = today.find((i) => i.key === 'hr-reports-pending')
+    expect(item).toMatchObject({ severity: 'amber', title: 'A field report waits to be filed', figure: '1' })
+    expect(item?.detail).toContain('the oldest today.')
+    const more = buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: { count: 3, total: 3, oldestAgeDays: 2 }, hrReportsMinAgeDays: 0, hrReportsRedDays: 7 }))
+    expect(more.find((i) => i.key === 'hr-reports-pending')).toMatchObject({ title: '3 field reports wait to be filed' })
+    expect(more.find((i) => i.key === 'hr-reports-pending')?.detail).toContain('the oldest 2 days ago.')
+  })
+
   it('ranks: dispatch sits with the revenue-chasing tier, HR reports with people/planning', () => {
     const items = buildNeedsYouItems(inputs({
       dispatchAgedEnabled: true,

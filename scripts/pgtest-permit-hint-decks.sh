@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/permit_hint_decks against a throwaway copy of the WHOLE schema (v2.6917, punch list #302 call 4:
-# the hint beside a permit's name sees a lead on either calling deck; migration *_permit_hint_both_decks).
+# the hint beside a permit's name sees a lead on either calling deck; migration *_permit_hint_both_decks; and v2.8181,
+# punch list #405: its bids are the ones the one rule counts; migration *_research_contact_history_our_bids).
 #
 #   npm run test:pg:permit-hint-decks
 #
 # The Supabase Postgres image with every file in supabase/migrations applied in order, then this migration a second
-# time, which must change nothing. The probe, inside one transaction that rolls back: research_contact_history says
+# time with the one that replaced its function after it, which must change nothing. The probe, inside one transaction that rolls back: research_contact_history says
 # "on the deck" for an open lead on Jobs to GC and for one on the Customers deck, and for no sub, no lead that left
-# the queue and no name nobody holds; the bids and the wins read as before; one row comes back per distinct name
+# the queue and no name nobody holds; the bids and the wins leave out a practice bid, a bid past two years, a bid platform's
+# bucket and a ZZ name, and the last bid's day is the company calendar's; one row comes back per distinct name
 # asked; and the office reads the same answer through its own access. It raises on its first failed assertion and
 # ends with "permit_hint_decks PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow
 # runs it from scripts/sql-beds.txt. Never touches prod.
@@ -17,7 +19,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55597}"
 NAME="pgtest-permit-hint-decks"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_permit_hint_both_decks.sql)"
+# In order: the second file replaces the first one's function, so re-applying the first alone would put the old body back.
+WRITES="$(ls supabase/migrations/*_permit_hint_both_decks.sql supabase/migrations/*_research_contact_history_our_bids.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -35,7 +38,9 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: the function is replaced with the body it already has.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+for w in $WRITES; do
+  psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/permit_hint_decks/20_scenario.sql 2>&1 || true)"
 if ! grep -q "permit_hint_decks PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

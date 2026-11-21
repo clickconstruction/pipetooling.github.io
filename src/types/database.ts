@@ -34000,6 +34000,50 @@ export type Database = {
           },
         ]
       }
+      person_report_photos: {
+        Row: {
+          author_user_id: string
+          bytes: number | null
+          created_at: string
+          height: number | null
+          id: string
+          press_id: string
+          storage_path: string
+          taken_at: string
+          width: number | null
+        }
+        Insert: {
+          author_user_id: string
+          bytes?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          press_id: string
+          storage_path: string
+          taken_at?: string
+          width?: number | null
+        }
+        Update: {
+          author_user_id?: string
+          bytes?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          press_id?: string
+          storage_path?: string
+          taken_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_report_photos_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_reports: {
         Row: {
           adds_to: string | null
@@ -46203,6 +46247,7 @@ export type Database = {
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
+      can_write_someone_up: { Args: never; Returns: boolean }
       can_write_task_criteria: {
         Args: { p_item_id: string; p_task_id: string }
         Returns: boolean

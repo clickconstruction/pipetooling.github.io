@@ -2310,6 +2310,8 @@ The second course is **Intro to plumbing** (v2.5610–v2.5613, punch list #119;
 ten more drawings v2.5619), how water comes in under pressure and leaves by gravity, a drawing in every lesson;
 the third is **Intro to electrical** (v2.5614–v2.5618, punch list #120;
 four more drawings v2.5620), how a house's electrical system works for the plumbers who work beside it, understanding and not doing, offered to every role and required of nobody, with a content rule that no lesson instructs.
+The fourth is **Intro to HVAC** (v2.8158–v2.8169), how a house is cooled and heated, written as the company's own trade so its lessons instruct, offered to every role and required of nobody, with a content rule that work on a refrigerant loop names the carded technician (`cardWorkFailures`).
+Its `from:` lines say which facts were read at a 2024 code section or an agency's page and which are trade knowledge still to be checked, and it stays off until a licensed HVAC reader has read it.
 Every course is held to **plain words a fourteen-year-old reads** (v2.5621 the plumbing course;
 v2.5622 the electrical, its fifty-five words on its own list since v2.5623;
 v2.5624 the OSHA refresher, seventy-seven of OSHA's own words in `COURSE_TRADE_TERMS`): a **trade word** on the short list in `src/lib/training/tradeTerms.ts` is first met in a Must know or Why it matters sentence that says what it is, never first in a Traps item, a Numbers label, a caption or a Check yourself ask or option, and `courseContent.test.ts` holds every course on disk to it;
@@ -2321,8 +2323,10 @@ Distinct from *Read-only (training) mode* above, the account flag.
 
 **Database**: `training_courses`, `training_lesson_passes`, `training_passes`, `training_office()`, `training_pass_lesson()`, `training_finish_course()`, `training_state_for()`, `training_standings()` (`20261015060000`;
 `training_courses.offered` and the second seed row `20261018010000`, the third seed row `20261018020000`)
+The fourth seed row is `20261121074500`.
 
 **See**: `to-dos/training/README.md` (the plan), `to-dos/intro-plumbing/README.md` and `to-dos/intro-electrical/README.md` (the two courses' outlines and what each still waits on), `ACCESS_CONTROL.md` → Training
+Intro to HVAC has no card: its criteria, its sources and what it waits on are in `docs/recent-features/v2.8158.md` to `v2.8169.md`.
 
 ### Deleted-records archive & restore
 Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) snapshots deleted rows from high-value tables (jobs, bids, reports, customers→projects trees, people roster + cascades) into **`public.deleted_records_archive`**, grouped by the top-level record with `deleted_by`/`deleted_at`;
@@ -2400,6 +2404,19 @@ An off-report charge has *Take out of a week…*, which opens that report's Less
 Kernel `src/lib/people/openReports.ts`.
 Deep-link `?view=ledger&person=<name>` (the key kept its old name).
 Sibling view: **Pay run**.
+
+### Write someone up (Dashboard, v2.8160)
+The one press a leader, a superintendent or a dev has on the Dashboard to write a person up from a phone, a named line under the row of squares (`WriteSomeoneUpDoor`, punch list #410, Taunya's ask of 2026-11-20).
+It opens a sheet of four steps (`WriteUpSheet`, the rules and every word in `src/lib/people/writeUp.ts`).
+The first step asks who it is about, with the crew on the job today first.
+The second asks what happened, with who, when and which job filled in.
+The third is **Read it back**, and the fourth is **Your write-ups**.
+Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
+The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
+**Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
+→ *HR files*
+guide `write-someone-up`.
 
 ### Attendance card (People → Paperwork → Write-ups, v2.6140)
 The Write-ups tab's attendance card for one person in Subject, drawn while *Show attendance (derived)* is ticked (off when the tab opens since v2.6433) (punch list #217, people-docs-3;

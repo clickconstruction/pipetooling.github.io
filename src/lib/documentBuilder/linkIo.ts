@@ -52,7 +52,7 @@ export async function openBuilderLink(code: string): Promise<BuilderLinkView> {
 function stateFrom(raw: unknown): DocumentBuilderLinkState | null {
   if (!isRecord(raw)) return null
   if (raw.on === false) return { on: false }
-  if (raw.on === true && typeof raw.code === 'string' && typeof raw.madeAt === 'string') {
+  if (raw.on === true && (typeof raw.code === 'string' || raw.code === null) && typeof raw.madeAt === 'string') {
     return { on: true, code: raw.code, madeAt: raw.madeAt, opened: typeof raw.opened === 'number' ? raw.opened : 0, lastOpenedAt: typeof raw.lastOpenedAt === 'string' ? raw.lastOpenedAt : null }
   }
   return null

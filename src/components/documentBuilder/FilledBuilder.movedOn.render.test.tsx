@@ -31,7 +31,7 @@ afterEach(cleanup)
 
 const INSURANCE = documentBuilderById('insurance') as DocumentBuilderEntry
 const USUAL: SheetDef = { ...INSURANCE_SHEET_FIXTURE, cover: INSURANCE_SHEET_FIXTURE.cover.map((c, i) => ({ ...c, limit: `Made-up amount ${i + 1}` })) }
-const JOBS: GcJob[] = [{ projectId: 'cedar', name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', ownerName: 'Pecan Ridge Holdings, Ltd.', stage: 'building' }]
+const JOBS: GcJob[] = [{ projectId: 'cedar', name: 'Cedar Park Medical Office', place: '410 Sample Street, Cedar Park, TX 78613', ownerName: 'Pecan Ridge Holdings, Ltd.', stage: 'building', over: null, billingJobId: null }]
 const CEDAR_OWN = (): JobSheet => startJobSheet({ name: JOBS[0]!.name, place: JOBS[0]!.place, insured: [JOBS[0]!.ownerName] })
 const FOOT = 'The line at the foot'
 

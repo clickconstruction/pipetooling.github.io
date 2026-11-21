@@ -17,7 +17,7 @@ import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, WRITE_GONE, guardedWrite, type Landed } from './documentBuildersIo'
 import { layOver, parseJobSheet, pruneJobSheet, usualHeldWords, type JobSheet, type ResolvedSheet, type SheetDef, type UsualPublishRow } from './sheet'
-import { usualPlanFor } from './sheetScreen'
+import { gcJobOver, usualPlanFor, type GcJobOver } from './sheetScreen'
 import { DOCUMENT_BUILDERS_TABLE, DOCUMENT_BUILDER_SELECT, builderRecordFromRow, sameContents, type BuilderRecord } from './standing'
 
 const db = supabase as unknown as SupabaseClient
@@ -61,18 +61,21 @@ export function sheetRecordFromRow(row: unknown): SheetRecord | null {
   }
 }
 
-/** A job the company runs as the GC, with what its sheet's blanks start from. */
-export type GcJob = { projectId: string; name: string; place: string; ownerName: string; stage: string }
+/**
+ * A job the company runs as the GC, with what its sheet's blanks start from. `over` says it was lost or is closed.
+ * `billingJobId` is the job it bills through, which is what a filed copy of its sheet is filed under.
+ */
+export type GcJob = { projectId: string; name: string; place: string; ownerName: string; stage: string; over: GcJobOver | null; billingJobId: string | null }
 
 type ProjectRow = { id: string; name: string | null; address: string | null; customer_id: string | null }
-type GcProjectRow = { project_id: string; stage: string | null; customer_role: string | null; property_owner_customer_id: string | null }
+type GcProjectRow = { project_id: string; stage: string | null; customer_role: string | null; property_owner_customer_id: string | null; lost_on: string | null; closed_on: string | null; billing_job_id: string | null }
 
 /**
- * The jobs the company runs as the GC, by name. A job's owner is its property owner when one is named, else its
+ * Every GC project by name, each with whether it is over. The screen lists the ones `listedJobs` keeps. A job's owner is its property owner when one is named, else its
  * customer when the customer is the owner. With neither the name is left blank for a person to type.
  */
 export async function readGcJobs(): Promise<GcJob[]> {
-  const gc = (await withSupabaseRetry<unknown[]>(() => db.from('gc_projects').select('project_id, stage, customer_role, property_owner_customer_id'), 'read the jobs')) as GcProjectRow[] | null
+  const gc = (await withSupabaseRetry<unknown[]>(() => db.from('gc_projects').select('project_id, stage, customer_role, property_owner_customer_id, lost_on, closed_on, billing_job_id'), 'read the jobs')) as GcProjectRow[] | null
   const rows = gc ?? []
   if (rows.length === 0) return []
   const projects = ((await withSupabaseRetry<unknown[]>(() => db.from('projects').select('id, name, address, customer_id').in('id', rows.map((r) => r.project_id)), 'read the jobs')) ?? []) as ProjectRow[]
@@ -85,7 +88,7 @@ export async function readGcJobs(): Promise<GcJob[]> {
     .map((r): GcJob => {
       const p = byId.get(r.project_id)
       const owner = ownerIdOf(r)
-      return { projectId: r.project_id, name: (p?.name ?? '').trim(), place: (p?.address ?? '').trim(), ownerName: (owner ? (ownerName.get(owner) ?? '') : '').trim(), stage: r.stage ?? '' }
+      return { projectId: r.project_id, name: (p?.name ?? '').trim(), place: (p?.address ?? '').trim(), ownerName: (owner ? (ownerName.get(owner) ?? '') : '').trim(), stage: r.stage ?? '', over: gcJobOver({ stage: r.stage, lostOn: r.lost_on ?? null, closedOn: r.closed_on ?? null }), billingJobId: r.billing_job_id ?? null }
     })
     .filter((j) => j.name !== '')
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -238,7 +241,7 @@ export async function readSheetsNow(io: { readBuilderSheets: typeof readBuilderS
 }
 
 /** Where the usual goes, from the jobs' sheets as just read and what the page holds beyond them. */
-export function usualPlanOfSheets(jobs: ReadonlyArray<{ projectId: string; name: string }>, sheets: ReadonlyMap<string, SheetRecord>, heldHere?: HeldHere): UsualPublishRow[] {
+export function usualPlanOfSheets(jobs: ReadonlyArray<{ projectId: string; name: string; over?: GcJobOver | null }>, sheets: ReadonlyMap<string, SheetRecord>, heldHere?: HeldHere): UsualPublishRow[] {
   const states = new Map([...sheets].map(([projectId, s]) => [projectId, { id: s.id, own: s.draft, published: s.published, revision: s.revision, usualRevision: s.usualRevision }]))
   return usualPlanFor(jobs, states, heldHere)
 }

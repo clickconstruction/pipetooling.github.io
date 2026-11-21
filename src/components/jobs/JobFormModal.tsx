@@ -2,6 +2,7 @@
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import type { NewJobCustomerPrefill } from '../../lib/messages/leadDoors'
 import type { JobDraft } from '../../lib/bids/jobDraft'
+import { landWhenDrawn } from '../../lib/landWhenDrawn'
 import type { NewJobPayTermsState } from '../../lib/jobs/draftPayTerms'
 import { theirPaperPayer } from '../../lib/jobs/theirPaperPayer'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
@@ -765,17 +766,16 @@ export default function JobFormModal({
   // for the next "create invoice from selected segments" action.
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
   // Land on the press that takes the picked lines, Bill the N picked, once the Bill tab has drawn it.
+  // The looking is stopped when a new one starts and when this window closes, so it never outlives the window.
+  const stopLandingRef = useRef<(() => void) | null>(null)
   const landOnBillPicked = useCallback(() => {
-    let tries = 0
-    const tick = window.setInterval(() => {
-      const el = document.querySelector<HTMLElement>('.jobMoneyPickedBtn')
-      tries += 1
-      if (el && el.getBoundingClientRect().height > 0) {
-        window.clearInterval(tick)
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      } else if (tries >= 50) window.clearInterval(tick)
-    }, 100)
+    stopLandingRef.current?.()
+    stopLandingRef.current = landWhenDrawn(
+      () => document.querySelector<HTMLElement>('.jobMoneyPickedBtn'),
+      (el) => el.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+    )
   }, [])
+  useEffect(() => () => stopLandingRef.current?.(), [])
   // Opened with lines already picked (punch list #391): once the job is in, tick the ones that can be ticked
   // by hand, one time. `applyEditJob` clears the ticks on load, so this waits for `initDone`.
   const pickLinesSeededRef = useRef(false)

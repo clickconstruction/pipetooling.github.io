@@ -9,7 +9,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { documentBuilderLinkUrl, type DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
+import { DOCUMENT_BUILDER_LINK_ADDRESS_LOST, documentBuilderLinkUrl, type DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
 import { endBuilderLink, makeBuilderLink, readBuilderLink } from '../../lib/documentBuilder/linkIo'
 import { plural } from '../../lib/documentBuilder/sheet'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
@@ -98,7 +98,7 @@ export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BU
     await run(() => io.end(builderKey, sheetId))
   }
 
-  const url = link?.on ? documentBuilderLinkUrl(window.location.origin, link.code) : ''
+  const url = link?.on && link.code ? documentBuilderLinkUrl(window.location.origin, link.code) : ''
   return (
     <div style={CARD}>
       <h3 style={CARD_TITLE}>{words.title}</h3>
@@ -110,22 +110,28 @@ export function BuilderLinkCard({ builderKey, sheetId, published, words, io = BU
         )
       ) : link.on ? (
         <>
-          <div style={URL_BOX} data-testid="builder-link-url">
-            {url}
-          </div>
+          {url ? (
+            <div style={URL_BOX} data-testid="builder-link-url">
+              {url}
+            </div>
+          ) : (
+            <p style={MUTED}>{DOCUMENT_BUILDER_LINK_ADDRESS_LOST}</p>
+          )}
           <div style={BTNS}>
-            <button
-              type="button"
-              style={SECOND_PRESS}
-              onClick={() =>
-                void io.copy(url).then((ok) => {
-                  setCopied(ok)
-                  if (!ok) setRefusal('The browser would not copy the link. Select it above and copy it by hand.')
-                })
-              }
-            >
-              Copy the link
-            </button>
+            {url ? (
+              <button
+                type="button"
+                style={SECOND_PRESS}
+                onClick={() =>
+                  void io.copy(url).then((ok) => {
+                    setCopied(ok)
+                    if (!ok) setRefusal('The browser would not copy the link. Select it above and copy it by hand.')
+                  })
+                }
+              >
+                Copy the link
+              </button>
+            ) : null}
             <button type="button" disabled={busy} style={SMALL_PRESS} onClick={() => void makeNew()}>
               Make a new link
             </button>

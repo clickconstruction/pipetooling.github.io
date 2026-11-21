@@ -1956,11 +1956,15 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: red ? 'red' : 'amber',
       kicker: 'HR reports',
       title:
-        n === 1
-          ? `A field report has waited ${minAge}+ days to be filed`
-          : `${n} field reports have waited ${minAge}+ days to be filed`,
+        minAge <= 0
+          ? n === 1
+            ? 'A field report waits to be filed'
+            : `${n} field reports wait to be filed`
+          : n === 1
+            ? `A field report has waited ${minAge}+ days to be filed`
+            : `${n} field reports have waited ${minAge}+ days to be filed`,
       detail:
-        `Written from the field and still not on anyone's record — the oldest ${oldestAgeDays} day${oldestAgeDays === 1 ? '' : 's'} ago` +
+        `Written from the field and still not on anyone's record — the oldest ${oldestAgeDays === 0 ? 'today' : `${oldestAgeDays} day${oldestAgeDays === 1 ? '' : 's'} ago`}` +
         `${total > n ? ` (${total} pending in all)` : ''}. File each onto the person's HR record or dismiss it with a reason; the author sees the status flip.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open pending reports',

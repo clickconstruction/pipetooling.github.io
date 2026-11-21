@@ -230,6 +230,18 @@ export const COURSE_TRADE_TERMS: Readonly<Record<string, readonly string[]>> = {
     'heat pump water heater',
     'humidifier',
     'evaporative cooler',
+    'backdraft',
+    'heat exhaustion',
+    'heat stroke',
+    'hydrogen fluoride',
+    'gas utility',
+    'wet vacuum',
+    'walkway',
+    'TDLR',
+    'endorsement',
+    'registered technician',
+    'certified technician',
+    'start-up',
   ],
 }
 

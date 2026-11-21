@@ -422,3 +422,22 @@ all eleven PRs were on main by 2026-11-21.
     customer owes us…* there, while the Schedule look names the GC.
 - **Next:** the dev seat's verb, once the seat has room and the owner says what it reads.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
+
+## Audited 2026-11-20
+
+Taunya asked for PR 10 (v2.8110) and PR 11 (v2.8111) to be audited by a session on Fable 5.2. The findings, the
+method and the screenshots are in the lead session's shared notes (`review-382-pr10-11.md` and the
+`review-382-pr10-11` folder), outside the repo. What the audit left open is there and not on this card.
+
+**Six fixes, all on main.**
+
+- **v2.8136 (#9168).** **Is it as told?** reads the list again after a refused send, so a press on it can be kept.
+  A card that is already up stays up when a later read fails.
+- **v2.8137 (#9170).** On the line of time the red *moved N days* words stay inside their row at every width.
+- **v2.8140 (#9174).** A line of time with no day to draw says so, where it drew nothing.
+- **v2.8161 (#9205).** Dispatch's window reads *sent on arrival* for a No on arrival, where it read *sent from the
+  sheet*.
+- **v2.8173 (#9216).** On the short Job Mode page the card sits above **Open this job**, where it was behind it.
+- **v2.8178 (#9167).** A stage is answered once by the door as well as by the read. A second answer is refused in
+  words that name who answered first, so a later **Yes, all as told** cannot replace a No. Its migration,
+  `20261121150500_start_check_arrive_once.sql`, was pushed on 2026-11-21.
