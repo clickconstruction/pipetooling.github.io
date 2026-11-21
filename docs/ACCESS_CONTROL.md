@@ -912,6 +912,7 @@ Every other role opens `/documents` without the tab, and a link to `?tab=builder
 Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and `20261120034225_document_builder_sheets.sql`): `document_builders`, `document_builder_sheets`, `document_builder_links` and `document_builder_sends` each read by `is_dev()` alone, with no grant to `anon`.
 A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
+`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
