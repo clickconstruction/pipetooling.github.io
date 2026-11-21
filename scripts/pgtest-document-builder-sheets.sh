@@ -22,8 +22,8 @@ PORT="${PGTEST_PORT:-55865}"
 NAME="pgtest-document-builder-sheets"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The table's own migration, then the one that gave a draft its number. In that order: each replaces the table's stamp,
-# and the later one is the stamp as it stands.
-WRITES="$(ls supabase/migrations/*_document_builder_sheets.sql) $(ls supabase/migrations/*_document_builder_draft_no.sql)"
+# and the later one is the stamp as it stands. Then the table of a link's opens.
+WRITES="$(ls supabase/migrations/*_document_builder_sheets.sql) $(ls supabase/migrations/*_document_builder_draft_no.sql) $(ls supabase/migrations/*_document_builder_link_opens.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

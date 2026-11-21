@@ -1,4 +1,4 @@
--- The Document builder's sheets, links and sends (punch list #404, migration *_document_builder_sheets). A dev alone
+-- The Document builder's sheets, links, a link's opens (migration *_document_builder_link_opens) and sends (punch list #404, migration *_document_builder_sheets). A dev alone
 -- reads them. A job's sheet starts as a draft, goes up one revision at a time with its copy and its page, and only on
 -- the usual's published revision. A link is written by the service role alone and keeps only a hash. A send is
 -- written by the service role, and a dev may only take one off a page, once. A dev in training, a dev's twin and a
@@ -109,7 +109,7 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, d
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['document_builder_sheets', 'document_builder_links', 'document_builder_sends'] LOOP
+  FOREACH t IN ARRAY ARRAY['document_builder_sheets', 'document_builder_links', 'document_builder_sends', 'document_builder_link_opens'] LOOP
     PERFORM dsb.same(t || ' has its archived fence', (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = t AND policyname = 'archived_fence')::text, '1');
     PERFORM dsb.same(t || ' has its training-mode policies', (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = t AND policyname LIKE 'read_only_users_cannot_%')::text, '3');
     PERFORM dsb.same(t || ' has its twin fence', (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = t AND policyname LIKE 'digital_twin_write_fence_%')::text, '3');
@@ -119,6 +119,7 @@ BEGIN
 END $$;
 SELECT dsb.same('a signed-in person holds the four row grants on a sheet', (SELECT string_agg(privilege_type, ', ' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'document_builder_sheets' AND grantee = 'authenticated'), 'DELETE, INSERT, SELECT, UPDATE');
 SELECT dsb.same('a signed-in person may only read a link', (SELECT string_agg(privilege_type, ', ' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'document_builder_links' AND grantee = 'authenticated'), 'SELECT');
+SELECT dsb.same('a signed-in person may only read a link''s opens', (SELECT string_agg(privilege_type, ', ' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'document_builder_link_opens' AND grantee = 'authenticated'), 'SELECT');
 SELECT dsb.same('a signed-in person may read a send and change it', (SELECT string_agg(privilege_type, ', ' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'document_builder_sends' AND grantee = 'authenticated'), 'SELECT, UPDATE');
 SELECT dsb.same('one of each policy of a sheet''s own', (SELECT string_agg(policyname, ', ' ORDER BY policyname) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'document_builder_sheets' AND policyname LIKE 'document_builder_sheets_%'), 'document_builder_sheets_delete, document_builder_sheets_insert, document_builder_sheets_select, document_builder_sheets_update');
 
@@ -191,7 +192,20 @@ INSERT INTO public.document_builder_links (builder_key, sheet_id, nonce, code_ha
 INSERT INTO public.document_builder_links (builder_key, nonce, code_hash) VALUES ('sub-nda', repeat('e', 32), repeat('f', 64));
 SELECT dsb.refused('a second live link to one builder', $q$INSERT INTO public.document_builder_links (builder_key, nonce, code_hash) VALUES ('sub-nda', repeat('1', 32), repeat('2', 64))$q$, 'document_builder_links_live_key');
 SELECT dsb.refused('one code under two links', $q$INSERT INTO public.document_builder_links (builder_key, sheet_id, nonce, code_hash) VALUES ('insurance', NULL, repeat('3', 32), repeat('d', 64))$q$, 'document_builder_links_code_hash_key');
+SELECT dsb.refused('a why on a link that has not ended', $q$UPDATE public.document_builder_links SET ended_why = 'off' WHERE ended_at IS NULL$q$, 'document_builder_links_ended_why_check');
+SELECT dsb.refused('a why nobody wrote down', $q$UPDATE public.document_builder_links SET ended_why = 'lost' WHERE id = '00000000-0000-0000-0000-000000404311'$q$, 'document_builder_links_ended_why_check');
+UPDATE public.document_builder_links SET ended_why = 'replaced' WHERE id = '00000000-0000-0000-0000-000000404311';
 SELECT dsb.same('a new link stands beside the ended one', (SELECT count(*)::text || ' ' || count(*) FILTER (WHERE ended_at IS NULL)::text FROM public.document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0'), '2 1');
+
+-- 3b · An open of a link is the function's to write: an account by its id, someone outside by what the browser sent.
+INSERT INTO public.document_builder_link_opens (id, link_id, viewer, user_id, revision)
+  VALUES ('00000000-0000-0000-0000-000000404331', '00000000-0000-0000-0000-000000404311', 'staff', '00000000-0000-0000-0000-0000004043a1', 1);
+INSERT INTO public.document_builder_link_opens (id, link_id, viewer, revision, client_ip, user_agent, device)
+  VALUES ('00000000-0000-0000-0000-000000404332', '00000000-0000-0000-0000-000000404311', 'outside', 1, '203.0.113.7', 'A made-up browser', '{"language": "en-US", "timeZone": "America/Chicago", "screen": "390x844"}');
+SELECT dsb.refused('an open by nobody we tell apart', $q$INSERT INTO public.document_builder_link_opens (link_id, viewer) VALUES ('00000000-0000-0000-0000-000000404311', 'a stranger')$q$, 'document_builder_link_opens_viewer_check');
+SELECT dsb.refused('a device that is not an object', $q$INSERT INTO public.document_builder_link_opens (link_id, viewer, device) VALUES ('00000000-0000-0000-0000-000000404311', 'outside', '[]')$q$, 'document_builder_link_opens_device_check');
+SELECT dsb.refused('a device too big to be a few details', $q$INSERT INTO public.document_builder_link_opens (link_id, viewer, device) VALUES ('00000000-0000-0000-0000-000000404311', 'outside', jsonb_build_object('a', (SELECT string_agg(md5(g::text), '') FROM generate_series(1, 400) g)))$q$, 'document_builder_link_opens_device_check');
+SELECT dsb.refused('an open of no link', $q$INSERT INTO public.document_builder_link_opens (link_id, viewer) VALUES ('00000000-0000-0000-0000-00000040439f', 'outside')$q$, 'document_builder_link_opens_link_id_fkey');
 
 -- 4 · A send is the function's to write: a sheet to a trade, a builder to a customer.
 INSERT INTO public.document_builder_sends (id, builder_key, sheet_id, company_id, contact_name, contact_email, sent_revision, sent_by, sent_by_name)
@@ -210,6 +224,9 @@ SELECT dsb.same('the function stamps the open and sends again', (SELECT opened_r
 -- 5 · A dev reads all three, and on a send may only take it off the page, once.
 SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
 SELECT dsb.same('a dev reads the sheet, the links and the sends', dsb.reads(), '1 3 2');
+SELECT dsb.same('a dev reads the opens, the account and the outsider', (SELECT count(*)::text || ' ' || count(user_id)::text || ' ' || count(client_ip)::text FROM public.document_builder_link_opens), '2 1 1');
+SELECT dsb.refused('a dev writing an open', $q$INSERT INTO public.document_builder_link_opens (link_id, viewer) VALUES ('00000000-0000-0000-0000-000000404311', 'outside')$q$, 'permission denied');
+SELECT dsb.refused('a dev deleting an open', $q$DELETE FROM public.document_builder_link_opens$q$, 'permission denied');
 SELECT dsb.refused('a dev writing a send', $q$INSERT INTO public.document_builder_sends (builder_key, customer_id, sent_revision) VALUES ('sub-nda', '00000000-0000-0000-0000-0000004043c1', 1)$q$, 'permission denied');
 SELECT dsb.refused('a dev deleting a send', $q$DELETE FROM public.document_builder_sends WHERE id = '00000000-0000-0000-0000-000000404321'$q$, 'permission denied');
 SELECT dsb.refused('a dev marking a send opened', $q$UPDATE public.document_builder_sends SET opened_at = now(), opened_revision = 3 WHERE id = '00000000-0000-0000-0000-000000404322'$q$, 'A send is changed only by sending again.');
@@ -240,6 +257,7 @@ BEGIN
     PERFORM dsb.as_user(who.id);
     SET LOCAL ROLE authenticated;
     PERFORM dsb.same(who.label || ' reads no sheet, link or send', dsb.reads(), '0 0 0');
+    PERFORM dsb.same(who.label || ' reads no open of a link', (SELECT count(*)::text FROM public.document_builder_link_opens), '0');
     PERFORM dsb.same(who.label || ' starts no sheet', dsb.touched($q$INSERT INTO public.document_builder_sheets (builder_key, project_id, draft) VALUES ('insurance', '00000000-0000-0000-0000-0000004043d2', '{}')$q$), 'refused');
     PERFORM dsb.same(who.label || ' changes no sheet', dsb.touched($q$UPDATE public.document_builder_sheets SET draft = '{"name": "Changed"}'$q$), '0');
     PERFORM dsb.same(who.label || ' deletes no sheet', dsb.touched($q$DELETE FROM public.document_builder_sheets$q$), '0');
@@ -266,15 +284,34 @@ SELECT dsb.same('and starts no sheet', dsb.touched($q$INSERT INTO public.documen
 RESET ROLE;
 SELECT dsb.same('the sheet and the live send are as they were left', dsb.past($q$SELECT (SELECT draft::text FROM document_builder_sheets WHERE id = '00000000-0000-0000-0000-0000004043a0') || ' ' || (SELECT (taken_off_at IS NULL)::text FROM document_builder_sends WHERE id = '00000000-0000-0000-0000-000000404321')$q$), '{"name": "Cedar Park Medical Office", "place": "412 Sample Street"} true');
 
+-- 7b · A sheet's link closes with the last trade. A second trade is sent the sheet. Taking it off the first trade's
+-- page leaves the link on. Taking it off the last one ends the link, with its why and who did it.
+SELECT dsb.as_nobody();
+INSERT INTO public.gc_companies (id, name, trades) VALUES ('00000000-0000-0000-0000-0000004043e2', 'Lone Mesa Excavation', ARRAY['Earthwork']);
+INSERT INTO public.document_builder_sends (id, builder_key, sheet_id, company_id, contact_name, contact_email, sent_revision)
+  VALUES ('00000000-0000-0000-0000-000000404323', 'insurance', '00000000-0000-0000-0000-0000004043a0', '00000000-0000-0000-0000-0000004043e2', 'Ben Winters', 'ben@lonemesa.test', 1);
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('a dev takes the sheet off the first trade''s page', dsb.touched($q$UPDATE public.document_builder_sends SET taken_off_at = now() WHERE id = '00000000-0000-0000-0000-000000404321'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('the link stays while a trade still has the sheet', dsb.past($q$SELECT count(*)::text FROM document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0' AND ended_at IS NULL$q$), '1');
+SELECT dsb.as_user('00000000-0000-0000-0000-0000004043a1'); SET LOCAL ROLE authenticated;
+SELECT dsb.same('and off the last trade''s page', dsb.touched($q$UPDATE public.document_builder_sends SET taken_off_at = now() WHERE id = '00000000-0000-0000-0000-000000404323'$q$), '1');
+RESET ROLE;
+SELECT dsb.same('the link ended with the last trade, by the one who took it off', dsb.past($q$SELECT count(*) FILTER (WHERE ended_at IS NULL)::text || ' ' || count(*) FILTER (WHERE ended_why = 'last_send_off' AND ended_by = '00000000-0000-0000-0000-0000004043a1')::text FROM document_builder_links WHERE sheet_id = '00000000-0000-0000-0000-0000004043a0'$q$), '0 1');
+SELECT dsb.same('a builder''s link is left alone', dsb.past($q$SELECT count(*)::text FROM document_builder_links WHERE sheet_id IS NULL AND ended_at IS NULL$q$), '1');
+SELECT dsb.same('nobody signed in may run the rule by hand', (SELECT has_function_privilege('authenticated', 'public.document_builder_sends_close_link()', 'EXECUTE')::text), 'false');
+
 -- 8 · Someone not signed in holds no grant at all.
 SET LOCAL ROLE anon;
 SELECT dsb.refused('someone not signed in reading a sheet', $q$SELECT count(*) FROM public.document_builder_sheets$q$, 'permission denied');
 SELECT dsb.refused('someone not signed in reading a link', $q$SELECT count(*) FROM public.document_builder_links$q$, 'permission denied');
+SELECT dsb.refused('someone not signed in reading a link''s opens', $q$SELECT count(*) FROM public.document_builder_link_opens$q$, 'permission denied');
 SELECT dsb.refused('someone not signed in reading a send', $q$SELECT count(*) FROM public.document_builder_sends$q$, 'permission denied');
 RESET ROLE;
 
--- 9 · A job that goes takes its sheet, its link and its send with it.
+-- 9 · A job that goes takes its sheet, its link and its send with it. A link that goes takes its opens.
 DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000004043d1';
+SELECT dsb.same('the opens went with their link', (SELECT count(*)::text FROM public.document_builder_link_opens), '0');
 SELECT dsb.same('the sheet, its links and its send went with the job', (SELECT count(*) FROM public.document_builder_sheets)::text || ' ' || (SELECT count(*) FROM public.document_builder_links WHERE sheet_id IS NOT NULL)::text || ' ' || (SELECT count(*) FROM public.document_builder_sends WHERE sheet_id IS NOT NULL)::text, '0 0 0');
 
 DO $$ BEGIN RAISE NOTICE 'document_builder_sheets PASSED'; END $$;
