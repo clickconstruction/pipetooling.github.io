@@ -258,7 +258,8 @@ last_updated: 2026-11-21
 > The grid is still a table, so every row shares the head's column widths, and only the head of this notice's column and its ticked cells are tinted.
 > A missed month is `data-missed` on its row: the red tint and a red bar at its left edge.
 > A closed month a paper names reads its window off the row's own cells since v2.8063 (`lienGridNoticedWords` in `lienMonthGrid.ts`, this notice's cell left out): *named in time* when an earlier paper's cell is `named`, *named after the window — information* when every paper naming it is `info`, and *a notice names it* when no loaded paper does.
-> Since v2.8064 the lead line asks *Tick a month to put it on this notice.* only with a column for this notice and a row whose tick is not locked (`canTick`), and the desk hands the grid the Sent pile's own item as `thisItem`, so `buildLienMonthGrid` drops the column on a paper that went; the table carries `data-this`.
+> Since v2.8064 the lead line asks *Tick a month to put it on this notice.* only with a column for this notice and a row whose tick is not locked (`canTick`), and the desk hands the grid the Sent pile's own item as `thisItem`, so `buildLienMonthGrid` drops the column on a paper that went;
+> the table carries `data-this`.
 > The money is one block: `LienClaimBox`'s read view is the total line (`.lienLedgerClaim`, the figure at the card's right edge), `LienDeskMonths` hands it the foot of the column through `claimNode(foot)` (`data-lien-grid-foot`, the months the notice names and their count), and `LienClaimBills` draws the bills under it on the same edge.
 > The `tfoot` of v2.7430 and its second total (`data-lien-grid-total`) are gone, so the figure is said once.
 > Under 560 px of card a row is its own grid: the month over its window, an earlier paper as a mark with its letter (`.lienLedgerMarkLetter`), and the tick in a 6.5rem column at the right edge, or one column with `data-this='no'` (v2.8064).

@@ -921,7 +921,8 @@ Its tables are a dev's too (v2.7988, `20261120032253_document_builders.sql` and 
 A dev writes `document_builders` and `document_builder_sheets` directly, under triggers that stamp the caller and keep a revision number to one set of words.
 `document_builder_links` takes no signed-in write at all, and on `document_builder_sends` a dev may only take a live send off a page, once: the edge functions write both with the service role.
 Since v2.8187 taking a sheet off the last trade's page also ends that sheet's link, through the definer trigger `document_builder_sends_close_link`: the one change a signed-in press makes to a link, and only to end it.
-`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and meant to be written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried. Nothing writes a row yet, and no screen reads one.
+`document_builder_link_opens` (v2.8187, `20261121190000_document_builder_link_opens.sql`) is one row an open of a link, read by `is_dev()` alone and meant to be written only by `document-builder-link` with the service role: an account by its id, someone with no account by the address, the browser and the device the open carried.
+Nothing writes a row yet, and no screen reads one.
 Since v2.8005 the tab reads `document_builders` and writes a builder's first draft.
 Since v2.8007 a dev also types on the insurance builder's usual sheet, publishes it, marks a revision as checked, and writes and publishes a job's sheet in `document_builder_sheets`, for a job in `gc_projects`.
 Since v2.8008 a published sheet opens at `/d/<code>` with no sign-in, through `document-builder-link`: the link's code is the capability, only its hash is kept, and only a dev makes, replaces or switches off a link.
@@ -2652,7 +2653,8 @@ A training-mode account cannot sign, since starting a paper is a write.
   The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties` and `license_roll_left_off`.
   A shared Hiring column does not open the State roll.
   Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and the tab's **Pull 4 files** press runs it under the caller's JWT after the same gate and the archived-caller guard.
-  The one write the gate opens to a person is a county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159); no screen offers it yet.
+  The one write the gate opens to a person is a county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159);
+  no screen offers it yet.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;
@@ -3028,7 +3030,8 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
-- **Write someone up**: since v2.8157 (punch list #410) a superintendent sends a field report about a person through `land_person_report`, as a leader and a dev do, never about themselves, and reads only their own rows of `person_reports`, while the queue and the HR file stay a dev's. Since v2.8172 a write-up's photos (`person_report_photos` and the private `person-report-photos` bucket, gated by `can_write_someone_up()`) are the writer's own to add, read and drop until the write-up is sent, a dev reads all, and nobody else reads a row or a file ([`HR_FILES.md`](./HR_FILES.md)).
+- **Write someone up**: since v2.8157 (punch list #410) a superintendent sends a field report about a person through `land_person_report`, as a leader and a dev do, never about themselves, and reads only their own rows of `person_reports`, while the queue and the HR file stay a dev's.
+  Since v2.8172 a write-up's photos (`person_report_photos` and the private `person-report-photos` bucket, gated by `can_write_someone_up()`) are the writer's own to add, read and drop until the write-up is sent, a dev reads all, and nobody else reads a row or a file ([`HR_FILES.md`](./HR_FILES.md)).
 
 **Service Type Filtering**:
 - Devs can restrict a superintendent to specific service types via `superintendent_service_type_ids` on the user record (like `primary_service_type_ids`)
