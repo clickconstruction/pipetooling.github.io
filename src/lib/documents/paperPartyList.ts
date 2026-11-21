@@ -97,3 +97,28 @@ export function addedToListWords(person: Pick<ListPerson, 'name'>, where: string
   const tail = papers > 0 ? ` ${papers === 1 ? 'Their paper came' : 'Their papers came'} with them.` : ''
   return `${name} is with ${where} now.${tail}`
 }
+
+/** A record one press wrote: its table, its id, and the name it was saved under when the saving can change it. */
+export type MadeRecord = { table: string; id: string; name?: string }
+
+/**
+ * What one write is known by: the step, then what it was for, trimmed and in any case. A press that fails after an
+ * earlier write landed leaves the window open, and the next press finds that write by this key (the audit of punch
+ * list #403, finding 10).
+ */
+export function listMadeKey(step: 'house' | 'customer' | 'kept', parts: ReadonlyArray<string>): string {
+  return JSON.stringify([step, ...parts.map((p) => p.trim().toLowerCase())])
+}
+
+/**
+ * Write once for a key. The first press writes and keeps the record. A later press with the same key gets that record
+ * back and writes nothing, so a press after a failure never makes a second supply house, customer or person on file.
+ * A write that fails keeps nothing, so the next press tries it again.
+ */
+export async function writeOnce<T extends MadeRecord>(made: Map<string, MadeRecord>, key: string, write: () => Promise<T>): Promise<T> {
+  const had = made.get(key)
+  if (had) return had as T
+  const record = await write()
+  made.set(key, record)
+  return record
+}

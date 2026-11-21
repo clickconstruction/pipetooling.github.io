@@ -1328,7 +1328,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
   Since v2.7963 the list names the trip a deleted one was joined into (`joined_into`), and the fold draws no **Put back** for it.
-  The save itself refuses nothing more for a joined trip.
+  Since v2.8127 the save refuses a trip that was joined away, whatever door it comes through, the dev's `restore_deleted_records` included.
+  The refusal is a definer trigger on `trips` (`trips_refuse_joined_back`), which reads the trip's newest delete that nothing has put back and refuses the insert in words when that delete carries `joined_into`.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
   Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 - **How far is far** (v2.7888): `app_settings` `trips_far_miles_v1`, the miles from the shop that make a site a trip from home, is read by every signed-in user, as `app_settings` is, and set by a dev alone under the table's own dev policy.

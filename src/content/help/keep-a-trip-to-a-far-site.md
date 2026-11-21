@@ -269,6 +269,8 @@ The next trip waits under **Deleted trips** for 90 days. The line there reads **
 
 A joined trip has no **Put back**. The joined trip holds those days already.
 
+A page left open since before the join can still show the next trip. A press that would bring it back is refused. The message names the joined trip. The page then reads the trips again.
+
 To take a join back, open the joined trip and press {{button:outline|Split in two}}.
 
 The last trip on a site has no **Join with the next**.

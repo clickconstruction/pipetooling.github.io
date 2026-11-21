@@ -2,7 +2,7 @@
 name: "Sub papers: a work statement per sheet, a payment record per sending and a statement of account, as PDFs that add up"
 number: 350
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · the kernels built 2026-11-15 (v2.7401) · Taunya picked the card 2026-11-15 (*build the entire PR train*) · step 1, the window, live 2026-11-16 (v2.7453): a statement of account and a work statement to print or save, no numbers · step 2, the numbers' migration, on prod 2026-11-16 (v2.7474), its types following · Taunya kept the names 2026-11-16 (call 1) · step 4, the payment record, live 2026-11-16 (v2.7475) · step 5's function `send-sub-paper-email` merged 2026-11-16 (v2.7506), live since 2026-11-17 on the owner's word · step 3, the numbers on the papers, built 2026-11-16 (v2.7552) · step 5's press, the Send press, built 2026-11-19 (v2.7983) on Grace's go of that day · the press walked 2026-11-19 on Grace's yes, one work statement `WS-1113-1` to the mail service's test address, its sent copy on the sub and the job · the paper presses gated to the office 2026-11-20 (v2.8025), so a superintendent keeps Print · a real door for a sub with no email and PR 7 are what is left (see *Where it stands*)
+status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · the kernels built 2026-11-15 (v2.7401) · Taunya picked the card 2026-11-15 (*build the entire PR train*) · step 1, the window, live 2026-11-16 (v2.7453): a statement of account and a work statement to print or save, no numbers · step 2, the numbers' migration, on prod 2026-11-16 (v2.7474), its types following · Taunya kept the names 2026-11-16 (call 1) · step 4, the payment record, live 2026-11-16 (v2.7475) · step 5's function `send-sub-paper-email` merged 2026-11-16 (v2.7506), live since 2026-11-17 on the owner's word · step 3, the numbers on the papers, built 2026-11-16 (v2.7552) · step 5's press, the Send press, built 2026-11-19 (v2.7983) on Grace's go of that day · the press walked 2026-11-19 on Grace's yes, one work statement `WS-1113-1` to the mail service's test address, its sent copy on the sub and the job · the paper presses gated to the office 2026-11-20 (v2.8025), so a superintendent keeps Print · audited 2026-11-20 by a Fable 5.2 session, with four faults fixed as v2.8089, v2.8094, v2.8100 and v2.8106, the last on the owner's word (see *Audited 2026-11-20*) · a real door for a sub with no email and PR 7 are what is left (see *Where it stands*)
 summary: >
   The owner wants to make part payments to a sub and hand them a paper that shows what is
   outstanding, our last payments and what we still owe, as PDFs: each piece of sub work as a
@@ -13,7 +13,7 @@ summary: >
   sending that says how much went to each sheet and what stays open, and a statement of account
   for a period. It names them for what they are, marks six sentences for counsel, and stands on
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
-next: Grace's word on a real door for a sub with no email (13 of 24 active subs have none on the roster, and only a dev can add one today)
+next: Grace's word on a real door for a sub with no email (13 of 24 active subs have none on the roster, and only a dev can add one today), and the owner's call on how a statement's period is cut, under *Audited 2026-11-20*
 size: L as a train of seven (S · S · M · S · M · M · M)
 blocker: a real door for a sub with no email waits on Grace's word about the function, since it means a redeploy; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences
@@ -205,7 +205,7 @@ Cut each PR from fresh `origin/main`, in this order:
    - *A real door for a sub with no email.* The press is dead for such a sub and the line says so, with Print and Download as the way out. Read on prod on 2026-11-19, counts only: 24 active subs, 13 with no email on the roster row, 2 of those with an address on the login tied to the row. **Only a dev can add one today.** Every one is tied to a login row, so the office's roster edit does not reach them, and the desk's email change does not copy onto an empty roster row. A dev edits a row another account made in Settings → People; a row the dev made has no edit there. My pick: the function falls back to the login's address, the rule the work order send already uses, and the window's door opens the sub's desk. That changes the function and means a redeploy, so it was asked of Grace on 2026-11-19. She has not said yes, and the lead session's advice was to keep it out of the press's own change, so the press shipped on the function as it is.
    - *The Pay view's three presses for a superintendent, done 2026-11-20 (v2.8025).* A superintendent reaches the Pay view and was shown *Statement of account…*, *Work statement…* and *Payment record…*, which the register refused. The presses now show only for the office roles who see sub pay, on the Pay view and on People → Subs, and a superintendent keeps Print.
    - *The first email of a work statement has no number in its subject.* The send step builds the subject from the paper as previewed, and the register numbers the paper only when Send is pressed. So a sheet's first work statement goes out as *Work statement from <company>*, while its file is `WS-1113-1.pdf`. The walk's own email read so. A second send of the same sheet names the number, since the preview carries it by then. A statement of account names no number in its subject at all, and a payment record already carries its sending's. The fix is small: build the subject again from the numbered paper before the email goes, in the connected window's send (`SubPapersWindowConnected.tsx`). Noted 2026-11-20, from the press's own review.
-   - *Papers past 12 have no press of their own.* One email carries 12 papers, the function's limit (`SUB_PAPER_SEND_MAX`). A statement of account sends the first 11 that ride along, oldest first, and a yellow line names the rest. Nothing sends the rest: another statement attaches the same first 11 again, so the office opens each held sheet's work statement and sends it alone. It is rare, a sub with more than 11 open sheets. A fix would be a press under the yellow line that opens the send step on the held papers. Noted 2026-11-20, from the press's own review.
+   - *Papers past 12 have no press of their own.* One email carries 12 papers, the function's limit (`SUB_PAPER_SEND_MAX`). A statement of account sends the first 11 that ride along, oldest first, and a yellow line names the rest. Nothing sends the rest: another statement attaches the same first 11 again, so the office opens each held sheet's work statement and sends it alone. It takes a sub with more than 11 open sheets, and that is close: on 2026-11-20 one sub had 10. A fix would be a press under the yellow line that opens the send step on the held papers. Noted 2026-11-20, from the press's own review.
 6. **The portal tab** (PR 6, with PR 7's confirm left behind its switch, off). **Moved to card #371**, with a mock-up and calls of its own. **Built and live 2026-11-17** as the sub's *Statements* view (v2.7569, v2.7597, v2.7609), walked on the test sub, and #371 retired the same day; its record is the #371 paragraph under *Closed* in `to-dos/README.md`. The confirm stays off.
 
 Hard lines:
@@ -221,10 +221,68 @@ Hard lines:
 2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved. **Built as picked** in v2.7404, card #347's *By hand*.
 3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's.
 4. **Do payment records send by themselves?** My pick: no. The window after Record payment offers it. The portal shows the payment at once either way.
-5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time.
+5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time. Since v2.8106 a statement made earlier the same day does not move it. The period still starts after the last statement from before today.
 6. **A sheet that is not payable yet.** My pick: it is on the statement under *Still open*, with counsel's one line about terms, and no due date.
 7. **The *Paid this year* line.** My pick: keep it, leave out *Client direct*, and say it is not a tax form. Your accountant's call.
 8. **The letterhead.** My pick: the bill's own block from Settings. The app has no logo to print.
+
+## Audited 2026-11-20
+
+The owner asked for this card's work to be audited by a session on Fable 5.2. The findings, the method and nine sheets of
+screenshots are in the lead session's shared notes (`review-350-sub-papers.md` and the `review-350-screenshots` folder).
+Every build of the train carries the Fable 5.2 trailer except the office gate of v2.8025 (#9014), which is Opus 5.5.
+
+**What held.** The money is right. The audit rebuilt the papers of all 14 people who have them from the app's own reads:
+94 sheets and 84 payment records. Each sheet's Agreed, Paid, back-charges and Still open match arithmetic written apart
+from the kernel, to the cent. Each statement matches the Pay view's balance. All 192 PDFs were drawn and every figure was
+read back off the page. Twelve periods a person, 168 statements, each add up, and each opens on what the one before
+closed on. What prod does not hold yet was run on made-up rows and checked by hand: a credit kept, a credit used, a
+customer paying the sub direct, and one check over two sheets. The register cannot repeat a number. A gap is possible only
+for an `SA-` number whose send failed after the mint, and the window says so. The office gate is the same in the app, the
+database and the function: through the dev seat the sample superintendent is refused the mint and reads no paper. Every
+edge function was current. The walk's sent copy and register row are as *Where it stands* says, and so is the count of
+13 of 24 active subs with no email.
+
+**Four faults, fixed.**
+
+- **v2.8089 (#9103).** A box that ran over a page left the first page with no frame and the last with an empty one below
+  the text. Two real subs' statements did this. The frame is now drawn on every page the box covers, and the lists that
+  had no page check ask for room first. The edge function `sub-statement` draws the same PDF and was redeployed after the
+  merge.
+- **v2.8094 (#9106).** On a phone the papers window opened under the *What we owe* sheet, with every press covered. It
+  opens on top now.
+- **v2.8100 (#9150).** A paper's press drew nothing while its first reads were slow. The window now opens at once and
+  reads *Getting the papers ready…*, with Close.
+- **v2.8106 (#9116), on the owner's word.** A second statement of account on the same day read a backwards period, such
+  as *Nov 21, 2026 to Nov 20, 2026*. Its figures were right. A statement made today no longer moves *Since the last
+  statement*, as call 5 now says.
+
+**The two rough edges.** The subject with no number is small, as the card says. Papers past 12 is closer than it looked,
+as step 5 now says. The card missed one more: held papers and files not yet numbered are named by their job, so several
+sheets of one job read alike.
+
+**Still open.**
+
+- *A payment typed on a later day and dated on or before the last statement's closing day.* No statement lists it under
+  *Last payments*, though its amount is in the next statement's opening figure. On made-up rows one statement closes at
+  $750 and the next opens at $550 with no payment listed. The owner's call: is a period cut by the date on the payment or
+  by the day it was typed?
+- *The office's payment record ignores Got it.* It always says *Not marked yet*, even after the sub pressed Got it, since
+  the window never hands the sub's marks to the builder. The Pay view already reads them. Confirmed, not built.
+- *The last press's line stays* when the paper or the step changes. Minor. Confirmed, not built.
+- *The Pay view's ledger ignores a failed read* of lines or payments, and the papers stand on it. One failed payments read
+  would draw every sheet unpaid, and a statement made then would say so under a number. Seen in the code, not on prod.
+- *On a phone* every press in the window is 26 to 33 px tall, and the phone's Pay view has no paper press. The door on a
+  phone is People → Subs. A matter of taste.
+- *The dev seat and the window differ* after a statement made today. The seat refuses *since_last* and asks for
+  *to_date*. The window runs from the last statement before today.
+- Lower: the letterhead reads *Our company* when Settings cannot be read on a browser that never loaded it. The window says
+  the copies are filed, though the function files them best effort. A paper rounds each line and the Pay view rounds the
+  sum. No live sheet differs.
+- *Not done by the audit.* No real send, since one needs an address written onto the test sub's roster row. The live site
+  was not walked: everything ran on a local build of `main` against prod, read only. The *do not add up* state and the
+  Print tab were not shot. The Record payment window opens from the same phone sheet and stacks under it. That window is
+  card #347's and was not walked.
 
 ## How to verify
 

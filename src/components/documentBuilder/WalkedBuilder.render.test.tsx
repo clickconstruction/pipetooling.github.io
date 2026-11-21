@@ -4,6 +4,8 @@
  * pages changed since the published revision with the way back, the publish, the marks and the attorney's read. The
  * flow's own wiring is `DocumentBuilderFlow.render.test.tsx`. Every word is the made-up paper's.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DOCUMENT_BUILDERS } from '../../lib/documentBuilder/builders'
@@ -67,6 +69,34 @@ describe('WalkedBuilder', () => {
     expect(screen.getByText('Nothing waiting on a publish. This is revision 2.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Nothing to publish' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Step 1 of 11')).toBeTruthy()
+  })
+
+  it('heads each column with the level’s name and its bars, and a phone shows the bars over 44 px squares', () => {
+    draw()
+    const map = screen.getByRole('table', { name: 'The map' })
+    expect(map.className).toBe('documentBuilderMap')
+    expect(map.style.getPropertyValue('--map-levels')).toBe('4')
+    const heads = Array.from(map.querySelectorAll<HTMLElement>('.documentBuilderMapHead'))
+    expect(heads.map((h) => h.title)).toEqual(SECRECY_PAPER_FIXTURE.levels.map((l) => l.name))
+    for (const head of heads) {
+      expect(head.querySelector('.documentBuilderMapHeadWords')?.textContent).toBeTruthy()
+      // The bars: one a level, in a piece a screen reader skips.
+      expect(head.querySelectorAll('.documentBuilderMapHeadBars [aria-hidden="true"] > span')).toHaveLength(4)
+    }
+    // A cell hands its level's colour to the stylesheet, which draws the stripe or the square.
+    const cell = within(map).getByRole('button', { name: 'Photos and video, Standard' })
+    expect(cell.className).toBe('documentBuilderMapCell')
+    expect(cell.style.getPropertyValue('--tone')).not.toBe('')
+
+    // The phone's rules, read from index.css: four names never sit side by side there.
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
+    const phone = css.slice(css.indexOf('.documentBuilderMapWords {')).match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}\n/)?.[0] ?? ''
+    const rule = (name: string) => phone.match(new RegExp(`\\.${name} \\{[^}]*\\}`))?.[0] ?? ''
+    expect(rule('documentBuilderMap')).toContain('repeat(var(--map-levels, 4), 44px)')
+    expect(rule('documentBuilderMapHeadWords')).toContain('display: none')
+    expect(rule('documentBuilderMapHeadBars')).toContain('display: grid')
+    expect(rule('documentBuilderMapCell')).toContain('height: 44px')
+    expect(rule('documentBuilderMapCell::after')).toContain('background: var(--tone)')
   })
 
   it('opens a page from the map at its level, past the disclaimer', () => {

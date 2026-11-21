@@ -4,7 +4,9 @@ import { INSURANCE_SHEET_FIXTURE } from './insuranceSheet.fixture'
 import {
   SHEET_FIELD_KEYS,
   SHEET_FIELD_NAMES,
+  SHEET_JOB_BLANK,
   SHEET_NEW,
+  SUB_NOT_USUAL,
   asksOutdated,
   coverPath,
   differsLine,
@@ -24,12 +26,16 @@ import {
   sheetDiffers,
   sheetWords,
   startJobSheet,
+  subtitleAsUsual,
+  subtitleWith,
   usualFromJobExtra,
   usualFromJobField,
   usualHasCover,
   usualHeldWords,
+  usualOffer,
   usualPublishPlan,
   usualWords,
+  usualWordsOn,
   withJobCoverOff,
   withJobExtra,
   withJobExtraWords,
@@ -220,6 +226,71 @@ describe('what differs on a job', () => {
     const pruned = pruneJobSheet(made, job)
     expect(pruned.extra).toEqual([])
     expect(layOver(made, pruned).cover).toEqual(layOver(USUAL, job).cover)
+  })
+})
+
+describe('the line under the title, made the usual', () => {
+  const SUB = fieldPath('sub')
+  /** A second made-up job, so the usual is read on a job that did not write the line. */
+  const ELM = (): JobSheet => startJobSheet({ name: 'Elm Street Lofts', place: '12 Sample Avenue, Austin, TX 78701', insured: ['Elm Street Partners, LLC'] })
+
+  it('goes to the usual with the job’s name as a blank, so no job reads a name twice', () => {
+    const cedar = withJobWords(USUAL, CEDAR(), SUB, 'For every trade working on Cedar Park Medical Office')
+    const made = usualFromJobField(USUAL, cedar, SUB)
+    // The usual holds the words before the name, never the name.
+    expect(made.fields.sub).toBe('For every trade working on')
+    expect(made.fields.sub).not.toContain('Cedar Park')
+    // The job that wrote it reads the same before the usual is published, and after its copy is let go.
+    expect(layOver(made, cedar).subtitle).toBe('For every trade working on Cedar Park Medical Office')
+    const pruned = pruneJobSheet(made, cedar)
+    expect(pruned.over).toEqual({})
+    expect(layOver(made, pruned).subtitle).toBe('For every trade working on Cedar Park Medical Office')
+    // Another job reads the same line with its own name, once.
+    expect(layOver(made, ELM()).subtitle).toBe('For every trade working on Elm Street Lofts')
+  })
+
+  it('keeps the blank where the job’s name was, when the name is not at the end', () => {
+    const cedar = withJobWords(USUAL, CEDAR(), SUB, 'On Cedar Park Medical Office, for every trade')
+    const made = usualFromJobField(USUAL, cedar, SUB)
+    expect(made.fields.sub).toBe(`On ${SHEET_JOB_BLANK}, for every trade`)
+    expect(layOver(made, pruneJobSheet(made, cedar)).subtitle).toBe('On Cedar Park Medical Office, for every trade')
+    expect(layOver(made, ELM()).subtitle).toBe('On Elm Street Lofts, for every trade')
+    expect(sheetDiffers(made, cedar)).toEqual([])
+  })
+
+  it('reads a usual line with the name at its end or in its blank, and round-trips a job’s line', () => {
+    expect(subtitleWith('For subcontractors on', 'Elm Street Lofts')).toBe('For subcontractors on Elm Street Lofts')
+    expect(subtitleWith(`${SHEET_JOB_BLANK}: what each trade carries`, 'Elm Street Lofts')).toBe('Elm Street Lofts: what each trade carries')
+    for (const line of ['For subs on Elm Street Lofts', 'Elm Street Lofts', 'Elm Street Lofts, and again Elm Street Lofts', 'Two  spaces before  Elm Street Lofts']) {
+      const usual = subtitleAsUsual(line, 'Elm Street Lofts')
+      expect(usual).not.toBeNull()
+      expect(usual).not.toContain('Elm Street')
+      expect(subtitleWith(usual as string, 'Elm Street Lofts')).toBe(line)
+    }
+    expect(subtitleAsUsual('For every trade on the job', 'Elm Street Lofts')).toBeNull()
+    expect(subtitleAsUsual('Anything', '')).toBeNull()
+  })
+
+  it('holds a line that does not say the job’s name, with the reason, and leaves the usual as it was', () => {
+    const cedar = withJobWords(USUAL, CEDAR(), SUB, 'For every trade at the medical office')
+    expect(usualOffer(USUAL, cedar, SUB)).toEqual({ kind: 'held', why: SUB_NOT_USUAL })
+    expect(usualFromJobField(USUAL, cedar, SUB)).toBe(USUAL)
+    expect(plainWordsFailures(SUB_NOT_USUAL)).toEqual([])
+  })
+
+  it('offers the press until the usual reads the same on this job, then says it is in the usual', () => {
+    const cedar = withJobWords(USUAL, CEDAR(), SUB, 'For every trade working on Cedar Park Medical Office')
+    expect(usualOffer(USUAL, cedar, SUB)).toEqual({ kind: 'offer' })
+    expect(usualOffer(usualFromJobField(USUAL, cedar, SUB), cedar, SUB)).toEqual({ kind: 'in-usual' })
+    const amount = withJobWords(USUAL, CEDAR(), coverPath('umb', 'limit'), 'Made-up amount 9')
+    expect(usualOffer(USUAL, amount, coverPath('umb', 'limit'))).toEqual({ kind: 'offer' })
+  })
+
+  it('does not keep a line typed back to what the usual reads on this job', () => {
+    const cedar = withJobWords(USUAL, CEDAR(), SUB, 'For every trade working on Cedar Park Medical Office')
+    expect(usualWordsOn(USUAL, cedar, SUB)).toBe('For subcontractors on Cedar Park Medical Office')
+    expect(sheetDiffers(USUAL, cedar).map((d) => (d.kind === 'field' ? d.usual : ''))).toEqual(['For subcontractors on Cedar Park Medical Office'])
+    expect(withJobWords(USUAL, cedar, SUB, 'For subcontractors on Cedar Park Medical Office').over).toEqual({})
   })
 })
 

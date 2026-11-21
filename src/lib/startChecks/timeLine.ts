@@ -1,8 +1,8 @@
 /**
  * Before we start (punch list #382, PR 11): the Schedule look on a line of time. One row a stage ahead: a bar for
  * our days in the stage's colour, a diamond on the day they say ready, a hollow diamond on each day they gave
- * before, a dotted line on the day we decide, a line on today, and the days they moved in red beside the row's marks,
- * never over one. Every place is a share of the span,
+ * before, a dotted line on the day we decide, a line on today, and the days they moved in red under the row's marks,
+ * never over one and never off the row. Every place is a share of the span,
  * so a screen and a sheet of paper draw the same line. Each row also reads as one sentence, for a reader that
  * cannot see the line. Pure.
  */
@@ -23,15 +23,24 @@ export type TimeLineRow = {
   /** The day we decide. */
   decide: number | null
   moved: number
-  /** Where the red *moved N days* is written, clear of every mark: after the last one, or before the first on a row that ends near the right edge. Null when nothing moved. */
-  movedAt: { at: number; side: 'after' | 'before' } | null
+  /**
+   * Where the red *moved N days* is anchored: the day they say ready now, the mark that moved. The words sit on their
+   * own line under the row's marks, and the screen slides them back by this same share of their own width, so their
+   * left edge is at the track's at 0 and their right edge at the track's at 100: no width of screen and no place on
+   * the line can push them off the row or over a mark. Null when nothing moved.
+   */
+  movedAt: number | null
   /** The row in words. */
   words: string
 }
 export type TimeLine = { first: string; last: string; today: number | null; ticks: Array<{ at: number; label: string }>; rows: TimeLineRow[] }
 
-/** Past this share of the span a row's last mark leaves no room after it for the moved words, so they go before its first. */
-export const TIME_LINE_MOVED_FLIPS_AT = 70
+/**
+ * How the screen places the moved words for a row anchored at `at`: under that mark, slid back by the same share of
+ * their own width. At 0 their left edge is the track's, at 100 their right edge is, and between the two they sit
+ * under the mark, so they are inside the track at every width.
+ */
+export const movedSlide = (at: number): { left: string; transform: string } => ({ left: `${at}%`, transform: `translateX(-${at}%)` })
 
 /** The shortest span a line is drawn over, so one short stage is not stretched across the page. */
 export const TIME_LINE_MIN_DAYS = 21
@@ -42,6 +51,8 @@ export const TIME_LINE_WORDS = {
   legend: ['Our days', 'The day they say ready', 'A day they gave before', 'The day we decide', 'Today'],
   moved: (n: number) => `moved ${countWords(n, 'day', 'days')}`,
   print: 'Print the days they gave',
+  /** A site where no stage ahead has a day of ours or of theirs: the line has nothing to draw, and says what will. */
+  nothing: { main: 'No stage here has a day to draw yet.', tail: 'Plan our days on a stage below, and its row shows here.' },
 } as const
 
 /** The stages ahead on one line, in the look's own order. Null when no stage ahead has a day to draw. */
@@ -82,8 +93,6 @@ export function timeLine(stages: readonly Stage[], site: Site, today: string): T
       .filter(Boolean)
       .join(' ')
     const bar = s.window ? { from: at(s.window[0]), to: at(addDays(s.window[1], 1)) } : null
-    const marks = [...(bar ? [bar.from, bar.to] : []), ...s.theirDays.map((d) => at(d.day)), ...(decide ? [at(decide)] : [])]
-    const lastMark = Math.max(...marks)
     return {
       id: s.id,
       name: s.name,
@@ -94,7 +103,7 @@ export function timeLine(stages: readonly Stage[], site: Site, today: string): T
       before: s.theirDays.slice(0, -1).map((d) => at(d.day)),
       decide: decide ? at(decide) : null,
       moved,
-      movedAt: moved && marks.length ? (lastMark > TIME_LINE_MOVED_FLIPS_AT ? { at: Math.min(...marks), side: 'before' } : { at: lastMark, side: 'after' }) : null,
+      movedAt: moved && said ? at(said.day) : null,
       words,
     }
   })

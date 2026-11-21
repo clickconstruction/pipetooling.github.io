@@ -3,6 +3,7 @@ import { CardAndFooterWindow } from '../components/people/CardAndFooterWindow'
 import { TeamCardsWindow } from '../components/people/TeamCardsWindow'
 import type { UserRole } from '../hooks/useAuth'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
+import { LIT_SELECTED, useLitPillInView } from '../hooks/useLitPillInView'
 import { canDeleteFromContractLibrary, canUseContractFormStudio } from '../lib/contracts/contractLibraryRoles'
 import { payReportPeriodWord, typedConfirmMessage, typedWordMatches } from '../lib/typedConfirm'
 import { isControllerOrDev } from '../lib/doorRoles'
@@ -1907,6 +1908,12 @@ export default function People() {
   const activeGroup = tabGroups.find((g) => g.id === activeGroupId)
   /** The second row: only when the active group offers a choice. */
   const activeSubTabs = activeGroup && activeGroup.views.length > 1 ? activeGroup : null
+  /**
+   * The row of sections scrolls sideways on a phone, and the lit section is kept whole in view (v2.8130). It used to
+   * sit where the row left it: at 320 px Paperwork read "Pape" under the title, and Review or Feedback sat out of sight.
+   */
+  const groupStripRef = useRef<HTMLDivElement | null>(null)
+  useLitPillInView(groupStripRef, [activeGroupId, loading ? 'loading' : 'drawn', tabGroups.map((g) => g.id).join(',')].join(':'), LIT_SELECTED)
   /** Where the Day book was left, for the next time its tab opens (its params leave the URL with it). */
   const dayBookMemoryRef = useRef<DayBookDoor | null>(null)
   function goToPeopleTab(tab: PeopleTab) {
@@ -1926,7 +1933,7 @@ export default function People() {
     <div>
       {hoursGridFirstColMeasurer}
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: activeSubTabs ? 'none' : '1px solid var(--border)', marginBottom: activeSubTabs ? 0 : '1.5rem', overflow: 'hidden' }}>
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={groupStripRef} style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div role="tablist" aria-label="People sections" style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
             {tabGroups.map((g) => (
               <button

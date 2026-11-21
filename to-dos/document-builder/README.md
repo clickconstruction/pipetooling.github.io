@@ -571,7 +571,8 @@ Found and not fixed. No PR holds any of these.
 - The agent's-check warning reads the usual's newest revision, not the one the job's sheet went out
   on, on the screen and in `document-builder-send`. A sheet on unchecked words can go with no
   *Send it anyway* box.
-- **Make this the usual** on the line under the title doubles the job's name on every job.
+- **Fixed, v2.8135.** **Make this the usual** on the line under the title doubled the job's name on every job. The
+  usual now takes the line with the job's name as a blank (`subtitleAsUsual`, `sheet.ts`).
 - Two **Add a line** presses on one breach list edit the same line.
   **Fixed**, v2.8132: a line's field is named by its place in the list, and a new line is never matched
   to another by its words.
@@ -587,6 +588,7 @@ Against the mock-up, the built steps still lack:
 - The tab's row has no *A sheet on N of M jobs* chip.
 - The Sub NDA has no **Edit** / **Share** switch. Its Share side comes with steps 8 and 9.
 - On a phone the map's column heads run together and its cells are bars, not the small squares.
+  **Fixed**, v2.8144: there a head is the level's bars and a cell is a 44 px square.
 - The card of changed pages has no counts and no legend, and the open cell has no outline.
 - A trade's row does not say where its certificate stands. That is step 6.
 - Most presses in the tab are under 44 px tall on a phone.

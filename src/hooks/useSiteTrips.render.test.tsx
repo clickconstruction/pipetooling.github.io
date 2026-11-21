@@ -229,6 +229,44 @@ describe('useSiteTrips: the site’s deleted trips', () => {
     expect(result.current.deleted).toEqual([])
     expect(result.current.records?.map((r) => r.id)).toContain('t5')
   })
+
+  it('reads the trips and the deleted trips again when the database refuses a save, so a trip joined away since shows as joined', async () => {
+    // The screen read Trip 3 as deleted. Since then somebody put it back and joined it into Trip 5, and the database
+    // refuses the old record in its own words (v2.8127). The read that follows says Trip 3 was joined.
+    const refusal = { code: '22023', message: 'Trip 3 was joined into Trip 5, which holds its days. To take the join back, press Split in two on Trip 5.' }
+    const readDeleted = vi
+      .fn<NonNullable<SiteTripsIo['readDeleted']>>()
+      .mockResolvedValueOnce([gone('t3', 3)])
+      .mockResolvedValue([{ ...gone('t3', 3), joinedInto: { tripId: 't5', tripNumber: 5 } }])
+    const io = makeIo({ readDeleted, save: vi.fn(async () => Promise.reject(refusal)) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.deleted.map((d) => d.record.id)).toEqual(['t3']))
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    const back = result.current.deleted[0]?.record
+    if (!back) throw new Error('no deleted trip')
+    await act(async () => {
+      await expect(result.current.save(back)).rejects.toBe(refusal)
+    })
+    await waitFor(() => expect(result.current.deleted[0]?.joinedInto).toEqual({ tripId: 't5', tripNumber: 5 }))
+    expect(readDeleted).toHaveBeenCalledTimes(2)
+    expect(io.readTrips).toHaveBeenCalledTimes(2)
+    expect(result.current.records?.map((r) => r.id)).toEqual(['t5'])
+  })
+
+  it('reads nothing again when a save is lost to the signal, and passes the failure on', async () => {
+    const lost = new TypeError('Failed to fetch')
+    const io = makeIo({ readDeleted: vi.fn(async () => [gone('t3', 3)]), save: vi.fn(async () => Promise.reject(lost)) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.deleted.map((d) => d.record.id)).toEqual(['t3']))
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    const back = result.current.deleted[0]?.record
+    if (!back) throw new Error('no deleted trip')
+    await act(async () => {
+      await expect(result.current.save(back)).rejects.toBe(lost)
+    })
+    expect(io.readTrips).toHaveBeenCalledTimes(1)
+    expect(io.readDeleted).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('useSiteTrips: how far is far (v2.7888, the one setting)', () => {
