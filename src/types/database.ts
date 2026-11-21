@@ -5859,6 +5859,95 @@ export type Database = {
           },
         ]
       }
+      builder_lookup_checks: {
+        Row: {
+          id: string
+          lookup_id: string
+          said_at: string
+          said_by: string | null
+          verdict: string
+        }
+        Insert: {
+          id?: string
+          lookup_id: string
+          said_at?: string
+          said_by?: string | null
+          verdict: string
+        }
+        Update: {
+          id?: string
+          lookup_id?: string
+          said_at?: string
+          said_by?: string | null
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_lookup_checks_lookup_id_fkey"
+            columns: ["lookup_id"]
+            isOneToOne: false
+            referencedRelation: "builder_lookups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_lookup_checks_said_by_fkey"
+            columns: ["said_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builder_lookups: {
+        Row: {
+          builder_key: string
+          city: string
+          created_at: string
+          detail: string
+          fact: string
+          id: string
+          looked_up_by: string | null
+          looked_up_how: string
+          looked_up_on: string
+          source_url: string
+          value: string
+        }
+        Insert: {
+          builder_key: string
+          city?: string
+          created_at?: string
+          detail?: string
+          fact: string
+          id?: string
+          looked_up_by?: string | null
+          looked_up_how?: string
+          looked_up_on: string
+          source_url?: string
+          value: string
+        }
+        Update: {
+          builder_key?: string
+          city?: string
+          created_at?: string
+          detail?: string
+          fact?: string
+          id?: string
+          looked_up_by?: string | null
+          looked_up_how?: string
+          looked_up_on?: string
+          source_url?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_lookups_looked_up_by_fkey"
+            columns: ["looked_up_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_marks: {
         Row: {
           builder_key: string
@@ -52489,6 +52578,11 @@ export type Database = {
           p_message_id: string
           p_project_name: string
         }
+        Returns: Json
+      }
+      start_check_arrival_state: { Args: { p_job_id: string }; Returns: Json }
+      start_check_arrive: {
+        Args: { p_fixture_id: string; p_not_as_told?: string[] }
         Returns: Json
       }
       start_check_decide: {
