@@ -1,19 +1,20 @@
 ---
 name: "A photo keeps its spot on the job"
 number: 413
-group: gated
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · not built
+group: ready
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · she is handing the build to another person on another computer · not built
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
   words, a dot and one photo each, and nobody has set one. The other half is missing: no photo keeps
   where it was taken. The card's plan is a camera-first door onto the places the app has. One press
   on a job, or on a photo being added, opens the place sheet with the photo in it and the dot where
-  the person stands. No migration and no new tab. A Map tab waits until jobs hold enough places to
-  need one.
-next: Step 0, which needs no code. Two crews set a place with a photo on every job for two weeks. Then Taunya's calls, then PR 1.
-size: S as a train of two (S · S), then M for the later steps if the places get used
-blocker: Step 0's two weeks, and Taunya's calls 1 to 3.
+  the person stands. The sheet has big presses, asks what is buried, takes a description as long as
+  it needs to be, and has one wide press for anything not on the list. One small migration and no new
+  tab. A Map tab waits until jobs hold enough places to need one.
+next: Whoever picks it up reads *Picking this up*, ships the small migration alone, then PR 1 and PR 2. Step 0 can run beside the build.
+size: S as a train of three (XS · S · S), then M for the later steps if the places get used
+blocker: None to start. The later steps wait for Taunya's word.
 opinion: build, small — the places exist and nobody has set one, so the work is a quicker door onto them and not a new surface
 ---
 
@@ -34,7 +35,36 @@ Taunya, 2026-11-21:
 > help me explore this feature, think through it, and the validity and the value to our service
 > business?
 
-She read the first answer, asked *Is this the best we can do?*, and said to card it.
+She read the first answer, asked *Is this the best we can do?*, and said to card it. Then, the same
+day:
+
+> I'm going to let another user on a different computer do the entire thing. But there are some
+> changes I want to make first. For example, deciding what is buried there. There also needs to be
+> an open-ended description available. And that custom button. Needs to be easy to click
+
+## Taunya's three changes
+
+All three are on frame 2 of the mock-up.
+
+1. **Deciding what is buried there.** A press on **Buried line** asks **What is buried?** with seven
+   presses: Water, Sewer, Gas, Electric, Irrigation, Cable and **＋ Something else**. Each wears the
+   color a locator paints on the ground for it: blue, green, yellow, red, purple and orange. The
+   place is then named for it, such as *Buried sewer line*, and its line and its mark draw in that
+   color. Each is a kind of its own in `src/lib/paintedMap/paintedPlaceKind.ts`, such as
+   `buried_sewer`, which the table's check already allows. No migration.
+2. **An open-ended description.** The short box, *A word for whoever comes next*, becomes
+   **Describe it**: a tall box that grows, with room for as much as the person needs. The table caps
+   a place's words at 200 characters and the app at 160 (`PAINTED_PLACE_WORDS_MAX` in
+   `src/lib/paintedMap/paintedMap.ts`), so this is the one migration. A row, a mark's label, a
+   printed page and a picture draw a short form of it, and the place draws it whole when opened.
+3. **That custom button, easy to click.** Read here as a press for anything not on the list. It is
+   **＋ Something else**, the full width of the phone and 56 px tall, under the kinds and again under
+   *What is buried?*. One press opens **What is it?** with the keyboard up. The place keeps the typed
+   name and the plain dot, as a place with no kind does today. Every other press on the sheet grew
+   with it: the kinds are two to a row and 56 px tall, where they were small chips.
+
+If *that custom button* meant something else, such as the **Photo of a spot** press itself, that
+press is 56 px tall and the full width too.
 
 ## The short answer
 
@@ -190,19 +220,34 @@ is never read when the photo sends. Setting a place must not need the map's pict
 
 ## The plan
 
-0. **No code, two weeks.** Two crews press **＋ Place on this job** with a photo on every job,
-   starting with the shutoff and the cleanout. It says whether anyone opens a place later, and
-   whether the seven presses are what stops people.
-1. **Photo of a spot, from the job (S, no migration).** A press beside **＋ Place on this job** in
+- **Step 0, no code, beside the build.** Two crews press **＋ Place on this job** with a photo on
+  every job, starting with the shutoff and the cleanout. It says whether anyone opens a place later.
+  It was the card's gate. Taunya's word to have it built makes it a thing to watch and not a thing
+  to wait for.
+
+0. **Room for a description (XS, one migration, alone).** The check on `painted_map_places.words`
+   goes from 200 characters to 4,000. No new column and no new table, so the four fences are not
+   called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
+   `supabase db push` after its merge and before PR 1 is armed. The table held no row on
+   2026-11-21. Read the constraint's real name on prod before writing the drop.
+1. **Photo of a spot, from the job (S).** A press beside **＋ Place on this job** in
    `src/components/paintedMap/JobPaintedMapsStrip.tsx`. The camera opens at once. The place sheet
    (`src/components/paintedMap/PaintedPlacePanel.tsx`) then opens with the photo in it and the dot
    where the person stands, read once through `requestMyFix` in `src/lib/materials/myLocation.ts`
    and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, puts the dot on
-   the job's address. **Buried line** becomes a kind, one line in
-   `src/lib/paintedMap/paintedPlaceKind.ts`. The list of places draws each photo beside its name.
+   the job's address. The sheet's kinds become presses two to a row and 56 px tall, with
+   **＋ Something else** under them. **Buried line** opens **What is buried?**, and each answer is a
+   kind with its color (`src/lib/paintedMap/paintedPlaceKind.ts`, whose rule that every mark is ink
+   but a hazard changes with this). **Describe it** takes the place's words at any length up to the
+   new cap, and one kernel gives every other surface its short form: the rows, the mark's label, the
+   printed page (`src/lib/paintedMap/paintedMapPrint.ts`), the picture
+   (`src/lib/paintedMap/paintedMapPicture.ts`), the copied text
+   (`src/lib/paintedMap/paintedMapText.ts`) and the public page (`src/pages/PaintedWay.tsx`). An
+   older build of the app draws a kind it does not know as the plain dot, which is the file's own
+   rule. The list of places draws each photo beside its name.
    A place set with no signal has to wait on the phone as a photo does: read what the sheet does
    today before building. The guide `src/content/help/paint-a-map.md` gains a section.
-2. **Keep this spot on the job, from a photo (S, no migration).** The same sheet from one press on
+2. **Keep this spot on the job, from a photo (S).** The same sheet from one press on
    a photo in the Job photos window (`src/components/photos/JobPhotosWindow.tsx`) and on a report's
    photo (`src/hooks/useReportPhotos.ts`). A plain photo is one press to skip. A photo whose own
    time is more than a few minutes old does not take the phone's spot.
@@ -248,10 +293,12 @@ Then stop and watch for three or four weeks. Each later step is built only if th
 
 ## Taunya's calls
 
-1. **Step 0 first, or straight to PR 1.** The card's pick is step 0.
-2. **Which kinds get a mark.** Buried line is the card's one addition. Backflow, water heater, sewer
-   tap, septic lid and gas shutoff are candidates. The plumbers know.
-3. **The words.** *Photo of a spot* and *Keep this spot on the job* are guesses.
+1. **The list under *What is buried?*.** Water, Sewer, Gas, Electric, Irrigation and Cable are the
+   card's guess. Storm drain and a septic line are candidates. The plumbers know.
+2. **The other kinds.** Backflow, water heater, sewer tap, septic lid and gas shutoff are candidates
+   for a press of their own. Until then **＋ Something else** holds them.
+3. **The words.** *Photo of a spot*, *Keep this spot on the job*, *Describe it* and *Something else*
+   are guesses.
 4. **Does a place follow the address to the next job there.** It is the strongest reason to build
    this for service work, and it changes who can read a place.
 5. **Should every job photo keep the phone's spot without asking.** Clock punches and reports
@@ -262,14 +309,41 @@ Then stop and watch for three or four weeks. Each later step is built only if th
 
 ## How to verify
 
+- **The migration.** After the push, read the check on `painted_map_places.words` back from prod.
+  It allows 4,000 characters. The app still cuts a place's words at 160 until PR 1.
 - **PR 1.** On a ZZ Test job, standing outside, press **Photo of a spot**, take a photo, press a
-  kind and **Add this place**. The place's row holds a point within the phone's margin, the margin,
+  kind and **Add this place**. Press **Buried line**, then **Sewer**: the place is named for it and
+  draws green on the job's maps. Press **＋ Something else** and type a name. Type a description of
+  several hundred characters, then read it whole on the opened place and short on its row, on a
+  printed page and on the place's link. The place's row holds a point within the phone's margin, the margin,
   the kind and a photo. Do it again indoors, where the reading is rough: the dot sits on the job's
   address and the row holds no margin. Do it once in airplane mode. Open the job as a second person
   on its team and read the place. Delete the places and their photos after.
 - **PR 2.** Add two photos in the Job photos window and keep the spot of one. One place is made, and
   both photos reach the job's Drive folder as today.
 - A real phone on a real site is the walk that matters. A desktop browser has no reading to give.
+
+## Picking this up
+
+For a person or a session on another computer, starting cold.
+
+- Read `CLAUDE.md`, then `AGENTS.md`, `docs/AI_CONTEXT.md` and `docs/SESSIONS.md`. Then this card
+  and its mock-up, and the guide `src/content/help/paint-a-map.md`, which is how the places work
+  today.
+- Put your branch in this card's `status` and drop a session card. `npm run sessions -- --brief`
+  prints what the other sessions hold.
+- Build in this order: the migration alone and pushed, PR 1, PR 2. Each PR claims its version, and
+  ships its release note, its fragment and its part of the guide. Mark each step built on this card
+  in the PR that builds it.
+- Settled, and not to reopen: no Map tab in these three PRs, no Google map in the job window, a dot
+  dragged by hand stays on Esri's photograph (#387, call 6), and no reading of the spot inside a
+  photo.
+- Taunya's to change at any time: the lists and the words under *Taunya's calls*. Build the card's
+  picks and show her the sheet on a phone.
+- Before step 3 or any later step, ask her. Step 3 keeps where a worker stood on every photo, and
+  step 4 changes who can read a place.
+- A walk writes to prod, since there is no staging. Use a ZZ Test job, and delete the places and
+  their photos after.
 
 ## What was not checked
 

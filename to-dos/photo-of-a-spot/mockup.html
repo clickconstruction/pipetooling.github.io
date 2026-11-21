@@ -101,6 +101,15 @@
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 15.5px; font-weight: 700; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); }
   .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
   .btn.wide { width: 100%; }
+  .btn.big { min-height: 56px; font-size: 17px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 16px; font-weight: 700; }
+  .tile svg { width: 24px; height: 24px; flex: none; }
+  .tile .sw { width: 12px; height: 30px; border-radius: 4px; flex: none; }
+  .tile.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .tile.wide { grid-column: 1 / -1; justify-content: center; border-style: dashed; }
+  .tile.wide.on { border-style: solid; }
+  .box.tall { min-height: 132px; }
   .btn.small { min-height: 44px; font-size: 14px; font-weight: 600; padding: 0 8px; }
   .btn.newbtn { border: 1.5px solid var(--new); background: var(--new-tint); }
   .btn.newbtn .new-tag { margin-left: 4px; }
@@ -269,7 +278,7 @@
       <div class="pad">
         <p class="sect">Where</p>
         <span class="addr">418 Alder Run</span>
-        <button class="btn wide newbtn"><svg width="22" height="22"><use href="#g-camera"/></svg>Photo of a spot<span class="new-tag">New</span></button>
+        <button class="btn wide newbtn big"><svg width="22" height="22"><use href="#g-camera"/></svg>Photo of a spot<span class="new-tag">New</span></button>
         <div class="row2">
           <button class="btn small">＋ Paint a map</button>
           <button class="btn small">＋ Place on this job</button>
@@ -289,7 +298,7 @@
         <label class="field">What does this show?
           <span class="box">Two-way cleanout, 4 ft off the front walk. Before we backfill.</span>
         </label>
-        <button class="btn wide newbtn">＋ Keep this spot on the job<span class="new-tag">New</span></button>
+        <button class="btn wide newbtn big">＋ Keep this spot on the job<span class="new-tag">New</span></button>
         <button class="btn blue wide">Add 1 photo</button>
         <p class="foot">On a plain photo it is one press to skip. Nothing else changes.</p>
       </div>
@@ -302,41 +311,73 @@
   <div class="cap">
     <div class="eyebrow">Mock-up · not built · made-up job</div>
     <h2>2. The place sheet opens with the photo in it</h2>
-    <p>Marco presses what it is, then Add this place. Two presses after the photo.</p>
-    <span class="step">The small version</span>
+    <p>Big presses. Dee says what it is and what is buried, then describes it in plain words.</p>
+    <span class="step">The small version · Taunya's three changes are here</span>
   </div>
   <div class="scene">
     <div class="win sheet">
       <div class="grab"></div>
       <div class="pad">
-        <div class="photo"><svg viewBox="0 0 320 200"><use href="#ph-cleanout"/></svg></div>
+        <div class="photo"><svg viewBox="0 30 320 150"><use href="#ph-line" width="320" height="200"/></svg></div>
+
         <p class="q">What is here?</p>
-        <div class="chips">
-          <span class="chip"><svg><use href="#g-shutoff"/></svg>Shutoff</span>
-          <span class="chip on"><svg><use href="#g-cleanout"/></svg>Cleanout</span>
-          <span class="chip"><svg><use href="#g-meter"/></svg>Meter</span>
-          <span class="chip newchip"><svg><use href="#g-line"/></svg>Buried line</span>
-          <span class="chip"><svg class="warn"><use href="#g-hazard"/></svg>Hazard</span>
-          <span class="chip"><svg><use href="#g-gate"/></svg>Gate</span>
+        <div class="tiles">
+          <span class="tile"><svg><use href="#g-shutoff"/></svg>Shutoff</span>
+          <span class="tile"><svg><use href="#g-cleanout"/></svg>Cleanout</span>
+          <span class="tile"><svg><use href="#g-meter"/></svg>Meter</span>
+          <span class="tile on"><svg><use href="#g-line"/></svg>Buried line</span>
+          <span class="tile"><svg class="warn"><use href="#g-hazard"/></svg>Hazard</span>
+          <span class="tile"><svg><use href="#g-gate"/></svg>Gate</span>
+          <span class="tile wide">＋ Something else</span>
         </div>
+
+        <div class="new-block">
+          <p class="q qrow"><span>What is buried?</span><span class="new-tag">New</span></p>
+          <div class="tiles">
+            <span class="tile"><i class="sw" style="background:#2563eb"></i>Water</span>
+            <span class="tile on"><i class="sw" style="background:#16a34a"></i>Sewer</span>
+            <span class="tile"><i class="sw" style="background:#eab308"></i>Gas</span>
+            <span class="tile"><i class="sw" style="background:#dc2626"></i>Electric</span>
+            <span class="tile"><i class="sw" style="background:#9333ea"></i>Irrigation</span>
+            <span class="tile"><i class="sw" style="background:#f97316"></i>Cable</span>
+            <span class="tile wide">＋ Something else</span>
+          </div>
+          <p class="hint">The colors are the ones a locator paints on the ground.</p>
+        </div>
+
+        <label class="field">Describe it <span class="new-tag" style="justify-self:start;margin:0">New · as long as you need</span>
+          <span class="box tall">4 in. PVC sewer, from the house to the tap at the street. About 4 ft deep at the walk and 6 ft at the curb. It runs straight, under the left edge of the front walk. The old clay line is still in the ground beside it, capped at both ends.</span>
+        </label>
+
         <div class="map">
           <svg viewBox="52 76 264 132">
             <use href="#lot" width="360" height="220"/>
-            <circle cx="172" cy="142" r="15" fill="#2563eb" opacity=".25" stroke="#2563eb" stroke-width="1"/>
-            <g transform="translate(172 142) scale(.7)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500" text-anchor="middle" font-size="12" font-weight="800" fill="#111827" font-family="-apple-system,Segoe UI,sans-serif">D</text></g>
+            <circle cx="180" cy="172" r="15" fill="#16a34a" opacity=".28" stroke="#16a34a" stroke-width="1"/>
+            <g transform="translate(180 172) scale(.7)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500" text-anchor="middle" font-size="12" font-weight="800" fill="#111827" font-family="-apple-system,Segoe UI,sans-serif">C</text></g>
           </svg>
           <span class="tag">From above</span>
         </div>
         <dl class="lines">
-          <dt>Kept as</dt><dd>Place D on this job</dd>
+          <dt>Kept as</dt><dd>Place C on this job</dd>
           <dt>Where</dt><dd><span class="chg">Where you stand</span></dd>
           <dt>Phone reading</dt><dd>within about 20 ft</dd>
         </dl>
-        <label class="field">A word for whoever comes next
-          <span class="box">Two-way cleanout, 4 ft off the front walk. Before we backfill.</span>
+        <button class="btn blue wide big">Add this place</button>
+      </div>
+    </div>
+
+    <p class="scene-label">Not on the list? Something else</p>
+    <div class="win">
+      <div class="pad">
+        <div class="tiles">
+          <span class="tile"><svg class="warn"><use href="#g-hazard"/></svg>Hazard</span>
+          <span class="tile"><svg><use href="#g-gate"/></svg>Gate</span>
+          <span class="tile wide on">＋ Something else</span>
+        </div>
+        <label class="field">What is it?
+          <span class="box">Septic tank lid</span>
         </label>
-        <button class="btn blue wide">Add this place</button>
-        <p class="foot">New on this sheet: the photo comes first, the dot is already set, and Buried line is a kind.</p>
+        <p class="foot">One press, the full width of the phone. The keyboard opens on this box.</p>
       </div>
     </div>
   </div>
@@ -425,7 +466,7 @@
           <svg viewBox="30 30 300 190">
             <use href="#lot" width="360" height="220"/>
             <path d="M172 127 L172 142 L184 188" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
-            <path d="M172 127 L172 142 L184 188" stroke="#2563eb" stroke-width="2.500" fill="none" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M172 127 L172 142 L184 188" stroke="#16a34a" stroke-width="3" fill="none" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"/>
             <g font-family="-apple-system,Segoe UI,sans-serif" font-size="12" font-weight="800" fill="#111827" text-anchor="middle">
               <g transform="translate(262 181) scale(.82)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">A</text></g>
               <g transform="translate(258 90) scale(.82)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">B</text></g>
@@ -449,7 +490,7 @@
         </button>
         <button class="place">
           <span class="thumb"><svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><use href="#ph-line"/></svg><span class="letter">C</span></span>
-          <span><span class="name"><svg><use href="#g-line"/></svg>Buried line</span><span class="words">4 in. PVC sewer, house to the street. About 4 ft deep.</span></span>
+          <span><span class="name"><svg style="color:#16a34a"><use href="#g-line"/></svg>Buried sewer line</span><span class="words">4 in. PVC, from the house to the tap at the street. About 4 ft deep at the walk…</span></span>
           <span class="chev">›</span>
         </button>
         <button class="place sel">
@@ -512,12 +553,12 @@
             <svg viewBox="30 24 300 196">
               <use href="#lot" width="360" height="220"/>
               <path d="M172 127 L172 142 L184 188" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
-              <path d="M172 127 L172 142 L184 188" stroke="#2563eb" stroke-width="2.500" fill="none" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M172 127 L172 142 L184 188" stroke="#16a34a" stroke-width="3" fill="none" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"/>
               <g font-family="-apple-system,Segoe UI,sans-serif" font-size="12" font-weight="800" fill="#111827" text-anchor="middle">
                 <g transform="translate(262 181) scale(.82)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">A</text></g>
               <g transform="translate(258 90) scale(.82)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">B</text></g>
                 <g transform="translate(172 142) scale(.82)"><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">D</text></g>
-                <g transform="translate(180 172) scale(.82)"><circle r="18" fill="#2563eb" opacity=".32"/><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">C</text></g>
+                <g transform="translate(180 172) scale(.82)"><circle r="18" fill="#16a34a" opacity=".35"/><use href="#pin" x="-14" y="-14" width="28" height="28"/><text y="4.500">C</text></g>
               </g>
             </svg>
             <span class="tag">From above</span>
@@ -525,11 +566,11 @@
           <div class="detail" style="border:1px solid var(--border);border-radius:10px">
             <div class="photo"><svg viewBox="0 30 320 150"><use href="#ph-line" width="320" height="200"/></svg></div>
             <dl class="lines">
-              <dt>C · Buried line</dt><dd>4 in. PVC sewer, house to the street</dd>
+              <dt>C · Buried</dt><dd><span class="chg">Sewer</span></dd>
               <dt>Length</dt><dd>about 62 ft <small>walked, give or take 6 ft</small></dd>
-              <dt>Depth</dt><dd><span class="chg">about 4 ft</span></dd>
-              <dt>Taken by</dt><dd>Dee Okafor <small>Sat, Nov 21, 2026 · before backfill</small></dd>
+              <dt>Taken by</dt><dd>Dee Okafor <small>Sat, Nov 21, 2026</small></dd>
             </dl>
+            <p class="hint" style="color:var(--text-base)">4 in. PVC sewer, from the house to the tap at the street. About 4 ft deep at the walk and 6 ft at the curb. It runs straight, under the left edge of the front walk. The old clay line is still in the ground beside it, capped at both ends.</p>
           </div>
         </div>
         <div class="places">
@@ -543,7 +584,7 @@
           </button>
           <button class="place sel">
             <span class="thumb"><svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><use href="#ph-line"/></svg><span class="letter">C</span></span>
-            <span><span class="name"><svg><use href="#g-line"/></svg>Buried line</span><span class="words">4 in. PVC sewer, house to the street.</span><span class="who">Dee Okafor · Nov 21</span></span>
+            <span><span class="name"><svg style="color:#16a34a"><use href="#g-line"/></svg>Buried sewer line</span><span class="words">4 in. PVC, from the house to the tap at the street…</span><span class="who">Dee Okafor · Nov 21</span></span>
           </button>
           <button class="place">
             <span class="thumb"><svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><use href="#ph-cleanout"/></svg><span class="letter">D</span></span>
