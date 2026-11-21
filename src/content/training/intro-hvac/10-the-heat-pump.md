@@ -34,7 +34,7 @@ A heat pump is an air conditioner that can run backwards. In summer it carries h
 - [ ] A bigger compressor
 - [ ] A second outdoor unit
 - [x] The reversing valve
-- [ ] A gas burner
+- [ ] A gas flame
 > right: The reversing valve swaps the coils' jobs, so the loop can carry heat either way.
 > wrong: A heat pump is the same loop with a reversing valve added.
 
