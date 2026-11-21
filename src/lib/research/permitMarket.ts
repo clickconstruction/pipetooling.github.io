@@ -5,27 +5,29 @@
  * with the permits its names pulled in every city the pull reads, and says what that reads as.
  * The clock is the quarter marks of the days between two dates on a permit. Every count here is
  * defined on the card (`to-dos/permits-market-page/README.md`, How each number is counted), so a
- * hand count can check it. No React, no Supabase.
+ * hand count can check it. A sentence here marks each count, span of days and name in it with
+ * `val` (values in place, `src/lib/valuesInPlace.ts`), and the screen draws it with
+ * `ValueSentence`. No React, no Supabase.
  */
-import { nameKey } from '../../../supabase/functions/_shared/permitLookup'
-import { isZzBidName, isZzTestName } from '../../../supabase/functions/_shared/zzTestJob'
 import { ymdPlusDays, type ResearchPermitRow } from './permitResearch'
+import { OUR_BID_DAYS, bidCounts, bidPartyKey, bidWon, isBidPlatformBucket, ourBidsSince } from './ourBids'
 import { builderName, type BuilderRow } from './permitBuilders'
 import type { AnswerBook } from './builderAnswers'
 import { lookAlikePairs, type PermitName } from './nameLikeness'
 import { nameGrade } from './nameAnswers'
 import { daysBetween } from './permitSkim'
+import { val } from '../valuesInPlace'
 
 // ---------- the companies we bid ----------
 
-/** How far back a bid counts: two years. */
-export const MARKET_BID_DAYS = 730
+/** How far back a bid counts: two years, the one rule's (`ourBids.ts`). */
+export const MARKET_BID_DAYS = OUR_BID_DAYS
 /** How far back a permit counts: twelve months, as `research_builders` counts a builder's. */
 export const MARKET_PERMIT_DAYS = 365
 
 /** The first day a bid counts from. */
 export function marketBidsSince(todayYmd: string): string {
-  return ymdPlusDays(todayYmd, -MARKET_BID_DAYS)
+  return ourBidsSince(todayYmd)
 }
 
 /** The first day a permit counts from. */
@@ -45,21 +47,9 @@ export type MarketBid = {
   projectName: string | null
 }
 
-/** The outcomes that count as won, as `research_builders` counts them. */
-const WON = new Set(['won', 'started_or_complete'])
-
-/**
- * The bid platforms a catch-all customer is named for, as its name key starts. A bid found on a
- * platform with no GC chosen yet sits under a customer of the platform's name. That customer is
- * a bucket and not a company, so it is no row of the table.
- */
-const BID_PLATFORM_KEYS = ['planhub', 'buildingconnected', 'constructconnect', 'isqft', 'smartbid', 'bidnet', 'buildingblok', 'civcast', 'demandstar'] as const
-
-/** A customer named for a bid platform: the bucket its bids sit under until a GC is chosen. */
-export function isBidPlatformBucket(name: string | null | undefined): boolean {
-  const key = nameKey(name)
-  return key != null && BID_PLATFORM_KEYS.some((p) => key.startsWith(p))
-}
+// Which bids count, under which names, and what a win is: the one rule, `ourBids.ts`. A customer
+// named for a bid platform is a bucket and no company, so it is no row of the table.
+export { isBidPlatformBucket }
 
 /** One city's Builders rows, as `research_builders` returns them. */
 export type CityBuilders = { city: string; rows: readonly BuilderRow[] }
@@ -118,8 +108,9 @@ function mostUsed(names: ReadonlyMap<string, number>): string {
  *
  * - A bid counts under its customer's name and under the old builders list's name on it, each
  *   keyed as permits are. One bid under two names of one key counts once.
- * - Left out: a practice bid (the ZZ convention), a ZZ customer, and a customer named for a bid
- *   platform.
+ * - Left out, by the one rule (`ourBids.ts`, which `research_builders` and a tied customer's
+ *   count read too): a practice bid (the ZZ convention), a bid older than two years, a ZZ
+ *   customer, and a customer named for a bid platform.
  * - The permits are each city's Builders count under the company's key, plus the count under
  *   every name a person tied to the customer for all of its permits.
  * - A customer of ours with no permit on record gets a name on the permits that begins its own,
@@ -127,21 +118,18 @@ function mostUsed(names: ReadonlyMap<string, number>): string {
  *   *Same company?* on). The row then says the name may be theirs. Nothing is tied on a likeness.
  */
 export function bidCompanies(input: { bids: readonly MarketBid[]; builders: readonly CityBuilders[]; book: AnswerBook | null; todayYmd: string }): BidCompany[] {
-  const since = marketBidsSince(input.todayYmd)
   const tallies = new Map<string, Tally>()
   for (const b of input.bids) {
-    if (isZzBidName(b.projectName)) continue
-    if (b.bidOn != null && (b.bidOn < since || b.bidOn > input.todayYmd)) continue
+    if (!bidCounts(b, input.todayYmd)) continue
     const seen = new Set<string>()
     const parties: Array<{ name: string | null; customerId: string | null }> = [
       { name: b.customerName, customerId: b.customerId },
       { name: b.gcName, customerId: null },
     ]
     for (const p of parties) {
-      const name = (p.name ?? '').trim()
-      if (name === '' || isZzTestName(name) || isBidPlatformBucket(name)) continue
-      const key = nameKey(name)
+      const key = bidPartyKey(p.name)
       if (!key) continue
+      const name = (p.name ?? '').trim()
       const t = tallies.get(key) ?? { key, names: new Map<string, number>(), customerIds: new Set<string>(), bidIds: new Set<string>(), won: 0, lastBidOn: null }
       tallies.set(key, t)
       // The customer's own spelling leads the old list's: it is the one the office keeps.
@@ -150,7 +138,7 @@ export function bidCompanies(input: { bids: readonly MarketBid[]; builders: read
       if (seen.has(key) || t.bidIds.has(b.id)) continue
       seen.add(key)
       t.bidIds.add(b.id)
-      if (WON.has(b.outcome ?? '')) t.won += 1
+      if (bidWon(b.outcome)) t.won += 1
       if (b.bidOn && b.bidOn > (t.lastBidOn ?? '')) t.lastBidOn = b.bidOn
     }
   }
@@ -216,7 +204,16 @@ export function bidCompanies(input: { bids: readonly MarketBid[]; builders: read
 /** The three chips over the table. */
 export type BidCompanyShowing = 'builds' | 'no_permit' | 'tie'
 export const BID_COMPANY_SHOWING: readonly BidCompanyShowing[] = ['builds', 'no_permit', 'tie']
-export const BID_COMPANY_SHOWING_WORDS: Record<BidCompanyShowing, string> = { builds: 'Builds here', no_permit: 'No permit on record', tie: 'Tie a name' }
+/**
+ * The first chip was *Builds here* until v2.8134. Its count, the tile's and the column's are a
+ * company's permits in every city the pull reads, the card's definition, and each was drawn on
+ * every city's page under a word that read as that city alone. The count stands. The words now
+ * say what it covers.
+ */
+export const BID_COMPANY_SHOWING_WORDS: Record<BidCompanyShowing, string> = { builds: 'Builds', no_permit: 'No permit on record', tie: 'Tie a name' }
+
+/** The head of the permits column: every city the pull reads, twelve months. */
+export const BID_COMPANY_PERMITS_HEAD = 'Permits, all cities, 12 mo'
 
 function shows(c: BidCompany, showing: BidCompanyShowing): boolean {
   if (showing === 'builds') return c.permits > 0
@@ -242,7 +239,12 @@ export function readsWords(c: Pick<BidCompany, 'reads' | 'bids' | 'looksLike'>):
   if (c.reads === 'wins') return { tag: 'Builds, and we win', tone: 'green', hint: 'keep close' }
   if (c.reads === 'never_win') return { tag: 'Builds, we never win', tone: 'red', hint: 'ask why' }
   if (c.reads === 'early') return { tag: `Builds, ${TRIES[c.bids] ?? `${c.bids} tries`}`, tone: 'amber', hint: 'too early to say' }
-  return { tag: 'No permit on record', tone: 'grey', hint: c.looksLike ? `${c.looksLike} on the permits may be them` : 'may build elsewhere, or file under another name' }
+  return { tag: 'No permit on record', tone: 'grey', hint: c.looksLike ? `${val('name', c.looksLike)} on the permits may be them` : 'may build elsewhere, or file under another name' }
+}
+
+/** A company's three counts on a phone, where the table's columns fold into one line: "3 bids, 0 won · 11 permits". */
+export function companyCountsWords(c: Pick<BidCompany, 'bids' | 'won' | 'permits'>): string {
+  return `${val('bids', `${c.bids} bid${c.bids === 1 ? '' : 's'}`)}, ${val('won', `${c.won} won`)} · ${val('permits', `${c.permits} permit${c.permits === 1 ? '' : 's'}`)}`
 }
 
 /** "San Antonio 9 · Austin 2", and "under Ridgeway Permits" where a tied name pulled them. */
@@ -256,10 +258,10 @@ export function permitsWhereWords(c: Pick<BidCompany, 'sources'>): string | null
   return `${where} · under ${tied.length > 2 ? `${tied.length} tied names` : tied.join(' and ')}`
 }
 
-/** The first tile: how many of the companies we bid pulled a permit. */
+/** The first tile: how many of the companies we bid pulled a permit, in any city the pull reads. The same on every city's page. */
 export function builtTile(rows: readonly BidCompany[]): { value: string; words: string } {
   const built = rows.filter((c) => c.permits > 0).length
-  return { value: `${built} of ${rows.length}`, words: rows.length === 1 ? 'company we bid pulled a permit here' : 'companies we bid pulled a permit here' }
+  return { value: `${built} of ${rows.length}`, words: rows.length === 1 ? 'company we bid pulled a permit in the cities we read' : 'companies we bid pulled a permit in the cities we read' }
 }
 
 // ---------- the clock ----------
@@ -403,13 +405,13 @@ export function clockTitle(clock: Pick<MarketClock, 'kind' | 'city'>): string {
 /** The note under a clock: what the days mean for a call. */
 export function clockNote(clock: MarketClock): string {
   const { q1, median, q3, n } = clock.spread
-  const jobs = `${n.toLocaleString('en-US')} ${clock.kind === 'application' ? 'applications' : 'jobs'}`
-  const middle = `The middle half took ${q1} to ${q3} days, over ${jobs}.`
+  const jobs = val('over', `${n.toLocaleString('en-US')} ${clock.kind === 'application' ? 'applications' : 'jobs'}`)
+  const middle = `The middle half took ${val('middle', `${q1} to ${q3} days`)}, over ${jobs}.`
   if (clock.kind === 'application') {
-    const wait = median <= 0 ? 'Half of the applications get their permit the same day.' : `Half of the applications wait ${clockDaysWords(median)} or more for the permit.`
+    const wait = median <= 0 ? 'Half of the applications get their permit the same day.' : `Half of the applications wait ${val('median', clockDaysWords(median))} or more for the permit.`
     return `${wait} That is the time to call in. ${middle}`
   }
-  const taken = median <= 0 ? 'Half of the jobs have a plumber’s permit by the day of the building permit.' : `Half of the jobs have a plumber’s permit within ${clockDaysWords(median)} of the building permit.`
+  const taken = median <= 0 ? 'Half of the jobs have a plumber’s permit by the day of the building permit.' : `Half of the jobs have a plumber’s permit within ${val('median', clockDaysWords(median))} of the building permit.`
   return `${taken} The job is taken by the time the city shows it. Read ${clock.city} for who builds. ${middle}`
 }
 

@@ -64,11 +64,13 @@ export function hasSigningContent(row: {
   canonical_document_url?: string | null
   url?: string | null
   form_template_id?: string | null
+  built_from_settings?: boolean | null
 }): boolean {
   if (row.form_template_id) return true
   if (row.signing_body_html?.trim()) return true
   if (row.canonical_document_url?.trim()) return true
   if (row.url?.trim()) return true
+  if (row.built_from_settings === true) return true
   return false
 }
 
@@ -79,6 +81,38 @@ export interface SigningDoc {
   canonical_document_url: string | null
   url: string | null
   form_template_id: string | null
+  /** A job's paper built from settings: `jobPaperBuiltFromSettings` said so. Absent on every other paper. */
+  built_from_settings?: boolean | null
+}
+
+/** The least of a Supabase client `jobPaperBuiltFromSettings` reads with. */
+export interface JobPaperSettingsReader {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): { maybeSingle(): PromiseLike<{ data: unknown; error: unknown }> }
+    }
+  }
+}
+
+/**
+ * A job's paper built from settings (punch list #389, step 3) has no body, form or link of its own. Its words are the
+ * Contract Book's clauses, put together for the job's picks when the paper is read. So its copy has something to sign
+ * when the required paper it names carries settings. The handlers ask only for a copy with nothing else to sign, so
+ * every other paper takes no read. A read that fails throws: the old refusal's words would send the office to add a
+ * body the paper must not have.
+ */
+export async function jobPaperBuiltFromSettings(admin: JobPaperSettingsReader, requiredPaperId: string | null | undefined): Promise<boolean> {
+  if (!requiredPaperId) return false
+  const { data, error } = await admin.from('job_required_papers').select('settings').eq('id', requiredPaperId).maybeSingle()
+  if (error) throw error
+  const settings = (data as { settings?: unknown } | null)?.settings
+  return typeof settings === 'object' && settings !== null && !Array.isArray(settings)
+}
+
+/** `doc` with `built_from_settings` read, when it names a job's required paper and has nothing else to sign. */
+export async function withJobPaperSettings<D extends SigningDoc & { job_required_paper_id?: string | null }>(admin: JobPaperSettingsReader, doc: D): Promise<D> {
+  if (hasSigningContent(doc) || !doc.job_required_paper_id) return doc
+  return { ...doc, built_from_settings: await jobPaperBuiltFromSettings(admin, doc.job_required_paper_id) }
 }
 
 /** A document that cannot go out: signed already, nothing to sign, or a status that is neither unsent nor sent. */

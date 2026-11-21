@@ -12,6 +12,7 @@
  */
 import { pluralNoun, type BatchNoun } from '../batchWords'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { val } from '../valuesInPlace'
 import type { BuilderChip } from './builders'
 
 /** A party's own page: on, never made, or turned off on purpose. */
@@ -24,6 +25,8 @@ export type PartyContact = { name: string; email: string; role?: string }
 export type SendRecord = {
   id: string
   contactName: string
+  /** The address it went to. This, never the name, says who a reminder goes to: two people at one party can share a name. Empty on a row that kept none. */
+  contactEmail: string
   /** For a GC: the job it is about, by name. Null means all their jobs. */
   about: string | null
   sentOn: string
@@ -33,6 +36,9 @@ export type SendRecord = {
   openedRevision: number | null
 }
 
+/** A job a send to a GC can be about. */
+export type PartyJob = { id: string; label: string }
+
 export type SendParty = {
   id: string
   name: string
@@ -40,7 +46,40 @@ export type SendParty = {
   sub?: string
   page: PartyPage
   contacts: PartyContact[]
+  /** For a GC: their jobs with us, which a send can be about. */
+  jobs?: PartyJob[]
   send: SendRecord | null
+}
+
+/** How many rows a long list shows before anyone types in its find box, beyond the ones already sent to. */
+export const SEND_LIST_FIRST_ROWS = 12
+
+/**
+ * The rows a list with a find box shows. With words typed: every party whose name holds each word. With none: every
+ * party that was sent to, then the first few of the rest, and how many more the find box reaches. A list with no find
+ * box shows everyone.
+ */
+export function shownParties(parties: ReadonlyArray<SendParty>, query: string | null): { rows: SendParty[]; more: number } {
+  if (query == null) return { rows: [...parties], more: 0 }
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length > 0) return { rows: parties.filter((p) => words.every((w) => p.name.toLowerCase().includes(w))), more: 0 }
+  const sent = parties.filter((p) => p.send)
+  const rest = parties.filter((p) => !p.send)
+  return { rows: [...sent, ...rest.slice(0, SEND_LIST_FIRST_ROWS)], more: Math.max(0, rest.length - SEND_LIST_FIRST_ROWS) }
+}
+
+/** What a send to a GC is about when nobody picks: all their jobs. The owner's open call, on its default. */
+export const ABOUT_ALL_JOBS = ''
+export const ABOUT_ALL_JOBS_LABEL = 'All their jobs with you'
+
+/** The choices of what a send to a GC is about: all their jobs first, then each job. */
+export function aboutChoices(party: SendParty): Array<{ value: string; label: string }> {
+  return [{ value: ABOUT_ALL_JOBS, label: ABOUT_ALL_JOBS_LABEL }, ...(party.jobs ?? []).map((j) => ({ value: j.id, label: j.label }))]
+}
+
+/** The job a picked choice names, or null for all their jobs and for a job that is no longer one of theirs. */
+export function aboutJobId(party: SendParty, picked: string): string | null {
+  return (party.jobs ?? []).some((j) => j.id === picked) ? picked : null
 }
 
 export type SendStanding = 'not-sent' | 'sent' | 'opened' | 'changed'
@@ -78,6 +117,37 @@ export function sendChips(party: SendParty, revision: number, opts: { showAbout:
 export type ResendWhy = 'again' | 'changed'
 export function resendPress(send: SendRecord, revision: number): { why: ResendWhy; label: string } {
   return sendStanding(send, revision) === 'changed' ? { why: 'changed', label: 'Tell them it changed' } : { why: 'again', label: 'Send it again' }
+}
+
+/** Who the second press on a sent row goes to, and the line under it that says so. `to` is null when it cannot go. */
+export type ResendTo = { to: PartyContact | null; words: string }
+
+const sameWords = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Who *Send it again* and *Tell them it changed* go to: the person the send went to, found by the address on the
+ * send's own row. A name never picks, since two people at one party can share one, and nobody else stands in for a
+ * person who has left the record: the press is dead and the line says the way out. A row that kept no address goes by
+ * name only when one person alone carries it. The values are marked with `val`, for `ValueSentence`. Null with no send.
+ */
+export function resendTo(party: SendParty): ResendTo | null {
+  const send = party.send
+  if (!send) return null
+  const goes = (c: PartyContact): ResendTo => ({ to: c, words: sameWords(c.name, c.email) ? `It goes to ${val('email', c.email)}.` : `It goes to ${val('who', c.name)} at ${val('email', c.email)}.` })
+  const wayOut = 'Take it off their page, then send it to someone who is.'
+  const named = send.contactName.trim()
+  const address = send.contactEmail.trim()
+  if (address) {
+    const person = party.contacts.find((c) => sameWords(c.email, address))
+    if (person) return goes(person)
+    const who = named && !sameWords(named, address) ? `${val('who', named)} at ${val('email', address)}` : val('email', address)
+    return { to: null, words: `${who} is no longer on the record of ${party.name}. ${wayOut}` }
+  }
+  const namesakes = party.contacts.filter((c) => sameWords(c.name, named))
+  const only = namesakes.length === 1 ? namesakes[0] : undefined
+  if (only) return goes(only)
+  if (namesakes.length === 0) return { to: null, words: `${val('who', named || 'The person it went to')} is no longer on the record of ${party.name}. ${wayOut}` }
+  return { to: null, words: `${val('count', String(namesakes.length))} people at ${party.name} are named ${val('who', named)}, and this send does not say which. Take it off their page, then send it to the one you mean.` }
 }
 
 /** A person's first name, for the press: *Send to Dana*. A contact is *Dana Whitlock*, with their role kept apart. */

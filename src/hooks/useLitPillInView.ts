@@ -8,6 +8,8 @@ export const LIT_PILL_PEEK = 24
 export const LIT_CURRENT = '[aria-current="true"]'
 /** How a row of toggle presses marks its lit one, as the Permits step strip does. */
 export const LIT_PRESSED = '[aria-pressed="true"]'
+/** How a tablist marks its selected tab, as the People page's row of sections does (v2.8130). */
+export const LIT_SELECTED = '[aria-selected="true"]'
 
 /**
  * Keeps the lit pill of a sideways row of pills in view (v2.7878). The row marks its lit pill

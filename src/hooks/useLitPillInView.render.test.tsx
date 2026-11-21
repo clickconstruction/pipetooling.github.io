@@ -2,7 +2,7 @@
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
-import { LIT_PRESSED, useLitPillInView } from './useLitPillInView'
+import { LIT_PRESSED, LIT_SELECTED, useLitPillInView } from './useLitPillInView'
 
 /**
  * The lit pill comes into view (v2.7878). jsdom lays nothing out, so the row and its pills are
@@ -108,6 +108,27 @@ describe('useLitPillInView', () => {
     const view = render(<Presses lit="Permits" />)
     expect(view.getByTestId('row').scrollLeft).toBe(317)
     view.rerender(<Presses lit="Subs" />)
+    expect(view.getByTestId('row').scrollLeft).toBe(242)
+  })
+
+  it('reads the selected tab of a tablist, as the People section row does (v2.8130)', () => {
+    layOut(222)
+    function Sections({ lit }: { lit: string }) {
+      const ref = useRef<HTMLDivElement>(null)
+      useLitPillInView(ref, lit, LIT_SELECTED)
+      return (
+        <div ref={ref} data-testid="row" role="tablist">
+          {Object.keys(PILLS).map((p) => (
+            <button key={p} type="button" role="tab" aria-selected={p === lit}>
+              {p}
+            </button>
+          ))}
+        </div>
+      )
+    }
+    const view = render(<Sections lit="Permits" />)
+    expect(view.getByTestId('row').scrollLeft).toBe(317)
+    view.rerender(<Sections lit="Subs" />)
     expect(view.getByTestId('row').scrollLeft).toBe(242)
   })
 

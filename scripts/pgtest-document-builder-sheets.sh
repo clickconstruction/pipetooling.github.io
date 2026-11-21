@@ -21,7 +21,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55865}"
 NAME="pgtest-document-builder-sheets"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_document_builder_sheets.sql)"
+# The table's own migration, then the one that gave a draft its number. In that order: each replaces the table's stamp,
+# and the later one is the stamp as it stands.
+WRITES="$(ls supabase/migrations/*_document_builder_sheets.sql) $(ls supabase/migrations/*_document_builder_draft_no.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -39,7 +41,9 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: IF NOT EXISTS, CREATE OR REPLACE, and the policies dropped and made again.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+for f in $WRITES; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/document_builder_sheets/20_scenario.sql 2>&1 || true)"
 if ! grep -q "document_builder_sheets PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

@@ -59,15 +59,29 @@ export function usualPublishPress(draft: SheetDef, rec: BuilderRecord, plan: Rea
   return { label: ready > 0 ? countedLabel('Publish to', ready, 'job') : 'Publish your usual', dead: why.length > 0, why }
 }
 
-/** The plan for the usual's publish, from every job the company runs as the GC. */
-export function usualPlanFor(jobs: ReadonlyArray<{ projectId: string; name: string }>, sheets: ReadonlyMap<string, JobSheetState>): UsualPublishRow[] {
+/**
+ * The plan for the usual's publish, from every job the company runs as the GC. `heldHere` says what the page that
+ * publishes holds for a job beyond its sheet as read: words typed and not saved, or a choice not yet made.
+ */
+export function usualPlanFor(
+  jobs: ReadonlyArray<{ projectId: string; name: string }>,
+  sheets: ReadonlyMap<string, JobSheetState>,
+  heldHere: (projectId: string) => 'own-changes' | 'moved' | null = () => null,
+): UsualPublishRow[] {
   return usualPublishPlan(
     jobs.map((j) => {
       const s = sheets.get(j.projectId)
-      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false }
+      return { id: j.projectId, name: j.name, revision: s?.revision ?? 0, changed: s ? jobHasOwnChanges(s) : false, here: heldHere(j.projectId) }
     }),
   )
 }
+
+/**
+ * Said when the usual's publish read the jobs again and they no longer were as the press said: a teammate changed or
+ * published one since this page read it. Nothing is published, the rows and the press are drawn again from what was
+ * just read, and the person presses again knowing where it goes.
+ */
+export const USUAL_PRESS_MOVED = { line: 'Nothing was published yet.', why: 'A job changed since this page read it. The rows and the button now say where your usual goes. Press it again.' } as const
 
 /** One row of where a change to the usual goes: the job, and a chip. */
 export function usualPlanChip(row: UsualPublishRow, usualDirty: boolean, revisionNow: number): BuilderChip {

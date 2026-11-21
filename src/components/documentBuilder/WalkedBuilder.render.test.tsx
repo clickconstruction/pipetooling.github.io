@@ -4,6 +4,8 @@
  * pages changed since the published revision with the way back, the publish, the marks and the attorney's read. The
  * flow's own wiring is `DocumentBuilderFlow.render.test.tsx`. Every word is the made-up paper's.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DOCUMENT_BUILDERS } from '../../lib/documentBuilder/builders'
@@ -11,6 +13,9 @@ import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
 import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fixture'
 import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuilder/standing'
+import { ConfirmDialogProvider } from '../../contexts/ConfirmDialogContext'
+import type { DocumentBuilderLinkState } from '../../lib/documentBuilder/link'
+import type { BuilderLinkCardIo } from './BuilderLinkCard'
 import { WalkedBuilder, type WalkedBuilderIo } from './WalkedBuilder'
 
 afterEach(() => {
@@ -37,7 +42,9 @@ function record(over: Record<string, unknown> = {}): BuilderRecord {
   }) as BuilderRecord
 }
 
-function draw(rec = record()) {
+const LINK_ON: DocumentBuilderLinkState = { on: true, code: 'abcdefgh23456789', madeAt: '2026-11-20T15:00:00Z', opened: 0, lastOpenedAt: null }
+
+function draw(rec = record(), link: DocumentBuilderLinkState = { on: false }) {
   const landed = (r: BuilderRecord) => Promise.resolve({ ok: true as const, value: r })
   const io: WalkedBuilderIo = {
     saveBuilderDraft: vi.fn((_key: string, draft: unknown) => landed(record({ draft, published: rec.published, revision: rec.revision }))),
@@ -46,8 +53,20 @@ function draw(rec = record()) {
   }
   const onRecord = vi.fn()
   const onBack = vi.fn()
-  const view = render(<WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={onBack} onRecord={onRecord} io={io} />)
-  return { io, onRecord, onBack, view, rec }
+  // The link card's doors: the builder's link is off until a smoke says otherwise.
+  const linkIo = {
+    read: vi.fn(async () => ({ ok: true as const, value: link })),
+    make: vi.fn(async () => ({ ok: true as const, value: LINK_ON })),
+    end: vi.fn(async () => ({ ok: true as const, value: { on: false as const } })),
+    copy: vi.fn(async () => true),
+  }
+  // The card asks before a new link stops the old one, so the builder draws under the confirm window's provider.
+  const view = render(
+    <ConfirmDialogProvider>
+      <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={onBack} onRecord={onRecord} io={io} linkIo={linkIo as unknown as BuilderLinkCardIo} />
+    </ConfirmDialogProvider>,
+  )
+  return { io, linkIo, onRecord, onBack, view, rec }
 }
 
 /** Type over a field, as the browser does: the words change under the caret, then the input event. */
@@ -67,6 +86,34 @@ describe('WalkedBuilder', () => {
     expect(screen.getByText('Nothing waiting on a publish. This is revision 2.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Nothing to publish' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Step 1 of 11')).toBeTruthy()
+  })
+
+  it('heads each column with the level’s name and its bars, and a phone shows the bars over 44 px squares', () => {
+    draw()
+    const map = screen.getByRole('table', { name: 'The map' })
+    expect(map.className).toBe('documentBuilderMap')
+    expect(map.style.getPropertyValue('--map-levels')).toBe('4')
+    const heads = Array.from(map.querySelectorAll<HTMLElement>('.documentBuilderMapHead'))
+    expect(heads.map((h) => h.title)).toEqual(SECRECY_PAPER_FIXTURE.levels.map((l) => l.name))
+    for (const head of heads) {
+      expect(head.querySelector('.documentBuilderMapHeadWords')?.textContent).toBeTruthy()
+      // The bars: one a level, in a piece a screen reader skips.
+      expect(head.querySelectorAll('.documentBuilderMapHeadBars [aria-hidden="true"] > span')).toHaveLength(4)
+    }
+    // A cell hands its level's colour to the stylesheet, which draws the stripe or the square.
+    const cell = within(map).getByRole('button', { name: 'Photos and video, Standard' })
+    expect(cell.className).toBe('documentBuilderMapCell')
+    expect(cell.style.getPropertyValue('--tone')).not.toBe('')
+
+    // The phone's rules, read from index.css: four names never sit side by side there.
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
+    const phone = css.slice(css.indexOf('.documentBuilderMapWords {')).match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}\n/)?.[0] ?? ''
+    const rule = (name: string) => phone.match(new RegExp(`\\.${name} \\{[^}]*\\}`))?.[0] ?? ''
+    expect(rule('documentBuilderMap')).toContain('repeat(var(--map-levels, 4), 44px)')
+    expect(rule('documentBuilderMapHeadWords')).toContain('display: none')
+    expect(rule('documentBuilderMapHeadBars')).toContain('display: grid')
+    expect(rule('documentBuilderMapCell')).toContain('height: 44px')
+    expect(rule('documentBuilderMapCell::after')).toContain('background: var(--tone)')
   })
 
   it('opens a page from the map at its level, past the disclaimer', () => {
@@ -187,6 +234,22 @@ describe('WalkedBuilder', () => {
     expect(screen.getByRole('button', { name: 'Nothing to publish' })).toBeTruthy()
   })
 
+  it('adds two breach lines as two fields: typing in the second leaves the first, and each has its own way off', () => {
+    draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Photos and video, Elevated' }))
+    const add = screen.getByRole('button', { name: 'Add a breach line to Photos and video at Elevated' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    const fresh = () => screen.getAllByRole('textbox', { name: 'A breach line of Photos and video at Elevated' }).filter((f) => f.textContent === 'A new line.')
+    expect(fresh()).toHaveLength(2)
+    type(fresh()[1]!, 'A made-up second line.')
+    const fields = screen.getAllByRole('textbox', { name: 'A breach line of Photos and video at Elevated' }).map((f) => f.textContent)
+    expect(fields.slice(-2)).toEqual(['A new line.', 'A made-up second line.'])
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the breach line: A made-up second line.' }))
+    expect(fresh()).toHaveLength(1)
+    expect(screen.queryByText('A made-up second line.')).toBeNull()
+  })
+
   it('publishes the draft as the next revision, saving what was typed last first', async () => {
     const { io, onRecord } = draw()
     type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
@@ -234,5 +297,36 @@ describe('WalkedBuilder', () => {
     expect(screen.getByText('Every word here is a draft. Publish to make revision 1.')).toBeTruthy()
     expect(document.querySelector('[data-mark="own"]')).toBeNull()
     expect(screen.getByText('Not read by an attorney')).toBeTruthy()
+  })
+
+  it('reads the builder’s own link, with no sheet, and switches it on to the page that walks revision 2', async () => {
+    const { linkIo } = draw()
+    expect(screen.getByRole('heading', { level: 3, name: "This builder's link" })).toBeTruthy()
+    expect(await screen.findByText('The link is off. Nobody can open this builder by link.')).toBeTruthy()
+    expect(linkIo.read).toHaveBeenCalledWith('sub-nda', null)
+    fireEvent.click(screen.getByRole('button', { name: 'Switch the link on' }))
+    expect((await screen.findByTestId('builder-link-url')).textContent).toBe(`${window.location.origin}/d/abcdefgh23456789`)
+    expect(linkIo.make).toHaveBeenCalledWith('sub-nda', null)
+    expect(screen.getByText(/Anyone with the link walks revision 2, page by page\. They only look\./)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the link' }))
+    await waitFor(() => expect(linkIo.copy).toHaveBeenCalledWith(`${window.location.origin}/d/abcdefgh23456789`))
+  })
+
+  it('shows a link that is on, and asks before a new one stops it', async () => {
+    const { linkIo } = draw(record(), LINK_ON)
+    expect((await screen.findByTestId('builder-link-url')).textContent).toBe(`${window.location.origin}/d/abcdefgh23456789`)
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }))
+    expect(await screen.findByText('The link you have now stops working. Anyone you gave it to needs the new one.')).toBeTruthy()
+    expect(linkIo.make).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this link' }))
+    await waitFor(() => expect(screen.queryByText('The link you have now stops working. Anyone you gave it to needs the new one.')).toBeNull())
+    expect(linkIo.make).not.toHaveBeenCalled()
+  })
+
+  it('makes no link before the first publish: a link opens only what is published', () => {
+    const { linkIo } = draw(record({ published: null, revision: 0 }))
+    expect(screen.getByText('Publish a revision first. A link then opens it.')).toBeTruthy()
+    expect(linkIo.read).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Switch the link on' })).toBeNull()
   })
 })

@@ -1038,6 +1038,11 @@ A **place** (`slot`) is a spot in the paper with one **wording** for each choice
 A job's **picks** are one choice a setting, and the paper is put together for them by `assemblePaper` and its twin `contract_paper_clauses`, which say the same words when a gap stops it (`src/lib/contracts/paperSettings.ts`).
 A paper is **read** while its read mark, an attorney's name and a day, names its revision, so any later publish leaves it unread.
 A paper built from settings goes with a job's settings only, and until a job carries them it is refused as a copy, at the sign page and in the pickers.
+Since v2.8145 a job carries them on its required paper's row (`job_required_papers.settings`, the typed blanks in `fields`), set by the office through `job_papers_require` and changed through `job_paper_set_settings`.
+That row is **locked** at its first signature: a change after it may only make the paper **stricter**, by each choice's place in its list, and it makes a new row in the old one's place (`settings_revision`, `revision_of`) that everyone signs again.
+The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
+A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
+Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
 Since v2.8020 its preview has a **Summary**, the picks in the list's own plain words under the **level** they make, a name and the kind of place it sits beside and never a score, and **Print the sample**, the same paper for a made-up party with SAMPLE across every page ([`paperSummary.ts`](../src/lib/contracts/paperSummary.ts)).
 Since v2.5294 a copy of such a paper reads as its clauses on `/contract/accept` (the database's assembly, `contract_paper_clauses`, through `get-contract-for-signer`), signs only at the revision the page showed (`accept-contract`, else *The paper changed since you opened it.*), and its signed record draws the frozen clauses.
 Since v2.5329 a statement of work built from clauses (`gc_sows.paper_id`) reads and signs the same way in the trade's portal, with the exhibit for its package's one trade.
@@ -3163,7 +3168,7 @@ Google counts as failed on the page in four cases: its script has not loaded in 
 Every Google canvas shares these checks (`useGoogleCanvasDoors`), and the frame keeps a failure for the page.
 Since v2.7981 Google's one global for a refused key is set once by `googleAuthFailure.ts`, so every Google map on the screen hears the refusal.
 Since v2.7876 the 8 s clock waits while the map is scrolled off screen (`paintClock.ts`, `useFrameInView`), since Google builds no map far below the window.
-Since v2.7809 *Where my tasks are* draws in it too, on its Leaflet half, where Time looks at a task's place and never at the person's own dot.
+Since v2.7809 *Where my tasks are* draws in it too, where Time looks at a task's place and never at the person's own dot, on its Leaflet half until v2.8032 put it on Google with a switch.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
 **Today** is the right end of that row and is today's photograph of the same ground, so a date and Today are one tile layer apart and the map does not move between them.
@@ -3908,6 +3913,7 @@ Each person goes where their days are, a trip on a bill keeps its line while the
 The next trip is the one that went out next on the same development, or on the same job for a trip with no development, in the look's own order (`trip_next_id`), and the database refuses any other pair.
 Where both trips give one person the same day the open trip's kind stays, an empty billing takes the other's, two different billings and a line on each trip refuse in words, and a line only the next trip holds is tied to the joined trip, keeping its name, which the window says whenever one trip holds a line (`TRIP_JOIN_LINE_NAME_NOTE`, v2.7975).
 The trip that went waits under **Deleted trips** marked *Joined into Trip 7* with no **Put back** (`joined_into` on its archive row), its number is not given again, and a join is taken back with **Split in two**.
+Since v2.8127 a page left open from before the join cannot bring that trip back: the database refuses its save in words that name the joined trip (`trips_refuse_joined_back`), and the page reads the trips again.
 Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
 Since v2.7884 it also carries a trip the deleted job held by itself: the trip goes to the kept job's development when it is in one, and to the kept job when it is in none.
 A trip that moves home this way keeps its number when the new home never handed that number out, and takes the new home's next number otherwise (`trips_take_number`).
@@ -6057,7 +6063,7 @@ That line is a **Stage check (to Dispatch)** with no check behind it: `notAsTold
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
 The rules are [`startChecks.ts`](../src/lib/startChecks/startChecks.ts), the rows [`startCheckRows.ts`](../src/lib/startChecks/startCheckRows.ts), and nothing in it blocks a schedule, a clock-in or a bill.
-The **line of time** (v2.8111) is the Schedule look's stages on one line of days behind **Show it on a line of time** ([`ScheduleTimeLine.tsx`](../src/components/startChecks/ScheduleTimeLine.tsx) over `timeLine` in [`timeLine.ts`](../src/lib/startChecks/timeLine.ts)): a bar for our days in the stage's colour, a diamond on the day they say ready, a hollow diamond on each day they gave before, a dotted line on the day we decide, a red line on today, and *moved N days* in red beside the row's marks.
+The **line of time** (v2.8111) is the Schedule look's stages on one line of days behind **Show it on a line of time** ([`ScheduleTimeLine.tsx`](../src/components/startChecks/ScheduleTimeLine.tsx) over `timeLine` in [`timeLine.ts`](../src/lib/startChecks/timeLine.ts)): a bar for our days in the stage's colour, a diamond on the day they say ready, a hollow diamond on each day they gave before, a dotted line on the day we decide, a red line on today, and *moved N days* in red on a line of its own under the row's marks, anchored on the day they say now and slid so it never leaves the row (`movedSlide`, v2.8137).
 **The days they gave** (v2.8111) is the office's printed sheet for a site (`movedSheet`, [`movedSheetHtml.ts`](../src/lib/startChecks/movedSheetHtml.ts)): every day they gave for each stage, oldest first, with who said it, how and when, each move and the site's total, sent to nobody and never on the GC's page.
 
 ### Users lenses (People → Users)
@@ -6670,6 +6676,9 @@ The insurance builder's read mark is **checked**, by an insurance agent, where t
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
 A link **made new** stops the one before it, and a link **switched off** closes the sheet to links until it is switched on, which makes a new one.
+A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
+Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
+A **send to a GC** (v2.8151) puts the published Sub NDA on the customer portal of a customer who is the GC on a job with us, **about** one job or all their jobs, with the day it went and the day they opened it ([`send.ts`](../src/lib/documentBuilder/send.ts), [`customerPageBuilders.ts`](../src/lib/documentBuilder/customerPageBuilders.ts)).
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
@@ -7639,6 +7648,7 @@ A company truck with no insurance, registration, service or replacement value on
   and a `stage_check` request on *Questions on this job* wears the inbox's *Stage check* tag (`readRequestsWhere` selects `pending_action` on the Dispatch table alone, since the estimators' table has no such column);
   the guides *send a check to Dispatch*, *answer a check the crew sent* and *read the Pipeline's money view*.
   A **No on arrival** rides the same road with no check behind it (v2.8110, punch list #382): `question_id` is null and the payload carries `start_check_arrival_id`, so the row keeps the tag, the red wait line and the window, wears **Open the list** where a check has **Open the check**, and is closed by Dispatch or its sender since nothing closes it by itself.
+  Since v2.8161 its window's first line reads *sent on arrival* where a check's reads *sent from the sheet*.
 - **Draw** (Stage Plan) — an Order stage's invoice, numbered by its stage: *Draw 2 · Top-out*.
   Draws follow the stages: nothing bills out of order (a passed stage **waits** while the one above it is unbilled;
   a bill made by amount that covers it counts as billed);

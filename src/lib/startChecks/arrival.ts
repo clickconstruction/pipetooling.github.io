@@ -54,4 +54,6 @@ export const NOT_AS_TOLD_WORDS = {
   openList: 'Open the list',
   openListTitle: (stage: string) => `Open the job on Documents, where Before we start holds ${stage ? `the ${stage} list` : 'the list'}: tick the bullet once it is true, or change the list`,
   windowFoot: 'Close it once the site is as told, or the list has changed.',
+  /** Where the line came from, on the window's first line: the crew's card on arrival, never a checklist's sheet. */
+  sentOnArrival: 'sent on arrival',
 } as const

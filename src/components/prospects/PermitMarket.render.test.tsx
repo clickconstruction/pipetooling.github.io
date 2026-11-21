@@ -105,8 +105,8 @@ afterEach(() => cleanup())
 describe('Market, the companies we bid', () => {
   it('lists the companies that build here, with our bids, our wins, their permits and what that reads as', async () => {
     draw()
-    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Builds here 2' }).getAttribute('aria-pressed')).toBe('true')
+    expect(await screen.findByRole('button', { name: 'Builds 2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Builds 2' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'No permit on record 2' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Tie a name 1' })).toBeTruthy()
     // The most permits first. A practice bid is no bid.
@@ -117,12 +117,14 @@ describe('Market, the companies we bid', () => {
     const harbor = document.querySelector('[data-market-company="harborfitouts"]') as HTMLElement
     expect([...harbor.querySelectorAll('td')].slice(1, 4).map((td) => td.textContent)).toEqual(['2', '1', '8'])
     expect(within(harbor).getByText('Builds, and we win')).toBeTruthy()
+    // The column says its count is every city's, and the words under a company say which.
+    expect(screen.getByRole('columnheader', { name: 'Permits, all cities, 12 mo' })).toBeTruthy()
     // Where the permits are, each a press.
     expect(within(harbor).getByRole('button', { name: 'San Antonio 6' })).toBeTruthy()
     expect(within(harbor).getByRole('button', { name: 'Austin 2' })).toBeTruthy()
     // The first tile says the count, and the reads ran once each.
     expect(screen.getByText('2 of 4')).toBeTruthy()
-    expect(screen.getByText('companies we bid pulled a permit here')).toBeTruthy()
+    expect(screen.getByText('companies we bid pulled a permit in the cities we read')).toBeTruthy()
     expect(marketIo.loadMarketBids).toHaveBeenCalledTimes(1)
     expect(marketIo.loadMarketBids).toHaveBeenCalledWith('2024-11-19')
     expect(marketIo.loadBuildersOfCities).toHaveBeenCalledTimes(1)
@@ -133,7 +135,9 @@ describe('Market, the companies we bid', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'No permit on record 2' }))
     expect(companyRows()).toEqual(['asterridgecontracting', 'larkspurcommercial'])
     const aster = document.querySelector('[data-market-company="asterridgecontracting"]') as HTMLElement
-    expect(within(aster).getByText('Aster Ridge Contracting of Texas on the permits may be them')).toBeTruthy()
+    expect(aster.textContent).toContain('Aster Ridge Contracting of Texas on the permits may be them')
+    // The name that may be theirs is a value: drawn apart from the words, and no press.
+    expect([...aster.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['Aster Ridge Contracting of Texas'])
     expect(within(aster).getByRole('button', { name: 'Tie a name to Aster Ridge Contracting' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Tie a name 1' }))
     expect(companyRows()).toEqual(['asterridgecontracting'])
@@ -154,7 +158,7 @@ describe('Market, the companies we bid', () => {
   it('counts the permits under a name a person tied to the customer', async () => {
     answersIo.loadBuilderAnswersGround.mockResolvedValue(ground([tie()]))
     draw()
-    expect(await screen.findByRole('button', { name: 'Builds here 3' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Builds 3' })).toBeTruthy()
     const aster = document.querySelector('[data-market-company="asterridgecontracting"]') as HTMLElement
     expect(within(aster).getByText('Builds, one try')).toBeTruthy()
     expect(within(aster).getByRole('button', { name: 'San Antonio 3, as Aster Ridge Contracting of Texas' })).toBeTruthy()
@@ -172,7 +176,9 @@ describe('Market, the companies we bid', () => {
 
   it('draws cards on a phone', async () => {
     draw({ isMobile: true })
-    expect(await screen.findByText('3 bids, 0 won · 11 permits')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('[data-company-counts]')?.textContent).toBe('3 bids, 0 won · 11 permits'))
+    // The table's three columns fold into one line on a phone, each count still drawn apart.
+    expect([...(document.querySelector('[data-company-counts]') as HTMLElement).querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['3 bids', '0 won', '11 permits'])
     expect(document.querySelector('table')).toBeNull()
     expect(companyRows()).toEqual(['juniperhospitalitygroup', 'harborfitouts'])
   })
@@ -182,7 +188,7 @@ describe('Market, the companies we bid', () => {
     draw()
     expect(await screen.findByText(/the network is down/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Builds 2' })).toBeTruthy()
   })
 
   it('says what fills the table when we have no bid in two years', async () => {
@@ -198,10 +204,14 @@ describe('Market, the clock', () => {
     draw()
     expect(await screen.findByText('San Antonio · application to permit')).toBeTruthy()
     const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
-    expect(within(clock).getByText('45 days')).toBeTruthy()
+    expect(within(clock).getByText('45 days', { selector: 'strong' })).toBeTruthy()
     // A middle well along the bar is said under its mark, apart from the bar's first word.
     expect((clock.querySelector('[data-clock-start]') as HTMLElement).textContent).toBe('applied')
-    expect(within(clock).getByText(/Half of the applications wait 45 days or more for the permit\./)).toBeTruthy()
+    const note = clock.querySelector('[data-clock-note]') as HTMLElement
+    expect(note.textContent).toMatch(/^Half of the applications wait 45 days or more for the permit\./)
+    // The note's days and its count are drawn apart from its words: worked out, so bold and no press.
+    expect([...note.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent?.replace(/[\d,]+ applications/, 'N applications'))).toEqual(['45 days', expect.stringMatching(/^\d+ to \d+ days$/), 'N applications'])
+    expect(document.querySelector('.vipChange')).toBeNull()
     expect(marketIo.loadMarketPermits).toHaveBeenCalledWith('San Antonio', '2025-11-19')
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
     expect(document.querySelector('[data-market-clock="plumber"]')).toBeNull()
@@ -247,7 +257,7 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     await screen.findByText('San Antonio · application to permit')
     const tiles = [...document.querySelectorAll('[data-market-tiles] > div')].map((t) => t.textContent)
     // Juniper has five permits in the year and Harbor three, so two builders are to call. No job of theirs is on the tab's rows.
-    expect(tiles).toEqual(['2builders to call this week', '0of their jobs are applied for, with no plumber yet', '2 of 4companies we bid pulled a permit here', '~6 weeksfrom an application to its permit'])
+    expect(tiles).toEqual(['2builders to call this week', '0of their jobs are applied for, with no plumber yet', '2 of 4companies we bid pulled a permit in the cities we read', '~6 weeksfrom an application to its permit'])
   })
 
   it('draws who holds the work only where the city names plumbers', async () => {
@@ -262,7 +272,9 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     expect(within(holds).getByText('Copperline Mechanical')).toBeTruthy()
     expect(within(holds).getByText('Blue Heron Plumbing')).toBeTruthy()
     // One builder with five named jobs: three of them with one plumber is a lean.
-    expect(within(holds).getByText('Of 1 builder with 3 or more named jobs: 0 use one plumber nearly every time, 1 leans to one and 0 shop around.')).toBeTruthy()
+    const tiesNote = holds.querySelector('[data-market-ties]') as HTMLElement
+    expect(tiesNote.textContent).toBe('Of 1 builder with 3 or more named jobs: 0 use one plumber nearly every time, 1 leans to one and 0 shop around.')
+    expect([...tiesNote.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['1 builder', '0', '1', '0'])
   })
 
   it('draws how much is being built: the months, the kinds and the size', async () => {
@@ -280,7 +292,7 @@ describe('Market, the tiles and the two boxes under the clock', () => {
   it('draws the table and the clock even when the answers on the call list cannot be read', async () => {
     marketIo.loadCallAnswers.mockRejectedValue(new Error('Could not read the answers on the call list: the network is down'))
     draw()
-    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Builds 2' })).toBeTruthy()
     expect(await screen.findByText(/the network is down/)).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'This week 2' })).toBeTruthy()
     // The list says what the failed read costs, and Retry asks for the answers again.
@@ -313,7 +325,7 @@ describe('Market, the tiles and the two boxes under the clock', () => {
   it('holds the call list when the year of permits cannot be read: no zero tile, no "all answered", no word on what the city shows', async () => {
     marketIo.loadMarketPermits.mockRejectedValue(new Error('Couldn’t load the year of permits: the network is down'))
     draw()
-    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Builds 2' })).toBeTruthy()
     expect(await screen.findByText(/the network is down/)).toBeTruthy()
     expect(screen.getByText('The list needs this read, so it shows no name until the read comes back.')).toBeTruthy()
     expect(screen.queryByText(/is answered/)).toBeNull()
@@ -330,7 +342,7 @@ describe('Market, the tiles and the two boxes under the clock', () => {
 
   it('holds the call list when the tab’s own rows cannot be read, since the open jobs come off them', async () => {
     draw({ rowsError: 'Could not read the permits: the network is down' })
-    expect(await screen.findByRole('button', { name: 'Builds here 2' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Builds 2' })).toBeTruthy()
     expect(await screen.findByText(/the network is down/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^This week/ })).toBeNull()
     expect(screen.queryByText(/of their jobs/)).toBeNull()

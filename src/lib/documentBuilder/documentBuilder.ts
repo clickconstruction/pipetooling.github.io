@@ -15,6 +15,12 @@
 /** The stop left of every level: the topic, or the whole paper, is left out. */
 export const PAPER_OFF = 'off'
 
+/**
+ * What a new line reads until someone types over it. Two of them hold the same words and are still two lines, so a new
+ * line is never matched to another by its words. `paperDefProblems` does not let it be published.
+ */
+export const PAPER_NEW_LINE = 'A new line.'
+
 /** A stop on a slider: `PAPER_OFF` or a level's id. */
 export type PaperStop = string
 
@@ -188,7 +194,8 @@ export type BreachGroups = {
  * it keeps from the level one step looser. Every line in either group applies at this level. A line
  * the looser level had and this one replaced is in neither. On the loosest level every line is its
  * own and nothing is new, since nothing sits under it. A topic with a blank is never *New at* a
- * level, since its lines differ only by the number.
+ * level, since its lines differ only by the number. A new line nobody has typed over is the level's
+ * own, even while the looser level holds a new line too: the two only share a placeholder.
  */
 export function breachGroups(def: PaperDef, key: string, stop: PaperStop): BreachGroups {
   const topic = topicOf(def, key)
@@ -197,11 +204,27 @@ export function breachGroups(def: PaperDef, key: string, stop: PaperStop): Breac
   const under = stopAt(def, stopRank(def, stop) - 1)
   if (under === PAPER_OFF) return { own: lines, carried: [], newAt: null }
   const before = topic.levels[under]?.breach ?? []
+  const kept = (line: string): boolean => line !== PAPER_NEW_LINE && before.includes(line)
   return {
-    own: lines.filter((line) => !before.includes(line)),
-    carried: lines.filter((line) => before.includes(line)),
+    own: lines.filter((line) => !kept(line)),
+    carried: lines.filter(kept),
     newAt: topicHasBlank(topic) ? null : stopShortName(def, stop),
   }
+}
+
+/** One of a level's own breach lines, with its place in the level's whole list. */
+export type OwnBreachLine = { index: number; words: string }
+
+/**
+ * The breach lines a level brings, each with its place in the level's list: the same lines as `breachGroups().own`,
+ * in the same order. The page names a line's field by this place and never looks a line up by its words, since two
+ * lines of the same words, as two new lines are, would both be found at the first.
+ */
+export function ownBreachLines(def: PaperDef, key: string, stop: PaperStop): OwnBreachLine[] {
+  const topic = topicOf(def, key)
+  if (!topic || stop === PAPER_OFF) return []
+  const carried = new Set(breachGroups(def, key, stop).carried)
+  return (topic.levels[stop]?.breach ?? []).map((words, index) => ({ index, words })).filter((line) => !carried.has(line.words))
 }
 
 /** What the site must have for a topic's stop to hold. Empty when it asks nothing. */

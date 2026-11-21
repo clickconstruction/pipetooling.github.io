@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { firstName, resendPress, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { plainSentence } from '../valuesInPlace'
+import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, firstName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
-const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
+const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
 const party = (over: Partial<SendParty> = {}): SendParty => ({ id: 'cedarfork', name: 'Cedar Fork Drain', page: { state: 'on' }, contacts: [{ name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }], send: null, ...over })
 const OPEN = { published: true, unpublishedWords: "Publish this job's sheet first.", unread: '', anyway: false }
 
@@ -25,6 +26,96 @@ describe('where a send stands', () => {
     const told = send({ openedOn: '2026-11-14', openedRevision: 1, sentRevision: 2, sentOn: '2026-11-24', timesSent: 2 })
     expect(sendStanding(told, 2)).toBe('sent')
     expect(sendStanding({ ...told, openedOn: '2026-11-25', openedRevision: 2 }, 2)).toBe('opened')
+  })
+})
+
+describe('who the second press goes to', () => {
+  /** Two people at one made-up trade who share a name. The second is the one the send went to. */
+  const owner = { name: 'Ana Pruitt', email: 'ana@cedarfork.test', role: 'owner' }
+  const office = { name: 'Ana Pruitt', email: 'office@cedarfork.test', role: 'office' }
+
+  it('is nobody with no send', () => {
+    expect(resendTo(party())).toBeNull()
+  })
+
+  it('is the person the send went to, by the address on its own row, and says who', () => {
+    const got = resendTo(party({ contacts: [owner, office], send: send({ contactEmail: 'Office@CedarFork.test' }) }))
+    expect(got?.to).toEqual(office)
+    expect(plainSentence(got?.words ?? '')).toBe('It goes to Ana Pruitt at office@cedarfork.test.')
+    expect(resendTo(party({ contacts: [owner, office], send: send() }))?.to).toEqual(owner)
+  })
+
+  it('reads the address alone for someone with no name on the record', () => {
+    const desk = { name: 'desk@cedarfork.test', email: 'desk@cedarfork.test' }
+    expect(plainSentence(resendTo(party({ contacts: [desk], send: send({ contactName: 'desk@cedarfork.test', contactEmail: 'desk@cedarfork.test' }) }))?.words ?? '')).toBe('It goes to desk@cedarfork.test.')
+  })
+
+  it('never goes to someone else once that person is off the record, namesake or not', () => {
+    const got = resendTo(party({ contacts: [owner], send: send({ contactEmail: 'office@cedarfork.test' }) }))
+    expect(got?.to).toBeNull()
+    expect(plainSentence(got?.words ?? '')).toBe('Ana Pruitt at office@cedarfork.test is no longer on the record of Cedar Fork Drain. Take it off their page, then send it to someone who is.')
+    expect(resendTo(party({ contacts: [], send: send() }))?.to).toBeNull()
+  })
+
+  it('goes by name for a row that kept no address, only when one person alone carries the name', () => {
+    expect(resendTo(party({ contacts: [owner, { name: 'Bo Reyes', email: 'bo@cedarfork.test' }], send: send({ contactEmail: '' }) }))?.to).toEqual(owner)
+    const two = resendTo(party({ contacts: [owner, office], send: send({ contactEmail: '' }) }))
+    expect(two?.to).toBeNull()
+    expect(plainSentence(two?.words ?? '')).toBe('2 people at Cedar Fork Drain are named Ana Pruitt, and this send does not say which. Take it off their page, then send it to the one you mean.')
+    const gone = resendTo(party({ contacts: [{ name: 'Bo Reyes', email: 'bo@cedarfork.test' }], send: send({ contactEmail: '' }) }))
+    expect(gone?.to).toBeNull()
+    expect(plainSentence(gone?.words ?? '')).toBe('Ana Pruitt is no longer on the record of Cedar Fork Drain. Take it off their page, then send it to someone who is.')
+  })
+
+  it('reads in plain words', () => {
+    const lines = [
+      resendTo(party({ contacts: [owner, office], send: send() })),
+      resendTo(party({ contacts: [owner], send: send({ contactEmail: 'office@cedarfork.test' }) })),
+      resendTo(party({ contacts: [owner, office], send: send({ contactEmail: '' }) })),
+      resendTo(party({ contacts: [], send: send({ contactEmail: '' }) })),
+    ].map((r) => plainSentence(r?.words ?? '').replace(/\S+@\S+\.test/g, 'an address'))
+    expect(lines.flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+})
+
+describe('what a send to a GC is about', () => {
+  const gc = party({ id: 'northgate', name: 'Northgate Builders', jobs: [{ id: 'j1', label: 'Pike Street clinic · Job 1180' }, { id: 'j2', label: 'Harbor annex · Job 1204' }] })
+
+  it('offers all their jobs first, then each job', () => {
+    expect(aboutChoices(gc)).toEqual([
+      { value: ABOUT_ALL_JOBS, label: 'All their jobs with you' },
+      { value: 'j1', label: 'Pike Street clinic · Job 1180' },
+      { value: 'j2', label: 'Harbor annex · Job 1204' },
+    ])
+    expect(aboutChoices(party())).toEqual([{ value: ABOUT_ALL_JOBS, label: 'All their jobs with you' }])
+  })
+
+  it('is all their jobs when nobody picks, and never a job that is not theirs', () => {
+    expect(aboutJobId(gc, ABOUT_ALL_JOBS)).toBeNull()
+    expect(aboutJobId(gc, 'j2')).toBe('j2')
+    expect(aboutJobId(gc, 'someone-elses-job')).toBeNull()
+  })
+})
+
+describe('the rows a long list shows', () => {
+  const many = Array.from({ length: SEND_LIST_FIRST_ROWS + 5 }, (_, i) => party({ id: `gc${i}`, name: `Made-up Builders ${i}` }))
+  const sent = party({ id: 'northgate', name: 'Northgate Builders', send: send() })
+
+  it('is everyone, with no find box', () => {
+    expect(shownParties([...many, sent], null)).toEqual({ rows: [...many, sent], more: 0 })
+  })
+
+  it('is who was sent to and the first few others until someone types, with how many more', () => {
+    const got = shownParties([...many, sent], '')
+    expect(got.rows[0]).toBe(sent)
+    expect(got.rows).toHaveLength(1 + SEND_LIST_FIRST_ROWS)
+    expect(got.more).toBe(5)
+  })
+
+  it('is every party whose name holds each word typed', () => {
+    expect(shownParties([...many, sent], ' north  build ').rows).toEqual([sent])
+    expect(shownParties([...many, sent], 'builders 16').rows.map((p) => p.id)).toEqual(['gc16'])
+    expect(shownParties([...many, sent], 'nobody at all')).toEqual({ rows: [], more: 0 })
   })
 })
 

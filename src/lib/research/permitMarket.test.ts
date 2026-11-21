@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { answerBook } from './builderAnswers'
 import type { NameAnswerRow } from './nameAnswers'
 import type { BuilderRow } from './permitBuilders'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import {
+  BID_COMPANY_PERMITS_HEAD,
+  BID_COMPANY_SHOWING_WORDS,
   aboutWeeksWords,
   applicationClockDays,
   bidCompanies,
@@ -21,6 +24,7 @@ import {
   marketBidsSince,
   marketClocks,
   marketPermitsSince,
+  companyCountsWords,
   permitsWhereWords,
   plumberClockDays,
   readsWords,
@@ -160,12 +164,39 @@ describe('the chips and the words', () => {
     expect(readsWords({ reads: 'early', bids: 1, looksLike: null }).tag).toBe('Builds, one try')
     expect(readsWords({ reads: 'early', bids: 2, looksLike: null })).toEqual({ tag: 'Builds, two tries', tone: 'amber', hint: 'too early to say' })
     expect(readsWords({ reads: 'no_permit', bids: 9, looksLike: null })).toEqual({ tag: 'No permit on record', tone: 'grey', hint: 'may build elsewhere, or file under another name' })
-    expect(readsWords({ reads: 'no_permit', bids: 1, looksLike: 'Aster Ridge Contracting of Texas' }).hint).toBe('Aster Ridge Contracting of Texas on the permits may be them')
+    const maybe = readsWords({ reads: 'no_permit', bids: 1, looksLike: 'Aster Ridge Contracting of Texas' }).hint
+    expect(plainSentence(maybe)).toBe('Aster Ridge Contracting of Texas on the permits may be them')
+    // The name is a value in the sentence, marked for the screen to draw apart.
+    expect(sentenceParts(maybe)).toEqual([{ kind: 'name', text: 'Aster Ridge Contracting of Texas' }, ' on the permits may be them'])
+  })
+
+  it('folds a company’s three counts into one line for a phone, each one a value', () => {
+    expect(plainSentence(companyCountsWords({ bids: 3, won: 0, permits: 11 }))).toBe('3 bids, 0 won · 11 permits')
+    expect(plainSentence(companyCountsWords({ bids: 1, won: 1, permits: 1 }))).toBe('1 bid, 1 won · 1 permit')
+    expect(sentenceParts(companyCountsWords({ bids: 3, won: 0, permits: 11 })).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'bids', text: '3 bids' },
+      { kind: 'won', text: '0 won' },
+      { kind: 'permits', text: '11 permits' },
+    ])
   })
 
   it('writes the first tile', () => {
-    expect(builtTile(rows)).toEqual({ value: '2 of 4', words: 'companies we bid pulled a permit here' })
-    expect(builtTile([])).toEqual({ value: '0 of 0', words: 'companies we bid pulled a permit here' })
+    expect(builtTile(rows)).toEqual({ value: '2 of 4', words: 'companies we bid pulled a permit in the cities we read' })
+    expect(builtTile([])).toEqual({ value: '0 of 0', words: 'companies we bid pulled a permit in the cities we read' })
+    expect(builtTile(rows.slice(0, 1)).words).toBe('company we bid pulled a permit in the cities we read')
+  })
+
+  it('counts every city and says so, since the same count is drawn on each city’s page', () => {
+    // A company whose only permits are in the other city still built, on either page.
+    const elsewhere: CityBuilders = { city: 'New Braunfels', rows: [builder('larkspurcommercial', 'Larkspur Commercial', 4)] }
+    const both = bidCompanies({ bids: [bid('Harbor Fitouts'), bid('Larkspur Commercial')], builders: [SAN_ANTONIO, AUSTIN, elsewhere], book: null, todayYmd: TODAY })
+    expect(both.find((c) => c.key === 'larkspurcommercial')).toMatchObject({ permits: 4, reads: 'early' })
+    expect(both.find((c) => c.key === 'harborfitouts')?.permits).toBe(8)
+    expect(builtTile(both)).toEqual({ value: '2 of 2', words: 'companies we bid pulled a permit in the cities we read' })
+    // No word over the count names one place.
+    for (const words of [builtTile(both).words, BID_COMPANY_SHOWING_WORDS.builds, BID_COMPANY_PERMITS_HEAD]) expect(words).not.toMatch(/\bhere\b/)
+    expect(BID_COMPANY_PERMITS_HEAD).toBe('Permits, all cities, 12 mo')
+    expect(BID_COMPANY_SHOWING_WORDS.builds).toBe('Builds')
   })
 })
 
@@ -221,8 +252,14 @@ describe('the clock', () => {
     const plumber = { kind: 'plumber' as const, city: 'Austin', spread: { n: 80, q1: 1, median: 5, q3: 9 } }
     expect(clockTitle(application)).toBe('San Antonio · application to permit')
     expect(clockTitle(plumber)).toBe('Austin · building permit to the plumber’s permit')
-    expect(clockNote(application)).toBe('Half of the applications wait 45 days or more for the permit. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
-    expect(clockNote(plumber)).toBe('Half of the jobs have a plumber’s permit within 5 days of the building permit. The job is taken by the time the city shows it. Read Austin for who builds. The middle half took 1 to 9 days, over 80 jobs.')
+    expect(plainSentence(clockNote(application))).toBe('Half of the applications wait 45 days or more for the permit. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
+    // The middle wait, the middle half and how many it is over are the note's values.
+    expect(sentenceParts(clockNote(application)).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'median', text: '45 days' },
+      { kind: 'middle', text: '25 to 80 days' },
+      { kind: 'over', text: '1,200 applications' },
+    ])
+    expect(plainSentence(clockNote(plumber))).toBe('Half of the jobs have a plumber’s permit within 5 days of the building permit. The job is taken by the time the city shows it. Read Austin for who builds. The middle half took 1 to 9 days, over 80 jobs.')
     expect(clockNote({ ...plumber, spread: { n: 80, q1: 0, median: 0, q3: 4 } })).toContain('by the day of the building permit')
     expect(clockTile([application, plumber])).toEqual({ value: '~6 weeks', words: 'from an application to its permit' })
     expect(clockTile([plumber])).toEqual({ value: '5 days', words: 'from a building permit to the plumber’s permit' })

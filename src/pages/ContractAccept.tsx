@@ -259,8 +259,10 @@ export default function ContractAccept() {
     lastSignRef.current = p
     try {
       const formPart = payload?.form ? { formValues, formLang } : {}
-      // A paper built from clauses signs at the revision the page showed, in the language it was read in.
-      const clausePart = payload?.clause_paper && !payload.form ? { paperRevision: payload.clause_paper.revision, paperLang } : {}
+      // A paper built from clauses signs at the revision the page showed, in the language it was read in. A job's paper
+      // built from settings (#389) sends the seal of those words too: its settings can change with no new revision.
+      const shownSeal = payload?.clause_paper?.[paperLang]?.sha256
+      const clausePart = payload?.clause_paper && !payload.form ? { paperRevision: payload.clause_paper.revision, paperLang, ...(shownSeal ? { paperSeal: shownSeal } : {}) } : {}
       const consentPart = p.consent ? { esignConsent: p.consent } : {}
       const inPersonPart = inPerson ? { inPerson: true as const } : {}
       const body =
@@ -291,6 +293,7 @@ export default function ContractAccept() {
         if (json.code === 'paper_changed') setError(CLAUSE_SIGN_WORDS[paperLang].changed)
         else if (json.code === 'form_invalid') setError(fillString(formLang, 'fixFirst'))
         else if (json.code === 'expired') setError(contractLinkErrorWords(410, 'expired'))
+        else if (json.code === 'paper_not_ready') setError(contractLinkErrorWords(res.status, 'paper_not_ready'))
         else setFailure({ cause: portalFailureCause(res.status, json, 'send'), from: 'sign' })
         return
       }

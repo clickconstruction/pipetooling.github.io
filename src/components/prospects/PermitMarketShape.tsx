@@ -1,11 +1,14 @@
 import type { CSSProperties } from 'react'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { builderTiesWords, type BuilderTies, type KindCount, type MonthCount, type PlumberBoard } from '../../lib/research/permitMarketShape'
 
 /**
  * Permits, Market: the two boxes under the clock (punch list #405, step two). **Who holds the
  * work** lists the plumbers a city's permits name by jobs, and says how tied the builders are to
  * one. The view draws it only where the permits name plumbers. **How much is being built**
- * draws the city's commercial permits a month, by kind, and how big they are.
+ * draws the city's commercial permits a month, by kind, and how big they are. The bars hold
+ * their counts in a column of their own. The notes under them are the kernel's marked sentences,
+ * drawn with `ValueSentence`: every value here is worked out, so each is plain bold.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
 const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 600 }
@@ -36,7 +39,9 @@ export function WhoHoldsTheWork({ city, board, ties, onOpenBuilder }: { city: st
         <Bar key={p.key} name={p.name} n={p.jobs} widest={widest} />
       ))}
       {board.others.plumbers > 0 && <Bar name={`${board.others.plumbers} other${board.others.plumbers === 1 ? '' : 's'}`} n={board.others.jobs} widest={Math.max(board.others.jobs, widest)} quiet />}
-      <div style={{ ...muted, marginTop: 6 }}>{builderTiesWords(ties)}</div>
+      <div data-market-ties style={{ ...muted, marginTop: 6 }}>
+        <ValueSentence text={builderTiesWords(ties)} />
+      </div>
       {ties.shoppers.length > 0 && (
         <div style={{ ...muted, marginTop: 4 }}>
           {ties.shoppers.slice(0, 5).map((s, i) => (
@@ -47,7 +52,12 @@ export function WhoHoldsTheWork({ city, board, ties, onOpenBuilder }: { city: st
               </button>
             </span>
           ))}
-          {ties.shoppers.length > 5 ? ` · and ${ties.shoppers.length - 5} more` : ''}
+          {ties.shoppers.length > 5 && (
+            <>
+              {' · and '}
+              <WorkedOutValue>{ties.shoppers.length - 5}</WorkedOutValue> more
+            </>
+          )}
         </div>
       )}
     </div>
@@ -93,7 +103,9 @@ export function HowMuchIsBuilt({ city, months, kinds, sizeWords }: { city: strin
             <Bar key={k.kind} name={k.kind} n={k.n} widest={widest} />
           ))}
         </div>
-        <div style={{ ...muted, marginTop: 6 }}>{sizeWords}</div>
+        <div data-market-size style={{ ...muted, marginTop: 6 }}>
+          <ValueSentence text={sizeWords} />
+        </div>
       </div>
     </>
   )

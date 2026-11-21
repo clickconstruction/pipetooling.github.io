@@ -127,6 +127,7 @@ person-file-amendments
 pay-calendar
 person-file-numbers
 person-engagements
+person-report-write-up
 dev-seat-kept-plans
 receipt-texts
 painted-maps
@@ -148,6 +149,7 @@ trips
 primary-test-papers
 job-papers-lock
 job-papers-lists
+job-paper-settings
 schedule-reads-gate
 dashboard-view
 job-finish-calls

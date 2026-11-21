@@ -2,34 +2,33 @@
 name: "Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom"
 number: 359
 group: ready
-status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · the five chain cuts merged and live 2026-11-15, dev-mcp 3.72 MB on main with the week's lien kernels · Taunya said yes to the slim-types design on 2026-11-15 · PR 6 (v2.7293, #8213) the copy inlines a row alias where a kernel names it, dev-mcp 3.42 MB and no slim types, merged and redeployed 2026-11-15 (dev-mcp, customer-portal, drive-link, gc-trade-portal, photo-save) · PR 7 (v2.7294, #8233) the four portal kernels write each row as one alias, customer-portal 1.33 MB, merged and redeployed 2026-11-15 (customer-portal, drive-link, gc-trade-portal, photo-save, messages-notify) · step 2 is done: dev-mcp 3.43 MB on main at v2.7363, 1.07 MB under the ceiling · step 3 waits until dev-mcp nears 4.3 MB
+status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · the five chain cuts merged and live 2026-11-15, dev-mcp 3.72 MB on main with the week's lien kernels · Taunya said yes to the slim-types design on 2026-11-15 · PR 6 (v2.7293, #8213) the copy inlines a row alias where a kernel names it, dev-mcp 3.42 MB and no slim types, merged and redeployed 2026-11-15 (dev-mcp, customer-portal, drive-link, gc-trade-portal, photo-save) · PR 7 (v2.7294, #8233) the four portal kernels write each row as one alias, customer-portal 1.33 MB, merged and redeployed 2026-11-15 (customer-portal, drive-link, gc-trade-portal, photo-save, messages-notify) · step 2 is done: dev-mcp 3.43 MB on main at v2.7363, 1.07 MB under the ceiling · step 3 waits until dev-mcp nears 9.5 MB, under its own 10 MB ceiling since v2.8126
 summary: >
   v2.7256 took the whole database types file out of every edge upload: dev-mcp went from 5.02 MB,
   which the deploy refused, to 4.03 MB, and the eight portals from about 4.1 MB to about 3.0 MB.
   CI now holds each upload under 4.5 MB. Read on 2026-11-14, dev-mcp has about 0.5 MB of headroom
   and a verb pair adds about 0.15 MB, so three or four more dev-seat PRs reach the ceiling. Of its
-  4.03 MB, 0.86 MB is its own (the tool descriptions in index.ts, 474 KB, and the generated
+  4.03 MB, 0.86 MB is its own (index.ts, 474 KB of code and tool descriptions, and the generated
   catalog, 386 KB), 2.84 MB is the kernel copy and _shared, and 0.32 MB is the slim types file.
   The copy is already imported by file, not through its barrel, and dev-mcp still reaches 131 of
   the copy's 352 files, because small helpers import big neighbours: devMcpBill reaches the portal
   translations (portalI18n, 125 KB) through customerLang for one constant, and
   devMcpAffidavitDraft reaches the slim types through lienProperty for a type. The fix is to cut
   those chains, not to re-export less.
-next: Nothing to build now. Since v2.8117 dev-mcp deploys bundled from CI and is held to 5.8 MB, not 4.5 MB; it stood at 4.49 MB on 2026-11-20, growing about 0.25 MB a day. Step 3 (the tool descriptions out of dev-mcp/index.ts and a catalog of only the tables and functions the verbs name, 0.84 MB between them) is due when `npm run check:edge-bundles` shows dev-mcp near 5.5 MB, unless a deploy past 20 MB unpacked is accepted first, which would let the seat's ceiling rise to about 12 MB.
-next: After PR 7 merges, redeploy what check:edge-drift names (the fourteen barrel readers and messages-notify) and write Checked live into both fragments. Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.42 MB, under the 3.5 MB line, with 1.08 MB to the ceiling; a verb pair costs about 0.15 MB, so seven more fit before the next cut.
+next: Nothing to build now. Since v2.8117 dev-mcp deploys bundled from CI, and since v2.8126 it is held to 10 MB of raw source, not 4.5 MB; it stood at 4.49 MB on 2026-11-21, growing about 0.25 MB a day. Step 3 is due when `npm run check:edge-bundles` shows dev-mcp near 9.5 MB, but measured on 2026-11-21 it saves only about 0.2 MB, under a day of growth (step 3 under The build says why). So near 9.5 MB the real choice is likely another raise, which is the owner's to make.
 size: S to read · S per cut, two or three cuts · M for the descriptions and the catalog if it comes to that
 blocker: none; it waits on dev-mcp's growth, so that a cut lands before the ceiling and not after a refused deploy
-opinion: cut the chains, never raise the ceiling, since the wall at 5 MB is Supabase's; the portals get the same cuts for free
+opinion: cut the chains before dev-mcp nears its 10 MB, and keep every function that uploads raw source under 4.5 MB, since Supabase refuses 5 MB of it; the portals get the same cuts for free
 mockup: not required — a refactor of imports and files with no screen
 ---
 
 # Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom (#359)
 
-## The seat deploys bundled (2026-11-20, v2.8117)
+## The seat deploys bundled (2026-11-20, v2.8117 and v2.8126)
 
-The owner asked whose limit the 5 MB is and whether it can be raised. It is Supabase's limit on raw source files that its server bundles. A bundle the CLI builds with Docker before the upload is held to 20 MB. dev-mcp had grown back to 4.49 MB, about 0.25 MB a day and 40 KB a plan and apply pair, so the cuts below bought days. Since v2.8117 the seat deploys bundled from `main` by the `dev-mcp-deploy.yml` job, which `bash scripts/deploy-functions.sh dev-mcp` runs, and `check:edge-bundles` holds it to 5.8 MB of raw source. Every other function is as it was, at 1.5 MB or less against 4.5 MB.
+The owner asked whose limit the 5 MB is and whether it can be raised. It is Supabase's limit on raw source files that its server bundles. A bundle the CLI builds with Docker before the upload is held to 20 MB. dev-mcp had grown back to 4.49 MB, about 0.25 MB a day and 40 KB a plan and apply pair, so the cuts below bought days. Since v2.8117 the seat deploys bundled from `main` by the `dev-mcp-deploy.yml` job, which `bash scripts/deploy-functions.sh dev-mcp` runs, and `check:edge-bundles` holds it to a ceiling of its own, 10 MB of raw source since v2.8126. Every other function is as it was, at 1.5 MB or less against 4.5 MB.
 
-One question is open. The seat's bundle was 3.46 MB as the CLI prints it and 14.85 MB unpacked, and it is not known which Supabase holds to 20 MB. The 5.8 MB keeps the unpacked size under 20 MB. If the compressed size is the one counted, the ceiling can rise to about 12 MB. The cuts of step 3 stay the way to make room under either reading.
+The question v2.8117 left open is settled. The seat's bundle was 3.46 MB as the CLI prints it and 14.85 MB unpacked, which could not tell which size Supabase holds to 20 MB, so its first ceiling was 5.8 MB. A one-time probe (v2.8123) then had a bundle of 14 MB of source accepted at 7.81 MB compressed and 28.80 MB unpacked, so the unpacked size is not the one counted. At 10 MB of source the seat would be about 7.7 MB compressed, inside what the probe proved. Step 3 would make little room past it, as the card's `next:` line says.
 
 ## Where it stands (2026-11-15, afternoon)
 
@@ -56,7 +55,7 @@ dev-mcp has 1.07 MB to the CI ceiling, and a verb pair still costs about 0.15 MB
 | 22 KB | `_shared/hoursStatementForm.ts` → `formSchema.ts` for `type FormValues` | dev-mcp, accept-contract, hours-statement-signing |
 | 31 KB | `submittals/procurementLog.ts` → `parseFixtureSchedule.ts` for `normalizeTag` | dev-mcp alone, under the 50 KB bar |
 | 315 KB | **The slim `types/database.ts`.** Not one chain: nine files in dev-mcp import it, every one `import type { Database }` for a Row (lienProperty, costEstimateDirectCosts, overheadOfficePartsReads, lienDeadlines, lienDesk, submittalRevision, bidPricingEngineTypes, types/bids, laborRowHours), and five in the portals (boardRows for `Json`, drawRows, changeOrderOfficeRows, legalRoute, customerContactDisplay). Cutting lienProperty alone saves nothing. | dev-mcp and the portals, once every importer stops naming the whole file |
-| 377 KB + 463 KB | dev-mcp's own `catalog.ts` and the tool descriptions in `index.ts` | step 3 |
+| 377 KB + 463 KB | dev-mcp's own `catalog.ts` and `index.ts`, counted whole: step 3 can cut far less of them (see The build) | step 3 |
 
 **The slim-types design (asked 2026-11-14, Taunya's yes 2026-11-15).** Two designs took the 315 KB slim `types/database.ts` out of every function but the Bridge's email. The one built and merged: the generator reads each kernel's database aliases (`type X = Database['public']['Tables']['t']['Row']`, one statement per row, insert, update, args or returns), writes the alias's body into the copy from the parts it already reads, and imports a 7 KB `types/databaseCore.ts` (every enum and helper, no table) where a body names an enum or the file uses `Json`; a body naming a table or a `Tables<'t'>` use is refused with a word to write it plain. Nothing in `src` moves, except that four portal kernels write their rows as one alias each. It is the first rule that rewrites a kernel's text in the copy beyond its import lines; `--check` regenerates, so the copy cannot drift from it. The alternative put to the owner first: a folder `src/types/rows/` of one-line alias files that every kernel imports from and re-exports, the generator inlining those files alone; it moves nine aliases in `src` for the same bytes and keeps the copy's rewriting to whole files. Measured as merged: dev-mcp 3.72 → 3.42 MB, customer-portal 1.65 → 1.33 MB, the other barrel readers 1.02 to 1.32 MB. A kernel the copy carries writes a row as one alias statement from now on; `Tables<'t'>`, a table map or an alias joined with `& {` puts the slim file back into every function that reaches it.
 
@@ -76,7 +75,7 @@ So the note's fix is done and its number is stale. What is left is headroom: dev
 
 | Part | Size |
 |---|---|
-| Its own files: `index.ts` 474 KB (the tool descriptions), `catalog.ts` 386 KB (generated) | 0.86 MB |
+| Its own files: `index.ts` 474 KB (its code and the tool descriptions), `catalog.ts` 386 KB (generated) | 0.86 MB |
 | The kernel copy and `_shared`: 131 of the copy's 352 files, the `devMcp*` modules | 2.84 MB |
 | The slim types file | 0.32 MB |
 
@@ -90,7 +89,7 @@ The copy is already imported by file path, never through `gcKernels/index.ts`. T
 
 1. **Read** (done 2026-11-14, above). For dev-mcp, list every copy file reached with its chain (`edgeUpload(...).via(path)`) and the bytes a cut would save: a file reached only through one import that uses a sliver of it. Put the list on this card.
 2. **Cut the chains over 50 KB**, one PR each, the index first (PR 1, v2.7288). A cut is a kernel split: the sliver (a constant, a type, a two-line helper) moves to a small file of its own in `src/lib`, the old file re-exports it so no import in the app changes, `scripts/edge-kernels.mjs` carries the new file, and the importer in the copy points at the small file. Tests move with the code. The first two are `customerLang` off `portalI18n` and `lienProperty` off the slim types. The eight portals take the same cuts for free where they share the chain.
-3. **Only if still needed**, move the tool descriptions out of `dev-mcp/index.ts` into a resource the server reads at boot, and have `build-dev-mcp-catalog.mjs` write only the tables and functions the verbs name.
+3. **Only if still needed**, move the tool descriptions out of `dev-mcp/index.ts` into a resource the server reads at boot, and have `build-dev-mcp-catalog.mjs` write only the tables and functions the verbs name. Measured on 2026-11-21 this saves about 0.2 MB. The descriptions of the tools and their fields are 0.18 MB of `index.ts`'s 0.66 MB, and the server's instructions 0.03 MB; the rest is code. The catalog (0.42 MB) cannot shrink that way, since `read_rows` and `call_read` refuse any table or function it does not hold, so a catalog of only the verbs' names would end the seat's general reads.
 
 Never raise `UPLOAD_CEILING_BYTES`: it is 0.5 MB under Supabase's wall on purpose, so a PR fails before a deploy does.
 
