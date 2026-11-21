@@ -20,6 +20,32 @@ export interface SigningRefusal {
   error: string
 }
 
+/** The roles that send a paper for signature: the ones `person_contract_documents`' own write policy takes. */
+export const SIGNING_SEND_ROLES = ['dev', 'master_technician', 'assistant', 'controller'] as const
+
+/** The caller's account row, as far as the gate reads it. */
+export interface SigningCaller {
+  role?: string | null
+  read_only?: boolean | null
+  is_digital_twin?: boolean | null
+}
+
+/**
+ * Who may send a paper for signature. The handler writes with the service role, which no row policy holds, so it asks
+ * here before it reads the paper: one of the four roles that write a paper, and never a training account or a digital
+ * twin, as the company branch refuses them. Reading a paper is not enough. The role is said first.
+ */
+export function signingCallerRefusal(caller: SigningCaller | null | undefined): SigningRefusal | null {
+  const role = caller?.role ?? ''
+  if (!(SIGNING_SEND_ROLES as readonly string[]).includes(role)) {
+    return { status: 403, error: 'Only the office sends a paper for signature.' }
+  }
+  if (caller?.read_only || caller?.is_digital_twin) {
+    return { status: 403, error: 'A training account cannot send a paper for signature.' }
+  }
+  return null
+}
+
 /** The request's own refusals, before any row is read: both fields are needed, and the address must look like one. */
 export function signingRequestRefusal(body: SigningRequestBody): SigningRefusal | null {
   const { person_contract_document_id, signer_email } = body

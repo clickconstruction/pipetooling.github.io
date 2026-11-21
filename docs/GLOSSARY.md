@@ -3212,6 +3212,7 @@ a press on a line opens its map.
 In the job window's top band and on a tech's Job Mode card (`JobPaintedMapsStrip`), on the On my way sheet (the same strip, the maps alone), and under a development's address (`DevelopmentPaintedMapsStrip`, the site's own maps and each lot's).
 The job window's Documents tab lists the same maps in a **Painted maps** section (since v2.7393, `JobDocumentsPaintedMaps` over `paintedMapDocuments.ts`): each row is a door to the map as it is now, and nothing is stored there, since the copy that went out is already a sent copy.
 **Share** on a row (since v2.7415) opens the map's Share sheet, where **Who opened it** lists each reader of a link from `painted_map_link_visits`: the name given, the device, when, and the place they chose to show.
+A reader whose phone gave only an area is listed as *Showed only the area they were in*, with its width and no place to open (since v2.8105, `visitPoint` in `paintedMapLink.ts`, which takes the latest kept point that is a spot before any area).
 The Documents page's **Painted maps** tab (`/documents?tab=painted-maps`, since v2.7409, `DocumentsPaintedMapsTab`) lists every map the reader can open, a map on no job among them.
 One host in the Layout opens it (`PaintedMapHost` over `paintedMapDoor`), and the window looks the address up only for a map with nothing on it yet.
 Drawing by hand: a press adds a corner, a drag moves one, and on a phone **the magnifying glass** rides above a dragging finger (a second small map two zoom steps in, `PaintedMapCanvas`).
@@ -3247,6 +3248,7 @@ a map of several lines says how under each and the guide once at the foot;
 the print, the picture and the files keep their own foot line).
 **Text the customer…** on the Share sheet (since v2.7338, named **Text it…** until v2.7790) texts the link to the job's customer from the company's number: for the office team (`jobBoxOffered`) on a map that is on a job, it opens the customer's own text box (`ContractTextDoor`) with the words from `paintedMapText.ts`, and nothing goes until that box's send window.
 **Who opened a link** (the table `painted_map_link_visits` since v2.7411, the function's `way.open` and `way.here` since v2.7413): the server can keep the name a signed-out reader gives, the device and, once they choose to show it, the first point and the latest, for the office and the map's painter to read.
+Since v2.8105 the page sends only a reading it has settled on (`wayReading`): nothing while a rough one is still waited on, and an area as it is with its margin, which the office reads as an area.
 **A copy** (since v2.7225, `usePaintedMapCopies` in the same sheet): a picture of the map with its places and the day (`paintedMapPicture.ts`), and a page to print or save as a PDF, filed as a sent copy (`painted_map_print`).
 A copy cannot be taken back, so it says the day it was made and carries the link's code, making the link itself when none is out (since v2.7790).
 Since v2.7226 the same panel hands over a `.kml` or a `.gpx` file of the lines and places (`paintedMapFiles.ts`), with no photo and no time along a line.
@@ -5902,7 +5904,8 @@ CI/CD automation running workflows on GitHub events.
 **Steps**: `ci.yml` typechecks, lints, links every edge function with esbuild (`check:edge-bundles`, v2.6315: a missing named export fails the PR, not the boot;
 since v2.7256 an upload past 4.5 MB does too, not the deploy) and tests from the `.cache` main saved;
 `deploy.yml` installs, builds (`tsc -b && vite build`;
-the build fails when a precached file passes the cap in `vite.config.ts`, 9 MiB since 2026-11-14 when the main chunk crossed 8 MiB) and deploys to GitHub Pages;
+the build fails when a precached file passes the cap in `vite.config.ts`, 10 MiB since 2026-11-20 when the main chunk crossed 9 MiB;
+`src/lib/entryGraph.repo.test.ts` holds the entry's eager imports to a budget in PR CI, so a PR that grows the main chunk fails before a deploy does) and deploys to GitHub Pages;
 `warm-caches.yml` re-runs typecheck and lint only to save the cache
 
 ### Go anywhere (the header search's doors)

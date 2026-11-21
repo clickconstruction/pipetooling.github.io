@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { SendParty, SendRecord } from '../../lib/documentBuilder/send'
+import { DEAD_PRESS_FILL } from '../../lib/deadPress'
 import { BuilderSendList } from './BuilderSendList'
 
 afterEach(cleanup)
@@ -106,6 +107,18 @@ describe('BuilderSendList', () => {
     expect(await screen.findByText('Sent to 2 trades. Held 2.')).toBeTruthy()
   })
 
+  it('draws a second press that cannot go as dead, and as live once it can', () => {
+    draw({ unread: 'Your insurance agent has not checked your usual sheet.' })
+    const again = () => within(row('cedarfork')).getByRole('button', { name: /^(Send it again|Tell them it changed), Cedar Fork/ }) as HTMLButtonElement
+    // An unread revision not waved through: the press is dead, and looks it.
+    expect(again().disabled).toBe(true)
+    expect(again().style.background).toBe(DEAD_PRESS_FILL)
+    expect(again().style.cursor).toBe('not-allowed')
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(again().disabled).toBe(false)
+    expect(again().style.background).toBe('var(--surface)')
+    expect(again().style.cursor).toBe('pointer')
+  })
   it('keeps going past a send that fails, and names it with its reason', async () => {
     const onSend = vi.fn(async (p: SendParty) => (p.id === 'lonemesa' ? { ok: false as const, error: 'The email did not go. Nothing was recorded. Try again.' } : { ok: true as const, value: true }))
     draw({ onSend })

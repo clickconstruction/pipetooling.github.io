@@ -7,7 +7,7 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
-import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
+import { personSigningSentCopy, signingCallerRefusal, signingDocRefusal, signingRequestRefusal, type SigningCaller, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
 import { paperForWords, signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
 import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
@@ -284,6 +284,20 @@ serve(async (req) => {
     }
     const signerEmail = (signer_email ?? '') as string
 
+    // Who may send: this path writes with the service role, so it says who its caller may be before it reads the paper.
+    // An archived account first, then the four roles that write a paper, never a training account or a digital twin.
+    const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
+    const { data: callerRow } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', user.id).maybeSingle()
+    const callerRefusal = signingCallerRefusal(callerRow as SigningCaller | null)
+    if (callerRefusal) {
+      return new Response(JSON.stringify({ error: callerRefusal.error, code: 'forbidden' }), {
+        status: callerRefusal.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
       .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name')
@@ -329,9 +343,6 @@ serve(async (req) => {
     const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
     const acceptUrl = `${origin.replace(/\/$/, '')}/contract/accept?t=${encodeURIComponent(rawToken)}`
 
-    const admin = createClient(supabaseUrl, serviceKey)
-    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
-    if (archivedRefusal) return archivedRefusal
     // The send keeps the signer on the paper's own row (punch list #403): the name, the title and, when the link is
     // emailed, the address it went to. It rides the write that activates the link, so a send either keeps both or neither.
     const signerPatch = signerRowPatch({ mode, body, signerEmail, row: doc })

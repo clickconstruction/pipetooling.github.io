@@ -3,6 +3,7 @@ import { jobPapersChanged, rereadJobsClosedToMe, useJobsClosedToMe } from '../ho
 import { takeJobPapersBack } from '../lib/jobs/jobPapersReturnIo'
 import {
   createContext,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -12,12 +13,12 @@ import {
   type ReactNode,
 } from 'react'
 import type { OpenStageChecklistAsk } from '../components/stageChecklists/JobStageChecklistStrip'
-import DetailJobModal, {
-  type DetailJobModalAssignedJobRow,
-  type DetailJobScheduleContext,
-} from '../components/jobs/DetailJobModal'
-import { JobWindowModal, type JobWindowTab } from '../components/jobs/JobWindowModal'
+import type { DetailJobModalAssignedJobRow, DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
+import type { JobWindowTab } from '../components/jobs/JobWindowModal'
+import { WindowOpening } from '../components/WindowOpening'
 import { useAuth } from '../hooks/useAuth'
+import { useWarmWindows } from '../hooks/useWarmWindows'
+import { lazyWindow } from '../lib/lazyWindow'
 import { resolveJobWindowMode } from '../lib/jobDetailModalRole'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -47,6 +48,15 @@ export type JobDetailModalContextValue = {
 }
 
 const JobDetailModalContext = createContext<JobDetailModalContextValue | null>(null)
+
+// The two windows are chunks of their own (`lazyWindow`): this provider is mounted for everyone signed in, and
+// importing them here put the Job window and all it reads in the entry's chunk. Types only come from their files.
+const JobWindowModal = lazyWindow(() => import('../components/jobs/JobWindowModal'))
+const DetailJobModal = lazyWindow(() => import('../components/jobs/DetailJobModal'))
+/** What to warm once the page is idle, by the surface this person's role opens. Kept at module level so the list keeps its identity. */
+const WARM_JOB_WINDOW = [JobWindowModal] as const
+const WARM_JOB_DETAIL = [DetailJobModal] as const
+const JOB_OPENING = <WindowOpening words="Opening the job…" />
 
 function mapJobsToAssignedRows(jobs: JobWithDetails[]): DetailJobModalAssignedJobRow[] {
   return jobs.map((j) => ({
@@ -187,6 +197,8 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
   // controller a window whose embedded edit form fetched null and closed the
   // whole window ~1 s later ("Job not found or you do not have access").
   const windowMode = resolveJobWindowMode(authRole)
+  // The first open finds its window loaded: warmed a moment after the app has drawn, for someone signed in.
+  useWarmWindows(windowMode === 'window' ? WARM_JOB_WINDOW : WARM_JOB_DETAIL, !!authUser)
 
   // Telemetry: one `ui_nav_clicks` row per open — control `job_window_opened`,
   // target `#window` / `#read-only`. Invariant: the self-close above must stay
@@ -232,6 +244,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             }}
           />
         ) : windowMode === 'window' ? (
+          <Suspense fallback={JOB_OPENING}>
           <JobWindowModal
             key={openState.instanceKey}
             jobId={openState.jobId}
@@ -255,7 +268,9 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             alsoOpenCreateCustomerModal={openState.editOptions?.alsoOpenCreateCustomerModal ?? false}
             onSaved={handleSaved}
           />
+          </Suspense>
         ) : (
+          <Suspense fallback={JOB_OPENING}>
           <DetailJobModal
             key={openState.instanceKey}
             open
@@ -274,6 +289,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
               else void runFetchJobs(null)
             }}
           />
+          </Suspense>
         )
       ) : null}
     </JobDetailModalContext.Provider>
