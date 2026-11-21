@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
-import type { LienGate } from '../../lib/jobs/lienDeskGates'
+import { lienClosedGatesFold, type LienGate } from '../../lib/jobs/lienDeskGates'
 
 afterEach(cleanup)
 
@@ -19,7 +19,7 @@ const verdict = { ready: true, headline: 'Ready to go out', summary: 'All 4 clea
 
 describe('LienGatesSentFold — one line on a sent notice (v2.6625, punch list #248)', () => {
   it('draws the line with no verdict, and More details ∨ opens the four facts as rows', () => {
-    const fold = { sentOn: 'Oct 14', head: 'Sent Oct 14', months: 'Jul + Aug', line: 'Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug', rows: [{ n: 1 as const, key: 'owner' as const, label: 'Owner of record', value: 'Karrow Ulric' }, { n: 2 as const, key: 'gc' as const, label: 'Original contractor', value: 'RLC- Dunmere Mallin' }, { n: 3 as const, key: 'kind' as const, label: 'Property kind', value: 'Residential · Bexar' }, { n: 4 as const, key: 'months' as const, label: 'Months the notice named', value: 'Jul + Aug' }] }
+    const fold = { kind: 'sent' as const, sentOn: 'Oct 14', head: 'Sent Oct 14', tail: 'as the notice went', months: 'Jul + Aug', monthsHead: 'Jul + Aug', line: 'Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug', rows: [{ n: 1 as const, key: 'owner' as const, label: 'Owner of record', value: 'Karrow Ulric' }, { n: 2 as const, key: 'gc' as const, label: 'Original contractor', value: 'RLC- Dunmere Mallin' }, { n: 3 as const, key: 'kind' as const, label: 'Property kind', value: 'Residential · Bexar' }, { n: 4 as const, key: 'months' as const, label: 'Months the notice named', value: 'Jul + Aug' }] }
     const { container } = render(<LienGatesSentFold fold={fold} />)
     expect((container.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe(fold.line)
     expect(container.querySelector('.lienGatesVerdict')).toBeNull()
@@ -30,6 +30,19 @@ describe('LienGatesSentFold — one line on a sent notice (v2.6625, punch list #
     expect([...container.querySelectorAll('[data-lien-gates-sent-row]')].map((d) => d.textContent)).toEqual(['1Owner of recordKarrow Ulric', '2Original contractorRLC- Dunmere Mallin', '3Property kindResidential · Bexar', '4Months the notice namedJul + Aug'])
     fireEvent.click(container.querySelector('[data-lien-gates-sent-fold="close"]') as HTMLElement)
     expect(container.querySelectorAll('[data-lien-gates-sent-row]')).toHaveLength(0)
+  })
+
+  it('draws the same line on a missed notice that can no longer go: the day the window closed, and the months whose window closed (v2.8206)', () => {
+    const gates = [gate(1, 'owner', 'Owner of record', 'ok', 'Elwick Holdings LLC'), gate(2, 'gc', 'Original contractor', 'ok', 'Lowbeck Contracting'), gate(3, 'kind', 'Property kind', 'ok', 'Commercial · Guadalupe'), gate(4, 'months', 'Approved hours', 'blocker', 'No month picked')]
+    const fold = lienClosedGatesFold({ closedOn: 'Aug 15', gates, closedMonths: ['2026-05'], monthShort: () => 'May' })
+    const { container } = render(<LienGatesSentFold fold={fold} />)
+    expect((container.querySelector('[data-lien-gates-sent]') as HTMLElement).getAttribute('data-kind')).toBe('closed')
+    expect((container.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe('Window closed Aug 15 · Elwick Holdings LLC · Lowbeck Contracting · Commercial · Guadalupe · May')
+    expect((container.querySelector('[data-lien-gates-sent-line] strong') as HTMLElement).textContent).toBe('Window closed Aug 15')
+    expect(container.querySelector('.lienGatesVerdict')).toBeNull()
+    expect(container.textContent).not.toContain('No month picked')
+    fireEvent.click(container.querySelector('[data-lien-gates-sent-fold="open"]') as HTMLElement)
+    expect([...container.querySelectorAll('[data-lien-gates-sent-row]')].map((d) => d.textContent)[3]).toBe('4Months whose window closedMay')
   })
 })
 
