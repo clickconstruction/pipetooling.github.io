@@ -48,6 +48,7 @@ A list **Before this can be published** shows while something is missing. Fix ea
 - A held job keeps its sheet as it is. Its chip says why.
 - A job with changes of its own that are not published is held. Publish that job to bring it up.
 - Each job is read again when you press. A change a teammate saved a moment ago is kept, and that job is held.
+- If a job changed since your page read it, nothing is published. The button then shows where your usual goes. Press it again.
 - After the press, the card counts the jobs held. Each held job's row says why.
 
 A field a job has changed keeps the job's own words.
