@@ -261,6 +261,7 @@ last_updated: 2026-11-20
 > The `tfoot` of v2.7430 and its second total (`data-lien-grid-total`) are gone, so the figure is said once.
 > Under 560 px of card a row is its own grid: the month over its window, an earlier paper as a mark with its letter (`.lienLedgerMarkLetter`), and the tick in a 6.5rem column at the right edge.
 > Since v2.8116 (the owner's pick of 2026-11-20) the column of this notice is pinned to the frame's right edge in a wider card (`position: sticky; right: 0`), so earlier papers slide under it, and the frame carries `data-slides` while the grid is wider than it, which draws the column's edge.
+> Since v2.8125 the column of this notice is drawn only where a month can be ticked or one is ticked already (`thisShown` in `LienDeskMonths`), so a missed notice with nothing due has none, as a sent notice has none since v2.8064.
 > The empty card goes through `EmptyState`.
 > `LienDeskMonths.render.test.tsx` holds the order, the words, the hooks and the doors.
 > A width observer fires only when a frame is drawn, so a measurement in a hidden browser pane reloads at each width.
