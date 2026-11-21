@@ -218,7 +218,7 @@ Nothing is sent from these lists. To send a paper, press **Send a paper** on the
 An estimator has the tab to read.
 
 - The chips are **All**, **Outside companies** and **Work orders**.
-- The list holds agreements with a customer, a supply house or a trade company. It also holds sub work orders.
+- The list holds agreements with a customer, a supply house or a trade company. Sub work orders are on the list too.
 - A staff paper, a sub's own paper and a job's contract are not on it.
 - A paper sent to someone on no list is not on it until the office adds them to a list.
 
