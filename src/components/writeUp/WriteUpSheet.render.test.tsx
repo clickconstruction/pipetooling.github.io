@@ -2,8 +2,9 @@
 /**
  * Render smokes for Write someone up (punch list #410): the press draws for a leader and a superintendent and for
  * nobody else; the sheet opens on the crew of today's job; a pick fills who, when and the job; the button says what is
- * missing; the read-back is the only place that sends; the send carries the facts and one press id; a failed send
- * keeps the words; the writer's own list takes one back with a reason. Made-up people and a made-up job.
+ * missing; the read-back is the only place that sends; the send carries the facts and the moment it was pressed; a
+ * refused send keeps the words; a send with no signal is kept and listed as waiting; the writer's own list takes one
+ * back with a reason. Made-up people and a made-up job.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -22,7 +23,7 @@ import { WriteUpSheet } from './WriteUpSheet'
 import { WriteSomeoneUpDoor } from './WriteSomeoneUpDoor'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { WriteUpIo } from '../../lib/people/writeUpIo'
-import type { MyWriteUpRow, WriteUpDraft, WriteUpList, WriteUpPerson } from '../../lib/people/writeUp'
+import type { KeptWriteUp, MyWriteUpRow, WriteUpDraft, WriteUpList, WriteUpPerson } from '../../lib/people/writeUp'
 
 const TODAY = '2026-11-20'
 const NOW = new Date('2026-11-20T18:41:00Z') // 12:41 pm on the app's clock
@@ -44,7 +45,9 @@ function makeIo(over: Partial<WriteUpIo> = {}) {
   return {
     list: vi.fn<WriteUpIo['list']>(over.list ?? (async () => LIST)),
     mine: vi.fn<WriteUpIo['mine']>(over.mine ?? (async () => [])),
-    land: vi.fn<WriteUpIo['land']>(over.land ?? (async () => ({ already: false, id: 'r-new', status: 'pending' }))),
+    send: vi.fn<WriteUpIo['send']>(over.send ?? (async () => ({ kind: 'landed' }))),
+    kept: vi.fn<WriteUpIo['kept']>(over.kept ?? (() => [])),
+    onKeptChange: vi.fn<WriteUpIo['onKeptChange']>(over.onKeptChange ?? (() => () => {})),
     takeBack: vi.fn<WriteUpIo['takeBack']>(over.takeBack ?? (async () => {})),
   }
 }
@@ -121,7 +124,7 @@ describe('the sheet', () => {
   })
 
   it('reads the record back, and only Send write-up to HR saves it', async () => {
-    const io = makeIo({ mine: vi.fn(async () => [WAITING]) })
+    const io = makeIo({ mine: async () => [WAITING] })
     const onDraft = vi.fn()
     await openOn(io, onDraft)
     press(/Dana Pruitt/)
@@ -129,17 +132,19 @@ describe('the sheet', () => {
     fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'The trench by the east wall was open at lunch.' } })
     press('Luis Ortega')
     press('Yes')
-    expect(io.land).not.toHaveBeenCalled()
+    expect(io.send).not.toHaveBeenCalled()
     press('Read it back')
     expect(screen.getByText('Fri, Nov 20 · 12:41 pm')).toBeTruthy()
     expect(screen.getByText('You, Luis Ortega')).toBeTruthy()
     expect(screen.getByText('Talked to Dana')).toBeTruthy()
-    expect(io.land).not.toHaveBeenCalled()
+    expect(io.send).not.toHaveBeenCalled()
     press('Send write-up to HR')
     await settle()
-    expect(io.land).toHaveBeenCalledTimes(1)
-    const sent = io.land.mock.calls[0]![0]
-    expect(sent).toMatchObject({
+    expect(io.send).toHaveBeenCalledTimes(1)
+    const [who, sent, pressedAt] = io.send.mock.calls[0]!
+    expect(who).toBe('u-leader')
+    expect(pressedAt).toBe(NOW.getTime())
+    expect(sent).toEqual({
       subject_person_id: 'p-dana',
       kind: 'safety',
       content: 'The trench by the east wall was open at lunch.',
@@ -151,16 +156,14 @@ describe('the sheet', () => {
       seen_by: [{ person_id: 'p-luis', name: 'Luis Ortega' }],
       talked_to_person: true,
       adds_to: null,
-      pressed_at: NOW.toISOString(),
     })
-    expect(String(sent.press_id)).toMatch(/^[0-9a-f-]{36}$/)
     expect(onDraft).toHaveBeenLastCalledWith(null)
     expect(screen.getByText(/Sent to HR at 12:41 pm\./)).toBeTruthy()
     expect(screen.getByText('Waiting on HR')).toBeTruthy()
   })
 
-  it('a send that fails keeps the words and says why', async () => {
-    const io = makeIo({ land: vi.fn(async () => { throw { code: 'P0001', message: 'You cannot write yourself up.' } }) })
+  it('a send the server refuses keeps the words and says why', async () => {
+    const io = makeIo({ send: async () => ({ kind: 'refused', message: 'You cannot write yourself up.' }) })
     await openOn(io)
     press(/Dana Pruitt/)
     press('Other')
@@ -174,27 +177,55 @@ describe('the sheet', () => {
     expect((screen.getByLabelText('What did you see?') as HTMLTextAreaElement).value).toBe('Words that must not be lost.')
   })
 
-  it('a second read-back of changed words takes a new press id', async () => {
-    const io = makeIo({ land: vi.fn(async () => { throw { code: 'P0001', message: 'Refused.' } }) })
+  it('a send with no signal is kept on the phone and listed as waiting', async () => {
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: 'Cedar Hollow Lot 14', pressedAt: NOW.getTime(), reason: null }
+    let keptNow: KeptWriteUp[] = []
+    const onDraft = vi.fn()
+    const io = makeIo({
+      send: async () => {
+        keptNow = [waiting]
+        return { kind: 'queued' }
+      },
+      kept: () => keptNow,
+    })
+    await openOn(io, onDraft)
+    press(/Dana Pruitt/)
+    press('Safety')
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'The trench was open at lunch.' } })
+    press('Read it back')
+    press('Send write-up to HR')
+    await settle()
+    expect(screen.getByText(/Kept on this phone at 12:41 pm\./)).toBeTruthy()
+    expect(screen.getByText('Waiting for signal')).toBeTruthy()
+    expect(screen.getByText('Safety · Fri, Nov 20 · Cedar Hollow Lot 14')).toBeTruthy()
+    expect(screen.queryByText(/Sent to HR at/)).toBeNull()
+    expect(onDraft).toHaveBeenLastCalledWith(null)
+  })
+
+  it('a send that fails with the queue off keeps the words and offers Retry on the same press', async () => {
+    const io = makeIo({ send: vi.fn<WriteUpIo['send']>(async () => ({ kind: 'failed', error: { code: '57014', message: 'canceling statement due to statement timeout' } })) })
     await openOn(io)
     press(/Dana Pruitt/)
     press('Other')
-    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'First words.' } })
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'Words.' } })
     press('Read it back')
     press('Send write-up to HR')
     await settle()
-    press('Fix it')
-    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'Second words.' } })
-    press('Read it back')
+    expect(screen.getByText(/The write-up did not send/)).toBeTruthy()
     press('Send write-up to HR')
     await settle()
-    const ids = io.land.mock.calls.map((c) => c[0].press_id)
-    expect(ids).toHaveLength(2)
-    expect(ids[0]).not.toBe(ids[1])
+    expect(io.send).toHaveBeenCalledTimes(2)
+    expect(io.send.mock.calls[0]![2]).toBe(io.send.mock.calls[1]![2])
+  })
+
+  it('a write-up kept from an earlier visit is counted on the row that opens the list', async () => {
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: null, pressedAt: NOW.getTime(), reason: null }
+    await openOn(makeIo({ kept: () => [waiting], mine: async () => [WAITING] }))
+    expect(screen.getByText('1 waiting for signal · 1 waiting on HR')).toBeTruthy()
   })
 
   it('the writer’s own list takes one back with a reason', async () => {
-    const io = makeIo({ mine: vi.fn(async () => [WAITING]) })
+    const io = makeIo({ mine: async () => [WAITING] })
     await openOn(io)
     press(/Your write-ups/)
     expect(screen.getByText('Nate Coyle')).toBeTruthy()
@@ -217,11 +248,11 @@ describe('the sheet', () => {
   })
 
   it('a list that does not load says so, and a role that may not gets words', async () => {
-    await openOn(makeIo({ list: vi.fn(async () => { throw { code: '57014', message: 'canceling statement due to statement timeout' } }) }))
+    await openOn(makeIo({ list: async () => { throw { code: '57014', message: 'canceling statement due to statement timeout' } } }))
     expect(screen.getByText(/The list of people did not load/)).toBeTruthy()
   })
   it('a caller the function refuses reads why', async () => {
-    await openOn(makeIo({ list: vi.fn(async () => ({ allowed: false, today: TODAY, people: [], jobs: [] })) }))
+    await openOn(makeIo({ list: async () => ({ allowed: false, today: TODAY, people: [], jobs: [] }) }))
     expect(screen.getByText('Only a leader or a superintendent can write someone up.')).toBeTruthy()
   })
 })

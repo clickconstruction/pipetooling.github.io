@@ -92,6 +92,8 @@ export const WRITE_UP_WORDS = {
   sendFailed: 'The write-up did not send.',
   takeBackFailed: 'The write-up was not taken back.',
   sendOffline: 'No signal. Nothing is lost. Press Retry when the signal is back.',
+  keptNote: 'It sends by itself when the signal is back. Closing the app loses nothing.',
+  keptRefusedNote: 'This one was not sent. Read the reason, then write it again.',
   notAllowed: 'Only a leader or a superintendent can write someone up.',
 } as const
 
@@ -396,11 +398,14 @@ export function writeUpReadBack(draft: WriteUpDraft): ReadBackLine[] {
   return lines
 }
 
-/** What `land_person_report` takes. */
+/** What `land_person_report` takes, with the press's own id and the moment Send was pressed. */
 export function writeUpPayload(draft: WriteUpDraft, pressId: string, pressedAtIso: string): Record<string, unknown> {
+  return { press_id: pressId, pressed_at: pressedAtIso, ...writeUpFields(draft) }
+}
+
+/** The write-up's own fields, as the phone keeps them while a send waits for signal. */
+export function writeUpFields(draft: WriteUpDraft): Record<string, unknown> {
   return {
-    press_id: pressId,
-    pressed_at: pressedAtIso,
     subject_person_id: draft.person.person_id,
     kind: draft.kind,
     content: draft.words.trim(),
@@ -486,6 +491,64 @@ export const canTakeBack = (row: Pick<MyWriteUpRow, 'status' | 'resolution_note'
 
 /** Anything not taken back can be added to. */
 export const canAddTo = (row: Pick<MyWriteUpRow, 'status' | 'resolution_note'>): boolean => myWriteUpState(row) !== 'taken_back'
+
+// ---------------------------------------------------------------------------
+// A write-up kept on the phone (no signal)
+
+/** A press the outbox holds, as much of it as this list reads. */
+export interface KeptPressLike {
+  id: string
+  kind: string
+  userId: string
+  pressedAt: number
+  state: string
+  payload: unknown
+  refusal: { message: string } | null
+}
+
+export interface KeptWriteUp {
+  id: string
+  /** `waiting` until the signal is back, `refused` when the server said no. */
+  state: 'waiting' | 'refused'
+  subject_person_id: string
+  kind: string | null
+  occurred_date: string
+  job_label: string | null
+  pressedAt: number
+  reason: string | null
+}
+
+/** The writer's write-ups still on the phone, newest press first. A sent press is the server's row by then. */
+export function keptWriteUps(presses: ReadonlyArray<KeptPressLike>, userId: string): KeptWriteUp[] {
+  const out: KeptWriteUp[] = []
+  for (const p of presses) {
+    if (p.kind !== 'person-report' || p.userId !== userId || p.state === 'sent') continue
+    const fields = ((p.payload as { fields?: unknown } | null)?.fields ?? {}) as Record<string, unknown>
+    const subject = text(fields.subject_person_id)
+    if (!subject) continue
+    out.push({
+      id: p.id,
+      state: p.state === 'refused' ? 'refused' : 'waiting',
+      subject_person_id: subject,
+      kind: text(fields.kind),
+      occurred_date: text(fields.occurred_date) ?? '',
+      job_label: text(fields.job_label),
+      pressedAt: p.pressedAt,
+      reason: p.state === 'refused' ? (p.refusal?.message ?? null) : null,
+    })
+  }
+  return out.sort((a, b) => b.pressedAt - a.pressedAt)
+}
+
+export const KEPT_WRITE_UP_STATE_WORDS: Record<KeptWriteUp['state'], string> = { waiting: 'Waiting for signal', refused: 'Not sent' }
+
+/** "Safety · Fri, Nov 20 · Cedar Hollow Lot 14" for a kept write-up. */
+export function keptWriteUpLine(kept: Pick<KeptWriteUp, 'kind' | 'occurred_date' | 'job_label'>): string {
+  const parts = [writeUpKindLabel(kept.kind)]
+  if (kept.occurred_date) parts.push(dayWords(kept.occurred_date))
+  if (kept.job_label) parts.push(kept.job_label)
+  return parts.join(' · ')
+}
 
 // ---------------------------------------------------------------------------
 // Talk it through, in this sheet's words

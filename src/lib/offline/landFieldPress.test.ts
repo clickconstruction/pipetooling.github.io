@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, landBidPhotos, landCounterTicket, landJobPhotos, landOnSitePress, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landBidPhotos, landCounterTicket, landJobPhotos, landOnSitePress, landPersonReport, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket', 'bid-photos': 'bid_photos', 'on-site-press': 'on_site_press' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket', 'bid-photos': 'bid_photos', 'on-site-press': 'on_site_press', 'person-report': 'person_report' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -222,5 +222,33 @@ describe('landOnSitePress', () => {
     // A press whose rows build on one another is asked for as before.
     await landOnSitePress(press, { land: async (_w, opts) => void asked.push(opts) })
     expect(asked[1]).toEqual({ rowsStandAlone: false })
+  })
+})
+
+describe('landPersonReport (punch list #410)', () => {
+  // A made-up write-up: the fields the sheet kept, with no press id of their own.
+  const fields = { subject_person_id: 'p-dana', kind: 'safety', content: 'The trench was open at lunch.', occurred_date: '2026-11-20' }
+  const press = newPress({ id: '00000000-0000-4000-8000-000000000410', seq: 1, kind: 'person-report', userId: 'u', pressedAt: T, payload: { fields } })
+
+  it('sends the fields with the press’s own id and pressed time, and answers with the function’s result', async () => {
+    const seen: unknown[] = []
+    const landed = await landPersonReport(press, { land: async (p) => { seen.push(p); return { data: { already: false, id: 'r-1', status: 'pending' }, error: null } } })
+    expect(seen).toEqual([{ ...fields, press_id: press.id, pressed_at: new Date(T).toISOString() }])
+    expect(landed).toEqual({ kind: 'landed', result: { already: false, id: 'r-1', status: 'pending' } })
+  })
+  it('a second arrival of the same press lands as the first did', async () => {
+    const again = await landPersonReport(press, { land: async () => ({ data: { already: true, id: 'r-1', status: 'pending' }, error: null }) })
+    expect(again).toEqual({ kind: 'landed', result: { already: true, id: 'r-1', status: 'pending' } })
+  })
+  it('a refusal keeps the server’s own sentence', async () => {
+    const refused = await landPersonReport(press, { land: async () => ({ data: null, error: { code: 'P0001', message: 'You cannot write yourself up.', details: null, hint: null }, status: 400 }) })
+    expect(refused).toEqual({ kind: 'refused', refusal: { message: 'You cannot write yourself up.', code: 'P0001' } })
+  })
+  it('a lost signal fails, so the press waits on the phone with the same id', async () => {
+    const failed = await landPersonReport(press, { land: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(failed.kind).toBe('failed')
+  })
+  it('reads as the function’s payload', () => {
+    expect(rpcPayload(press)).toEqual({ ...fields, press_id: press.id, pressed_at: new Date(T).toISOString() })
   })
 })

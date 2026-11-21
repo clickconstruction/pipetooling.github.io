@@ -15,6 +15,8 @@ import {
   canAddTo,
   canTakeBack,
   firstName,
+  KEPT_WRITE_UP_STATE_WORDS,
+  keptWriteUpLine,
   MY_WRITE_UP_STATE_WORDS,
   myWriteUpLine,
   myWriteUpNote,
@@ -35,11 +37,12 @@ import {
   WRITE_UP_WORDS,
   writeUpDayWords,
   writeUpJobLabel,
+  writeUpFields,
   writeUpMissing,
-  writeUpPayload,
   writeUpPersonLine,
   writeUpReadBack,
   writeUpVoiceWords,
+  type KeptWriteUp,
   type MyWriteUpRow,
   type MyWriteUpState,
   type WriteUpDraft,
@@ -52,7 +55,9 @@ import {
  * about (the crew on the job today first), what happened (who, when and which job filled in, a kind, the words typed
  * or spoken), the read-back, and the writer's own write-ups. Nothing is saved until **Send write-up to HR** on the
  * read-back. The draft lives with the caller (`onDraft`), so a stray press outside the sheet closes it and loses
- * nothing. The rules and the words are `lib/people/writeUp.ts`. `io`, `now` and `voiceWindow` are the smoke's seams.
+ * nothing. The send goes through the outbox (PR 4): with no signal the write-up is kept on the phone, listed as
+ * *Waiting for signal*, and sent when the signal is back, once. The rules and the words are `lib/people/writeUp.ts`.
+ * `io`, `now` and `voiceWindow` are the smoke's seams.
  */
 
 type Step = 'who' | 'what' | 'read' | 'mine'
@@ -126,9 +131,11 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   const [sending, setSending] = useState(false)
   const [sendFailure, setSendFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [sentAt, setSentAt] = useState<string | null>(null)
+  const [keptAt, setKeptAt] = useState<string | null>(null)
+  const [kept, setKept] = useState<KeptWriteUp[]>(() => io.kept(userId))
   const [takeBack, setTakeBack] = useState<{ id: string; reason: string; busy: boolean; failure: string | null } | null>(null)
-  /** One id and one stamp a read-back: a Retry of the same read-back lands once. */
-  const pressRef = useRef<{ id: string; at: string } | null>(null)
+  /** The moment Send was first pressed on this read-back: a Retry keeps it. */
+  const pressedAtRef = useRef<number | null>(null)
 
   const setDraft = useCallback(
     (next: WriteUpDraft | null) => {
@@ -164,6 +171,16 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
     void loadMine()
   }, [loadList, loadMine])
 
+  // A kept write-up that lands, or is refused, changes both lists: the phone's and the server's.
+  useEffect(
+    () =>
+      io.onKeptChange(() => {
+        setKept(io.kept(userId))
+        void loadMine()
+      }),
+    [io, userId, loadMine],
+  )
+
   const today = list?.today || todayYmdInAppTz(now())
   const groups = useMemo(() => splitWriteUpPeople({ people: list?.people ?? [], today }), [list, today])
   const found = useMemo(() => searchWriteUpPeople(list?.people ?? [], query), [list, query])
@@ -187,20 +204,32 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
 
   const readBack = () => {
     if (!draft || writeUpMissing(draft)) return
-    pressRef.current = { id: crypto.randomUUID(), at: now().toISOString() }
+    pressedAtRef.current = null
     setSendFailure(null)
     setStep('read')
   }
 
   const send = async () => {
-    if (!draft || sending || !pressRef.current) return
+    if (!draft || sending) return
     setSending(true)
     setSendFailure(null)
+    pressedAtRef.current ??= now().getTime()
     try {
-      await io.land(writeUpPayload(draft, pressRef.current.id, pressRef.current.at))
-      setSentAt(clockTime(now().toISOString()))
+      const sent = await io.send(userId, writeUpFields(draft), pressedAtRef.current)
+      if (sent.kind === 'refused') {
+        setSendFailure({ kind: 'server', message: `${WRITE_UP_WORDS.sendFailed.replace(/\.$/, '')}: ${sent.message}` })
+        return
+      }
+      if (sent.kind === 'failed') {
+        setSendFailure(recoveryFailureFromError(sent.error, WRITE_UP_WORDS.sendFailed))
+        return
+      }
+      const at = clockTime(new Date(pressedAtRef.current).toISOString())
+      setSentAt(sent.kind === 'landed' ? at : null)
+      setKeptAt(sent.kind === 'queued' ? at : null)
       setDraft(null)
-      pressRef.current = null
+      pressedAtRef.current = null
+      setKept(io.kept(userId))
       await loadMine()
       setStep('mine')
     } catch (e) {
@@ -436,8 +465,23 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           <b>Sent to HR at {sentAt}.</b> {WRITE_UP_WORDS.sentNote}
         </p>
       ) : null}
+      {keptAt ? (
+        <p role="status" style={{ margin: '0.75rem 0.9rem', padding: '0.65rem 0.75rem', borderRadius: 10, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.9rem', fontWeight: 600 }}>
+          Kept on this phone at {keptAt}. {WRITE_UP_WORDS.keptNote}
+        </p>
+      ) : null}
+      {kept.map((k) => (
+        <article key={k.id} data-kept-write-up={k.state} style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <b style={{ fontSize: '1rem', flex: 1, minWidth: 0 }}>{nameOf.get(k.subject_person_id)?.name ?? 'Someone off the list'}</b>
+            <span style={{ ...(k.state === 'waiting' ? STATE_TONE.waiting : STATE_TONE.set_aside), display: 'inline-flex', alignItems: 'center', minHeight: 24, padding: '0 0.55rem', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{KEPT_WRITE_UP_STATE_WORDS[k.state]}</span>
+          </div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{keptWriteUpLine(k)}</div>
+          <div style={{ fontSize: '0.8125rem', marginTop: '0.35rem' }}>{k.state === 'refused' ? `${WRITE_UP_WORDS.keptRefusedNote} ${k.reason ?? ''}`.trim() : `Kept on this phone since ${clockTime(new Date(k.pressedAt).toISOString())}.`}</div>
+        </article>
+      ))}
       {mineFailure ? <OfflineRetryPanel failure={mineFailure} onRetry={loadMine} surface="write-up-mine" idempotent style={{ margin: '1rem 0.9rem' }} /> : null}
-      {mine && mine.length === 0 && !mineFailure ? <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'write-ups', control: WRITE_UP_WORDS.another }), { onPress: () => setStep('who') })} /> : null}
+      {mine && mine.length === 0 && kept.length === 0 && !mineFailure ? <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'write-ups', control: WRITE_UP_WORDS.another }), { onPress: () => setStep('who') })} /> : null}
       {(mine ?? []).map((row) => {
         const state = myWriteUpState(row)
         const note = myWriteUpNote(row)
@@ -494,7 +538,8 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
 
   const foot = (): ReactNode => {
     if (step === 'who') {
-      const headline = myWriteUpsHeadline(mine ?? [])
+      const waiting = kept.filter((k) => k.state === 'waiting').length
+      const headline = [waiting > 0 ? `${waiting} waiting for signal` : '', myWriteUpsHeadline(mine ?? [])].filter(Boolean).join(' · ')
       if (!headline) return null
       return (
         <button type="button" onClick={() => setStep('mine')} style={{ display: 'flex', alignItems: 'center', width: '100%', minHeight: 60, padding: '0.4rem 0.9rem', border: 'none', background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
@@ -536,7 +581,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           <button type="button" onClick={onClose} style={quietPress}>
             {WRITE_UP_WORDS.done}
           </button>
-          <button type="button" onClick={() => { setSentAt(null); setStep('who') }} style={{ ...quietPress, border: 'none', color: 'var(--text-link)' }}>
+          <button type="button" onClick={() => { setSentAt(null); setKeptAt(null); setStep('who') }} style={{ ...quietPress, border: 'none', color: 'var(--text-link)' }}>
             {WRITE_UP_WORDS.another}
           </button>
         </div>

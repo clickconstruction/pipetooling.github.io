@@ -6,6 +6,8 @@ import {
   canTakeBack,
   canWriteSomeoneUp,
   dayWords,
+  keptWriteUpLine,
+  keptWriteUps,
   myWriteUpLine,
   myWriteUpNote,
   myWriteUpState,
@@ -22,6 +24,7 @@ import {
   toggleSeen,
   witnessChoices,
   writeUpDayWords,
+  writeUpFields,
   writeUpJobLabel,
   writeUpKindLabel,
   writeUpMissing,
@@ -245,6 +248,36 @@ describe('the writer’s own write-ups', () => {
   it('lets a waiting one be taken back, and anything not taken back be added to', () => {
     expect([canTakeBack(row({})), canTakeBack(row({ status: 'filed' }))]).toEqual([true, false])
     expect([canAddTo(row({ status: 'filed' })), canAddTo(row({ status: 'dismissed', resolution_note: 'Taken back by the writer: x' }))]).toEqual([true, false])
+  })
+})
+
+describe('a write-up kept on the phone', () => {
+  const pressOf = (over: Record<string, unknown>) => ({ id: 'press-1', kind: 'person-report', userId: 'u-leader', pressedAt: 1000, state: 'waiting', payload: { fields: { subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: 'Cedar Hollow Lot 14' } }, refusal: null, ...over })
+  it('lists the writer’s own waiting and refused write-ups, newest press first', () => {
+    const got = keptWriteUps(
+      [
+        pressOf({}),
+        pressOf({ id: 'press-2', pressedAt: 2000, state: 'refused', refusal: { message: 'You cannot write yourself up.' } }),
+        pressOf({ id: 'press-3', state: 'sent' }),
+        pressOf({ id: 'press-4', userId: 'u-other' }),
+        pressOf({ id: 'press-5', kind: 'job-note', payload: { jobId: 'j', body: 'x' } }),
+        pressOf({ id: 'press-6', payload: { fields: {} } }),
+      ],
+      'u-leader',
+    )
+    expect(got.map((k) => [k.id, k.state, k.reason])).toEqual([
+      ['press-2', 'refused', 'You cannot write yourself up.'],
+      ['press-1', 'waiting', null],
+    ])
+    expect(keptWriteUpLine(got[1]!)).toBe('Safety · Fri, Nov 20 · Cedar Hollow Lot 14')
+    expect(keptWriteUpLine({ kind: null, occurred_date: '', job_label: null })).toBe('Report')
+  })
+  it('keeps the fields without a press id, which is the press’s own', () => {
+    const d = { ...newWriteUpDraft(dana, list, NOW), kind: 'safety' as const, words: 'The trench was open.' }
+    const fields = writeUpFields(d)
+    expect(fields).not.toHaveProperty('press_id')
+    expect(fields).not.toHaveProperty('pressed_at')
+    expect(writeUpPayload(d, 'press-1', '2026-11-20T18:42:00.000Z')).toEqual({ press_id: 'press-1', pressed_at: '2026-11-20T18:42:00.000Z', ...fields })
   })
 })
 

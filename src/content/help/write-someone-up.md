@@ -2,7 +2,7 @@
 title: write someone up from my dashboard
 category: Field Work
 roles: master_technician, superintendent, dev
-keywords: write up, write someone up, write-up, hr, report a person, late, no-show, safety, conduct, work quality, leader, superintendent, phone, read it back, take it back, add to it
+keywords: write up, write someone up, write-up, hr, report a person, late, no-show, safety, conduct, work quality, leader, superintendent, phone, read it back, take it back, add to it, no signal, kept on the phone, waiting for signal
 order: 22
 ---
 You saw something on a job that HR should know about. You can write it up on your phone while it is fresh.
@@ -62,6 +62,14 @@ The sheet shows **Your write-ups** with where each one stands.
 :::
 
 You see only your own write-ups. You never see the rest of a person's file.
+
+## With no signal
+
+You can send a write-up with no signal. The phone keeps it and sends it by itself when the signal is back.
+
+The sheet then reads *Kept on this phone*, with the time you pressed. **Your write-ups** lists it as {{chip:yellow|Waiting for signal}}. Closing the app loses nothing.
+
+The write-up keeps the time you pressed **Send write-up to HR**, not the time it arrived. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line at the top of the screen.
 
 ## Add to it or take it back
 
