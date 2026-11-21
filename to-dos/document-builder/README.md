@@ -2,7 +2,7 @@
 name: "Document builder: a tab on Documents where the Sub NDA and a job's insurance requirements are made, published and sent"
 number: 404
 group: ready
-status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · step 8, the Sub NDA's link, built that night (v2.8150) · step 9, the send to a GC, built 2026-11-21 (v2.8151), its two functions deployed the same day, no GC sent to yet · 2026-11-21 the review's last three open lines fixed and its two questions answered by Taunya (v2.8187, v2.8189, v2.8190, v2.8192), the migration pushed and the functions deployed, with the link's screens still open as PR #9268 · left: steps 6 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
+status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · step 8, the Sub NDA's link, built that night (v2.8150) · step 9, the send to a GC, built 2026-11-21 (v2.8151), its two functions deployed the same day, no GC sent to yet · 2026-11-21 the review's last three open lines fixed and its two questions answered by Taunya (v2.8187, v2.8189, v2.8190, v2.8192, v2.8194), the migration pushed, the functions deployed and each walked on prod with test rows · left: steps 6 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
 summary: >
   One more tab on Documents, for a dev only for now. It holds builders. A builder makes one kind of paper.
   The first is the Sub NDA from #389: someone walks it and picks a level, page by page. The second is
@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21) and the sheet's link under its own secret (2026-11-21). PR #9268, who opened a link and where a link stands, is open: after it merges, `document-builder-link`, `document-builder-send` and `gc-trade-portal` are deployed again and it is walked on prod. The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) are read on the live site in the same walk.
+next: Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21), the sheet's link under its own secret (2026-11-21), and who opened a link and where a link stands (v2.8194, 2026-11-21, its three functions deployed that day). The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) were read on the live site in the same walk. Not seen on prod: a lost or closed job, and a sent copy with a job. How long an open's address is kept waits on Taunya's call.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -603,14 +603,17 @@ with no mark is still open, and no PR holds it.
 - **Fixed, v2.8190 (PR #9247).** A sent sheet's copy carried no job, and Sent copies filed it under *Other*. A
   copy now sorts under *Contracts and estimates*, a sheet's copy names the job its project bills through when it
   has one, and a builder's copy names the job it is about and the customer. No migration. **On prod:**
-  `document-builder-send` went out in the same deploy. Not seen there yet: neither test project has a billing
-  job, so a copy from them is under no job, and the live site had not taken the build when this was written.
+  `document-builder-send` went out in the same deploy. Read on the live site on 2026-11-21: the test project's
+  copies are listed under *Contracts and estimates*. Not seen there: a copy with a job, since neither test
+  project has a billing job and a copy from them is under no job.
 - **Fixed, v2.8192 (PR #9251).** The job list was every `gc_projects` row, a bid pursuit and a lost job among
   them, and the one press counted a trade that was asked and not awarded. Taunya's answers on 2026-11-21: keep a
   job that is being bid, leave out a lost or closed one, and send to an asked trade one at a time only. A lost or
   closed job with a published sheet stays in the list, marked, and the usual's publish holds it. The one press
   counts awarded trades, and lists an asked one as held. No migration and no function. **On prod:** the page
-  alone, not read on the live site when this was written.
+  alone. Read on the live site on 2026-11-21: the job list holds the two test projects, one being bid and one
+  being built, and on the test project the one press reads *Nothing to send* with the asked trade listed as
+  held. Not seen there: a lost or closed job, since prod has none.
 
 Against the mock-up, the built steps still lack:
 
@@ -633,13 +636,21 @@ came from and what the browser tells of the device.
 - **The database's part is built, v2.8187 (PR #9243).** The table `document_builder_link_opens`, the column
   `document_builder_links.ended_why`, and a trigger that closes a sheet's link when the sheet comes off the last
   trade's page. **On prod:** migration `20261121190000` was pushed on 2026-11-21, alone, and the drift check
-  read every file applied. The types are PR #9267, open. The rule is live from the push: a take-off of the last
-  trade closes the link today, before the screen says so.
-- **The functions and the screens are PR #9268, open.** The link card lists who opened a link and says the day a
-  link went off and why. A line under the trades says before the press whether a take-off also closes the link.
-  The next send makes the link again when it closed with the last trade, and leaves a link a dev switched off
-  alone. No open is kept until it merges and `document-builder-link`, `document-builder-send` and
-  `gc-trade-portal` are deployed again after it. It is walked on prod with test rows then.
+  read every file applied. The types are PR #9267. The rule is live from the push.
+- **The functions and the screens are built, v2.8194 (PR #9268).** The link card lists who opened a link and
+  says the day a link went off and why. A line under the trades says before the press whether a take-off also
+  closes the link. The next send makes the link again when it closed with the last trade, and leaves a link a
+  dev switched off alone. **On prod:** `document-builder-link`, `document-builder-send` and `gc-trade-portal`
+  were deployed from main on 2026-11-21 at 23:44 UTC. Walked the same hour with the test project and the test
+  trade company, at 730 px and 375 px. An open with no account and an open signed in were each kept and listed,
+  the first by its address, browser and time zone and the second by name. A send left the link as it was, and
+  the line under the trades said a take-off would close it. The take-off closed it, and the card gave the day
+  and the reason. The next send made a new link. A link switched off by hand read as switched off, and its
+  address then read *This link is no longer open.*
+- **What the walk left on prod.** The test sheet has eight links, all ended. Two rows of
+  `document_builder_sends` to `delivered+zz404opens@resend.dev`, both taken off, which a dev cannot delete.
+  Three rows of `document_builder_link_opens` on two of those ended links: an open of a link that is off is
+  not kept. The walk's contact and its two Sent copies were deleted.
 - **Left for Taunya's call.** Nothing clears an open: how long an address is kept is not set. No script reads a
   device to tell it from another. The page sends only what a browser tells every site.
 
