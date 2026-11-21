@@ -1,8 +1,8 @@
 ---
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
-group: ready
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · built so far: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018) and PR 10, on arrival (v2.8110) · PR 11, the line of time, is being finished on the owner's word of 2026-11-20
+group: close
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · left: the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,7 +11,7 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: PR 11, the line of time, without the dev seat's verb, which waits for room in the seat.
+next: The dev seat's verb, once the seat has room and the owner says what it reads. Every call stands on its default until the owner flips it.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
 blocker: none for the screens. The dev seat's verb waits for room under the seat's upload limit. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
@@ -360,7 +360,8 @@ script error and no page overflow.
 
 ## Where it stands
 
-Approved by the owner as a working spike. The build began on 2026-11-19, on Grace's word, in its own session.
+Approved by the owner as a working spike. The build began on 2026-11-19, on Grace's word, in its own session, and
+all eleven PRs were on main by 2026-11-21.
 
 - **PR 1, values in place: built** (v2.7985). The shared piece, its tests, its looks and the convention. No
   screen uses it yet. It holds what [#399](../values-in-place/README.md) asked of it.
@@ -401,10 +402,14 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
 
   Three things it leaves: the trip's own record is not fed by a No (the arrival keeps its trip), the office's sentence
   does not name who told us (Dispatch's line does), and the superintendent's Go still has no screen.
-- **PR 11, the line of time: a draft, parked.** The Schedule look's line of time and the printed sheet of the days
-  they gave are on the local branch `claude/382-line-of-time`, with their tests and no docs. The dev seat's verb is
-  not built. It goes after #8996 and card 315's seat PRs, with about 20 KB of room under the dev-mcp ceiling, and its
-  version note goes in `docs/dev-mcp/SERVER_NOTES.md`.
+- **PR 11, the line of time: built** (v2.8111). **Show it on a line of time** opens over the Schedule look's cards:
+  a bar a stage in its colour, a diamond on each day they gave, the days they moved in red on the row itself, and
+  today as a red line named in the legend. On a phone each stage's name sits over its line. **Print the days they
+  gave**, for whoever may set the notice, prints the office's sheet of every day each stage was given and each move,
+  marked as ours and not sent. The link sits over the cards and not under them as in the mock-up, so a site with
+  many stages still shows it. The dev seat's verb is not built. #8996 and card 315's seat PRs are on main, dev-mcp
+  has 7.7 KB of room under its 4.5 MB ceiling with PR 10's types in its catalog (2026-11-21), and what the verb
+  reads is the owner's call. Its version note goes in `docs/dev-mcp/SERVER_NOTES.md`.
 - **Found on the walk against prod** (2026-11-20, a ZZ Test job, the office and a sample superintendent). Notes for
   Grace, none of them built:
   - A superintendent is on a job's desk and may press Go by the table's rules (call 3). No screen reaches them yet:
@@ -415,5 +420,5 @@ Approved by the owner as a working spike. The build began on 2026-11-19, on Grac
   - Two jobs on one part of a site read alike on the Schedule look, since a card names the part and not the job.
   - The Needs you line takes its contact job by job. A site whose GC is named only on the development reads *The
     customer owes us…* there, while the Schedule look names the GC.
-- **Next:** PR 11, the line of time, on the owner's word of 2026-11-20.
+- **Next:** the dev seat's verb, once the seat has room and the owner says what it reads.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
