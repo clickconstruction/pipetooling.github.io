@@ -104,6 +104,8 @@ Find **This builder's link** on the left side, under the list of what changed. P
 
 The card says the day the link was made. It also says how many times someone outside opened it.
 
+The card may say the link's address can no longer be shown. The link still opens for anyone who has it. Press **Make a new link** to get one you can copy.
+
 - {{button:outline-blue|Make a new link}} stops the old link. Anyone you gave it to needs the new one.
 - {{button:outline-blue|Switch the link off}} closes the builder to links. Switching it on again makes a new link.
 
