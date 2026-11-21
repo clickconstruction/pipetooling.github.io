@@ -313,7 +313,7 @@ describe('answering a name', () => {
     expect(larkspur.textContent).toContain('Not for us, Too far for us. Sam, Nov 18. Off the list until Nov 19, 2027, and then until it applies for a new job.')
     // Who answered, the day, and the day it is off the list until: each drawn apart.
     expect([...larkspur.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['Sam', 'Nov 18', 'Nov 19, 2027'])
-    expect((document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).textContent).toContain('Pursuing, Pursued for this job.. You, Nov 18. Off the list until Feb 17, 2027, and then until it applies for a new job.')
+    expect((document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).textContent).toContain('Pursuing, Pursued for this job. You, Nov 18. Off the list until Feb 17, 2027, and then until it applies for a new job.')
     fireEvent.click(within(larkspur).getByRole('button', { name: 'Put Larkspur Builders back on the list' }))
     await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith({ builderKey: 'larkspurbuilders', answer: 'back', reason: '', lookAgainOn: null, city: 'San Antonio' }))
     expect(await screen.findByText('Larkspur Builders may be offered on the list again.')).toBeTruthy()
