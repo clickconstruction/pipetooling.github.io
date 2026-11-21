@@ -423,9 +423,10 @@ export function useNoteTagBox(opts: {
       onClick={(e) => e.stopPropagation()}
       style={{
         ...(place === 'inline'
-          ? { maxHeight: INLINE_ROW_MAX_HEIGHT }
+          ? // In a column that is short of room the row is what shrinks, down to one name's height, and it scrolls.
+            { maxHeight: INLINE_ROW_MAX_HEIGHT, minHeight: 58, flex: '0 1 auto' }
           : {
-              position: 'absolute',
+              position: 'absolute' as const,
               left: 8,
               right: 8,
               ...(place === 'above' ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),

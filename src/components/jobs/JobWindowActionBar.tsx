@@ -187,11 +187,12 @@ export function JobWindowNoteSheet({
   }
   return createPortal(
     <PhoneSheet label="Note" title="Note" onClose={onClose}>
-      {/* The body scrolls inside the sheet, so a long row of names never pushes Save under the keyboard. */}
-      <div style={{ display: 'grid', gap: '0.5rem', padding: '0.75rem 1rem 1rem', minHeight: 0, overflowY: 'auto' }}>
+      {/* A column in which only the row of names gives way: on a short screen the row shrinks and scrolls, and the
+          box and Save keep their height above the keyboard. The body itself scrolls only as a last resort. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem 1rem 1rem', minHeight: 0, overflowY: 'auto' }}>
         {tagBox.list}
         {tagBox.chips}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'stretch' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'stretch', flexShrink: 0 }}>
           {/* The mark in the words is drawn under the box, so the box is see-through and this holds its background. */}
           <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 10, minWidth: 0, display: 'flex' }}>
             {tagBox.mark}

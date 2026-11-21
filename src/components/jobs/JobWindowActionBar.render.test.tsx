@@ -198,6 +198,9 @@ describe('JobWindowNoteSheet', () => {
     // is never cut by the sheet's edge as a row hung over the box would be.
     expect(list.style.position).toBe('')
     expect(parseFloat(list.style.maxHeight)).toBeLessThanOrEqual(130)
+    // Short of room the row is what gives way, and it scrolls: the box and Save keep their height.
+    expect([list.style.flexShrink, list.style.overflowY]).toEqual(['1', 'auto'])
+    expect((box.closest('[style*="grid-template-columns"]') as HTMLElement).style.flexShrink).toBe('0')
     expect(list.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     type(box, 'ask @da')
     await waitFor(() => expect(within(list).getAllByRole('option')).toHaveLength(1))
