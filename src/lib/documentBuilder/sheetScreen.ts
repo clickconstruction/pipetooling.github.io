@@ -83,10 +83,39 @@ export function usualPlanFor(
  */
 export const USUAL_PRESS_MOVED = { line: 'Nothing was published yet.', why: 'A job changed since this page read it. The rows and the button now say where your usual goes. Press it again.' } as const
 
-/** One row of where a change to the usual goes: the job, and a chip. */
-export function usualPlanChip(row: UsualPublishRow, usualDirty: boolean, revisionNow: number): BuilderChip {
+/**
+ * True when what subs see for a job is built on the usual's newest revision: the job has a published sheet, and the
+ * usual was not published again since. Changes of its own that wait do not take it off, since subs do not see them.
+ */
+export function jobIsOnUsual(job: JobSheetState | undefined, usualRevision: number): boolean {
+  return job != null && job.revision > 0 && !jobIsBehind(job, usualRevision)
+}
+
+/** How many of the jobs are on the usual's newest revision. */
+export function jobsOnUsual(jobs: ReadonlyArray<{ projectId: string }>, sheets: ReadonlyMap<string, JobSheetState>, usualRevision: number): number {
+  return jobs.filter((j) => jobIsOnUsual(sheets.get(j.projectId), usualRevision)).length
+}
+
+/**
+ * The heading over the usual's list of jobs. With a change waiting it says the rows are where the change goes. With
+ * none it says how many jobs are on the usual, and says *every* only when every one is: a job with no sheet yet, or
+ * one held at the last publish, is not.
+ */
+export function usualJobsHead(usualDirty: boolean, onUsual: number, jobs: number): string {
+  if (usualDirty) return 'Where this change goes'
+  if (onUsual <= 0) return 'No job is on your usual yet'
+  if (onUsual >= jobs) return 'Every job is on your usual'
+  return `${onUsual} of ${jobs} jobs ${onUsual === 1 ? 'is' : 'are'} on your usual`
+}
+
+/**
+ * One row of where a change to the usual goes: the job, and a chip. `behind` is a job whose sheet went out before the
+ * usual's newest revision. With no change waiting its row says so, since nothing on this screen brings it up.
+ */
+export function usualPlanChip(row: UsualPublishRow, usualDirty: boolean, revisionNow: number, behind = false): BuilderChip {
   if (!row.gets) return { tone: row.why === 'no-sheet' ? 'wait' : 'warn', words: usualHeldWords(row.why) }
-  return usualDirty ? { tone: 'ok', words: `Gets it, as revision ${row.asRevision}` } : { tone: 'ok', words: `Revision ${revisionNow}` }
+  if (usualDirty) return { tone: 'ok', words: `Gets it, as revision ${row.asRevision}` }
+  return behind ? { tone: 'warn', words: `Revision ${revisionNow}, behind your usual` } : { tone: 'ok', words: `Revision ${revisionNow}` }
 }
 
 /** The line under the switch: what the person is changing, and what subs see. */

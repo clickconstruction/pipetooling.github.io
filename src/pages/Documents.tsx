@@ -1721,7 +1721,7 @@ const documentsUnifiedSectionHeadingStyle: CSSProperties = {
 
 function DocumentsUnifiedSearchTab() {
   const { user, role } = useAuth()
-  /** The office's Agreements section (punch list #376): the same list the Agreements tab draws, fed this box's words. */
+  /** The Agreements section (punch list #376): the same list the Agreements tab draws, fed this box's words. The office's, and an estimator's to read (punch list #403). */
   const agreementsVisible = canSeeAgreements(role)
   const [query, setQuery] = useState('')
   const q = query.trim()
@@ -1782,7 +1782,7 @@ export default function Documents() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role: documentsAuthRole } = useAuth()
-  /** Agreements (punch list #376) is the office's to read, as the tables' own row security has it: hide the tab for other roles. */
+  /** Agreements (punch list #376) is the office's, and since punch list #403 an estimator's to read: each table's own row security decides the lines. Hide the tab for other roles. */
   const agreementsTabVisible = canSeeAgreements(documentsAuthRole)
   /** The Document builder (punch list #404) is a dev's for now: hide the tab for every other role. */
   const builderTabVisible = canUseDocumentBuilder(documentsAuthRole)

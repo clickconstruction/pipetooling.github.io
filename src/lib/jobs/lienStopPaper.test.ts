@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { lienStopPaperKind, lienStopRuleCite, lienStopWindowWords } from './lienStopPaper'
-import type { LienTimelineStep } from './lienTimeline'
+import { lienClosedNoticeStopNote, lienStopPaperKind, lienStopRuleCite, lienStopWindowWords } from './lienStopPaper'
+import { buildLienTimeline, type LienTimelineInput, type LienTimelineStep } from './lienTimeline'
 
 const step = (partial: Partial<LienTimelineStep> & Pick<LienTimelineStep, 'kind'>): LienTimelineStep => ({
   key: partial.kind,
@@ -57,5 +57,37 @@ describe('lienStopPaper', () => {
     expect(lienStopWindowWords({ step: step({ kind: 'hold', dateWords: '—' }) }).line).toBe('')
     expect(lienStopWindowWords({ step: step({ kind: 'affidavit' }) }).noPaper).toBeNull()
     expect(lienStopWindowWords({ step: step({ kind: 'serve', dateWords: '+5 days', words: 'after filing' }) }).line).toBe('A copy of the filed affidavit to the owner and the GC within five days of filing. +5 days · after filing')
+  })
+
+  // v2.4708's rule, read off the clock itself: a sub job whose July window closed Sep 15 with nothing sent, the affidavit's day Oct 15.
+  const closedJob = (todayYmd: string): LienTimelineInput => ({
+    todayYmd,
+    isSub: true,
+    propertyKind: 'residential',
+    lastMonth: '2026-07',
+    lastMonthFromCreation: false,
+    months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }],
+    noticeState: '',
+    retainage: null,
+    affidavit: null,
+    originalContractCompletedOn: null,
+    releasedAt: null,
+    paid: false,
+  })
+
+  it('a closed notice stop says a late notice can still go while the affidavit’s window is open, and that the right is gone only after it (v2.8170)', () => {
+    const late = buildLienTimeline(closedJob('2026-10-06'))
+    expect(late.next.kind).toBe('late_notice')
+    expect(late.lienGone).toBe(false)
+    expect(lienClosedNoticeStopNote(late.next)).toBe('The window closed with nothing sent. A late notice can still go, and the affidavit can follow it.')
+    expect(lienClosedNoticeStopNote(late.next)).not.toContain('gone')
+    // The affidavit's last day itself is still inside the window.
+    expect(lienClosedNoticeStopNote(buildLienTimeline(closedJob('2026-10-15')).next)).toContain('A late notice can still go')
+    const gone = buildLienTimeline(closedJob('2026-10-20'))
+    expect(gone.next.kind).toBe('lien_gone')
+    expect(lienClosedNoticeStopNote(gone.next)).toBe('The window closed with nothing sent. The lien right on that work is gone; the money is still owed.')
+    // A job with a month still open, and a window with no timeline, keep the old sentence for a month that closed.
+    expect(lienClosedNoticeStopNote({ kind: 'notice' })).toContain('The lien right on that work is gone')
+    expect(lienClosedNoticeStopNote(null)).toContain('The lien right on that work is gone')
   })
 })

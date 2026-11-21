@@ -127,6 +127,24 @@ import { Subpanel } from './Subpanel'
 import { ThreeWaySwitch } from './ThreeWaySwitch'
 import { StudSetback } from './StudSetback'
 import { HeaterBond } from './HeaterBond'
+import { HeatMoves } from './HeatMoves'
+import { CoolingLoop } from './CoolingLoop'
+import { BoilAndSqueeze } from './BoilAndSqueeze'
+import { OutdoorUnit } from './OutdoorUnit'
+import { IndoorUnit } from './IndoorUnit'
+import { LineSet } from './LineSet'
+import { TheCard } from './TheCard'
+import { CondensateDrain } from './CondensateDrain'
+import { PanAndFloat } from './PanAndFloat'
+import { HeatPumpReverse } from './HeatPumpReverse'
+import { FurnaceCutaway } from './FurnaceCutaway'
+import { GasToAppliance } from './GasToAppliance'
+import { ClosetAir } from './ClosetAir'
+import { SharedVent } from './SharedVent'
+import { CoPath } from './CoPath'
+import { SupplyAndReturn } from './SupplyAndReturn'
+import { FilterAndStat } from './FilterAndStat'
+import { WaterMeetsAir } from './WaterMeetsAir'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -239,4 +257,22 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'three-way-switch': ThreeWaySwitch,
   'stud-setback': StudSetback,
   'heater-bond': HeaterBond,
+  'heat-moves': HeatMoves,
+  'cooling-loop': CoolingLoop,
+  'boil-and-squeeze': BoilAndSqueeze,
+  'outdoor-unit': OutdoorUnit,
+  'indoor-unit': IndoorUnit,
+  'line-set': LineSet,
+  'the-card': TheCard,
+  'condensate-drain': CondensateDrain,
+  'pan-and-float': PanAndFloat,
+  'heat-pump-reverse': HeatPumpReverse,
+  'furnace-cutaway': FurnaceCutaway,
+  'gas-to-appliance': GasToAppliance,
+  'closet-air': ClosetAir,
+  'shared-vent': SharedVent,
+  'co-path': CoPath,
+  'supply-and-return': SupplyAndReturn,
+  'filter-and-stat': FilterAndStat,
+  'water-meets-air': WaterMeetsAir,
 }

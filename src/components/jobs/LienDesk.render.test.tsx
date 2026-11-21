@@ -4237,6 +4237,21 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(card.textContent).not.toContain('Tick a month to put it on this notice.')
   })
 
+  // A notice that went has months, the ones it went out for (v2.8167, the live walk of punch list #361): the pane picks none
+  // on it, so the strip read *No month picked ›* and the months head *no months* over a paper sent for June.
+  it('on a notice in Sent, the strip’s months chip and the Months on this job head read the months the notice named (v2.8167)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={sentData()} initialKind="notice" initialJobId="j650" initialPile="sent" />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull())
+    expect((document.querySelector('[data-lien-pane-head="months"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toMatch(/^Jun · \$/)
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const strip = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect((strip.querySelector('[data-lien-strip-sent]') as HTMLElement).textContent).toBe('Sent Sep 14 ›')
+    expect((strip.querySelector('[data-lien-strip-chip="months"]') as HTMLElement).textContent).toBe('Jun ›')
+    expect(strip.textContent).not.toContain('No month picked')
+    expect(document.querySelector('[data-lien-pane-head="months"]')!.textContent).not.toContain('no months')
+  })
+
   it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
     await settle()
@@ -4266,6 +4281,57 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
       if (had) Object.defineProperty(HTMLElement.prototype, 'scrollTo', had)
       else delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo
     }
+  })
+
+  // A missed notice in the late window (v2.4708): May's window closed Aug 15 with nothing sent, and the affidavit's own day is
+  // still ahead. Made-up rows. `affidavitDay` is the job's § 53.052 day; past it the lien right is gone, and before it a late
+  // notice can go.
+  const lateWindowData = (affidavitDay: string) => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: affidavitDay, is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([row('j650', '2026-05', '2026-08-15', { has_owner: true, property_kind: 'non_residential' })], [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    return d
+  }
+
+  // Before v2.8170 this pane said both: the months card *a late notice can still go · the affidavit by Sep 15*, and the footer
+  // under it *The window closed on May 2026 with no notice — the lien right on that work is gone.* under a head *Window closed ·
+  // Nothing to sign*. The footer read only the months still due. v2.4708's rule says which is right: the late notice can go.
+  it('a missed notice in the late window: the card says a late notice can still go, and the footer is the draft’s with the send, never that the lien right is gone (v2.8170)', async () => {
+    const d = lateWindowData('2026-09-15')
+    expect(d.queue.entries.find((e) => e.jobId === 'j650')).toMatchObject({ pile: 'missed', dueMonths: [], missedMonths: ['2026-05'] })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    const card = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    expect(card.textContent).toContain('a late notice can still go · the affidavit by Sep 15')
+    expect(card.textContent).toContain('May closed with nothing sent — claimed on this notice late; the affidavit can follow by Sep 15.')
+    const foot = document.querySelector('[data-lien-pane-body="sign"]') as HTMLElement
+    expect(foot.textContent).not.toContain('the lien right on that work is gone')
+    expect(screen.getByRole('button', { name: /Ask the leader to approve/ })).toBeTruthy()
+    expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Sign and sendNot signed yet')
+    // Nothing on the pane says the right is gone while the timeline's next step is the late notice.
+    expect((document.querySelector('[data-lien-desk-timeline]') as HTMLElement).textContent).toContain('Send the May notice late, then file the affidavit')
+    expect(document.body.textContent).not.toContain('lien right on that work is gone')
+    // The closed month's stop says the same: a late notice can still go.
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-05"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper').textContent).toContain('The window closed with nothing sent. A late notice can still go, and the affidavit can follow it.')
+    expect(screen.getByTestId('lien-stop-paper').textContent).not.toContain('is gone')
+  })
+
+  it('the same missed notice once the affidavit’s day has passed: the card and the footer both say the lien right is gone, and nothing offers a send (v2.8170)', async () => {
+    const d = lateWindowData('2026-09-10')
+    expect(d.queue.entries.find((e) => e.jobId === 'j650')).toMatchObject({ pile: 'missed', dueMonths: [], missedMonths: ['2026-05'] })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    const card = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    expect(card.textContent).toContain('lien right gone · the money still rides')
+    expect(card.textContent).not.toContain('a late notice can still go')
+    const foot = document.querySelector('[data-lien-pane-body="sign"]') as HTMLElement
+    expect(foot.textContent).toContain('The window closed on May 2026 with no notice — the lien right on that work is gone.')
+    expect(screen.queryByRole('button', { name: /Ask the leader to approve/ })).toBeNull()
+    expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Window closedNothing to sign')
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-05"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper').textContent).toContain('The window closed with nothing sent. The lien right on that work is gone; the money is still owed.')
   })
 
   // The step grows when its read of the property's papers ends, and the watch on the footer's growth stops after 4 s

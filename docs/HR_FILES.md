@@ -196,6 +196,8 @@ Since v2.8157 (punch list #410, migration `20261121131500`) a report can carry t
 
 Since v2.8160 the door to all of it is **Write someone up**, a named line under the Dashboard's row of squares for a leader, a superintendent or a dev (`src/components/writeUp/`, the rules and words in `src/lib/people/writeUp.ts`, guide `write-someone-up`). Its sheet lists the crew on the job today first, fills in who, when and which job, takes the words typed or spoken, reads the record back, and sends through the outbox on one press, so a send with no signal waits on the phone. The writer's own write-ups are listed there with where each stands. The queue's card draws a write-up's facts one a line, and both filing presses go through `filePersonReport`, which files those facts ahead of the writer's words. The dev's Needs you line shows the day a report is sent (`HR_REPORTS_MIN_AGE_DAYS` is 0).
 
+Since v2.8172 (migration `20261121143500`) a write-up's photos have a place: `person_report_photos`, one row a photo keyed to the write-up's `press_id`, and the private `person-report-photos` bucket, where an object sits under the writer's own folder. The writer adds and reads their own, a dev reads all, and nobody else reads a row or a file. A photo can be dropped until its write-up is sent.
+
 ## Agent recipes
 
 - Everyone's freshness in one query: entries `select person_id, created_at` + files `select person_id, kind, updated_at` → run through `derivePersonFileFreshness` per person.

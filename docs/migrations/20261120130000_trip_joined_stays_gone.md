@@ -39,7 +39,7 @@ One trigger function and its trigger. No table, column or index.
 
 It covers every door at once: `trip_save` and its three presses, the dev seat's `apply_trip`, and the dev's `restore_deleted_records`, which answers `{ ok: false, code: '22023', error }` with the same words, in a dry run too.
 
-`trip_save`'s dry run writes nothing, so it does not hear the refusal. The dev seat's `plan_trip` can say *add* for such a trip, and `apply_trip` is then refused in these words.
+`trip_save`'s dry run writes nothing, so it does not hear the refusal and says *add*. The app sends no dry run: the dev seat's `plan_trip` is its one caller. Since v2.8165 (server 0.123.0) `plan_trip` reads the same archive row after a dry run that says *add*, as the dev, and refuses the plan in these words, so a plan and its `apply_trip` agree (`tripPlanJoinedBack` in `_shared/devMcpTrips.ts`). Before that it could say *add* for such a trip, and `apply_trip` was then refused.
 
 What it leaves alone:
 
@@ -75,7 +75,7 @@ Nothing changes in who may save, put back or restore a trip. The trigger refuses
 
 - nobody calls the guard, and it runs before each trip is made and before the trip takes its number;
 - the save of a trip that was joined away, sent from a screen read before the join, refused in words with code 22023, and the same trip changed on an old sheet;
-- the dry run says *add* and writes nothing;
+- `trip_save`'s own dry run says *add* and writes nothing (the dev seat's `plan_trip` reads past it since v2.8165, held to this function's text by `src/lib/devMcp/devMcpTrips.test.ts`);
 - the site, the line and the counter as the join left them, Deleted trips still saying joined, and the mark not settled away;
 - the dev's restore of its bundle refused in the same words, and its dry run;
 - a trip somebody deleted put back with its number;

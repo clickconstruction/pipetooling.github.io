@@ -230,6 +230,7 @@ export function DispatchInboxSection({
       }
       openCheckLabel={windowNotAsTold ? NOT_AS_TOLD_WORDS.openList : undefined}
       footWords={windowNotAsTold ? NOT_AS_TOLD_WORDS.windowFoot : undefined}
+      sentFromWords={windowNotAsTold ? NOT_AS_TOLD_WORDS.sentOnArrival : undefined}
       onLower={onSetPriority ? () => setPrioritySheet({ requestId: windowRow.id, direction: 'lower', label: windowRow.title.slice(0, 80) }) : null}
       onClose={() => closeStageCheckWindow(windowRow.id)}
       io={stageCheckWindowIo}

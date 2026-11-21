@@ -154,10 +154,9 @@ const FM_FENCE = '---'
  * used (for the long summary).
  */
 export function parseFrontMatter(markdown: string): FrontMatter {
-  const lines = markdown.split('\n')
-  if (lines[0]?.trim() !== FM_FENCE) return { fields: {}, body: markdown, found: false }
-  const end = lines.findIndex((l, i) => i > 0 && l.trim() === FM_FENCE)
-  if (end < 0) return { fields: {}, body: markdown, found: false }
+  const block = frontMatterBlock(markdown)
+  if (!block) return { fields: {}, body: markdown, found: false }
+  const { lines, end } = block
 
   const fields: Record<string, string> = {}
   let key: string | null = null
@@ -169,18 +168,65 @@ export function parseFrontMatter(markdown: string): FrontMatter {
   }
   for (let i = 1; i < end; i++) {
     const line = lines[i] ?? ''
-    const kv = /^([a-zA-Z_][\w-]*):\s*(.*)$/.exec(line)
-    if (kv?.[1] !== undefined && !/^\s/.test(line)) {
+    const kv = frontMatterKeyLine(line)
+    if (kv) {
       flush()
-      const value = (kv[2] ?? '').trim()
-      if (value === '>' || value === '>-' || value === '|') key = kv[1]
-      else fields[kv[1]] = stripQuotes(value)
+      if (kv.opensBlock) key = kv.key
+      else fields[kv.key] = stripQuotes(kv.value)
       continue
     }
     if (key) blockLines.push(line.trim())
   }
   flush()
   return { fields, body: lines.slice(end + 1).join('\n').replace(/^\n+/, ''), found: true }
+}
+
+/** The file's lines and the index of the closing fence, or null when there is no front matter. */
+function frontMatterBlock(markdown: string): { lines: string[]; end: number } | null {
+  const lines = markdown.split('\n')
+  if (lines[0]?.trim() !== FM_FENCE) return null
+  const end = lines.findIndex((l, i) => i > 0 && l.trim() === FM_FENCE)
+  return end < 0 ? null : { lines, end }
+}
+
+/**
+ * The key a front-matter line opens, or null. A key starts in the first column, so an indented
+ * line is a block's words however it reads: `  next: call the GC` under `summary: >` is part of
+ * the summary. The reader and the repeated-key check both ask this, so they hold one notion of
+ * a key.
+ */
+export function frontMatterKeyLine(line: string): { key: string; value: string; opensBlock: boolean } | null {
+  const kv = /^([a-zA-Z_][\w-]*):\s*(.*)$/.exec(line)
+  if (kv?.[1] === undefined) return null
+  const value = (kv[2] ?? '').trim()
+  return { key: kv[1], value, opensBlock: value === '>' || value === '>-' || value === '|' }
+}
+
+export interface RepeatedKey {
+  key: string
+  /** The file's own line numbers, from 1, of every line that opens the key. */
+  lines: number[]
+}
+
+/**
+ * The keys a to-do's front matter opens more than once, each with its lines, in the order the
+ * repeats appear. `parseFrontMatter` keeps the last value of a repeated key and says nothing,
+ * which is how #359's board row showed a `next:` six days old (2026-11-21). A key counts once
+ * whether its value sits on the line or in a `>` block under it.
+ */
+export function repeatedFrontMatterKeys(markdown: string): RepeatedKey[] {
+  const block = frontMatterBlock(markdown)
+  if (!block) return []
+  const linesByKey = new Map<string, number[]>()
+  for (let i = 1; i < block.end; i++) {
+    const kv = frontMatterKeyLine(block.lines[i] ?? '')
+    if (!kv) continue
+    linesByKey.set(kv.key, [...(linesByKey.get(kv.key) ?? []), i + 1])
+  }
+  return [...linesByKey]
+    .filter(([, at]) => at.length > 1)
+    .map(([key, at]) => ({ key, lines: at }))
+    .sort((a, b) => (a.lines[1] ?? 0) - (b.lines[1] ?? 0))
 }
 
 function stripQuotes(value: string): string {
@@ -529,7 +575,7 @@ export function openItemCount(docs: readonly TodoDoc[]): number {
   return docs.filter((d) => !d.meta.pointer).length
 }
 
-export type FindingKind = 'front_matter' | 'unknown_version' | 'duplicate_slug' | 'duplicate_number'
+export type FindingKind = 'front_matter' | 'unknown_version' | 'duplicate_slug' | 'duplicate_number' | 'repeated_key'
 
 export interface Finding {
   kind: FindingKind
@@ -604,6 +650,34 @@ export function findTodoProblems(input: TodoProblemsInput): Finding[] {
     }
   }
 
+  return findings
+}
+
+/** A to-do as it sits on disk: its repo-root path and its whole text. */
+export interface TodoSource {
+  file: string
+  markdown: string
+}
+
+/**
+ * One error for each key a to-do's front matter opens twice, naming the file, the key and the
+ * lines, every repeat of every card in one pass. Only `check:todos` asks: the build still
+ * renders such a card from its last value, and CI is what refuses it.
+ */
+export function findRepeatedKeyProblems(sources: readonly TodoSource[]): Finding[] {
+  const findings: Finding[] = []
+  for (const s of sources) {
+    for (const r of repeatedFrontMatterKeys(s.markdown)) {
+      const last = r.lines[r.lines.length - 1]
+      const lines = `${r.lines.slice(0, -1).join(', ')} and ${last}`
+      findings.push({
+        kind: 'repeated_key',
+        severity: 'error',
+        file: s.file,
+        message: `${s.file}: the front matter has "${r.key}:" ${r.lines.length} times (lines ${lines}). The board shows the last one and hides the rest — keep the line that is true today and delete the others.`,
+      })
+    }
+  }
   return findings
 }
 

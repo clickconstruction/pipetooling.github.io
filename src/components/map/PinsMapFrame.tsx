@@ -16,6 +16,7 @@ import {
 } from '../../lib/map/mapProviderPick'
 import { mapTimeSpotFromPins, type MapTimeSpot } from '../../lib/map/mapTime'
 import { OLDER_PHOTOS_VIEW_ZOOM } from '../../lib/map/olderPhotos'
+import { MapLoadingLine } from './MapLoadingLine'
 import { MapTimeRow } from './MapTimeRow'
 import { MapViewControl } from './MapViewControl'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
@@ -116,7 +117,7 @@ export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = 
         className={onLeaflet && shownLayer === 'satellite' ? 'mapImagery' : undefined}
         style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', background: 'var(--bg-muted)', height, ...boxStyle }}
       >
-        <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
+        <Suspense fallback={<MapLoadingLine />}>
           {onLeaflet ? (
             <PinsMapImageryCanvasLazy
               key={isMobile ? 'phone' : 'desk'}
