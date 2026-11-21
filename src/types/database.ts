@@ -35460,6 +35460,38 @@ export type Database = {
           },
         ]
       }
+      punch_list_ticks: {
+        Row: {
+          board_version: string
+          card_number: number
+          section: string
+          ticked_at: string
+          user_id: string
+        }
+        Insert: {
+          board_version?: string
+          card_number: number
+          section: string
+          ticked_at?: string
+          user_id?: string
+        }
+        Update: {
+          board_version?: string
+          card_number?: number
+          section?: string
+          ticked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "punch_list_ticks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           created_at: string | null
