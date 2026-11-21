@@ -78,6 +78,33 @@ describe('the press', () => {
   })
 })
 
+describe('a draft across a reload', () => {
+  const KEY = 'write-up-draft:u-1'
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+  it('the press says one is not finished when the tab kept a draft', async () => {
+    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: 'conduct', date: TODAY, time: '10:15', job: null, words: 'Kept across a reload.', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
+    window.sessionStorage.setItem(KEY, JSON.stringify(kept))
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.getByText('1 not finished')).toBeTruthy()
+  })
+  it('says nothing of the kind with nothing kept, or with something that is not a draft', async () => {
+    window.sessionStorage.setItem(KEY, 'not a draft')
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.queryByText('1 not finished')).toBeNull()
+  })
+  it('another person’s kept draft is not this person’s', async () => {
+    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: null, date: TODAY, time: '', job: null, words: 'Someone else’s.', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
+    window.sessionStorage.setItem('write-up-draft:u-2', JSON.stringify(kept))
+    renderWithProviders(<WriteSomeoneUpDoor userId="u-1" role="master_technician" surface="dashboard" />)
+    await settle()
+    expect(screen.queryByText('1 not finished')).toBeNull()
+  })
+})
+
 describe('the sheet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -141,7 +168,8 @@ describe('the sheet', () => {
     press('Send write-up to HR')
     await settle()
     expect(io.send).toHaveBeenCalledTimes(1)
-    const [who, sent, pressedAt] = io.send.mock.calls[0]!
+    const [who, sent, pressedAt, photos] = io.send.mock.calls[0]!
+    expect(photos).toEqual([])
     expect(who).toBe('u-leader')
     expect(pressedAt).toBe(NOW.getTime())
     expect(sent).toEqual({
@@ -178,7 +206,7 @@ describe('the sheet', () => {
   })
 
   it('a send with no signal is kept on the phone and listed as waiting', async () => {
-    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: 'Cedar Hollow Lot 14', pressedAt: NOW.getTime(), reason: null }
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: 'Cedar Hollow Lot 14', pressedAt: NOW.getTime(), reason: null, photos: 1 }
     let keptNow: KeptWriteUp[] = []
     const onDraft = vi.fn()
     const io = makeIo({
@@ -197,7 +225,7 @@ describe('the sheet', () => {
     await settle()
     expect(screen.getByText(/Kept on this phone at 12:41 pm\./)).toBeTruthy()
     expect(screen.getByText('Waiting for signal')).toBeTruthy()
-    expect(screen.getByText('Safety · Fri, Nov 20 · Cedar Hollow Lot 14')).toBeTruthy()
+    expect(screen.getByText('Safety · Fri, Nov 20 · Cedar Hollow Lot 14 · 1 photo kept')).toBeTruthy()
     expect(screen.queryByText(/Sent to HR at/)).toBeNull()
     expect(onDraft).toHaveBeenLastCalledWith(null)
   })
@@ -218,8 +246,33 @@ describe('the sheet', () => {
     expect(io.send.mock.calls[0]![2]).toBe(io.send.mock.calls[1]![2])
   })
 
+  it('takes a photo, shows it on the read-back, sends it with the write-up, and takes one off', async () => {
+    const io = makeIo()
+    const shrink = vi.fn(async (file: File) => ({ blob: new Blob([file], { type: 'image/jpeg' }), width: 1200, height: 900, shrunk: true }))
+    renderWithProviders(<WriteUpSheet userId="u-leader" initialDraft={null} onDraft={() => {}} onClose={() => {}} io={io} now={() => NOW} voiceWindow={null} shrink={shrink} />)
+    await settle()
+    press(/Dana Pruitt/)
+    press('Safety')
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'The trench was open at lunch.' } })
+    const input = screen.getByLabelText('Take a photo', { selector: 'input' }) as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['one'], 'one.jpg', { type: 'image/jpeg' })] } })
+    await settle()
+    fireEvent.change(input, { target: { files: [new File(['two'], 'two.jpg', { type: 'image/jpeg' })] } })
+    await settle()
+    expect(document.querySelectorAll('[data-write-up-photo]')).toHaveLength(2)
+    press('Take this photo off, photo 2')
+    expect(document.querySelectorAll('[data-write-up-photo]')).toHaveLength(1)
+    press('Read it back')
+    expect(screen.getByText('1 photo')).toBeTruthy()
+    press('Send write-up to HR')
+    await settle()
+    const photos = io.send.mock.calls[0]![3]!
+    expect(photos).toHaveLength(1)
+    expect(photos[0]).toMatchObject({ width: 1200, height: 900, originalBytes: 3, takenAt: NOW.toISOString() })
+  })
+
   it('a write-up kept from an earlier visit is counted on the row that opens the list', async () => {
-    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: null, pressedAt: NOW.getTime(), reason: null }
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: null, pressedAt: NOW.getTime(), reason: null, photos: 0 }
     await openOn(makeIo({ kept: () => [waiting], mine: async () => [WAITING] }))
     expect(screen.getByText('1 waiting for signal · 1 waiting on HR')).toBeTruthy()
   })
@@ -240,7 +293,7 @@ describe('the sheet', () => {
   })
 
   it('a kept draft opens on the form again', async () => {
-    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: 'conduct', date: TODAY, time: '10:15', job: null, words: 'Kept words.', sawIt: true, seenBy: [], talked: null, addsTo: null }
+    const kept: WriteUpDraft = { person: LIST.people[0]!, kind: 'conduct', date: TODAY, time: '10:15', job: null, words: 'Kept words.', sawIt: true, seenBy: [], talked: null, addsTo: null, photos: [] }
     renderWithProviders(<WriteUpSheet userId="u-leader" initialDraft={kept} onDraft={() => {}} onClose={() => {}} io={makeIo()} now={() => NOW} voiceWindow={null} />)
     await settle()
     expect((screen.getByLabelText('What did you see?') as HTMLTextAreaElement).value).toBe('Kept words.')

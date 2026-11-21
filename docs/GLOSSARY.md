@@ -2424,6 +2424,8 @@ The third is **Read it back**, and the fourth is **Your write-ups**.
 Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
 The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
+The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
 guide `write-someone-up`.

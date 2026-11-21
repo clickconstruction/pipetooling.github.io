@@ -10,6 +10,9 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { APP_CALENDAR_TZ, formatDenverTimeOnly, todayYmdInAppTz } from '../../utils/dateUtils'
 import { writeUpIo, type WriteUpIo } from '../../lib/people/writeUpIo'
+import { shrinkPhoto } from '../../lib/materials/photoShrink'
+import { mintPressId } from '../../lib/offline/pressThroughOutbox'
+import { canAddPhoto, WRITE_UP_PHOTO_WORDS, type WriteUpDraftPhoto } from '../../lib/people/writeUpPhotos'
 import {
   additionDraft,
   canAddTo,
@@ -56,8 +59,9 @@ import {
  * or spoken), the read-back, and the writer's own write-ups. Nothing is saved until **Send write-up to HR** on the
  * read-back. The draft lives with the caller (`onDraft`), so a stray press outside the sheet closes it and loses
  * nothing. The send goes through the outbox (PR 4): with no signal the write-up is kept on the phone, listed as
- * *Waiting for signal*, and sent when the signal is back, once. The rules and the words are `lib/people/writeUp.ts`.
- * `io`, `now` and `voiceWindow` are the smoke's seams.
+ * *Waiting for signal*, and sent when the signal is back, once. Up to four photos ride with it (PR 5): each is shrunk
+ * on the phone, sent ahead of the write-up, or kept on the phone with it when there is no signal. The rules and the
+ * words are `lib/people/writeUp.ts` and `writeUpPhotos.ts`. `io`, `now`, `voiceWindow` and `shrink` are the smoke's seams.
  */
 
 type Step = 'who' | 'what' | 'read' | 'mine'
@@ -115,9 +119,10 @@ export interface WriteUpSheetProps {
   io?: WriteUpIo
   now?: () => Date
   voiceWindow?: VoiceNoteWindow | null
+  shrink?: typeof shrinkPhoto
 }
 
-export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writeUpIo, now = () => new Date(), voiceWindow }: WriteUpSheetProps) {
+export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writeUpIo, now = () => new Date(), voiceWindow, shrink = shrinkPhoto }: WriteUpSheetProps) {
   const [step, setStep] = useState<Step>(initialDraft ? 'what' : 'who')
   const [list, setList] = useState<WriteUpList | null>(null)
   const [listFailure, setListFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -136,6 +141,9 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   const [takeBack, setTakeBack] = useState<{ id: string; reason: string; busy: boolean; failure: string | null } | null>(null)
   /** The moment Send was first pressed on this read-back: a Retry keeps it. */
   const pressedAtRef = useRef<number | null>(null)
+  const photoInput = useRef<HTMLInputElement | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoFailure, setPhotoFailure] = useState<string | null>(null)
 
   /** The newest draft, for a handler that fires before the next draw: two quick presses never undo each other. */
   const draftRef = useRef<WriteUpDraft | null>(initialDraft)
@@ -205,6 +213,35 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   )
   const voiceWords = writeUpVoiceWords(voice.state)
 
+  /** One shot from the camera or the library: shrunk on the phone, then a tile on the draft. */
+  const addPhoto = async (file: File | undefined) => {
+    if (!file || !draft || !canAddPhoto(draft.photos.length)) return
+    setPhotoBusy(true)
+    setPhotoFailure(null)
+    try {
+      const shrunk = await shrink(file)
+      let url = ''
+      try {
+        url = URL.createObjectURL(shrunk.blob)
+      } catch {
+        // a page that cannot make one draws the tile without a picture
+      }
+      const photo: WriteUpDraftPhoto = { id: mintPressId(), blob: shrunk.blob, url, takenAt: now().toISOString(), originalBytes: file.size, width: shrunk.width, height: shrunk.height }
+      patch((d) => ({ photos: [...d.photos, photo] }))
+    } catch {
+      setPhotoFailure(WRITE_UP_PHOTO_WORDS.failed)
+    } finally {
+      setPhotoBusy(false)
+      if (photoInput.current) photoInput.current.value = ''
+    }
+  }
+
+  const dropPhoto = (id: string) => {
+    const gone = draftRef.current?.photos.find((p) => p.id === id)
+    if (gone?.url) URL.revokeObjectURL(gone.url)
+    patch((d) => ({ photos: d.photos.filter((p) => p.id !== id) }))
+  }
+
   const pick = (person: WriteUpPerson) => {
     if (!list) return
     setDraft(newWriteUpDraft(person, list, nowOnAppClock(now())))
@@ -225,7 +262,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
     setSendFailure(null)
     pressedAtRef.current ??= now().getTime()
     try {
-      const sent = await io.send(userId, writeUpFields(draft), pressedAtRef.current)
+      const sent = await io.send(userId, writeUpFields(draft), pressedAtRef.current, draft.photos)
       if (sent.kind === 'refused') {
         setSendFailure({ kind: 'server', message: `${WRITE_UP_WORDS.sendFailed.replace(/\.$/, '')}: ${sent.message}` })
         return
@@ -234,6 +271,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
         setSendFailure(recoveryFailureFromError(sent.error, WRITE_UP_WORDS.sendFailed))
         return
       }
+      for (const p of draft.photos) if (p.url) URL.revokeObjectURL(p.url)
       const at = clockTime(new Date(pressedAtRef.current).toISOString())
       setSentAt(sent.kind === 'landed' ? at : null)
       setKeptAt(sent.kind === 'queued' ? at : null)
@@ -386,6 +424,34 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           <p style={hintLine}>{voiceWords.hint}</p>
           <p style={hintLine}>{WRITE_UP_WORDS.wordsHint}</p>
 
+          <span style={fieldHead} id="write-up-photos">
+            {WRITE_UP_PHOTO_WORDS.field}
+          </span>
+          <div role="group" aria-labelledby="write-up-photos" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {d.photos.map((p, i) => (
+              <div key={p.id} data-write-up-photo style={{ position: 'relative', width: 84, height: 84, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)' }}>
+                {p.url ? <img src={p.url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Photo {i + 1}</span>}
+                <button type="button" onClick={() => dropPhoto(p.id)} aria-label={`${WRITE_UP_PHOTO_WORDS.remove}, photo ${i + 1}`} style={{ position: 'absolute', top: 0, right: 0, width: 44, height: 44, border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', padding: 0 }}>
+                  <span aria-hidden="true" style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', lineHeight: 1 }}>
+                    ×
+                  </span>
+                </button>
+              </div>
+            ))}
+            {canAddPhoto(d.photos.length) ? (
+              <button type="button" disabled={photoBusy} onClick={() => photoInput.current?.click()} style={{ width: 84, height: 84, borderRadius: 10, border: '1.5px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 650, cursor: 'pointer', padding: '0.25rem' }}>
+                {d.photos.length === 0 ? WRITE_UP_PHOTO_WORDS.take : WRITE_UP_PHOTO_WORDS.add}
+              </button>
+            ) : null}
+          </div>
+          <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden aria-label={WRITE_UP_PHOTO_WORDS.take} onChange={(e) => void addPhoto(e.target.files?.[0])} />
+          {!canAddPhoto(d.photos.length) ? <p style={hintLine}>{WRITE_UP_PHOTO_WORDS.full}</p> : null}
+          {photoFailure ? (
+            <p role="alert" style={{ ...hintLine, color: 'var(--text-red-700)' }}>
+              {photoFailure}
+            </p>
+          ) : null}
+
           <span style={fieldHead} id="write-up-seen">
             {WRITE_UP_WORDS.seen}
           </span>
@@ -460,6 +526,11 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
       </div>
       <div style={{ padding: '0.9rem' }}>
         <blockquote style={{ margin: 0, padding: '0.1rem 0 0.1rem 0.75rem', borderLeft: '3px solid var(--border-strong)', whiteSpace: 'pre-wrap' }}>{d.words.trim()}</blockquote>
+        {d.photos.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+            {d.photos.map((p, i) => (p.url ? <img key={p.id} src={p.url} alt={`Photo ${i + 1}`} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-strong)' }} /> : null))}
+          </div>
+        ) : null}
         <p style={{ ...hintLine, marginTop: '0.9rem' }}>{WRITE_UP_WORDS.readNote}</p>
         <OfflineRetryPanel failure={sendFailure} onRetry={send} surface="write-up-send" busy={sending} offlineMessage={WRITE_UP_WORDS.sendOffline} style={{ marginTop: '0.75rem' }} />
       </div>

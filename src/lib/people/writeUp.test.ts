@@ -6,6 +6,9 @@ import {
   canTakeBack,
   canWriteSomeoneUp,
   dayWords,
+  draftFromKept,
+  draftToKeep,
+  keptDraftKey,
   keptWriteUpLine,
   keptWriteUps,
   myWriteUpLine,
@@ -248,6 +251,35 @@ describe('the writer’s own write-ups', () => {
   it('lets a waiting one be taken back, and anything not taken back be added to', () => {
     expect([canTakeBack(row({})), canTakeBack(row({ status: 'filed' }))]).toEqual([true, false])
     expect([canAddTo(row({ status: 'filed' })), canAddTo(row({ status: 'dismissed', resolution_note: 'Taken back by the writer: x' }))]).toEqual([true, false])
+  })
+})
+
+describe('a draft kept across a reload', () => {
+  it('comes back as it was, without its photos', () => {
+    const d = {
+      ...newWriteUpDraft(dana, list, NOW),
+      kind: 'safety' as const,
+      words: 'The trench was open at lunch.',
+      seenBy: [{ person_id: 'p-luis', name: 'Luis Ortega' }, { name: 'The framer' }],
+      talked: false,
+      photos: [{ id: 'ph-1', blob: new Blob(['x']), url: 'blob:x', takenAt: '2026-11-20T18:22:00Z', originalBytes: 1, width: 10, height: 10 }],
+    }
+    expect(draftFromKept(draftToKeep(d))).toEqual({ ...d, photos: [] })
+  })
+  it('is no draft when what was kept is not a whole one', () => {
+    expect(draftFromKept(null)).toBeNull()
+    expect(draftFromKept('')).toBeNull()
+    expect(draftFromKept('not json')).toBeNull()
+    expect(draftFromKept('[]')).toBeNull()
+    expect(draftFromKept(JSON.stringify({ person: { name: 'No id' }, date: TODAY, words: 'x' }))).toBeNull()
+    expect(draftFromKept(JSON.stringify({ person: dana, words: 'no day' }))).toBeNull()
+  })
+  it('reads an odd kept draft with care', () => {
+    const got = draftFromKept(JSON.stringify({ person: dana, date: TODAY, words: 'x', kind: 'made_up', job: { id: 1 }, seenBy: [{ name: 'Ann' }, 'x', null], talked: 'yes', time: 5 }))
+    expect(got).toMatchObject({ kind: null, job: null, seenBy: [{ name: 'Ann' }], talked: null, time: '', sawIt: true, addsTo: null })
+  })
+  it('is kept under the person’s own key', () => {
+    expect(keptDraftKey('u-1')).toBe('write-up-draft:u-1')
   })
 })
 
