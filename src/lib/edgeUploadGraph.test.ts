@@ -61,18 +61,19 @@ describe('edgeUpload (what a deploy uploads)', () => {
 
   it('holds a function that deploys bundled to its own ceiling, and every other one to the common one (v2.8117)', () => {
     const row = (slug: string, bytes: number): Row => ({ slug, files: 3, bytes, biggest: [[`fn/${slug}/index.ts`, bytes]] })
-    // The seat alone deploys bundled: 5.8 MB of source is about 19.2 MB of bundle unpacked, under Supabase's 20 MB.
-    expect(BUNDLED).toEqual({ 'dev-mcp': 5_800_000 })
+    // The seat alone deploys bundled. Its 10 MB of source is about 7.7 MB compressed, inside the 14 MB of source and
+    // 7.81 MB compressed that Supabase accepted from the one-time probe (v2.8126).
+    expect(BUNDLED).toEqual({ 'dev-mcp': 10_000_000 })
     // Past the common ceiling and under its own, the seat passes. A portal at the same size does not.
     const r = uploadReport([row('dev-mcp', 5_000_000), row('customer-portal', 5_000_000), row('small', 100)])
     expect(r.over).toEqual(['customer-portal'])
-    expect(r.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 5.80 MB: 5.00 MB, 0.80 MB of room'])
+    expect(r.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 10.00 MB: 5.00 MB, 5.00 MB of room'])
     // At its ceiling passes; past it the line names the seat's own number.
-    expect(uploadReport([row('dev-mcp', 5_800_000)]).over).toEqual([])
-    const past = uploadReport([row('dev-mcp', 5_900_000)])
+    expect(uploadReport([row('dev-mcp', 10_000_000)]).over).toEqual([])
+    const past = uploadReport([row('dev-mcp', 10_100_000)])
     expect(past.over).toEqual(['dev-mcp'])
-    expect(past.lines[0]).toBe('  - dev-mcp: 5.90 MB, 0.10 MB past its 5.80 MB ceiling (it deploys bundled). Its biggest files:')
-    expect(past.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 5.80 MB: 5.90 MB, 0.00 MB of room'])
+    expect(past.lines[0]).toBe('  - dev-mcp: 10.10 MB, 0.10 MB past its 10.00 MB ceiling (it deploys bundled). Its biggest files:')
+    expect(past.bundledLines).toEqual(['dev-mcp deploys bundled and is held to 10.00 MB: 10.10 MB, 0.00 MB of room'])
     // A list of its own replaces the default, and a name like `constructor` is no ceiling.
     expect(uploadReport([row('dev-mcp', 5_000_000), row('constructor', 10)], CEILING, {}).over).toEqual(['dev-mcp'])
     expect(uploadReport([row('constructor', 10)]).bundledLines).toEqual([])
