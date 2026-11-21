@@ -107,6 +107,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('while the canvas’s own code is on its way (v2.8179)', () => {
+  // First in the file: React asks for a lazy canvas once, so only the first map to mount has the wait.
+  it('the frame says it is loading in its own box, in the words the Google canvas says next', async () => {
+    render(<Card />)
+    const line = document.querySelector('[data-map-provider] > [data-map-loading]')
+    expect(line?.textContent).toBe('Loading the map…')
+    expect(line?.getAttribute('role')).toBe('status')
+    await screen.findByTestId('canvas')
+    expect(document.querySelector('[data-map-loading]')).toBeNull()
+  })
+})
+
 describe('the map of today', () => {
   it('with no Google key draws on the Leaflet canvas, on the view the card opens on', async () => {
     render(<Card />)

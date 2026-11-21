@@ -253,6 +253,36 @@ describe('the other doors, as they were', () => {
   })
 })
 
+describe('while Google’s script is on its way (v2.8179)', () => {
+  it('the frame says it is loading, and stops saying so when the script is in', () => {
+    // Read on the task map's walk (2026-11-21): the painted map's canvas said so since v2.8078 and this one
+    // drew an empty grey frame, for up to the ten seconds before the other map came up.
+    script.loads = false
+    const { view } = mount()
+    const words = () => view.container.querySelector('[data-map-loading]')
+    expect(words()?.textContent).toBe('Loading the map…')
+    expect(words()?.getAttribute('role')).toBe('status')
+    // In the frame the map is in, and never in the way of a press.
+    expect(words()?.parentElement).toBe(view.getByTestId('map-div').parentElement)
+    expect((words() as HTMLElement).style.pointerEvents).toBe('none')
+    expect((words()?.parentElement as HTMLElement).style.position).toBe('relative')
+  })
+
+  it('a script that is in says nothing', () => {
+    const { view } = mount()
+    expect(view.container.querySelector('[data-map-loading]')).toBeNull()
+  })
+
+  it('the words leave with the frame when the wait runs out', () => {
+    script.loads = false
+    const { view, onUnavailable } = mount()
+    wait(10000)
+    expect(onUnavailable).toHaveBeenCalledWith('timeout: Maps JavaScript API did not load')
+    view.unmount()
+    expect(document.querySelector('[data-map-loading]')).toBeNull()
+  })
+})
+
 describe('where the zoom buttons sit (v2.8032)', () => {
   it('a map leaves them where Google puts them unless it keeps the bottom right for a press of its own', () => {
     const plain = mount()
