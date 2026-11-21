@@ -105,8 +105,8 @@ and the job's updates. The only write the page tried was its own press count, wh
 
 ## What the spike did not change
 
-- **The press bar.** It still leads with On my way and still shows a dead press. It waits on the owner's
-  answer about On my way on a day with one job.
+- **The press bar.** It still leads with On my way and still shows a dead press. On 2026-11-21 the owner
+  picked *follow his day* for a day with one job. It is not built yet; `SPIKE_HANDOFF.md` says what it is.
 - **The header, the install banner and the trip question.**
 - **Two things said twice.** On site, Materials on site and the On site square are one door. The My spend
   square carries its badge beside the card charges row.
@@ -129,8 +129,8 @@ Counted on 2026-11-20, real accounts that are not archived (41 in all):
   row show only for somebody who led a job-day, The company today only for the roles that have Crew Day, My
   truck only for somebody holding a vehicle. A superintendent on Short has his own short page today.
 
-The rule proposed in the assessment is by the day: a day with one job gets this page, a day of several stops
-keeps the page it has. That rule is not built.
+The assessment proposed a rule by the day: a day with one job gets this page. On 2026-11-21 the owner picked
+the Leader role alone, first, instead. That rule is not built yet: the switch is still the device's own.
 
 ## The code
 
