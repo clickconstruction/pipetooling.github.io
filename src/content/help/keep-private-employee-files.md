@@ -13,12 +13,12 @@ Each person's file has three layers:
 
 - **Summary** is the one-page read: trajectory, reliability, pay, watch items. The agent maintains it. You can edit it too.
 - **Narrative** is the chronological story of their time with the company. The agent maintains it too. You can edit it as well.
-- **Raw entries** are the dated facts everything else is built from. This is the only layer you write here.
+- **Raw entries** are the dated facts everything else is built from. You add them on the **Timeline**.
 
 ## Add what happened
 
 1. Open **People → HR** and pick the person. The dot next to each name tells you the file's state. {{chip:green|●}} means the summary is current. {{chip:yellow|●}} means entries are newer than the summary. {{chip:gray|●}} means no file yet.
-2. Go to **Raw entries** and set the date it **happened**. That is not today's date, unless it happened today. Pick a source: Conversation, Payroll event, Incident, Review, Milestone, or Job event. Then write the fact.
+2. On the **Timeline**, press {{button:blue|+ Add entry}}. Set **the day it happened**. Use today's date only when it happened today. Pick a source: Conversation, Payroll event, Incident, Review, Milestone, Job event, or Field report. Then write the fact.
 3. Tap {{button:blue|Add entry}}.
 
 :::example Good entry
