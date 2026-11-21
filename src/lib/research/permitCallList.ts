@@ -484,10 +484,14 @@ export function answeredWords(name: string, answer: 'pursue' | 'not_for_us', loo
 export function standingWords(standing: CallStanding, nameOf: (userId: string) => string | null, todayYmd: string): string {
   const who = nameOf(standing.row.answered_by) ?? 'someone'
   const said = standing.answer === 'pursue' ? 'Pursuing' : 'Not for us'
-  const why = standing.row.reason.trim() ? `, ${standing.row.reason.trim()}` : ''
+  // A reason is kept as it was typed or stocked, often with its own full stop. The line adds one, so the reason's goes.
+  const reason = standing.row.reason.trim().replace(/[.\s]+$/, '')
+  const why = reason ? `, ${reason}` : ''
+  // A reason that ends on a question or an exclamation closes the sentence by itself.
+  const stop = /[!?]$/.test(reason) ? '' : '.'
   const day = standing.row.look_again_on
   const until = !day ? 'Off the list.' : day > todayYmd ? `Off the list until ${val('until', shortDay(day, todayYmd))}, and then until it applies for a new job.` : 'Off the list until it applies for a new job.'
-  return `${said}${why}. ${val('who', who)}, ${val('day', shortDay(answeredDay(standing.row), todayYmd))}. ${until}`
+  return `${said}${why}${stop} ${val('who', who)}, ${val('day', shortDay(answeredDay(standing.row), todayYmd))}. ${until}`
 }
 
 // ---------- pursue ----------
