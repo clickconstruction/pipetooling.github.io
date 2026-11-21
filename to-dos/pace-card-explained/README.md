@@ -164,3 +164,11 @@ sample account's name. Job Mode on the sample account is off again.
 - **What is this?** is open the first time and folded the next.
 - Job window, Costs: a job whose money is ahead reads *$N over so far*.
 - Projects board: the words under a money-ahead card read *Money is ahead of the work.*
+
+## The next stop (v2.8122)
+
+The walk as a real superintendent found his page with no Job pace card: he was clocked in with no job linked,
+and the card drew only for a job the Job Mode card shows. It now draws for his next stop on the day, with one
+line, *Next stop* and the job's number and name (`src/lib/jobMode/paceNextStop.ts`). Walked read-only as the
+same superintendent, still clocked in with no job linked: the card was there, named his first stop, and read
+that job's pace. The owner, 2026-11-20: "Yes, build it".
