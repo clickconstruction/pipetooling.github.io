@@ -14,7 +14,7 @@ import type { ResearchPermitRow } from '../../lib/research/permitResearch'
  * four tiles, who holds the work and how much is being built. The call list has its own test.
  * Every company, person and number here is made up.
  */
-const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), recordLookupCheck: vi.fn() }))
 const research = vi.hoisted(() => ({ loadBuilders: vi.fn(), loadPermitsOfBuilder: vi.fn(), markBuilder: vi.fn(), saveBuilder: vi.fn(), pullPermitsBack: vi.fn(), loadRecordsStart: vi.fn(), approachFromPermit: vi.fn(), recordVerdict: vi.fn() }))
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), loadPermitsOfName: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(() => () => {}) }))
 const answersIo = vi.hoisted(() => ({ loadBuilderAnswersGround: vi.fn() }))
@@ -83,6 +83,7 @@ beforeEach(() => {
   marketIo.loadBuildersOfCities.mockReset().mockResolvedValue(BUILDERS)
   marketIo.loadMarketPermits.mockReset().mockResolvedValue(PERMITS)
   marketIo.loadCallAnswers.mockReset().mockResolvedValue([])
+  marketIo.loadBuilderLookups.mockReset().mockResolvedValue({ rows: [], checks: [] })
   marketIo.recordCallAnswer.mockReset().mockResolvedValue(undefined)
   research.loadBuilders.mockReset().mockResolvedValue([])
   research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
@@ -288,6 +289,25 @@ describe('Market, the tiles and the two boxes under the clock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(screen.queryByText(/the network is down/)).toBeNull())
     expect(marketIo.loadCallAnswers).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads what was looked up again after a press, and shows no earlier fact when that read fails', async () => {
+    const fact = { id: 'f1', builder_key: 'harborfitouts', fact: 'phone', value: '(210) 555-0142', detail: '', source_url: 'https://harborfitouts.example/contact', looked_up_on: '2026-11-18', looked_up_by: 'u2', looked_up_how: 'agent', city: 'San Antonio', created_at: '2026-11-18T18:00:00Z' }
+    marketIo.loadBuilderLookups.mockResolvedValue({ rows: [fact], checks: [] })
+    marketIo.recordLookupCheck.mockReset().mockResolvedValue(undefined)
+    draw()
+    const checked = await screen.findByRole('button', { name: 'Checked: the office phone of Harbor Fitouts' })
+    marketIo.loadBuilderLookups.mockRejectedValue(new Error('Could not read what was looked up about the builders: the network is down'))
+    fireEvent.click(checked)
+    await waitFor(() => expect(marketIo.recordLookupCheck).toHaveBeenCalledWith({ lookupId: 'f1', verdict: 'checked' }))
+    expect(await screen.findByText('Could not read what was looked up about the builders: the network is down')).toBeTruthy()
+    // The red line says no name shows who to ask for, so the earlier read's phone is gone with it.
+    expect(screen.queryByText('(210) 555-0142')).toBeNull()
+    expect(screen.getAllByText('What was looked up could not be read.').length).toBeGreaterThan(0)
+    marketIo.loadBuilderLookups.mockResolvedValue({ rows: [fact], checks: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('(210) 555-0142')).toBeTruthy()
+    expect(marketIo.loadBuilderLookups).toHaveBeenCalledTimes(3)
   })
 
   it('holds the call list when the year of permits cannot be read: no zero tile, no "all answered", no word on what the city shows', async () => {

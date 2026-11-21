@@ -1,8 +1,9 @@
 /**
  * Permits, the Market view (punch list #405): its reads and its one write. Our bids of two years
  * with the names they were priced for, every city's Builders rows, a city's commercial permits
- * of twelve months, and the answers on the call list. The kernels are `permitMarket.ts`,
- * `permitCallList.ts` and `permitMarketShape.ts`; no logic here.
+ * of twelve months, the answers on the call list, and what was looked up about a builder with a
+ * person's check of it. The kernels are `permitMarket.ts`, `permitCallList.ts`,
+ * `permitMarketShape.ts` and `builderLookups.ts`; no logic here.
  */
 import { supabase } from '../supabase'
 import { databaseErrorFromResult, withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
@@ -12,6 +13,7 @@ import { ymdPlusDays } from './permitResearch'
 import { loadBuilders } from './permitResearchIo'
 import type { CityBuilders, MarketBid, MarketPermit } from './permitMarket'
 import type { CallAnswerRow } from './permitCallList'
+import type { LookupCheckRow, LookupRow, LookupVerdict } from './builderLookups'
 
 type BidRow = { id: string; customer_id: string | null; outcome: string | null; created_at: string | null; project_name: string | null; customer: { name: string | null } | null; gc: { name: string | null } | null }
 
@@ -89,7 +91,7 @@ export async function loadMarketPermits(city: string, sinceYmd: string): Promise
   return rows
 }
 
-/** PostgREST's "table not found": the window before migration *_builder_call_answers is pushed. */
+/** PostgREST's "table not found": the window before a migration is pushed (*_builder_call_answers, *_builder_lookups). */
 function missingTable(error: unknown): boolean {
   const e = error as { message?: string; code?: string } | null
   return e != null && (e.code === '42P01' || e.code === 'PGRST205' || /could not find the table|relation .* does not exist/i.test(e.message ?? ''))
@@ -139,4 +141,55 @@ export async function recordCallAnswer(input: { builderKey: string; answer: Call
       } as never),
     'keep the answer',
   )
+}
+
+const LOOKUP_COLUMNS = 'id, builder_key, fact, value, detail, source_url, looked_up_on, looked_up_by, looked_up_how, city, created_at'
+const LOOKUP_CHECK_COLUMNS = 'id, lookup_id, verdict, said_by, said_at'
+
+/** What was looked up about builders, and the presses on those facts. */
+export type BuilderLookupReads = { rows: LookupRow[]; checks: LookupCheckRow[] }
+
+/**
+ * Every looked-up fact and every press on one (punch list #405, Ask for), oldest first, a page
+ * at a time: the newest row per name and fact is the fact, the newest press its state, and each
+ * is read last. Both tables are a few rows a name. Null before the tables are on the database,
+ * and every name then reads as not looked up.
+ */
+export async function loadBuilderLookups(): Promise<BuilderLookupReads | null> {
+  try {
+    const [rows, checks] = await Promise.all([
+      fetchAllRows<LookupRow>(
+        (lo, hi) =>
+          supabase
+            .from('builder_lookups' as never)
+            .select(LOOKUP_COLUMNS)
+            .order('created_at', { ascending: true })
+            .order('id')
+            .range(lo, hi) as unknown as PromiseLike<SupabaseClientResult<LookupRow[]>>,
+        'read what was looked up about the builders',
+      ),
+      fetchAllRows<LookupCheckRow>(
+        (lo, hi) =>
+          supabase
+            .from('builder_lookup_checks' as never)
+            .select(LOOKUP_CHECK_COLUMNS)
+            .order('said_at', { ascending: true })
+            .order('id')
+            .range(lo, hi) as unknown as PromiseLike<SupabaseClientResult<LookupCheckRow[]>>,
+        'read the checks on what was looked up',
+      ),
+    ])
+    return { rows, checks }
+  } catch (e) {
+    if (missingTable(e)) return null
+    throw e
+  }
+}
+
+/** One press on a looked-up fact (checked, wrong, or back), appended as the person signed in. The newest press on a fact stands. */
+export async function recordLookupCheck(input: { lookupId: string; verdict: LookupVerdict }): Promise<void> {
+  const { data: session } = await supabase.auth.getSession()
+  const me = session.session?.user.id
+  if (!me) throw new Error('Sign in again to check a fact.')
+  await withSupabaseRetry(async () => await supabase.from('builder_lookup_checks' as never).insert({ lookup_id: input.lookupId, verdict: input.verdict, said_by: me } as never), 'keep the check')
 }
