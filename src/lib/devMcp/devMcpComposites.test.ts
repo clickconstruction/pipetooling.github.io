@@ -373,3 +373,26 @@ describe('read_on_site (v2.6367, punch list #209)', () => {
     expect(whole.reads.job_places).toBe(1)
   })
 })
+
+describe('get_job and get_customer on a job an in-kind deal pays (punch list #301)', () => {
+  const bill = { id: 'i1', status: 'billed', amount: 1000, billed_at: null, estimated_bill_date: '2026-01-05', sequence_order: 1 }
+  const jobRow = (p: Row): Row => ({ id: JOB, click_number: '1032', hcp_number: '', status: 'billed', revenue: 1000, payments_made: 0, service_type_id: 'st1', materials: [], invoices: [bill], payments: [], team: [], ...p })
+  const base = { service_types: [{ id: 'st1', ledger_job_prefix: 'J', ledger_bid_prefix: null }], customers: [{ id: CUSTOMER, name: 'Acme' }] }
+
+  it('get_job: the open bill is scheduled and carries no age', async () => {
+    const out = (await getJob(catalogReader({ rows: { ...base, jobs_ledger: [jobRow({ in_kind_arrangement_id: 'deal-1' })] } }), JOB, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    expect((out.money as { billing: Row }).billing).toMatchObject({ openBilled: 1000, scheduledInKind: true, ageDays: null })
+  })
+
+  it('get_job: an ordinary late bill still ages', async () => {
+    const out = (await getJob(catalogReader({ rows: { ...base, jobs_ledger: [jobRow({})] } }), JOB, '2026-09-20')) as Record<string, unknown>
+    expect((out.money as { billing: Row }).billing).toMatchObject({ openBilled: 1000, scheduledInKind: false, ageDays: 258 })
+  })
+
+  it('get_customer: the open balance on a deal is scheduled in kind, not in the 90-day aging', async () => {
+    const out = (await getCustomer(catalogReader({ rows: { ...base, jobs_ledger: [jobRow({ in_kind_arrangement_id: 'deal-1' })] } }), CUSTOMER, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    expect((out.money as { stats: Row }).stats).toMatchObject({ openBalance: 1000, scheduledInKind: 1000, aging: { count90: 0, sum90: 0 } })
+  })
+})

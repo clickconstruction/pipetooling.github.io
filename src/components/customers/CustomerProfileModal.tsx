@@ -12,6 +12,8 @@ import { bidOutcomeDotColor } from '../../lib/bidOutcomeDotColor'
 import { estimateStatusDotColor } from '../../lib/estimateStatusDotColor'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { customerDaysToPay, customerMoneyStats, profileJobRowMoney, sortProfileJobsForList } from '../../lib/customers/customerProfileStats'
+import { PROFILE_JOB_ROW_TONE_COLOR, profileJobRowMeta } from '../../lib/customers/profileJobRowWords'
+import { openBalanceInKindChip } from '../../lib/inKind/customerInKindStrip'
 import {
   bidClock,
   bidDisplayValue,
@@ -147,6 +149,9 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
 
   const agingChip = useMemo(() => {
     if (!stats) return null
+    // Money an in-kind deal pays is scheduled, never late, as the customer's page says it (punch list #301).
+    const inKindChip = openBalanceInKindChip(stats)
+    if (inKindChip) return { label: inKindChip.label, bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
     if (stats.aging.count90 > 0)
       return { label: `${stats.aging.count90} · ${money(stats.aging.sum90)} at 90+ days`, bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' }
     if (stats.aging.count30_90 > 0)
@@ -344,18 +349,10 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                   const stage = labelJobsLedgerStatusForDashboard(j.status ?? 'working')
                   // Money-first meta: an open bill describes ITSELF (billed <date> · age),
                   // whatever stage the job sits in; the status dot still shows the stage.
-                  const meta = m.openBilled > 0.005
-                    ? m.noBillDate
-                      ? 'billed · no date'
-                      : `billed ${m.oldestOpenBillYmd ? new Date(`${m.oldestOpenBillYmd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : ''}${m.ageDays != null ? ` · ${m.ageDays}d` : ''}`
-                    : m.unbilled > 0.005
-                      ? `${stage} · unbilled`
-                      : stage
-                  const metaColor = m.openBilled > 0.005 && m.ageDays != null && m.ageDays >= 90
-                    ? 'var(--text-red-600)'
-                    : m.openBilled > 0.005 && m.noBillDate
-                      ? 'var(--text-amber-800)'
-                      : 'var(--text-muted)'
+                  // A bill an in-kind deal pays is scheduled: no day, no age, no red (`profileJobRowMeta`).
+                  const rowMeta = profileJobRowMeta(m, stage)
+                  const meta = rowMeta.text
+                  const metaColor = PROFILE_JOB_ROW_TONE_COLOR[rowMeta.tone]
                   return (
                     <div
                       key={j.id}
@@ -373,7 +370,7 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                         </button>
                       </span>
                       <span style={{ fontSize: '0.72rem', color: metaColor, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</span>
-                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: m.ageDays != null && m.ageDays >= 90 ? 700 : 400, color: m.openBilled > 0.005 ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: rowMeta.strong ? 700 : 400, color: m.openBilled > 0.005 ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                         {m.openBilled > 0.005 ? money(m.openBilled) : m.unbilled > 0.005 ? money(m.unbilled) : '—'}
                       </span>
                     </div>

@@ -42,7 +42,7 @@ import {
   type ActivityFamily,
 } from '../lib/customers/customerActivityFeed'
 import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
-import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
+import { buildCustomerInvoiceRows, customerInvoiceChipTail, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 import { telHrefFor } from '../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
@@ -1169,7 +1169,7 @@ export default function CustomerDetail() {
                           }}
                         >
                           {chip.label}
-                          {row.agingDays != null && row.agingDays >= 30 ? ` · ${row.agingDays}d` : ''}
+                          {customerInvoiceChipTail(row)}
                         </span>
                       </td>
                       <td
