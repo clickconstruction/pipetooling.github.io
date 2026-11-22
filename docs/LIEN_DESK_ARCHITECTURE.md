@@ -958,6 +958,7 @@ last_updated: 2026-11-21
 > *Still open* on an ended contract asks first too, because the clock stops (`lienContractStillOpenAsk`), and another way of ending, the retainage and the bond are saved on **Keep**.
 > A contract still open starts its clock on the line in two steps, the way and then the day: the way is held unsaved in the pane (`startHow`), the day's field opens beside it (`startOpen` on the shared piece), and nothing is written until the window's *Start the clock*.
 > The Clock not started footer's *Set the day our contract ended* opens that field on the line, where it opened Edit Job.
+> What was just kept is shown until the desk reads the job again (`kept` in the pane, dropped when the job's facts change under it), so the old value never comes back for a moment after Keep, and the due day in that gap is `retainageDeadlineFor`'s, the day the window named.
 > A figure read from a pay application is `locked` with the tag *pay application*, since the AIA window is where it changes, and a figure may be set to 0 on the pane but not emptied, which would take the job off the list.
 > The chip, the window line, the source line and the footers draw their days through `retainageDeadlineValues` and `lienDayValues`, so the kernels' words are untouched.
 > A role that cannot set the day reads it bold with no press.
@@ -1540,7 +1541,7 @@ The line is where the desk mounts or calls each one.
 | `LienBoard` | 594 | 2781 | render 21 |
 | `LienDeskNextUp` | 593 | 2785 | render 42 |
 | `useLienDeskBoard` | 412 | 778 | render 5 |
-| `LienDeskRetainagePane` | 570 | 2608 | render 20 |
+| `LienDeskRetainagePane` | 585 | 2608 | render 21 |
 | `LienNoticeSignLine` | 381 | 2459, 2465 | render 6 |
 | `LienDeskLeaderFooters` | 365 | 2553–2559 | render 10 |
 | `useLienDeskAffidavits` | 277 | 1658 | 5 in `LienDeskAffidavitList.render.test.tsx` |

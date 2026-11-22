@@ -5,7 +5,7 @@ import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { daysBetweenYmd, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
@@ -32,6 +32,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL } from '../../lib/jobs/lienRunWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { lienDayValues } from '../../lib/jobs/lienDayValues'
+import { retainageDeadlineFor } from '../../lib/jobs/lienDeadlines'
 import {
   LIEN_CONTRACT_NOT_SAVED_WORDS,
   LIEN_CONTRACT_NO_DAY_WORDS,
@@ -159,6 +160,8 @@ export default function LienDeskRetainagePane({
   // Each count opens a field again: the day's after a way is picked, the way's after the footer's press.
   const [dayAsk, setDayAsk] = useState(0)
   const [howAsk, setHowAsk] = useState(0)
+  // What was just kept, shown until the desk reads the job again: without it the old value came back for a moment after Keep and read as a save that failed.
+  const [kept, setKept] = useState<LienContractPatch>({})
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -256,12 +259,24 @@ export default function LienDeskRetainagePane({
   // A refusal is thrown, so the open field says the reason under what was typed. A save reads the desk and the job's retainage line again.
   const saveFact = async (patch: LienContractPatch, done: string) => {
     await saveLienContractFacts(entry.jobId, patch)
+    setKept((k) => ({ ...k, ...patch }))
     showToast(done, 'success')
     onChanged()
     reloadRetainage()
   }
-  const endedHow = entry.contractEndedOn ? entry.contractEndedHow : null
-  const endedOn = endedHow ? (entry.contractEndedOn ?? '') : ''
+  // The desk's own read wins as soon as it lands: the kept values are dropped when the job's facts change under the pane.
+  const heldColumn = job?.lien_retainage_held
+  useEffect(() => {
+    setKept({})
+  }, [entry.contractEndedOn, entry.contractEndedHow, entry.retainageHeld, entry.paymentBond, heldColumn])
+  const onNow = 'lien_contract_ended_on' in kept ? (kept.lien_contract_ended_on ?? null) : entry.contractEndedOn
+  const howNow = 'lien_contract_ended_how' in kept ? (kept.lien_contract_ended_how ?? null) : entry.contractEndedHow
+  const endedHow = onNow ? howNow : null
+  const endedOn = endedHow ? (onNow ?? '') : ''
+  const bondNow = kept.lien_payment_bond ?? entry.paymentBond
+  // The day the notice is due is the desk's. Between a kept day and the desk's next read it is the day the window just named.
+  const dueNow = 'lien_contract_ended_on' in kept ? retainageDeadlineFor(endedOn) || null : entry.deadline
+  const dueLeft = dueNow ? daysBetweenYmd(todayYmd, dueNow) : null
   /** The day is kept: the window says which day the notice is then due, and its press is the write. */
   const keepDay = async (day: string) => {
     const how = endedHow ?? startHow
@@ -291,7 +306,7 @@ export default function LienDeskRetainagePane({
   const keepHeld = (draft: string) => saveFact(lienRetainageHeldPatch(Number(draft)), lienRetainageHeldSavedWords(Number(draft)))
   const keepBond = (picked: string) => saveFact(lienPaymentBondPatch(parsePaymentBond(picked)), lienPaymentBondSavedWords(parsePaymentBond(picked)))
   // The figure as the job holds it: an empty column reads *not recorded*, where the desk's row reads it as 0.
-  const heldOnJob = job?.lien_retainage_held == null ? (entry.retainageHeld > 0 ? entry.retainageHeld : null) : Number(job.lien_retainage_held)
+  const heldOnJob = 'lien_retainage_held' in kept ? (kept.lien_retainage_held ?? null) : heldColumn == null ? (entry.retainageHeld > 0 ? entry.retainageHeld : null) : Number(heldColumn)
   // A figure read from a pay application is changed in the AIA window. While the source is still being read the figure has no press.
   const heldFromApplication = jobRetainage?.figure?.source === 'pay_application'
 
@@ -503,20 +518,20 @@ export default function LienDeskRetainagePane({
                 )}
               </ValueLine>
             ))}
-            {entry.deadline ? (
+            {dueNow ? (
               <ValueLine label="The § 53.057 notice is due by">
-                <span data-lien-retainage-due>{worked(formatYmdMonthDay(entry.deadline), entry.daysLeft != null && entry.daysLeft < 0 ? 'red' : undefined)}</span>
+                <span data-lien-retainage-due>{worked(formatYmdMonthDay(dueNow), dueLeft != null && dueLeft < 0 ? 'red' : undefined)}</span>
               </ValueLine>
             ) : null}
             <ValueLine label="Retainage the notice claims">
-              <span data-lien-retainage-claim>{worked(formatUsdNoCents(entry.retainageHeld))}</span>
+              <span data-lien-retainage-claim>{worked(formatUsdNoCents(heldOnJob ?? entry.retainageHeld))}</span>
             </ValueLine>
             <ValueLine label="Still unpaid on this job">
               <span data-lien-retainage-unpaid>{worked(formatUsdNoCents(entry.openBalance))}</span>
             </ValueLine>
             {entry.gates.length ? (
               <ValueLine label="Payment bond on the project">
-                <ChangeableValue text={lienPaymentBondText(entry.paymentBond)} label={LIEN_RETAINAGE_VALUE_LABELS.bond} type="choice" value={entry.paymentBond} choices={LIEN_PAYMENT_BOND_CHOICES} onKeep={keepBond} off={!office} />
+                <ChangeableValue text={lienPaymentBondText(bondNow)} label={LIEN_RETAINAGE_VALUE_LABELS.bond} type="choice" value={bondNow} choices={LIEN_PAYMENT_BOND_CHOICES} onKeep={keepBond} off={!office} />
               </ValueLine>
             ) : null}
           </ValueLines>

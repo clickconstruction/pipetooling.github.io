@@ -175,6 +175,26 @@ describe('the day our contract ended: changed in place, and it asks first', () =
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
     expect(reloadRetainage).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(screen.queryByLabelText('the day our contract ended')).toBeNull())
+    // Until the desk reads the job again, the line shows what was kept and the day the window named, never the old day.
+    expect(press('Sep 10, the day our contract ended, press to change')).toBeTruthy()
+    expect(document.querySelector('[data-lien-retainage-due]')?.textContent).toBe('Oct 12')
+  })
+
+  it('the desk’s next read of the job wins over what the pane was showing as kept', async () => {
+    const view = draw()
+    await settle()
+    fireEvent.click(press(HELD))
+    fireEvent.change(screen.getByLabelText('retainage the GC holds'), { target: { value: '5000' } })
+    fireEvent.click(press('Keep'))
+    await waitFor(() => expect(saveFacts).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(press('$5,000, retainage the GC holds, press to change')).toBeTruthy())
+    expect(document.querySelector('[data-lien-retainage-claim]')?.textContent).toBe('$5,000')
+    const next = row({ retainage_held: 5200 })
+    view.rerender(
+      <LienDeskRetainagePane entry={entryFor(next)} data={dataFor(next)} todayYmd={TODAY} authRole="assistant" authUserId={WHO} authName="Pat Office" issuer={null} signerNameFor={() => 'Sam Signer'} leaderNameFor={() => 'Malachi'} onChanged={onChanged} onOpenEditJob={onOpenEditJob} onOpenRun={vi.fn()} onShowNotices={vi.fn()} footerEl={null} />,
+    )
+    await settle()
+    expect(press('$5,200, retainage the GC holds, press to change')).toBeTruthy()
   })
 
   it('Cancel in the window writes nothing', async () => {
@@ -337,6 +357,11 @@ describe('a contract still open: the clock starts on the line', () => {
     fireEvent.click(press('Start the clock'))
     await waitFor(() => expect(saveFacts).toHaveBeenCalledTimes(1))
     expect(saveFacts.mock.calls[0]?.[1]).toMatchObject({ lien_contract_ended_on: '2026-09-03', lien_contract_ended_how: 'complete', lien_contract_ended_set_by: WHO })
+    // The line reads what was just saved while the desk reads the job again: never *still open*.
+    await waitFor(() => expect(press(DAY)).toBeTruthy())
+    expect(press(HOW)).toBeTruthy()
+    expect(document.querySelector('[data-lien-retainage-not-saved]')).toBeNull()
+    expect(document.querySelector('[data-lien-retainage-due]')?.textContent).toBe('Oct 5')
   })
 
   it('a day’s box closed with Cancel leaves the pick unsaved and says so; Still open takes the pick back', async () => {
