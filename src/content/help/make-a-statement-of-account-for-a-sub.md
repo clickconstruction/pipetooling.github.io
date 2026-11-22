@@ -38,6 +38,16 @@ A statement of account covers a period. Five chips set it.
 
 **What it will show** counts the work statements, the payments and the back-charges in the period. The last figure is what is still open.
 
+### A payment typed late
+
+A period is cut by the date on the payment. Sometimes a payment is typed after a statement was made, with a date inside that statement.
+
+{{chip:gray|Since the last statement}} carries that payment into the new statement. The payment is listed under its own date, with the words **recorded after the last statement**. A line under **How it adds up** says so too.
+
+The new statement then opens on the figure the last one closed on. A back-charge or a sheet typed late is carried the same way.
+
+The other four chips do not carry. They list a payment only when its date is in the period.
+
 A work statement has no period. A work statement always shows the whole sheet.
 
 ## Read the paper

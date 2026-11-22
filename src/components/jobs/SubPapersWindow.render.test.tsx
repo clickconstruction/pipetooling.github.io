@@ -675,6 +675,23 @@ describe('SubPapersWindow, with the register on the database', () => {
     expect(screen.getByRole('dialog').textContent).toContain('The file is WS-2041-1.pdf')
   })
 
+  it('a payment typed after the last statement and dated inside it is carried into Since the last statement, and the paper says so', async () => {
+    // SA-0003 ran to Nov 10 and was made that day at 15:00. A $300 check dated Nov 8 was typed on Nov 12.
+    const jobs: LaborJob[] = [sheet('cedar-1', 'cedar', '2041', '2026-10-28', [['Rough-in', 2400]], [{ id: 'p1', amount: 1000, payment_date: '2026-10-31' }, { id: 'p2', amount: 300, payment_date: '2026-11-08', created_at: '2026-11-12T15:00:00Z' }])]
+    db.rows = [{ kind: 'statement_of_account', number: 'SA-0003', revision: 1, labor_job_id: null, period_to: '2026-11-10', issued_at: '2026-11-10T15:00:00Z', replaced_by: null, voided_at: null }]
+    render(<SubPapersWindow open={{ kind: 'statement' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={jobs} assigneesByJobId={new Map([['cedar-1', [{ personId: 'harlan', personName: 'Harlan Mechanical' }]]])} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Since the last statement' }).getAttribute('aria-pressed')).toBe('true'))
+    const paper = screen.getByTestId('sub-paper-preview').textContent ?? ''
+    // It opens on the $1,400.00 the last statement closed on, and lists the payment under its own date.
+    expect(paper).toContain('Open on Nov 11, 2026 $1,400.00')
+    expect(paper).toContain('Nov 8, 2026recorded after the last statement')
+    expect(paper).toContain('1 payment dated before this period was recorded after the last statement was made, so it is counted in this one.')
+    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('1 payment')
+    // Another period is cut by the date alone: the payment is before this month's statement... or inside it, by its date.
+    fireEvent.click(screen.getByRole('button', { name: 'To date' }))
+    expect(screen.getByTestId('sub-paper-preview').textContent).not.toContain('recorded after the last statement')
+  })
+
   it('opened again the day a statement was made, the period still starts after the statement before it, never tomorrow', async () => {
     const today = todayYmdForTest()
     db.rows = [

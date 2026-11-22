@@ -221,7 +221,7 @@ Hard lines:
 2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved. **Built as picked** in v2.7404, card #347's *By hand*.
 3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's.
 4. **Do payment records send by themselves?** My pick: no. The window after Record payment offers it. The portal shows the payment at once either way.
-5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time. Since v2.8106 a statement made earlier the same day does not move it. The period still starts after the last statement from before today.
+5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time. Since v2.8106 a statement made earlier the same day does not move it. The period still starts after the last statement from before today. **How a period is cut, answered by the owner 2026-11-21: by the date on the payment, and a late one is carried.** A payment typed after the last statement was made and dated inside it is listed on the next statement under its own date, so each statement opens on what the last one closed on. Built in v2.8269, for a back-charge and a sheet typed late as well.
 6. **A sheet that is not payable yet.** My pick: it is on the statement under *Still open*, with counsel's one line about terms, and no due date.
 7. **The *Paid this year* line.** My pick: keep it, leave out *Client direct*, and say it is not a tax form. Your accountant's call.
 8. **The letterhead.** My pick: the bill's own block from Settings. The app has no logo to print.
@@ -263,7 +263,9 @@ sheets of one job read alike. Since v2.8262 a held work statement names its shee
 
 **Still open.**
 
-- *A payment typed on a later day and dated on or before the last statement's closing day.* No statement lists it under
+- *A payment typed on a later day and dated on or before the last statement's closing day. Built 2026-11-21, v2.8269, on the
+  owner's call of that day* (call 5): cut by the date, and a late one is carried. *Since the last statement* lists it under its
+  own date as *recorded after the last statement* and opens on what the last one closed on. The fault as it was: no statement lists it under
   *Last payments*, though its amount is in the next statement's opening figure. On made-up rows one statement closes at
   $750 and the next opens at $550 with no payment listed. The owner's call: is a period cut by the date on the payment or
   by the day it was typed?
@@ -280,7 +282,10 @@ sheets of one job read alike. Since v2.8262 a held work statement names its shee
 - *On a phone* every press in the window was 26 to 33 px tall. *Built 2026-11-21, v2.8262*: each stands 44 px tall at 640 px
   and under. The phone's Pay view still has no paper press: the door on a phone is People → Subs. A matter of taste.
 - *The dev seat and the window differ* after a statement made today. The seat refuses *since_last* and asks for
-  *to_date*. The window runs from the last statement before today.
+  *to_date*. The window runs from the last statement before today. Since v2.8269 they differ in one more way: the window's
+  *Since the last statement* carries a line typed late, and the seat's *since_last* is still cut by the date alone. The
+  owner's call covers both. Bringing the seat to the window's rule changes `_shared/subStatementMake.ts`, `sub-statement`
+  and the seat's own words, and is not built.
 - Lower: the letterhead reads *Our company* when Settings cannot be read on a browser that never loaded it. The window says
   the copies are filed, though the function files them best effort. A paper rounds each line and the Pay view rounds the
   sum. No live sheet differs.

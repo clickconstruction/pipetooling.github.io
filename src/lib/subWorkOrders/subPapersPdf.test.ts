@@ -76,6 +76,23 @@ describe('the sub papers as PDFs', () => {
     keep('statement-of-account.pdf', bytes)
     expect(await pages(bytes)).toBe(1)
   })
+  it('says a payment was recorded after the last statement, beside it and under How it adds up', async () => {
+    // The last statement was made on Nov 1 at 10:00. A payment dated Oct 20 was typed after it.
+    const since = { from: '2026-11-01', to: '2026-11-13', lateAfter: '2026-11-01T16:00:00Z' }
+    const sheets = SHEETS.map((sh, i) => (i === 0 ? { ...sh, money: [...sh.money, line('late', 120, '2026-10-20', { at: '2026-11-05T16:00:00Z' })] } : sh))
+    const paper = buildStatementOfAccount(sheets, since, CTX)
+    expect(paper.late).toEqual({ payments: 1, backcharges: 0, sheets: 0 })
+    const rec = recordingLib()
+    await buildStatementOfAccountPdf(rec.lib, paper, since)
+    const texts = rec.pagesDrawn.flatMap((pg) => pg.texts.map((t) => t.text))
+    expect(texts).toContain('recorded after the last statement')
+    expect(texts.join(' ')).toContain('1 payment dated before this period was recorded after the last statement was made')
+    // A statement that carries nothing draws neither.
+    const plain = recordingLib()
+    await buildStatementOfAccountPdf(plain.lib, buildStatementOfAccount(SHEETS, RANGE, CTX), RANGE)
+    expect(plain.pagesDrawn.flatMap((pg) => pg.texts.map((t) => t.text)).join(' ')).not.toContain('recorded after the last statement')
+  })
+
   it('runs to a second page when the sheets do, and numbers both', async () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ ...SHEETS[2]!, id: `m${i}`, number: `WS-2057-${i + 1}`, day: `2026-10-${String((i % 28) + 1).padStart(2, '0')}` }))
     const bytes = await buildStatementOfAccountPdf(lib, buildStatementOfAccount(many, { from: null, to: null }, CTX), { from: null, to: null })

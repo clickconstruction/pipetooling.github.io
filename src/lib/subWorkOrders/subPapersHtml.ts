@@ -8,7 +8,7 @@
  *
  * Pure: strings in, a string out.
  */
-import { paperMoney, statementAddsWords, type CounselSentence, type PaperCompany, type PaperParty, type PaymentRecord, type StatementOfAccount, type StatementRange, type WorkStatement } from '../../../supabase/functions/_shared/subPapers'
+import { paperMoney, statementAddsWords, statementLateWords, STATEMENT_LATE_PAYMENT_WORDS, type CounselSentence, type PaperCompany, type PaperParty, type PaymentRecord, type StatementOfAccount, type StatementRange, type WorkStatement } from '../../../supabase/functions/_shared/subPapers'
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -103,7 +103,7 @@ export function statementOfAccountHtml(c: StatementOfAccount, range: StatementRa
     `<tr><td><b>${esc(r.sheetName)}</b> · ${esc(r.job)}<br><span class="mut">${esc(r.words)}</span></td><td class="n">${paperMoney(r.comesTo)}</td><td class="n">${r.paid > 0 ? paperMoney(r.paid) : '—'}</td><td class="n">${r.open > 0 ? `<b>${paperMoney(r.open)}</b>` : paperMoney(0)}</td></tr>`
   const forward = c.rows.filter((r) => r.section === 'forward')
   const period = c.rows.filter((r) => r.section === 'period')
-  const pays = c.lastPayments.map((p) => `<tr><td>${esc(p.day)}</td><td>${esc(p.how)}</td><td>${esc(p.number || '—')}</td><td class="n grn">${paperMoney(p.amount)}</td></tr>`).join('')
+  const pays = c.lastPayments.map((p) => `<tr><td>${esc(p.day)}${p.late ? `<br><span class="mut">${esc(STATEMENT_LATE_PAYMENT_WORDS)}</span>` : ''}</td><td>${esc(p.how)}</td><td>${esc(p.number || '—')}</td><td class="n grn">${paperMoney(p.amount)}</td></tr>`).join('')
   return `<div class="sp">${letterhead(c.company, c.title, [c.number ? `No. ${c.number}` : 'Not numbered yet', c.period])}
 <div class="who">${party('Account of', c.sub)}<div><i>Prepared</i><b>${esc(c.preparedOn)}</b><br>All dates are ${esc(c.zone)}</div></div>
 <div class="big"><span>Still open on ${esc(c.closingDay)}</span><b>${paperMoney(c.stillOpen)}</b></div>
@@ -115,6 +115,7 @@ ${c.rows.length === 0 ? '<tr><td colspan="4" class="mut">No statements in this p
 <tr class="t"><td>Totals</td><td class="n">${paperMoney(c.totals.comesTo)}</td><td class="n">${paperMoney(c.totals.paid)}</td><td class="n">${paperMoney(c.totals.open)}</td></tr></table>
 <div class="box"><h4>Last payments</h4>${c.lastPayments.length ? `<table style="margin-top:0">${pays}<tr class="t"><td colspan="3">Paid in this period</td><td class="n">${paperMoney(c.paidInPeriod)}</td></tr></table>` : 'No payments in this period.'}</div>
 <div class="box"><h4>How it adds up</h4>${esc(statementAddsWords(c, range))}</div>
+${statementLateWords(c) ? `<div class="fine">${esc(statementLateWords(c))}</div>` : ''}
 ${c.undated > 0 ? `<div class="fine">${c.undated} ${c.undated === 1 ? 'line has' : 'lines have'} no date and ${c.undated === 1 ? 'is' : 'are'} left off a statement for a period.</div>` : ''}
 ${c.paidThisYear ? `<div class="fine">Paid to ${esc(c.sub.name)} in ${esc(c.paidThisYear.year)} so far: ${paperMoney(c.paidThisYear.amount)}.</div>${sentences(c.sentences.filter((s) => s.key === 'notATaxForm'))}` : ''}
 ${sentences(c.sentences.filter((s) => s.key === 'openUnderTerms'))}
