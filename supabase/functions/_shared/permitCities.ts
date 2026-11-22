@@ -7,7 +7,7 @@
  * each city's doors. No I/O here; `src/lib/research/permitCities.test.ts` holds it.
  */
 import { addressKeyOf, dayOf, feedPageSql, numberOf, permitRowFromSanAntonio, SA_APPLIED_FEED, SA_ISSUED_FEED, SAN_ANTONIO_CKAN, textOf, type PermitFeed, type PermitRow, type PermitStage, type PermitTypeClass } from './permitFeed.ts'
-import { builderKeyOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
+import { builderKeyOf, phoneDigitsOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
 import { TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS, type ParcelPointSource } from './permitParcelPoints.ts'
 
 /** One feed of one city, whatever door it is read through. */
@@ -177,7 +177,12 @@ export function permitRowFromAustin(record: Record<string, unknown>): PermitRow 
   const point = texasPoint(record['latitude'], record['longitude'])
   // Who pulled it: the contractor's company on the permit, else the applicant's, else the person named.
   // Each without the city's MAIN mark; `raw` keeps the feed's own text.
-  const contact = austinName(record['contractor_company_name']) ?? austinName(record['applicant_org']) ?? austinName(record['contractor_full_name']) ?? austinName(record['applicant_full_name'])
+  const company = austinName(record['contractor_company_name'])
+  const applicantOrg = austinName(record['applicant_org'])
+  const contractor = austinName(record['contractor_full_name'])
+  const contact = company ?? applicantOrg ?? contractor ?? austinName(record['applicant_full_name'])
+  // The phone is the same party's: the contractor's beside a contractor's name, the applicant's beside an applicant's.
+  const fromContractor = company != null || (applicantOrg == null && contractor != null)
   const zip = (textOf(record['original_zip']) ?? '').match(/^\d{5}/)?.[0] ?? null
   return {
     city: 'Austin',
@@ -200,6 +205,7 @@ export function permitRowFromAustin(record: Record<string, unknown>): PermitRow 
     area_sf: positive(record['total_new_add_sqft']),
     contact,
     builder_key: builderKeyOf(contact),
+    contact_phone: contact == null ? null : phoneDigitsOf(record[fromContractor ? 'contractor_phone' : 'applicant_phone']),
     raw: record,
   }
 }

@@ -55,6 +55,36 @@ function austin(over: Record<string, unknown> = {}): Record<string, unknown> {
   }
 }
 
+describe('the phone on an Austin permit (v2.8296)', () => {
+  it('keeps the contractor’s phone beside a contractor, as ten digits', () => {
+    expect(permitRowFromAustin(austin({ contractor_phone: '(512) 555-0101', applicant_phone: '5125559999' }))?.contact_phone).toBe('5125550101')
+    // No company, no applicant's firm, and the contractor named: still the contractor's.
+    expect(permitRowFromAustin(austin({ contractor_company_name: null, applicant_org: null, contractor_phone: '15125550101', applicant_phone: '5125559999' }))?.contact_phone).toBe('5125550101')
+  })
+
+  it('keeps the applicant’s phone when the contact is the applicant', () => {
+    expect(permitRowFromAustin(austin({ contractor_company_name: ' ', contractor_phone: '5125550101', applicant_phone: '512-555-0202 x12' }))?.contact_phone).toBe('5125550202')
+    expect(permitRowFromAustin(austin({ contractor_company_name: null, applicant_org: null, contractor_full_name: null, applicant_full_name: 'Dana Whitlock', contractor_phone: '5125550101', applicant_phone: '5125550202' }))?.contact_phone).toBe('5125550202')
+  })
+
+  it('keeps nothing that is no phone, and nothing when nobody is named', () => {
+    expect(permitRowFromAustin(austin({ contractor_phone: '512' }))?.contact_phone).toBeNull()
+    expect(permitRowFromAustin(austin({ contractor_phone: '0000000000' }))?.contact_phone).toBeNull()
+    expect(permitRowFromAustin(austin({}))?.contact_phone).toBeNull()
+    const nobody = permitRowFromAustin(austin({ contractor_company_name: '', applicant_org: '', contractor_full_name: '  ', applicant_full_name: null, contractor_phone: '5125550101' }))
+    expect(nobody?.contact).toBeNull()
+    expect(nobody?.contact_phone).toBeNull()
+  })
+
+  it('is Austin’s alone: a city whose feed gives no phone writes no such column', () => {
+    // One request writes one set of columns, so a city's rows carry the key or none does.
+    expect('contact_phone' in (permitRowFromAustin(austin({})) ?? {})).toBe(true)
+    const sanMarcos = permitRowFromSanMarcos({ TYPE: 'New Commercial', LANDUSE: 'Commercial', STATUS: 'In Review', ADDRESS: '100 SAMPLE ST', PROJECTNUMBER: '2026-00001', PERMITID: '1', APPLIED: Date.UTC(2026, 8, 2, 15), ISSUED: null, SQUAREFEET: 4300, ProjectName: 'Sample Retail Shell', _lat: 29.88, _lng: -97.94 })
+    expect(sanMarcos).not.toBeNull()
+    expect('contact_phone' in (sanMarcos ?? {})).toBe(false)
+  })
+})
+
 describe('the cities the pull reads (punch list #292, revision 4)', () => {
   it('lists San Antonio first, then Austin and the three towns between, each with its county and its own search pages', () => {
     expect(PERMIT_CITY_NAMES).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
