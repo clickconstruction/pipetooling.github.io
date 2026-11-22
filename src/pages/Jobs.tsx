@@ -13,7 +13,11 @@ import { canSeeStagesMoneyCharts } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
-import { pageTabStyle } from '../lib/pageTabStyle'
+import { jobsPageTabs } from '../lib/jobs/jobsPageTabs'
+import { phoneTabRows } from '../lib/phoneLayout/phoneTabRows'
+import { JobsPageTabStrip } from '../components/jobs/JobsPageTabStrip'
+import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
+import { usePhoneBarNamesPage } from '../contexts/PhoneBarPageNameContext'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -151,6 +155,9 @@ export default function Jobs() {
   // Punch list #30, PR 1: on a phone the app header scrolls away, so the page's own tab strip
   // sticks to the top — Reports | Pipeline | Billing stay one tap away 2,600 px into the list.
   const stickyTabStrip = useMatchMedia('(max-width: 640px)')
+  // The new phone layout (`lib/phoneLayout/phoneTabRows.ts`): the tabs are one scrolling line and the top bar names the page.
+  const newPhoneLayout = useNewPhoneLayout()
+  const barNamesPage = usePhoneBarNamesPage()
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -1717,207 +1724,31 @@ export default function Jobs() {
   // updateJobPctComplete / commitStagesPctWithNote / setInvoiceEstimatedBillDate /
   // bumpInvoiceEstimatedBillDate live in useJobsStagesMutations (v2.828).
 
-  // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
-  const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
-  const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
+  // The row of tabs is `jobsPageTabs` (`lib/jobs/jobsPageTabs.ts`): the tabs this role has, in the row's order. A
+  // primary, and anyone whose role is not read yet, has Reports alone, so no tab flashes that the role lacks.
+  const pageTabs = jobsPageTabs({ authRole, myRole })
   const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
-  const showStagesAndBillingTabs = showPrimaryRestrictedTabs && !isSuperintendent
-  // Crew P&L (punch list #188 row 1, v2.6757): the owner's and a dev's; the toast already said *Crew P&L is for the owner*.
-  const showTeamsTab = showPrimaryRestrictedTabs &&
-    !isAssistantLike(authRole) &&
-    authRole !== 'superintendent' && myRole !== 'superintendent' &&
-    !isAssistantLike(myRole)
-  const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
-    authRole !== 'superintendent' && myRole !== 'superintendent'
   const showSuperintendentExtraTabs = !isSuperintendent
   const subsView = subsViewFromParam(searchParams.get('view'), showSuperintendentExtraTabs)
+  // The new phone layout: the row is one scrolling line, and the title is left to the top bar while it names the page.
+  const tabRows = phoneTabRows({ phoneLayoutOn: newPhoneLayout.on, barNamesPage })
 
   return (
     <div>
-      <div
-        data-jobs-page-tabs
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          borderBottom: '1px solid var(--border)',
-          marginBottom: '1.5rem',
-          overflow: 'hidden',
-          ...(stickyTabStrip ? { position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)' } : null),
+      <JobsPageTabStrip
+        tabs={pageTabs}
+        activeTab={activeTab}
+        sticky={stickyTabStrip}
+        rows={tabRows}
+        onSelect={(key) => {
+          setActiveTab(key)
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', key)
+            return next
+          })
         }}
-      >
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
-        {showTeamsTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('teams-summary')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'teams-summary')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'teams-summary')}
-          >
-            Crew P&L
-          </button>
-        )}
-        <button
-            type="button"
-            onClick={() => {
-              setActiveTab('reports')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'reports')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'reports')}
-          >
-            Reports
-          </button>
-        {showStagesAndBillingTabs && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('stages')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'stages')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'stages')}
-          >
-            Pipeline
-          </button>
-        )}
-        {showPrimaryRestrictedTabs && (
-          <>
-          {showStagesAndBillingTabs && (
-            <>
-            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('billing')
-                setSearchParams((p) => {
-                  const next = new URLSearchParams(p)
-                  next.set('tab', 'billing')
-                  return next
-                })
-              }}
-              style={pageTabStyle(activeTab === 'billing')}
-            >
-              Billing
-            </button>
-            </>
-          )}
-          {showTeamLaborTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('combined-labor')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'combined-labor')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'combined-labor')}
-          >
-            Team
-          </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('subs')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'subs')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'subs')}
-          >
-            Subs
-          </button>
-          {showSuperintendentExtraTabs && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('parts')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'parts')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'parts')}
-          >
-            Parts
-          </button>
-          )}
-          {showSuperintendentExtraTabs && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('materials')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'materials')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'materials')}
-            title="Materials on site: what is in the cages and boxes on every job, what went missing, which containers are due a count"
-          >
-            Materials
-          </button>
-          )}
-          </>
-        )}
-        {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('job-summary')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'job-summary')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'job-summary')}
-          >
-            Job Summary
-          </button>
-        )}
-        {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
-          <>
-          <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('inspections')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'inspections')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'inspections')}
-          >
-            Inspections
-          </button>
-          </>
-        )}
-          </div>
-        </div>
-        <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Jobs</h1>
-      </div>
+      />
 
       {searchParams.get('customer') && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 6, fontSize: '0.875rem' }}>

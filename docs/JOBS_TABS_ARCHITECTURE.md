@@ -61,7 +61,7 @@ Tab-button labels differ from keys: `stages` = **Pipeline** (key, URL slug and f
 | Cross-tab joins | `subLaborJobIds`, `teamLaborJobIds`, **`jobSummaryData`**, `jobSummaryUserNameById`, `jobSummaryJobIds`, `useJobBudgetFootings`, `useJobSummaryView`, **`pipelineBurnAlert`**, `subLaborOutstandingByPerson` (+`subLaborDueTotal`) | 1464–1631 | Billing, Job Summary, Pipeline, Subs | `subLaborOutstanding.test.ts`, `jobSummaryBurn.test.ts`, `subLaborCost.test.ts`; **`jobSummaryData` math untested** |
 | Job-form glue | `refreshCustomersAfterJobFormSave`, `openNew`, `openEdit`, `openEditJobAndCreateCustomerFlow` | 1633–1678 | Pipeline, Billing, Subs Work | — |
 | Tab-visibility flags | `isPrimaryOrUnknown` … `subsView` | 1686–1698 | tab bar, Subs | `subsViewFromParam` via `JobsSubsTab.render.test.tsx` |
-| Render: tab strip + customer banner | 9 tab buttons, sticky on phones (v2.3749) | 1702–1881 | — | e2e `jobs-tabs.spec.ts` |
+| Render: tab strip + customer banner | [`JobsPageTabStrip`](../src/components/jobs/JobsPageTabStrip.tsx) over `jobsPageTabs` (v2.8288), sticky on phones (v2.3749); under the new phone layout one scrolling line with the title left to the top bar (`lib/phoneLayout/phoneTabRows.ts`) | 1727–1764 | — | `JobsPageTabStrip.render.test.tsx`, `Jobs.newPhoneLayout.render.test.tsx`, e2e `jobs-tabs.spec.ts` |
 | Render: tabs | Reports 1883–1900, `JobsStagesTab` 1907–1976, Subs 1978–2043, Team 2045–2052, Billing 2054–2070, Crew P&L 2072–2082, Parts 2084–2112, Job Summary 2114–2163, Inspections 2165–2167 | 1883–2167 | — | see dossiers |
 | Render: always-mounted modal tail | `JobsSubLaborFormModal` 2169–2198, `SubLaborPaymentModals` 2202–2209, `SubLaborPaymentMoveRemoveModals` 2210–2217, mercury trio 2218–2262, `JobSummaryCostCellDrilldownModal` 2263–2271 | 2169–2271 | Subs, Parts, Job Summary | see dossiers |
 
@@ -104,18 +104,18 @@ Tabs in tab-bar order (Crew P&L first), then the vestigial member. "Page state" 
 
 Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth`) and `myRole` (set by `loadUsers` from the user's own `users.role` row — quirk #6). `isAssistantLike` = `assistant | controller`.
 
-### Tab visibility (flags at 1686–1698)
+### Tab visibility (`jobsPageTabs` in [`lib/jobs/jobsPageTabs.ts`](../src/lib/jobs/jobsPageTabs.ts) since v2.8288)
 
 | Tab | dev | master_technician | assistant | controller | estimator | primary | superintendent |
 |---|---|---|---|---|---|---|---|
-| Crew P&L (`showTeamsTab`; the owner since v2.6757) | ✓ | ✓ | — | — | ✓ | — | — |
+| Crew P&L (the owner since v2.6757) | ✓ | ✓ | — | — | ✓ | — | — |
 | Reports | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Pipeline, Billing (`showStagesAndBillingTabs`) | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
-| Team (`showTeamLaborTab`) | ✓ | ✓ | — | ✓ (quirk #5) | ✓ | — | — |
-| Subs (`showPrimaryRestrictedTabs`) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ **Pay only** (`subsViewFromParam(view, canSeeWork=false)` → `'pay'`) |
+| Pipeline, Billing | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
+| Team | ✓ | ✓ | — | ✓ (quirk #5) | ✓ | — | — |
+| Subs | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ **Pay only** (`subsViewFromParam(view, canSeeWork=false)` → `'pay'`) |
 | Parts, Materials, Job Summary, Inspections (`showSuperintendentExtraTabs`) | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
 
-`null`+`null` roles count as primary-restricted (`isPrimaryOrUnknown`, 1687) so the bar never flashes wrong tabs.
+`null`+`null` roles count as primary-restricted so the bar never flashes wrong tabs. The kernel answers the row for a pair of roles, in the row's order with its two thin bars, and `jobsPageTabs.test.ts` holds it to the page's old conditions for every pair.
 
 **The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for assistant-like on `teams-summary` (the owner is let in since v2.6757), both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
 
