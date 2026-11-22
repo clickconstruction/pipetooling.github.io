@@ -20,6 +20,7 @@ import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
 import { DONE_WHEN_HINT } from '../lib/tasks/taskRowsOnAPhone'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
+import { useModalStackEntry } from '../hooks/useModalStackEntry'
 import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TASK_WORDS_BOX_STYLE, focusPeopleSearchIfOpen } from './checklist/newTask/taskWindowBits'
 import { TaskSendBar } from './checklist/newTask/TaskSendBar'
@@ -413,6 +414,24 @@ export default function ChecklistAddModal({
       setSubmitting(false)
     }
   }
+
+  // Escape closes the window as its × does (v2.8278). It waits while a task is on its way, while a window opened over
+  // this one is on top, and when a list inside the form has already taken the key to shut itself. The key stops here,
+  // so a window under this one that listens for Escape too stays open.
+  const escapeCloses = Boolean(modalContext?.isOpen) && canManage
+  const closeModal = modalContext?.closeModal
+  const isTopmost = useModalStackEntry(escapeCloses)
+  useEffect(() => {
+    if (!escapeCloses || !closeModal) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || e.defaultPrevented || submitting || !isTopmost()) return
+      e.preventDefault()
+      e.stopPropagation()
+      closeModal?.()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [escapeCloses, closeModal, isTopmost, submitting])
 
   if (!modalContext?.isOpen) return null
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { PAID_METHODS, parsePaymentPromisesRpc, promisesOnJob, voidTakesDateOffBoard, type PaidMethod, type PaymentPromise, type PromiseChannel } from '../../lib/jobs/paymentPromises'
@@ -90,6 +91,20 @@ export default function SetPromisedPayDateModal({
   const [voidingId, setVoidingId] = useState<string | null>(null)
   /** The date the board shows now: the one the modal opened with, until a void takes it off. */
   const [boardYmd, setBoardYmd] = useState<string | null>(initialYmd)
+
+  // Escape closes the sheet as Cancel does (v2.8278), unless a save is on its way or a window opened over it is on top.
+  // The key stops here, so a window under the sheet that listens for Escape too stays open.
+  const isTopmost = useModalStackEntry()
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || e.defaultPrevented || saving || !isTopmost()) return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isTopmost, onClose, saving])
 
   const loadOnRecord = useCallback(async () => {
     try {
