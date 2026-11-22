@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, working on it, tick a card, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, still on it, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -95,17 +95,47 @@ You tap {{button:green|Do}}, {{button:amber|Later}} or {{button:red|Drop}} on a 
 
 Every card has a checkbox beside its number. You tick the box when you are working on that card. You untick it when you stop.
 
-- A tick is yours alone. Nobody else sees it.
+A tick is a claim. Everyone who opens the board sees your name on the card.
+
 - A tick is kept with your account. The tick is there after a reload, and on your phone and your computer.
+- Only you can take your tick off.
 - A tick stays while its card stays in the same group.
 - A card that moves to another group loses its tick. A card that leaves the board loses its tick too.
 - A flag does not move a card, so a flagged card keeps its tick.
 
 **Working on** in the filter row counts your ticks. You press it to see only the cards you ticked. You press it again to see every card.
 
-A tick is not a pick. {{button:green|Do}}, {{button:amber|Later}} and {{button:red|Drop}} are shared with everyone, and a tick is not.
+A tick is not a pick. {{button:green|Do}}, {{button:amber|Later}} and {{button:red|Drop}} sort a card. A tick says who is on it.
 
-When a tick does not save, the box goes back and a line says why. When your ticks cannot be read, the page says so and still shows every card.
+When a tick does not save, the box goes back and a line says why. When the ticks cannot be read, the page says so and still shows every card.
+
+## See who is working on a card
+
+A ticked card says who is on it, on a line under its name. The line has the name and how long ago the last update was.
+
+:::example A card somebody holds
+{{chip:yellow|● Sam is working on this. Last update 3 h ago.}}
+:::
+
+An update is any of three things.
+
+- The person ticks the card.
+- The person presses **Still on it**.
+- The card's file changes in the repo.
+
+A claim goes quiet after 12 hours with no update. The card then reads as free to pick up. The line says who had it and when it went quiet.
+
+:::example A card whose claim went quiet
+{{chip:gray|○ Free to pick up. Sam had it and went quiet 2 h ago.}}
+:::
+
+You can tick a card that is free to pick up. The card then reads as yours.
+
+Your own tick stays when your claim goes quiet. The card says your claim went quiet, and it shows {{button:gray|Still on it}}. You press **Still on it** and your claim is fresh again. You untick the card when you are done with it.
+
+Two people can tick the same card. The card then names both.
+
+The time of a file change comes from the last deploy. A change made since then counts after the next deploy.
 
 ## Changing what is on the board
 
