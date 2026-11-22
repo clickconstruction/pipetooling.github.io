@@ -4,14 +4,14 @@ number: 416
 group: ready
 status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · card #404 holds the design and the record of what is built · nothing on this card is started
 summary: >
-  The Document builder (#404) is built through step 9 and live for a dev. What is left is spread
+  The Document builder (#404) is built but for steps 6 and 10, and live for a dev. What is left is spread
   over that card and a dozen release fragments. This card gathers it in one list, in the order to
   do it. First the walks on prod that no one has done yet, each with what it needs first. Then the
   builds that are ready now. Then the builds that wait on one of Taunya's calls, among them a way
   to see that the same person opened a link twice.
-next: Part 1, the walks, on the test project only. Parts 2 and 3 can start beside it. Part 4 waits on Taunya's calls.
+next: Part 1, the walks, on the test project only. Part 2 can start beside it. Parts 3 and 4 wait on Taunya's calls.
 size: L as four parts (M · M · M · L), each alone
-blocker: None for parts 1 to 3. Part 4 waits on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet still come before anything goes to a real GC or a real trade.
+blocker: None for parts 1 and 2. Parts 3 and 4 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet still come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
 mockup: not required — #404's mockup.html draws every screen here but the visitor lines in part 4, which are drawn first as that part's own step
 ---
@@ -25,6 +25,17 @@ than saying it twice.
 
 When a walk passes or a build merges, write its line on #404 under *Where it stands* and take it
 off this card. When this card's list is empty, delete the card.
+
+## In flight in other sessions
+
+Open on 2026-11-21 and not this card's. Check each one's state before starting near it.
+
+- **Step 6, a certificate checked against a job's sheet**, PR #9325 (the columns and two functions)
+  and PR #9337 (the screens). Taunya's call: one certificate for each job. When both merge, add the
+  walks their fragments name to part 1, and the *Left* lines of the screens' fragment to part 2.
+  Those name the trade's own page, which does not yet say a certificate was sent back, and a
+  trade's upload, which still files a certificate with no job on it.
+- **The guide**, PR #9307: the Document builder's guide is found by step 9's words.
 
 ## Before you start
 
@@ -129,8 +140,6 @@ Each line names the call. None is started.
 - **A link for each person.** Each contact's email carries its own code, so an open names the
   contact. It is the only way to tie one person's phone to their laptop. It changes how a send
   makes links, so it is the biggest piece here.
-- **Step 6, a certificate held against a job's sheet.** It waits on *A certificate for each job, or one
-  for each company*. See #404, step 6, and its calls table.
 - **Step 10, a GC sends their picks.** It waits on her yes. See #404, *Calls still open*.
 - **The reason beside a dead press.** Today a dead second press says why on its row's chip or at the
   foot of the box, not beside itself (v2.8099).
