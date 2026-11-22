@@ -99,6 +99,7 @@
     "test:pg:bid-jobs-opened": "bash scripts/pgtest-bid-jobs-opened.sh",
     "test:pg:primary-paid-verbs": "bash scripts/pgtest-primary-paid-verbs.sh",
     "test:pg:primary-money-verbs": "bash scripts/pgtest-primary-money-verbs.sh",
+    "test:pg:write-down-first-amount": "bash scripts/pgtest-write-down-first-amount.sh",
     "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
