@@ -16,7 +16,7 @@ import { forgetLookAlikeCounts, readLookAlikeCounts, rememberLookAlikeCount } fr
 import { LOOK_ALIKE_COUNT_FRESH_MS } from './lookAlikeWorklist'
 import { RESEARCH_CITIES } from './permitResearch'
 
-const builder = (key: string, contact: string): BuilderRow => ({ key, name: null, sample_contact: contact, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 2, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
+const builder = (key: string, contact: string): BuilderRow => ({ key, name: null, sample_contact: contact, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 2, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
 const BY_CITY: Record<string, BuilderRow[]> = {
   'San Antonio': [builder('tallpinedevelopmentgroup', 'Tall Pine Development Group LLC'), builder('danawhitlow', 'Dana Whitlow'), builder('copperlinemechanical', 'Copperline Mechanical')],
   Austin: [builder('larkspurdentalpartners', 'Larkspur Dental Partners')],

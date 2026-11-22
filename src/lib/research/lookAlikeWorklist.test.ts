@@ -17,7 +17,7 @@ import {
 } from './lookAlikeWorklist'
 
 // Every name and address here is made up.
-const builder = (over: Partial<BuilderRow>): BuilderRow => ({ key: 'k', name: null, sample_contact: null, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 1, open: 0, last_permit_on: null, plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over })
+const builder = (over: Partial<BuilderRow>): BuilderRow => ({ key: 'k', name: null, sample_contact: null, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 1, open: 0, last_permit_on: null, plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over })
 const answer = (over: Partial<NameAnswerRow>): NameAnswerRow => ({ id: 'a', builder_key: 'ridgewaybuilderstexas', customer_id: 'c1', answer: 'works_for', scope: 'all', permit_id: null, name: 'Ridgeway Builders of Texas LLC', answered_by: 'u1', answered_at: '2026-11-10T15:00:00Z', ...over })
 
 const BUILDERS: BuilderRow[] = [

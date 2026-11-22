@@ -210,6 +210,14 @@ SELECT ps.same('Builders lists each name with its permits, its open ones, its pl
    FROM public.research_builders('Skim City')),
   'ridgewaybuilders:Ridgeway Builders:gc:2/1:Blue Heron Plumbingx1:none:0 tallpinedevelopment:-:-:1/1:nobodyx0:avoid:0');
 
+-- Neither the read nor the table carries a customer (migration *_builders_customer_id_dropped): the customers a
+-- name is tied to are builder_customer_answers. The read's return, the table's columns and its foreign keys, by name.
+SELECT ps.same('research_builders returns no customer, and builders holds none',
+  (SELECT count(*)::text FROM unnest((SELECT proargnames FROM pg_proc WHERE oid = 'public.research_builders(text)'::regprocedure)) a(name) WHERE a.name = 'customer_id')
+  || '/' || (SELECT count(*)::text FROM pg_attribute WHERE attrelid = 'public.builders'::regclass AND attname = 'customer_id' AND NOT attisdropped)
+  || '/' || (SELECT count(*)::text FROM pg_constraint WHERE conrelid = 'public.builders'::regclass AND contype = 'f' AND conname = 'builders_customer_id_fkey'),
+  '0/0/0');
+
 -- Our bids with a name, by the one rule (migration *_research_builders_our_bids).
 SELECT ps.same('Builders counts our bids of two years that are no practice bid, each once',
   (SELECT bids || ' bids, ' || won || ' won, the last ' || (public.app_today() - last_bid_on) || ' days ago' FROM public.research_builders('Elm City') WHERE key = 'limebuild'),

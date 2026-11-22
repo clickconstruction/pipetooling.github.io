@@ -34,7 +34,7 @@ const CUSTOMERS: CustomerName[] = [
 ]
 
 function builder(key: string, contact: string, permits: number, over: Partial<BuilderRow> = {}): BuilderRow {
-  return { key, name: null, sample_contact: contact, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 1, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
+  return { key, name: null, sample_contact: contact, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 1, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
 }
 let nextBid = 0
 function bid(customerId: string, over: Partial<MarketBid> = {}): MarketBid {

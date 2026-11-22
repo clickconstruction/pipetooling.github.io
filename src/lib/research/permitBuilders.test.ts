@@ -49,7 +49,7 @@ function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
   }
 }
 function builder(over: Partial<BuilderRow> = {}): BuilderRow {
-  return { key: 'ridgewaybuilders', name: null, sample_contact: 'Dana Whitlock, Ridgeway Builders', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 4, open: 2, last_permit_on: '2026-11-06', plumber: 'Blue Heron Plumbing', plumber_jobs: 2, bids: 5, won: 3, last_bid_on: '2026-06-01', ...over }
+  return { key: 'ridgewaybuilders', name: null, sample_contact: 'Dana Whitlock, Ridgeway Builders', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 4, open: 2, last_permit_on: '2026-11-06', plumber: 'Blue Heron Plumbing', plumber_jobs: 2, bids: 5, won: 3, last_bid_on: '2026-06-01', ...over }
 }
 
 describe('the four places (punch list #302)', () => {

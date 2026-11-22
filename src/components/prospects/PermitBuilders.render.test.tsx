@@ -30,7 +30,7 @@ const CUSTOMERS: CustomerName[] = [
 const TEXAS = 'ridgewaybuildersoftexas'
 
 function builder(over: Partial<BuilderRow> = {}): BuilderRow {
-  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
+  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
 }
 const copperline = builder({ key: 'copperlinemechanical', sample_contact: 'Copperline Mechanical', permits: 3, open: 0 })
 

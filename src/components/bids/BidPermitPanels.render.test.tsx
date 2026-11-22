@@ -308,7 +308,7 @@ describe('the answer on a name', () => {
 })
 
 describe('Find their names on permits', () => {
-  const builder = (key: string, name: string, permits: number) => ({ key, name: null, sample_contact: name, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 0, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
+  const builder = (key: string, name: string, permits: number) => ({ key, name: null, sample_contact: name, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 0, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
 
   async function openSheet() {
     io.loadBidsOfCustomers.mockResolvedValue([bid()])
