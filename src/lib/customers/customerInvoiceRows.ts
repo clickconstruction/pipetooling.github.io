@@ -4,7 +4,8 @@
  * Pure mapping from a customer's raw invoice + payment rows to display rows
  * and the lifetime totals line. Statuses follow the billing model
  * (ready_to_bill = draft bill, billed, paid); the aging rule reuses the
- * customerProfileStats convention (estimated_bill_date at 30/90 days).
+ * customerProfileStats convention (estimated_bill_date at 30/90 days); a bill
+ * on a job an in-kind deal pays is scheduled and carries no age (punch list #301).
  * The totals ARE the Profile money strip's numbers, by construction: the
  * bill-truth kernel's `jobBilledContribution` per job (billed/paid invoice
  * amounts, else the billed/paid job shell — journey J34-F1: this footer used
@@ -14,6 +15,7 @@
  */
 import { jobBilledContribution, lifetimeCollected } from '../billing/billTruth'
 import { attributeJobPayments } from '../jobs/paymentAttribution'
+import { rowIsScheduledInKind } from '../inKind/inKindApart'
 
 export type CustomerInvoiceInput = {
   id: string
@@ -44,6 +46,8 @@ export type CustomerInvoiceJob = {
   /** For the footer's lifetime (shell arm) — the kernel's lifetime rule needs the job's status + revenue. */
   status?: string | null
   revenue?: number | null
+  /** The in-kind deal that pays this job (punch list #301); its open bills are scheduled, never aged. */
+  in_kind_arrangement_id?: string | null
 }
 
 export type CustomerInvoiceRow = {
@@ -54,8 +58,10 @@ export type CustomerInvoiceRow = {
   partLabel: string | null
   channel: 'Stripe' | 'HCP' | 'Physical' | '—'
   status: 'draft' | 'billed' | 'partial' | 'paid'
-  /** Days since billed (billed rows only, needs a billable date). */
+  /** Days since billed (billed rows only, needs a billable date); null on a bill an in-kind deal pays. */
   agingDays: number | null
+  /** An open bill on a job an in-kind deal pays: scheduled, so it has no age (punch list #301). */
+  scheduledInKind: boolean
   amount: number
   applied: number
   billedAtIso: string | null
@@ -92,6 +98,7 @@ export function buildCustomerInvoiceRows(
   todayYmd: string,
 ): { rows: CustomerInvoiceRow[]; totals: CustomerInvoiceTotals } {
   const jobLabelById = new Map(jobs.map((j) => [j.id, j.label]))
+  const jobsOnDeal = new Set(jobs.filter((j) => rowIsScheduledInKind(j)).map((j) => j.id))
   // What paid each bill under the one rule (v2.5010; the owner's call of 2026-10-09): its linked
   // payments, and the job's unlinked money — the part of the job on no bill first, then the sent
   // bills oldest first (`attributeJobPayments`). The last-paid day is the newest payment the rule
@@ -150,8 +157,10 @@ export function buildCustomerInvoiceRows(
     if (inv.status === 'paid') status = 'paid'
     else if (inv.status === 'billed') status = applied > 0.005 ? 'partial' : 'billed'
     else status = 'draft'
+    // A job is on a deal or off it, whole: every open bill on it is scheduled, and none is aged.
+    const scheduledInKind = (status === 'billed' || status === 'partial') && jobsOnDeal.has(inv.job_id)
     let agingDays: number | null = null
-    if ((status === 'billed' || status === 'partial') && inv.estimated_bill_date) {
+    if (!scheduledInKind && (status === 'billed' || status === 'partial') && inv.estimated_bill_date) {
       agingDays = Math.max(0, daysBetweenYmdUtc(inv.estimated_bill_date.slice(0, 10), todayYmd))
     }
     return {
@@ -162,6 +171,7 @@ export function buildCustomerInvoiceRows(
       channel: invoiceChannelLabel(inv),
       status,
       agingDays,
+      scheduledInKind,
       amount,
       applied,
       billedAtIso: inv.billed_at,
@@ -173,4 +183,10 @@ export function buildCustomerInvoiceRows(
 
   rows.sort((a, b) => (a.sortIso < b.sortIso ? 1 : a.sortIso > b.sortIso ? -1 : a.key < b.key ? 1 : -1))
   return { rows, totals: { count: rows.length, billedTotal, collectedTotal } }
+}
+
+/** What follows the status word on a row's chip: ` · in kind` on a bill a deal pays, ` · 45d` on one out 30 days or more. */
+export function customerInvoiceChipTail(row: Pick<CustomerInvoiceRow, 'agingDays' | 'scheduledInKind'>): string {
+  if (row.scheduledInKind) return ' · in kind'
+  return row.agingDays != null && row.agingDays >= 30 ? ` · ${row.agingDays}d` : ''
 }

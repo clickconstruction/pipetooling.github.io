@@ -324,3 +324,29 @@ describe('profileJobRowMoney / sortProfileJobsForList (v2.1985 jobs list)', () =
     ])
   })
 })
+
+describe('profileJobRowMoney, a job an in-kind deal pays (punch list #301)', () => {
+  const oldBill = [{ id: 'i1', status: 'billed', amount: 1000, billed_at: null, estimated_bill_date: '2026-01-05' }]
+
+  it('a covered bill keeps its open money and loses its age and its day', () => {
+    const m = profileJobRowMoney(job({ in_kind_arrangement_id: 'deal-1', invoices: oldBill }), TODAY)
+    expect(m).toMatchObject({ openBilled: 1000, scheduledInKind: true, ageDays: null, oldestOpenBillYmd: null, noBillDate: false })
+  })
+
+  it('a covered job billed with no bill row is not warned about its missing date', () => {
+    const m = profileJobRowMoney(job({ in_kind_arrangement_id: 'deal-1', revenue: 900, payments_made: 200 }), TODAY)
+    expect(m).toMatchObject({ openBilled: 700, scheduledInKind: true, noBillDate: false, ageDays: null })
+  })
+
+  it('a payer part covered: the job off the deal still ages', () => {
+    const on = profileJobRowMoney(job({ id: 'on', in_kind_arrangement_id: 'deal-1', invoices: oldBill }), TODAY)
+    const off = profileJobRowMoney(job({ id: 'off', invoices: oldBill }), TODAY)
+    expect(on.scheduledInKind).toBe(true)
+    expect(off).toMatchObject({ openBilled: 1000, scheduledInKind: false, ageDays: 210, oldestOpenBillYmd: '2026-01-05' })
+  })
+
+  it('a covered job with nothing open is not marked: there is no bill for a credit to pay', () => {
+    const m = profileJobRowMoney(job({ in_kind_arrangement_id: 'deal-1', status: 'working', revenue: 800 }), TODAY)
+    expect(m).toMatchObject({ openBilled: 0, unbilled: 800, scheduledInKind: false })
+  })
+})

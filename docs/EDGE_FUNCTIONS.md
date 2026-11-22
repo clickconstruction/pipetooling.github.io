@@ -1305,6 +1305,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 > **v2.5354 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `gmail-sync` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
 
+> **v2.8266 — `get_customer` and `get_job` know a job an in kind deal pays** (punch list #301): both selects in `_shared/devMcpComposites.ts` carry `jobs_ledger.in_kind_arrangement_id`. `get_customer`'s `stats.scheduledInKind` is the open balance on such jobs and its aging leaves them out, which `customerMoneyStats` already did when it was handed the column. `get_job`'s `billing` (`profileJobRowMoney`) says `scheduledInKind: true` with no `ageDays` and no `oldestOpenBillYmd`, as the customer's profile window reads the same row. No version change: the verbs and their arguments are the same. **Redeploy required** (`bash scripts/deploy-functions.sh dev-mcp`).
+
 > **v2.5010 — `get_customer` and `get_job` read the one payment rule**: `customerProfileStats` (`customerMoneyStats`, `profileJobRowMoney`) nets each bill with `appliedByInvoiceUnderRule` — money put on the job with no bill picked pays the part of the job on no bill, then the sent bills oldest first — as the Customer Hub and the Pipeline board read it (the owner's call of 2026-10-09). The composite reads carry `sequence_order`. **Redeploy after merge.**
 
 > **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
