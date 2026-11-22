@@ -16,6 +16,8 @@ type Listener = () => void
 const lib = vi.hoisted(() => ({
   mapProps: null as null | Record<string, unknown>,
   moves: [] as Array<{ center?: { lat: number; lng: number }; zoom?: number }>,
+  /** Each slide the canvas asked for: a walker followed. */
+  pans: [] as Array<{ lat: number; lng: number }>,
   listeners: {} as Record<string, Listener>,
   removed: [] as unknown[],
   /** Where the map is looking: where it opened, then wherever the canvas last moved it. */
@@ -31,6 +33,10 @@ const fakeMap = {
   moveCamera: (to: { center?: { lat: number; lng: number }; zoom?: number }) => {
     lib.moves.push(to)
     lib.camera = { center: to.center ?? lib.camera.center, zoom: to.zoom ?? lib.camera.zoom }
+  },
+  panTo: (to: { lat: number; lng: number }) => {
+    lib.pans.push(to)
+    lib.camera = { ...lib.camera, center: to }
   },
   getDiv: () => ({ clientWidth: lib.box.width, clientHeight: lib.box.height }),
   getCenter: () => ({ lat: () => lib.camera.center.lat, lng: () => lib.camera.center.lng }),
@@ -147,6 +153,7 @@ beforeEach(() => {
   lib.loads = true
   lib.load = () => {}
   lib.moves.length = 0
+  lib.pans.length = 0
   lib.listeners = {}
   lib.removed.length = 0
   lib.camera = { center: { lat: 29.55, lng: -98.3 }, zoom: 17 }
@@ -423,6 +430,79 @@ describe('a rough reading (punch list #402)', () => {
   it('moves nothing for a rough reading without frameMargin', () => {
     mount({ lines: [DRAWN], me: ROUGH })
     expect(lib.moves).toHaveLength(0)
+  })
+})
+
+describe('a walk being painted (step 3)', () => {
+  // The walk so far, and the same walk one reading later: a new list and a new line, around the same points.
+  const STEP_1 = { lat: 29.556, lng: -98.294 }
+  const STEP_2 = { lat: 29.5561, lng: -98.2939 }
+  const STEP_3 = { lat: 29.5562, lng: -98.2938 }
+  const walk = (points: Array<{ lat: number; lng: number }>): PaintedCanvasLine => ({ id: 'walk-0', how: 'walked', poorParts: [], points })
+  const on = () => PolylineStub.made.filter((l) => l.on !== null)
+
+  it('draws only the line that grew, and leaves the saved lines beside it as they are', () => {
+    const { rerender } = mount({ lines: [DRAWN, walk([STEP_1, STEP_2])] })
+    const saved = PolylineStub.made.filter((l) => l.opts.path[0]?.lat === DRAWN.points[0]?.lat)
+    const first = PolylineStub.made.filter((l) => !saved.includes(l))
+    expect(saved.length).toBeGreaterThan(0)
+    expect(first.length).toBeGreaterThan(0)
+    const madeBefore = PolylineStub.made.length
+    // The window builds its list again on every reading: a new object for each line, the saved line's points the same.
+    rerender({ lines: [{ ...DRAWN }, walk([STEP_1, STEP_2, STEP_3])] })
+    for (const l of saved) expect(l.on).not.toBeNull()
+    for (const l of first) expect(l.on).toBeNull()
+    const grown = PolylineStub.made.slice(madeBefore)
+    expect(grown).toHaveLength(first.length)
+    expect(grown[0]?.opts.path).toHaveLength(3)
+    expect(on()).toHaveLength(saved.length + grown.length)
+  })
+
+  it('draws nothing again for a reading that changed no line', () => {
+    const points = [STEP_1, STEP_2]
+    const { rerender } = mount({ lines: [DRAWN, walk(points)] })
+    const madeBefore = PolylineStub.made.length
+    // A copy of the same points, as the window hands a walk waiting to be looked over.
+    rerender({ lines: [{ ...DRAWN }, walk(points.slice())] })
+    expect(PolylineStub.made).toHaveLength(madeBefore)
+  })
+
+  it('takes a line off when it leaves the list, and every line when the canvas leaves', () => {
+    const { rerender, view } = mount({ lines: [DRAWN, walk([STEP_1, STEP_2])] })
+    rerender({ lines: [DRAWN] })
+    expect(on().every((l) => l.opts.path[0]?.lat === DRAWN.points[0]?.lat)).toBe(true)
+    expect(on().length).toBeGreaterThan(0)
+    view.unmount()
+    expect(on()).toHaveLength(0)
+  })
+
+  it('draws a line again when it turns from walked to fixed by hand, or gains an unsure stretch', () => {
+    const points = [STEP_1, STEP_2, STEP_3]
+    const { rerender } = mount({ lines: [walk(points)] })
+    const madeBefore = PolylineStub.made.length
+    rerender({ lines: [{ ...walk(points), poorParts: [[1, 2]] }] })
+    expect(PolylineStub.made.length).toBeGreaterThan(madeBefore)
+  })
+
+  it('leaves the map alone while the walker is in its middle, and slides to them when they near its edge', () => {
+    // The map is on 29.55, -98.3 at zoom 17 in a 600 by 400 box: its middle is the box less 100 px all round.
+    const middle = { lat: 29.55, lng: -98.3, accuracyM: 6 }
+    const { rerender } = mount({ lines: [DRAWN], me: middle, follow: true })
+    expect(lib.pans).toHaveLength(0)
+    const nearEdge = { lat: 29.55, lng: -98.2978, accuracyM: 6 }
+    rerender({ lines: [DRAWN], me: nearEdge, follow: true })
+    expect(lib.pans).toEqual([{ lat: nearEdge.lat, lng: nearEdge.lng }])
+    // Now they are the middle, and a step on moves nothing.
+    rerender({ lines: [DRAWN], me: { ...nearEdge, lat: 29.55005 }, follow: true })
+    expect(lib.pans).toHaveLength(1)
+  })
+
+  it('never slides without follow, and never to the middle of an area', () => {
+    const away = { lat: 29.56, lng: -98.29, accuracyM: 6 }
+    const { rerender } = mount({ lines: [DRAWN], me: away })
+    expect(lib.pans).toHaveLength(0)
+    rerender({ lines: [DRAWN], me: { ...away, accuracyM: 3200, area: true }, follow: true })
+    expect(lib.pans).toHaveLength(0)
   })
 })
 

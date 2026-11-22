@@ -1,8 +1,9 @@
 /**
- * A painted map on a Google map, for looking (punch list #387): its lines, its numbered places and
- * the person's own dot, over Google's photograph or its road map. It draws no corner and takes no
- * drawing press. While a line or a place is being made, and while Time is on, the Leaflet canvas is
- * the map (`paintedMapProvider.ts`), and `PaintedMapCanvas` mounts one or the other.
+ * A painted map on a Google map (punch list #387): its lines, its numbered places and the person's
+ * own dot, over Google's photograph or its road map. It is read on it, and since step 3 a walk is
+ * painted on it. It draws no corner and takes no drawing press yet. While a line or a place is made
+ * by hand, and while Time is on, the Leaflet canvas is the map (`paintedMapProvider.ts`), and
+ * `PaintedMapCanvas` mounts one or the other.
  *
  * - **Lines** are Google's own lines, stroked as the Leaflet canvas strokes them
  *   (`paintedGoogleShapes.ts`): a dark edge under the paint, dashes for a line drawn by hand, faint
@@ -14,6 +15,9 @@
  *   `frameMargin` the view is moved by the one rule the Leaflet canvas asks, `marginFrame.ts`.
  * - **The view** is worked out here and not by Google's fit (`paintedMapView.ts`), so a short line
  *   opens no closer than its photograph is sharp, and a view carried from the other canvas is kept.
+ * - **A walk** (step 3): the line being painted grows with each reading, and only the line that
+ *   changed is drawn again. `follow` slides the map to the walker when they near its edge, by the
+ *   Leaflet canvas's own rule (`followMe.ts`).
  * - **A reader and the line together** (`frameMe`, step 4): on the public page a reader who asked to
  *   be shown is framed with the whole map, by the Leaflet canvas's own rule (`frameMe.ts`).
  * - **A light page.** The public page is light whatever the app's theme, so `light` holds Google's
@@ -33,6 +37,7 @@ import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanv
 import { googleColorSchemeForTheme } from '../../lib/dashboardJobsMap'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
+import { followStep } from '../../lib/paintedMap/followMe'
 import { frameMeStep } from '../../lib/paintedMap/frameMe'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
@@ -65,6 +70,8 @@ export type PaintedMapGoogleCanvasProps = {
   me?: PaintedCanvasMe | null
   /** Frame by how sure the phone is (`marginFrame.ts`), as the Leaflet canvas does. */
   frameMargin?: boolean
+  /** Keep the person in view as they move (`followMe.ts`): for a walk being painted. Never for an area. */
+  follow?: boolean
   /** Keep the person and the whole map in the picture together (`frameMe.ts`): for a reader finding the line. Never for an area. */
   frameMe?: boolean
   /** The screen is light whatever the app's theme (the public page): Google's map is light too. */
@@ -131,22 +138,55 @@ function addMark(map: google.maps.Map, mark: Mark): google.maps.OverlayView {
   return view
 }
 
-/** The saved lines. Drawn again whole when the list changes: a map being read changes rarely. */
+/** One line as Google's own lines: a dark edge under the paint for each sure run, faint dots for each unsure one. */
+function strokeLine(map: google.maps.Map, line: PaintedCanvasLine): google.maps.Polyline[] {
+  const made: google.maps.Polyline[] = []
+  const stroke = (run: ReadonlyArray<PaintedPoint>, look: GoogleLineStroke) => {
+    made.push(new google.maps.Polyline({ map, path: run.map((p) => ({ lat: p.lat, lng: p.lng })), clickable: false, ...look }))
+  }
+  const runs = lineRuns(line.points, line.poorParts)
+  for (const run of runs.sure) for (const look of sureRunStrokes(line.how, LOOK)) stroke(run, look)
+  for (const run of runs.poor) stroke(run, poorRunStroke(LOOK))
+  return made
+}
+
+/** The same things in the same order: the caller builds a new list on each reading of a walk, around the same points. */
+function sameItems<T>(a: ReadonlyArray<T>, b: ReadonlyArray<T>): boolean {
+  return a === b || (a.length === b.length && a.every((item, i) => item === b[i]))
+}
+
+/**
+ * The lines. Each is drawn once and kept while it is the same line: a walk hands a new list on every reading, and only
+ * the line that grew is drawn again. The saved lines beside it are left as they are.
+ */
 function Lines({ lines }: { lines: ReadonlyArray<PaintedCanvasLine> }) {
   const map = useMap()
+  const drawn = useRef(new Map<string, { line: PaintedCanvasLine; shapes: google.maps.Polyline[] }>())
   useEffect(() => {
     if (!map) return
-    const made: google.maps.Polyline[] = []
-    const stroke = (run: ReadonlyArray<PaintedPoint>, look: GoogleLineStroke) => {
-      made.push(new google.maps.Polyline({ map, path: run.map((p) => ({ lat: p.lat, lng: p.lng })), clickable: false, ...look }))
-    }
+    const kept = drawn.current
+    const now = new Set<string>()
     for (const line of lines) {
-      const runs = lineRuns(line.points, line.poorParts)
-      for (const run of runs.sure) for (const look of sureRunStrokes(line.how, LOOK)) stroke(run, look)
-      for (const run of runs.poor) stroke(run, poorRunStroke(LOOK))
+      now.add(line.id)
+      const was = kept.get(line.id)
+      if (was && was.line.how === line.how && sameItems(was.line.points, line.points) && sameItems(was.line.poorParts, line.poorParts)) continue
+      was?.shapes.forEach((s) => s.setMap(null))
+      kept.set(line.id, { line, shapes: strokeLine(map, line) })
     }
-    return () => made.forEach((l) => l.setMap(null))
+    for (const [id, was] of kept) {
+      if (now.has(id)) continue
+      was.shapes.forEach((s) => s.setMap(null))
+      kept.delete(id)
+    }
   }, [map, lines])
+  // Everything comes off when the canvas leaves, or when the map under it is another one.
+  useEffect(() => {
+    const kept = drawn.current
+    return () => {
+      for (const was of kept.values()) was.shapes.forEach((s) => s.setMap(null))
+      kept.clear()
+    }
+  }, [map])
   return null
 }
 
@@ -239,6 +279,21 @@ function FrameMargin({ me, points }: { me: PaintedCanvasMe | null; points: Reado
   return null
 }
 
+/** Slides the map to a walker who has neared its edge, and leaves it alone while they are in its middle (`followMe.ts`). */
+function Follow({ me }: { me: PaintedPoint }) {
+  const map = useMap()
+  const { lat, lng } = me
+  useEffect(() => {
+    if (!map) return
+    const div = map.getDiv()
+    const c = map.getCenter()
+    const z = map.getZoom()
+    const to = followStep({ me: { lat, lng }, view: c && z != null ? { center: { lat: c.lat(), lng: c.lng() }, zoom: z } : null, box: { width: div.clientWidth, height: div.clientHeight } })
+    if (to) map.panTo(to)
+  }, [map, lat, lng])
+  return null
+}
+
 /**
  * Keeps a reader and the whole map in the picture together. The rule is `frameMe.ts`, the Leaflet canvas's own: the
  * first reading frames everything with the reader, and after that only a dot at the edge of the picture moves it.
@@ -304,7 +359,7 @@ function Camera({ flyTo, held, refit, points, onView, onCamera }: { flyTo?: Pain
   return null
 }
 
-export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, frameMe, light, refit, onPlaceTap, onView, onCamera }: PaintedMapGoogleCanvasProps) {
+export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, follow, frameMe, light, refit, onPlaceTap, onView, onCamera }: PaintedMapGoogleCanvasProps) {
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -357,6 +412,7 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
               <Camera flyTo={flyTo} held={held} refit={refit} points={everything} onView={onView} onCamera={onCamera} />
               <Lines lines={lines} />
               <Places places={places} onPlaceTap={onPlaceTap} />
+              {follow && me && !me.area ? <Follow me={me} /> : null}
               {frameMargin ? <FrameMargin me={me ?? null} points={everything} /> : null}
               {frameMe && me && !me.area ? <FrameMe me={me} points={everything} /> : null}
               {me ? <Me me={me} /> : null}
