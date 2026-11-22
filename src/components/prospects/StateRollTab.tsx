@@ -1,15 +1,20 @@
 /**
  * Prospects → State roll (punch list #411): the state's public roll of licensed plumbers, kept for our counties.
- * This is the tab's first view, Pulls: what is kept, when each of the state's files was last read, and what the
- * read changed. The views that say who to call come later; nothing here names a person.
+ * Two views so far. Pulls: what is kept, when each of the state's files was last read, and what the read changed.
+ * It names no person. Our own (`StateRollOwn`): our own licenses beside the state's rows. The views that say who
+ * to call come later.
  *
  * Values are drawn in place: a count or a day stands apart from its words, one fact a line. Every value here is
  * worked out by the app, so each is plain bold.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
+import { StateRollOwn } from './StateRollOwn'
+import { pageSubTabStyle } from '../../lib/pageTabStyle'
 import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { batchOutcomeWords, countedLabel } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -57,7 +62,54 @@ function FileCard({ line }: { line: PullLine }) {
   )
 }
 
-export function StateRollTab() {
+type RollView = 'own' | 'pulls'
+const ROLL_VIEWS: readonly { key: RollView; label: string }[] = [
+  { key: 'own', label: 'Our own' },
+  { key: 'pulls', label: 'Pulls' },
+]
+
+/**
+ * The tab: its views, and the strip that picks one. **Our own** is drawn for a person who may also open
+ * People → Licenses, since it reads the same licenses. Anyone else with the tab has Pulls alone and no strip.
+ * The view is kept on the address as `roll=own` or `roll=pulls`, so a link opens the same view.
+ */
+export function StateRollTab({ canSeeOwn = false }: { canSeeOwn?: boolean }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const asked = searchParams.get('roll')
+  const view: RollView = !canSeeOwn ? 'pulls' : asked === 'pulls' ? 'pulls' : 'own'
+  const pick = (next: RollView) =>
+    setSearchParams(
+      (p) => {
+        const params = new URLSearchParams(p)
+        params.set('roll', next)
+        return params
+      },
+      { replace: true },
+    )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 980 }}>
+      {canSeeOwn && (
+        <div role="group" aria-label="State roll views" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {ROLL_VIEWS.map((v) => (
+            <button key={v.key} type="button" aria-current={view === v.key ? 'true' : undefined} onClick={() => pick(v.key)} style={{ ...pageSubTabStyle(view === v.key), fontFamily: 'inherit', minHeight: 44, padding: '0.3rem 1rem' }}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {view === 'own' ? <StateRollOwn /> : <StateRollPulls />}
+    </div>
+  )
+}
+
+/** The tab as the page mounts it: it waits for who the person is, so Our own never flashes open or shut. */
+export function StateRollTabForUser({ authUserId }: { authUserId: string }) {
+  const access = usePeopleAccess(authUserId)
+  if (!access.accessResolved) return <div style={quiet}>Reading the state roll…</div>
+  return <StateRollTab canSeeOwn={access.canAccessLicenses} />
+}
+
+function StateRollPulls() {
   const { showToast } = useToastContext()
   const [read, setRead] = useState<RollPullsRead | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
@@ -127,7 +179,7 @@ export function StateRollTab() {
   const counties = countyWords(read.counties)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 980 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <div style={{ color: 'var(--text)' }}>
           <ValueSentence text={`The state's public roll of licensed plumbers, kept for ${val('counties', counties || 'no county yet')}.`} />
