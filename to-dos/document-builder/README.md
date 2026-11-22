@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21), the sheet's link under its own secret (2026-11-21), and who opened a link and where a link stands (v2.8194, 2026-11-21, its three functions deployed that day). The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) were read on the live site in the same walk. Not seen on prod: a lost or closed job, and a sent copy with a job. How long an open's address is kept waits on Taunya's call.
+next: What is left, and every walk owed on prod, is listed on #416 in the order to do it. Steps 6 and 10 wait on Taunya's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151).
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -652,7 +652,8 @@ came from and what the browser tells of the device.
   Three rows of `document_builder_link_opens` on two of those ended links: an open of a link that is off is
   not kept. The walk's contact and its two Sent copies were deleted.
 - **Left for Taunya's call.** Nothing clears an open: how long an address is kept is not set. No script reads a
-  device to tell it from another. The page sends only what a browser tells every site.
+  device to tell it from another. The page sends only what a browser tells every site. #416 lists both, with a way to tell
+  one visitor from another that Taunya has not picked yet.
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from
