@@ -12,6 +12,10 @@
  * them over the job's Drive photo folders as the job window's strip reads them (`job-photos` → list), so a file put
  * in the folder by hand shows too, read by its file name. A read that fails draws `OfflineRetryPanel` with the
  * reason; an empty job names the press. The rules are `lib/photos/jobPhotoNotes.ts`.
+ *
+ * A job won from a bid lists the bid's photos too, each marked *From the bid* (punch list #306, PR 9): the view's rows
+ * for the job's bid, read under the bid's own gate, so a reader who cannot read the bid sees the job's photos alone.
+ * A bid's photo is looked at here and changed on the bid (`lib/photos/jobPhotosFromBid.ts`).
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -60,6 +64,7 @@ import {
   threadLineWords,
   type JobPhotoGridItem,
 } from '../../lib/photos/jobPhotoNotes'
+import { withBidRows } from '../../lib/photos/jobPhotosFromBid'
 
 export interface JobPhotosWindowJob {
   id: string
@@ -146,10 +151,12 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
     let live = true
     setFailure(null)
     setRows(null)
-    Promise.all([io.rows(job.id), hasFolder ? io.drive.list(job.id).catch(() => null) : Promise.resolve(null)]).then(
-      ([r, d]) => {
+    // The bid's photos are an extra: a read of them that fails leaves the job's own photos standing.
+    const bidRows = io.bidRows ? io.bidRows(job.id).catch(() => []) : Promise.resolve([])
+    Promise.all([io.rows(job.id), hasFolder ? io.drive.list(job.id).catch(() => null) : Promise.resolve(null), bidRows]).then(
+      ([r, d, b]) => {
         if (!live) return
-        setRows(r)
+        setRows(withBidRows(r, b))
         setDrive(d)
       },
       (e: unknown) => live && setFailure(recoveryFailureFromError(e, 'The photos did not read.')),
@@ -393,7 +400,7 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
             )}
             {items.length > 0 ? (
               <p style={foot}>
-                {gridFootWords({ count: items.length, hand: items.filter((it) => it.hand).length, folderKind: drive?.folder.kind ?? null })}
+                {gridFootWords({ count: items.length, hand: items.filter((it) => it.hand).length, folderKind: drive?.folder.kind ?? null, fromBid: items.filter((it) => it.fromBid).length })}
                 {folderUrl ? (
                   <>
                     {' · '}

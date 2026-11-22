@@ -1,9 +1,12 @@
--- Bid photos (punch list #306 PRs 1 and 2, migrations *_bid_photos and *_photo_save_bid_photos): the table's gate is the bid's own, read through bids
+-- Bid photos (punch list #306 PRs 1, 2 and 9, migrations *_bid_photos, *_photo_save_bid_photos and
+-- *_uploaded_photos_bid_branch): the table's gate is the bid's own, read through bids
 -- under the caller's RLS. Whoever reads a bid reads its photos and adds one as themselves; a primary only on a bid
 -- they estimate, manage or made; a subcontractor, a superintendent and a primary on no bid read nothing and add
 -- nothing. The adder and the office change a photo; an estimator does not change another's. Only an un-added shot of
 -- one's own is deleted. A training account writes nothing; a twin writes only on a bid of its own. One Drive file makes
--- one row. The bucket's objects follow the same gate from the path's first folder, and a path that is not a bid's is
+-- one row. The view uploaded_photos lists a bid's photo that stands under that same gate and no wider: the office and
+-- an estimator read it, a primary only on a bid of their own, and a subcontractor, a superintendent and a primary on
+-- no bid read none; a picture a text already carries is listed once for every reader. The bucket's objects follow the same gate from the path's first folder, and a path that is not a bid's is
 -- refused as a row-level violation, never a cast error. Fixtures are written as postgres; the tries run as each account
 -- under RLS; everything rolls back. Raises on the first failed assertion; ends with "bid_photos PASSED". See
 -- scripts/pgtest-bid-photos.sh. Never against prod.
@@ -196,6 +199,74 @@ RESET ROLE;
 -- The service role's adoption: one Drive file, one row.
 INSERT INTO public.bid_photos (bid_id, name, drive_file_id, added_at, filed_at) VALUES ('00000000-0000-0000-0000-00000306b001', 'From Drive', 'drive-file-306', now(), now());
 SELECT bp.same('the same Drive file is not adopted twice', bp.try($q$INSERT INTO public.bid_photos (bid_id, name, drive_file_id) VALUES ('00000000-0000-0000-0000-00000306b001', 'From Drive again', 'drive-file-306')$q$), '23505');
+-- The view (PR 9, migration *_uploaded_photos_bid_branch): uploaded_photos lists a bid's photo that stands, under the
+-- table's own gate. Three more rows on A, written as postgres: a photo that was removed, a picture the bid's window
+-- took on from its Drive folder, and the text that picture came in on, which already carries the same Drive file.
+INSERT INTO public.bid_photos (id, bid_id, by_user_id, by_name, name, added_at, removed_at) VALUES
+  ('00000000-0000-0000-0000-00000306c010', '00000000-0000-0000-0000-00000306b001', '00000000-0000-0000-0000-00000306a003', 'Eve Estimator', 'Taken back', now(), now());
+INSERT INTO public.bid_photos (id, bid_id, name, drive_file_id, added_at, filed_at) VALUES
+  ('00000000-0000-0000-0000-00000306c011', '00000000-0000-0000-0000-00000306b001', '2026-11-01 Greg Paulk · Meter', 'driveFile306text01', now(), now());
+INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-00000306d001', 'unknown');
+INSERT INTO public.messages (id, contact_id, channel, direction, bid_id, who_text, body) VALUES
+  ('00000000-0000-0000-0000-00000306e001', '00000000-0000-0000-0000-00000306d001', 'text', 'in', '00000000-0000-0000-0000-00000306b001', 'Greg Paulk · 555-0142', 'The meter, north wall.');
+INSERT INTO public.message_attachments (message_id, sort_order, kind, name, mime, size_bytes, bucket_path, drive_file_id) VALUES
+  ('00000000-0000-0000-0000-00000306e001', 0, 'file', 'IMG_0042.jpg', 'image/jpeg', 204800, 'in/00000000-0000-0000-0000-00000306e001/0-IMG_0042.jpg', 'driveFile306text01');
+-- What a reader sees of the view for one bid, under their own RLS: the bid's photos and the texts' pictures.
+CREATE FUNCTION bp.seen(p_bid uuid) RETURNS text LANGUAGE sql AS $$
+  SELECT count(*) FILTER (WHERE source = 'bid') || ' bid · ' || count(*) FILTER (WHERE source = 'message') || ' message'
+  FROM public.uploaded_photos WHERE bid_id = p_bid
+$$;
+-- How one Drive file reads in the view: the sources that list it.
+CREATE FUNCTION bp.listed_as(p_drive_file text) RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce(string_agg(source, ',' ORDER BY source), 'not listed') FROM public.uploaded_photos WHERE drive_file_id = p_drive_file
+$$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bp TO authenticated;
+
+SELECT bp.same('the view still reads as its caller', (SELECT reloptions::text FROM pg_class WHERE oid = 'public.uploaded_photos'::regclass), '{security_invoker=true}');
+SELECT bp.same('nobody signed out reads it, and a signed-in account may ask', has_table_privilege('anon', 'public.uploaded_photos', 'SELECT')::text || ' ' || has_table_privilege('authenticated', 'public.uploaded_photos', 'SELECT')::text, 'false true');
+SELECT bp.same('its columns are the thirty it had', (SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'uploaded_photos'), '30');
+
+SET ROLE authenticated;
+
+-- Ann, the office: A's three standing photos as the bid's, and the text's picture once, on its line.
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a002');
+SELECT bp.same('Ann reads A through the view', bp.seen('00000000-0000-0000-0000-00000306b001'), '3 bid · 1 message');
+SELECT bp.same('and B', bp.seen('00000000-0000-0000-0000-00000306b002'), '1 bid · 0 message');
+SELECT bp.same('the text''s picture is listed once for Ann, by its line', bp.listed_as('driveFile306text01'), 'message');
+SELECT bp.same('a removed photo is not listed', (SELECT count(*)::text FROM public.uploaded_photos WHERE id = '00000000-0000-0000-0000-00000306c010'), '0');
+SELECT bp.same('a shot nobody added is not listed', bp.seen('00000000-0000-0000-0000-00000306b003'), '0 bid · 0 message');
+
+-- Eve, an estimator: the same, and the row's shape: the bid, no job, the photo's name, the bid's project name.
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a003');
+SELECT bp.same('Eve reads A through the view', bp.seen('00000000-0000-0000-0000-00000306b001'), '3 bid · 1 message');
+SELECT bp.same('a bid photo''s row names the bid and no job', (
+  SELECT caption || ' · ' || bucket || ' · ' || coalesce(job_id::text, 'no job') || ' · ' || bid_id::text || ' · ' || job_name || ' · ' || by_name
+  FROM public.uploaded_photos WHERE source = 'bid' AND id = '00000000-0000-0000-0000-00000306c001'
+), 'Mechanical room north · bid-photos · no job · 00000000-0000-0000-0000-00000306b001 · Bid photos bed A · Eve Estimator');
+
+-- Pat, a primary who manages A: A's photos and none of B's. Pat cannot read a text, so the picture the window took on
+-- reads as the bid's photo for Pat: once for every reader.
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a004');
+SELECT bp.same('Pat reads A through the view', bp.seen('00000000-0000-0000-0000-00000306b001'), '4 bid · 0 message');
+SELECT bp.same('and none of B', bp.seen('00000000-0000-0000-0000-00000306b002'), '0 bid · 0 message');
+SELECT bp.same('the text''s picture is listed once for Pat, as the bid''s', bp.listed_as('driveFile306text01'), 'bid');
+SELECT bp.same('the view hands Pat what the table does and no more', (SELECT count(*)::text FROM public.uploaded_photos WHERE source = 'bid'), (SELECT count(*)::text FROM public.bid_photos WHERE added_at IS NOT NULL AND removed_at IS NULL));
+
+-- Quinn (a primary on no bid), Sam (a subcontractor) and Sue (a superintendent): no bid photo through the view.
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a005');
+SELECT bp.same('Quinn reads no bid photo through the view', (SELECT count(*)::text FROM public.uploaded_photos WHERE source = 'bid'), '0');
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a006');
+SELECT bp.same('Sam reads no bid photo through the view', (SELECT count(*)::text FROM public.uploaded_photos WHERE source = 'bid'), '0');
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a007');
+SELECT bp.same('Sue reads no bid photo through the view', (SELECT count(*)::text FROM public.uploaded_photos WHERE source = 'bid'), '0');
+
+-- Tess, in training: reads what an estimator reads.
+SELECT bp.sign_in('00000000-0000-0000-0000-00000306a008');
+SELECT bp.same('Tess reads A through the view', bp.seen('00000000-0000-0000-0000-00000306b001'), '3 bid · 1 message');
+
+SELECT bp.sign_out();
+RESET ROLE;
+
 -- A bid that goes takes its photo rows with it.
 DELETE FROM public.bids WHERE id = '00000000-0000-0000-0000-00000306b002';
 SELECT bp.same('a deleted bid''s photo rows go with it', bp.photo('00000000-0000-0000-0000-00000306c900'), 'gone');

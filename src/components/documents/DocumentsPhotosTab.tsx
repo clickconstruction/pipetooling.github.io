@@ -28,6 +28,7 @@ import {
   TASK_CHECKLIST_PATH,
   WHERE_FILES_GO_PATH,
   aboutWords,
+  bidBoardPath,
   captionWords,
   dayGroups,
   jobWindowPath,
@@ -154,6 +155,10 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
       }
       if ((row.source === 'checklist' || row.source === 'job') && row.job_id) return () => openJob(row)
       if (row.source === 'task') return () => navigate(TASK_CHECKLIST_PATH)
+      if (row.source === 'bid' && row.bid_id) {
+        const to = bidBoardPath(row.bid_id)
+        return () => navigate(to)
+      }
       if (row.source === 'message') {
         const to = threadPath(row)
         return to ? () => navigate(to) : null
