@@ -914,6 +914,8 @@ A gone row is taken off 28 days later.
 **Left off** means a person asked not to be listed, and no pull keeps them.
 The roll holds no phone, street address or email, since the state gives none for a person.
 It is not People → Licenses, which holds our own team's licenses.
+**Our own** (v2.8233) is the tab's view that lays each plumbing license we hold beside the state's row of the same number and rank, for a person who may also open People → Licenses.
+**Use the state's date** saves the state's expiry on that license's `person_licenses` row.
 
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").

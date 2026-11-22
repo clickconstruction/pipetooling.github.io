@@ -2653,6 +2653,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.8118 a press on a looked-up fact (**Checked**, **Wrong**, **Not right**, **Put back**) is one insert into `builder_lookup_checks` by anyone who reads permits, as oneself, with no update or delete (the Ask for block, v2.8121).
   The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties` and `license_roll_left_off`.
   A shared Hiring column does not open the State roll.
+  Its **Our own** view (v2.8233) is drawn only for a person who also passes People → Licenses' gate (`canAccessLicenses`), and it reads and writes `person_licenses` under that table's own policy, so it reaches no one the Licenses tab does not.
   Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and the tab's **Pull 4 files** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   The one write the gate opens to a person is a county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159);
   no screen offers it yet.
