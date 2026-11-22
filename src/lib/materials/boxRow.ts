@@ -41,3 +41,19 @@ export function boxScreenFromMaterials(jobId: string, containerId: string): stri
 export function materialsJobPage(jobId: string): string {
   return `/materials?tab=on-site&job=${encodeURIComponent(jobId)}`
 }
+
+/** Whether the Tally's address says the open box was reached from the Materials desk. */
+export function cameFromMaterials(params: URLSearchParams): boolean {
+  return params.get('from') === ON_SITE_FROM_MATERIALS
+}
+
+/**
+ * The address with a stale mark taken off, or null when it stands. The mark lasts while a box is on the address: once
+ * the person is on the Tally's own list, a box they open there goes back to that list.
+ */
+export function withoutStaleFrom(params: URLSearchParams): URLSearchParams | null {
+  if (!params.get('from') || params.get('container')) return null
+  const next = new URLSearchParams(params)
+  next.delete('from')
+  return next
+}

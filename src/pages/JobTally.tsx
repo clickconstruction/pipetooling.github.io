@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ON_SITE_FROM_MATERIALS, materialsJobPage } from '../lib/materials/boxRow'
+import { cameFromMaterials, materialsJobPage, withoutStaleFrom } from '../lib/materials/boxRow'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
@@ -251,11 +251,11 @@ export default function JobTally() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   /** The box was opened from the office's Materials desk on a phone (v2.8284): its back press returns there. */
-  const fromMaterials = searchParams.get('from') === ON_SITE_FROM_MATERIALS
-  // The mark lasts while that box is open. Once the person is on the Tally's own list, a box they open goes back to the list.
+  const fromMaterials = cameFromMaterials(searchParams)
+  // The mark lasts while that box is open (`withoutStaleFrom`). Once the person is on the Tally's own list, a box they open goes back to the list.
   useEffect(() => {
-    if (!searchParams.get('from') || searchParams.get('container')) return
-    setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('from'); return next }, { replace: true })
+    const next = withoutStaleFrom(searchParams)
+    if (next) setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
   // On site is the tab the tally opens on (v2.6229, the owner's word): the crew's side of Materials on site, first in the row.
   const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')

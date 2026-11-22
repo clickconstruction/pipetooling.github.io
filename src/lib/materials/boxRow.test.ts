@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOX_ROW_EMPTY, boxRowState, boxScreenFromMaterials, materialsJobPage } from './boxRow'
+import { BOX_ROW_EMPTY, boxRowState, boxScreenFromMaterials, cameFromMaterials, materialsJobPage, withoutStaleFrom } from './boxRow'
 
 const now = new Date('2026-11-22T15:00:00Z')
 const last = (daysAgo: number) => ({ at: new Date(now.getTime() - daysAgo * 86_400_000).toISOString(), byName: 'Robert' })
@@ -29,5 +29,15 @@ describe('a box as one row (v2.8284)', () => {
   it('the desk’s row opens the Tally’s box screen marked as from Materials, and that screen comes back to the job', () => {
     expect(boxScreenFromMaterials('j1', 'c1')).toBe('/tally?tab=on-site&job=j1&container=c1&from=materials')
     expect(materialsJobPage('j1')).toBe('/materials?tab=on-site&job=j1')
+  })
+
+  it('the mark lasts while a box is on the address, and leaves with it', () => {
+    const open = new URLSearchParams('tab=on-site&job=j1&container=c1&from=materials')
+    expect(cameFromMaterials(open)).toBe(true)
+    expect(withoutStaleFrom(open)).toBeNull()
+    // the box closed: the person is on the Tally's own list, and the mark goes
+    expect(withoutStaleFrom(new URLSearchParams('tab=on-site&job=j1&from=materials'))?.toString()).toBe('tab=on-site&job=j1')
+    expect(withoutStaleFrom(new URLSearchParams('tab=on-site&job=j1'))).toBeNull()
+    expect(cameFromMaterials(new URLSearchParams('tab=on-site&from=tally'))).toBe(false)
   })
 })
