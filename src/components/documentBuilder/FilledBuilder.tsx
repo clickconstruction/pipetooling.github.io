@@ -70,6 +70,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { BUILDER_LINK_CARD_IO, BuilderLinkCard, type BuilderLinkCardIo } from './BuilderLinkCard'
 import { MovedOnPanel } from './MovedOnPanel'
 import { SheetPaperEdit, SheetPaperRead } from './SheetPaper'
+import { SHEET_CERTIFICATES_IO, SheetCertificatesCard, type SheetCertificatesIo } from './SheetCertificatesCard'
 import { SHEET_SEND_IO, SheetSendCard, type SheetSendIo } from './SheetSendCard'
 
 /** The reads and writes the builder makes. A smoke hands its own in. */
@@ -80,9 +81,11 @@ export type FilledBuilderIo = Pick<typeof defaultIo, 'readGcJobs' | 'readBuilder
   link: BuilderLinkCardIo
   /** The send list's own reads and presses. */
   sends: SheetSendIo
+  /** The certificate check's own reads and presses (step 6). */
+  certificates: SheetCertificatesIo
 }
 
-const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile, link: BUILDER_LINK_CARD_IO, sends: SHEET_SEND_IO }
+const IO: FilledBuilderIo = { ...defaultIo, print: printAndFile, link: BUILDER_LINK_CARD_IO, sends: SHEET_SEND_IO, certificates: SHEET_CERTIFICATES_IO }
 
 type Props = {
   entry: DocumentBuilderEntry
@@ -778,6 +781,7 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
                 )}
               </div>
               <SheetSendCard key={`send-${job.projectId}`} builderKey={entry.id} projectId={job.projectId} sheetId={jobState.id} revision={jobState.revision} onLinkMayHaveMoved={linkMayHaveMoved} unread={sheetUnreadWords({ readRevision: rec.read?.revision ?? null, sheetUsualRevision: jobState.usualRevision, usualRevision: rec.revision })} io={io.sends} />
+              <SheetCertificatesCard key={`certificates-${job.projectId}`} projectId={job.projectId} job={job.name} sheetId={jobState.id} revision={jobState.revision} page={jobState.revision > 0 ? jobState.page : null} io={io.certificates} />
             </>
           ) : (
             <div style={CARD}>

@@ -6755,6 +6755,8 @@ Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of wor
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
+Since v2.8264 (step 6) a trade's **certificate is held against a job's sheet**, one certificate for each job: the card **Certificates for this job** says where each stands, and **Check it against the sheet** ticks one line for each name, the place, the certificate holder and each coverage with its amount (`certificates.ts`, `sheetAsks`).
+A certificate is **outdated** when one of those lines changes on the published sheet, and not when the sheet's other words do.
 
 ### Agreements tab
 

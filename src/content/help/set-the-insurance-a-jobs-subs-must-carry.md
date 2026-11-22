@@ -2,7 +2,7 @@
 title: set the insurance a job's subs must carry
 category: Office
 roles: dev
-keywords: insurance, send, send the sheet, send it again, reminder, who it goes to, tell them it changed, take it off their page, not opened yet, their page is off, send it anyway, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder
+keywords: insurance, send, send the sheet, send it again, reminder, who it goes to, tell them it changed, take it off their page, not opened yet, their page is off, send it anyway, link, sheet's link, copy the link, make a new link, switch the link off, insurance requirements, insurance sheet, standing sheet, usual sheet, your usual, sub, subs, trade, trades, coverage, coverage line, amount, certificate, certificate of insurance, coi, additional insured, gc, general contractor, job, publish, revision, marks, checked, insurance agent, agent, print the sheet, document builder, builder, dev only, placeholder, certificate, certificate of insurance, coi, check it against the sheet, mark it good, send it back, good until, came in, the sheet changed, check it again
 where: /documents?tab=builder&builder=insurance
 ---
 The insurance builder makes one sheet for each job you run as the GC. The sheet tells a sub what insurance to carry on that job.
@@ -200,5 +200,34 @@ A reminder goes to the person the sheet was sent to. The line under the buttons 
 That person may have left the company record. The two buttons then go grey, and the line says so. Press **Take it off their page**, then send the sheet to someone who is on the record.
 
 Each send is kept under [Sent copies](/documents?tab=sent) on Documents.
+
+## Check a trade's certificate against the sheet
+
+Under the send is **Certificates for this job**. It has one row for each trade on the job. A certificate is for one job, so each job has its own.
+
+A trade sends its certificate of insurance from its own page. The row says where it stands:
+
+- {{chip:gray|No certificate yet}} means they have sent none for this job.
+- {{chip:yellow|Certificate came in Nov 18}} means one waits for your look.
+- {{chip:green|Certificate good to Mar 3}} means you checked it, and names its last day.
+- {{chip:yellow|The sheet changed since their certificate}} means you published a new name, place or amount since.
+- {{chip:yellow|Their certificate ran out Mar 3}} means its last day has come.
+- {{chip:gray|Sent back Nov 20, 2 things missing}} means you asked them for a new one. The row lists what was missing.
+
+To check one:
+
+1. Press {{button:outline-blue|Check it against the sheet}} on the trade's row.
+2. Press **Open their file** to read the certificate.
+3. Tick each line the certificate shows. There is one line for each thing the job's sheet asks.
+4. Set **Good until** to the certificate's last day.
+5. Press {{button:blue|Mark it good}}. It works once every line is ticked.
+
+If the certificate is missing something, leave those lines unticked. Then press {{button:outline|Send it back, naming 2 things missing}}. The trade gets an email with the lines you left unticked. You must tick at least one line first, so nothing goes back unread.
+
+:::example A change that sends a trade back to their agent
+You raise an amount on a job's sheet and publish it. Each certificate you marked good for that job now reads {{chip:yellow|The sheet changed since their certificate}}. A fix to the line at the foot of the sheet changes nothing.
+:::
+
+Press {{button:outline-blue|Check it again}} on such a row to check the same certificate against the new sheet.
 
 Only a dev can send for now. See [use the document builder](/help/use-the-document-builder) for the tab itself.
