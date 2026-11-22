@@ -115,4 +115,27 @@ describe('LienDeskViewTabs and LienDeskPaperTabs', () => {
     fireEvent.click(document.querySelectorAll('[data-lien-desk-paper-kinds] [role="tab"]')[2] as HTMLElement)
     expect(onPick).toHaveBeenCalledWith('retainage')
   })
+
+  it('a window dragged across the phone’s width keeps each tab’s own flex: no shorthand is there to take a longhand away', () => {
+    // React warns, and the style is lost, when a rerender takes a shorthand off a button that keeps the longhand.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const views = (isMobile: boolean) => <LienDeskViewTabs kindTabs={kindTabs} isMobile={isMobile} kind="next" paperShown={false} firstTab={lienDeskFirstTab({ isMobile, count: 3 })} onTitle={() => {}} onPick={() => {}} />
+    const papers = (isMobile: boolean) => <LienDeskPaperTabs isMobile={isMobile} kind="notice" toolsOnTitleLine={false} noticeCount={1} affCount={1} retCount={1} onPick={() => {}} />
+    for (const [draw, pick] of [[views, '[data-lien-desk-view="calendar"]'], [papers, '[data-lien-desk-paper-kinds] [role="tab"]']] as const) {
+      const { rerender, unmount } = render(draw(true))
+      const flex = () => {
+        const tab = document.querySelector(pick) as HTMLButtonElement
+        return [tab.style.flex, tab.style.flexGrow, tab.style.flexShrink]
+      }
+      // A phone's tab takes its share and gives room back. A computer's keeps its width.
+      expect(flex().slice(1)).toEqual(['1', '1'])
+      rerender(draw(false))
+      expect(flex().slice(1)).toEqual(['0', '0'])
+      rerender(draw(true))
+      expect(flex().slice(1)).toEqual(['1', '1'])
+      unmount()
+    }
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
 })

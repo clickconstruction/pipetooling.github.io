@@ -3,6 +3,13 @@ import { LIEN_PHONE_TAB as PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LIEN_DESK_HINT, lienDeskViewTab, type LienDeskFirstTab } from '../../lib/jobs/lienDeskTitleBar'
 import { LIEN_FILL as FILL } from './lienDeskButtonStyles'
 
+/**
+ * A tab keeps its width on a computer. It is written as the three longhands and never as `flexShrink` alone, because a
+ * phone's tab (`LIEN_PHONE_TAB`) sets the same three: a window dragged across the phone's width swaps one for the other
+ * on the same button, and a shorthand taken off there would take the longhand with it.
+ */
+const TAB_FLEX: CSSProperties = { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' }
+
 /** The desk's six views; By paper stands for the three papers' lists. */
 export type LienDeskKind = 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
 
@@ -21,7 +28,7 @@ export function LienDeskViewTabs({ kindTabs, isMobile, kind, paperShown, firstTa
         if (v === 'next' && firstTab.titled) {
           // The page's name as the first tab (v2.7465): a little larger and heavier than the other three, filled when To do is the view and in the heading's own colour when it is not, so the page keeps its name on every view. Its line is the other tabs' own (1.17rem, their 0.78rem at 1.5), so the row stays in step with the doors beside it (`headDoor`). The press is the title's: To do, and the Board brought back into view, on To do too.
           return (
-            <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} data-lien-desk-title onClick={onTitle} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-base)', fontSize: '0.9rem', lineHeight: '1.17rem', fontWeight: 700, cursor: 'pointer' }} title={`To do, at the Board. ${LIEN_DESK_HINT}`}>
+            <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} data-lien-desk-title onClick={onTitle} className="lienDeskKindTab" style={{ ...TAB_FLEX, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-base)', fontSize: '0.9rem', lineHeight: '1.17rem', fontWeight: 700, cursor: 'pointer' }} title={`To do, at the Board. ${LIEN_DESK_HINT}`}>
               <span aria-hidden="true">⏱ </span>{firstTab.words}
             </button>
           )
@@ -29,7 +36,7 @@ export function LienDeskViewTabs({ kindTabs, isMobile, kind, paperShown, firstTa
         // The three views after the title (v2.7784): *Date*, *Paper* and *Job* on a computer, each named *By date*, *By paper* and *By job* to a screen reader and in its hover hint (`lienDeskViewTab`). A phone reads the names whole.
         const tab = v === 'next' ? null : lienDeskViewTab(v, { isMobile })
         return (
-          <button key={v} type="button" role="tab" aria-selected={on} aria-label={tab && tab.name !== tab.words ? tab.name : undefined} data-lien-desk-view={v} onClick={() => onPick(v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={tab && !isMobile ? tab.hint : undefined}>
+          <button key={v} type="button" role="tab" aria-selected={on} aria-label={tab && tab.name !== tab.words ? tab.name : undefined} data-lien-desk-view={v} onClick={() => onPick(v)} className="lienDeskKindTab" style={{ ...TAB_FLEX, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={tab && !isMobile ? tab.hint : undefined}>
             {tab ? tab.words : firstTab.words}
           </button>
         )
@@ -47,7 +54,7 @@ export function LienDeskPaperTabs({ isMobile, kind, toolsOnTitleLine, onTitleLin
   return (
     <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds={onTitleLine ? 'title_line' : 'second_line'} style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), ...(toolsOnTitleLine && !onTitleLine ? { marginBlock: 2 } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden' }}>
       {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
-        <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => onPick(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'notice' ? 'The § 53.056 notice — one for every unpaid month of work on a job with a GC' : k === 'affidavit' ? 'The § 53.052 affidavit, which is the lien itself — one per job' : 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends'}>
+        <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => onPick(k)} className="lienDeskKindTab" style={{ ...TAB_FLEX, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'notice' ? 'The § 53.056 notice — one for every unpaid month of work on a job with a GC' : k === 'affidavit' ? 'The § 53.052 affidavit, which is the lien itself — one per job' : 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends'}>
           {k === 'notice' ? `Monthly notices${noticeCount != null ? ` · ${noticeCount}` : ''}` : k === 'affidavit' ? `Lien affidavits${affCount != null ? ` · ${affCount}` : ''}` : `Retainage notices${retCount != null ? ` · ${retCount}` : ''}`}
         </button>
       ))}
