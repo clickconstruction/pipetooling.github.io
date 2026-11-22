@@ -35,6 +35,11 @@ function phoneStripRule(): string {
   const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
   return css.match(/^\.developmentPhoneStrip \{[^}]*\}/m)?.[0] ?? ''
 }
+/** The `.developmentPhoneLook` rule of index.css: one cell of the phone's strip. */
+function phoneLookRule(): string {
+  const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
+  return css.match(/^\.developmentPhoneLook \{[^}]*\}/m)?.[0] ?? ''
+}
 
 describe('DevelopmentJumpStrip', () => {
   it('on a phone draws one cell for each look, the name over one figure, under the strip’s counted name', () => {
@@ -51,6 +56,27 @@ describe('DevelopmentJumpStrip', () => {
     const rule = phoneStripRule()
     expect(rule).toContain('display: flex')
     expect(rule).not.toMatch(/grid-template-columns|repeat\(/)
+  })
+
+  it('a cell never gives up its name: it grows to share the row and never shrinks under its words (v2.8293)', () => {
+    const rule = phoneLookRule()
+    expect(rule).toContain('flex: 1 0 auto')
+    expect(rule).toContain('min-width: 44px')
+    expect(rule).not.toContain('min-width: 0')
+  })
+
+  it('on a phone eight looks are one row that slides, each look named whole and findable by its key', () => {
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, trips: { n: 2, count: 'none yet', need: '2 look like trips' }, schedule: { n: 16, count: '16 stages', need: null } }} />)
+    const nav = screen.getByTestId('development-phone-strip')
+    expect(nav.getAttribute('aria-label')).toBe('Eight looks at the site')
+    const row = nav.querySelector('.tab-strip-scroll') as HTMLElement
+    expect(row.style.overflowX).toBe('auto')
+    const cells = screen.getAllByTestId('development-jump')
+    expect(cells.map((c) => c.querySelector('.developmentPhoneLookName')?.textContent)).toEqual(['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips', 'Schedule'])
+    // The strip keeps the look you are in whole in view by its key.
+    expect(cells.map((c) => c.getAttribute('data-tabkey'))).toEqual(['changed', 'pieces', 'money', 'plans', 'questions', 'photos', 'trips', 'schedule'])
+    expect(cells.every((c) => row.contains(c))).toBe(true)
+    expect(cells[6]!.getAttribute('aria-label')).toBe('Look 7, Trips, none yet, 2 look like trips')
   })
 
   it('draws Trips as a seventh look only when it is given one, and names the strip by its count', () => {

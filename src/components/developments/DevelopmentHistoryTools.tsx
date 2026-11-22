@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { draftIsKeepable, HISTORY_BODY_MAX, HISTORY_CHIPS, HISTORY_SOURCES, localInputValue, type HistoryChip, type HistoryDraft, type HistoryPiece, type HistorySource } from '../../lib/developments/history'
 import { aboutRowsOf, type AboutGroup, type AboutRow } from '../../lib/developments/aboutPicker'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
+import { ScrollableTabStrip } from '../ScrollableTabStrip'
 import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
 
 /** One row of the About picker: the number and name, then the stage or status in muted small type. */
@@ -139,11 +140,14 @@ export function DevelopmentHistoryChips({ chip, onChip, piece, onClearPiece, pho
   if (phone) {
     // A phone keeps the seven chips in one row that scrolls sideways, as the Pipeline's stage strip does,
     // so none wraps onto a line of its own; the piece chip sits under the strip where it is always in view.
+    // Since v2.8293 the row says where it goes on: half its chips were past the edge with nothing to show it.
     return (
-      <div style={{ marginBottom: 8 }} data-testid="history-chips" data-phone="1">
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }} data-testid="history-chips-strip">
-          <span style={{ ...capStyle, flexShrink: 0 }}>Show</span>
-          {chips}
+      <div style={{ marginBottom: 8, minWidth: 0 }} data-testid="history-chips" data-phone="1">
+        <div style={{ paddingBottom: 4, minWidth: 0 }} data-testid="history-chips-strip">
+          <ScrollableTabStrip edgeMarks align="start" gap="6px" fadeColor="var(--surface)">
+            <span style={{ ...capStyle, flexShrink: 0 }}>Show</span>
+            {chips}
+          </ScrollableTabStrip>
         </div>
         {pieceChip ? <div style={{ marginTop: 4 }}>{pieceChip}</div> : null}
       </div>

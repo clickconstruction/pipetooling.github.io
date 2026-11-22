@@ -6,11 +6,12 @@
  * source chips the Photos tab has. A tile opens the viewer Documents → Photos uses, with Previous and Next through
  * the row as shown. The rows and the reads are the page's `useSitePhotos`; the rules are `lib/photos/sitePhotos.ts`.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { boxOnSiteLink } from '../../lib/materials/boxSearch'
 import { EmptyState } from '../EmptyState'
+import { ScrollableTabStrip } from '../ScrollableTabStrip'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { UploadedPhotoTile } from '../documents/UploadedPhotoTile'
 import { UploadedPhotoViewer } from '../documents/UploadedPhotoViewer'
@@ -129,8 +130,17 @@ export function DevelopmentPhotosLook({
     [navigate, openJobOf],
   )
 
-  const pickChips = (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: phone ? 'nowrap' : 'wrap', overflowX: phone ? 'auto' : undefined, paddingBottom: phone ? 4 : 0 }} data-testid="site-photos-jobs">
+  /** A chip row: wrapped at a desk, one sliding row on a phone that marks an edge with more past it (v2.8293). */
+  const chipRow = (testId: string, children: ReactNode) =>
+    phone ? (
+      <div style={{ paddingBottom: 4, minWidth: 0 }} data-testid={testId}>
+        <ScrollableTabStrip edgeMarks align="start" gap="6px" fadeColor="var(--surface)">{children}</ScrollableTabStrip>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }} data-testid={testId}>{children}</div>
+    )
+  const pickChips = chipRow('site-photos-jobs', (
+    <>
       <span style={{ ...capStyle, flex: 'none' }}>Job</span>
       {pickRow.picks.map((p) => {
         const on = p.key === 'all' ? jobId === null : jobId === p.key
@@ -145,10 +155,10 @@ export function DevelopmentPhotosLook({
           {moreJobsWords(pickRow.folded)}
         </button>
       ) : null}
-    </div>
-  )
-  const sourceRow = (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: phone ? 'nowrap' : 'wrap', overflowX: phone ? 'auto' : undefined, paddingBottom: phone ? 4 : 0 }} data-testid="site-photos-sources">
+    </>
+  ))
+  const sourceRow = chipRow('site-photos-sources', (
+    <>
       <span style={{ ...capStyle, flex: 'none' }}>Source</span>
       {sources.map((c) => (
         <button key={c.key} type="button" style={chip(source === c.key)} aria-pressed={source === c.key} onClick={() => setSource(c.key as SourcePick)} data-testid={`site-photos-source-${c.key}`}>
@@ -160,8 +170,8 @@ export function DevelopmentPhotosLook({
           {personChipWords(person)} <span aria-hidden>×</span>
         </button>
       ) : null}
-    </div>
-  )
+    </>
+  ))
 
   return (
     <div style={{ display: 'grid', gap: 8 }} data-testid="site-photos-look">

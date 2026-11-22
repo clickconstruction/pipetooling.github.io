@@ -28,6 +28,13 @@ const EDGE_MARK_FADE_PX = 32
  * edge falls on the blank between two tabs it shows nothing: on a 393 px phone an assistant's Jobs row ended
  * on *Billing* with five tabs past it and no sign of them. The arrow says the row goes on wherever the edge
  * falls. It is drawn, not pressed: a touch goes through it to the tab under it.
+ *
+ * `fill` (v2.8293, the Development page's strip of looks on a phone) makes the row at least as wide as the strip,
+ * so children that grow share the room while they all fit, and the row slides once they do not. Without it a
+ * short row keeps its own width, centred or at the start.
+ *
+ * A strip that is a grid or a flex item needs `min-width: 0` on that item. The row inside never shrinks, so an
+ * item left at its automatic minimum is as wide as every tab together, and the page slides sideways with it.
  */
 export function ScrollableTabStrip({
   children,
@@ -40,6 +47,7 @@ export function ScrollableTabStrip({
   fadeSlack = 2,
   activePeek,
   edgeMarks = false,
+  fill = false,
 }: {
   children: ReactNode
   /** When set, the element with a matching `data-tabkey` is kept in view. */
@@ -58,6 +66,8 @@ export function ScrollableTabStrip({
   activePeek?: number
   /** Draws a small arrow in each fade. A fade over a blank stretch of the row shows nothing, and the arrow still says the row goes on. */
   edgeMarks?: boolean
+  /** The row is at least the strip's width, so children that grow fill it while they fit. */
+  fill?: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
@@ -187,6 +197,7 @@ export function ScrollableTabStrip({
             flexShrink: 0,
             marginLeft: align === 'start' ? 0 : 'auto',
             marginRight: 'auto',
+            ...(fill ? { minWidth: '100%', marginLeft: 0, marginRight: 0 } : null),
           }}
         >
           {children}

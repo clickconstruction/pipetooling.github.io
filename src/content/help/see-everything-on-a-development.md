@@ -54,7 +54,7 @@ A site with a stage ahead has a look named Schedule at the end of the strip. It 
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 
-On a phone the strip is one row with a cell for each look. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
+On a phone the strip is one row with a cell for each look. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined. A site with many looks has a strip wider than the screen. Slide the strip sideways to reach the rest. A small arrow marks a side with more looks past it. The look you are in stays in view as you scroll the page.
 
 ## See a job's details without opening it
 

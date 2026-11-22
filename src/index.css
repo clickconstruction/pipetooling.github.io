@@ -7525,7 +7525,8 @@ button.developmentCountChip:focus-visible {
    one figure, amber when something in it waits on the leader, the look you are in underlined in blue. Pinned like
    the desk's bar, a third of its height. The row names no column count: each cell starts as wide as its words
    and the cells share what is left, so a look added to the strip stays in the row (a five-column grid dropped
-   v2.6371's Photos to a second row). On a screen too narrow for every name, the names give way with an ellipsis. */
+   v2.6371's Photos to a second row). Since v2.8293 a name never gives way: a cell grows to share the row and never
+   shrinks under its words, and when the cells are wider than the screen the row slides inside the strip. */
 .developmentPhoneStrip {
   position: sticky;
   top: 0;
@@ -7537,14 +7538,19 @@ button.developmentCountChip:focus-visible {
   border-radius: 8px;
   overflow: hidden;
 }
-.developmentPhoneLook {
+/* The strip's one child is the sliding row (`ScrollableTabStrip`): it takes the strip's whole width. */
+.developmentPhoneStrip > div {
   flex: 1 1 auto;
   min-width: 0;
+}
+.developmentPhoneLook {
+  flex: 1 0 auto;
+  min-width: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 6px 2px 5px;
+  padding: 6px 8px 5px;
   border: none;
   border-bottom: 3px solid transparent;
   background: transparent;

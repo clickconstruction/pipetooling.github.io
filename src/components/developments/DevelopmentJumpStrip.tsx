@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { lookFigure } from '../../lib/developments/lookFigure'
 import { useJumpStrip } from '../gc/useJumpStrip'
+import { ScrollableTabStrip } from '../ScrollableTabStrip'
 
 export type DevelopmentJumpKey = 'changed' | 'pieces' | 'money' | 'plans' | 'questions' | 'photos'
 
@@ -39,6 +40,9 @@ const LABEL: Record<DevelopmentStripKey, string> = { changed: 'History', pieces:
 const TELL_NAME: Record<DevelopmentStripKey, string> = { changed: 'the history', pieces: 'the jobs and bids', money: 'the money', plans: 'the plans', questions: 'the questions', photos: 'the photos', trips: 'the trips', schedule: 'the schedule' }
 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
+
+/** How much of the next look shows beside the one you are in, on a phone's strip, so the row reads as going on. */
+const PHONE_LOOK_PEEK_PX = 28
 
 /** The one-sentence tell, on the cap's title. */
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'] as const
@@ -86,9 +90,13 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
   // four ragged lines there (the owner: *I don't like how this looks on mobile*). The row counts no
   // columns: each cell is as wide as its words and shares what is left (v2.6371's sixth look dropped
   // to a second row of a five-column grid).
+  // Since v2.8293 a cell never gives up its name. Six looks fit a phone. Trips and Schedule made eight, and at
+  // 393 px every name was cut: *Histo…*, *Pla…*, *Questio…*. The row now slides: the look you are in is kept
+  // whole in view with the start of the next beside it, and an arrow marks an edge with more past it.
   if (phone) {
     return (
       <nav ref={barRef as React.RefObject<HTMLDivElement>} aria-label={`${LOOKS_NAME} at the site`} className="developmentPhoneStrip" data-development-jump-strip data-testid="development-phone-strip">
+        <ScrollableTabStrip activeKey={active ?? undefined} activePeek={PHONE_LOOK_PEEK_PX} edgeMarks fill gap="0" align="start" fadeColor="var(--surface)">
         {ORDER.map((key, index) => {
           const on = key === active
           const look = lookOf(key)
@@ -104,6 +112,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
               title={`${LABEL[key]} · ${whole}`}
               className={`developmentPhoneLook${on ? ' isOn' : ''}${look.n === 0 && !need ? ' isEmpty' : ''}`}
               data-testid="development-jump"
+              data-tabkey={key}
               data-need={need ? '1' : undefined}
             >
               <span className="developmentPhoneLookName">{LABEL[key]}</span>
@@ -111,6 +120,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
             </button>
           )
         })}
+        </ScrollableTabStrip>
       </nav>
     )
   }
