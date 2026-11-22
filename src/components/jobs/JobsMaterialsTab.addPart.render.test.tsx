@@ -43,7 +43,7 @@ vi.mock('../../hooks/useOnSiteSites', () => ({ useOnSiteSites: () => ({ siteOfJo
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map(), marksByBox: new Map(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [], anyNamed: false, printedByName: '', printedAt: '', mark: { printed: 0, waiting: 0, unknown: 0 } }, toPrint: [], loaded: true, refresh: () => {} }) }))
 vi.mock('../../lib/materials/stickerRunsIo', () => ({ fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })), fetchStickerRuns: vi.fn(async () => []), mintStickerRun: vi.fn() }))
-vi.mock('../../lib/materials/boxNamesIo', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../lib/materials/boxNamesIo')>()), fetchBoxNames: vi.fn(async () => []) }))
+vi.mock('../../lib/materials/boxHistoryIo', () => ({ fetchBoxNames: vi.fn(async () => []) }))
 vi.mock('../../hooks/usePartTies', () => ({ usePartTies: () => ({ ties: [], available: false, failed: null, retry: () => {}, answer: async () => {}, undo: async () => {} }) }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
