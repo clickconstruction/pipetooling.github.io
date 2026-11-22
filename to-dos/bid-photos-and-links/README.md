@@ -515,7 +515,8 @@ v2.6929 (2026-11-11):
   *canceling statement due to statement timeout*. The view's `message` branch joins `jobs_ledger` by a scan under
   its row policies, once per picture: 14 seconds alone as a dev, against the 8 second limit. The `bid` branch reads
   in 8 ms. PR 9 left the `message` branch word for word, and the gateway's log shows the same read failing on
-  2026-11-17 and 2026-11-18. The other chips read. It has no card yet.
+  2026-11-17 and 2026-11-18. The other chips read. Fixed as v2.8301: the join is a `CASE`, which Postgres can use as
+  an index condition where it cannot use a `COALESCE` (`docs/migrations/20261122063000_uploaded_photos_message_job_join.md`).
 
 ## How to verify
 

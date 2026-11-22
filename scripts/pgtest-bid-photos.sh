@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/bid_photos against a throwaway copy of the WHOLE schema (bid photos, punch list #306 PRs 1, 2 and
-# 9, migrations *_bid_photos, *_photo_save_bid_photos and *_uploaded_photos_bid_branch).
+# 9, migrations *_bid_photos, *_photo_save_bid_photos and *_uploaded_photos_bid_branch, and the view's later
+# *_uploaded_photos_message_job_join).
 #
 #   npm run test:pg:bid-photos
 #
 # The same bed as scripts/pgtest-plan-sets-author.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then the three bid photos migrations a second time, which must change nothing (one photo-save cron
+# applied in order, then the three bid photos migrations and the view's job join a second time, which must change nothing (one photo-save cron
 # row, not two; the view replaced by itself). The scenario, inside one
 # transaction that rolls back: whoever can read a bid reads its photos and adds one as themselves; a primary only on a
 # bid of their own; a subcontractor, a superintendent and a primary on no bid read nothing and add nothing; the adder
@@ -13,7 +14,8 @@
 # writes nothing; a twin writes only on its own bid; one Drive file makes one row; and the bucket's objects follow the
 # same gate from the path's first folder, with a path that is not a bid's refused and never an error; and the photo-save
 # cron is one row that names every source, a bid photo due a try among them; and the view uploaded_photos lists a bid's
-# standing photo to whoever reads the bid and to nobody else, a picture a text carries once. It raises on its
+# standing photo to whoever reads the bid and to nobody else, a picture a text carries once, and finds a text's job by
+# its key under row policies, on the line's own job and on its project's billing job. It raises on its
 # first failed assertion and ends with "bid_photos PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL
 # beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -25,6 +27,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 TABLE="$(ls supabase/migrations/*_bid_photos.sql | grep -v photo_save)"
 CRON="$(ls supabase/migrations/*_photo_save_bid_photos.sql)"
 VIEW="$(ls supabase/migrations/*_uploaded_photos_bid_branch.sql)"
+JOB_JOIN="$(ls supabase/migrations/*_uploaded_photos_message_job_join.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -43,7 +46,7 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 pgtest_migrate
 # A second run must change nothing: the table and indexes are IF NOT EXISTS, the policies dropped and remade by name,
 # the cron unscheduled before it is scheduled, the view CREATE OR REPLACE with the same columns.
-for again in "$TABLE" "$CRON" "$VIEW"; do
+for again in "$TABLE" "$CRON" "$VIEW" "$JOB_JOIN"; do
   psql_as postgres -f - < "$again" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $again"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/bid_photos/20_scenario.sql 2>&1 || true)"
