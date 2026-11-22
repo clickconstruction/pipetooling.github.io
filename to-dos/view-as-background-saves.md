@@ -2,7 +2,7 @@
 name: "View as: the saves it held back, and what is left to walk"
 number: 417
 group: close
-status: built 2026-11-21 · v2.8176 (#9218), v2.8241 (#9311) and v2.8246 (#9318) merged · the server refusal #9324 in the merge queue, 6th at 06:10 UTC on 2026-11-22 · left: the migration push after #9324, the walks below, and four calls for Taunya
+status: built 2026-11-21 · v2.8176 (#9218), v2.8241 (#9311) and v2.8246 (#9318) merged · the server refusal #9324 green and taken out of the merge queue at 06:15 UTC on 2026-11-22, held on Taunya's word *Wait for Fable* · left: arm #9324, push its migration, the walks below, and four calls for Taunya
 summary: >
   A dev in View as is signed in as the person, so saves the app makes with no press landed on that
   person: their last seen time, their app time, a salaried clock sync, and "seen" marks that cleared
@@ -10,9 +10,9 @@ summary: >
   Exit no longer leaves a dev signed in as the person when the session swap is refused. A migration
   that makes the server refuse the activity heartbeat for an imitated session is in the merge queue.
   Nothing has been walked on the live site since the first PR.
-next: When #9324 merges, push its migration (bash scripts/db-push.sh from a checkout at origin/main), then do the walks below as a dev in View as on a sample account.
+next: On Fable 5.2, re-arm #9324 (gh pr merge 9324 --auto), push its migration within minutes of the merge (bash scripts/db-push.sh from a checkout at origin/main), then do the walks below as a dev in View as on a sample account.
 size: S; left: one migration push (XS) and one sitting of walks (S)
-blocker: "#9324 is still in the merge queue, and its push has to follow its merge within minutes, since check:calls-ahead holds every Pages deploy until it lands."
+blocker: "Taunya's word of 2026-11-22: *Wait for Fable*. The push and the walks wait for a session on Fable 5.2, so #9324 is out of the merge queue until then: merged and not pushed, it would hold every Pages deploy."
 ver: v2.8176 · v2.8241 · v2.8246
 opinion: close it after the push and the walks — the open calls below are new work, each its own card if Taunya wants it
 mockup: not required — no screen changed; the walks read network calls and rows
@@ -89,11 +89,16 @@ that saves except a ZZ test row's own setup and cleanup.
 
 ### Loose ends
 
-- **#9324 and its push.** Queued 6th at 06:10 UTC on 2026-11-22. `check:calls-ahead` labels it *push
-  right after the merge*: until `bash scripts/db-push.sh` runs from a checkout at `origin/main`, every
-  Pages deploy waits. The old function body answers the client meanwhile, so nothing breaks, but
-  other merges do not reach the site. The building session asked Taunya whether it may push and walk
-  on the model it was moved to.
+- **#9324 and its push, held for Fable.** The building session was moved to Opus and asked whether to
+  push and walk there. Taunya's answer on 2026-11-22: *Wait for Fable*. #9324 was 6th in the merge
+  queue at 06:10 UTC and was taken out at 06:15 UTC, green and unarmed. Merging it does not break the
+  app: the client calls `bump_user_app_activity` with the same arguments, and the old body answers
+  until the push. But the deploy's `check:calls-ahead --prod` step fails while a merged migration
+  replaces a function the client calls, so every Pages deploy, everyone's, would wait until the push.
+  So the PR goes back in only when someone on Fable 5.2 can push within minutes of its merge. Before
+  re-arming, merge `origin/main` into its branch if it has fallen behind, and test it against each
+  queued head with `git merge-tree`.
+- **The walks are held for Fable too**, on the same word.
 - **The other unpressed saves still run in View as.** From the survey, still open: nav telemetry
   (`ui_nav_clicks`), the Dashboard's day book snapshot (`day_book_queue_snapshots`), the dispatch
   inbox self-heals (`dispatch_requests`), the hub's office schedule fill
