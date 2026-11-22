@@ -22,6 +22,8 @@ On the short page the card sits above **Open this job**. You do not open the job
 
 The card shows only when there is something to look at. The first day we planned for the stage is the first day it shows. A stage with no planned days is not asked about.
 
+The card is for the crew on the job. You are on the crew when you are on the job's team. A clock-in on the job also counts, for 14 days.
+
 ## When everything is as told
 
 1. Read each line on the card.

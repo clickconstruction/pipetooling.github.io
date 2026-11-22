@@ -1283,6 +1283,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The desk **reads and writes** a job's bullets, yeses, asks and days, and reads its decisions and arrivals.
   A primary reads no job's list beyond `is_job_people`.
   The crew is **`start_checks_crew(job)`**: on the job's team, clocked in on it, or a sub who reads it, and never a primary.
+  Since v2.8243 a clock-in counts for 14 days, today and the fourteen before it by the session's work day (`docs/migrations/20261122031000_crew_days_start_checks.md`).
   The crew **reads** the bullets on them that are still on the list and their live yeses, and writes through one door alone, `start_check_arrive`.
   A helper on no job, a superintendent on no job, and an estimator or a primary with no claim read nothing.
   A job shut by its papers is shut here too (`job_shut_to_me` in each gate).

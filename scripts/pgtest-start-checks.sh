@@ -43,7 +43,8 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: the tables and their indexes left alone, the policies and triggers remade, the
-# functions replaced with the same grants.
+# functions replaced with the same grants. The tables' file puts the first crew gate back, so the file that replaced
+# it ends in _start_checks.sql too (*_crew_days_start_checks.sql): the list above catches it and applies it after.
 for w in $WRITES; do
   psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
