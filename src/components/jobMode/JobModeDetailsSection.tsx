@@ -356,7 +356,8 @@ export default function JobModeDetailsSection({
           {contact == null && contactWhyNone ? (
             contactWhyNone
           ) : !hasContact ? (
-            contact == null ? 'Loading…' : 'No customer contact on file'
+            // An empty line names the next step: the office is who adds a customer to a job.
+            contact == null ? 'Loading…' : 'This job has no customer contact yet. Ask the office to add one.'
           ) : phone ? (
             <>
               Customer <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(phone)}</b>
@@ -366,7 +367,7 @@ export default function JobModeDetailsSection({
               {ourLead.name} {ourLead.note} <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(ourLead.phone)}</b>
             </>
           ) : (
-            'No phone number on file'
+            'This job has no phone number yet. Ask the office to add one.'
           )}
         </p>
         {phoneCard.day}
