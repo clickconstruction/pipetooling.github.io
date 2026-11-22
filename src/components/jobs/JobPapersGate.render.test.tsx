@@ -128,7 +128,8 @@ describe('JobPapersGateModal', () => {
     resetJobsClosedToMeForTest(io)
     renderWithProviders(<JobPapersGateModal jobId="job-1" role="assistant" onClose={() => undefined} />)
     await screen.findByText('Before you open J2391')
-    expect(screen.getByRole('button', { name: 'This job’s papers and who has signed' })).toBeTruthy()
+    // The door takes a finger: it is the way to a paper's Settings once the job has shut.
+    expect(screen.getByRole('button', { name: 'This job’s papers and who has signed' }).style.minHeight).toBe('44px')
   })
 })
 

@@ -23,7 +23,7 @@ export function JobPapersGateModal({ jobId, role, onClose, onOpenJob, returnPath
             <JobDocumentsRequiredPapers job={{ id: jobId }} />
           ) : (
             <div>
-              <button type="button" style={documentsQuietButton} onClick={() => setManaging(true)}>
+              <button type="button" style={{ ...documentsQuietButton, minHeight: 44 }} onClick={() => setManaging(true)}>
                 This job’s papers and who has signed
               </button>
             </div>

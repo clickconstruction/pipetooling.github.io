@@ -88,6 +88,7 @@ const SECOND_PRESS: CSSProperties = {
 
 // The review's note as a press: it takes the person to what the note names.
 const NOTE_PRESS: CSSProperties = { minHeight: 44, border: 0, background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', textAlign: 'left', cursor: 'pointer' }
+const NOTE_ROOM: CSSProperties = { display: 'flex', alignItems: 'center', minHeight: 44 }
 function mainPress(dead: boolean): CSSProperties {
   return {
     border: 0,
@@ -432,7 +433,8 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
             {confirm.note}
           </button>
         ) : flow.step === last ? (
-          <p style={MUTED}>{look ? look.lastStep : confirm.note}</p>
+          // A host's note can be a press 44 px tall. Its plain line keeps that room, so the press above does not move when a blank is typed.
+          <p style={host?.confirm && !look ? { ...MUTED, ...NOTE_ROOM } : MUTED}>{look ? look.lastStep : confirm.note}</p>
         ) : null}
       </div>
     </div>

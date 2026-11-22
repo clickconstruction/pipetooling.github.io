@@ -99,6 +99,8 @@ describe('JobDocumentsRequiredPapers', () => {
     await screen.findByText('Nothing has to be signed before this job opens.')
     // A job with no papers takes no second read.
     expect(settingsIo.readSettingsPapers).not.toHaveBeenCalled()
+    // The empty section's press is the only way in, so it takes a finger.
+    expect(screen.getByRole('button', { name: 'Add a paper' }).style.minHeight).toBe('44px')
     fireEvent.click(screen.getByRole('button', { name: 'Add a paper' }))
     fireEvent.click(await screen.findByRole('button', { name: /Sample secrecy paper/ }))
     const page = await screen.findByRole('dialog', { name: 'Sample secrecy paper, job J2391' })
@@ -125,6 +127,10 @@ describe('JobDocumentsRequiredPapers', () => {
     expect(screen.getAllByRole('button', { name: /^Settings of / })).toHaveLength(1)
     // Settings and Take off are words that are presses: each takes a finger, 44 px tall.
     for (const name of ['Settings of Sample secrecy paper', 'Take Sample secrecy paper off']) expect(screen.getByRole('button', { name }).style.minHeight).toBe('44px')
+    // The two wrap together on a narrow screen: they share one parent, which is not the row.
+    const settingsPress = screen.getByRole('button', { name: 'Settings of Sample secrecy paper' })
+    expect(settingsPress.parentElement).toBe(screen.getByRole('button', { name: 'Take Sample secrecy paper off' }).parentElement)
+    expect(settingsPress.parentElement?.hasAttribute('data-job-paper')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Settings of Sample secrecy paper' }))
     const page = await screen.findByRole('dialog', { name: 'Sample secrecy paper, job J2391' })
     await within(page).findByText('Nothing is changed yet.')
