@@ -4,7 +4,7 @@
  * which verbs the sheet offers, in order, the first one the row's next move.
  */
 
-export type SubPayPhoneVerb = 'writing' | 'payment' | 'payable_after' | 'backcharge' | 'edit' | 'print' | 'story' | 'lien_waiver'
+export type SubPayPhoneVerb = 'writing' | 'payment' | 'payable_after' | 'backcharge' | 'edit' | 'print' | 'work_statement' | 'statement' | 'story' | 'lien_waiver'
 
 export interface SubPayPhoneRowFacts {
   totalCost: number
@@ -14,6 +14,8 @@ export interface SubPayPhoneRowFacts {
   /** The agreement button the desktop row draws under a gap, '' when none (a nudge is not a button here either). */
   writingLabel: string
   payableAfter: string | null
+  /** The papers' door (punch list #350): true on a sheet that is one person's, for a viewer who makes papers. */
+  papers?: boolean
 }
 
 /** `$4,200 due` · `Paid` · `Over $120` · `unpriced` — the row's one number. */
@@ -36,7 +38,9 @@ export interface SubPayPhoneVerbRow {
  * The sheet's verbs. The first is the row's next move: the agreement when
  * nothing is in writing, the payment when the sheet is ready. Payment is
  * offered whenever money is due; the payable-after date wherever the desktop
- * row offers it (waiting, queued or ready).
+ * row offers it (waiting, queued or ready). On a sheet that is one person's,
+ * Work statement… takes Print's place as it does on the desk's ⋯ menu, and
+ * their statement of account follows it (punch list #350).
  */
 export function subPayPhoneVerbs(f: SubPayPhoneRowFacts): SubPayPhoneVerbRow[] {
   const out: SubPayPhoneVerbRow[] = []
@@ -49,7 +53,10 @@ export function subPayPhoneVerbs(f: SubPayPhoneRowFacts): SubPayPhoneVerbRow[] {
   if (canQueue) push('payable_after', f.payableAfter ? 'Change the payable-after date' : 'Set a payable-after date', f.payableAfter ? `Queued for ${f.payableAfter}` : 'Queue it for a pay run')
   push('backcharge', 'Back-charge', 'Take money off this sheet', { danger: true })
   push('edit', 'Edit the sheet', 'Line items, rate, the sub')
-  push('print', 'Print', 'The sub sheet as paper')
+  if (f.papers) {
+    push('work_statement', 'Work statement…', 'This sheet as a paper to print, save or send')
+    push('statement', 'Statement of account…', 'Every sheet of theirs on one paper')
+  } else push('print', 'Print', 'The sub sheet as paper')
   push('story', 'Story', 'Every stage and date on this sheet')
   push('lien_waiver', 'Lien waiver', 'Send the sub a waiver for this sheet')
   if (out[0] && (out[0].verb === 'writing' || (out[0].verb === 'payment' && f.payWhenKind === 'ready'))) out[0].primary = true
