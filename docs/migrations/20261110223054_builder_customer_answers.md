@@ -12,7 +12,7 @@ Bids and permits: the answer on a name (punch list #307, PR 6 and 7; `to-dos/bid
 - **Row security**: read and insert for `user_can_research_permits()` (the office and every estimator), an insert only as oneself. No update and no delete: the newest decisive row per name and customer is the state, folded by `src/lib/research/nameAnswers.ts`.
 - Closed to `anon`; `SELECT` and `INSERT` to `authenticated`. The four fences close the file.
 
-`builders.customer_id` (v2.6835) is left in place and unwritten. The card planned to drop it; nothing reads it, and dropping a column is not additive.
+`builders.customer_id` (v2.6835) was left in place and unwritten here, since dropping a column is not additive. [`20261122040000`](./20261122040000_builders_customer_id_dropped.md) dropped it.
 
 ## Release order
 

@@ -40,7 +40,7 @@ function answer(over: Partial<NameAnswerRow> = {}): NameAnswerRow {
   return { id: `a${n}`, builder_key: TEXAS, customer_id: 'c1', answer: 'works_for', scope: 'all', permit_id: null, name: 'Ridgeway Builders of Texas LLC', answered_by: 'u2', answered_at: `2026-11-10T${String(10 + (n % 10)).padStart(2, '0')}:00:00Z`, ...over }
 }
 function builder(over: Partial<BuilderRow> = {}): BuilderRow {
-  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
+  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
 }
 let b = 0
 function bid(over: Partial<CountedBid> = {}): CountedBid {

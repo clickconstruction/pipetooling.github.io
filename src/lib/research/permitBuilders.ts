@@ -179,7 +179,6 @@ export type BuilderRow = {
   name: string | null
   sample_contact: string | null
   kind: string | null
-  customer_id: string | null
   mark: BuilderMarkValue | null
   mark_reason: string | null
   mark_by_name: string | null
