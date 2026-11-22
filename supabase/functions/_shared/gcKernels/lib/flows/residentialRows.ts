@@ -26,9 +26,12 @@ import type {
   ScheduleBlockRow,
 } from './residentialLoad.ts'
 
-/** The columns each read selects, the loader's row types and no more (`job_name` names the job for `{job}`). */
+/**
+ * The columns each read selects, the loader's row types and no more (`job_name` names the job for `{job}`;
+ * `in_kind_arrangement_id` is the deal that pays the job's bills, which gives its Paid rounds no due day, punch list #301).
+ */
 export const PIPELINE_SELECTS = {
-  jobs: 'id, created_at, status, revenue, customer_id, gc_customer_id, bill_to_party, customer_name, job_name',
+  jobs: 'id, created_at, status, revenue, customer_id, gc_customer_id, bill_to_party, customer_name, job_name, in_kind_arrangement_id',
   contactJobs: 'contact_id, jobs_ledger_id, is_default',
   blocks: 'job_id, work_date, created_at, created_by',
   clockSessions: 'job_ledger_id, user_id, clocked_in_at, revoked_at, rejected_at',

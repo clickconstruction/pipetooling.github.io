@@ -191,7 +191,7 @@ export async function resolve(ref: string, find: () => Promise<{ matches: Row[] 
 // ---------------------------------------------------------------------------
 
 const JOB_SELECT =
-  'id,hcp_number,click_number,job_name,job_address,status,pct_complete,revenue,payments_made,service_type_id,customer_id,gc_customer_id,created_at,' +
+  'id,hcp_number,click_number,job_name,job_address,status,pct_complete,revenue,payments_made,service_type_id,customer_id,gc_customer_id,created_at,in_kind_arrangement_id,' +
   'customer:customers!jobs_ledger_customer_id_fkey(id,name),' +
   'materials:jobs_ledger_materials(description,amount),' +
   'invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date,sequence_order),' +
@@ -321,7 +321,7 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
       mileageCost: labor.mileageCost,
       timePerMile: labor.timePerMile,
     })
-    const billing = profileJobRowMoney({ id, status: (job.status as string | null) ?? null, revenue: job.revenue == null ? null : Number(job.revenue), payments_made: job.payments_made == null ? null : Number(job.payments_made), invoices: asRows(job.invoices) as unknown as ProfileJob['invoices'], payments: asRows(job.payments) as unknown as ProfileJob['payments'] }, todayYmd)
+    const billing = profileJobRowMoney({ id, status: (job.status as string | null) ?? null, revenue: job.revenue == null ? null : Number(job.revenue), payments_made: job.payments_made == null ? null : Number(job.payments_made), in_kind_arrangement_id: (job.in_kind_arrangement_id as string | null) ?? null, invoices: asRows(job.invoices) as unknown as ProfileJob['invoices'], payments: asRows(job.payments) as unknown as ProfileJob['payments'] }, todayYmd)
     return {
       source: 'buildJobProfitSummary + profileJobRowMoney — the Job window and Customer hub kernels',
       profit,
@@ -352,7 +352,7 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
 // ---------------------------------------------------------------------------
 
 const CUSTOMER_JOBS_SELECT =
-  'id,hcp_number,click_number,job_name,status,revenue,payments_made,created_at,service_type_id,invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date,sequence_order),payments:jobs_ledger_payments(invoice_id,amount,paid_on)'
+  'id,hcp_number,click_number,job_name,status,revenue,payments_made,created_at,service_type_id,in_kind_arrangement_id,invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date,sequence_order),payments:jobs_ledger_payments(invoice_id,amount,paid_on)'
 
 export async function getCustomer(reader: Reader, ref: string, todayYmd: string) {
   const resolved = await resolve(ref, () => findCustomer(reader, ref) as Promise<{ matches: Row[] }>, 'customer')

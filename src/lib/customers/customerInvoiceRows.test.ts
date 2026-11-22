@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCustomerInvoiceRows,
+  customerInvoiceChipTail,
   invoiceChannelLabel,
   type CustomerInvoiceInput,
 } from './customerInvoiceRows'
@@ -116,5 +117,42 @@ describe('buildCustomerInvoiceRows', () => {
     expect(rows.find((r) => r.key === 'b')!.partLabel).toBe('#2')
     expect(rows.find((r) => r.key === 'c')!.partLabel).toBeNull()
     expect(rows.find((r) => r.key === 'c')!.jobLabel).toBe('972')
+  })
+})
+
+describe('a bill an in-kind deal pays (punch list #301)', () => {
+  const jobs = [
+    { id: 'j1', label: '941', in_kind_arrangement_id: 'deal-1' },
+    { id: 'j2', label: '972' },
+  ]
+
+  it('a covered bill is scheduled: it has no age, however old it is', () => {
+    const { rows } = buildCustomerInvoiceRows([inv({ id: 'a', estimated_bill_date: '2026-01-10' })], [], jobs, TODAY)
+    expect(rows[0]).toMatchObject({ status: 'billed', scheduledInKind: true, agingDays: null })
+    expect(customerInvoiceChipTail(rows[0]!)).toBe(' · in kind')
+  })
+
+  it('a payer part covered: the bill off the deal still ages', () => {
+    const { rows } = buildCustomerInvoiceRows(
+      [inv({ id: 'a', job_id: 'j1', estimated_bill_date: '2026-01-10' }), inv({ id: 'b', job_id: 'j2', estimated_bill_date: '2026-06-18' })],
+      [],
+      jobs,
+      TODAY,
+    )
+    const off = rows.find((r) => r.key === 'b')!
+    expect(off).toMatchObject({ scheduledInKind: false, agingDays: 60 })
+    expect(customerInvoiceChipTail(off)).toBe(' · 60d')
+    expect(rows.find((r) => r.key === 'a')!.scheduledInKind).toBe(true)
+  })
+
+  it('an ordinary late bill reads as before, and a young one says nothing after its status', () => {
+    const { rows } = buildCustomerInvoiceRows([inv({ id: 'a', job_id: 'j2', estimated_bill_date: '2026-05-01' }), inv({ id: 'b', job_id: 'j2' })], [], jobs, TODAY)
+    expect(customerInvoiceChipTail(rows.find((r) => r.key === 'a')!)).toBe(' · 108d')
+    expect(customerInvoiceChipTail(rows.find((r) => r.key === 'b')!)).toBe('')
+  })
+
+  it('a paid or a draft bill on a deal is not marked: only open bills are scheduled', () => {
+    const { rows } = buildCustomerInvoiceRows([inv({ id: 'a', status: 'paid' }), inv({ id: 'b', status: 'ready_to_bill', sequence_order: 2 })], [], jobs, TODAY)
+    expect(rows.every((r) => !r.scheduledInKind)).toBe(true)
   })
 })

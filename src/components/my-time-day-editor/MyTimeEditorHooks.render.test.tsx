@@ -13,6 +13,7 @@ import { emptyDayLine } from '../../lib/myTimeSalaryPrefetch'
 import type { CalendarWorkdayResolution } from '../../lib/resolveCalendarWorkday'
 import { useMyTimeJobBidLabels, type UseMyTimeJobBidLabelsInput } from './useMyTimeJobBidLabels'
 import { useMyTimeSalaryPrefetch, type UseMyTimeSalaryPrefetchInput } from './useMyTimeSalaryPrefetch'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../../lib/impersonationSession'
 
 type Result = { data: unknown; error: unknown }
 
@@ -62,12 +63,20 @@ vi.mock('../../lib/resolveCalendarWorkday', async (orig) => ({
   resolveCalendarWorkday: () => h.resolution as CalendarWorkdayResolution,
 }))
 
-vi.mock('../../lib/salaryScheduleSync', () => ({
-  syncSalaryClockSessionsForUserDay: async (userId: string, workDate?: string) => {
+vi.mock('../../lib/salaryScheduleSync', async (orig) => {
+  const real = await orig<typeof import('../../lib/salaryScheduleSync')>()
+  const sync = async (userId: string, workDate?: string) => {
     h.syncCalls.push([userId, workDate])
     return { error: h.syncError }
-  },
-}))
+  }
+  return {
+    ...real,
+    syncSalaryClockSessionsForUserDay: sync,
+    // The real kernel over the recorded sync, so the hold while View as is on is the one under test.
+    syncSalaryClockSessionsUnasked: (userId: string, _io: unknown, workDate?: string) =>
+      real.syncSalaryClockSessionsUnasked(userId, { sync }, workDate),
+  }
+})
 
 const JOB_A = 'aaaaaaaa-1111-4111-8111-111111111111'
 const JOB_B = 'bbbbbbbb-2222-4222-8222-222222222222'
@@ -98,6 +107,7 @@ beforeEach(() => {
   h.resolution = { kind: 'none' }
   h.syncCalls.length = 0
   h.syncError = null
+  localStorage.removeItem(IMPERSONATION_ORIGINAL_STORAGE_KEY)
 })
 
 afterEach(() => {
@@ -300,6 +310,20 @@ describe('useMyTimeSalaryPrefetch', () => {
     await waitFor(() => expect(input.onSessionsInvalidated).toHaveBeenCalledTimes(1))
     expect(h.syncCalls).toEqual([['user-1', '2026-01-05']])
     await waitFor(() => expect(salaryText()).toBe('idle · No sessions this day.'))
+  })
+
+  it('while View as is on a scheduled day is not synced: nobody pressed for it, and the call would run as that person', async () => {
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
+    h.tables.salary_work_schedule_templates = TEMPLATE
+    h.resolution = { kind: 'scheduled', source: 'template', blocks: [] }
+    const input = salaryInput()
+    await mountSalary(input)
+    // The schedule was read through, so the sync's turn came and it was held.
+    await waitFor(() => expect(h.reads).toHaveLength(3))
+    await waitFor(() => expect(salaryText()).toBe('idle · No sessions this day.'))
+    await settle()
+    expect(h.syncCalls).toEqual([])
+    expect(input.onSessionsInvalidated).not.toHaveBeenCalled()
   })
 
   it('a failed sync raises its message and does not re-read the day', async () => {

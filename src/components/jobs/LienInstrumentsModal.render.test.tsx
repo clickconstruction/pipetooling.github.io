@@ -272,7 +272,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     }
   })
 
-  it('the LAST WORK stop’s change › opens the last day’s line editing under the timeline; Save the day opens the window that shows what moves; Cancel folds it away (v2.4735)', async () => {
+  it('the LAST WORK stop’s press opens the last day’s line under the timeline with the window that shows what moves over it; closed with nothing saved, the line folds away (v2.4735, punch list #399)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy())
     // The window renders again while its reads land; a door found on the first frame can be detached by the time it is
@@ -283,24 +283,26 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(door.textContent).toBe('set the day ›')
     expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
     fireEvent.click(door)
-    expect(await screen.findByTestId('lien-last-work-editor')).toBeTruthy()
+    // The window is up at once, the day to pick inside it: the line has no editor box of its own since punch list #399.
+    expect(await screen.findByTestId('lien-last-work-confirm')).toBeTruthy()
+    expect(document.querySelector('[data-lien-window-last-work]')).toBeTruthy()
     expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
-    fireEvent.click(screen.getByTestId('lien-last-work-save'))
-    expect(screen.getByTestId('lien-last-work-confirm')).toBeTruthy()
     fireEvent.click(within(screen.getByTestId('lien-last-work-confirm')).getByRole('button', { name: 'Close' }))
     expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull()
-    fireEvent.click(within(screen.getByTestId('lien-last-work-editor')).getByRole('button', { name: 'Cancel' }))
     expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
     expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy()
   })
 
-  it('reads a day set by hand on its timeline, and the By date door opens it already editing (v2.4735)', async () => {
+  it('reads a day set by hand on its timeline, and the By date door opens it with the window up (v2.4735)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ created_at: '2026-02-03T15:00:00Z', last_work_date: null, lien_last_work_on: '2026-08-11', lien_last_work_note: 'The crew’s last trip' })} openLastWork />)
     await waitFor(() => expect(document.querySelector('[data-lien-timeline-step="last_work"]')).toBeTruthy())
     const stop = document.querySelector('[data-lien-timeline-step="last_work"]') as HTMLElement
     expect(stop.textContent).toContain('Aug 2026')
     expect(stop.textContent).not.toMatch(/creation/)
-    expect(screen.getByTestId('lien-last-work-editor')).toBeTruthy()
+    // The window opens on the day set by hand, with the reason already saved.
+    const win = screen.getByTestId('lien-last-work-confirm')
+    expect((within(win).getByLabelText('Last day of work') as HTMLInputElement).value).toBe('2026-08-11')
+    expect((within(win).getByLabelText('Why the last day is set by hand') as HTMLInputElement).value).toBe('The crew’s last trip')
   })
 
   it('names the next step above the papers, with its door, and links to Release of Lien (punch list #82)', async () => {

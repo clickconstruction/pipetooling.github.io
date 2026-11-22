@@ -21,10 +21,13 @@ const io = vi.hoisted(() => ({
   /** Whose a typed address already is, and the addresses that were looked up. */
   known: null as null | { contactId: string; name: string; party: string },
   lookedUp: [] as string[],
+  /** What the look-up throws, when it fails. */
+  lookUpFails: null as unknown,
 }))
 vi.mock('../../lib/documents/paperPartyIo', () => ({
   readContactForAddress: async (email: string) => {
     io.lookedUp.push(email)
+    if (io.lookUpFails) throw io.lookUpFails
     return io.known
   },
 }))
@@ -59,6 +62,7 @@ beforeEach(() => {
   io.keptFails = false
   io.known = null
   io.lookedUp = []
+  io.lookUpFails = null
 })
 afterEach(() => cleanup())
 
@@ -294,6 +298,67 @@ describe('ContractSendWindow', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('This address is Pat Tallman, who is on the roster. Close this and pick them from the list.')
     expect(prepare).not.toHaveBeenCalled()
     expect(io.sends).toEqual([])
+  })
+
+  // The look-up runs 350 ms after the typing rests. A press of Send email that beats it used to send unchecked.
+  const unlistedWindow = (prepare: () => Promise<string>, email: string, name: string) => (
+    <ContractSendWindow {...base} target={{ personName: '', documentName: 'Mutual secrecy agreement' }} docId={null} party={unlisted} preparePartyPaper={prepare} initialEmail={email} initialSignerName={name} onClose={() => {}} onSent={() => {}} />
+  )
+
+  it('a press that beats the look-up waits for it: someone on the roster is refused and nothing is written', async () => {
+    io.known = { contactId: 'k2', name: 'Pat Tallman', party: 'person' }
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(unlistedWindow(prepare, 'pat@crew.example', 'Pat Tallman'))
+    // first paint
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('This address is Pat Tallman, who is on the roster. Close this and pick them from the list.')
+    expect(prepare).not.toHaveBeenCalled()
+    expect(io.sends).toEqual([])
+    // The timer that was running does not ask a second time: the press asked already.
+    await new Promise((r) => setTimeout(r, 450))
+    expect(io.lookedUp).toEqual(['pat@crew.example'])
+  })
+
+  it('a press that beats the look-up names who holds the address and holds once, and the next press sends', async () => {
+    io.known = { contactId: 'k1', name: 'Lena Park', party: 'supply_house' }
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(unlistedWindow(prepare, 'lena@tallgrass.example', 'Lena Park'))
+    // first paint
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'The app already keeps this address: Lena Park, at a supply house. The paper goes to that record, and nobody is added twice. Press Send email again to send it to them.',
+    )
+    expect(prepare).not.toHaveBeenCalled()
+    expect(screen.getByTestId('contract-send-known-address')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(io.sends).toHaveLength(1))
+    expect(io.lookedUp).toEqual(['lena@tallgrass.example'])
+  })
+
+  it('a press that beats the look-up sends when nobody holds the address', async () => {
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(unlistedWindow(prepare, 'noor@haddadeng.example', 'Noor Haddad'))
+    // first paint
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(io.sends).toHaveLength(1))
+    expect(prepare).toHaveBeenCalledTimes(1)
+    expect(io.lookedUp).toEqual(['noor@haddadeng.example'])
+  })
+
+  it('a look-up that fails sends nothing and says why, and the next press asks again', async () => {
+    io.lookUpFails = Object.assign(new Error('permission denied for function contact_for_channel'), { code: '42501' })
+    const prepare = vi.fn(async () => 'party-row')
+    renderWithProviders(unlistedWindow(prepare, 'noor@haddadeng.example', 'Noor Haddad'))
+    // first paint
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/^The app could not check whose address this is, so nothing was sent\./)
+    expect(prepare).not.toHaveBeenCalled()
+    expect(io.sends).toEqual([])
+    io.lookUpFails = null
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(io.sends).toHaveLength(1))
+    expect(prepare).toHaveBeenCalledTimes(1)
   })
 
   it('a party’s paper sent again opens on its signer, writes nothing, and looks no address up', async () => {

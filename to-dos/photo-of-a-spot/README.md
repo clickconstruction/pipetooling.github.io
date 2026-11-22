@@ -1,8 +1,8 @@
 ---
 name: "A photo keeps its spot on the job"
 number: 413
-group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191 and Keep this spot on the job is v2.8193
+group: close
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · built on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191, Keep this spot on the job is v2.8193, places kept at the address and place rows are v2.8200, a photo's own spot is v2.8201, more photos and a buried line's length are v2.8203, the office's Map tab is v2.8204, and a place that waits for a signal is v2.8205 · every step merged and live 2026-11-21 and walked on prod the same night · the close-out, small presses raised to 44 px, is v2.8276
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -12,13 +12,44 @@ summary: >
   the person stands. The sheet has big presses, asks what is buried, takes a description as long as
   it needs to be, and has one wide press for anything not on the list. One small migration and no new
   tab. A Map tab waits until jobs hold enough places to need one.
-next: The migration alone and pushed, then PR 1 and PR 2, then the later steps in order. Taunya's word covers them all.
+next: Taunya's look on a phone, then her word to close the card, which deletes this folder. Step 0, two crews trying it, and her seven calls below go into the closing line, or to a card of their own if she wants one.
 size: S as a train of three (XS · S · S), then M for the later steps if the places get used
 blocker: None. A real phone on a real site is the walk no session can do.
-opinion: build, small — the places exist and nobody has set one, so the work is a quicker door onto them and not a new surface
+ver: v2.8186 · 8188 · 8191 · 8193 · 8195 · 8200 · 8201 · 8203 · 8204 · 8205 · 8276
+opinion: done — every step is built and live; what is left is a phone on a real site and Taunya's calls
 ---
 
 # A photo keeps its spot on the job (#413)
+
+## Where it stands
+
+Every step of the plan is built, merged and live as of 2026-11-21. Both migrations are on prod. The
+walks below were on prod, on the ZZ Test job JP9309, at a phone's 390 px and at 1100 px. Every row,
+line and photo the walks made was thrown away with the app's own presses and read back as gone.
+
+| Step | Version | Walked on prod |
+|---|---|---|
+| 0, room for a description | v2.8186 | Yes. A description of 271 characters saved and read back whole. |
+| 0b, the ground for the later steps | v2.8195 | The columns, the functions and the read rule read back after the push. |
+| 1, the new place sheet | v2.8188 | Yes. The kinds are 175 by 56 px, **＋ Something else** 358 by 56. **Buried line**, then **Sewer**, named the place *Buried sewer line*. |
+| 1b, **Photo of a spot** | v2.8191 | Yes. The sheet opened with the photo first, and said why the dot was not where the person stood. |
+| 2, **Keep this spot on the job** | v2.8193 | No. A job photo is copied to the job's Drive folder, and nothing in the app takes it back out. |
+| 2b, a place that waits for a signal | v2.8205 | No. It needs a phone in airplane mode. |
+| 3, a photo keeps the phone's reading | v2.8201 | No. It needs a real reading. A photo with no reading writes the same row as before. |
+| 4, places follow the address | v2.8200 | No. No two test jobs share a customer address. |
+| 5, the crew's window draws them | v2.8200 | By its tests only. The crew's window needs **View as**, which swaps the shared browser's sign-in. |
+| 6, a buried line with its length | v2.8203 | Yes. **＋ Draw this line** painted a map named for the place, and closing it tied the line: *About 300 ft, give or take 10 ft · drawn by hand · Open the line*. |
+| 7, more than one photo | v2.8203 | Yes. **＋ Another photo** saved a second photo beside the first, and the row draws it. |
+| 8, the office's **Map** tab | v2.8204 | Yes. The dot and the line draw, and a press on the dot opens the place in its list. |
+
+- **The count of opens.** A press on a place, its dot or its photo sends the open. The person who
+  set a place is not counted, by design, so the walk's own opens stayed at 0.
+- **Raised in v2.8276.** The walk measured **Take another**, **Remove the photo** and **Remove this
+  place** at 32 px tall, **Open the line** at 32 and **Change this place** at 16. All are 44 now.
+- **Still small, and not this card's.** The painted map's own link presses, such as **Remove this
+  line** and **Move its corners**, are 32 px tall. **From above** and **Streets** are 34.
+- **Not walked by any session.** A real camera, a real reading and airplane mode, on a phone on a
+  site. That walk is Taunya's or a crew's.
 
 The mock-up is [`mockup.html`](mockup.html): five frames, four at a phone's 380 px and one at 730 px,
 in light and in dark. Purple marks what is new. The job, the names and the address on it are made up,
@@ -267,26 +298,29 @@ is never read when the photo sends. Setting a place must not need the map's pict
    forms, Leave Report alone has the press: New report, Turnaway and the edit of a saved report do
    not.
 
-2b. **A spot set with no signal waits on the phone (S).** A new kind of waiting press, with the
-   photo's bytes kept as a job photo's are (`src/lib/offline/outbox.ts`,
-   `src/lib/offline/keptPhotos.ts`).
+2b. **A spot set with no signal waits on the phone (S). Built in v2.8205.** Kept the way a walk that was
+   never saved is, in the phone's own storage, with the photo's bytes where a job photo's wait
+   (`src/lib/offline/keptPhotos.ts`), and sent by the painted maps' own host. It is not a kind of
+   press in the waiting queue (`src/lib/offline/outbox.ts`), so the line at the top of the app does
+   not count it: the host says how many places wait.
 
 The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
 2026-11-21 is to build the later steps too.
 
-3. **A photo keeps the phone's reading by itself (S, one migration).** Columns for the point, the
+3. **A photo keeps the phone's reading by itself (S). Built in v2.8201, on the columns of v2.8195.** Columns for the point, the
    margin and where it came from on `job_photo_notes` and `report_photos`. No new table. The column
    ships alone first. The reading rides in the waiting photo's own record
    (`src/lib/offline/outbox.ts`). This is the step that serves proof. It also counts how often a
    place is opened.
-4. **Places follow the address (M).** A job reads the places kept by earlier jobs at the same
+4. **Places follow the address (M). Built in v2.8200, on the read rule of v2.8195.** A job reads the places kept by earlier jobs at the same
    customer address.
-5. **The crew's window draws them (S).** Rows with photos in the **Where** section of
+5. **The crew's window draws them (S). Built in v2.8200, as rows with photos. The small picture from above
+   is not built: a row opens the list's own map on that place.** Rows with photos in the **Where** section of
    `src/components/jobs/DetailJobModal.tsx`, with a small picture from above on the old map.
-6. **A buried line with its length (S).** A walked line tied to a photo taken before backfill. The
+6. **A buried line with its length (S). Built in v2.8203.** A walked line tied to a photo taken before backfill. The
    app can walk a line and say its length today.
-7. **More than one photo on a place (S).** Open and covered.
-8. **A Map tab for the office (M).** Once a job commonly holds five or more places.
+7. **More than one photo on a place (S). Built in v2.8203.** Open and covered.
+8. **A Map tab for the office (M). Built in v2.8204.** Once a job commonly holds five or more places.
 
 ## Left out
 

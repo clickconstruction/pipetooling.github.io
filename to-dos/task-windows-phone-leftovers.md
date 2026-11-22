@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · left: a walk of two sheets on a phone, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · left: a walk of two sheets on a phone, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -14,7 +14,7 @@ summary: >
 next: Someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
-ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203
+ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267
 opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
 mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
@@ -130,6 +130,29 @@ Built 2026-11-13 on the owner's word *build the leftovers*. Each PR carries its 
 - **Row 5** wants a walk of `PhoneSheet` and the dispatch job picker on a phone. Reaching them means a real person's thread or Dispatch mode, so it was left for someone at a phone.
 - **Rows 12 and 13** are left alone, as written.
 - **Grace's two notes** below still wait on her word.
+
+### The walk of 2026-11-21
+
+The owner's main session opened a person's thread on `/messages` in the iOS Simulator's Safari (iPhone 17, iOS 26.2), looking only. Two things were seen.
+
+- **The list page was wider than the phone.** Fixed in v2.8232: the page, both lanes and their rows now fit (punch list #324 has the cause).
+- **With the keyboard up in a thread, the reply box and its send press sat on the keyboard, but the window's header left the top of the screen**: the way back, the name and ⋯. The thread window (`ThreadWindow.tsx`) was pinned to the page, `inset: 0`, as the sheets inside it were before row 5. Fixed in v2.8267, on the owner's word the same day.
+
+What v2.8267 built, after a first try that kept the header and cut the foot of the reply box:
+
+1. **The window follows the part of the page that shows** on a phone, as `PhoneSheet` does.
+2. **An order for what gives way** while under 480 px shows: the reply box whole, then the header's first row, then the header's other rows and the flow strip, which wait until the keyboard goes, and the lines last, with no floor.
+3. **A net under it**: the lines and the box scroll as one, so on a small phone a box taller than the room is reached and not cut.
+
+Walked in the iOS Simulator (iPhone 17, iOS 26.2, Safari) on a ZZ Test person's thread, nothing typed and nothing sent: in Text and in Email the header's first row and the whole box, with its send press, show above the keyboard, and every row is back when the keyboard goes. A small phone was measured in a browser at 375 × 290 and 320 × 240, not walked in a simulator.
+
+**Left from this walk.**
+
+- **A small phone in a hand**, in Text and in Email, to see the scroll reach the box's foot.
+- **At 320 px wide the header's first row is 37 px too wide**, keyboard or not: the name gets no width and ⋯ sits half off the right edge. The who-has-it words, call and ⋯ take the row. Which gives way is a pick: the who-has-it words could shorten at that width.
+
+It changes nothing at a desk: every branch is behind the window's own phone flag.
+
 
 To walk a phone window in the simulator, switch its on-screen keyboard on first. It is hidden
 until this is run once for the device, and a field is tapped again:

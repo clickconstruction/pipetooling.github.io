@@ -15,7 +15,7 @@ Each trade with a signed statement of work has a card there. Only devs see the w
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc).
 2. Press {{button:outline|Draws}} on the card of a job we are building.
 
-Each trade's card shows its contract, what is billed and what is paid. It also shows the retainage we hold and what is left to bill. Each line's bar shows what they reported and what we billed. **To pay** at the top lists the approved draws and the day each one is due.
+Each trade's card shows its contract, what is billed and what is paid. It also shows the retainage we hold and what is left to bill. Each line's bar shows what they reported and what we billed. **To pay** at the top lists the approved draws and the day each one is due. A draw is due 10 days after the customer pays us for it. Until then its line says what it is waiting on.
 
 ## Record a pay application that came by email
 
@@ -42,7 +42,7 @@ Approve waits on the company's papers. A red line says which one is missing, lik
 
 ## Mark it paid
 
-1. Press {{button:blue|Mark paid}} when the payment goes out. We pay an approved draw within 10 days.
+1. Press {{button:blue|Mark paid}} when the payment goes out. We pay an approved draw within 10 days after the customer pays us for it.
 2. Their unconditional waiver comes after we pay. They sign it in their portal, and the draw reads it in. If it comes on paper or by email, press {{button:outline|Their unconditional waiver came in}}.
 
 A waiver the trade signs in its portal is kept as a PDF in the job's Drive folder. Its link sits beside the waiver's chip. The link is named for the form, like **Unconditional waiver PDF**.

@@ -77,7 +77,7 @@ async function readMondaySheet(db: SupabaseClient<Database>, opts: MondaySheetRe
     soft('the eight weeks', () => loadVectorDaysInputs(db, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the build pace', () => loadBuildPaceInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
-    soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
+    soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds, hideZzEstimates: sent.zzTestJobIds != null })),
     soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: sent.zzTestJobIds, leftOut: sent.leftOut })),
     soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: sent.leftOut, zzTestJobIds: sent.zzTestJobIds })),
   ])

@@ -359,20 +359,25 @@ export function applicationClockDays(rows: readonly ClockPermit[], todayYmd: str
   return out
 }
 
+/** A building permit's day and its plumbing days, as the plumber clock reads a row of the permits read. */
+export type ClockRow = Pick<ResearchPermitRow, 'filed_on' | 'plumber_permit_on' | 'plumber_first_permit_on'>
+
 /**
  * Building permit to the plumber's permit: the building permits of twelve months with a plumbing
- * permit that counts for the job (`plumber_permit_on`, which the read sets by
- * `permit_address_plumbing_counts`), and the days from the building permit's day to it. A
- * plumbing permit dated before the building permit reads as none: the job was taken the day the
- * city showed it. The read keeps the newest plumbing permit's day, so a job with two is measured
- * to its later one.
+ * permit that counts for the job (which the read pairs by `permit_address_plumbing_counts`), and
+ * the days from the building permit's day to the job's first one (`plumber_first_permit_on`). A
+ * job is taken the day its first plumbing permit lands, so a job with two is not measured to its
+ * later one. A plumbing permit dated before the building permit reads as none: the job was taken
+ * the day the city showed it. A row from a read older than `research_permits_v4` carries only the
+ * newest plumbing day, and is measured to that.
  */
-export function plumberClockDays(rows: ReadonlyArray<Pick<ResearchPermitRow, 'filed_on' | 'plumber_permit_on'>>, todayYmd: string): number[] {
+export function plumberClockDays(rows: ReadonlyArray<ClockRow>, todayYmd: string): number[] {
   const since = marketPermitsSince(todayYmd)
   const out: number[] = []
   for (const r of rows) {
-    if (!r.filed_on || !r.plumber_permit_on || r.filed_on < since) continue
-    const days = daysBetween(r.filed_on, r.plumber_permit_on)
+    const taken = r.plumber_first_permit_on ?? r.plumber_permit_on
+    if (!r.filed_on || !taken || r.filed_on < since) continue
+    const days = daysBetween(r.filed_on, taken)
     if (days != null) out.push(Math.max(0, days))
   }
   return out
@@ -444,7 +449,7 @@ export function clockMiddleNearStart(at: number): boolean {
  * issued day. Building permit to the plumber's permit only where the city's permits name
  * plumbers: where they never do, nothing is drawn about plumbers.
  */
-export function marketClocks(input: { city: string; applications: readonly ClockPermit[]; rows: ReadonlyArray<Pick<ResearchPermitRow, 'filed_on' | 'plumber_permit_on'>>; namesPlumbers: boolean; todayYmd: string }): MarketClock[] {
+export function marketClocks(input: { city: string; applications: readonly ClockPermit[]; rows: ReadonlyArray<ClockRow>; namesPlumbers: boolean; todayYmd: string }): MarketClock[] {
   const out: MarketClock[] = []
   const application = clockSpread(applicationClockDays(input.applications, input.todayYmd))
   if (application) out.push({ kind: 'application', city: input.city, spread: application })

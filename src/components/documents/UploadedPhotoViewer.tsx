@@ -12,6 +12,7 @@ import { driveFileUrl } from '../../lib/photos/reportPhotos'
 import { aboutWords, captionWords, sizeWords, sourceDoorOpensJob, sourceDoorWords, sourceWords, timeWords, viewerTitle, whereWords, whoWords, firstName, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
 import type { UploadedPhotosIo } from '../../lib/photos/uploadedPhotosIo'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { PhotoTakenHere } from '../photos/PhotoTakenHere'
 
 const facts: CSSProperties = { display: 'grid', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-700)', margin: 0, padding: 0, listStyle: 'none' }
 const k: CSSProperties = { display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -82,6 +83,8 @@ export function UploadedPhotoViewer({
           Open in Drive
         </button>
       ) : null}
+      {/* Where the phone was when the photo was taken (punch list #413): only a job photo and a report photo keep one. */}
+      <PhotoTakenHere source={row.source} id={row.id} />
       {onSource ? (
         <button type="button" style={S.secondaryBtn} onClick={() => onSource(row)}>
           {sourceDoorWords(row)}

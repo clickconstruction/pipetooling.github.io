@@ -137,6 +137,8 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   const [sendFailure, setSendFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [sentAt, setSentAt] = useState<string | null>(null)
   const [keptAt, setKeptAt] = useState<string | null>(null)
+  /** The same time, readable by the outbox's listener, which outlives the render that set it. */
+  const keptAtRef = useRef<string | null>(null)
   const [kept, setKept] = useState<KeptWriteUp[]>(() => io.kept(userId))
   const [takeBack, setTakeBack] = useState<{ id: string; reason: string; busy: boolean; failure: string | null } | null>(null)
   /** The moment Send was first pressed on this read-back: a Retry keeps it. */
@@ -194,7 +196,15 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   useEffect(
     () =>
       io.onKeptChange(() => {
-        setKept(io.kept(userId))
+        const next = io.kept(userId)
+        setKept(next)
+        // The note that says one is kept goes once none waits. It has gone, so the note says sent, or it was
+        // refused, and its own line says why.
+        if (keptAtRef.current && !next.some((k) => k.state === 'waiting')) {
+          keptAtRef.current = null
+          setKeptAt(null)
+          if (next.length === 0) setSentAt(clockTime(new Date().toISOString()))
+        }
         void loadMine()
       }),
     [io, userId, loadMine],
@@ -275,6 +285,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
       const at = clockTime(new Date(pressedAtRef.current).toISOString())
       setSentAt(sent.kind === 'landed' ? at : null)
       setKeptAt(sent.kind === 'queued' ? at : null)
+      keptAtRef.current = sent.kind === 'queued' ? at : null
       setDraft(null)
       pressedAtRef.current = null
       setKept(io.kept(userId))

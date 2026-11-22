@@ -163,10 +163,34 @@ describe('TallyOnSiteTab · Take from a box', () => {
     expect(cameraOpened).toBe(0)
   })
 
+  it('a box with nothing on hand offers the take as a quiet link, 48 px tall, and it opens the same run', async () => {
+    store.movements = []
+    open()
+    const link = await screen.findByRole('button', { name: 'Took something out of A2? Say what ›' })
+    expect(screen.queryByTestId('on-site-take-bar')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Take from A2' })).toBeNull()
+    expect(link.style.minHeight).toBe('48px')
+    // Not pinned to the screen: the box is short and Add a part is its loud press.
+    expect(screen.getByTestId('on-site-take-quiet').style.position).toBe('')
+    fireEvent.click(link)
+    expect(cameraOpened).toBe(1)
+    expect(await screen.findByTestId('on-site-take')).toBeTruthy()
+    expect(screen.getByText('Nothing is listed in A2.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Something not on the list…' })).toBeTruthy()
+  })
+
+  it('a box whose only part reads none has the quiet link too', async () => {
+    store.movements = [...onePart, mv({ reason: 'used', quantity: 8, at: '2026-11-02T10:00:00Z', fromContainerId: 'a2' })]
+    open()
+    expect(await screen.findByRole('button', { name: 'Took something out of A2? Say what ›' })).toBeTruthy()
+    expect(screen.queryByTestId('on-site-take-bar')).toBeNull()
+  })
+
   it('Unsorted has no take: its parts are put away, not taken', async () => {
     store.containers = [{ ...box, kind: 'unsorted', label: 'Unsorted' }]
     open()
     expect(await screen.findByRole('button', { name: 'Put in…' })).toBeTruthy()
     expect(screen.queryByTestId('on-site-take-bar')).toBeNull()
+    expect(screen.queryByTestId('on-site-take-quiet')).toBeNull()
   })
 })

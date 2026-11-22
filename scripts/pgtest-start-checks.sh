@@ -13,9 +13,10 @@
 # office's four roles, a primary and an estimator with and without a claim, a superintendent on and off the job,
 # the crew, and a primary on the crew); the company's lists and the settings; a stage line carrying its list to
 # another job; and what goes with a line, a job and a site. It raises on its first failed assertion and ends with
-# "start_checks PASSED". Then 30_arrive.sql, the crew's look on arrival (migrations *_start_check_arrive and
-# *_start_check_arrive_once): which stage is asked about, the answer kept as a yes we saw, a No opening its bullet and
-# sending Dispatch one line, a stage asked about once and answered once, and who the two functions refuse; it ends with "start_check_arrive PASSED". PGTEST_KEEP=1 leaves the
+# "start_checks PASSED". Then 30_arrive.sql, the crew's look on arrival (migrations *_start_check_arrive,
+# *_start_check_arrive_once and *_start_check_arrive_again): which stage is asked about, the answer kept as a yes we
+# saw, a No opening its bullet and sending Dispatch one line, a second yes that cannot replace a No, a later No kept,
+# a bullet with a No asked about again once it has a new yes, and who the two functions refuse; it ends with "start_check_arrive PASSED". PGTEST_KEEP=1 leaves the
 # container up.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration.
 # Never touches prod.
@@ -25,7 +26,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55882}"
 NAME="pgtest-start-checks"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_start_checks.sql supabase/migrations/*_start_check_arrive.sql supabase/migrations/*_start_check_arrive_once.sql)"
+WRITES="$(ls supabase/migrations/*_start_checks.sql supabase/migrations/*_start_check_arrive.sql supabase/migrations/*_start_check_arrive_once.sql supabase/migrations/*_start_check_arrive_again.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

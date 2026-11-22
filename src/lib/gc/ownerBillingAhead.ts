@@ -4,10 +4,11 @@
  */
 import { addDays, retainageHeldNow, tradeRetainageOpensOn } from './building'
 import { drawPayDays } from './buildingPay'
+import { drawClock } from './drawPayClock'
 import type { CashBars } from './cashForecast'
 import { expectedBills, expectedDraws } from './cashForecast'
 import { partnerById } from './lookups'
-import { allJobsMoney, appCertified, appOpen, nextOwnerBillDay, ownerAccount, ownerPayAppsSent, ownerPayDue } from './ownerBilling'
+import { allJobsMoney, appCertified, appOpen, nextOwnerBillDay, ownerAccount, ownerPayApp, ownerPayAppsSent, ownerPayDue } from './ownerBilling'
 import { PAY_WITHIN_DAYS } from './portal'
 import { mondayOf } from './schedule/schedule'
 import type { GcProject, GcState } from './types'
@@ -19,7 +20,8 @@ export const CASH_AHEAD_WEEKS = 6
 /**
  * Why a move counts on its day. In: the owner's word, their usual days, past either, no day yet,
  * or the retainage they hold until the end. Out: the day we pay an approved draw by, a pay-by day
- * already gone, a draw counted as if we approve it today, or retainage waiting on the owner's.
+ * already gone, an approved draw due after the customer pays, a draw counted as if we approve it today,
+ * or retainage waiting on the owner's.
  */
 export type CashMoveWhy =
   | 'promised'
@@ -29,6 +31,7 @@ export type CashMoveWhy =
   | 'atTheEnd'
   | 'payBy'
   | 'weAreLate'
+  | 'afterCustomer'
   | 'ifApprovedToday'
   | 'retainage'
   /** In, expected: a bill not sent yet, on a bill day: as the schedule has it (G-140), or the draft as reported. */
@@ -131,6 +134,9 @@ export function cashMoves(state: GcState, opts: { bars?: CashBars } = {}): CashM
     // Out, to the trades.
     const opens = tradeRetainageOpensOn(project)
     const notBefore = (day: string) => (day < today ? today : day)
+    // The day the customer should pay our next bill: its usual days after bill day, or bill day itself when those are not known.
+    const nextBill = ownerPayApp(state, project)
+    const nextBillPaidOn = nextBill.expectPaidOn ?? nextBill.billOn
     for (const pkg of project.packages) {
       const sow = pkg.sow
       if (pkg.selfPerform || !sow || sow.status !== 'signed') continue
@@ -142,10 +148,20 @@ export function cashMoves(state: GcState, opts: { bars?: CashBars } = {}): CashM
         const final = draw.final === true
         const common = { ...trade, number: draw.number, final, amount: draw.net, askedOn: draw.requestedOn }
         if (draw.status === 'approved') {
-          const payBy = drawPayDays(project, pkg, draw, today).payBy ?? today
-          moves.push({ ...common, on: notBefore(payBy), why: payBy < today ? 'weAreLate' : 'payBy' })
+          const days = drawPayDays(project, pkg, draw, today)
+          if (days.waitsOn) {
+            // Due after the customer pays: counted on the day we expect that, plus our days to pay. A bill with no day
+            // to be paid counts from today, so the money out is never left off the weeks.
+            const sent = days.waitsOn === 'customer' ? drawClock(project, draw).ownerApp : null
+            const paid = sent ? (ownerPayDue(state, project, sent).on ?? today) : nextBillPaidOn
+            moves.push({ ...common, on: notBefore(addDays(paid, PAY_WITHIN_DAYS)), why: 'afterCustomer' })
+          } else {
+            const payBy = days.payBy ?? today
+            moves.push({ ...common, on: notBefore(payBy), why: payBy < today ? 'weAreLate' : 'payBy' })
+          }
         } else if (!final) {
-          moves.push({ ...common, on: addDays(today, PAY_WITHIN_DAYS), why: 'ifApprovedToday' })
+          // Approved today, it rides on our next bill: due after the customer pays that one.
+          moves.push({ ...common, on: addDays(nextBillPaidOn, PAY_WITHIN_DAYS), why: 'ifApprovedToday' })
         } else {
           moves.push({ ...common, on: opens ? notBefore(opens) : null, why: 'retainage' })
         }

@@ -12,7 +12,10 @@ import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/fo
 import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import type { ThreadMessage } from '../../lib/messages/thread'
 import { OFFICE_HOURS, type OfficeHours } from '../../lib/messages/hasRule'
+import { dayAfter } from '../../lib/calls/callTasks'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
+import { dayLabel } from '../../lib/messages/owed'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { owedStore } from '../../lib/followUp/owedStore'
 import { SMOKE_AUTH_USER_ID, renderWithProviders } from '../../test/renderSmokeMocks'
 import { DatabaseError } from '../../utils/errorHandling'
@@ -465,6 +468,42 @@ describe('Write down their word under their line (v2.5649)', () => {
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     expect(await screen.findByText('None of their jobs is yours to write on.')).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  // The day they said (v2.8255). The hook reads the real clock, so the text is from now and names tomorrow.
+  it('a day said in their text is drawn beside the press, and the sheet opens with it filled in', async () => {
+    open.contactId = 'dana'
+    const at = new Date().toISOString()
+    const tomorrow = dayAfter(todayYmdInAppTz(new Date(at)))
+    const standing = { ...money('j2', '1040', 900), promise: { kind: 'promise', promisedYmd: '2020-01-06' } } as unknown as BidMoneyLine
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', at, body: 'We will pay tomorrow.' }), async () => [standing])
+    const under = within(screen.getByTestId('under'))
+    await under.findByRole('button', { name: 'Write down their word' })
+    const heard = screen.getByTestId('under').querySelector('[data-heard-day]') as HTMLElement
+    expect(heard.getAttribute('data-heard-day')).toBe(tomorrow)
+    expect(heard.textContent).toBe(`They said ${dayLabel(tomorrow)}.`)
+    expect(heard.querySelector('[data-value="worked-out"]')?.textContent).toBe(dayLabel(tomorrow))
+    fireEvent.click(under.getByRole('button', { name: 'Write down their word' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    // The date box holds the day they said; the board's own date still answers Clear date.
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe(tomorrow)
+    expect(screen.getByText(`${dayLabel(tomorrow)} is read from their text. Change it if they meant another day.`)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Clear date' })).toBeTruthy()
+  })
+
+  it('no day is drawn under a call or an email, or under a text that names none, and the sheet opens as before', async () => {
+    open.contactId = 'dana'
+    for (const patch of [{ channel: 'call' as const, body: 'We will pay tomorrow.' }, { channel: 'email' as const, body: 'We will pay tomorrow.' }, { body: 'Thanks, got it.' }]) {
+      renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', ...patch }), async () => [money('j2', '1040', 900)])
+      await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' })
+      expect(screen.getByTestId('under').querySelector('[data-heard-day]')).toBeNull()
+      cleanup()
+    }
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', body: 'Thanks, got it.' }), async () => [money('j2', '1040', 900)])
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('')
+    expect(document.querySelector('[data-promise-sheet-context]')).toBeNull()
   })
 })
 

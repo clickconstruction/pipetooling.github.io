@@ -100,7 +100,7 @@ describe('JobWindowModal · the top on a phone', () => {
     expect(pins.map((b) => b.getAttribute('aria-label'))).toEqual(['More on this job', 'Close job window'])
     for (const b of pins) expect(parseFloat(String(b.style.width))).toBe(44)
     const strip = screen.getByRole('tablist', { name: 'Job window tabs' })
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History', 'Documents', 'Materials'])
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History', 'Documents', 'Materials', 'Map'])
     expect(strip.getAttribute('data-navtrack')).toBe('job-window')
     expect(strip.style.overflowX).toBe('auto')
     expect(within(strip).queryByRole('button', { name: /what this window holds/i })).toBeNull()

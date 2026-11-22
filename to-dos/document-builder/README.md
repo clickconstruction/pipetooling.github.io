@@ -22,6 +22,7 @@ blocker: None for the build. An attorney's read of the Sub NDA's words and an in
 This card is written for someone who was not in the room. Everything needed is here, in
 [mockup.html](mockup.html), and in the code on `main` under `src/lib/documentBuilder/` and
 `src/components/documentBuilder/`. *Where it stands*, at the foot, says which steps are built.
+What is left to build, and every walk still owed on prod, is listed on card #416 in the order to do it.
 
 **The mock-up works.** One state drives its five drawn screens, so a press on one shows on the others.
 Open it and press things before reading on. It is the reference for every state and every word.
@@ -652,7 +653,8 @@ came from and what the browser tells of the device.
   Three rows of `document_builder_link_opens` on two of those ended links: an open of a link that is off is
   not kept. The walk's contact and its two Sent copies were deleted.
 - **Left for Taunya's call.** Nothing clears an open: how long an address is kept is not set. No script reads a
-  device to tell it from another. The page sends only what a browser tells every site.
+  device to tell it from another. The page sends only what a browser tells every site. #416 lists both, with a way to tell
+  one visitor from another that Taunya has not picked yet.
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from

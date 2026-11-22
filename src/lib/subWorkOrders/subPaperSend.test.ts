@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildPaymentRecord, buildStatementOfAccount, buildWorkStatement, paperSendings, type PaperContext, type PaperMoneyLine, type PaperSheet } from '../../../supabase/functions/_shared/subPapers'
-import { SUB_PAPER_SEND_BY, SUB_PAPER_SEND_MAX, subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendPlan, subPaperSendSet, subPaperSendSubject, subPaperSentWords, type SubPaper } from './subPaperSend'
+import { SUB_PAPER_SEND_BY, SUB_PAPER_SEND_MAX, subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendParts, subPaperSendPlan, subPaperSendSet, subPaperSendSubject, subPaperSentWords, type SubPaper } from './subPaperSend'
 
 // Made-up people, jobs and money.
 const CTX: PaperContext = { company: { name: 'Made-up Plumbing Co.', lines: [] }, sub: { name: 'Harlan Mechanical', lines: [] }, today: '2026-11-16', preparedAt: 'Nov 16, 2026 at 9:30 am', zone: 'Central time' }
@@ -106,9 +106,72 @@ describe('subPaperSendSet: one email carries so many papers', () => {
     expect(set.held.map((p) => (p.kind === 'work_statement' ? p.job.label : ''))).toEqual(['#3012 Cedar Hollow Clinic', '#3013 Cedar Hollow Clinic', '#3014 Cedar Hollow Clinic'])
     const plan = subPaperSendPlan({ ...base, lead: STATEMENT, ...set, by: 'email', email: 'harlan@harlanmechanical.example' })
     expect(plan.confirmLabel).toBe('Send 12 papers by email')
-    expect(plan.held).toBe('3 more papers do not fit, since one email carries 12. Send them next: the work statement for #3012 Cedar Hollow Clinic, the work statement for #3013 Cedar Hollow Clinic, the work statement for #3014 Cedar Hollow Clinic.')
+    expect(plan.held).toBe('3 more papers do not fit, since one email carries 12. Send them next: the work statement for #3012 Cedar Hollow Clinic of Oct 1, 2026, the work statement for #3013 Cedar Hollow Clinic of Oct 1, 2026, the work statement for #3014 Cedar Hollow Clinic of Oct 1, 2026.')
+    expect(plan.next).toBe('Open the next email, 3 papers')
     const one = subPaperSendPlan({ ...base, lead: STATEMENT, attached: set.attached, held: [WORK[0]!], by: 'email', email: 'harlan@harlanmechanical.example' })
     expect(one.held).toBe('1 more paper does not fit, since one email carries 12. Send it next: WS-2041-1.')
+    expect(one.next).toBe('Open the next email, 1 paper')
+  })
+
+  it('two sheets of one job with no number yet are told apart by their day', () => {
+    const a = buildWorkStatement(sheet('a', '3050', '2026-10-06', 100), CTX)
+    const b = buildWorkStatement(sheet('b', '3050', '2026-10-20', 100), CTX)
+    const plan = subPaperSendPlan({ ...base, lead: STATEMENT, attached: [], held: [a, b], by: 'email', email: 'harlan@harlanmechanical.example' })
+    expect(plan.held).toContain('the work statement for #3050 Cedar Hollow Clinic of Oct 6, 2026, the work statement for #3050 Cedar Hollow Clinic of Oct 20, 2026.')
+  })
+})
+
+describe('subPaperSendParts: a pick as the emails it takes', () => {
+  const many: SubPaper[] = Array.from({ length: 26 }, (_, i) => buildWorkStatement(sheet(`s${i}`, String(3001 + i), '2026-10-01', 100), CTX))
+  const sheetIds = (part: SubPaper[]) => part.map((p) => (p.kind === 'work_statement' ? p.sheetId : p.kind))
+
+  it('what fits is one email, led by the paper the window is on', () => {
+    expect(subPaperSendParts(STATEMENT, WORK)).toEqual([[STATEMENT, ...WORK]])
+    expect(subPaperSendParts(STATEMENT, [])).toEqual([[STATEMENT]])
+    expect(subPaperSendParts(STATEMENT, many.slice(0, 11))).toHaveLength(1)
+  })
+
+  it('past the limit each email carries twelve, in the order given, and nothing is in two or left out', () => {
+    const parts = subPaperSendParts(STATEMENT, many)
+    expect(parts.map((p) => p.length)).toEqual([12, 12, 3])
+    expect(parts.flat()).toEqual([STATEMENT, ...many])
+    // The first email is what `subPaperSendSet` says rides, and the second opens on the first held paper.
+    expect(parts[0]).toEqual([STATEMENT, ...subPaperSendSet(many).attached])
+    expect(sheetIds(parts[1]!)[0]).toBe('s11')
+    expect(sheetIds(parts[2]!)).toEqual(['s23', 's24', 's25'])
+  })
+
+  it('takes the limit it is handed, and never cuts an email of no papers', () => {
+    expect(subPaperSendParts(STATEMENT, WORK, 2).map((p) => p.length)).toEqual([2, 1])
+    expect(subPaperSendParts(STATEMENT, WORK, 0).map((p) => p.length)).toEqual([1, 1, 1])
+  })
+
+  it('a later email names itself, says the papers did not fit before, and its press counts what it carries', () => {
+    const parts = subPaperSendParts(STATEMENT, many)
+    const second = parts[1]!
+    const plan = subPaperSendPlan({ ...base, lead: second[0]!, attached: second.slice(1), held: parts[2], part: { n: 2, of: 3 }, by: 'email', email: 'harlan@harlanmechanical.example' })
+    expect(plan.subject).toBe('More papers from Made-up Plumbing Co., email 2 of 3')
+    expect(plan.body).toBe('Hi Harlan Mechanical. Here are 12 more papers from us. They did not fit in our last email.')
+    expect(plan.confirmLabel).toBe('Send 12 papers by email')
+    expect(plan.files).toHaveLength(12)
+    expect(plan.next).toBe('Open the next email, 3 papers')
+    expect(plan.part).toEqual({ n: 2, of: 3 })
+    const last = subPaperSendPlan({ ...base, lead: parts[2]![0]!, attached: parts[2]!.slice(1), part: { n: 3, of: 3 }, by: 'email', email: 'harlan@harlanmechanical.example' })
+    expect(last.held).toBeNull()
+    expect(last.next).toBeNull()
+    const lone = subPaperSendPlan({ ...base, lead: WORK[0]!, attached: [], part: { n: 2, of: 2 }, by: 'email', email: 'harlan@harlanmechanical.example' })
+    expect(lone.body).toBe('Hi Harlan Mechanical. Here is 1 more paper from us. It did not fit in our last email.')
+  })
+
+  it('the first email of several reads as it always did, and one email alone has no part', () => {
+    const first = subPaperSendPlan({ ...base, lead: STATEMENT, attached: many.slice(0, 11), held: many.slice(11), part: { n: 1, of: 3 }, by: 'email', email: 'harlan@harlanmechanical.example' })
+    expect(first.subject).toBe('Your statement of account from Made-up Plumbing Co.')
+    expect(first.body).toContain('Here is your statement to date')
+    expect(first.part).toEqual({ n: 1, of: 3 })
+    expect(first.next).toBe('Open the next email, 12 papers')
+    expect(subPaperSendPlan({ ...base, lead: STATEMENT, attached: WORK, part: { n: 1, of: 1 }, by: 'email', email: 'harlan@harlanmechanical.example' }).part).toBeNull()
+    expect(subPaperSendSubject(WORK[0]!, 'Made-up Plumbing Co.', { n: 1, of: 2 })).toBe('Work statement WS-2041-1 from Made-up Plumbing Co.')
+    expect(subPaperSendSubject(WORK[0]!, 'Made-up Plumbing Co.', { n: 2, of: 2 })).toBe('More papers from Made-up Plumbing Co., email 2 of 2')
   })
 })
 

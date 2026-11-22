@@ -9,6 +9,8 @@
  * hands the box a settle (`owedStore`), which ends when the thread changes or closes. Since v2.5649 (punch list #129)
  * a customer's own line carries **Write down their word** under it: the sheet on the job the line is tied to, else
  * the customer's one job with money open, else a pick (`messages/wordFromLine.ts` over `list_customer_money_strip`).
+ * Since v2.8255 a day they said in their own text or voicemail is drawn beside the press, and the sheet opens with it
+ * filled in (`heardDayOnLine`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
@@ -30,11 +32,12 @@ import { NO_PUSH_HOURS, type PushHoursByUser } from '../../lib/messages/pushHour
 import { newestLineIn, SEND_AS_TASK, threadTaskPreset } from '../../lib/messages/threadTask'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
-import { jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
+import { heardDayOnLine, heardDaySheetLine, heardDayTip, heardDayWords, jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
 import { loadCustomerMoneyLines } from '../../lib/messages/wordFromLineIo'
 import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { Chip } from '../gc/gcUi'
 import type { ThreadMenuRow, ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
@@ -186,6 +189,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
       // The word from their line (v2.5649): under a customer's own call, voicemail, text or email.
       if (lineTakesWord(m, c)) {
         const open = word?.messageId === m.id ? word : null
+        // The day they said (v2.8255): read from their own text or voicemail, offered to the sheet, never written here.
+        const heard = heardDayOnLine(m, c, new Date())
         const press = async () => {
           if (!c.customerId) return
           setPressing(`word ${m.id}`)
@@ -212,15 +217,30 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
                 </button>
               </>
             ) : (
-              <button type="button" style={quiet} disabled={pressing === `word ${m.id}`} onClick={() => void press()} title="A day they will pay by, or that they say they paid, written on the job">
-                {WORD_PRESS}
-              </button>
+              <>
+                {heard ? (
+                  <span data-heard-day={heard.ymd}>
+                    <ValueSentence text={heardDayWords(heard)} />
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  style={quiet}
+                  disabled={pressing === `word ${m.id}`}
+                  onClick={() => void press()}
+                  title={heard ? heardDayTip(heard) : 'A day they will pay by, or that they say they paid, written on the job'}
+                >
+                  {WORD_PRESS}
+                </button>
+              </>
             )}
             {open?.sheet ? (
               <SetPromisedPayDateModal
                 jobId={open.sheet.job.id}
                 jobLabel={jobLabelOf(open.sheet)}
                 initialYmd={open.sheet.promise && open.sheet.promise.kind !== 'paid_claim' ? open.sheet.promise.promisedYmd : null}
+                heardYmd={heard?.ymd ?? null}
+                contextLine={heard ? heardDaySheetLine(heard) : null}
                 initialSaidBy={c.name}
                 initialChannel={wordChannel(m.channel)}
                 onClose={() => setWord(null)}

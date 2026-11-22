@@ -90,4 +90,18 @@ describe('WentOutToday', { timeout: 15_000 }, () => {
     expect(band()).toBe('0')
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
+  it('fits a phone: the lists are one column that cannot outgrow the page, and a row wraps so a long last line breaks (the walk of 2026-11-21)', async () => {
+    // A mail sent from a mailbox ends in a hundred letters of who wrote to whom; held to one line it made the page 1,014 px wide at 375.
+    const long: WentOutLine = { ...LINES[1]!, id: 'e9', channel: 'email', subject: 'Proposal for the Alder Ridge shell', body: '', who: 'Front Desk <office@example.com> to estimating@alder-ridge.example · sent from bids@' }
+    renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [long])} />)
+    const row = await screen.findByTestId('went-out-row')
+    const day = screen.getByTestId('went-out-day')
+    expect(day.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    expect(day.parentElement?.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    expect(row.style.flexWrap).toBe('wrap')
+    const when = screen.getByTestId('went-out-when')
+    expect([when.style.whiteSpace, when.style.maxWidth, when.style.overflowWrap, when.style.textAlign]).toEqual(['', '100%', 'anywhere', 'right'])
+    const name = row.children[1] as HTMLElement
+    expect([name.style.flexGrow, name.style.flexBasis, name.style.minWidth]).toEqual(['1', '9rem', '0'])
+  })
 })

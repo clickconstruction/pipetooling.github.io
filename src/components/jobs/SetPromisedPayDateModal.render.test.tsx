@@ -80,6 +80,19 @@ describe('SetPromisedPayDateModal — Write down their word', () => {
     // What goes over the wire: the request's JSON drops an undefined, and never carries a null the types refuse.
     expect(JSON.parse(JSON.stringify(call[1]))).toEqual({ p_job_id: 'j1', p_date: '2026-10-20', p_method: 'bank_transfer', p_channel: 'text' })
   })
+  it('a day read from their line fills the date box, while the board’s own date still answers Clear date (v2.8255)', async () => {
+    rpc.mockImplementation(async (name: string) => (name === 'list_job_payment_promises_for' ? { data: onRecord, error: null } : { data: null, error: null }))
+    const onSaved = vi.fn()
+    renderWithProviders(<SetPromisedPayDateModal jobId="j1" jobLabel="#1032 · Whitfield repipe" initialYmd="2026-10-25" heardYmd="2026-11-06" contextLine="Fri Nov 6 is read from their text. Change it if they meant another day." onClose={vi.fn()} onSaved={onSaved} />)
+    await settle()
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('2026-11-06')
+    expect(screen.getByText('Fri Nov 6 is read from their text. Change it if they meant another day.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Clear date' })).toBeTruthy()
+    expect(screen.getByText(/a new date counts the earlier one as broken/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(rpc.mock.calls.find((c) => c[0] === 'add_job_payment_promise')![1]).toMatchObject({ p_job_id: 'j1', p_date: '2026-11-06' })
+  })
   it('parseClaimAmount: blank is all of it, a figure is a figure, anything else holds', () => {
     expect(parseClaimAmount('')).toBeNull()
     expect(parseClaimAmount('  ')).toBeNull()
@@ -119,5 +132,40 @@ describe('SetPromisedPayDateModal — the Money in pen (punch list #191)', () =>
     const call = rpc.mock.calls.find((c) => c[0] === 'add_job_payment_promise')!
     expect(call[1]).toMatchObject({ p_job_id: 'j9', p_date: '2026-10-30', p_channel: 'phone' })
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('SetPromisedPayDateModal — Escape (v2.8278)', () => {
+  it('closes on Escape as Cancel does, and the key goes no further (v2.8278)', async () => {
+    const under = vi.fn()
+    window.addEventListener('keydown', under)
+    try {
+      const { onClose, onSaved } = mount()
+      await settle()
+      fireEvent.keyDown(screen.getByLabelText('Promised payment date'), { key: 'Enter' })
+      expect(onClose).not.toHaveBeenCalled()
+      expect(under).toHaveBeenCalledTimes(1)
+      fireEvent.keyDown(screen.getByLabelText('Promised payment date'), { key: 'Escape' })
+      expect(onClose).toHaveBeenCalledTimes(1)
+      // Nothing is written, and a window under the sheet never hears the key.
+      expect(onSaved).not.toHaveBeenCalled()
+      expect(rpc.mock.calls.every((c) => c[0] === 'list_job_payment_promises_for')).toBe(true)
+      expect(under).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', under)
+    }
+  })
+  it('Escape on Never said that answers that question and leaves the sheet open (v2.8278)', async () => {
+    const { onClose } = mount()
+    await settle()
+    await waitFor(() => expect(screen.getAllByTestId('promise-record-row')).toHaveLength(2))
+    fireEvent.click(screen.getAllByText('never said that')[0]!)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Never said that' })).toBeTruthy())
+    await settle()
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Never said that' })).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Write down their word' })).toBeTruthy()
+    expect(rpc.mock.calls.every((c) => c[0] === 'list_job_payment_promises_for')).toBe(true)
   })
 })

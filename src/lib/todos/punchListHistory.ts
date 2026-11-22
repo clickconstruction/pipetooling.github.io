@@ -67,6 +67,12 @@ export interface PunchListHistory {
   /** True when the build read a cut-off copy of the repository, so the history starts late. */
   shallow: boolean
   events: HistoryEvent[]
+  /**
+   * When each card on the board last changed on main, as this build read it: the card's slug to the
+   * newest commit that touched its file or anything in its folder, in epoch seconds. The punch list's
+   * claims count a card's quiet hours from it (`punchListClaims.ts`). Missing where the build read no git.
+   */
+  touched?: Record<string, number>
 }
 
 export const EMPTY_HISTORY: PunchListHistory = { shallow: false, events: [] }
@@ -78,12 +84,15 @@ export const EMPTY_HISTORY: PunchListHistory = { shallow: false, events: [] }
 export interface PackedHistory {
   shallow: boolean
   rows: number[][]
+  /** `PunchListHistory.touched`, a pair a card. */
+  touched?: Array<[slug: string, t: number]>
 }
 
 export function packHistory(history: PunchListHistory): PackedHistory {
   return {
     shallow: history.shallow,
     rows: history.events.map((e) => [e.t, e.open, e.pts, ...e.byGroup, ...e.ptsByGroup, e.added, e.closed, e.addedPts, e.burnedPts, ...e.left]),
+    ...(history.touched ? { touched: Object.entries(history.touched).sort(([a], [b]) => a.localeCompare(b)) } : {}),
   }
 }
 
@@ -104,6 +113,7 @@ export function unpackHistory(packed: PackedHistory | null | undefined): PunchLi
       burnedPts: n(r[6 + 2 * G]),
       left: r.slice(7 + 2 * G, 7 + 3 * G),
     })),
+    ...(Array.isArray(packed.touched) ? { touched: Object.fromEntries(packed.touched.filter((p) => Array.isArray(p) && typeof p[0] === 'string' && Number.isFinite(p[1]))) } : {}),
   }
 }
 

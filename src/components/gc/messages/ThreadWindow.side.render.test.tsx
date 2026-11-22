@@ -67,8 +67,11 @@ describe('the side of a thread (cut 10)', () => {
     const { win, side } = open()
     expect(side()).toHaveLength(1)
     const row = side()[0] as HTMLElement
-    expect(row.previousElementSibling).toBe(win.querySelector('[data-thread-header]'))
-    expect(row.nextElementSibling).toBe(win.querySelector('[data-thread-body]'))
+    // The row sits in a fold that draws nothing of its own (punch list #348): it hides the row while the keyboard is up.
+    const fold = row.parentElement as HTMLElement
+    expect([fold.hasAttribute('data-thread-flow-fold'), fold.style.display]).toEqual([true, 'contents'])
+    expect(fold.previousElementSibling).toBe(win.querySelector('[data-thread-header]'))
+    expect(fold.nextElementSibling).toBe(win.querySelector('[data-thread-body]'))
     expect(win.querySelector('[data-thread-body] [data-thread-lines]')).toBeTruthy()
   })
 })

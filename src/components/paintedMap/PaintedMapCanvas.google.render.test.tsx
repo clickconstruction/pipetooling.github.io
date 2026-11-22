@@ -121,13 +121,27 @@ describe('a caller that says nothing about Google', () => {
 describe('the public page (step 4)', () => {
   const WAY: PaintedCanvasGoogleAsk = { screen: 'way', use: 'looking' }
 
-  it('stays on the Leaflet map with a good key, and makes no Google map, until the rule says the page may', () => {
-    // Every outside reader's open counts with Google. The page hands its ask already, and `PAINTED_GOOGLE_REACH` holds the yes.
+  it('draws on Google with a good key, one map, light on the page’s light paper, with no Leaflet map beside it', async () => {
+    // Every outside reader's open counts with Google: one map for an open, and never a second.
     render(<PaintedMapCanvas lines={LINES} places={PLACES} height={360} google={WAY} />)
+    await screen.findByTestId('google')
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.mounts).toBe(1)
+    expect(google.props?.light).toBe(true)
+  })
+
+  it('opens on the Leaflet map with no key, and when Google refuses the key under it', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
+    const first = render(<PaintedMapCanvas lines={LINES} places={PLACES} height={360} google={WAY} />)
+    expect(provider()).toBe('osm')
+    expect(google.mounts).toBe(0)
+    first.unmount()
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'made-up-key')
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height={360} google={WAY} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'google refuses the key' }))
     expect(provider()).toBe('osm')
     expect(screen.getByTestId('leaflet')).toBeTruthy()
-    expect(screen.queryByTestId('google')).toBeNull()
-    expect(google.mounts).toBe(0)
   })
 
   it('hands Google’s canvas the frame that keeps a reader and the line together, and holds only the page light', async () => {
@@ -137,6 +151,41 @@ describe('the public page (step 4)', () => {
     expect(google.props?.frameMe).toBe(true)
     // The painting window follows the app's theme.
     expect(google.props?.light).toBe(false)
+  })
+})
+
+describe('the painting window, on a walk (step 3)', () => {
+  const WALKING: PaintedCanvasGoogleAsk = { screen: 'window', use: 'walking' }
+
+  it('paints the walk on Google’s map, follows the walker, and makes no Leaflet map', async () => {
+    const me = { lat: 30.201, lng: -98.099, accuracyM: 6 }
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} me={me} follow frameMargin />)
+    await screen.findByTestId('google')
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.props?.follow).toBe(true)
+    expect(google.props?.frameMargin).toBe(true)
+    expect(google.props?.me).toEqual(me)
+  })
+
+  it('keeps the one Google map from reading to the walk and back to Look it over', async () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} follow />)
+    expect(provider()).toBe('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} refit={1} />)
+    expect(provider()).toBe('google')
+    expect(google.mounts).toBe(1)
+  })
+
+  it('goes to the Leaflet map, and stays, when a line of the walk is fixed by hand', async () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} follow />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={DRAWING} draft={DRAFT} />)
+    expect(provider()).toBe('osm')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    await waitFor(() => expect(provider()).toBe('osm'))
+    expect(screen.queryByTestId('google')).toBeNull()
   })
 })
 
@@ -196,12 +245,6 @@ describe('the rule, kept', () => {
     render(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={LOOKING} />)
     expect(provider()).toBe('osm')
     expect(screen.getByTestId('leaflet')).toBeTruthy()
-  })
-
-  it('stays on Leaflet on the public page, which waits for the billing look', () => {
-    render(<PaintedMapCanvas lines={LINES} places={[]} height={360} google={{ screen: 'way', use: 'looking' }} />)
-    expect(provider()).toBe('osm')
-    expect(screen.queryByTestId('google')).toBeNull()
   })
 
   it('draws a still on Leaflet', () => {

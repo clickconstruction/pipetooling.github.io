@@ -3,6 +3,7 @@ import {
   boardIsNewer,
   canTick,
   readTicks,
+  stillOnFailed,
   tickFor,
   tickLabel,
   tickSaveFailed,
@@ -13,7 +14,10 @@ import {
   type TickCard,
 } from './punchListTicks'
 
-const tick = (over: Partial<PunchTick> = {}): PunchTick => ({ cardNumber: 412, section: 'ready', boardVersion: 'v2.8196', ...over })
+const ME = 'user-me'
+const me = { id: ME, name: 'ZZ Ana' }
+const NOW = '2026-11-21T12:00:00.000Z'
+const tick = (over: Partial<PunchTick> = {}): PunchTick => ({ userId: ME, cardNumber: 412, section: 'ready', boardVersion: 'v2.8196', claimerName: 'ZZ Ana', tickedAt: NOW, ...over })
 const card = (over: Partial<TickCard> = {}): TickCard => ({ number: 412, group: 'ready', ...over })
 
 describe('tickVerdict', () => {
@@ -66,61 +70,96 @@ describe('readTicks', () => {
       tick({ cardNumber: 9, section: 'waiting' }), // closed and gone from the list
       tick({ cardNumber: 3, section: 'gated' }), // still gated
     ]
-    const read = readTicks(rows, cards, 'v2.8200')
+    const read = readTicks(rows, cards, 'v2.8200', ME)
     expect([...read.ticked].sort()).toEqual([1, 3])
     expect(read.stale).toEqual([2, 9])
   })
 
   it('a made-up card whose section changes between two reads loses its tick on the second', () => {
     const rows = [tick({ cardNumber: 77, section: 'ready', boardVersion: 'v2.8196' })]
-    const before = readTicks(rows, [card({ number: 77, group: 'ready' })], 'v2.8196')
+    const before = readTicks(rows, [card({ number: 77, group: 'ready' })], 'v2.8196', ME)
     expect(before.ticked.has(77)).toBe(true)
     expect(before.stale).toEqual([])
-    const after = readTicks(rows, [card({ number: 77, group: 'close' })], 'v2.8197')
+    const after = readTicks(rows, [card({ number: 77, group: 'close' })], 'v2.8197', ME)
     expect(after.ticked.has(77)).toBe(false)
     expect(after.stale).toEqual([77])
     // With the row cleared, a move back to the first section does not bring the tick back.
-    const back = readTicks(withoutTick(rows, ...after.stale), [card({ number: 77, group: 'ready' })], 'v2.8198')
+    const back = readTicks(withoutTick(rows, ME, ...after.stale), [card({ number: 77, group: 'ready' })], 'v2.8198', ME)
     expect(back.ticked.size).toBe(0)
   })
 
   it('an old copy of the page shows what matches and clears nothing', () => {
     const rows = [tick({ cardNumber: 1, section: 'ready' }), tick({ cardNumber: 2, section: 'ready' }), tick({ cardNumber: 9, section: 'waiting' })]
-    const read = readTicks(rows, cards, 'v2.8100')
+    const read = readTicks(rows, cards, 'v2.8100', ME)
     expect([...read.ticked]).toEqual([1])
     expect(read.stale).toEqual([])
   })
 
   it('flagging is not a move: a flagged card keeps its group and its tick', () => {
     const flagged = { number: 1, group: 'ready', flagged: true } as TickCard
-    expect(readTicks([tick({ cardNumber: 1 })], [flagged], 'v2.8300').ticked.has(1)).toBe(true)
+    expect(readTicks([tick({ cardNumber: 1 })], [flagged], 'v2.8300', ME).ticked.has(1)).toBe(true)
   })
 
   it('reads nothing from no rows', () => {
-    const read = readTicks([], cards, 'v2.8200')
+    const read = readTicks([], cards, 'v2.8200', ME)
     expect(read.ticked.size).toBe(0)
     expect(read.stale).toEqual([])
   })
 })
 
 describe('a tick and an untick', () => {
-  it('a tick writes the card’s section today and this build’s version', () => {
-    expect(tickFor(card({ number: 5, group: 'waiting' }), 'v2.8200')).toEqual({ cardNumber: 5, section: 'waiting', boardVersion: 'v2.8200' })
+  it('a tick writes the card’s section today and this build’s version, as the person, at this time', () => {
+    expect(tickFor(card({ number: 5, group: 'waiting' }), 'v2.8200', me, NOW)).toEqual({
+      userId: ME,
+      cardNumber: 5,
+      section: 'waiting',
+      boardVersion: 'v2.8200',
+      claimerName: 'ZZ Ana',
+      tickedAt: NOW,
+    })
   })
 
   it('a tick on a card with a hidden row replaces that row', () => {
     const rows = [tick({ cardNumber: 5, section: 'ready', boardVersion: 'v2.8196' }), tick({ cardNumber: 6 })]
-    const next = withTick(rows, card({ number: 5, group: 'close' }), 'v2.8196')
+    const next = withTick(rows, card({ number: 5, group: 'close' }), 'v2.8196', me, NOW)
     expect(next).toHaveLength(2)
-    expect(next.find((t) => t.cardNumber === 5)).toEqual({ cardNumber: 5, section: 'close', boardVersion: 'v2.8196' })
-    expect(readTicks(next, [card({ number: 5, group: 'close' })], 'v2.8196').ticked.has(5)).toBe(true)
+    expect(next.find((t) => t.cardNumber === 5)?.section).toBe('close')
+    expect(readTicks(next, [card({ number: 5, group: 'close' })], 'v2.8196', ME).ticked.has(5)).toBe(true)
   })
 
-  it('an untick removes the row and leaves the others', () => {
+  it('an untick removes the person’s own row and leaves the others', () => {
     const rows = [tick({ cardNumber: 5 }), tick({ cardNumber: 6 })]
-    expect(withoutTick(rows, 5)).toEqual([tick({ cardNumber: 6 })])
-    expect(withoutTick(rows, 5, 6)).toEqual([])
-    expect(withoutTick(rows, 99)).toEqual(rows)
+    expect(withoutTick(rows, ME, 5)).toEqual([tick({ cardNumber: 6 })])
+    expect(withoutTick(rows, ME, 5, 6)).toEqual([])
+    expect(withoutTick(rows, ME, 99)).toEqual(rows)
+  })
+})
+
+describe('rows from more than one person', () => {
+  const OTHER = 'user-other'
+  const cards: TickCard[] = [card({ number: 1, group: 'ready' }), card({ number: 2, group: 'close' })]
+
+  it('a person’s own ticks are their own rows: another person’s row on a card is not their tick', () => {
+    const rows = [tick({ cardNumber: 1, userId: OTHER, claimerName: 'ZZ Ben' })]
+    expect(readTicks(rows, cards, 'v2.8300', ME).ticked.size).toBe(0)
+    expect(readTicks(rows, cards, 'v2.8300', OTHER).ticked.has(1)).toBe(true)
+  })
+
+  it('never asks to delete another person’s stale row: each person clears their own', () => {
+    const rows = [tick({ cardNumber: 2, section: 'ready', userId: OTHER }), tick({ cardNumber: 9, section: 'ready', userId: OTHER }), tick({ cardNumber: 2, section: 'ready' })]
+    expect(readTicks(rows, cards, 'v2.8300', ME).stale).toEqual([2])
+    expect(readTicks(rows, cards, 'v2.8300', OTHER).stale).toEqual([2, 9])
+  })
+
+  it('an untick and a tick touch only the person’s own row on the card', () => {
+    const theirs = tick({ cardNumber: 1, userId: OTHER, claimerName: 'ZZ Ben' })
+    const rows = [theirs, tick({ cardNumber: 1 })]
+    expect(withoutTick(rows, ME, 1)).toEqual([theirs])
+    expect(withTick([theirs], card({ number: 1 }), 'v2.8300', me, NOW)).toHaveLength(2)
+  })
+
+  it('reads nothing as anyone’s own for a viewer with no id', () => {
+    expect(readTicks([tick({ cardNumber: 1 })], cards, 'v2.8300', null).ticked.size).toBe(0)
   })
 })
 
@@ -132,6 +171,7 @@ describe('words', () => {
   it('says which save failed', () => {
     expect(tickSaveFailed({ number: 299 }, true)).toBe('The tick on #299 was not saved')
     expect(tickSaveFailed({ number: 299 }, false)).toBe('The tick on #299 was not taken off')
+    expect(stillOnFailed({ number: 299 })).toBe('Your claim on #299 was not renewed')
   })
 
   it('a card with no number takes no tick', () => {

@@ -7,7 +7,8 @@
  * the schedule's bars through `billingForecast.ts`; it keeps none of its own. The money on a row is the money team's.
  */
 import { forecastPct } from '../billingForecast'
-import { addDays, drawMoney, payApplication, sentBackOpen, tradeChangesFor, workAllBilled, type TradeChange } from '../building'
+import { addDays, drawMoney, payApplication, sentBackOpen, tradeChangesFor, tradeRetainageOpensOn, workAllBilled, type TradeChange } from '../building'
+import { drawClock, drawDueWords, type DrawWaitsOn } from '../drawPayClock'
 import { partnerById } from '../lookups'
 import { appCertified, nextOwnerBillDay, owedDrawWords, ownerPayApp, ownerPayAppsSent } from '../ownerBilling'
 import { PAY_WITHIN_DAYS } from '../portal'
@@ -38,7 +39,7 @@ export interface BillDayDates {
   periodFrom: string
   /** The bill day plus the owner's usual days to pay. Null: neither is known. */
   ownerPaysBy: string | null
-  /** A draw approved by bill day is paid within this many days of its approval. */
+  /** A draw approved by bill day is paid within this many days after the customer pays the bill it rides on. */
   tradesPaidWithin: number
 }
 
@@ -124,6 +125,8 @@ export interface TradeDraw {
   expectedWords: string
   /** The day it came in, or the day we sent it back. */
   since: string | null
+  /** On an approved draw: the day to pay it by, or what it waits on (`drawPayClock.ts`). Absent: none read. */
+  due?: { payBy: string | null; waitsOn: DrawWaitsOn | null }
   /** Their draw before this one. Null: this is their first. */
   last: Draw | null
   /** Draws we paid whose unconditional waiver they still owe (`tradeWaiverChecks`' rule). */
@@ -208,6 +211,8 @@ export function tradeDraws(state: GcState, project: GcProject, dates: BillDayDat
       expected: expected.net,
       expectedWords: expected.words,
       since: state_ === 'waiting' ? (draw?.requestedOn ?? null) : state_ === 'back' ? (back?.on ?? null) : null,
+      // An approved draw is due after the customer pays for it. A retainage release keeps its own day.
+      ...(draw?.status === 'approved' ? { due: draw.final ? { payBy: tradeRetainageOpensOn(project), waitsOn: null } : (({ payBy, waitsOn }) => ({ payBy, waitsOn }))(drawClock(project, draw)) } : {}),
       last: progress.filter((d) => d.number < number).pop() ?? null,
       owedUnconditional: sow.draws
         .filter((d) => d.status === 'paid' && d.waiver === 'conditional')
@@ -427,7 +432,8 @@ export function rowMove(row: TradeDraw, today: string): { side: 'ours' | 'theirs
   if (row.state === 'approved' || row.state === 'closing') {
     const d = row.draw
     if (d?.status === 'paid') return { side: 'paid', words: `paid ${shortDate(d.paidOn ?? null)}` }
-    return { side: 'paid', words: d?.approvedOn ? `we pay by ${shortDate(addDays(d.approvedOn, PAY_WITHIN_DAYS))}` : `paid within ${PAY_WITHIN_DAYS} days of approval` }
+    if (row.due?.payBy) return { side: 'paid', words: `we pay by ${shortDate(row.due.payBy)}` }
+    return { side: 'paid', words: row.due?.waitsOn ? drawDueWords(row.due.waitsOn) : `paid within ${PAY_WITHIN_DAYS} days after the customer pays` }
   }
   if (row.state === 'waiting') return { side: 'ours', words: `our move · ${row.since ? daysUntil(today, row.since) : 0} d` }
   if (row.nothing) return { side: 'none', words: `nothing this period · ${row.nothing.saidBy}` }

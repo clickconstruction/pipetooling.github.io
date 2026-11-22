@@ -16,6 +16,8 @@ The reply box sits at the foot of every thread in Messages. Write a text, an ema
 
 On a laptop or a phone, the box folds to one row until you need it. Press into it to open it whole. Press anywhere else in the thread and the box folds again. Your words stay in the row. Press the row to keep writing. On a tall screen the box starts whole, and a press anywhere else folds it the same way. The box folds back after the message goes.
 
+On a phone, the keyboard takes about half the screen. While it is up, the top of the thread keeps one row. That row holds the way back, the person's name and **⋯**. The chips and the jobs come back when the keyboard goes. The reply box always shows whole. On a small phone, scroll the thread to reach the bottom of the box.
+
 To find a person first, see [find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place).
 
 ## Choose what to write
@@ -81,6 +83,8 @@ Dana texts that a bill went missing. Type **/bill** and light the open bill. Pre
 ## Write down their word
 
 A customer's own text, email or call carries {{button:outline|Write down their word}} under it. Press it when the customer says when they will pay, or that they already paid. The sheet opens on the job the line is about. The customer's name and how they said it are filled in. When the line is on no job, the word goes on their one job with money open. With more than one, pick the job. The word shows on the job as **They said**. Read [see where a job you bid stands on money](/help/see-where-a-job-you-bid-stands-on-money#write-down-their-word) for the sheet.
+
+When their text or voicemail names a day, the day shows beside the button. It reads **They said Fri Nov 27.** Press the button and the sheet opens on **They'll pay by…** with that day in **Pay by**. A line under the job says the day was read from their text. Change the day when they meant another one. Nothing is saved until you press {{button:green|Save promise}}. A call or an email shows no day, and neither does a day that has passed.
 
 ## Find a reply
 

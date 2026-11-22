@@ -211,7 +211,7 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
         {!partyQuiet ? (
           <div data-testid="customer-party-papers">
             <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>Papers with this customer</div>
-            <PartyPapersList read={partyPapers} canSend surface="party-papers-customer" />
+            <PartyPapersList read={partyPapers} canSend surface="party-papers-customer" partyName={customerName} />
           </div>
         ) : null}
         {uncovered.length > 0 ? (

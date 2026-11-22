@@ -14,6 +14,28 @@ vi.mock('../../hooks/usePreciseLocation', () => ({ usePhoneKind: () => browser.k
 const camera = vi.hoisted(() => ({ picked: [] as File[], shot: null as null | { id: string; blob: Blob; previewUrl: string } }))
 vi.mock('../../hooks/useTaskShot', () => ({ useTaskShot: () => ({ shot: camera.shot, shrinking: false, kept: false, error: null, pick: async (file: File) => { camera.picked.push(file) }, clear: () => {}, markKept: () => {} }) }))
 
+/** A place's other photos, stood in for (punch list #413, step 7): the saved ones, and what a test puts in as picked. */
+const morePhotos = vi.hoisted(() => ({ added: [] as Array<{ id: string; blob: Blob; previewUrl: string }> }))
+vi.mock('../../hooks/usePlaceMorePhotos', async () => {
+  const { useState } = await import('react')
+  return {
+    usePlaceMorePhotos: (saved: ReadonlyArray<{ path: string; at: string | null; by: string | null }> | null | undefined) => {
+      const [kept, setKept] = useState([...(saved ?? [])])
+      const [added, setAdded] = useState(morePhotos.added)
+      return {
+        kept,
+        added,
+        shrinking: false,
+        error: null,
+        canAdd: kept.length + added.length < 12,
+        pick: async (file: File) => setAdded((a) => [...a, { id: `new-${a.length + 1}`, blob: file, previewUrl: `blob:new-${a.length + 1}` }]),
+        removeKept: (path: string) => setKept((k) => k.filter((p) => p.path !== path)),
+        removeAdded: (id: string) => setAdded((a) => a.filter((p) => p.id !== id)),
+      }
+    },
+  }
+})
+
 import type { MyFixFailure } from '../../lib/materials/myLocation'
 import { PaintedPlacePanel } from './PaintedPlacePanel'
 
@@ -30,6 +52,7 @@ afterEach(() => {
   browser.kind = 'iphone-safari'
   camera.picked = []
   camera.shot = null
+  morePhotos.added = []
   Object.values(presses).forEach((p) => p.mockClear())
 })
 
@@ -347,5 +370,73 @@ describe('PaintedPlacePanel, opened with a photo', () => {
     expect(camera.picked).toEqual([])
     expect(document.querySelector('[data-place-photo]')?.getAttribute('data-place-photo')).toBe('after')
     expect(order()[0]).toBe('kinds')
+  })
+})
+
+/** More than one photo on a place (punch list #413, step 7): open and covered, before and after. */
+describe('PaintedPlacePanel, more than one photo', () => {
+  const SAVED = { id: 'p1', mapId: 'm1', name: 'Cleanout', words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: 'm1/first.jpg', kind: 'cleanout' as const, setBy: 'me', setAt: '2026-11-21T15:00:00Z', morePhotos: [{ path: 'm1/open.jpg', at: '2026-11-21T15:01:00Z', by: 'me' }, { path: 'm1/covered.jpg', at: '2026-11-21T16:00:00Z', by: 'me' }] }
+  const urls = new Map([['m1/open.jpg', 'https://signed.test/open'], ['m1/covered.jpg', 'https://signed.test/covered']])
+  const edit = () => render(<PaintedPlacePanel place={SAVED} photoUrl="https://signed.test/first" morePhotoUrls={urls} accuracyM={null} movedOffReading={false} finding={false} busy={false} canRemove {...presses} />)
+  const block = () => document.querySelector('[data-place-more-photos]') as HTMLElement | null
+  const lastSave = () => presses.onSave.mock.calls[presses.onSave.mock.calls.length - 1]?.[0] as { more?: { keep: Array<{ path: string }>; add: Array<{ id: string }> } }
+  const save = () => fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLButtonElement)
+
+  it('gives the photos’ own presses and Remove this place a thumb’s height, 44 px', () => {
+    edit()
+    const named = (name: string) => (screen.getByRole('button', { name }) as HTMLButtonElement).style.minHeight
+    expect(['Take another', 'Remove the photo', 'Remove photo 2', 'Remove photo 3', 'Remove this place'].map(named)).toEqual(['44px', '44px', '44px', '44px', '44px'])
+  })
+
+  it('offers another photo only once the place has its first', () => {
+    draw()
+    expect(block()).toBeNull()
+    cleanup()
+    camera.shot = { id: 'shot-1', blob: new Blob(['x']), previewUrl: 'blob:first' }
+    draw()
+    const add = document.querySelector('[data-place-more-add]') as HTMLButtonElement
+    expect(add.textContent).toBe('＋ Another photo')
+    expect(add.style.minHeight).toBe('48px')
+  })
+
+  it('shows the photos a place already keeps, and hands nothing over when none changed', () => {
+    edit()
+    const kept = [...document.querySelectorAll('[data-place-more-photo="kept"] img')] as HTMLImageElement[]
+    expect(kept.map((i) => i.getAttribute('src'))).toEqual(['https://signed.test/open', 'https://signed.test/covered'])
+    expect(kept.map((i) => i.alt)).toEqual(['Photo 2 of the place', 'Photo 3 of the place'])
+    save()
+    expect(lastSave().more).toBeUndefined()
+  })
+
+  it('hands over the ones still kept when one is taken off', () => {
+    edit()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo 2' }))
+    expect(document.querySelectorAll('[data-place-more-photo="kept"]')).toHaveLength(1)
+    save()
+    expect(lastSave().more).toEqual({ keep: [{ path: 'm1/covered.jpg', at: '2026-11-21T16:00:00Z', by: 'me' }], add: [] })
+  })
+
+  it('hands over a new photo to send, after the ones kept', () => {
+    morePhotos.added = [{ id: 'new-1', blob: new Blob(['y']), previewUrl: 'blob:new-1' }]
+    edit()
+    expect((document.querySelector('[data-place-more-photo="new"] img') as HTMLImageElement).alt).toBe('Photo 4 of the place')
+    save()
+    expect(lastSave().more?.keep.map((p) => p.path)).toEqual(['m1/open.jpg', 'm1/covered.jpg'])
+    expect(lastSave().more?.add.map((p) => p.id)).toEqual(['new-1'])
+  })
+
+  it('a new photo taken off again before the save changes nothing', () => {
+    morePhotos.added = [{ id: 'new-1', blob: new Blob(['y']), previewUrl: 'blob:new-1' }]
+    edit()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo 4' }))
+    save()
+    expect(lastSave().more).toBeUndefined()
+  })
+
+  it('stops at twelve more, and says how to add another', () => {
+    const many = { ...SAVED, morePhotos: Array.from({ length: 12 }, (_, i) => ({ path: `m1/p${i}.jpg`, at: null, by: null })) }
+    render(<PaintedPlacePanel place={many} photoUrl="https://signed.test/first" accuracyM={null} movedOffReading={false} finding={false} busy={false} canRemove {...presses} />)
+    expect(document.querySelector('[data-place-more-add]')).toBeNull()
+    expect(block()?.textContent).toContain('A place holds twelve more photos. Take one off to add another.')
   })
 })

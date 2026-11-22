@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { notifyDispatchLicenseExpiry } from '../../lib/people/licenseExpiryNotify'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
@@ -233,26 +233,8 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   }
 
   async function maybeNotifyDispatchLicenseExpiry(licenseId: string) {
-    const pLink = `${window.location.origin}/people?tab=licenses`
-    try {
-      const dispatchId = await withSupabaseRetry(
-        async () =>
-          supabase.rpc('notify_dispatch_license_expiry_if_needed', {
-            p_license_id: licenseId,
-            p_link: pLink,
-          }),
-        'notify_dispatch_license_expiry_if_needed',
-      )
-      if (dispatchId == null || typeof dispatchId !== 'string') return
-      const { error: fnErr } = await supabase.functions.invoke('notify-dispatch-request', {
-        body: { dispatch_request_id: dispatchId },
-      })
-      if (fnErr) {
-        showToast(`License saved; Dispatch notification may have failed: ${fnErr.message}`, 'warning')
-      }
-    } catch (e) {
-      console.warn('maybeNotifyDispatchLicenseExpiry', e)
-    }
+    const warning = await notifyDispatchLicenseExpiry(licenseId)
+    if (warning) showToast(warning, 'warning')
   }
 
   async function upsertLicense() {

@@ -46,11 +46,16 @@ import {
   numberedPlaces,
   paintedByWords,
   parseMeasuredFeet,
+  placePhotoPaths,
   type PaintedLine,
   type PaintedMap,
   type PaintedMeasuredHow,
   type PaintedPlace,
+  type PlacePhoto,
 } from '../../lib/paintedMap/paintedMap'
+import { PLACE_LINE_WORDS, paintLineForPlace } from '../../lib/paintedMap/paintedPlaceLineIo'
+import { KEPT_SPOT_WORDS, saveLostSignal, type KeptSpot } from '../../lib/paintedMap/paintedKeptSpot'
+import { keepSpot } from '../../lib/paintedMap/paintedKeptSpotIo'
 import { JOB_LIST_WORDS, jobListPlaces, jobListsOf, placeLetter, type JobPlace } from '../../lib/paintedMap/paintedJobList'
 import { onPaintedMapsChanged, openPaintedMap, paintedMapsChanged, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import {
@@ -83,6 +88,7 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { readingMovesDot } from '../../lib/paintedMap/paintedPlaceDot'
 import { spotPhotoIsFresh, spotStaleWords, spotStart, type PaintedSpot } from '../../lib/paintedMap/paintedSpot'
+import { notePaintedPlaceOpened } from '../../lib/paintedMap/paintedAddressPlacesIo'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
@@ -93,9 +99,9 @@ import { PaintedMapSavedBand } from './PaintedMapSavedBand'
 import { paintedMapSavedOffersText, paintedMapSavedWords } from '../../lib/paintedMap/paintedMapSaved'
 import { paintedWindowUse } from '../../lib/paintedMap/paintedMapProvider'
 import { isPhoneDevice } from '../../lib/quo/dial'
-import type { PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
+import { isBuriedKind, placeKindInfo, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PaintedPlaceMark } from './PaintedPlaceMark'
-import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
+import { PaintedPlacePanel, type PaintedPlaceMorePhotos, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
 import { PaintedPlaceShare } from './PaintedPlaceShare'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
 import { PaintedPlaceWords } from './PaintedPlaceWords'
@@ -126,6 +132,8 @@ type Props = {
    * phone's reading of that moment when the reading is good and the photo is fresh.
    */
   spot?: PaintedSpot | null
+  /** A place to open on (#413): it is picked in the list, brought into view, and the map goes to it. */
+  pickPlace?: string | null
   onClose: () => void
 }
 
@@ -175,7 +183,7 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, onClose }: Props) {
+export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, pickPlace = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
@@ -219,7 +227,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const openedOnPlace = useRef(placeFirst && !!givenCenter)
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
   const [viewing, setViewing] = useState<string | null>(null)
-  const [pickedPlace, setPickedPlace] = useState<string | null>(null)
+  const [pickedPlace, setPickedPlace] = useState<string | null>(pickPlace)
   const [sharing, setSharing] = useState(false)
   // A picture of the map is on the screen, in the Share sheet. It is Esri's photograph (punch list #387).
   const [pictureUp, setPictureUp] = useState(false)
@@ -241,6 +249,10 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [spotFile, setSpotFile] = useState<File | null>(() => spot?.file ?? null)
   // Why the dot was not put where the person stands: the photo is not of this moment.
   const [spotNote, setSpotNote] = useState<string | null>(null)
+  // A place set with no signal was kept on this phone (#413, step 2b): the window says so until the next act.
+  const [keptHere, setKeptHere] = useState(false)
+  // Why the map itself did not save, for the place that was waiting on it.
+  const ensureError = useRef<string | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -277,9 +289,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const mapJobId = map?.jobId ?? null
   // Every place kept on the map's job, lettered. Read beside the map, and again whenever a painted map changes.
   const [jobPlaces, setJobPlaces] = useState<JobPlace[]>([])
+  // Every line painted for the map's job, by its id (#413, step 6): a place that runs along one says its length.
+  const [jobLines, setJobLines] = useState<Map<string, PaintedLine>>(() => new Map())
   useEffect(() => {
     if (!mapJobId) {
       setJobPlaces([])
+      setJobLines(new Map())
       return
     }
     let gone = false
@@ -288,6 +303,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       if (gone || !res.ok) return
       const lists = jobListsOf(res.value.map((w) => w.map), mapJobId)
       setJobPlaces(jobListPlaces(lists.map((l) => res.value.find((w) => w.map.id === l.id)!)))
+      setJobLines(new Map(res.value.flatMap((w) => w.lines).map((l) => [l.id, l] as const)))
     }
     void read()
     const stop = onPaintedMapsChanged(() => void read())
@@ -316,7 +332,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setWhole(res.value)
     const [people, photos] = await Promise.all([
       loadPainterNames([res.value.map.createdBy, ...res.value.lines.map((l) => l.madeBy), ...res.value.places.map((p) => p.setBy)]),
-      paintedPlacePhotoUrls(res.value.places.map((p) => p.photoPath)),
+      paintedPlacePhotoUrls(placePhotoPaths(res.value.places)),
     ])
     setNames(people)
     setPhotoUrls(photos)
@@ -488,9 +504,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (saved && whole) return whole
     const made = await createPaintedMap({ id: map.id, name: map.name, words: map.words, jobId: map.jobId, developmentId: map.developmentId, jobList: map.jobList === true, by: user.id })
     if (!made.ok) {
+      ensureError.current = made.error
       setError(made.error)
       return null
     }
+    ensureError.current = null
     const current: PaintedMapWhole = { map: made.value, lines: [], places: [] }
     setSaved(true)
     setWhole(current)
@@ -613,12 +631,50 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const placingOnReading = !!placing?.fix && haversineMeters(placing.fix, placing.point) <= OFF_READING_METERS
   const placingAccuracy = placing?.fix && placingOnReading ? placing.fix.accuracyM : null
 
-  const savePlace = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice }) => {
+  /**
+   * A new place that could not be sent for want of a signal is kept on this phone (#413, step 2b): its photos' bytes
+   * and its record, under ids made here, so it goes to the job when the signal is back and is never made twice. True
+   * when it was kept. A change to a saved place is not kept: it has a row to go back to.
+   */
+  const keepForLater = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice; more?: PaintedPlaceMorePhotos }): Promise<boolean> => {
+    if (!map || !user?.id || !placing || placing.place) return false
+    const photos = [...(input.photo.kind === 'new' ? [{ id: input.photo.id, blob: input.photo.blob }] : []), ...(input.more?.add ?? [])]
+    const kept: KeptSpot = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      userId: user.id,
+      savedAtMs: Date.now(),
+      map: { id: map.id, jobId: map.jobId, developmentId: map.developmentId, name: map.name, words: map.words, jobList: map.jobList === true, saved },
+      place: { name: input.name.trim() || 'A place', words: input.words, kind: input.kind, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy },
+      photoId: input.photo.kind === 'new' ? input.photo.id : null,
+      moreIds: (input.more?.add ?? []).map((p) => p.id),
+    }
+    if (!(await keepSpot(kept, photos))) {
+      setError(KEPT_SPOT_WORDS.cannotKeep)
+      return false
+    }
+    // The press that began this place hears it is kept: it will go, and a second press would make a second place.
+    if (spotFile) spot?.onKept?.()
+    setError(null)
+    setKeptHere(true)
+    stopPlacing(true)
+    return true
+  }
+
+  const savePlace = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice; more?: PaintedPlaceMorePhotos }) => {
     if (!map || !user?.id || !placing || busy) return
     setBusy(true)
     setError(null)
+    setKeptHere(false)
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false
+    // The phone says there is no signal: a new place is kept at once, and nothing is tried.
+    if (!placing.place && !online) {
+      await keepForLater(input)
+      setBusy(false)
+      return
+    }
     const current = await ensureSaved()
     if (!current) {
+      if (!placing.place && saveLostSignal(ensureError.current, online)) await keepForLater(input)
       setBusy(false)
       return
     }
@@ -627,30 +683,72 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (input.photo.kind === 'new') {
       const up = await uploadPaintedPlacePhoto(map.id, input.photo.id, input.photo.blob)
       if (!up.ok) {
+        if (!old && saveLostSignal(up.error, online) && (await keepForLater(input))) {
+          setBusy(false)
+          return
+        }
         setBusy(false)
         setError(up.error)
         return
       }
       photoPath = up.value
     }
+    // The place's other photos (#413, step 7): the new ones go up first, and the row takes the list whole. They are
+    // written only when the painter changed them.
+    const sentMore: string[] = []
+    let morePhotos: PlacePhoto[] | null = null
+    if (input.more) {
+      morePhotos = [...input.more.keep]
+      const at = new Date().toISOString()
+      for (const p of input.more.add) {
+        const up = await uploadPaintedPlacePhoto(map.id, p.id, p.blob)
+        if (!up.ok) {
+          // The signal went: the place waits on the phone, and what already went up is found there on the next try.
+          if (!old && saveLostSignal(up.error, online) && (await keepForLater(input))) {
+            setBusy(false)
+            return
+          }
+          // One did not go up: what went up for this save is taken back out, and nothing is written.
+          for (const path of sentMore) void removePaintedPlacePhotoFile(path)
+          if (input.photo.kind === 'new') void removePaintedPlacePhotoFile(photoPath)
+          setBusy(false)
+          setError(up.error)
+          return
+        }
+        sentMore.push(up.value)
+        morePhotos.push({ path: up.value, at, by: user.id })
+      }
+    }
+    const moreChange = morePhotos ? { morePhotos } : {}
     // A kind is written only when the painter changed it, so a place whose kind a newer app gave is not wiped by an older one.
     const kindChange = old && input.kind === (old.kind ?? null) ? {} : { kind: input.kind }
     const res = old
-      ? await savePaintedPlace(old.id, { name: input.name, words: input.words, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy, photoPath, ...kindChange })
-      : await addPaintedPlace(map.id, { ...placing.point, name: input.name, words: input.words, accuracyM: placingAccuracy, photoPath, kind: input.kind }, user.id)
+      ? await savePaintedPlace(old.id, { name: input.name, words: input.words, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy, photoPath, ...kindChange, ...moreChange })
+      : await addPaintedPlace(map.id, { ...placing.point, name: input.name, words: input.words, accuracyM: placingAccuracy, photoPath, kind: input.kind, ...moreChange }, user.id)
+    if (!res.ok && !old && saveLostSignal(res.error, online) && (await keepForLater(input))) {
+      // The signal went on the last step: the place waits on the phone, and its photos are found in the bucket on the next try.
+      setBusy(false)
+      return
+    }
     setBusy(false)
     if (!res.ok) {
-      // The picture went up for a place that did not save: it is taken back out.
+      // The pictures went up for a place that did not save: they are taken back out.
       if (input.photo.kind === 'new') void removePaintedPlacePhotoFile(photoPath)
+      for (const path of sentMore) void removePaintedPlacePhotoFile(path)
       setError(res.error)
       return
     }
     if (old?.photoPath && old.photoPath !== res.value.photoPath) void removePaintedPlacePhotoFile(old.photoPath)
+    // A photo taken off the place is taken out of the bucket too.
+    if (old && morePhotos) {
+      const still = new Set(morePhotos.map((m) => m.path))
+      for (const gone of old.morePhotos ?? []) if (!still.has(gone.path)) void removePaintedPlacePhotoFile(gone.path)
+    }
     // The place a photo began (#413) is saved: the press that began it hears so, once.
     if (!old && spotFile) spot?.onKept?.()
     const places = old ? current.places.map((p) => (p.id === res.value.id ? res.value : p)) : [...current.places, res.value]
     setWhole({ ...current, places })
-    setPhotoUrls(await paintedPlacePhotoUrls(places.map((p) => p.photoPath)))
+    setPhotoUrls(await paintedPlacePhotoUrls(placePhotoPaths(places)))
     if (!names.has(user.id)) setNames(await loadPainterNames([user.id, ...names.keys()]))
     paintedMapsChanged()
     stopPlacing(true)
@@ -895,14 +993,40 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // A dot pressed on the map picks its place in the list. Someone came looking for it, so the place counts an open (#413).
+  const pickAPlace = useCallback((placeId: string) => {
+    setPickedPlace(placeId)
+    notePaintedPlaceOpened(placeId)
+  }, [])
+  // Opened on a place (#413): once the map is read, the map goes to that place and its row comes into view.
+  const loadedMapId = whole?.map.id ?? null
+  useEffect(() => {
+    if (!pickPlace || !whole) return
+    const at = whole.places.find((p) => p.id === pickPlace)
+    if (!at) return
+    setFly({ lat: at.lat, lng: at.lng })
+    window.requestAnimationFrame(() => document.querySelector(`[data-painted-place-id="${pickPlace}"]`)?.scrollIntoView?.({ block: 'nearest' }))
+    // Once, when the map this window opened on has been read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickPlace, loadedMapId])
+
+  // A line a buried place runs along draws in the color a locator paints for what is buried (#413, step 6).
+  const lineColors = useMemo(() => {
+    const out = new Map<string, string>()
+    for (const p of [...jobPlaces, ...places]) {
+      const color = p.lineId ? placeKindInfo(p.kind)?.color : undefined
+      if (p.lineId && color) out.set(p.lineId, color)
+    }
+    return out
+  }, [jobPlaces, places])
   const canvasLines = useMemo(
     () => [
-      ...lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how })),
+      ...lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how, ...(lineColors.has(l.id) ? { color: lineColors.get(l.id) } : null) })),
       // The lines of a walk, looked over and waiting, and the one being painted now.
       ...pending.map((s, i) => ({ id: `pending-${i}`, points: s.points.slice(), poorParts: s.poorParts ?? [], how: s.how })).filter((_, i) => i !== fixing),
       ...liveStrokes.map((s, i) => ({ id: `walk-${i}`, points: s.points.slice(), poorParts: s.poorParts ?? [], how: s.how })),
     ],
-    [lines, reshaping, pending, fixing, liveStrokes],
+    [lines, reshaping, pending, fixing, liveStrokes, lineColors],
   )
   const painting = walk.state?.status === 'painting'
   // How sure the phone is (#402). A rough reading is called rough only once the readings have stayed rough for the
@@ -972,7 +1096,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} google={canvasGoogle} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={pickAPlace} time={mode === 'view' ? { name: title } : null} google={canvasGoogle} />
               </Suspense>
               {mode === 'walk' && painting && walkMe?.area ? (
                 // The map has pulled back to the whole of what the phone knows. The pill says what the dashed circle is.
@@ -1041,6 +1165,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   busy={busy}
                   canRemove={!!placing.place && mine(placing.place.setBy)}
                   startShot={placing.place ? null : spotFile}
+                  morePhotoUrls={photoUrls}
                   note={placing.place ? null : spotNote}
                   onUseWhereIAm={putDotWhereIAm}
                   onSave={(input) => void savePlace(input)}
@@ -1120,6 +1245,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
                   {savedBand ? <PaintedMapSavedBand mapId={map.id} mapName={map.name} head={savedBand.head} under={savedBand.under} offersText={savedBand.offersText} /> : null}
 
+                  {keptHere ? (
+                    // A place set with no signal (#413, step 2b): kept on this phone, to go when the signal is back.
+                    <p role="status" data-painted-spot-kept style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+                      <b>{KEPT_SPOT_WORDS.kept}</b>
+                    </p>
+                  ) : null}
                   {spotFile ? (
                     // The photo came first and the sheet has nowhere to put its dot yet: the photo waits for the press.
                     <p role="status" data-painted-spot-waits style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
@@ -1209,22 +1340,61 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                         const by = p.setBy ? names.get(p.setBy) : null
                         const sure = taskPlaceAccuracyWords(p.accuracyM)
                         return (
-                          <div key={p.id} data-painted-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
+                          <div key={p.id} data-painted-place-row data-painted-place-id={p.id} data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
                             <PaintedPlaceMark number={isList ? (letterOf.get(p.id) ?? placeLetter(p.number)) : p.number} kind={p.kind} size={28} style={{ gridRow: '1 / 4' }} />
                             <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
                             {url ? (
-                              <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setViewing(url)} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>
+                              <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => { setViewing(url); notePaintedPlaceOpened(p.id) }} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>
                                 <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                               </button>
                             ) : null}
                             <PaintedPlaceWords words={p.words} name={p.name} style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }} />
+                            {(p.morePhotos ?? []).length > 0 ? (
+                              // The place's other photos (#413, step 7), each opened large on a press.
+                              <span data-painted-place-more style={{ gridColumn: 2, display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                                {(p.morePhotos ?? []).map((m, k) => {
+                                  const more = photoUrls.get(m.path)
+                                  return more ? (
+                                    <button key={m.path} type="button" aria-label={`Open photo ${k + 2} of ${p.name}`} onClick={() => { setViewing(more); notePaintedPlaceOpened(p.id) }} style={{ padding: 0, width: 59, height: 44, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer' }}>
+                                      <img src={more} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                    </button>
+                                  ) : null
+                                })}
+                              </span>
+                            ) : null}
+                            {isBuriedKind(p.kind) ? (
+                              // A buried line and its length (#413, step 6): the line walked or drawn along it, on a map of its own.
+                              (() => {
+                                const along = p.lineId ? (jobLines.get(p.lineId) ?? null) : null
+                                if (along) {
+                                  const said = lineLengthWords(along)
+                                  return (
+                                    <span data-painted-place-line="tied" style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }}>
+                                      <b>{said.lead}</b>
+                                      {said.tail ? `, ${said.tail}` : ''} · {lineHowWords(along)}
+                                      {' · '}
+                                      <button type="button" style={{ ...quiet, fontSize: '0.875rem', minHeight: 44 }} onClick={() => openPaintedMap(along.mapId, address)}>{PLACE_LINE_WORDS.open}</button>
+                                    </span>
+                                  )
+                                }
+                                if (!mine(p.setBy) || !map.jobId) return null
+                                const paint = (first: 'walk' | 'line') => paintLineForPlace({ place: p, listId: map.id, jobId: map.jobId!, address, first })
+                                return (
+                                  <span data-painted-place-line="none" style={{ gridColumn: 2, display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {canWalk ? <button type="button" style={press} onClick={() => paint('walk')}>{PLACE_LINE_WORDS.walk}</button> : null}
+                                    <button type="button" style={press} onClick={() => paint('line')}>{PLACE_LINE_WORDS.draw}</button>
+                                  </span>
+                                )
+                              })()
+                            ) : null}
                             <span style={{ gridColumn: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                               {sure ? `the phone was sure ${sure}` : 'placed by hand'}
                               {by ? ` · ${by}` : ''}
                               {mine(p.setBy) ? (
                                 <>
                                   {' · '}
-                                  <button type="button" style={{ ...quiet, fontSize: '0.8125rem', minHeight: 0 }} onClick={() => changePlace(p)}>Change this place</button>
+                                  {/* The way into the sheet, and to a place's other photos: a thumb's height (#413's walk). */}
+                                  <button type="button" style={{ ...quiet, fontSize: '0.8125rem', minHeight: 44 }} onClick={() => changePlace(p)}>Change this place</button>
                                 </>
                               ) : null}
                             </span>

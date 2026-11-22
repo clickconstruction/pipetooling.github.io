@@ -68,7 +68,7 @@ You see only your own write-ups. You never see the rest of a person's file.
 
 You can send a write-up with no signal. The phone keeps it and sends it by itself when the signal is back.
 
-The sheet then reads *Kept on this phone*, with the time you pressed. **Your write-ups** lists it as {{chip:yellow|Waiting for signal}}. Closing the app loses nothing.
+The sheet then reads *Kept on this phone*, with the time you pressed. **Your write-ups** lists it as {{chip:yellow|Waiting for signal}}. Closing the app loses nothing. Once the write-up has gone, the sheet reads *Sent to HR* with the time.
 
 Photos wait with it. The line under the name counts them, as in *1 photo kept*. The phone sends the photos first and the write-up after.
 

@@ -26,6 +26,16 @@ vi.mock('../lib/photos/photoTakenAt', () => ({
   readTakenAt: (_file: Blob, uploadedMs: number) => Promise.resolve(camera.time ?? new Date(uploadedMs).toISOString()),
 }))
 
+/** The phone, stood in for (punch list #413, step 3): each ask is counted, and a test sets what it answers. */
+const phone = vi.hoisted(() => ({ reads: 0, answer: { ok: false, why: 'none' } as unknown }))
+vi.mock('../lib/paintedMap/paintedSpotIo', () => ({
+  readSpotNow: () => {
+    phone.reads += 1
+    return Promise.resolve(phone.answer)
+  },
+  readSpotSoon: (reading: Promise<unknown>) => reading,
+}))
+
 import { useShotTileEngine, useShotTiles } from './useShotTiles'
 
 const sent: SendShotInput[] = []
@@ -114,6 +124,8 @@ describe('useShotTileEngine', () => {
     held.clear()
     refuseWith = null
     camera.time = null
+    phone.reads = 0
+    phone.answer = { ok: false, why: 'none' }
     let urls = 0
     URL.createObjectURL = () => `blob:test-${++urls}`
     URL.revokeObjectURL = () => undefined
@@ -157,5 +169,60 @@ describe('useShotTileEngine', () => {
     pick('report-camera-input', [photo('a.jpg', Date.now() - 1000)])
     expect((await screen.findByTestId('tile-failed')).textContent).toBe('The phone has no signal.')
     expect(held.size).toBe(0)
+  })
+})
+
+/**
+ * Where the phone was when a shot was taken (punch list #413, step 3). The Job photos window and a report read the
+ * phone once on a pick, and a shot of this moment sends its row with that reading. A host that keeps no point asks
+ * the phone nothing.
+ */
+describe('a shot keeps where the phone was', () => {
+  beforeEach(() => {
+    sent.length = 0
+    held.clear()
+    refuseWith = null
+    camera.time = null
+    phone.reads = 0
+    phone.answer = { ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6.4 } }
+    let urls = 0
+    URL.createObjectURL = () => `blob:test-${++urls}`
+    URL.revokeObjectURL = () => undefined
+  })
+
+  it('reads the phone once for a pick of several, and each fresh shot sends that reading', async () => {
+    render(<WindowHost />)
+    pick('shot-input', [photo('a.jpg', Date.now()), photo('b.jpg', Date.now())])
+    await waitFor(() => expect(sent).toHaveLength(2))
+    expect(phone.reads).toBe(1)
+    expect(sent.map((s) => s.takenPoint)).toEqual([{ lat: 29.5004, lng: -98.2004, accuracyM: 6 }, { lat: 29.5004, lng: -98.2004, accuracyM: 6 }])
+  })
+
+  it('a shot the camera took hours ago keeps no point: it is not of where the phone is now', async () => {
+    camera.time = new Date(Date.now() - 6 * 60 * 60_000).toISOString()
+    render(<WindowHost />)
+    pick('shot-input', [photo('old.jpg', Date.now())])
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]!.takenPoint).toBeNull()
+  })
+
+  it('a rough reading, or none, is kept by nobody, and the shot still sends', async () => {
+    phone.answer = { ok: true, fix: { lat: 31, lng: -99, accuracyM: 3200 } }
+    render(<WindowHost />)
+    pick('shot-input', [photo('a.jpg', Date.now())])
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]!.takenPoint).toBeNull()
+    phone.answer = { ok: false, why: 'refused' }
+    pick('shot-input', [photo('b.jpg', Date.now())])
+    await waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[1]!.takenPoint).toBeNull()
+  })
+
+  it('a host that keeps no point asks the phone nothing', async () => {
+    render(<ReportModeHost />)
+    pick('report-camera-input', [photo('a.jpg', Date.now())])
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(phone.reads).toBe(0)
+    expect(sent[0]!.takenPoint).toBeNull()
   })
 })

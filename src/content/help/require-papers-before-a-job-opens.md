@@ -45,6 +45,8 @@ Some papers are built from settings. Such a paper changes with the job. The list
 
 Each topic's page says what puts a person in breach. It says what the site must have too. A level the site cannot enforce protects nothing.
 
+The button stays grey while a blank is empty. A line under it names the blank. Press that line to go to the blank.
+
 The paper joins the job at once. It does not wait for the blue count button.
 
 :::example A paper no attorney has read

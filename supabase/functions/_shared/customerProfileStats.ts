@@ -212,6 +212,11 @@ export type ProfileJobRowMoney = {
   oldestOpenBillYmd: string | null
   /** Open billed money with no date anywhere (no est. date, no billed_at) — can't age. */
   noBillDate: boolean
+  /**
+   * The open billed money is on a job an in-kind deal pays (punch list #301): it is scheduled, so the row has no
+   * age, no bill day to age from and no *no date* warning. `openBilled` still counts it, as the open balance does.
+   */
+  scheduledInKind: boolean
 }
 
 /**
@@ -219,17 +224,21 @@ export type ProfileJobRowMoney = {
  * bill-truth kernel's, so listed rows reconcile with the money strip:
  * billed-invoice remainders (net of linked payments) plus the billed
  * job-shell fallback, each clamped once; every other non-paid job shows its
- * unbilled value instead.
+ * unbilled value instead. A job an in-kind deal pays keeps its open money and
+ * loses its age (`scheduledInKind`), as `customerMoneyStats` leaves it out of
+ * the aging chip.
  */
 export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJobRowMoney {
   const status = (job.status ?? 'working') as string
-  const out: ProfileJobRowMoney = { openBilled: 0, unbilled: 0, ageDays: null, oldestOpenBillYmd: null, noBillDate: false }
+  const out: ProfileJobRowMoney = { openBilled: 0, unbilled: 0, ageDays: null, oldestOpenBillYmd: null, noBillDate: false, scheduledInKind: false }
   if (status === 'paid') return out
+  const inKind = Boolean(job.in_kind_arrangement_id)
   const rows = openBillRowsForJob(job, job.invoices.map((i) => ({ ...i, job_id: job.id })), appliedOnJob(job))
   const shell = rows.find((r) => r.kind === 'shell')
   if (shell) {
     out.openBilled = shell.remaining
-    out.noBillDate = !shell.settled
+    out.scheduledInKind = inKind && out.openBilled > 0.005
+    out.noBillDate = !shell.settled && !inKind
     return out
   }
   const invoiceById = new Map(job.invoices.map((i) => [i.id, i]))
@@ -249,6 +258,13 @@ export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJo
   }
   if (out.oldestOpenBillYmd != null) out.ageDays = Math.max(0, daysBetweenYmdUtc(out.oldestOpenBillYmd, todayYmd))
   out.noBillDate = out.openBilled > 0.005 && out.oldestOpenBillYmd == null && sawUndated
+  if (inKind && out.openBilled > 0.005) {
+    // A deal pays this job's bills a credit at a time, so the open money is scheduled: no age and no day to age from.
+    out.scheduledInKind = true
+    out.ageDays = null
+    out.oldestOpenBillYmd = null
+    out.noBillDate = false
+  }
   if (out.openBilled <= 0.005) out.unbilled = openRemainder(job.revenue, job.payments_made)
   return out
 }

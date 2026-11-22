@@ -9,7 +9,9 @@ import type { Database } from '../../types/database.ts'
  * shapes them. A ZZ test job is no job a bid became (v2.6813): the caller
  * passes the ZZ ids, or null to keep them, and the job rows carry their names
  * (`zzTestJobs.ts`). Since v2.6823 a ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no ask, no bid
- * sent, won, lost or awaiting either, for the same viewer. The estimates are not touched: they have no ZZ rule.
+ * sent, won, lost or awaiting either, for the same viewer. Since v2.8280 a ZZ test estimate (`isZzEstimate`) is no ask
+ * and no estimate sent, won, lost or awaiting, for the viewer who hides ZZ tests: `hideZzEstimates` is that viewer's
+ * switch by itself, since `zzTestJobIds` also carries the jobs the Bridge leaves out.
  *
  * Since punch list #318 a win is the bid's mark, dated by its answer day or, when it has none, by the day its job was
  * made. Most won bids carry no answer day, and such a bid can be older than the three reads above. So the bids behind
@@ -19,15 +21,15 @@ import { withSupabaseRetry } from '../../utils/errorHandling.ts'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging.ts'
 import { ymdAddDays, calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { AWAITING_DAYS, type DemandBid, type DemandEstimate, type DemandInput } from './demandPace.ts'
-import { withoutZzBridgeBids, withoutZzBridgeJobs, type BridgeZzTestJobIds } from './zzTestJobs.ts'
+import { ZZ_ESTIMATE_FIELDS, withoutZzBridgeBids, withoutZzBridgeEstimates, withoutZzBridgeJobs, type BridgeZzTestJobIds, type ZzEstimateRow } from './zzTestJobs.ts'
 
 type BidRow = { id: string; project_name: string | null; created_at: string | null; bid_date_sent: string | null; bid_value: number | null; agreed_value: number | null; outcome: string | null; outcome_at: string | null }
 type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
-type EstimateRow = { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
+type EstimateRow = ZzEstimateRow & { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
 
 const ymdOf = (iso: string | null | undefined): string | null => (iso ? calendarYmdInAppTzFromIso(iso) || null : null)
 
-export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<DemandInput> {
+export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string; zzTestJobIds: BridgeZzTestJobIds; /** The viewer's ZZ switch by itself: true leaves the ZZ test estimates out. */ hideZzEstimates: boolean }): Promise<DemandInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -AWAITING_DAYS)
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const select = 'id, project_name, created_at, bid_date_sent, bid_value, agreed_value, outcome, outcome_at'
@@ -37,7 +39,7 @@ export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { win
     fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(select).gte('outcome_at', sinceIso).order('id').range(from, to), 'bridge demand bids answered')) as BidRow[] | null, error: null }), 'bridge demand bids answered'),
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => db.from('estimates').select('id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind').gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand estimates')) as EstimateRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('estimates').select(`id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind, ${ZZ_ESTIMATE_FIELDS}`).gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand estimates')) as EstimateRow[] | null,
         error: null,
       }),
       'bridge demand estimates',
@@ -85,7 +87,7 @@ export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { win
       jobUsd: job ? job.revenue : null,
     }
   })
-  const estimates: DemandEstimate[] = estimateRows
+  const estimates: DemandEstimate[] = withoutZzBridgeEstimates(estimateRows, opts.hideZzEstimates)
     .filter((e) => !e.doc_kind || e.doc_kind === 'estimate')
     .map((e) => ({ id: e.id, createdYmd: calendarYmdInAppTzFromIso(e.created_at), sentYmd: ymdOf(e.sent_at), status: e.status, usd: (e.total_cents ?? 0) / 100, acceptedYmd: ymdOf(e.acceptor_consented_at), updatedYmd: ymdOf(e.updated_at) }))
   return { windowStart: opts.windowStart, todayYmd: opts.todayYmd, bids, estimates }

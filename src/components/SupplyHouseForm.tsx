@@ -305,7 +305,7 @@ export function SupplyHouseForm({
           <>
             <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
             {/* Punch list #403, step 4: the papers that are with this house or one of its reps. The section gates itself by role. */}
-            <PartyPapersSection party={{ kind: 'supply_house', id: editingSupplyHouse.id }} />
+            <PartyPapersSection party={{ kind: 'supply_house', id: editingSupplyHouse.id }} partyName={editingSupplyHouse.name} />
           </>
         ) : (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>

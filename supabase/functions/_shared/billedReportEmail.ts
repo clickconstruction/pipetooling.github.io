@@ -15,9 +15,15 @@
  * Lifted here verbatim in v2.4167 (punch list #60, lift 4 of 14) so Settings → What the team sees
  * renders the digest on sample data — the app origin for the deep links is an argument;
  * the function's render.ts binds it from its secret.
+ *
+ * A bill an in kind deal pays is not in the report (punch list #301): the function stamps the deal on each row
+ * (`_shared/inKindPayloadRows.ts`), `withInKindApart` takes those rows out of the list and out of every total, and
+ * the header says how much was left out in one line. Before it the report listed such a bill with its days in red
+ * and counted it in the 90+ chip.
  */
 
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { inKindApartWords, rowIsScheduledInKind, splitInKind, type InKindApart } from './inKindApart.ts'
 
 export type BilledReportRow = {
   job_id: string
@@ -34,6 +40,8 @@ export type BilledReportRow = {
   days_past: number | null
   remaining: number
   aging_bucket: '30_90' | '90' | null
+  /** The in kind deal that pays this job's bills, stamped by the function; absent or null on a bill paid with money. */
+  in_kind_arrangement_id?: string | null
 }
 
 export type BilledReportPayload = {
@@ -47,6 +55,36 @@ export type BilledReportPayload = {
     sum90: number
   }
   rows: BilledReportRow[]
+  /** The bills left out because an in kind deal pays them (`withInKindApart`); absent before the split. */
+  inKind?: InKindApart
+}
+
+const cents = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * The payload with the bills a deal pays set apart: out of the rows, out of the grand total and out of both aging
+ * chips, and counted in `inKind`. The RPC sums its totals over every row, so they are summed again here over the
+ * rows that stay, by the RPC's own rule (a chip counts a row by its `aging_bucket`). A payload with no stamped row
+ * comes back with its totals as the RPC gave them. Pure.
+ */
+export function withInKindApart(p: BilledReportPayload): BilledReportPayload {
+  const split = splitInKind(p.rows, rowIsScheduledInKind, (r) => r.remaining)
+  if (split.scheduled.length === 0) return { ...p, inKind: split.inKind }
+  const rows = split.money
+  const in30 = rows.filter((r) => r.aging_bucket === '30_90')
+  const in90 = rows.filter((r) => r.aging_bucket === '90')
+  const sum = (list: BilledReportRow[]) => cents(list.reduce((s, r) => s + Number(r.remaining ?? 0), 0))
+  return {
+    ...p,
+    rows,
+    totals: { row_count: rows.length, grand_total: sum(rows), count30_90: in30.length, sum30_90: sum(in30), count90: in90.length, sum90: sum(in90) },
+    inKind: split.inKind,
+  }
+}
+
+/** The report's line on what it left out: "$14,643 on 8 bills is scheduled in kind, not money due". Null with none. */
+export function billedReportInKindLine(p: Pick<BilledReportPayload, 'inKind'>): string | null {
+  return p.inKind ? inKindApartWords(p.inKind, 'money due') : null
 }
 
 function esc(s: unknown): string {
@@ -177,6 +215,7 @@ function renderGroup(appUrl: string, g: Group): string {
 export function renderBilledReportEmail(p: BilledReportPayload, appUrl: string, senderName?: string): string {
   const groups = groupBilledRows(p.rows)
   const t = p.totals
+  const inKindLine = billedReportInKindLine(p)
   return `
   <div style="background:#f5f5f4;padding:16px;">
     <div style="margin:0 auto;max-width:640px;background:#ffffff;border:1px solid #e7e5e4;border-radius:8px;padding:22px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
@@ -187,8 +226,9 @@ export function renderBilledReportEmail(p: BilledReportPayload, appUrl: string, 
           ${chip('#fef3c7', '#92400e', '#fcd34d', `30&ndash;90 days &middot; ${t.count30_90} &middot; ${money(t.sum30_90)}`)}
           ${chip('#fee2e2', '#b91c1c', '#fca5a5', `90+ days &middot; ${t.count90} &middot; ${money(t.sum90)}`)}
         </div>
+        ${inKindLine ? `<div style="margin-top:8px;font-size:12px;color:#57534e;">${esc(inKindLine)}.</div>` : ''}
       </div>
-      ${groups.length === 0 ? '<p style="text-align:center;color:#57534e;font-size:13px;">Nothing billed awaiting payment. Nice.</p>' : groups.map((g) => renderGroup(appUrl, g)).join('')}
+      ${groups.length === 0 ? `<p style="text-align:center;color:#57534e;font-size:13px;">${inKindLine ? 'No bill is waiting on money.' : 'Nothing billed awaiting payment. Nice.'}</p>` : groups.map((g) => renderGroup(appUrl, g)).join('')}
       <div style="text-align:center;margin-top:14px;padding-top:10px;border-top:2px solid #e7e5e4;font-size:14px;">
         Grand total due: <b>${money(t.grand_total)}</b>
       </div>
@@ -224,5 +264,7 @@ export function billedReportEmailText(p: BilledReportPayload, appUrl: string): s
     }
   }
   lines.push('', `Grand total due: ${money(p.totals.grand_total)}`)
+  const inKindLine = billedReportInKindLine(p)
+  if (inKindLine) lines.push(`${inKindLine}.`)
   return lines.join('\n')
 }

@@ -62,6 +62,8 @@ A box with more than one part lists what it holds. Tap a part to take one. Tap i
 
 Did you take a part the list does not show? Tap **Something not on the list…** and name it.
 
+An empty box has no blue press. It has a link at the bottom of the screen. The link reads **Took something out of G12? Say what ›**. Tap it if you found parts in a box the app shows as empty. The same take opens. Tap **Something not on the list…** and name what you took.
+
 Then tap the press at the bottom. It reads your count, like **Take 3 from G12**. The take is saved at once. The camera opens again. Take a photo of the box after and tap Use Photo. You are done.
 
 You can skip a photo. Close the camera with no shot and the app goes on. The screen reads **G12 has no photo as found.** Tap **Take the photo** to try again. After the take, tap **Finish without it** to leave the second photo out. The office sees which photo is missing.

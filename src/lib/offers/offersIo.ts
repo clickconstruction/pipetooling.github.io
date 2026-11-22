@@ -19,7 +19,7 @@ import { jobKeyOfRow, jobRefOf } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
 import { answeredAlready, answeredJobs, needsRatingLink, RATE_BLANK } from '../ratings/ratingAsk'
 import { supabaseRatingLinkIo, type RatingLinkIo } from '../ratings/ratingLinkIo'
-import { rateJobsOf, withAnsweredHolds, withSentHolds, type OfferRow, type SentRow, type TodaysSend, type TodaysSendsInput } from './offers'
+import { payJobsOf, rateJobsOf, withAnsweredHolds, withInKindHolds, withSentHolds, type OfferRow, type SentRow, type TodaysSend, type TodaysSendsInput } from './offers'
 
 export interface OfferMake {
   contactId: string
@@ -98,6 +98,24 @@ export async function withRatingLink(body: string, row: Pick<TodaysSend, 'contac
   return body.replace(RATE_BLANK, link)
 }
 
+/**
+ * Which of these Pipeline jobs an in kind arrangement pays (`jobs_ledger.in_kind_arrangement_id`, punch list #301). A
+ * read that fails, or a reader the table is closed to, holds nothing: the window is no worse than it was before the
+ * hold, and the morning run no longer prepares such a text.
+ */
+export async function jobsOnDeal(client: unknown, jobIds: readonly string[]): Promise<Set<string>> {
+  const db = client as SupabaseClient
+  const none = new Set<string>()
+  if (!jobIds.length) return none
+  try {
+    const result = await db.from('jobs_ledger').select('id').in('id', [...jobIds]).not('in_kind_arrangement_id', 'is', null)
+    if (result.error) return none
+    return new Set(((result.data ?? []) as Array<{ id: string }>).map((r) => r.id))
+  } catch {
+    return none
+  }
+}
+
 export function supabaseOffersIo(client: unknown = supabase, ratingLinks: RatingLinkIo = supabaseRatingLinkIo(client)): OffersIo {
   const db = client as SupabaseClient
   const open = (columns: string = OFFER_COLUMNS) => db.from('nudge_offers').select(columns).is('sent_at', null).is('dismissed_at', null).order('prepared_at')
@@ -155,7 +173,10 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       // asks again before it mints.
       const rateJobs = rateJobsOf(offers)
       const answered = rateJobs.length ? await ratingLinks.asksOn(rateJobs).then(answeredJobs, () => new Set<string>()) : new Set<string>()
-      return { offers: withAnsweredHolds(offers, answered), names, numbers, stepNames: stepNamesFrom((steps.data ?? []) as unknown as Array<{ step_key: string; name: string; flows: { kind: string } | null }>) }
+      // The app's pay reminder on a job an in kind arrangement pays is held (v2.8277, punch list #301).
+      const payJobs = payJobsOf(offers)
+      const onDeal = payJobs.length ? await jobsOnDeal(db, payJobs) : new Set<string>()
+      return { offers: withInKindHolds(withAnsweredHolds(offers, answered), onDeal), names, numbers, stepNames: stepNamesFrom((steps.data ?? []) as unknown as Array<{ step_key: string; name: string; flows: { kind: string } | null }>) }
     },
     async countOpen() {
       const result = await db.from('nudge_offers').select('id', { count: 'exact', head: true }).is('sent_at', null).is('dismissed_at', null)
