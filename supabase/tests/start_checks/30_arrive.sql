@@ -185,6 +185,9 @@ RESET ROLE;
 
 -- 5 · The crew is who is on the job now (migration *_crew_days_start_checks). Hank is on no team. A clock-in on the
 -- job fifteen days ago does not make him its crew, and one fourteen days ago does.
+-- The last sign-in was Dana's, and it outlives RESET ROLE: clock_sessions' window fence reads it, and an assistant
+-- may not write a day before her hours window, which on a Sunday starts fourteen days back. The setup signs out first.
+SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
 INSERT INTO public.clock_sessions (id, user_id, job_ledger_id, clocked_in_at, clocked_out_at, work_date) VALUES
   ('00000000-0000-0000-0000-0000003821d1', '00000000-0000-0000-0000-0000003821ab', '00000000-0000-0000-0000-0000003821b1', now() - interval '15 days', now() - interval '15 days' + interval '8 hours', public.app_today() - 15);
 SET LOCAL ROLE authenticated;
