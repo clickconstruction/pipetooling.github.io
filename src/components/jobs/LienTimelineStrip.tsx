@@ -761,7 +761,15 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
           {ticks.map((t) => (
             <span key={t} data-lien-timeline-windows-tick={t.slice(0, 7)} style={{ position: 'absolute', left: `${pct(t)}%`, bottom: 2, paddingLeft: 3, borderLeft: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{MONTH_SHORT[Number(t.slice(5, 7)) - 1]}</span>
           ))}
-          <span style={{ position: 'absolute', left: `${todayAt}%`, top: 0, paddingLeft: 4, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', transform: todayAt > 75 ? 'translateX(-100%)' : undefined }}>today · {lienDateWords(todayYmd, todayYmd)}</span>
+          {todayAt > 75 ? (
+            <span data-lien-timeline-today-label style={{ position: 'absolute', left: `${todayAt}%`, top: 0, paddingLeft: 4, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', transform: 'translateX(-100%)' }}>today · {lienDateWords(todayYmd, todayYmd)}</span>
+          ) : (
+            // The words start at today's line when they fit. On a narrow strip they ran past the axis's right edge, so the lead before them gives way first, as a caption's does.
+            <span data-lien-timeline-today-row style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', minWidth: 0 }}>
+              <span aria-hidden data-lien-timeline-today-lead style={{ flex: `0 1 ${todayAt}%`, minWidth: 0 }} />
+              <span data-lien-timeline-today-label style={{ flex: '0 0 auto', maxWidth: '100%', paddingLeft: 4, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', boxSizing: 'border-box' }}>today · {lienDateWords(todayYmd, todayYmd)}</span>
+            </span>
+          )}
         </div>
       </div>
       {rows.map((r) => (
@@ -799,12 +807,16 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
                   ✗
                 </span>
               ) : null}
-              <span
-                data-lien-timeline-caption
-                style={{ position: 'absolute', top: 27, ...(pct(r.start) > 55 ? { right: 0, textAlign: 'right' } : { left: `${pct(r.start)}%` }), maxWidth: '100%', fontSize: '0.7rem', lineHeight: 1.3, color: captionColor(r.captionTone), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-              >
-                <Days text={r.caption} />
-                {r.chip ? <span data-lien-timeline-chip style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, lineHeight: '15px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', verticalAlign: 1 }}>{r.chip}</span> : null}
+              {/* The caption starts where its bar starts, or ends at the column's end under a bar that starts late. On a narrow strip a caption from its bar's start ran past the column's right edge, since it was capped at the column's width from wherever it began. The lead before it now gives way first: the caption slides left only as far as it must, and is cut only when it is wider than the whole column. */}
+              <span data-lien-timeline-caption-row={pct(r.start) > 55 ? 'end' : 'start'} style={{ position: 'absolute', top: 27, left: 0, right: 0, display: 'flex', justifyContent: pct(r.start) > 55 ? 'flex-end' : 'flex-start', minWidth: 0 }}>
+                {pct(r.start) > 55 ? null : <span aria-hidden data-lien-timeline-caption-lead style={{ flex: `0 1 ${pct(r.start)}%`, minWidth: 0 }} />}
+                <span
+                  data-lien-timeline-caption
+                  style={{ flex: '0 0 auto', maxWidth: '100%', minWidth: 0, fontSize: '0.7rem', lineHeight: 1.3, color: captionColor(r.captionTone), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                >
+                  <Days text={r.caption} />
+                  {r.chip ? <span data-lien-timeline-chip style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, lineHeight: '15px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', verticalAlign: 1 }}>{r.chip}</span> : null}
+                </span>
               </span>
             </div>
           ) : (
