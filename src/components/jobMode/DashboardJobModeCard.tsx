@@ -52,7 +52,8 @@ import { JOB_CARD_FIRST_ROW_WORDS, JOB_CARD_ROW_WORDS, oneStopLineWords, oneStop
 import { setFoldedJobId } from '../../lib/phoneLayout/foldedJob'
 import { directionsUrlForAddress } from '../../lib/directionsUrl'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { CARD_PRESS, CardRow, MySpendPress, recordCardPress } from './JobModePhoneCardParts'
+import { CardRow, MySpendPress } from './JobModePhoneCardParts'
+import { CARD_PRESS, recordCardPress } from './jobModePhoneCardLook'
 import FieldPctUpdateModal from '../dashboard/FieldPctUpdateModal'
 import {
   buildJobModePressBar,

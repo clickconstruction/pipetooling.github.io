@@ -27,7 +27,8 @@ import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 import { JOB_CARD_FIRST_ROW_WORDS, JOB_CARD_ROW_WORDS, phoneAsWritten, rowCountWords } from '../../lib/phoneLayout/jobCard'
-import { CARD_PRESS, CardFold, CardRow } from './JobModePhoneCardParts'
+import { CardFold, CardRow } from './JobModePhoneCardParts'
+import { CARD_PRESS } from './jobModePhoneCardLook'
 
 type CustomerContact = {
   customer_name: string | null
