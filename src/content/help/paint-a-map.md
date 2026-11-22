@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, google maps, google map, google, directions, job, address, line, place, dot, pin, pins, point of interest, kept at this address, same address, earlier job, next job, warranty call, service call, photo of a spot, spot, camera, take a photo, keep a spot, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, buried line, what is buried, buried, walk this line, draw this line, open the line, line length, how long, no signal, kept on this phone, send now, waits on this phone, offline, another photo, more photos, second photo, before and after, open and covered, water line, sewer line, gas line, electric, irrigation, cable, locator, 811, something else, custom, describe it, description, read it all, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -337,6 +337,37 @@ To change a place you set, press **Change this place** beside it. Drag its dot, 
 
 Press a photo in the list to see it large.
 
+### More than one photo
+
+A place can hold more photos after its first. Show the trench open, then show it filled.
+
+1. Press **Change this place** beside the place.
+2. Press {{button:outline|＋ Another photo}}. On a phone the camera opens.
+3. Press {{button:blue|Save the place}}.
+
+The extra photos sit under the place's words in the list. Press one to see it large.
+
+Press **Remove** under a photo to take it off. A place holds twelve more photos.
+
+A shared link shows a place's first photo only.
+
+### Walk the line of a buried place
+
+A buried line has a length. Walk it before the trench is filled, and the place keeps that length.
+
+1. Open **Places on this job** and find the buried place.
+2. Press {{button:outline|＋ Walk this line}}. Or press {{button:outline|＋ Draw this line}} to press it out on the map.
+3. Walk the line and press **Done**. Then press **Save the map**.
+4. Close the map. **Places on this job** opens again on the place.
+
+The line is on a painted map of its own, named for the place.
+
+The place's row now says the length, such as *About 60 ft, give or take 10 ft*. Press **Open the line** to see it.
+
+The line is drawn in the color of what is buried. A sewer line is green.
+
+You see the two presses on a place you set. The office sees them on every buried place.
+
 ## Send one place to someone
 
 Each place has a press of its own for this. You do not share the whole map.
@@ -416,6 +447,44 @@ When your phone gives only an area, the dot is not moved. Drag the dot onto the 
 Picked an older photo? The dot is not put where you stand. A line at the top of the sheet says so. Drag the dot onto the spot.
 
 The photo is the place's photo. The photo shows beside the place in **Places on this job**.
+
+### A place set with no signal
+
+A yard is where the signal drops. A place you set there is not lost.
+
+Press {{button:blue|Add this place}} as usual. The sheet closes, and an amber line reads *Kept on this phone. It goes to the job when the signal is back.*
+
+The place and its photos wait on your phone. A line near the bottom of the app says how many wait.
+
+The app sends them when the signal is back. Press {{button:outline|Send now}} to try at once.
+
+A place waits seven days. After that the phone drops it, so open the app with signal before then.
+
+Only a new place waits. A change to a saved place says it did not save. Press {{button:blue|Save the place}} again when you have signal.
+
+### See the places on the job
+
+A crew's job window lists the job's places under the address. Each place is a row with its photo, its mark and the start of its words.
+
+The office's job window shows them on its **Map** tab. Under the address it shows one line, **Places on this job**.
+
+Press a row. **Places on this job** opens on that place, with the map on its dot.
+
+A long list shows four rows. Press **＋ 3 more** to open the rest.
+
+### Places an earlier job kept at this address
+
+The next job at a house is a different job. The cleanout is where it was.
+
+A job reads the places an earlier job kept at the same customer address. Those places sit under a dashed line named **Kept at this address**.
+
+The line says how many places there are and when they were kept. The office also reads which job kept them.
+
+Press the line or a row to open that list. A new place you set goes on your own job.
+
+Only a job's list of places follows the address. A painted map of the way in stays on its own job.
+
+A job with no customer address on file shares nothing. Ask the office to pick the customer's address on the job.
 
 Adding a photo to the job anyway? Each new photo in **Job photos** has {{button:outline|＋ Keep this spot on the job}}. A photo on **Leave Report** has {{button:outline|Keep this spot}}. Either press opens the same sheet with that photo in it.
 
@@ -673,6 +742,8 @@ Open a saved map to read it. The map under the lines is Google Maps.
 
 **From above** is Google's photograph, with the street names on it. **Streets** is Google's road map. Google's own shop and landmark labels are off, so nothing sits under your line.
 
+A walk is painted on Google Maps too. The map follows you as you go.
+
 Press {{button:blue|Draw a line}} or {{button:outline|＋ Place}} and the picture under the map changes. You draw on the view from above the app has always used.
 
 The map then stays on that picture until you close it. Your new line stays on the photograph you drew it over.
@@ -687,7 +758,7 @@ A picture and a printed page are drawn on the view from above, never on Google M
 
 When Google Maps cannot load, the map opens on the view from above. Nothing on the map is lost.
 
-The page a link opens is not on Google Maps yet.
+The page a link opens is on Google Maps too. A reader who presses **Show where I am** sees their own dot and the whole line together.
 
 ## When the picture is old
 

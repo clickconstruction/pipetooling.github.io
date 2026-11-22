@@ -35,6 +35,8 @@ import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
 import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
 import { PunchListTick } from '../components/punchList/PunchListTick'
+import { PunchListClaim } from '../components/punchList/PunchListClaim'
+import type { CardClaims } from '../lib/todos/punchListClaims'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import {
   ORDER_KEY,
@@ -85,16 +87,22 @@ import board from 'virtual:punch-list'
  * name (`lib/todos/punchListSearch.ts`). The address carries it as `?q=`, the device does not.
  *
  * A checkbox beside every card means "I am working on this" (Taunya's ask of 2026-11-21). A tick is
- * the person's own row in `punch_list_ticks`, so it is on their phone and their desk and nobody else
- * sees it. It shows only while the card is in the section it was ticked in, so a card that moves to
- * another section loses its tick (`lib/todos/punchListTicks.ts`, `usePunchListTicks`). The
- * **Working on** pill narrows both views to the ticked cards and carries their count.
+ * the person's own row in `punch_list_ticks`, so it is on their phone and their desk. It shows only
+ * while the card is in the section it was ticked in, so a card that moves to another section loses
+ * its tick (`lib/todos/punchListTicks.ts`, `usePunchListTicks`). The **Working on** pill narrows
+ * both views to the ticked cards and carries their count.
+ *
+ * Since v2.8226 a tick is a claim (her ask of the same day): everyone who opens the board sees who
+ * is working on a card, on a line under its name. A claim goes quiet 12 hours after the newest of
+ * the tick, a **Still on it** press and the card file's last change on main, which the build ships
+ * in the history (`history.touched`). A quiet card reads as free to pick up to everyone else; its
+ * claimer keeps their own tick, marked as gone quiet (`lib/todos/punchListClaims.ts`).
  */
 /** The board's history as the build replayed it from git; the burndown reads it. */
 const history = unpackHistory(packedHistory)
 
 export default function PunchList() {
-  const { user: authUser, role, loading: authLoading } = useAuth()
+  const { user: authUser, role, profileName, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { bounce } = useRoleGate(role, authUser?.id)
@@ -107,15 +115,30 @@ export default function PunchList() {
   }, [authLoading, role, allowed, bounce, navigate, location.pathname, location.search])
 
   const { picks, shared, save } = usePunchListPicks(allowed)
-  // The person's own ticks. A stale row is deleted with no press only on the built site (a branch's board on a dev
-  // server can be behind main) and never under View as, where a look writes nothing by itself.
+  // The page's clock, for a claim's quiet hours: it moves once a minute and when the tab comes back to the front.
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const tick = (): void => setNowMs(Date.now())
+    const timer = window.setInterval(tick, 60_000)
+    window.addEventListener('focus', tick)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', tick)
+    }
+  }, [])
+  // Every person's ticks, each a claim. The person's own stale row is deleted with no press only on the built site
+  // (a branch's board on a dev server can be behind main) and never under View as, where a look writes nothing by itself.
   const ticks = usePunchListTicks({
     enabled: allowed,
     userId: authUser?.id,
+    userName: profileName,
     cards: board.items,
     boardVersion: board.validated.version,
     mayClear: import.meta.env.PROD && !isImpersonationSessionActive(),
+    touched: history.touched,
+    nowMs,
   })
+  const claimOf = (it: BoardItem): CardClaims | undefined => ticks.claims.byCard.get(it.number)
   const [filter, setFilter] = useState<PunchFilter>('all')
   const [waitingOnly, setWaitingOnly] = useState(false)
   const [tickedOnly, setTickedOnly] = useState(false)
@@ -171,6 +194,9 @@ export default function PunchList() {
         .punch-num { border-right: 1px solid var(--border); padding: 0.9rem 0.5rem 0.9rem 0.7rem; }
         /* The tick under the number: the label takes the cell's whole width, 44 px tall, for a thumb. */
         .punch-num .punch-tick { width: calc(100% + 1.2rem); margin: 0.3rem -0.5rem -0.5rem -0.7rem; }
+        /* Who is on the card, under its name. Still on it is a thumb's size on a phone. */
+        .punch-main .punch-claim { margin-top: 0.35rem; }
+        @media (max-width: 860px) { .punch-still { min-height: 44px; min-width: 44px; } }
         .punch-meta, .punch-act { border-left: 1px solid var(--border); }
         @media (max-width: 860px) {
           .punch-row { grid-template-columns: 6px 3.75rem minmax(0, 1fr); }
@@ -378,6 +404,7 @@ export default function PunchList() {
           onFlip={() => choose('number', flipOrder(order))}
           onClearFilters={clearFilters}
           renderTick={(it) => <PunchListTick item={it} ticked={ticks.ticked.has(it.number)} onToggle={ticks.toggle} />}
+          renderClaim={(it) => (claimOf(it) ? <PunchListClaim item={it} claims={claimOf(it)} nowMs={nowMs} onStillOn={ticks.stillOn} /> : null)}
           // The opened card draws no box of its own: the row above it carries the card's one.
           renderCard={(it) => <Row item={it} group={it.group} picks={picks} onSave={save} first anchor={false} />}
         />
@@ -416,7 +443,7 @@ export default function PunchList() {
             </div>
             <div style={{ border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
               {shown.map((it, i) => (
-                <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle }} />
+                <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle, claims: claimOf(it), nowMs, onStillOn: ticks.stillOn }} />
               ))}
             </div>
           </section>
@@ -442,7 +469,7 @@ export default function PunchList() {
             </div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
               {shown.map((it, i) => (
-                <Row key={it.slug} item={it} group={g.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle }} />
+                <Row key={it.slug} item={it} group={g.group} picks={picks} onSave={save} first={i === 0} tick={{ ticked: ticks.ticked.has(it.number), onToggle: ticks.toggle, claims: claimOf(it), nowMs, onStillOn: ticks.stillOn }} />
               ))}
             </div>
           </section>
@@ -477,8 +504,14 @@ function Row({
   first: boolean
   /** False under a By number row, which carries the `#n<N>` anchor itself. */
   anchor?: boolean
-  /** The person's "working on it" box under the number; left out under a By number row, which carries the box itself. */
-  tick?: { ticked: boolean; onToggle: (item: Pick<BoardItem, 'number' | 'group'>, next: boolean) => void | Promise<void> }
+  /** The person's "working on it" box under the number and the card's claim line; left out under a By number row, which carries both itself. */
+  tick?: {
+    ticked: boolean
+    onToggle: (item: Pick<BoardItem, 'number' | 'group'>, next: boolean) => void | Promise<void>
+    claims: CardClaims | undefined
+    nowMs: number
+    onStillOn: (item: Pick<BoardItem, 'number' | 'group'>) => void | Promise<void>
+  }
 }) {
   const pick = pickOf(picks, item.slug)
   const note = picks[item.slug]?.note ?? ''
@@ -530,6 +563,7 @@ function Row({
             </code>
           )}
         </div>
+        {tick ? <PunchListClaim item={item} claims={tick.claims} nowMs={tick.nowMs} onStillOn={tick.onStillOn} className="punch-claim" /> : null}
         <p style={{ margin: '0.25rem 0 0', maxWidth: '68ch', fontSize: '0.9rem' }}>{item.summary}</p>
         <p style={{ margin: '0.4rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>Next:</b> {item.next}

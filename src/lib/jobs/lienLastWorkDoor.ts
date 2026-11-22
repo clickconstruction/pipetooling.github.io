@@ -36,7 +36,28 @@ export function lienLastWorkOpeningDay(d: { day: string | null; source: 'hand' |
   return d.source === 'hand' || d.source === 'hours' ? (d.day ?? '') : ''
 }
 
-/** The words after a save: one wording for the line's editor and the strip's press. */
+/**
+ * The last day of work as a value in place (punch list #399, the owner's yes of 2026-11-21). A day from clock hours,
+ * a bill or the job's creation is a default: bold, its source word after it, and this press beside it. A day set by
+ * hand is underlined, and a press on it opens its field.
+ */
+export const LIEN_LAST_WORK_SET_BY_HAND_WORDS = 'Set by hand'
+
+/** What the value is, for the press's name and the field's. Lower case, so a test can tell it from the window's own field. */
+export const LIEN_LAST_WORK_VALUE_LABEL = 'last day of work'
+
+/**
+ * The words under the open field. **Keep** writes nothing: it opens the window that shows what moves and asks why,
+ * and that window's *Set the day* is the write. The day moves every lien deadline, so it is never saved at once.
+ */
+export const LIEN_LAST_WORK_KEEP_HINT = 'Keep shows what moves with the day and asks why before anything is saved. Clock hours and pay are not changed.'
+
+/** The press in the open field of a day set by hand: what the day goes back to. */
+export function lienLastWorkBackWords(hasClockHours: boolean): string {
+  return hasClockHours ? 'Back to clock hours' : "Back to the job's creation day"
+}
+
+/** The words after a save: one wording for the line's value and the strip's press. */
 export function lienLastWorkSavedWords(day: string): string {
   return `Last day of work set to ${formatYmdMonthDay(day)}. The lien months follow it; clock hours are untouched.`
 }

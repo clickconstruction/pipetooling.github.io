@@ -42,7 +42,7 @@ import {
   type ActivityFamily,
 } from '../lib/customers/customerActivityFeed'
 import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
-import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
+import { buildCustomerInvoiceRows, customerInvoiceChipTail, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 import { telHrefFor } from '../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
@@ -578,7 +578,7 @@ export default function CustomerDetail() {
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}
           {canSeeWhatCustomersSee(myRole) && customerId ? <CustomerAgreementsCard customerId={customerId} customerName={data.customer.name} /> : null}
           {/* Punch list #403, step 4: an estimator has no Agreements card, so the papers that are with the customer get a card of their own. */}
-          {myRole === 'estimator' && customerId ? <PartyPapersCard party={{ kind: 'customer', id: customerId }} /> : null}
+          {myRole === 'estimator' && customerId ? <PartyPapersCard party={{ kind: 'customer', id: customerId }} partyName={data.customer.name} /> : null}
 
           {/* v2.6886: Names on permits — the names a city lists that are this customer's, and the press that finds more (punch list #307). The people who research permits. */}
           {canResearchPermits(myRole) && customerId ? <CustomerPermitNamesCard customerId={customerId} customerName={data.customer.name ?? ''} /> : null}
@@ -1169,7 +1169,7 @@ export default function CustomerDetail() {
                           }}
                         >
                           {chip.label}
-                          {row.agingDays != null && row.agingDays >= 30 ? ` · ${row.agingDays}d` : ''}
+                          {customerInvoiceChipTail(row)}
                         </span>
                       </td>
                       <td

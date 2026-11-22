@@ -189,27 +189,52 @@ export function heardTime(sentence: string): string | null {
   return null
 }
 
+/** A day read out of a line's own words: a voicemail's transcript, or a text. */
+export interface DaySaid {
+  /** The day, YYYY-MM-DD. */
+  day: string
+  /** "Thu Oct 8". */
+  label: string
+  /** The words it was read from, as they were written: "Thursday". */
+  said: string
+  /** A time heard in the same sentence: "after 2 PM". Null when none was said. */
+  time: string | null
+  /** The day has gone by at `now`. */
+  past: boolean
+}
+
+/**
+ * The first day said in a line's words, read from the line's own day (`at`), so "tomorrow" in Tuesday's line is
+ * Wednesday whenever it is read; `now` only says whether that day has gone by. Null for no words, no day said, or a
+ * time that is no instant. A voicemail's chip (`heardDay`) and the word press under a customer's line
+ * (`wordFromLine.ts`) both read through it.
+ */
+export function daySaidIn(text: string | null | undefined, at: string, now: Date): DaySaid | null {
+  const words = (text ?? '').trim()
+  const fromYmd = calendarYmdInAppTzFromIso(at)
+  if (!words || !fromYmd) return null
+  const found = firstDay(words, fromYmd)
+  if (!found) return null
+  const todayYmd = calendarYmdInAppTzFromIso(now.toISOString())
+  return { day: found.ymd, label: found.label, said: found.said, time: heardTime(found.sentence), past: Boolean(todayYmd) && found.ymd < todayYmd }
+}
+
 /**
  * The day heard in a voicemail from them, as a chip with its two presses, or null: no transcript yet, or no day said.
  * The day reads from the voicemail's own day; `now` only says whether that day has gone by.
  */
 export function heardDay(m: VoicemailMessage, now: Date): HeardDayChip | null {
   if (m.channel !== 'voicemail' || m.direction !== 'in') return null
-  const transcript = transcriptOf(m)
-  const fromYmd = calendarYmdInAppTzFromIso(m.at)
-  if (!transcript || !fromYmd) return null
-  const found = firstDay(transcript, fromYmd)
+  const found = daySaidIn(transcriptOf(m), m.at, now)
   if (!found) return null
-  const time = heardTime(found.sentence)
-  const todayYmd = calendarYmdInAppTzFromIso(now.toISOString())
   return {
-    day: found.ymd,
-    words: time ? `${dayLabel(found.ymd)}, ${time}` : dayLabel(found.ymd),
+    day: found.day,
+    words: found.time ? `${dayLabel(found.day)}, ${found.time}` : dayLabel(found.day),
     said: found.said,
-    time,
-    past: Boolean(todayYmd) && found.ymd < todayYmd,
+    time: found.time,
+    past: found.past,
     presses: [KEEP_THE_DAY, ANOTHER_DAY],
-    keep: heardDayWrite(m.id, dayKept({ label: found.label, ymd: found.ymd, known: true })),
+    keep: heardDayWrite(m.id, dayKept({ label: found.label, ymd: found.day, known: true })),
   }
 }
 

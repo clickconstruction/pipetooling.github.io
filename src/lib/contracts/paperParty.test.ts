@@ -22,6 +22,7 @@ import {
   signingForOf,
   signingForTail,
   type PaperPartyKind,
+  signingForBeside,
 } from './paperParty'
 
 // Every name here is made up.
@@ -187,5 +188,26 @@ describe('the kernel and the migration say the same', () => {
   it('the stored name is the kernel’s prefix, held both ways', () => {
     expect(sql).toContain(`person_name NOT LIKE '${PARTY_PAPER_PREFIX}%'`)
     expect(sql).toContain(`person_name = '${PARTY_PAPER_PREFIX}' || party_contact_id::text`)
+  })
+})
+
+describe('signing for, beside a line that names the party', () => {
+  it('says the business the paper names when the line names another party', () => {
+    expect(signingForBeside('Haddad Engineering', ['Ridgeway Builders', 'Noor Haddad'])).toBe('signing for Haddad Engineering')
+  })
+
+  it('says nothing when the line names that business already, in any case', () => {
+    expect(signingForBeside('Tallgrass Supply Co.', ['tallgrass supply co.', 'Lena Park'])).toBe('')
+    expect(signingForBeside(' Tallgrass Supply Co. ', ['Tallgrass Supply Co.'])).toBe('')
+  })
+
+  it('says nothing for someone who signs for themselves, or a paper that kept no business', () => {
+    expect(signingForBeside('Pat Tallman', ['A customer', 'Pat Tallman'])).toBe('')
+    expect(signingForBeside(null, ['Ridgeway Builders'])).toBe('')
+    expect(signingForBeside('  ', ['Ridgeway Builders'])).toBe('')
+  })
+
+  it('says it when there is no name beside it to hold it against', () => {
+    expect(signingForBeside('Haddad Engineering', [null, undefined, ''])).toBe('signing for Haddad Engineering')
   })
 })

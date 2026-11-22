@@ -121,7 +121,7 @@ describe('GcBillDayTrades (Money → Bill day → From the trades)', () => {
     const { openPartner } = show()
     await waitFor(() => expect(document.querySelectorAll('[data-bill-day-row]')).toHaveLength(6))
     expect([...document.querySelectorAll('[data-bill-day-row]')].map((r) => r.getAttribute('data-row-state'))).toEqual(['back', 'notin', 'notin', 'notin', 'waiting', 'approved'])
-    expect(within(row('so-lv')).getByText('we pay by Oct 10')).toBeTruthy()
+    expect(within(row('so-lv')).getByText('due 10 days after the customer pays our next bill')).toBeTruthy()
     fireEvent.click(within(row('so-paving')).getByRole('button', { name: 'See their page' }))
     expect(openPartner).toHaveBeenCalledWith('bd-rio', { tab: 'portal' })
     expect(document.querySelector('[data-bill-day-group="ours"]')?.textContent).toContain('$27,900 this period on J1082, 62% done')

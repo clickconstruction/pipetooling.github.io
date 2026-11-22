@@ -66,7 +66,10 @@ describe('JobPaperSettingsWindow, the first time', () => {
     expect(screen.getByRole('dialog', { name: 'Sample secrecy paper, job J900' })).toBeTruthy()
     // The box holds the walk.
     expect((screen.getByRole('button', { name: /^Next/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('Tick the box to go on.').style.visibility).toBe('visible')
     fireEvent.click(screen.getByRole('checkbox'))
+    // The hint keeps its room once the box is ticked, so Next does not move under the finger.
+    expect(screen.getByText('Tick the box to go on.').style.visibility).toBe('hidden')
     pressNext() // the basis
     pressNext() // the site
     pressNext() // photos
@@ -76,8 +79,14 @@ describe('JobPaperSettingsWindow, the first time', () => {
     // The blank no choice fills is typed here, and holds the press until it is.
     const require = () => screen.getByRole('button', { name: 'Require this paper' }) as HTMLButtonElement
     expect(require().disabled).toBe(true)
-    expect(screen.getByText('Type The protected party first.')).toBeTruthy()
+    // The note is a press 44 px tall: it goes to the empty blank, which sits under the review.
+    const note = screen.getByRole('button', { name: 'Type The protected party first.' })
+    expect(note.style.minHeight).toBe('44px')
+    fireEvent.click(note)
+    expect(document.activeElement).toBe(screen.getByLabelText('The protected party'))
     fireEvent.change(screen.getByLabelText('The protected party'), { target: { value: ' Ridgeway Sample Holdings ' } })
+    // With every blank typed the note is words again, and no press.
+    expect(screen.queryByRole('button', { name: /first\.$/ })).toBeNull()
     expect(require().disabled).toBe(false)
     fireEvent.click(require())
     await waitFor(() => expect(io.requireWithSettings).toHaveBeenCalledTimes(1))

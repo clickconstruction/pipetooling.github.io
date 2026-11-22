@@ -1,7 +1,8 @@
 -- Before we start, on arrival (migration *_start_check_arrive, punch list #382 PR 10): the crew is asked about the
 -- one stage whose days have come, shown only what nobody of ours has seen; Yes, all as told turns each into a yes we
--- saw in the arriving person's name; a No opens its bullet again and sends Dispatch one stage check; a stage is asked
--- about once, by the read and by the door (migration *_start_check_arrive_once); and who the two functions refuse.
+-- saw in the arriving person's name; a No opens its bullet again and sends Dispatch one stage check; a second yes
+-- cannot replace a No (migration *_start_check_arrive_once); a later No is kept, and a bullet with a No is asked about
+-- again once it has a new yes (migration *_start_check_arrive_again); and who the two functions refuse.
 -- Fixtures are written as postgres; presses run as each user; everything
 -- rolls back. Raises on the first failed assertion; ends with "start_check_arrive PASSED".
 -- See scripts/pgtest-start-checks.sh. Never against prod. Every name here is made up.
@@ -128,7 +129,40 @@ SELECT sca.refused('a second answer at the stage is refused, in words that name 
 RESET ROLE;
 SELECT sca.same('and it kept nothing: one arrival, and the No stands with no yes on its bullet', (SELECT count(*) FROM public.start_check_arrivals WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1') || ' arrival, ' || (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382101' AND taken_back_at IS NULL) || ' yes on the slab', '1 arrival, 0 yes on the slab');
 
--- 4 · A stage is asked about once. The next one waits for its days, and one with no days of ours is never asked about.
+-- 3c · A later No is kept (migration *_start_check_arrive_again). Hector saw the trench open. Dana gets there after
+-- him and says No to it: a No is the dearer answer, so it is its own arrival, with its line to Dispatch. A No that
+-- already stands and a later Yes, all as told are still refused by name.
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
+CREATE TEMP TABLE sca_later ON COMMIT DROP AS SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1', ARRAY['00000000-0000-0000-0000-000000382103']::uuid[]) AS r;
+SELECT sca.same('a later No on a bullet we saw as a yes is kept, with its line to Dispatch', (SELECT (r ->> 'as_told') || ' as told, ' || (r ->> 'not_as_told') || ' not, a line to Dispatch: ' || ((r ->> 'dispatch_request_id') IS NOT NULL)::text FROM sca_later), '0 as told, 1 not, a line to Dispatch: true');
+SELECT sca.refused('a No that already stands is refused by name', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1', ARRAY['00000000-0000-0000-0000-000000382101']::uuid[])$$, 'Hector Helper already answered for this stage.');
+SELECT sca.refused('and so is a later Yes, all as told', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1')$$, 'Hector Helper already answered for this stage.');
+RESET ROLE;
+SELECT sca.same('the later No took Hector''s yes back and wrote no other', (SELECT count(*) FROM public.start_check_arrivals WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1') || ' arrivals, ' || (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382103' AND taken_back_at IS NULL) || ' yes on the trench, ' || (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382101' AND taken_back_at IS NULL) || ' on the slab', '2 arrivals, 0 yes on the trench, 0 on the slab');
+SELECT sca.same('its line names the trench and nobody who told us, since the yes was ours', (SELECT title FROM public.dispatch_requests WHERE id = (SELECT (r ->> 'dispatch_request_id')::uuid FROM sca_later)), 'Rough In · “The trench is open.” · something else: not as told on arrival');
+
+-- 3d · Asked again (the same migration). Nothing new was told us, so nobody is asked. Then Ray says the slab is poured
+-- now: that yes is the one that needs one of ours to see it, so the stage is asked about again, and about the slab
+-- alone. The trench had a No too and has no new yes, so it is not on the list.
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
+SELECT sca.same('a No with no new yes asks nobody again', (public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') -> 'stage')::text, 'null');
+RESET ROLE;
+INSERT INTO public.start_check_marks (bullet_id, job_id, know, who_name, how, said_on, source) VALUES
+  ('00000000-0000-0000-0000-000000382101', '00000000-0000-0000-0000-0000003821b1', 'word', 'Ray Ortiz', 'by phone', public.app_today(), 'office');
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
+SELECT sca.same('a new yes on a bullet that had a No asks about the stage again', public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') #>> '{stage,name}', 'Rough In');
+SELECT sca.same('and about that bullet alone', (SELECT string_agg(b ->> 'words', ' | ') FROM jsonb_array_elements(public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') #> '{stage,bullets}') AS b), 'The slab is poured.');
+SELECT sca.refused('a No from an old card, on a bullet that is not asked about, is sent back to read the list', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1', ARRAY['00000000-0000-0000-0000-000000382103']::uuid[])$$, 'The list has changed');
+SELECT sca.same('Yes, all as told on what is asked again is kept', (SELECT (r ->> 'as_told') || ' as told, ' || (r ->> 'not_as_told') || ' not, a line to Dispatch: ' || ((r ->> 'dispatch_request_id') IS NOT NULL)::text FROM (SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1') AS r) AS x), '1 as told, 0 not, a line to Dispatch: false');
+RESET ROLE;
+SELECT sca.same('the slab is a yes we saw now, in Hector''s name, and Ray''s word is behind it', (SELECT string_agg(know || ' by ' || who_name, ', ' ORDER BY know) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382101' AND taken_back_at IS NULL) || ', ' || (SELECT count(*) FROM public.start_check_arrivals WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1') || ' arrivals', 'saw by Hector Helper, 3 arrivals');
+SELECT sca.same('nobody signed in may call the rule itself', has_function_privilege('authenticated', 'public.start_check_to_look(uuid)', 'execute')::text || ', ' || has_function_privilege('anon', 'public.start_check_to_look(uuid)', 'execute')::text, 'false, false');
+
+-- 4 · A stage with nothing new to look at is not asked about. The next one waits for its days, and one with no days of
+-- ours is never asked about.
 SET LOCAL ROLE authenticated;
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
 SELECT sca.same('the stage that was arrived at is not asked again, nor one whose days have not come, nor one with no days', (public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') -> 'stage')::text, 'null');

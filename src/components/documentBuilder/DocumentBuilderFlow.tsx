@@ -86,6 +86,8 @@ const SECOND_PRESS: CSSProperties = {
   cursor: 'pointer',
 }
 
+// The review's note as a press: it takes the person to what the note names.
+const NOTE_PRESS: CSSProperties = { minHeight: 44, border: 0, background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', textAlign: 'left', cursor: 'pointer' }
 function mainPress(dead: boolean): CSSProperties {
   return {
     border: 0,
@@ -234,7 +236,7 @@ export type FlowHost = {
   start?: { settings?: PaperSettings; ackAt?: string | null; step?: number }
   onHeld?: (held: { settings: PaperSettings; ackAt: string | null }) => void
   onConfirm?: (answer: { settings: PaperSettings; ackAt: string | null }) => void
-  confirm?: { label?: string; dead?: boolean; note?: string }
+  confirm?: { label?: string; dead?: boolean; note?: string; onNote?: () => void }
   reviewExtra?: ReactNode
 }
 
@@ -419,8 +421,19 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
             </button>
           )}
         </div>
-        {step.kind === 'notice' && flow.ackAt == null ? <p style={MUTED}>Tick the box to go on.</p> : null}
-        {flow.step === last ? <p style={MUTED}>{look ? look.lastStep : confirm.note}</p> : null}
+        {/* The line keeps its room once the box is ticked, so the press above does not move under the finger. */}
+        {step.kind === 'notice' ? (
+          <p style={{ ...MUTED, visibility: flow.ackAt == null ? 'visible' : 'hidden' }} aria-hidden={flow.ackAt != null}>
+            Tick the box to go on.
+          </p>
+        ) : null}
+        {flow.step === last && !look && host?.confirm?.onNote && confirm.note ? (
+          <button type="button" style={NOTE_PRESS} onClick={host.confirm.onNote}>
+            {confirm.note}
+          </button>
+        ) : flow.step === last ? (
+          <p style={MUTED}>{look ? look.lastStep : confirm.note}</p>
+        ) : null}
       </div>
     </div>
   )

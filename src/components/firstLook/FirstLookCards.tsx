@@ -20,6 +20,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { useOpenThread } from '../gc/messages/openThread'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { lookTaskPreset, TECH_READ_WORDS, techLine } from '../../lib/firstLook/tech'
+import { isImpersonationSessionActive } from '../../lib/impersonationSession'
 import { LookFile } from './LookFile'
 import { useLookDoors } from './useLookDoors'
 
@@ -220,8 +221,10 @@ export function FirstLookCards({ contact, io = DEFAULT_IO, doorsIo }: { contact:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [io, wanted])
 
-  // The first time the office sees files on a look, it is looked at.
+  // The first time the office sees files on a look, it is looked at. Held while View as is on: a dev
+  // looking as someone in the office is not the office seeing it, and the stamp carries that person's name.
   useEffect(() => {
+    if (isImpersonationSessionActive()) return
     for (const c of cards) {
       if (c.look.looked_at || c.files.length + c.texted.length === 0 || stamped.current.has(c.look.id)) continue
       stamped.current.add(c.look.id)

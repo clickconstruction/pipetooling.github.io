@@ -112,6 +112,10 @@ The statement names each work statement by its number, so the sub can match the 
 
 One email carries 12 papers. Past 12, the oldest ride first. A yellow line names the papers left for the next email.
 
+Once the first email went, press {{button:blue|Open the next email, 3 papers}} to send the papers that were left. The press says how many papers that email carries. The next email holds only those papers, so the statement is not sent twice.
+
+The same press sits in the yellow line before you send. There it opens the next email and sends nothing.
+
 ### When the sub has no email
 
 A sub with no email on their roster row cannot be sent a paper. The press goes grey, and a yellow line says so.

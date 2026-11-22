@@ -1,9 +1,10 @@
 /**
  * A stand-in for the supabase client that keeps `punch_list_ticks` in memory, for the smokes of the punch list's
  * ticks (`PunchList.ticks.render.test.tsx`, `usePunchListTicks.render.test.tsx`). It answers the three calls the
- * hook makes (a select by person, an upsert of one row, a delete by card number or numbers), can be told to fail
- * a read or a write with a plain result error, and logs every write so a test can read what was sent. Any other
- * table answers an empty list.
+ * hook makes (a select of every row, an upsert of one row, a delete of a person's rows by card number or
+ * numbers), stamps the name and the time on a write as the table's trigger does, can be told to fail a read or
+ * a write with a plain result error, and logs every write so a test can read what was sent. Any other table
+ * answers an empty list.
  *
  *   const db = vi.hoisted(() => ({ fake: null as unknown as TicksFake }))
  *   vi.mock('../lib/supabase', async () => {
@@ -17,6 +18,8 @@ export interface FakeTickRow {
   card_number: number
   section: string
   board_version: string
+  claimer_name?: string
+  ticked_at?: string
 }
 
 export interface TicksFake {
@@ -28,6 +31,10 @@ export interface TicksFake {
   /** Every write that landed, in order: `upsert 299 ready v2.8196`, `delete 299`, `delete 2,9`. */
   log: string[]
   reads: number
+  /** The names the trigger would stamp, by user id; a person not listed gets ''. */
+  names: Record<string, string>
+  /** The time the trigger would stamp. */
+  now: () => string
   reset: () => void
   supabase: unknown
 }
@@ -39,12 +46,16 @@ export function makeTicksFake(): TicksFake {
     failWrite: null,
     log: [],
     reads: 0,
+    names: {},
+    now: () => new Date().toISOString(),
     reset() {
       fake.rows = []
       fake.failRead = null
       fake.failWrite = null
       fake.log = []
       fake.reads = 0
+      fake.names = {}
+      fake.now = () => new Date().toISOString()
     },
     supabase: null,
   }
@@ -58,12 +69,16 @@ export function makeTicksFake(): TicksFake {
       if (op === 'select') {
         fake.reads += 1
         if (fake.failRead) return { data: null, error: fake.failRead }
-        return { data: fake.rows.filter((r) => r.user_id === filters.user_id).map((r) => ({ ...r })), error: null }
+        // Every row, as the widened read rule answers a dev or a master. A row seeded with no name or time gets them here.
+        return { data: fake.rows.map((r) => ({ claimer_name: fake.names[r.user_id] ?? '', ticked_at: fake.now(), ...r })), error: null }
       }
       if (fake.failWrite) return { data: null, error: fake.failWrite }
       if (op === 'upsert' && payload) {
         const row = payload
-        fake.rows = [...fake.rows.filter((r) => !(r.user_id === row.user_id && r.card_number === row.card_number)), { ...row }]
+        fake.rows = [
+          ...fake.rows.filter((r) => !(r.user_id === row.user_id && r.card_number === row.card_number)),
+          { ...row, claimer_name: fake.names[row.user_id] ?? '', ticked_at: fake.now() },
+        ]
         fake.log.push(`upsert ${row.card_number} ${row.section} ${row.board_version}`)
       } else {
         const wanted = filters.card_number

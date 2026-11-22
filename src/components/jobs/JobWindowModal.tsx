@@ -17,6 +17,9 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import JobWindowMaterialsPanel from './JobWindowMaterialsPanel'
+
+// The Map tab's map is a chunk of its own, asked for on the press (punch list #413).
+const JobWindowMapTab = lazy(() => import('./JobWindowMapTab'))
 import { opensMaterialsDesk } from '../../lib/materials/materialsJobDoor'
 import { LegendButton } from '../help/LegendButton'
 import { DeskLegendCard } from '../help/LegendCard'
@@ -736,6 +739,14 @@ export function JobWindowModal({
           {tab === 'materials' ? (
             <div role="tabpanel" aria-label="Materials">
               <JobWindowMaterialsPanel jobId={jobId} onBeforeNavigate={requestClose} door={opensMaterialsDesk(authRole) ? 'desk' : 'tally'} />
+            </div>
+          ) : null}
+          {/* Map pane (punch list #413): everything painted or kept for the job, on one map. Mounted only while it shows, so its map loads on the press. */}
+          {tab === 'map' ? (
+            <div role="tabpanel" aria-label="Map">
+              <Suspense fallback={null}>
+                <JobWindowMapTab jobId={jobId} developmentId={fullJob?.development_id ?? null} address={fullJob?.job_address ?? null} phone={phone} />
+              </Suspense>
             </div>
           ) : null}
 

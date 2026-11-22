@@ -13,7 +13,7 @@ import { papersOfParty, partyContactIds, type PartyContactRow, type PartyPaperRo
 const CONTACT_SELECT = 'id, customer_id, customer_contact_person_id, supply_house_id, supply_house_contact_id'
 
 export const PARTY_PAPER_SELECT =
-  'id, document_name, doc_type, status, party_contact_id, signer_name, signer_title, signer_printed_name, signed_at, sent_at, created_at, signer_last_viewed_at, supersedes_person_contract_document_id'
+  'id, document_name, doc_type, status, party_contact_id, signer_name, signer_title, signer_printed_name, signing_for, signed_at, sent_at, created_at, signer_last_viewed_at, supersedes_person_contract_document_id'
 
 /** The people at a party: the people on file at a customer, or the reps of a supply house, archived ones among them. */
 async function readPartyPeopleIds(party: PartyRecord): Promise<string[]> {

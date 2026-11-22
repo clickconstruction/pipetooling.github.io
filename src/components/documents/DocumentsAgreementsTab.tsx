@@ -21,6 +21,7 @@ import {
   agreementName,
   agreementNeedsAList,
   agreementSignerWords,
+  agreementSigningForWords,
   agreementStateChip,
   agreementTag,
   agreementsEmptyWords,
@@ -448,6 +449,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       // A party on no list belongs to no group yet: its tag is an outline.
                       const colors = t.plain ? { background: 'transparent', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' } : AGREEMENT_GROUP_COLORS[t.group]
                       const signerWords = agreementSignerWords(row)
+                      // The business the paper names, when it is not the party beside it (the audit's finding 9).
+                      const signingForWords = agreementSigningForWords(row)
                       const name = agreementName(row)
                       // A reader's line opens nothing: its name is plain words.
                       const door = canAct ? agreementDoor(row) : NO_DOOR
@@ -482,6 +485,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                             <span style={subLine}>
                               With <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{row.with_name || 'no name on file'}</strong>
                               {signerWords ? ` · ${signerWords}` : null}
+                              {signingForWords ? ` · ${signingForWords}` : null}
                               {jobTitle ? (
                                 <>
                                   {' · '}

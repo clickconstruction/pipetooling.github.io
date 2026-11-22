@@ -203,7 +203,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
           const files = await Promise.all(made.map(async (p) => ({ kind: SUB_PAPER_SENT_KIND[p.kind], number: p.number, title: subPaperTitle(p), file_name: subPaperAttachmentName(p), job_ids: jobIdsOf(p), pdf_base64: await blobBase64(await drawSubPaperPdf(p, sendRange)) })))
           // The subject from the lead paper as numbered: a first work statement had no number when the step was drawn.
           const lead = made[0]
-          const subject = lead ? subPaperSendSubject(lead, ctx.company.name) : plan.subject
+          const subject = lead ? subPaperSendSubject(lead, ctx.company.name, plan.part) : plan.subject
           // No address rides in the body: the function sends to the roster's own, read under the caller's policies.
           const { data, error } = await supabase.functions.invoke('send-sub-paper-email', { body: { person_id: personId, by, subject, message: plan.body, papers: files } })
           if (error) {

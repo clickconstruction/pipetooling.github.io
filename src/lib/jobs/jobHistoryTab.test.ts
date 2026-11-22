@@ -10,7 +10,7 @@ import {
 
 describe('job window tabs (T5-05)', () => {
   it('Job · Edit · Bill · Costs · History · Documents, labelled', () => {
-    expect(JOB_WINDOW_TABS).toEqual(['job', 'edit', 'bill', 'costs', 'history', 'documents', 'materials'])
+    expect(JOB_WINDOW_TABS).toEqual(['job', 'edit', 'bill', 'costs', 'history', 'documents', 'materials', 'map'])
     expect(JOB_WINDOW_TAB_LABELS.documents).toBe('Documents')
     expect(JOB_WINDOW_TAB_LABELS.history).toBe('History')
     expect(JOB_WINDOW_TAB_LABELS.costs).toBe('Costs')
@@ -26,6 +26,8 @@ describe('job window tabs (T5-05)', () => {
     expect(jobWindowFormPaneHidden('history')).toBe(true)
     expect(jobWindowFormPaneHidden('documents')).toBe(true)
     expect(jobWindowFormPaneHidden('materials')).toBe(true)
+    expect(jobWindowFormPaneHidden('map')).toBe(true)
+    expect(JOB_WINDOW_TAB_LABELS.map).toBe('Map')
     expect(jobWindowFormPaneHidden('edit')).toBe(false)
     expect(jobWindowFormPaneHidden('bill')).toBe(false)
   })

@@ -262,3 +262,27 @@ export function knownAddressWords(known: { name: string; party: PaperPartyKind }
   const what = known.party === 'customer' ? ', at a customer' : known.party === 'supply_house' ? ', at a supply house' : known.party === 'trade' ? ', at a trade company' : ''
   return `The app already keeps this address: ${who}${what}. The paper goes to that record, and nobody is added twice.`
 }
+
+/** What the window says when the look-up of a typed-in signer's address failed: nothing is sent on a guess. */
+export const ADDRESS_NOT_CHECKED = 'The app could not check whose address this is, so nothing was sent.'
+
+/** What follows the name of whoever already holds the address, when Send email was pressed before the office could read it. */
+export const KNOWN_ADDRESS_PRESS_AGAIN = 'Press Send email again to send it to them.'
+
+/**
+ * What a press of **Send email** does once the look-up of a typed-in signer's address has answered. The look-up runs a
+ * moment after the typing rests, so a quick press could beat it: the roster's refusal and the *already keeps this
+ * address* note were skipped, and the paper went out filed under the wrong record. The press now waits for the answer.
+ *
+ * - Someone on the roster is refused, as before.
+ * - Someone the app keeps, whom the window had not yet named when the press came (`namedBefore` false), is named and
+ *   the press holds once: the office reads who the paper goes to, and presses again.
+ * - Nobody, or someone the window had named already, sends.
+ */
+export function addressLookUpVerdict(known: { name: string; party: PaperPartyKind } | null, namedBefore: boolean): { kind: 'send' } | { kind: 'hold'; why: string } {
+  const refusal = knownAddressRefusal(known)
+  if (refusal) return { kind: 'hold', why: refusal }
+  const words = knownAddressWords(known)
+  if (words && !namedBefore) return { kind: 'hold', why: `${words} ${KNOWN_ADDRESS_PRESS_AGAIN}` }
+  return { kind: 'send' }
+}

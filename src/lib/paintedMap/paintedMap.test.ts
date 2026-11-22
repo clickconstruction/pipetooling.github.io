@@ -253,3 +253,31 @@ describe('a map as a whole', () => {
     expect(mapBounds([], [])).toBeNull()
   })
 })
+
+describe('a place’s line, other photos and opens (#413)', () => {
+  it('reads them from a row, and reads a row from before them as none', async () => {
+    const { paintedPlaceFromRow } = await import('./paintedMap')
+    const base = { id: 'p1', map_id: '11111111-1111-4111-8111-111111111111', name: 'Cleanout', words: '', lat: 29.5, lng: -98.2, accuracy_m: null, photo_path: null, kind: 'cleanout', set_by: 'u1', set_at: '2026-11-21T15:00:00Z' }
+    expect(paintedPlaceFromRow(base)).toMatchObject({ lineId: null, morePhotos: [], openedCount: 0 })
+    const full = paintedPlaceFromRow({ ...base, line_id: 'l1', opened_count: 3, more_photos: [{ path: '11111111-1111-4111-8111-111111111111/open.jpg', at: '2026-11-21T15:01:00Z', by: 'u1' }] })
+    expect(full).toMatchObject({ lineId: 'l1', openedCount: 3, morePhotos: [{ path: '11111111-1111-4111-8111-111111111111/open.jpg', at: '2026-11-21T15:01:00Z', by: 'u1' }] })
+  })
+  it('leaves out a photo whose path is not of the one shape, a repeat, and anything past twelve', async () => {
+    const { placePhotosFromJson, PLACE_MORE_PHOTOS_MAX } = await import('./paintedMap')
+    const m = '11111111-1111-4111-8111-111111111111'
+    expect(placePhotosFromJson('nope')).toEqual([])
+    expect(placePhotosFromJson([{ path: `${m}/a.jpg` }, { path: '../etc/passwd' }, null, 'x', { path: `${m}/a.jpg` }, { path: `${m}/b.jpg`, at: 5, by: '' }])).toEqual([
+      { path: `${m}/a.jpg`, at: null, by: null },
+      { path: `${m}/b.jpg`, at: null, by: null },
+    ])
+    expect(placePhotosFromJson(Array.from({ length: 20 }, (_, i) => ({ path: `${m}/p${i}.jpg` })))).toHaveLength(PLACE_MORE_PHOTOS_MAX)
+  })
+  it('lists every photo path of some places, the first photos and the rest', async () => {
+    const { placePhotoPaths } = await import('./paintedMap')
+    expect(placePhotoPaths([{ photoPath: 'a/1.jpg', morePhotos: [{ path: 'a/2.jpg', at: null, by: null }] }, { photoPath: null }, { photoPath: 'a/3.jpg', morePhotos: [] }])).toEqual(['a/1.jpg', 'a/2.jpg', 'a/3.jpg'])
+  })
+  it('asks the table for the new columns with the old', async () => {
+    const { PAINTED_MAP_PLACE_SELECT } = await import('./paintedMap')
+    expect(PAINTED_MAP_PLACE_SELECT.split(',')).toEqual(expect.arrayContaining(['line_id', 'more_photos', 'opened_count', 'kind', 'photo_path']))
+  })
+})

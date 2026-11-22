@@ -7,6 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../../lib/impersonationSession'
 import type { Contact } from '../../lib/contacts/kernel'
 import { onAskForPhotos } from '../../lib/firstLook/askBus'
 import type { ThreadLook, ThreadLookFile } from '../../lib/firstLook/card'
@@ -61,6 +62,7 @@ function draw(contact: Contact, io: FirstLookThreadIo, lines: ThreadMessage[] = 
 
 afterEach(() => {
   cleanup()
+  localStorage.removeItem(IMPERSONATION_ORIGINAL_STORAGE_KEY)
   jobForm.openNewJob.mockClear()
   router.navigate.mockClear()
   win.closeThread.mockClear()
@@ -95,6 +97,16 @@ describe('the First look card on a thread (punch list #319 PR 1)', () => {
     expect(screen.getByRole('button', { name: 'Ask for more' })).toBeTruthy()
     await waitFor(() => expect(io.stamp).toHaveBeenCalledWith('L1', 'looked'))
     expect(io.stamp).toHaveBeenCalledTimes(1)
+  })
+
+  it('while View as is on the files draw and the look is not stamped looked at', async () => {
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
+    const io = fakeIo({ looks: vi.fn(async () => ({ looks: [{ ...LOOK, sent_at: iso(20), place: 'Kitchen', words: 'It drips at night' }], files: [PHOTO, VIDEO] })) })
+    draw(DANA, io, [])
+    await waitFor(() => expect(document.querySelectorAll('[data-look-file="photo"] img')).toHaveLength(1))
+    // The files are on screen, which is what stamps the look for someone in the office. A dev's look is not theirs.
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(io.stamp).not.toHaveBeenCalled()
   })
 
   it('a picture the browser cannot draw becomes a named chip with Open', async () => {

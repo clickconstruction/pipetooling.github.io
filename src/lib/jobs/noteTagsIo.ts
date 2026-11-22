@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { isImpersonationSessionActive } from '../impersonationSession'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { MyTag } from './noteTags'
 
@@ -74,8 +75,12 @@ export async function markTagDone(tagId: string, source: 'job' | 'task' = 'job')
 /**
  * The reader has had their answers on screen. Each kind has its own mark, so a list that shows one
  * kind marks that kind alone and the other still counts where it is shown.
+ *
+ * Held while View as is on: a dev looking as the reader has not shown the reader anything, so the
+ * answers stay new for the person who asked.
  */
 export async function markAnswersSeen(source: 'job' | 'task' = 'job'): Promise<number> {
+  if (isImpersonationSessionActive()) return 0
   const { data, error } = await supabase.rpc(source === 'task' ? 'task_note_tags_seen' : 'job_note_tags_seen')
   if (error) throw error
   return typeof data === 'number' ? data : 0

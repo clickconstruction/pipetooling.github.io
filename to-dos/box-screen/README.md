@@ -108,7 +108,8 @@ What the second pass found in the first:
    - **Where is it?**: the place, the where line and the pin's state.
 6. *Photos and takes*: the box's photos and its last takes with their pairs, in one strip. A photo
    still on the phone keeps its amber words and **Send now**. A filed one has no words.
-7. Take from a box's **Take from G12**, sticky at the bottom.
+7. Take from a box's **Take from G12**, sticky at the bottom. On a box with nothing on hand it is a quiet
+   link instead (v2.8263).
 
 **More for G12** lists Edit G12, Say it better (Say what is in it on a box with no line yet), Move G12, Print the label, Print the manifest
 and Copy the label code, each with one line that says what it does. Retire G12 sits apart at the
@@ -199,7 +200,7 @@ The owner's main session walked the screen at 375 px in a browser, signed in as 
 
 Read by the walk and left as they are:
 
-- **An empty box still draws the sticky *Take from …* press.** It shows on every box but Unsorted and a box with a run left open. Should an empty box hide it, or grey it with a line that says there is nothing to take? That changes what the screen does, so it waits for the owner's word.
+- **An empty box drew the sticky *Take from …* press.** It showed on every box but Unsorted and a box with a run left open. It was not a slip: a take on a box with no line reads *Nothing is listed in ZZ2.* and offers **Something not on the list…**, for parts found in a box the app has as empty. The owner picked a quiet link the same day, and v2.8263 built it: a box with nothing on hand shows **Took something out of ZZ2? Say what ›** at its foot, 48 px tall and not pinned, and it opens the same take. A box with a part on hand keeps the blue press.
 - **The sheet read *Say it better* where this card said *Say what is in it*.** Both are the screen's own words: *Say it better* over a box that has a line, *Say what is in it* on a box with none yet. The sentence above now says both.
 
 This card still waits on the screen in the owner's hand.

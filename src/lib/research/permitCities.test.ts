@@ -16,6 +16,7 @@ import {
   classifySeguin,
   dayFromMs,
   dayFromUsDate,
+  feedPasses,
   feedsToPull,
   permitCity,
   permitRowFromAustin,
@@ -27,6 +28,7 @@ import {
   shortDescription,
   texasPoint,
 } from '../../../supabase/functions/_shared/permitCities'
+import { SA_APPLIED_FEED } from '../../../supabase/functions/_shared/permitFeed'
 
 // Every name, street and number here is made up.
 function austin(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -370,6 +372,26 @@ describe('New Braunfels', () => {
 
 
 describe('a read back as history (punch list #307)', () => {
+  it('reads San Antonio’s applications a second time by the day their permit was issued, and no other feed twice', () => {
+    const [issued, applied] = feedsToPull('San Antonio')
+    // An application is filed on one day and takes its permit's day weeks later: the second reading finds it then.
+    const passes = feedPasses(applied!, false)
+    expect(passes.map((p) => [p.dayColumn, p.issuedAgain])).toEqual([['submitted_on', false], ['issued_on', true]])
+    const first = decodeURIComponent(passes[0]!.pageUrl('2026-11-03', 2000, 0))
+    const second = decodeURIComponent(passes[1]!.pageUrl('2026-11-03', 2000, 4000))
+    expect(first).toContain(`WHERE "DATE SUBMITTED" >= '2026-11-03' AND (`)
+    expect(second).toContain(`FROM "${SA_APPLIED_FEED.resourceId}" WHERE "DATE ISSUED" >= '2026-11-03' AND (`)
+    expect(second).toContain('ORDER BY "DATE ISSUED" ASC, "_id" ASC LIMIT 2000 OFFSET 4000')
+    // The same rows are kept either way: the kinds of permit do not change with the day they are read by.
+    expect(second.slice(second.indexOf(' AND ('), second.indexOf(' ORDER BY'))).toBe(first.slice(first.indexOf(' AND ('), first.indexOf(' ORDER BY')))
+    // The issued feed is already read by its issued day, and a read back as history touches nothing held.
+    expect(feedPasses(issued!, false)).toEqual([{ pageUrl: issued!.pageUrl, dayColumn: 'issued_on', issuedAgain: false }])
+    expect(feedPasses(applied!, true).map((p) => p.issuedAgain)).toEqual([false])
+    for (const city of ['Austin', 'New Braunfels', 'San Marcos', 'Seguin']) {
+      for (const feed of feedsToPull(city)) expect(feedPasses(feed, false)).toHaveLength(1)
+    }
+  })
+
   it('reads San Antonio’s two feeds up to a day, and leaves the other cities without a read back', () => {
     const [issued, applied] = feedsToPull('San Antonio')
     const url = decodeURIComponent(issued!.pageUrlBefore!('2026-05-26', '2026-08-26', 2000, 0))

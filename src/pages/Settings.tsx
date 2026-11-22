@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
+import { leaveViewAsHere } from '../lib/impersonationExit'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -693,23 +693,9 @@ export default function Settings() {
 
 
   async function handleBackToMyAccount() {
-    const raw = localStorage.getItem('impersonation_original')
     setImpersonating(false)
-    if (!raw) return
-    const stash = readImpersonationStash(raw)
-    // The flag comes off only after the session is the operator's again (as Layout's Exit does).
-    try {
-      if (stash?.access_token && stash.refresh_token) {
-        await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
-      }
-    } catch {
-      localStorage.removeItem('impersonation_original')
-      window.location.href = '/sign-in'
-      return
-    }
-    localStorage.removeItem('impersonation_original')
-    // v2.3606: back to the page the operator left, not the dashboard.
-    window.location.href = impersonationReturnPath(stash, window.location.origin)
+    // One kernel with the header's Exit: the dev's session back, or this browser signed out.
+    await leaveViewAsHere()
   }
 
 

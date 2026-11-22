@@ -356,6 +356,8 @@ describe('JobDocumentsStartChecks', () => {
     await mount(db)
     await openStage('Top Out')
     expect(row('inspection').textContent).toContain('Luis said No on site, Nov 16. It was not as told.')
+    // Values in place: who said it and the day are values the app works out, drawn apart from the words.
+    expect(Array.from(row('inspection').querySelectorAll('[data-value="worked-out"][data-tone="red"]')).map((v) => v.textContent)).toEqual(['Luis', 'Nov 16'])
     fireEvent.click(within(row('inspection')).getByRole('button', { name: 'Add to the company’s list for Top Out' }))
     await waitFor(() => expect(db.templates.map((t) => `${t.stage_kind}: ${t.words}`)).toEqual(['top_out: The framing inspection has passed.']))
     // Once it is on the list it is not offered again.

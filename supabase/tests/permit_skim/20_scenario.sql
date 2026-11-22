@@ -255,11 +255,41 @@ EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a helper marks no b
 END $$;
 RESET ROLE;
 
+-- A job's first plumbing permit day (migration *_permit_first_plumbing_day). In Oak City, where the address ties, a
+-- building permit was applied for twenty days ago and issued twelve days ago. Two plumbing permits landed at its
+-- address since, nine days ago and three days ago, and a third is from two hundred days ago, outside the thirty days.
+-- v3 keeps the newest day. v4 says the first beside it, and never reads the old one.
+INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, stage, residential, work_type, address, address_key, submitted_on, issued_on, contact, builder_key) VALUES
+  ('00000000-0000-0000-0000-0000003020f1', 'Oak City', 'bed', 'OC-1', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '31 ACORN LN', '31 acorn ln', CURRENT_DATE - 20, CURRENT_DATE - 12, 'Mara Stone, Stonefield Build', 'stonefieldbuild'),
+  ('00000000-0000-0000-0000-0000003020f2', 'Oak City', 'bed', 'OC-P1', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '31 ACORN LN', '31 acorn ln', NULL, CURRENT_DATE - 9, 'Finch Plumbing', 'finchplumbing'),
+  ('00000000-0000-0000-0000-0000003020f3', 'Oak City', 'bed', 'OC-P2', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '31 ACORN LN', '31 acorn ln', NULL, CURRENT_DATE - 3, 'Finch Plumbing', 'finchplumbing'),
+  ('00000000-0000-0000-0000-0000003020f4', 'Oak City', 'bed', 'OC-P0', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '31 ACORN LN', '31 acorn ln', NULL, CURRENT_DATE - 200, 'Finch Plumbing', 'finchplumbing'),
+  -- An open job beside it: no plumbing permit, so no day of either kind.
+  ('00000000-0000-0000-0000-0000003020f5', 'Oak City', 'bed', 'OC-2', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '8 BURR CT', '8 burr ct', CURRENT_DATE - 6, CURRENT_DATE - 4, 'Mara Stone, Stonefield Build', 'stonefieldbuild');
+SELECT ps.same('v4 says a job''s first plumbing day beside its newest',
+  (SELECT string_agg(permit_number || ':' || COALESCE((CURRENT_DATE - plumber_permit_on)::text, 'open') || ':' || COALESCE((CURRENT_DATE - plumber_first_permit_on)::text, 'open'), ' ' ORDER BY permit_number)
+   FROM public.research_permits_v4('Oak City', CURRENT_DATE - 60, false)),
+  'OC-1:3:9 OC-2:open:open');
+SELECT ps.same('a job with one plumbing permit reads the same day twice, on its number or at its address',
+  (SELECT string_agg(permit_number || ':' || COALESCE((CURRENT_DATE - plumber_permit_on)::text, 'open') || ':' || COALESCE((CURRENT_DATE - plumber_first_permit_on)::text, 'open'), ' ' ORDER BY filed_on DESC)
+   FROM public.research_permits_v4('San Antonio', CURRENT_DATE - 60, false))
+  || ' ' || (SELECT permit_number || ':' || (CURRENT_DATE - plumber_permit_on)::text || ':' || (CURRENT_DATE - plumber_first_permit_on)::text FROM public.research_permits_v4('Elm City', CURRENT_DATE - 60, false)),
+  'SA-APP-1:open:open SA-PMT-2:5:5 SA-PMT-9:3:3 SA-APP-2:5:5 EC-1:2:2');
+SELECT ps.same('v4 is v3 with that one column and nothing else moved, and the first day is set with the newest and never later',
+  (SELECT count(*)::text FROM (
+     SELECT to_jsonb(v4) - 'plumber_first_permit_on' AS j FROM public.research_permits_v4('San Antonio', CURRENT_DATE - 60, false) v4
+     EXCEPT
+     SELECT to_jsonb(v3) FROM public.research_permits_v3('San Antonio', CURRENT_DATE - 60, false) v3) d)
+  || '/' || (SELECT count(*)::text FROM public.research_permits_v4('Skim City', CURRENT_DATE - 30, false))
+  || '/' || (SELECT count(*)::text FROM unnest(ARRAY['Skim City', 'San Antonio', 'Elm City', 'Oak City']) c(city), public.research_permits_v4(c.city, CURRENT_DATE - 400, true) r
+             WHERE (r.plumber_permit_on IS NULL) <> (r.plumber_first_permit_on IS NULL) OR r.plumber_first_permit_on > r.plumber_permit_on),
+  '0/3/0');
+
 -- The fences reached the two new tables, and the new reads are closed to the anon key.
 SELECT ps.same('both tables carry the read-only fence',
   (SELECT count(DISTINCT tablename)::text FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('builders', 'builder_marks') AND permissive = 'RESTRICTIVE'), '2');
 SELECT ps.same('anon runs none of the new functions',
-  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3', 'research_bid_counts', 'research_bid_party_key') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
+  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3', 'research_permits_v4', 'research_bid_counts', 'research_bid_party_key') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
 
 DO $$ BEGIN RAISE NOTICE 'permit_skim PASSED'; END $$;
 ROLLBACK;

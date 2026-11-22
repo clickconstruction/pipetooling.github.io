@@ -40,6 +40,7 @@ export function PunchListByNumber({
   onFlip,
   onClearFilters,
   renderTick,
+  renderClaim,
   renderCard,
 }: {
   items: readonly BoardItem[]
@@ -55,6 +56,8 @@ export function PunchListByNumber({
   onClearFilters: () => void
   /** The person's "working on it" box for a card, drawn at the head of its row; the page owns the ticks. */
   renderTick?: (item: BoardItem) => ReactNode
+  /** Who is on the card, drawn on a line of its own under the name; nothing for a card nobody ticked. */
+  renderClaim?: (item: BoardItem) => ReactNode
   /** The card as the grouped view draws it, shown under an opened row. */
   renderCard: (item: BoardItem) => ReactNode
 }) {
@@ -83,7 +86,7 @@ export function PunchListByNumber({
         .punch-n-row {
           display: grid;
           grid-template-columns: 2.75rem 4.75rem minmax(0, 1fr) auto;
-          grid-template-areas: "tick num name meta" "tick num next next" "card card card card";
+          grid-template-areas: "tick num name meta" "tick num claim claim" "tick num next next" "card card card card";
           column-gap: 0.75rem;
           row-gap: 0.2rem;
           align-items: start;
@@ -94,12 +97,14 @@ export function PunchListByNumber({
         .punch-n-num { grid-area: num; }
         .punch-n-name { grid-area: name; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
         .punch-n-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 0.375rem; align-items: center; justify-content: flex-end; max-width: 30rem; }
+        .punch-n-claim { grid-area: claim; min-width: 0; }
         .punch-n-next { grid-area: next; min-width: 0; }
         .punch-n-card { grid-area: card; min-width: 0; margin-top: 0.4rem; }
         @media (max-width: 760px) {
-          .punch-n-row { grid-template-columns: 2.75rem auto minmax(0, 1fr); grid-template-areas: "tick num name" "meta meta meta" "next next next" "card card card"; column-gap: 0.6rem; }
+          .punch-n-row { grid-template-columns: 2.75rem auto minmax(0, 1fr); grid-template-areas: "tick num name" "claim claim claim" "meta meta meta" "next next next" "card card card"; column-gap: 0.6rem; }
           .punch-n-tick { align-self: start; }
-          .punch-n-meta, .punch-n-next { padding-left: 0.45rem; }
+          .punch-n-meta, .punch-n-next, .punch-n-claim { padding-left: 0.45rem; }
+          .punch-still { min-height: 44px; min-width: 44px; }
           .punch-n-meta { justify-content: flex-start; max-width: none; }
         }
       `}</style>
@@ -154,7 +159,7 @@ export function PunchListByNumber({
         ) : (
           <ol className="punch-n-list">
             {shown.map((item, i) => (
-              <NumberRow key={item.slug} item={item} first={i === 0} open={opened.has(item.slug)} onToggle={() => toggle(item.slug)} renderTick={renderTick} renderCard={renderCard} />
+              <NumberRow key={item.slug} item={item} first={i === 0} open={opened.has(item.slug)} onToggle={() => toggle(item.slug)} renderTick={renderTick} renderClaim={renderClaim} renderCard={renderCard} />
             ))}
           </ol>
         )}
@@ -169,6 +174,7 @@ function NumberRow({
   open,
   onToggle,
   renderTick,
+  renderClaim,
   renderCard,
 }: {
   item: BoardItem
@@ -176,12 +182,14 @@ function NumberRow({
   open: boolean
   onToggle: () => void
   renderTick?: (item: BoardItem) => ReactNode
+  renderClaim?: (item: BoardItem) => ReactNode
   renderCard: (item: BoardItem) => ReactNode
 }) {
   const anchor = rowAnchor(item)
   const bucket = sizeBucket(item.size)
   const door = mockupDoor(item)
   const cardId = `punch-card-${item.slug}`
+  const claim = renderClaim?.(item)
   return (
     <li
       id={anchor}
@@ -211,6 +219,7 @@ function NumberRow({
           {item.name}
         </a>
       </div>
+      {claim ? <div className="punch-n-claim">{claim}</div> : null}
       <div className="punch-n-meta">
         <span
           data-testid="punch-number-group"

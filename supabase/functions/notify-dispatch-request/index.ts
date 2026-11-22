@@ -13,6 +13,7 @@ import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
+import { dispatchRequestPushSkip } from '../_shared/reportSubject.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -280,6 +281,14 @@ serve(async (req) => {
         return json(403, { error: 'Only Dispatch can notify a requester about a close, a reopen or a reply' })
       }
       return await notifyRequester(adminClient, dispatchRow, mode, rawNote ?? null, user.id)
+    }
+
+    // A new request on a ZZ test job or a ZZ bid rings no dispatcher's phone (punch list #382): a session's walk stays
+    // in the building. The line stays in the inbox. The requester's own answer pushes above are not held, since they
+    // reach the walker alone.
+    const zzSkip = await dispatchRequestPushSkip(adminClient, dispatchRow)
+    if (zzSkip) {
+      return json(200, { success: true, message: zzSkip.message, push_sent: 0, recipients: 0, held: 0, skipped: zzSkip.reason })
     }
 
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')

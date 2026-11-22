@@ -72,17 +72,24 @@ describe('resolvePaintedMapProvider', () => {
 })
 
 describe('PAINTED_GOOGLE_REACH, today', () => {
-  it('puts the painting window on Google for looking, and nothing else', () => {
-    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(screen === 'window' && use === 'looking' ? 'google' : 'osm')
+  it('puts both screens on Google for looking and for a walk, and nothing else', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'looking' || use === 'walking' ? 'google' : 'osm')
   })
 
-  it('keeps the public page off Google until the owner’s look at the billing console says yes', () => {
-    // Every outside reader's open counts. This line comes out with his yes, and with nothing else.
-    expect(PAINTED_GOOGLE_REACH.screens).not.toContain('way')
+  it('paints a walk on Google from its first reading to Done (step 3)', () => {
+    expect(PAINTED_GOOGLE_REACH.uses).toContain('walking')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('walk') }))).toBe('google')
   })
 
-  it('keeps drawing by hand off Google until Google’s terms on content made from its imagery are read', () => {
-    // 3.2.3 (c). This line comes out with the owner's word on that reading, and with nothing else.
+  it('puts the public page on Google, on Taunya’s yes of 2026-11-21', () => {
+    // Every outside reader's open counts. The line that held it off came out with that yes: no link had yet been
+    // made, and people alone made 10 to 40 map loads a day against the free 10,000 a month.
+    expect(PAINTED_GOOGLE_REACH.screens).toContain('way')
+  })
+
+  it('keeps drawing by hand and placing off Google until the canvas carries each', () => {
+    // The reading of Google's terms they waited on (3.2.3 (c)) was settled on 2026-11-21, on Taunya's word from her
+    // lawyer. Each word goes in with the part of the Google canvas that draws it, and with nothing else.
     expect(PAINTED_GOOGLE_REACH.uses).not.toContain('drawing')
     expect(PAINTED_GOOGLE_REACH.uses).not.toContain('placing')
   })

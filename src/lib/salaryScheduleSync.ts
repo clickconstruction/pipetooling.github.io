@@ -44,10 +44,13 @@ export async function syncSalaryClockSessionsForUserDay(
 export async function syncSalaryClockSessionsUnasked(
   userId: string,
   io: { viewingAs?: () => boolean; sync?: typeof syncSalaryClockSessionsForUserDay } = {},
+  workDateYmd?: string,
 ): Promise<{ error: string | null; held: boolean }> {
   const viewingAs = io.viewingAs ?? isImpersonationSessionActive
   if (viewingAs()) return { error: null, held: true }
-  const { error } = await (io.sync ?? syncSalaryClockSessionsForUserDay)(userId)
+  const sync = io.sync ?? syncSalaryClockSessionsForUserDay
+  // Today when no day is named, as the clock button asks; the day editor names the day it opened on.
+  const { error } = await (workDateYmd === undefined ? sync(userId) : sync(userId, workDateYmd))
   return { error, held: false }
 }
 

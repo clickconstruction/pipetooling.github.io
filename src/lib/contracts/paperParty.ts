@@ -160,6 +160,19 @@ export function signingForTail(signer: PaperSigner): string {
   return `signing for ${business}`
 }
 
+/**
+ * *signing for Haddad Engineering*, for a line that already names who the paper is with: said only when the business
+ * the paper names is none of the names beside it. A paper's party can change after it is sent: someone typed in for one
+ * company is added to a list under another, and the line then names the record they were added to. The paper still
+ * says who it was signed for, so the line says it too. '' when the paper kept no business, or the line names it already.
+ */
+export function signingForBeside(signingFor: string | null | undefined, beside: ReadonlyArray<string | null | undefined>): string {
+  const business = paperWord(signingFor)
+  if (!business) return ''
+  if (beside.some((name) => sameName(business, paperWord(name)))) return ''
+  return `signing for ${business}`
+}
+
 /** A row's signer, read from the view's `facts`. */
 export function paperSignerFromFacts(facts: Record<string, unknown> | null | undefined): PaperSigner {
   const read = (key: string): string | null => {

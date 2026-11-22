@@ -18,7 +18,7 @@ A stage line of the job that is unfinished (`progress_pct < 100`), whose first d
 - A stage with no days of ours is never asked about. Nobody was sent to it.
 - A stage whose days have passed and is still unfinished is still asked about.
 - With two such stages, the one whose days hold today leads, then the newest first day.
-- A stage is asked about once. The first of ours to answer has answered for the crew. Since `20261121150500_start_check_arrive_once.md` the door holds that too: a second answer is refused by name and keeps nothing.
+- A stage is asked about once. The first of ours to answer has answered for the crew. Since `20261121150500_start_check_arrive_once.md` the door holds that too: a second answer is refused by name and keeps nothing. Since `20261122030000_start_check_arrive_again.md` two answers after the first are kept: a later No, and an answer to a bullet that had a No and is asked about again.
 
 ## What an answer writes
 
@@ -56,6 +56,6 @@ The client calls both functions, so the push goes right after the merge (`npm ru
 
 ## Tested
 
-`supabase/tests/start_checks/30_arrive.sql`, 26 checks since `20261121150500`, in one transaction that rolls back, run by `scripts/pgtest-start-checks.sh` after the tables' scenario (`npm run test:pg:start-checks`, in the SQL beds workflow). The migration is applied twice. It covers which stage is asked about with days today, days ahead, days passed and no days, what is listed, a No with the rest as told, the yes taken back in the person's name, what the office saw before left alone, the line to Dispatch with who told us, a stage asked about once, the desk answering, and each refusal.
+`supabase/tests/start_checks/30_arrive.sql`, 38 checks since `20261122030000`, in one transaction that rolls back, run by `scripts/pgtest-start-checks.sh` after the tables' scenario (`npm run test:pg:start-checks`, in the SQL beds workflow). The migration is applied twice. It covers which stage is asked about with days today, days ahead, days passed and no days, what is listed, a No with the rest as told, the yes taken back in the person's name, what the office saw before left alone, the line to Dispatch with who told us, a stage asked about once, the desk answering, and each refusal.
 
 **Applied** to prod 2026-11-21 at 02:55 UTC with `bash scripts/db-push.sh`, a minute after #9123 merged. Two later migrations were already on prod, so the plain push asked for `--include-all` and the script's retry applied it. The drift check then read 1,415 versions applied against 1,415 local files. Read back, read only: the API answers an anonymous caller of either function with *permission denied* and not a missing name, so the schema cache holds both and `anon` holds no grant. Called as the dev in a read-only transaction, `start_check_arrival_state` answered `{"ok": true, "stage": null}` for both ZZ test jobs, since prod holds no bullet yet. The deploy of main that carried the card passed its calls-ahead step after the push. The dev seat's `call_read` does not know either name until the seat is deployed with the regenerated catalog.

@@ -49,7 +49,7 @@ export function GcBillDayDates({ project, dates, rows, superintendent, today }: 
       what: dates.ownerPaysBy ? weekdayDate(dates.ownerPaysBy) : 'Not known yet',
       small: dates.ownerPaysBy ? `${project.owner}, by their usual days.` : `${project.owner} has not paid us a bill yet.`,
     },
-    { head: 'Trades paid', what: `Within ${dates.tradesPaidWithin} days`, small: 'Of each draw’s approval.' },
+    { head: 'Trades paid', what: `Within ${dates.tradesPaidWithin} days`, small: 'After the customer pays us for the draw.' },
   ]
   return (
     <Card style={{ padding: '0.75rem 1rem' }}>

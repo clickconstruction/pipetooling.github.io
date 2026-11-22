@@ -2,7 +2,7 @@
 name: "State roll: who holds a license near us"
 number: 411
 group: ready
-status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two begun, v2.8202 (the read keeps our own licenses), its redeploy waiting on a go
+status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two built, v2.8202 (the read keeps our own licenses, redeployed and pulled) and v2.8233 (the Our own view), but for `check_license`
 summary: >
   Taunya cannot find experienced plumbers, and they must be licensed. The state publishes the roll
   of every licensed plumber as free files, and of every electrician and A/C license on its open
@@ -12,9 +12,9 @@ summary: >
   is no score. The state gives no phone, address or email, so how to reach a person is added by
   the office by hand.
 next: >
-  Redeploy `license-roll-pull` for v2.8202 and pull, so our own people have a state row. Then the Our own view.
+  Step three: Everyone and the person's sheet. On the way, `check_license` reads a plumbing number, which closes step two.
 size: L as a train of five (M · M · M · M · S)
-ver: v2.8159 · 8164 · 8198 · 8202
+ver: v2.8159 · 8164 · 8198 · 8202 · 8233
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.
 opinion: build — start with the pull and Our own, which are worth having with no outreach at all
 ---
@@ -86,7 +86,9 @@ Read on prod on 2026-11-21, by counts only.
 - **The first pull is in.** Four files read, 6,507 rows kept, none skipped and none outside our counties. Every row has its `first_seen` line. A second pass over the same files added, changed and dropped nothing.
 - **Seen on the way:** about half the responsible master rows carry no ZIP, since that file's ZIP belongs to a business address the board fills only sometimes. They are kept by county. It matters in step four, where a master is matched to their journeyman row by name and ZIP.
 - **The tab is live** ([v2.8198](../../docs/recent-features/v2.8198.md)): Prospects → State roll, for the Hiring switch alone, with the Pulls view. It names no person yet.
-- **The read for our own people is merged and not yet running** ([v2.8202](../../docs/recent-features/v2.8202.md)): its fifth Monday job is on prod (migration `20261121210000`), and `license-roll-pull` still runs the version before it. Until the redeploy, a teammate who lives outside our counties, and every apprentice of ours, has no state row.
+- **The read for our own people is running** ([v2.8202](../../docs/recent-features/v2.8202.md)): its fifth Monday job is on prod (migration `20261121210000`), and `license-roll-pull` was redeployed on Taunya's go on 2026-11-21. A dry run of all five files came back clean, and the pull after it marked our own rows and kept our apprentices' and nobody else's from the apprentice file.
+- **The Our own view is built** ([v2.8233](../../docs/recent-features/v2.8233.md)): each plumbing license we hold beside the state's row of the same number and rank, with **Use the state's date**. It is drawn for a person who may also open People → Licenses.
+- **Seen on the way:** People → Licenses often holds a first name alone, or a short form with a last initial. The check that the state's name is ours takes those, or every line read *Another name*.
 - **The dev seat** reads the new tables once `dev-mcp` is redeployed with its regenerated catalog.
 
 ## The train, step by step
@@ -94,7 +96,7 @@ Read on prod on 2026-11-21, by counts only.
 One change a PR. A migration merges alone and is pushed before the code that calls it.
 
 1. **The tables and the pull.** `license_roll` (one row a license), `license_roll_changes` (what a pull saw change, growing only), `license_roll_pulls` (the ledger), `license_roll_counties` and `license_roll_left_off`. Then `license-roll-pull`, a function on a Monday cron that reads the plumbing files, keeps our counties, honours Leave off and writes what changed. **Built, v2.8159 and v2.8164**, and the first pull is in. The Pulls view shipped with the tab, v2.8198.
-2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number. **Begun, v2.8202**: the pull keeps a row whose number is ours whatever the county, and reads the apprentice file for our own apprentices alone. Left: the redeploy and a pull, the Our own view, and `check_license`.
+2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number. **Built, v2.8202 and v2.8233**: the pull keeps a row whose number is ours whatever the county, and reads the apprentice file for our own apprentices alone. The Our own view lays each license beside its state row. Left: `check_license`, a sub's license once a record holds one, and the apprentice file on the page's own pull.
 3. **Everyone and the person's sheet.** Search, the line of history, notes, Leave off.
 4. **Call this week.** The tags, the order, Pursue to Hiring, Not for us, the Reach block.
 5. **Electrical and A/C.** The same four views over TDLR's open list.

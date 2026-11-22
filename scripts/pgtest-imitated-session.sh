@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PORT="${PGTEST_PORT:-55908}"
+PORT="${PGTEST_PORT:-55909}"
 NAME="pgtest-imitated-session"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_imitated_session_holds_app_activity.sql)"
