@@ -8884,6 +8884,8 @@ export type Database = {
           sent_at: string | null
           sign_by: string | null
           signed_at: string | null
+          signed_copy_sent_at: string | null
+          signed_pdf_storage_path: string | null
           signer_consented_at: string | null
           signer_email: string | null
           signer_ip: string | null
@@ -8945,6 +8947,8 @@ export type Database = {
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
+          signed_copy_sent_at?: string | null
+          signed_pdf_storage_path?: string | null
           signer_consented_at?: string | null
           signer_email?: string | null
           signer_ip?: string | null
@@ -9006,6 +9010,8 @@ export type Database = {
           sent_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
+          signed_copy_sent_at?: string | null
+          signed_pdf_storage_path?: string | null
           signer_consented_at?: string | null
           signer_email?: string | null
           signer_ip?: string | null
