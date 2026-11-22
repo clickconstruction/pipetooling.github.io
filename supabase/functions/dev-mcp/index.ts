@@ -141,7 +141,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.124.0'
+const SERVER_VERSION = '0.125.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
