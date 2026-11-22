@@ -905,7 +905,10 @@ describe('places on a map', () => {
     auth.value = { user: { id: 'dana' }, role: 'helpers' }
     io.whole = { map: MAP, lines: [], places: [PLACE] }
     render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Change this place' }))
+    const change = (await screen.findByRole('button', { name: 'Change this place' })) as HTMLButtonElement
+    // The way into the sheet is a thumb's height, though it sits in the row's small line.
+    expect(change.style.minHeight).toBe('44px')
+    fireEvent.click(change)
     expect(screen.getByRole('heading', { name: 'Change this place' })).toBeTruthy()
     // Its numbered dot gives way to the blue one while it is being moved.
     expect(screen.getByTestId('canvas').textContent).toContain('dots: dot:29.5,-98.2')
@@ -1542,6 +1545,7 @@ describe('a place with more photos, and a buried line with its length (#413)', (
       await placeRow()
       await waitFor(() => expect(rowOf('jp1').querySelector('[data-painted-place-line]')?.getAttribute('data-painted-place-line')).toBe('tied'))
       expect(rowOf('jp1').querySelector('[data-painted-place-line]')?.textContent).toBe('About 60 ft, give or take 10 ft · walked · Open the line')
+      expect((screen.getByRole('button', { name: 'Open the line' }) as HTMLButtonElement).style.minHeight).toBe('44px')
       fireEvent.click(screen.getByRole('button', { name: 'Open the line' }))
       expect(asks).toEqual([{ kind: 'open', mapId: 'run', address: '1 Made Up Road' }])
     } finally {

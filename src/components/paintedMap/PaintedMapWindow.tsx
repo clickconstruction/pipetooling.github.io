@@ -1373,7 +1373,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                                       <b>{said.lead}</b>
                                       {said.tail ? `, ${said.tail}` : ''} · {lineHowWords(along)}
                                       {' · '}
-                                      <button type="button" style={{ ...quiet, fontSize: '0.875rem' }} onClick={() => openPaintedMap(along.mapId, address)}>{PLACE_LINE_WORDS.open}</button>
+                                      <button type="button" style={{ ...quiet, fontSize: '0.875rem', minHeight: 44 }} onClick={() => openPaintedMap(along.mapId, address)}>{PLACE_LINE_WORDS.open}</button>
                                     </span>
                                   )
                                 }
@@ -1393,7 +1393,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                               {mine(p.setBy) ? (
                                 <>
                                   {' · '}
-                                  <button type="button" style={{ ...quiet, fontSize: '0.8125rem', minHeight: 0 }} onClick={() => changePlace(p)}>Change this place</button>
+                                  {/* The way into the sheet, and to a place's other photos: a thumb's height (#413's walk). */}
+                                  <button type="button" style={{ ...quiet, fontSize: '0.8125rem', minHeight: 44 }} onClick={() => changePlace(p)}>Change this place</button>
                                 </>
                               ) : null}
                             </span>
