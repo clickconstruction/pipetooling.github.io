@@ -269,7 +269,9 @@ app, so each waits here.
   The rule PR 3 added would bring the estimates in line.
 - **On a phone the page scrolls sideways once Money owed is open.** At 375 px wide the page grows to 404 px
   once the accrual balance's press opens Money owed behind the Money door. It did the same before the train,
-  so it belongs to Money owed. A layout fix there would end it.
+  so it belongs to Money owed. A layout fix there would end it. **Fixed in v2.8279**: on a phone the panel
+  is one column and a source reads as three lines. Crew hours behind the People door had the same fault, to
+  395 px, and is fixed with it.
 - **The pay date window does not close with Escape.** *Write down their word* closes by its own *Cancel*
   alone. The other windows on the Bridge close with Escape. It is the app's own window and is used beyond
   the Bridge, so the fix belongs to it.
