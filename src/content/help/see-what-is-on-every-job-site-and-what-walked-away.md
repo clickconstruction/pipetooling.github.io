@@ -155,6 +155,8 @@ A site's name sits over its jobs. Press **Whole site** beside the name to see ev
 
 Press **Open a job** under the list to reach a job with no box yet.
 
+A superintendent, a primary and an estimator see their own jobs in the same list. They see two figures, *Boxes on site* and *Due a count*. No money shows. A row opens the job's boxes on the phone screen.
+
 On a job's page the four figures sit in one row of tiles. The tiles read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
 
 Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*. Press the line. A sheet opens with the full count, **These are on boxes**, **Runs** and the press that prints them.

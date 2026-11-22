@@ -120,9 +120,9 @@ describe('a row', () => {
     expect(rowOf('224', m)).toMatchObject({ facts: '', needs: [], marked: true, failed: 'Did not load. No connection. Check your signal.' })
   })
 
-  it('a job with no number or no name still has a label to be pressed by', () => {
-    const m = build('all', [job({ id: 'a', number: '', name: '' })], [{ kind: 'job', jobId: 'a' }])
-    expect(rowOf('a', m).label).toBe('— · —')
+  it('a job with no number is named by its name alone, and one with neither still has a label to be pressed by', () => {
+    const m = build('all', [job({ id: 'a', number: '', name: 'ZZ Test loose job' }), job({ id: 'b', number: '77', name: '' }), job({ id: 'c', number: '', name: '' })], ['a', 'b', 'c'].map((jobId) => ({ kind: 'job' as const, jobId })))
+    expect(['a', 'b', 'c'].map((id) => rowOf(id, m).label)).toEqual(['ZZ Test loose job', '77', '—'])
   })
 })
 
@@ -175,5 +175,36 @@ describe('the words', () => {
     expect(deskPhoneMissingWords({ missingLines: 2, missingUnpricedLines: 0, missingMoney: 85 })).toBe('$85.00 missing this week · 2 lines')
     expect(deskPhoneMissingWords({ missingLines: 3, missingUnpricedLines: 2, missingMoney: 12.5 })).toBe('$12.50 missing this week · 3 lines · 2 with no price')
     expect(deskPhoneMissingWords({ missingLines: 3, missingUnpricedLines: 3, missingMoney: 0 })).toBe('Missing this week · 3 lines, none with a price')
+  })
+})
+
+describe('a desk with no money, for the roles that read none', () => {
+  const quiet = (filter: 'all' | 'due' | 'missing' = 'all', jobs = JOBS) => buildDeskPhone({ jobs, groups: GROUPS, filter, money: false })
+  const rowOf = (id: string, m = quiet()) => m.sections.flatMap((s) => s.rows).find((r) => r.id === id)!
+
+  it('has two figures: the boxes and the boxes due a count', () => {
+    expect(quiet().tiles.map((t) => `${t.figure} ${t.word}`)).toEqual(['103 Boxes on site', '13 Due a count'])
+  })
+
+  it('a row says nothing about what came up short or about credits', () => {
+    const m = quiet('all', JOBS.map((j) => (j.id === '972' ? { ...j, credits: 2 } : j)))
+    expect(rowOf('972', m)).toMatchObject({ facts: '3 boxes · all counted this fortnight', needs: [], marked: false })
+    expect(JSON.stringify(m)).not.toMatch(/\$|missing|credit/i)
+  })
+
+  it('a row still names its boxes due a count', () => {
+    expect(rowOf('224')).toMatchObject({ needs: ['12 due a count · A1, A7, A8…'], marked: true })
+  })
+
+  it('Due a count narrows the list, and a narrowing to what came up short is every job', () => {
+    expect(quiet('due').sections.flatMap((s) => s.rows.map((r) => r.id))).toEqual(['224', '1113'])
+    const m = quiet('missing')
+    expect(m.filter).toBe('all')
+    expect(m.sections.flatMap((s) => s.rows.map((r) => r.id))).toEqual(['224', '1091', '1113', '972'])
+  })
+
+  it('money is drawn unless it is turned off', () => {
+    expect(buildDeskPhone({ jobs: JOBS, groups: GROUPS, filter: 'all' }).tiles).toHaveLength(3)
+    expect(buildDeskPhone({ jobs: JOBS, groups: GROUPS, filter: 'all', money: true }).tiles).toHaveLength(3)
   })
 })

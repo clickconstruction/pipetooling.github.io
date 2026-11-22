@@ -16,6 +16,9 @@
  *
  * Nothing is counted here. The caller reads the store and hands each job's figures over, so the desk at a computer
  * and this one cannot disagree. Pure.
+ *
+ * The office reads it with money. An estimator, a primary and a superintendent read the same list on the Materials
+ * page with none (`money: false`): two figures, no line about what came up short, and no way to narrow to it.
  */
 import { flowFigure } from './flowRow'
 import { missingWeekIsPartial, missingWeekNote } from './missingWeekWords'
@@ -134,21 +137,22 @@ function matches(job: DeskPhoneJob, filter: DeskPhoneFilter): boolean {
   return true
 }
 
-function row(job: DeskPhoneJob): DeskPhoneRow {
-  const label = `${job.number || '—'} · ${job.name || '—'}`
+function row(job: DeskPhoneJob, withMoney: boolean): DeskPhoneRow {
+  // A job with no number is named by its name alone, as the desk's own label does.
+  const label = [job.number, job.name].filter(Boolean).join(' · ') || '—'
   if (job.failed) return { id: job.id, number: job.number, name: job.name, label, facts: '', needs: [], marked: true, failed: deskRowNotLoadedWords(job.failed) }
-  const needs = [job.dueWords, deskPhoneMissingWords(job)].filter(Boolean)
+  const needs = [job.dueWords, withMoney ? deskPhoneMissingWords(job) : ''].filter(Boolean)
   const facts = [
     deskPhoneBoxesWords(job.boxes),
     job.places > 1 ? `${job.places} places` : '',
     job.due === 0 && job.boxes > 0 ? DESK_PHONE_ALL_COUNTED : '',
-    job.credits > 0 ? (job.credits === 1 ? '1 credit due' : `${flowFigure(job.credits)} credits due`) : '',
+    withMoney && job.credits > 0 ? (job.credits === 1 ? '1 credit due' : `${flowFigure(job.credits)} credits due`) : '',
   ].filter(Boolean).join(' · ')
   return { id: job.id, number: job.number, name: job.name, label, facts, needs, marked: needs.length > 0, failed: null }
 }
 
-/** The three figures, across every job the desk read. A job that did not load adds nothing: it has no figure. */
-function tiles(jobs: ReadonlyArray<DeskPhoneJob>, filter: DeskPhoneFilter): DeskPhoneTile[] {
+/** The figures, across every job the desk read: three with money, the first two without. A job that did not load adds nothing: it has no figure. */
+function tiles(jobs: ReadonlyArray<DeskPhoneJob>, filter: DeskPhoneFilter, withMoney: boolean): DeskPhoneTile[] {
   const read = jobs.filter((j) => !j.failed)
   const boxes = read.reduce((n, j) => n + j.boxes, 0)
   const due = read.reduce((n, j) => n + j.due, 0)
@@ -165,28 +169,32 @@ function tiles(jobs: ReadonlyArray<DeskPhoneJob>, filter: DeskPhoneFilter): Desk
     : moneyShort > 0
       ? { figure: `${tileMoney(moneyShort)}${missingWeekIsPartial(lines, unpriced) ? '+' : ''}`, word: 'Missing this week', title: `${money(moneyShort)} missing this week on ${jobsWords(jobsShort)}: ${missingWeekNote(lines, unpriced)}. Press to see ${jobsShort === 1 ? 'that job' : 'those jobs'}.` }
       : { figure: flowFigure(lines), word: 'Short this week', title: `${lines === 1 ? '1 line' : `${flowFigure(lines)} lines`} came up short this week on ${jobsWords(jobsShort)}, with no price to add up. Press to see ${jobsShort === 1 ? 'that job' : 'those jobs'}.` }
-  return [
+  const all: DeskPhoneTile[] = [
     { key: 'all', figure: flowFigure(boxes), word: 'Boxes on site', tone: 'here', off: false, on: filter === 'all', title: `${deskPhoneBoxesWords(boxes)} on site across ${jobsWords(read.length)}. Press to see every job.` },
     { key: 'due', figure: flowFigure(due), word: 'Due a count', tone: due > 0 ? 'gap' : 'out', off: due === 0, on: filter === 'due', title: due === 0 ? 'No box is due a count.' : `${deskPhoneBoxesWords(due)} due a count on ${jobsWords(jobsDue)}. Press to see ${jobsDue === 1 ? 'that job' : 'those jobs'}.` },
     { key: 'missing', ...missing, tone: lines > 0 ? 'gap' : 'out', off: lines === 0, on: filter === 'missing' },
   ]
+  return withMoney ? all : all.filter((t) => t.key !== 'missing')
 }
 
 /**
  * The desk for a phone. `jobs` are in the desk's own order (what needs a hand first), `groups` its sites and loose
  * jobs as `groupDeskBySite` gives them. A filter that would leave nothing to show falls back to every job, so a
- * figure that drops to zero while it is pressed never leaves an empty page.
+ * figure that drops to zero while it is pressed never leaves an empty page. With `money: false` nothing about money
+ * is drawn or asked for: the *Missing this week* figure, a row's missing line and its credits.
  */
-export function buildDeskPhone(input: { jobs: ReadonlyArray<DeskPhoneJob>; groups: ReadonlyArray<DeskGroup>; filter: DeskPhoneFilter }): DeskPhoneModel {
+export function buildDeskPhone(input: { jobs: ReadonlyArray<DeskPhoneJob>; groups: ReadonlyArray<DeskGroup>; filter: DeskPhoneFilter; money?: boolean }): DeskPhoneModel {
+  const withMoney = input.money !== false
   const byId = new Map(input.jobs.map((j) => [j.id, j] as const))
-  const filter: DeskPhoneFilter = input.filter !== 'all' && input.jobs.some((j) => !j.failed && matches(j, input.filter)) ? input.filter : 'all'
+  const asked: DeskPhoneFilter = !withMoney && input.filter === 'missing' ? 'all' : input.filter
+  const filter: DeskPhoneFilter = asked !== 'all' && input.jobs.some((j) => !j.failed && matches(j, asked)) ? asked : 'all'
   const anySite = input.groups.some((g) => g.kind === 'site')
   const sections: DeskPhoneSection[] = []
   const loose: DeskPhoneRow[] = []
   for (const g of input.groups) {
     if (g.kind === 'job') {
       const job = byId.get(g.jobId)
-      if (job && matches(job, filter)) loose.push(row(job))
+      if (job && matches(job, filter)) loose.push(row(job, withMoney))
       continue
     }
     const members = g.jobIds.map((id) => byId.get(id)).filter((j): j is DeskPhoneJob => Boolean(j))
@@ -198,9 +206,9 @@ export function buildDeskPhone(input: { jobs: ReadonlyArray<DeskPhoneJob>; group
       heading: g.name,
       boxesWords: members.length > 1 ? deskPhoneBoxesWords(members.reduce((n, j) => n + (j.failed ? 0 : j.boxes), 0)) : null,
       notLoadedWords: deskJobsNotLoadedWords(members.filter((j) => j.failed).length),
-      rows: shown.map(row),
+      rows: shown.map((j) => row(j, withMoney)),
     })
   }
   if (loose.length > 0) sections.push({ key: 'loose', siteId: null, heading: anySite ? DESK_PHONE_NOT_ON_A_SITE : null, boxesWords: null, notLoadedWords: '', rows: loose })
-  return { tiles: tiles(input.jobs, filter), filter, sections }
+  return { tiles: tiles(input.jobs, filter, withMoney), filter, sections }
 }
