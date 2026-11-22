@@ -67,7 +67,7 @@ On a phone the day's presses sit in a bar at the bottom of the screen, above the
 
 - You tap {{button:blue|Leave report}} to file a field report on the current job. See the Reports guide.
 - The green button changes with your day: {{button:green|Clock In}} with no schedule, else {{button:green|On my way}}. While you drive it reads {{button:blue|I'm here}}. When only your current job is left, it turns into {{button:red|Wrap Up Day}} to clock you out.
-- Over those two sit three smaller buttons. You tap {{button:outline-amber|Turnaway}} when you arrive and cannot do the work. See the Turnaways guide.
+- Over those two sit three smaller buttons. You tap {{button:outline-amber|Turnaway}} when you arrive and cannot do the work. Turnaway shows once you are on the clock for the job. See the Turnaways guide.
 - You tap {{button:outline|% done}} to move the job's percent. The stepper is the same one My Schedule's {{button:outline|Update % done}} opens. The button shows for subs, helpers and superintendents while a job is clocked in.
 - {{button:outline|Clock out}} is for lunch, a parts run, or leaving early. See Clocking out below.
 - On a computer or a tablet the same buttons sit inside the card, under the day's list.

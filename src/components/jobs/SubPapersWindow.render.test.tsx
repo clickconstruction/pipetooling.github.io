@@ -7,14 +7,37 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, p
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: io.saveBlobAs }))
 // The register and the roster. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
 // `acks` is the sub's Got it marks (`sub_paper_acks`); null is a read that failed.
-const db = vi.hoisted(() => ({ rows: null as unknown[] | null, acks: [] as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null }, personError: null as { message: string } | null }))
+// `login` is the address on the login tied to the roster row. `saved` is what the To line wrote, and `saveError`
+// or `saveRefused` is a row that did not take it: a refusal with a reason, or no row back.
+const db = vi.hoisted(() => ({ rows: null as unknown[] | null, acks: [] as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null; account_user_id?: string | null }, personError: null as { message: string } | null, login: null as string | null, loginReads: 0, saved: [] as Array<{ email: string }>, saveError: null as { message: string } | null, saveRefused: false }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => ({
+      // The To line's save: one roster row, read back as it now stands.
+      update: (patch: { email: string }) => ({
+        eq: () => ({
+          select: () => ({
+            maybeSingle: async () => {
+              if (db.saveError) return { data: null, error: db.saveError }
+              if (db.saveRefused) return { data: null, error: null }
+              db.saved.push(patch)
+              db.person = { ...db.person, email: patch.email }
+              return { data: { email: patch.email }, error: null }
+            },
+          }),
+        }),
+      }),
       select: () => ({
         eq: () =>
           table === 'people'
             ? { maybeSingle: async () => (db.personError ? { data: null, error: db.personError } : { data: db.person, error: null }) }
+            : table === 'users'
+              ? {
+                  maybeSingle: async () => {
+                    db.loginReads += 1
+                    return { data: { email: db.login }, error: null }
+                  },
+                }
             : table === 'sub_paper_acks'
               ? (async () => (db.acks === null ? { data: null, error: { code: '42501', message: 'permission denied for table sub_paper_acks' } } : { data: db.acks, error: null }))()
             : (async () => {
@@ -109,6 +132,11 @@ beforeEach(() => {
   db.invoke.mockReset()
   db.person = { email: 'harlan@harlanmechanical.example', phone: null }
   db.personError = null
+  db.login = null
+  db.loginReads = 0
+  db.saved = []
+  db.saveError = null
+  db.saveRefused = false
   auth.role = 'assistant'
   auth.readOnly = false
   db.mint.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.mint_sub_paper' } })
@@ -647,6 +675,34 @@ describe('SubPapersWindow, with the register on the database', () => {
     expect(screen.getByRole('dialog').textContent).toContain('The file is WS-2041-1.pdf')
   })
 
+  it('a sub’s confirm on record prints on the office’s work statement, and none prints where there is none', async () => {
+    // The press is switched off, so no row exists yet. A row is read the day one does.
+    db.rows = [NUMBERED]
+    db.acks = [{ id: 'ack-c', kind: 'confirmed', person_id: 'harlan', labor_job_id: 'cedar-1', sending_id: null, payment_id: null, note: null, said_by_name: 'Harlan Mechanical', created_at: '2026-11-14T18:00:00Z', revision: NUMBERED.revision, amount: 4100, said_from: '203.0.113.7' }]
+    open({ sheet: 'cedar-1' })
+    await waitFor(() => expect(screen.getByTestId('sub-paper-preview').textContent).toContain('No. WS-2041-1'))
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(`Harlan Mechanical confirmed revision ${NUMBERED.revision} of this statement, at $4,100.00, on Nov 14, 2026, from 203.0.113.7.`)
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'ridge-1' } })
+    expect(screen.getByTestId('sub-paper-preview').textContent).not.toContain('confirmed revision')
+  })
+
+  it('a payment typed after the last statement and dated inside it is carried into Since the last statement, and the paper says so', async () => {
+    // SA-0003 ran to Nov 10 and was made that day at 15:00. A $300 check dated Nov 8 was typed on Nov 12.
+    const jobs: LaborJob[] = [sheet('cedar-1', 'cedar', '2041', '2026-10-28', [['Rough-in', 2400]], [{ id: 'p1', amount: 1000, payment_date: '2026-10-31' }, { id: 'p2', amount: 300, payment_date: '2026-11-08', created_at: '2026-11-12T15:00:00Z' }])]
+    db.rows = [{ kind: 'statement_of_account', number: 'SA-0003', revision: 1, labor_job_id: null, period_to: '2026-11-10', issued_at: '2026-11-10T15:00:00Z', replaced_by: null, voided_at: null }]
+    render(<SubPapersWindow open={{ kind: 'statement' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={jobs} assigneesByJobId={new Map([['cedar-1', [{ personId: 'harlan', personName: 'Harlan Mechanical' }]]])} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Since the last statement' }).getAttribute('aria-pressed')).toBe('true'))
+    const paper = screen.getByTestId('sub-paper-preview').textContent ?? ''
+    // It opens on the $1,400.00 the last statement closed on, and lists the payment under its own date.
+    expect(paper).toContain('Open on Nov 11, 2026 $1,400.00')
+    expect(paper).toContain('Nov 8, 2026recorded after the last statement')
+    expect(paper).toContain('1 payment dated before this period was recorded after the last statement was made, so it is counted in this one.')
+    expect(screen.getByTestId('sub-papers-will-show').textContent).toContain('1 payment')
+    // Another period is cut by the date alone: the payment is before this month's statement... or inside it, by its date.
+    fireEvent.click(screen.getByRole('button', { name: 'To date' }))
+    expect(screen.getByTestId('sub-paper-preview').textContent).not.toContain('recorded after the last statement')
+  })
+
   it('opened again the day a statement was made, the period still starts after the statement before it, never tomorrow', async () => {
     const today = todayYmdForTest()
     db.rows = [
@@ -829,7 +885,7 @@ describe('SubPapersWindow: Send', () => {
     db.person = { email: null, phone: null }
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
-    expect(screen.getByRole('alert').textContent).toBe('Harlan Mechanical has no email on the roster, so there is nowhere to send them. Print or download the paper for now. A dev can add an email to their roster row.')
+    expect(screen.getByRole('alert').textContent).toBe('Harlan Mechanical has no email on the roster, so there is nowhere to send them. Press the To line above and type their email. You can also print or download the paper.')
     const press = screen.getByRole('button', { name: 'Cannot send yet' }) as HTMLButtonElement
     expect(press.disabled).toBe(true)
     fireEvent.click(press)
@@ -837,6 +893,100 @@ describe('SubPapersWindow: Send', () => {
     expect(db.invoke).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Back to the paper' }))
     expect(screen.getByRole('button', { name: 'Download the PDF' })).toBeTruthy()
+  })
+
+  /** The To line's address as a press, by the name a screen reader says. */
+  const toPress = (text: string) => screen.getByRole('button', { name: `${text}, Harlan Mechanical’s email, press to change` })
+  const typeEmail = (typed: string) => {
+    fireEvent.click(toPress('no email on the roster'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Harlan Mechanical’s email' }), { target: { value: typed } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+  }
+
+  it('a sub with no email gets one on the To line: it is saved on their roster row and the press goes live', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null, account_user_id: 'u-harlan' }
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'office@harlanmechanical.example', papers: 3 }, error: null })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('button', { name: 'Cannot send yet' })).toBeTruthy()
+    typeEmail('  office@harlanmechanical.example ')
+    await waitFor(() => expect(db.saved).toEqual([{ email: 'office@harlanmechanical.example' }]))
+    // The line reads the address, the reason is gone and the press says what it sends.
+    await waitFor(() => expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · office@harlanmechanical.example'))
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledTimes(1))
+    // The function is handed the person, never an address: it reads the roster row itself.
+    const [, opts] = db.invoke.mock.calls[0] as [string, { body: Record<string, unknown> }]
+    expect(opts.body.person_id).toBe('harlan')
+    expect(JSON.stringify(opts.body)).not.toContain('office@harlanmechanical.example')
+  })
+
+  it('what is not an email stays in the field with the reason, and nothing is saved', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    typeEmail('harlan at mechanical')
+    expect(screen.getByText('That does not look like an email. It needs a name, an @ and a place, like name@example.com.')).toBeTruthy()
+    expect(db.saved).toEqual([])
+    expect(screen.getByRole('button', { name: 'Cannot send yet' })).toBeTruthy()
+  })
+
+  it('a row that does not take the address says so under the field, and the press stays dead', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null }
+    db.saveRefused = true
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    typeEmail('office@harlanmechanical.example')
+    expect(await screen.findByText('Their roster row was not changed. Your account may not edit it.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cannot send yet' })).toBeTruthy()
+    // A refusal with a reason says the reason.
+    db.saveRefused = false
+    db.saveError = { message: 'new row violates row-level security policy for table "people"' }
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(await screen.findByText(/new row violates row-level security policy/)).toBeTruthy()
+    expect(db.saved).toEqual([])
+  })
+
+  it('a sub who signs in with an address is offered it, and one press puts it on their roster row', async () => {
+    db.rows = []
+    db.person = { email: null, phone: null, account_user_id: 'u-harlan' }
+    db.login = 'harlan@signin.example'
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    // Offered, never used unasked: the press is dead until somebody puts the address on the row.
+    expect(screen.getByTestId('sub-papers-login-email').textContent).toContain('They sign in as harlan@signin.example.')
+    expect(screen.getByRole('button', { name: 'Cannot send yet' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Put harlan@signin.example on their roster row' }))
+    await waitFor(() => expect(db.saved).toEqual([{ email: 'harlan@signin.example' }]))
+    await waitFor(() => expect(screen.queryByTestId('sub-papers-login-email')).toBeNull())
+    expect(screen.getByTestId('sub-papers-to').textContent).toBe('Harlan Mechanical · harlan@signin.example')
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+  })
+
+  it('a sub with an address on the roster is not asked about their sign-in, and the address can still be put right', async () => {
+    db.rows = []
+    db.person = { email: 'harlan@harlanmechanical.example', phone: null, account_user_id: 'u-harlan' }
+    db.login = 'harlan@signin.example'
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(db.loginReads).toBe(0)
+    expect(screen.queryByTestId('sub-papers-login-email')).toBeNull()
+    fireEvent.click(toPress('harlan@harlanmechanical.example'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Harlan Mechanical’s email' }), { target: { value: 'office@harlanmechanical.example' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(db.saved).toEqual([{ email: 'office@harlanmechanical.example' }]))
+  })
+
+  it('a viewer who may not send has no press on the To line', () => {
+    // The view alone: nothing sends here, so nothing is handed in to keep an address with.
+    mountView({ canSend: false, contact: { email: null, phone: null, portalUrl: null, loginEmail: 'harlan@signin.example' }, onKeepEmail: vi.fn() })
+    expect(screen.queryByRole('button', { name: /press to change/ })).toBeNull()
+    expect(screen.queryByTestId('sub-papers-login-email')).toBeNull()
   })
 
   it('a roster that could not be read is not a sub with no email: the press stays live and the function decides', async () => {

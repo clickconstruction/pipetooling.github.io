@@ -1856,6 +1856,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "research_permits": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number city: string contact: string declared_value: number filed_on: string id: string issued_on: string lat: number lng: number perm…"}],
   "research_permits_v2": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number builder_key: string builder_kind: string builder_mark: string builder_mark_at: string builder_mark_by_name: string builder_mar…"}],
   "research_permits_v3": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number builder_key: string builder_kind: string builder_mark: string builder_mark_at: string builder_mark_by_name: string builder_mar…"}],
+  "research_permits_v4": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number builder_key: string builder_kind: string builder_mark: string builder_mark_at: string builder_mark_by_name: string builder_mar…"}],
   "resolve_job_ledger_id_by_number": [{"args":{"p_number":"string"},"returns":"string"}],
   "resolve_noncard_transaction_attribution": [{"args":{"p_mercury_transaction_id":"string","p_note?":"string","p_resolution_kind":"string"},"returns":"undefined"}],
   "resolve_pay_person_id": [{"args":{"p_name":"string"},"returns":"string"}],
@@ -1989,6 +1990,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "start_check_arrive": [{"args":{"p_fixture_id":"string","p_not_as_told?":"string[]"},"returns":"Json"}],
   "start_check_decide": [{"args":{"p_fixture_id":"string","p_hold_until?":"string","p_kind":"string","p_open_then?":"Json"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
   "start_check_take_back": [{"args":{"p_decision_id":"string"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
+  "start_check_to_look": [{"args":{"p_fixture_id":"string"},"returns":"string[]"}],
   "start_check_windows": [{"args":{"p_job_ids":"string[]"},"returns":"{ fixture_id: string job_id: string window_end: string window_start: string }[]"}],
   "start_checks_crew": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "start_checks_desk": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
@@ -2121,6 +2123,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "week_card_data": [{"args":{"p_user_id":"string"},"returns":"Json"}],
   "withdraw_person_report": [{"args":{"p_reason":"string","p_report_id":"string"},"returns":"Json"}],
   "write_down": [{"args":{"p_kind":"string","p_message_id":"string","p_writes?":"string"},"returns":"undefined"}],
+  "write_down_payment": [{"args":{"p_day?":"string","p_message_id":"string"},"returns":"undefined"}],
   "write_up_people": [{"args":{},"returns":"Json"}],
 }
 

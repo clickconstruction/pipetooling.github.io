@@ -10,6 +10,7 @@ import {
 } from '../../lib/dashboardNeedsYou'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
@@ -17,6 +18,7 @@ import { EmptyState } from '../EmptyState'
 import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
+import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -31,6 +33,7 @@ import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
  * with no saved choice opens on it, a skipped item goes to the back of the
  * round, and a *handled this visit* trail under the card lists what was acted
  * on or skipped since the card mounted — a tap brings that card back.
+ * Under the new phone layout (`useNewPhoneLayout`) every role with no saved choice opens on it.
  *
  * On Quickfill the Fill them in deck is the station's body since v2.5907 (punch list #178, D's
  * PR 1): the host passes `fillIn.opensFirst` from `needsYouStationOpening`, the card opens on the
@@ -75,7 +78,9 @@ export function DashboardNeedsYouCard({
   onOpenBoard?: () => void
 }) {
   const isPhone = useIsMobile()
-  const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
+  // The new phone layout: with no saved choice the card opens on Walk the list for every role, Cards one chip away.
+  const newPhoneLayout = useNewPhoneLayout().on
+  const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role, newPhoneLayout }))
   // The round (v2.3881): skipped keys in the order they were skipped, the card brought back from the trail, and the trail itself — this visit only.
   const [skippedKeys, setSkippedKeys] = useState<string[]>([])
   const [revisitKey, setRevisitKey] = useState<string | null>(null)
@@ -100,8 +105,8 @@ export function DashboardNeedsYouCard({
 
   // Re-read the stored preference once the user id arrives (auth loads async).
   useEffect(() => {
-    setMode(needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
-  }, [userId, isPhone, role])
+    setMode(needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role, newPhoneLayout }))
+  }, [userId, isPhone, role, newPhoneLayout])
 
   useEffect(() => {
     if (fillRowCount > 0) hadRows.current = true
@@ -322,28 +327,7 @@ export function DashboardNeedsYouCard({
         boxSizing: 'border-box',
       }}
     >
-      {lienBoardStrip && lienBoardStrip.length ? (
-        <button
-          type="button"
-          data-needs-you-lien-board
-          onClick={() => {
-            recordNavClick(userId, role, 'needs-you', '#lien-board')
-            onOpenBoard?.()
-          }}
-          title="Open the Lien desk at the Board"
-          style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', width: '100%', margin: '0 0 0.75rem', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
-        >
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Lien desk</span>
-          {lienBoardStrip.map((d) => (
-            <span key={d.key} data-needs-you-lien-dot={d.key} data-tone={d.tone} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, fontSize: '0.8125rem' }}>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', alignSelf: 'center', background: d.tone === 'red' ? 'var(--text-red-700)' : d.tone === 'amber' ? 'var(--text-amber-800)' : d.tone === 'violet' ? 'var(--text-violet-700)' : 'var(--border-strong)' }} />
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{d.figure}</strong>
-              <span style={{ color: 'var(--text-muted)' }}>{d.words}</span>
-            </span>
-          ))}
-          <span style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>The Board ›</span>
-        </button>
-      ) : null}
+      <NeedsYouLienBoardStrip strip={lienBoardStrip} userId={userId} role={role} onOpenBoard={onOpenBoard} />
       <DashboardCardHead card={{ top: lienBoardStrip && lienBoardStrip.length ? null : '1rem', side: '1.25rem', radius: 10 }} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
         <DashboardCardTitle>Needs you</DashboardCardTitle>
         <span

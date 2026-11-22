@@ -33,6 +33,22 @@ vi.mock('../../hooks/useAuth', async () => {
   const value = () => makeUseAuthValue({ role: auth.role, profileName: 'Robert' })
   return { ...useAuthModuleMock(), useAuth: value, useOptionalAuth: value }
 })
+// The real sheet, with one press beside it that says a word was taken off: the stub client lists no word on record,
+// so *Never said that* cannot be reached through the sheet here (its own smoke proves that press).
+const neverSaid = vi.hoisted(() => ({ ymd: '2026-10-09', claim: false }))
+vi.mock('../jobs/SetPromisedPayDateModal', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../jobs/SetPromisedPayDateModal')>()
+  const Sheet = real.default
+  return {
+    ...real,
+    default: (props: Parameters<typeof Sheet>[0]) => (
+      <>
+        <Sheet {...props} />
+        <span data-testid="say-never" onClick={() => props.onWord?.({ kind: 'never', ymd: neverSaid.ymd, claim: neverSaid.claim })} />
+      </>
+    ),
+  }
+})
 const open = vi.hoisted(() => ({ contactId: 'greg' as string | null }))
 vi.mock('../gc/messages/useThreadWindow', () => ({
   useThreadWindow: () => ({ contactId: open.contactId, at: null, openThread: () => undefined, closeThread: () => undefined }),
@@ -158,6 +174,9 @@ const header = () => within(screen.getByTestId('header'))
 const status = () => within(screen.getByTestId('status'))
 const more = () => within(screen.getByTestId('more'))
 const above = () => within(screen.getByTestId('above'))
+
+/** Lets a press that awaits nothing visible finish. */
+const settleTick = () => act(async () => { await Promise.resolve(); await Promise.resolve() })
 
 /** Greg is owed the plans or an addendum by Friday, marked by Rosa. */
 const OWED_ROW = {
@@ -504,6 +523,60 @@ describe('Write down their word under their line (v2.5649)', () => {
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('')
     expect(document.querySelector('[data-promise-sheet-context]')).toBeNull()
+  })
+
+  // The mark on the line (v2.8271): the sheet saved the job's promise, and the line it opened under takes the day.
+  const openSheet = async (io: FollowUpThreadIo, body = 'We will pay tomorrow.') => {
+    open.contactId = 'dana'
+    const at = new Date().toISOString()
+    renderThread(io, DANA, false, theirText({ jobId: 'j2', at, body }), async () => [money('j2', '1040', 900)])
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    return dayAfter(todayYmdInAppTz(new Date(at)))
+  }
+  const mark = (message_id: string, kind: string | null, day: string) => ({ id: `p-${message_id}`, message_id, kind, state: 'written', day, day_words: null, writes: null, decided_by: 'u-rosa', decided_at: '2026-10-01T15:00:00.000Z', message: { contact_id: 'dana', at: '2026-10-01T14:00:00.000Z' } })
+
+  it('a promise saved from a line marks that line with the day saved, and reads the thread again', async () => {
+    const io = fakeIo({ writeDownPayment: vi.fn(async () => undefined) })
+    const tomorrow = await openSheet(io)
+    const readsBefore = (io.loadThread as ReturnType<typeof vi.fn>).mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(io.writeDownPayment).toHaveBeenCalledWith('m-in', tomorrow))
+    await waitFor(() => expect((io.loadThread as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(readsBefore))
+    expect(await screen.findByText('Promise saved.')).toBeTruthy()
+    expect(screen.queryByText(/Their line was not marked/)).toBeNull()
+  })
+
+  it('Never said that takes the day off every line that carries it as a payment, and a paid claim takes off none', async () => {
+    const read = { ...rows(), promises: [mark('m-in', 'payment', '2026-10-09'), mark('m-older', 'payment', '2026-10-09'), mark('m-other', 'payment', '2026-10-16'), mark('m-bid', 'decision', '2026-10-09')] }
+    const io = fakeIo({ writeDownPayment: vi.fn(async () => undefined) }, read)
+    await openSheet(io, 'Thanks, got it.')
+    neverSaid.ymd = '2026-10-09'
+    neverSaid.claim = true
+    fireEvent.click(screen.getByTestId('say-never'))
+    await settleTick()
+    expect(io.writeDownPayment).not.toHaveBeenCalled()
+    neverSaid.claim = false
+    fireEvent.click(screen.getByTestId('say-never'))
+    await waitFor(() => expect((io.writeDownPayment as ReturnType<typeof vi.fn>).mock.calls).toEqual([['m-in', null], ['m-older', null]]))
+  })
+
+  it('a refused mark says the job took the word and why, and a client ahead of the push says nothing', async () => {
+    const refused = new DatabaseError('Failed to mark the line with their promise: Someone has said what that day is already.', 'P0001', null, {
+      serverMessage: 'Someone has said what that day is already.',
+      operationName: 'mark the line with their promise',
+    })
+    await openSheet(fakeIo({ writeDownPayment: vi.fn(async () => Promise.reject(refused)) }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    expect(await screen.findByText('The promise is saved on the job. Their line was not marked. Someone has said what that day is already.')).toBeTruthy()
+    expect(screen.getByText('Promise saved.')).toBeTruthy()
+    cleanup()
+    const ahead = fakeIo({ writeDownPayment: vi.fn(async () => Promise.reject(new Error('Could not find the function public.write_down_payment(p_day, p_message_id) in the schema cache'))) })
+    await openSheet(ahead)
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(ahead.writeDownPayment).toHaveBeenCalled())
+    await settleTick()
+    expect(screen.queryByText(/Their line was not marked/)).toBeNull()
   })
 })
 

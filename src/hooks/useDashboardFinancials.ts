@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { loadDashboardFinancials, type DashboardFinancials } from '../lib/dashboardFinancialsLoad'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withLeftOutJobIds } from '../lib/bridge/leftOut'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 // The reads live in `lib/dashboardFinancialsLoad.ts` with the client passed in (v2.5880), so the Bridge's weekly
@@ -54,8 +55,9 @@ export function useDashboardFinancials(
         // their payments and unlinked money are never read either (by their names and the shared ids).
         const zz = hideZz ? await loadZzTestJobIds(viewerUserId) : null
         if (cancelled) return
-        // What the Bridge leaves out (punch list #334) leaves through the same ids.
-        const zzTestJobIds = alsoLeaveOut && alsoLeaveOut.size > 0 ? new Set([...(zz ?? []), ...alsoLeaveOut]) : zz
+        // What the Bridge leaves out (punch list #334) leaves through the same ids. For a dev who shows ZZ tests they
+        // are ids alone, so the ZZ jobs the list does not name keep their money (v2.8281).
+        const zzTestJobIds = withLeftOutJobIds(zz, alsoLeaveOut)
         const next = await loadDashboardFinancials(supabase, { assistantAggregates: viewerRole === 'assistant', zzTestJobIds })
         if (!cancelled) setData(next)
       } catch (e) {

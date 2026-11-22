@@ -30,7 +30,9 @@ import {
   paperSendings,
   paperSheetName,
   subPapersAddUp,
+  SUB_PAPER_CONFIRM_LIVE,
   type PaperCompany,
+  type PaperConfirm,
   type PaperContext,
   type PaperMoneyLine,
   type PaperSending,
@@ -52,7 +54,8 @@ export type PapersUserRow = { id: string; role: string | null }
 export type PapersSendingRow = { id: string; number: number | string | null }
 export type PapersCreditRow = { payment_id: string | null; amount: number | string | null }
 export type PapersRegisterRow = { id: string; kind: string; number: string | null; revision: number | null; labor_job_id: string | null; sending_id: string | null; payment_id: string | null; issued_at: string | null; replaced_by: string | null; voided_at: string | null; fingerprint: string | null }
-export type PapersAckRow = { id?: string; kind: string; paper_id: string | null; labor_job_id: string | null; sending_id: string | null; payment_id: string | null; note: string | null; created_at: string | null }
+/** `revision`, `amount` and `said_from` are what a confirm is read by: the revision the sub saw, what it came to, and the address the press came from. */
+export type PapersAckRow = { id?: string; kind: string; paper_id: string | null; labor_job_id: string | null; sending_id: string | null; payment_id: string | null; note: string | null; created_at: string | null; revision?: number | string | null; amount?: number | string | null; said_from?: string | null }
 
 export type SubPortalPapersRows = {
   personId: string
@@ -144,6 +147,7 @@ export function portalPaperSheets(rows: SubPortalPapersRows): PaperSheet[] {
     const n = Number(s.number)
     if (s.number != null && Number.isFinite(n)) sendingNo.set(s.id, n)
   }
+  const confirms = portalConfirms(rows.acks)
   const creditKept = new Map<string, number>()
   for (const c of rows.credits) {
     const amount = Number(c.amount) || 0
@@ -196,7 +200,7 @@ export function portalPaperSheets(rows: SubPortalPapersRows): PaperSheet[] {
         day: (s.job_date ?? '').slice(0, 10) || (s.created_at ? calendarYmdInAppTzFromIso(s.created_at).slice(0, 10) : ''),
         lines: items.map((it) => ({ label: (it.fixture ?? '').trim() || 'A line', amount: cents(lineLaborCost({ count: it.count ?? undefined, hrs_per_unit: it.hrs_per_unit ?? undefined, is_fixed: it.is_fixed ?? undefined, labor_rate: it.labor_rate, direct_labor_amount: it.direct_labor_amount }, rate)) })),
         money: moneyByJob.get(s.id) ?? [],
-        confirm: null,
+        confirm: confirms.get(s.id) ?? null,
       }
     })
     .sort((a, b) => (a.day || '9999').localeCompare(b.day || '9999') || a.id.localeCompare(b.id))
@@ -215,6 +219,23 @@ export function portalPaymentTarget(key: string): { sending_id: string | null; p
   if (!k) return null
   if (k.startsWith('row:')) return k.length > 4 ? { sending_id: null, payment_id: k.slice(4) } : null
   return { sending_id: k, payment_id: null }
+}
+
+/**
+ * Each sheet's confirm, from the rows the page wrote: the newest one that names its sheet and the revision the sub
+ * saw. A work statement prints it, and says so when the statement has changed since (`buildWorkStatement`). The
+ * office's window reads the same rows by this one rule.
+ */
+export function portalConfirms(acks: ReadonlyArray<Pick<PapersAckRow, 'kind' | 'labor_job_id' | 'created_at' | 'revision' | 'amount' | 'said_from'>>): Map<string, PaperConfirm> {
+  const out = new Map<string, PaperConfirm>()
+  const sorted = acks.slice().sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+  for (const a of sorted) {
+    if (a.kind !== 'confirmed' || !a.labor_job_id) continue
+    const revision = Number(a.revision)
+    if (!Number.isFinite(revision) || revision < 1) continue
+    out.set(a.labor_job_id, { revision, amount: cents(Number(a.amount) || 0), at: a.created_at ? paperDay(calendarYmdInAppTzFromIso(a.created_at)) : 'a day not recorded', from: (a.said_from ?? '').trim() || 'their page' })
+  }
+  return out
 }
 
 export type PortalWrongNote = { about: 'statement' | 'payment'; key: string; day: string; note: string }
@@ -307,7 +328,7 @@ export const PORTAL_WRONG_NOTE_MAX = 1000
 export const PORTAL_WRONG_NOTES_A_DAY = 10
 
 export type PortalAnswerRow = {
-  kind: 'received' | 'something_wrong'
+  kind: 'received' | 'something_wrong' | 'confirmed'
   person_id: string
   labor_job_id: string | null
   sending_id: string | null
@@ -315,7 +336,7 @@ export type PortalAnswerRow = {
   /** The paper in the register the answer is about, where the office has made one, and the revision the sub saw. */
   paper_id: string | null
   revision: number | null
-  /** The figure the sub was looking at: a payment's amount, or what stays open on a statement. */
+  /** The figure the sub was looking at: a payment's amount, what stays open on a statement, or what a confirmed statement comes to. */
   amount: number
   note: string | null
 }
@@ -326,12 +347,12 @@ export type PortalAnswerPlan =
   | { ok: false; status: number; error: string }
 
 /** The live paper in the register for a sheet or a payment, by the mint's own rule: not replaced, not void, the highest revision. */
-function livePaper(register: readonly PapersRegisterRow[], match: (r: PapersRegisterRow) => boolean): { id: string; revision: number } | null {
-  let best: { id: string; revision: number } | null = null
+function livePaper(register: readonly PapersRegisterRow[], match: (r: PapersRegisterRow) => boolean): { id: string; revision: number; fingerprint: string } | null {
+  let best: { id: string; revision: number; fingerprint: string } | null = null
   for (const r of register) {
     if (r.voided_at || r.replaced_by || !match(r)) continue
     const revision = Number(r.revision) || 1
-    if (!best || revision > best.revision) best = { id: r.id, revision }
+    if (!best || revision > best.revision) best = { id: r.id, revision, fingerprint: r.fingerprint ?? '' }
   }
   return best
 }
@@ -341,11 +362,27 @@ function livePaper(register: readonly PapersRegisterRow[], match: (r: PapersRegi
  * so another person's key reads as not found. `already` is the day a payment was marked received before: nothing is
  * written twice.
  */
-export function planPortalAnswer(body: { action?: unknown; about?: unknown; key?: unknown; note?: unknown }, rows: SubPortalPapersRows, set: PortalPaperSet): PortalAnswerPlan {
+export function planPortalAnswer(body: { action?: unknown; about?: unknown; key?: unknown; note?: unknown }, rows: SubPortalPapersRows, set: PortalPaperSet, confirmLive: boolean = SUB_PAPER_CONFIRM_LIVE): PortalAnswerPlan {
   const action = typeof body.action === 'string' ? body.action : ''
   const key = typeof body.key === 'string' ? body.key.trim() : ''
-  if (action !== 'got_it' && action !== 'something_wrong') return { ok: false, status: 400, error: 'Unknown action.' }
+  // While confirming is off the answer does not exist: the page draws no press for it, and a call for it reads as any unknown one.
+  if (action !== 'got_it' && action !== 'something_wrong' && !(action === 'confirm' && confirmLive)) return { ok: false, status: 400, error: 'Unknown action.' }
   if (!set.ok) return { ok: false, status: 409, error: 'The office is checking your statements. Please call the office.' }
+  if (action === 'confirm') {
+    if (!key) return { ok: false, status: 400, error: 'Say which statement this is about.' }
+    const sheet = set.sheets.find((s) => s.id === key)
+    if (!sheet) return { ok: false, status: 404, error: 'That statement is not on your page.' }
+    // A confirm is of a copy the office made: its number and its revision are what the record keeps. The page
+    // never makes that copy, so a sheet with none, or one that changed since, has nothing to confirm yet.
+    const paper = livePaper(rows.register, (r) => r.kind === 'work_statement' && r.labor_job_id === sheet.id)
+    if (!paper) return { ok: false, status: 409, error: 'The office has not made this statement yet, so there is nothing to confirm. Please call the office.' }
+    const statement = buildWorkStatement(sheet, set.ctx)
+    if (!paper.fingerprint || paper.fingerprint !== subPaperFingerprint(statement)) return { ok: false, status: 409, error: "This statement changed since the office's copy. Please call the office for a new copy to confirm." }
+    // One confirm per revision: a second press changes nothing and reads the first day back.
+    const had = portalConfirms(rows.acks).get(sheet.id)
+    const already = had && had.revision === paper.revision && Math.abs(had.amount - statement.comesTo) < 0.005 ? had.at : null
+    return { ok: true, already, what: [sheet.number, paperJobLabel(sheet)].filter(Boolean).join(' · ') || paperSheetName(sheet), row: { kind: 'confirmed', person_id: rows.personId, note: null, labor_job_id: sheet.id, sending_id: null, payment_id: null, paper_id: paper.id, revision: paper.revision, amount: statement.comesTo } }
+  }
   const about = action === 'got_it' ? 'payment' : body.about === 'statement' || body.about === 'payment' ? body.about : ''
   if (!about || !key) return { ok: false, status: 400, error: 'Say which statement or payment this is about.' }
   let note: string | null = null

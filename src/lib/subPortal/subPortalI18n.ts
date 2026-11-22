@@ -293,6 +293,15 @@ const STRINGS = {
   gotItMeans: { en: 'This tells the office the money arrived. It is not a release or a waiver of any lien right.', es: 'Esto le avisa a la oficina que el dinero llegó. No es una liberación ni una renuncia a ningún derecho de gravamen.' },
   gotItYes: { en: 'Yes, I got it', es: 'Sí, lo recibí' },
   gotItNotYet: { en: 'Not yet', es: 'Todavía no' },
+  // Confirm a work statement (punch list #350, PR 7). Drawn only while SUB_PAPER_CONFIRM_LIVE is on. What a confirm
+  // means is counsel's sentence, printed as the paper prints it, so no word here says what it means.
+  confirmStatement: { en: 'Confirm', es: 'Confirmar' },
+  confirmQuestion: { en: 'Confirm this work statement?', es: '¿Confirma esta constancia de trabajo?' },
+  confirmDetail: { en: '{number} comes to {amount}.', es: '{number} suma {amount}.' },
+  confirmNotForPay: { en: 'You are paid the same whether or not you confirm.', es: 'Le pagan igual, confirme o no.' },
+  confirmYes: { en: 'Yes, I confirm it', es: 'Sí, la confirmo' },
+  confirmedOn: { en: 'Confirmed {date}', es: 'Confirmada el {date}' },
+  confirmedBefore: { en: 'You confirmed an earlier copy on {date}. This one has changed since.', es: 'Confirmó una copia anterior el {date}. Esta cambió desde entonces.' },
   somethingWrong: { en: 'Something is wrong', es: 'Algo está mal' },
   wrongTitle: { en: 'Tell the office what looks wrong', es: 'Dígale a la oficina qué se ve mal' },
   wrongAbout: { en: 'About {what}.', es: 'Sobre {what}.' },

@@ -61,6 +61,8 @@ import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { PhoneFold } from '../components/dashboard/PhoneFold'
 import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
+import { needsYouDashboardDoor, needsYouJobModeDoor } from '../lib/phoneLayout/needsYouPlace'
+import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
 import { canHaveShortDashboard, isShortDashboardHomePress, SHORT_DASHBOARD_WORDS } from '../lib/dashboard/shortDashboard'
 import { useDashboardView } from '../hooks/useDashboardView'
 import DashboardShortHome from '../components/dashboard/DashboardShortView'
@@ -1195,7 +1197,11 @@ export default function Dashboard() {
   const [crewDaySummary, setCrewDaySummary] = useState<{ people: number; jobs: number; flags: number } | null>(null)
   const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
-  const dispatchModeOn = pageMode.mode === 'dispatch'
+  // Needs you on a phone (`needsYouPlace.ts`): the card, or the one-line door to the Inbox tab of the mode the page is drawn in.
+  // Off the new phone layout the door is the office person's with Dispatch Mode on, and Job Mode's own Dashboard draws neither.
+  const newPhoneLayoutOn = useNewPhoneLayout().on
+  const needsYouDoorPlan = needsYouDashboardDoor({ newPhoneLayout: newPhoneLayoutOn, phoneOffice, mode: pageMode.mode })
+  const needsYouJobModeDoorTo = needsYouJobModeDoor({ newPhoneLayout: newPhoneLayoutOn })
   // Job Mode's top row on a day with no job left: tomorrow's stops as a count, once the schedule is read or kept.
   const jobModeTomorrowJobs = jobModeShortScheduleRead({ loading: subScheduleLoading, failed: subScheduleError != null, kept: subScheduleKeptAt != null }) === 'ready' ? subScheduleDayPartition.tomorrowBlocks.length : null
   const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, failed: subScheduleError != null && subScheduleKeptAt == null, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
@@ -1367,8 +1373,18 @@ export default function Dashboard() {
         {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
             hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
             hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
-            nothing here, since the report window is the card's own Leave Report; the Tally square stays. */}
-        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport jobModeDay={{ hoursThisWeek: jobModeWeekHours, tomorrowJobs: jobModeTomorrowJobs }} />
+            nothing here, since the report window is the card's own Leave Report; the Tally square stays.
+            needsYouDoor (the new phone layout alone): the one-line door to that Inbox tab, the one thing of the banners
+            drawn here, so a phone that starts in Job Mode still says what waits on its person. */}
+        <DashboardPinnedQuickRow
+          {...pinnedQuickRowSharedProps}
+          renderModals={false}
+          hideBanners
+          hideJobReport
+          jobModeDay={{ hoursThisWeek: jobModeWeekHours, tomorrowJobs: jobModeTomorrowJobs }}
+          needsYouDoor={needsYouJobModeDoorTo != null}
+          needsYouDoorTo={needsYouJobModeDoorTo ?? undefined}
+        />
         {jobModeTop}
         <DashboardJobModeCard
           userId={authUser.id}
@@ -1647,7 +1663,9 @@ export default function Dashboard() {
             />
           ) : undefined
         }
-        needsYouDoor={phoneOffice && dispatchModeOn}
+        needsYouDoor={needsYouDoorPlan != null}
+        needsYouDoorTo={needsYouDoorPlan?.to}
+        needsYouDoorKeepsCards={needsYouDoorPlan?.cardsStay}
         quietSquares={phoneOffice}
         afterJobReportRow={
           <>

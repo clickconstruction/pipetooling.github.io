@@ -76,6 +76,28 @@ describe('BoxTabs', () => {
     await waitFor(() => expect(screen.getByTestId('box-tabs-history').textContent).toMatch(/did not load|permission denied/))
     fireEvent.click(screen.getByRole('tab', { name: 'Contents' }))
     expect(document.querySelector('[data-empty-state]')?.textContent).toContain('Nothing in R70 yet.')
+    // with no handler from its host the words are as they were, and there is no press
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('Nothing in R70 yet. Add a part on the box itself.')
+    expect(document.querySelector('[data-empty-state] button')).toBeNull()
+  })
+
+  it('an empty box offers Add a part where its host can open the sheet (v2.8282)', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    const onAddPart = vi.fn()
+    renderWithProviders(<BoxTabs {...props} lines={[]} onAddPart={onAddPart} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Contents' }))
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('Nothing in R70 yet. Add a part puts the first one in.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add a part' }))
+    expect(onAddPart).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(fetchBoxNames).toHaveBeenCalled())
+  })
+
+  it('a box with parts has no such press, with or without a handler', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    renderWithProviders(<BoxTabs {...props} onAddPart={() => {}} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Contents · 1' }))
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    await waitFor(() => expect(fetchBoxNames).toHaveBeenCalled())
   })
 })
 

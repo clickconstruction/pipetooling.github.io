@@ -183,3 +183,29 @@ describe('pins, legend and visibility', () => {
     expect(() => writeJobsMapHidden(true, broken)).not.toThrow()
   })
 })
+
+describe('a job an in kind deal pays (punch list #301)', () => {
+  const now = new Date('2026-09-14T18:00:00Z')
+  const oldBill = [{ id: 'i1', status: 'billed', amount: 1700, billed_at: '2026-04-01T14:00:00Z', estimated_bill_date: null }] as unknown as JobWithDetails['invoices']
+
+  it('a covered bill keeps its pin, with nothing to collect, no age and its open money set apart', () => {
+    const { jobs } = jobsMapJobs([job({ id: 'k', status: 'billed', invoices: oldBill, in_kind_arrangement_id: 'deal-1' } as Partial<JobWithDetails> & { id: string })], now)
+    expect(jobs[0]).toMatchObject({ section: 'billed', inKind: true, owedDollars: 0, inKindDollars: 1700, billedAgeDays: null })
+    expect(jobsMapOwedLine(jobs[0]!)).toBe('$1,700 scheduled in kind')
+    expect(jobsMapStatusLine(jobs[0]!)).toBe('Billed · In kind')
+  })
+
+  it('an ordinary late bill beside it still reads owed, with its age', () => {
+    const { jobs } = jobsMapJobs([job({ id: 'm', status: 'billed', invoices: oldBill })], now)
+    expect(jobs[0]).toMatchObject({ inKind: false, owedDollars: 1700, inKindDollars: 0, billedAgeDays: 166 })
+    expect(jobsMapOwedLine(jobs[0]!)).toBe('$1,700 owed')
+    expect(jobsMapStatusLine(jobs[0]!)).toBe('Billed')
+  })
+
+  it('a working job on a deal says nothing of it: there is no bill yet', () => {
+    const { jobs } = jobsMapJobs([job({ id: 'w', status: 'working', in_kind_arrangement_id: 'deal-1' } as Partial<JobWithDetails> & { id: string })], now)
+    expect(jobs[0]).toMatchObject({ inKind: true, owedDollars: 0, inKindDollars: 0 })
+    expect(jobsMapOwedLine(jobs[0]!)).toBeNull()
+    expect(jobsMapStatusLine(jobs[0]!)).toBe('Working · 60%')
+  })
+})

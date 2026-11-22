@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { cameFromMaterials, materialsJobPage, withoutStaleFrom } from '../lib/materials/boxRow'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
@@ -248,6 +249,14 @@ export default function JobTally() {
   const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  /** The box was opened from the office's Materials desk on a phone (v2.8284): its back press returns there. */
+  const fromMaterials = cameFromMaterials(searchParams)
+  // The mark lasts while that box is open (`withoutStaleFrom`). Once the person is on the Tally's own list, a box they open goes back to the list.
+  useEffect(() => {
+    const next = withoutStaleFrom(searchParams)
+    if (next) setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
   // On site is the tab the tally opens on (v2.6229, the owner's word): the crew's side of Materials on site, first in the row.
   const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')
   const [role, setRole] = useState<string | null>(null)
@@ -2351,6 +2360,7 @@ export default function JobTally() {
           askSeq={onSiteAddress.asked.seq}
           onOpenContainer={onSiteAddress.reportOpen}
           onOpenSticker={onSiteAddress.reportSticker}
+          boxBack={fromMaterials && selectedJobId ? { label: 'Back to Materials', onBack: () => navigate(materialsJobPage(selectedJobId)) } : undefined}
         />
       )}
 

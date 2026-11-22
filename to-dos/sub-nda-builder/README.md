@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and step 4 was built in three parts: its ground, the Book's lines and the office's settings page on a job (v2.8182, v2.8183, v2.8184) · steps 5 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and step 4 was built in three parts: its ground, the Book's lines and the office's settings page on a job (v2.8182, v2.8183, v2.8184) · the same day step 4 was walked live on prod, and the small presses it found were fixed (v2.8229, v2.8275) · steps 5 to 8 are not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,8 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The real wording into the Contract Book's entry, with its breach and site lines, and counsel's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then step 5, the GC's page, read-only. Steps 1 to 4 are built (step 4 in v2.8182, v2.8183 and v2.8184). The rest of the look is open still. Beside them, the last four steps of the Document builder tab, #404, where the flow is parked apart from any job, and the owner's read, box by box, of the grid in this card's mock-up: what each of the four levels means on each topic. Then the open calls below, with the wider calls still open in *The wider look*.
+next: The walks owed in *Left to do and to walk*, which need nobody's call: v2.8275 on the live build, the light theme, a person's own Read and sign, and a change after a signature. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then step 5, the GC's page, read-only. Steps 1 to 4 are built. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -572,6 +573,9 @@ and site lines, a notice and a site note (v2.8183). On a job's Documents tab a p
 settings is picked in **Add a paper** and walked: the notice, the basis, the real site, a page a
 topic and the review, whose press requires it. **Settings** on its row opens one page for a later
 change, and its button says who signs again (v2.8184).
+Step 4 was walked live on prod on 2026-11-21, at 1100 px and 375 px, with real presses and drags.
+The flow, the one page and three saves passed.
+The small presses the walk found were fixed in v2.8229 and v2.8275, and v2.8229's were measured again on the live build.
 What it still needs before a real job: the real settings list and wording in the Book's entry, and an
 attorney's read of that revision. Until then only a ZZ Test job takes the paper.
 The sign path's functions, `accept-contract` and `get-contract-for-signer`, were deployed on
@@ -582,8 +586,7 @@ That walk found one gap: the two functions that hand out a signing link refused 
 of its own. v2.8156 fixed it, and `send-contract-for-signature` and
 `get-contract-signing-link-for-self` were deployed the same day on Taunya's go. The office's link was
 then made on prod for a ZZ Test paper with no text of its own, and a plain paper with nothing to sign
-was still refused. A person's own **Read and sign** was not walked on prod as its signer: no ZZ login
-was signed in. Step 3 waits on no deploy.
+was still refused. Step 3 waits on no deploy.
 
 Step 2 (v2.8020) put **Summary** beside **Paper** in the Book's preview, with
 the level in words and **Print the sample**. The *Signing for*
@@ -627,3 +630,39 @@ so that tab holds two kinds of builder.
 The calls in *Open: the look* are what is left of the review. After that come the picks the build stands
 on, then step 4. The gate under it is live and unused, and *The wider look* orders what is left around
 it.
+
+### Left to do and to walk (2026-11-22)
+
+Each walk runs on the `ZZ TEST sink` job with a `ZZ Test` Contract Book entry made for it, placeholder words only, and the entry deleted after.
+
+- **v2.8275 on the live build.** The job window's Documents tab, as a signed-in dev, at 1100 px and 375 px. With no paper on the job, **Add a paper** in the empty line is 44 px tall. With a paper required, the Papers to sign window's *This job's papers and who has signed* is 44 px, **Settings** and **Take off** stay together on a phone, and **Require this paper** does not move while the last blank is typed. Not walked because it merged after the last walk.
+- **The light theme.** The settings flow and the one page, as a dev, at both widths. Every walk so far ran in the dark theme.
+- **A person's own Read and sign.** The Papers to sign window, then **Read and sign**, as a ZZ login linked to a ZZ person on the job's roster, at 375 px. It opens the paper put together from the job's settings, signs at the seal it shows, and the job opens. Not walked because no ZZ login was signed in; the office's link and the signing page were walked instead (v2.8156).
+- **A change after a signature.** **Settings** on the paper's row once a ZZ person has signed, as a dev. The button reads *Save, and ask 1 person to sign again*. After the save that person owes the new version and the old signed copy stays. Not walked because it needs a ZZ signature first; the SQL bed covers the database side.
+- **A sub with no login.** The sub's own page, as a ZZ sub on the job, with a paper built from settings. The card for the job lists the paper, and the sub signs it there. Not walked for such a paper.
+- **A finger on a real phone.** The sliders on the flow and the one page, dragged with a finger. The browser pane sends a mouse, so a touch drag was never tried.
+
+Loose ends:
+
+- **Test rows left on prod**, which the app cannot delete. Five `job_required_papers` rows on `ZZ TEST sink`, all taken off: `b80915f9-9aee-4040-912a-53c603aa84ae`, `1e55c6f4-e8df-4208-a236-e74d5d83de58`, `88defbb0-808d-44c9-9cc6-37c87778028c`, `e8ea5b7b-8502-4afb-8b55-0a0f6ef1358c` and `2cc82c28-66c8-4a1e-9d2b-2e48ea20e6d7`. One `esign_consents` row from the ZZ signature, `13235afd-0074-4dc0-984c-1045cbe754af`. Each goes with one SQL delete by id, on Taunya's go.
+- **Small presses left.** A dash of the step bar is 38 px wide at phone width with seven steps. It is 44 px tall, and **Back** and **Next** do the same job. The app's shared confirm window has buttons 36 px tall; changing them changes every confirm in the app.
+- Nothing of this card waits to merge, push or deploy. Every migration is on the ledger. On 2026-11-22 `npm run check:edge-drift` named five functions behind `main`, none of them this card's, and the dev seat reads as 0.125.0.
+
+The words, from the Document builder's send session (2026-11-22). They live in Taunya's private Claude doc, *Sub NDA: clause table*, and never here.
+
+- **The Sub NDA's words.** The doc's tab *Draft wording* holds a first draft: 18 sections, two added rules, and the seven topics at four levels. On 2026-11-21 Taunya settled who signs, who the two parties are, the level from which the job itself is secret, where disputes are heard, and that there is no non-compete. No attorney has read it.
+- **GC mode's master agreement.** GC mode's Send for a company's master agreement stays off until the Contract Book holds a `sub` entry titled exactly `Master Services Agreement` (`GC_MASTER_AGREEMENT_TITLE` in `src/lib/gc/papersIo.ts`). Prod had none on 2026-11-21. The doc's tab *Master agreement* holds a first draft of 23 sections, with Taunya's calls on pay, the holdback and ending a job early. After the attorney's read the entry goes into the Contract Book under that exact title. The dev seat's `plan_paper_words` can load it as `Master Services Agreement (draft)`; it refuses the live title, and the rename is a press in the Book.
+- **For the attorney.** The doc lists the points on both drafts and on the clause table. Two are about state law: whether naming a county for disputes holds, and the agreement's pay time against the state's prompt-pay time.
+- **Not read yet.** The project owner's own site rules, which the GC's subcontract passes down without stating them. Until they are read, the Sub NDA's per-topic part is not checked against them.
+- **The builder holds no agreement text.** A walked builder has no field for an agreement's own sections. The Sub NDA's agreement text belongs in the Contract Book, as an entry or as clauses, and only its topics and levels in a builder.
+
+Taunya's calls:
+
+- The real settings list and its wording in the Contract Book entry, with its breach and site lines.
+- An attorney's read of that revision, and of the master agreement. Until a revision is marked as read, only a ZZ Test job takes the paper.
+- Her read of the grid in this card's mock-up, box by box, before any wording goes to an attorney.
+- Whether the GC and the project owner may enforce the Sub NDA directly, by default.
+- A Spanish version of both papers.
+- Whether each worker still signs a job's papers in the gate once the sub business has signed the Sub NDA. The gate built asks each person to sign before the job opens.
+- The calls left in [Open: the look](#open-the-look) and [The wider calls](#the-wider-calls-the-owners-to-make).
+- Whether and when the Document builder tab ([#404](../document-builder/README.md)) joins the Contract Book. Nothing joins them yet.

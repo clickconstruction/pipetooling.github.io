@@ -228,7 +228,8 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
     vi.mocked(storeMock.addMovement).mockClear()
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Add a part to A2' }))
-    expect(screen.queryByTestId('add-part-already')).toBeNull()
+    // since v2.8284 the sheet opens on the job's names, before a word is typed
+    expect(screen.getByTestId('add-part-already').textContent).toContain('ZZ test elbow')
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'zz elbows' } })
     const already = screen.getByTestId('add-part-already')
     expect(already.textContent).toContain('Already on this job')
@@ -245,6 +246,31 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
     expect(screen.queryByTestId('add-part-already')).toBeNull()
     expect(screen.getByRole('button', { name: 'Use “wax ring” as typed' })).toBeTruthy()
+  })
+})
+
+describe('TallyOnSiteTab · the faster load (v2.8284)', () => {
+  it('a part put into a box that held none of it is counted as it goes in, and “and another part” keeps the sheet', async () => {
+    const storeMock = await import('../../lib/materials/onSiteStore')
+    vi.mocked(storeMock.addMovement).mockClear()
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a part to A2' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
+    fireEvent.click(screen.getByTestId('add-part-as-typed'))
+    fireEvent.click(screen.getByRole('button', { name: '+25' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 25 and another part' }))
+    expect(vi.mocked(storeMock.addMovement).mock.calls.map((c) => [c[0].reason, c[0].partName, c[0].quantity])).toEqual([['delivered', 'wax ring', 25], ['counted', 'wax ring', 25]])
+    expect(screen.getByTestId('add-part-note').textContent).toBe('25 wax ring added to A2.')
+    expect(screen.getByRole('dialog', { name: 'Add a part to A2' })).toBeTruthy()
+    vi.mocked(storeMock.addMovement).mockClear()
+  })
+
+  it('a box opened from the Materials desk goes back there, under that name', () => {
+    const onBack = vi.fn()
+    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId="a2" boxBack={{ label: 'Back to Materials', onBack }} />)
+    expect(screen.queryByRole('button', { name: 'Back to the containers' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Materials' }))
+    expect(onBack).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -409,6 +435,11 @@ describe('Add a container under the name rule (punch list #351)', () => {
     expect(screen.getByRole('button', { name: 'Cage' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.change(name, { target: { value: 'a5 toilets' } })
     expect(screen.getByTestId('add-box-say').textContent).toBe('The name is A5. “Toilets” moved to What is in it.')
+    // How many (v2.8284): filled, the press says the box and its first part
+    fireEvent.change(screen.getByTestId('add-box-how-many'), { target: { value: '24' } })
+    expect(screen.getByTestId('add-box-press').textContent).toBe('Add A5 with 24 Toilets')
+    fireEvent.change(screen.getByTestId('add-box-how-many'), { target: { value: '' } })
+    expect(screen.getByTestId('add-box-press').textContent).toBe('Add A5')
     expect((screen.getByTestId('add-box-line') as HTMLInputElement).value).toBe('Toilets')
     fireEvent.click(screen.getByRole('button', { name: 'Loose pile' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add A5' }))

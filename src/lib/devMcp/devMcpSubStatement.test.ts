@@ -16,6 +16,7 @@ import { ITEM_COLUMNS, PAYMENT_COLUMNS, readSubPapersRows, REGISTER_COLUMNS, SHE
 import { portalPaperSet, portalPaperSheets } from '../../../supabase/functions/_shared/subPortalPapers'
 import {
   lastStatementOf,
+  statementsOf,
   pickStatementPerson,
   planStatement,
   shapeStatementAsk,
@@ -103,9 +104,26 @@ describe('the period', () => {
       { number: 'SA-0009', issued_at: '2026-11-18T15:00:00Z', period_to: null, voided_at: '2026-11-18T16:00:00Z' },
     ])
     // A statement made to date ended the day it was made, and a void one is no statement.
-    expect(lastStatementOf(register)).toEqual({ number: 'SA-0007', endedOn: '2026-11-02' })
-    expect(statementRangeFor({ key: 'since_last' }, TODAY, lastStatementOf(register))).toEqual({ ok: true, range: { from: '2026-11-03', to: TODAY } })
+    expect(lastStatementOf(register)).toEqual({ number: 'SA-0007', endedOn: '2026-11-02', madeAt: '2026-11-02T15:00:00Z' })
+    // The range carries when that statement was made: a line typed after it and dated inside it is counted (v2.8269).
+    expect(statementRangeFor({ key: 'since_last' }, TODAY, lastStatementOf(register))).toEqual({ ok: true, range: { from: '2026-11-03', to: TODAY, lateAfter: '2026-11-02T15:00:00Z' } })
     expect(lastStatementOf(withPeriod(registerRows()))).toBeNull()
+  })
+  it('a statement made today is set apart, as in the window: since the last statement runs from the one before', () => {
+    const register = withPeriod(registerRows(), [
+      { number: 'SA-0007', issued_at: '2026-11-02T15:00:00Z', period_to: null },
+      { number: 'SA-0011', issued_at: `${TODAY}T15:00:00Z`, period_to: null },
+      { number: 'SA-0012', issued_at: `${TODAY}T19:00:00Z`, period_to: TODAY },
+    ])
+    expect(statementsOf(register, TODAY)).toEqual({ last: { number: 'SA-0007', endedOn: '2026-11-02', madeAt: '2026-11-02T15:00:00Z' }, madeToday: { number: 'SA-0012' } })
+    const { last, madeToday } = statementsOf(register, TODAY)
+    expect(statementRangeFor({ key: 'since_last' }, TODAY, last, madeToday)).toEqual({ ok: true, range: { from: '2026-11-03', to: TODAY, lateAfter: '2026-11-02T15:00:00Z' } })
+    // Without today the two of today are the last statement, as the day after reads them.
+    expect(statementsOf(register).last).toMatchObject({ number: 'SA-0012', endedOn: TODAY })
+    // A first statement made today leaves nothing to start after, and the refusal says so.
+    const first = statementsOf(register.filter((r) => r.number !== 'SA-0007'), TODAY)
+    expect(first.last).toBeNull()
+    expect(statementRangeFor({ key: 'since_last' }, TODAY, first.last, first.madeToday)).toEqual({ ok: false, refused: "Their first statement, SA-0012, was made today, so there is no statement before today to start after. Ask for period 'to_date'." })
   })
   it('a month and a year run from their first day to today, and to date has no edge', () => {
     expect(statementRangeFor({ key: 'this_month' }, TODAY, null)).toEqual({ ok: true, range: { from: '2026-11-01', to: TODAY } })
@@ -169,8 +187,30 @@ describe('the plan', () => {
     // The same figures whichever way the period is asked.
     expect(planned({ key: 'dates', from: '2026-11-01', to: TODAY }).fingerprint).toBe(month.fingerprint)
     const since = planned({ key: 'since_last' }, rowsFor(withPeriod(registerRows(), [{ number: 'SA-0007', issued_at: '2026-11-02T15:00:00Z' }])))
-    expect(since.range).toEqual({ from: '2026-11-03', to: TODAY })
+    expect(since.range).toEqual({ from: '2026-11-03', to: TODAY, lateAfter: '2026-11-02T15:00:00Z' })
     expect(since.reply.register).toMatchObject({ last_statement: { number: 'SA-0007', ended_on: '2026-11-02' } })
+  })
+  it('since the last statement carries a payment typed after it and dated inside it, as the window does', () => {
+    // SA-0007 ran to Nov 12 and was made that day at 15:00 UTC. Sending 231, dated Nov 12, was typed at 16:00.
+    const rows = rowsFor(withPeriod(registerRows(), [{ number: 'SA-0007', issued_at: '2026-11-12T15:00:00Z', period_to: '2026-11-12' }]))
+    const since = planned({ key: 'since_last' }, rows)
+    expect(since.range).toEqual({ from: '2026-11-13', to: TODAY, lateAfter: '2026-11-12T15:00:00Z' })
+    expect(since.statement.late).toEqual({ payments: 1, backcharges: 0, sheets: 0 })
+    expect(since.reply.last_payments).toEqual([{ day: 'Nov 12, 2026', how: expect.any(String), number: 'PR-0231', amount: 2200, recorded_after_the_last_statement: true }])
+    expect(since.reply.carried).toBe('1 payment dated before this period was recorded after the last statement was made, so it is counted in this one.')
+    // The paper made under its number carries the same.
+    expect(since.numbered('SA-0008').late).toEqual({ payments: 1, backcharges: 0, sheets: 0 })
+    // The same days asked as dates are cut by the date alone: the payment is before them, and nothing is carried.
+    const dates = planned({ key: 'dates', from: '2026-11-13', to: TODAY }, rows)
+    expect(dates.reply.last_payments).toEqual([])
+    expect(dates.reply.carried).toBeUndefined()
+    expect(dates.statement.adds.opening).toBe(since.statement.adds.opening - 2200)
+  })
+  it('a statement made today does not stop since the last statement: it runs from the one before, and the reply names today’s', () => {
+    const rows = rowsFor(withPeriod(registerRows(), [{ number: 'SA-0007', issued_at: '2026-11-02T15:00:00Z' }, { number: 'SA-0011', issued_at: `${TODAY}T15:00:00Z` }]))
+    const since = planned({ key: 'since_last' }, rows)
+    expect(since.range).toMatchObject({ from: '2026-11-03', to: TODAY })
+    expect(since.reply.register).toMatchObject({ last_statement: { number: 'SA-0007', ended_on: '2026-11-02' }, made_today: 'SA-0011' })
   })
   it('a teammate’s own sheet is theirs: a superintendent whose roster row is kind sub', () => {
     const OWN = '00000000-0000-4000-8000-0000000371b9'
@@ -338,7 +378,7 @@ describe('the seat’s two verbs', () => {
     expect(SERVER).toContain("name: 'apply_sub_statement'")
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period })')
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period, make: true, expect: plan.fingerprint })')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.125.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.126.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('the other ninety-eight name no RPC')
     expect(SERVER).toContain('plan_sub_statement → apply_sub_statement (a person\'s Statement of account as the papers window\'s Download makes it')

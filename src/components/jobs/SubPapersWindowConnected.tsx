@@ -34,13 +34,15 @@ import { supabase } from '../../lib/supabase'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { mintRefusal, mintSubPaperArgs, mintedFrom, registerSubPaperSet, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type MintedSubPaper, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
-import { NO_SUB_PAPER_ANSWERS, paymentRecordReceived, subPaperAnswers, SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED, type SubPaperAckRow } from '../../lib/subWorkOrders/subPaperAnswers'
+import { NO_SUB_PAPER_ANSWERS, paymentRecordReceived, subPaperAnswers, SUB_PAPER_ACK_COLUMNS_FOR_PAPERS, type SubPaperAckRow } from '../../lib/subWorkOrders/subPaperAnswers'
+import { portalConfirms } from '../../../supabase/functions/_shared/subPortalPapers'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import { drawSubPaperPdf } from '../../lib/subWorkOrders/subPaperPdfDraw'
 import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendSubject, subPaperSendUnknownWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { ROSTER_EMAIL_NOT_KEPT } from '../../lib/subWorkOrders/subPaperRosterEmail'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { SubPapersWaiting, SubPapersWindowView, type SubPaperContact, type SubPapersOpen } from './SubPapersWindow'
@@ -101,11 +103,16 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       // The letterhead is the bill's own block from Settings. A read that fails leaves the draft's defaults.
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole: role }).catch(() => null)
       // The roster's own address: the send step shows where a paper will go, and the function reads it again itself.
-      const person = personId ? await supabase.from('people').select('email, phone').eq('id', personId).maybeSingle() : { data: null, error: null }
+      const person = personId ? await supabase.from('people').select('email, phone, account_user_id').eq('id', personId).maybeSingle() : { data: null, error: null }
       if (cancelled) return
-      const p = (person.data ?? null) as { email: string | null; phone: string | null } | null
+      const p = (person.data ?? null) as { email: string | null; phone: string | null; account_user_id: string | null } | null
+      // A sub with no address on the roster may sign in with one. It is offered on the To line, never sent to unasked,
+      // so a read that fails only leaves the offer out.
+      const login = p && !p.email?.trim() && p.account_user_id ? await supabase.from('users').select('email').eq('id', p.account_user_id).maybeSingle() : { data: null }
+      if (cancelled) return
+      const loginEmail = ((login.data ?? null) as { email: string | null } | null)?.email?.trim() || null
       // A read that failed is not a sub with no email: the step then names the roster's address without quoting it.
-      setContact({ email: p?.email?.trim() || null, phone: p?.phone?.trim() || null, portalUrl: null, emailUnread: !!person.error })
+      setContact({ email: p?.email?.trim() || null, phone: p?.phone?.trim() || null, portalUrl: null, emailUnread: !!person.error, loginEmail })
       const issuer = getPhysicalInvoiceIssuerForDocument()
       setCompany({ name: issuer.companyName || 'Our company', lines: [issuer.addressText.replace(/\n+/g, ', '), issuer.phone, issuer.email].map((l) => (l ?? '').trim()).filter(Boolean) })
     })()
@@ -129,7 +136,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     let cancelled = false
     void (async () => {
       // The marks alone: the notes a sub sent are the Pay view's to show. The older columns do, so one read serves every database.
-      const read = personId ? await supabase.from('sub_paper_acks').select(SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED).eq('person_id', personId) : { data: [], error: null }
+      const read = personId ? await supabase.from('sub_paper_acks').select(SUB_PAPER_ACK_COLUMNS_FOR_PAPERS).eq('person_id', personId) : { data: [], error: null }
       if (cancelled) return
       setAcks(read.error ? null : ((read.data ?? []) as unknown as SubPaperAckRow[]))
       setMarksRead(true)
@@ -142,7 +149,14 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
 
   // Today is handed in, so a statement made today does not start *Since the last statement* tomorrow.
   const register = useMemo(() => subPaperRegister(rows ?? [], (iso) => calendarYmdInAppTzFromIso(iso).slice(0, 10), todayYmdInAppTz()), [rows])
-  const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: register.bySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, register])
+  // A sub's confirm of a work statement rides on its sheet's register row, by the rule their own page reads it by.
+  // None is written while `SUB_PAPER_CONFIRM_LIVE` is off, so this adds nothing until then.
+  const registerBySheet = useMemo(() => {
+    const confirms = portalConfirms(acks ?? [])
+    if (confirms.size === 0) return register.bySheet
+    return new Map([...register.bySheet].map(([sheetId, row]) => [sheetId, { ...row, confirm: confirms.get(sheetId) ?? null }]))
+  }, [register, acks])
+  const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: registerBySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, registerBySheet])
   const ctx = useMemo<PaperContext | null>(() => (company ? { company, sub: { name, lines: [] }, today: todayYmdInAppTz(), preparedAt: paperPreparedAt(new Date(), APP_CALENDAR_TZ), zone: 'Central time' } : null), [company, name])
   const jobIdsOf = (paper: SubPaper): string[] => {
     const ids = paper.kind === 'work_statement' ? [paper.sheetId] : paper.kind === 'payment_record' ? paper.applied.map((a) => a.sheetId) : paper.rows.map((r) => r.sheetId)
@@ -175,6 +189,18 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   }
   const make = async (paper: SubPaper, range: StatementRange): Promise<SubPaper> => (await makeSet([paper], range))[0] ?? paper
   const maySend = !readOnly && isOfficeRole(role) && !!personId
+  /**
+   * The To line's save: the address goes onto the person's roster row, where the function reads it. The office
+   * roles who send may write that row. A save that comes back with no row changed nothing, and says so.
+   */
+  const keepEmail = async (email: string): Promise<void> => {
+    if (!personId) throw new Error(ROSTER_EMAIL_NOT_KEPT)
+    const { data, error } = await supabase.from('people').update({ email }).eq('id', personId).select('email').maybeSingle()
+    if (error) throw new Error(formatErrorMessage(error))
+    const kept = ((data ?? null) as { email: string | null } | null)?.email?.trim()
+    if (!kept) throw new Error(ROSTER_EMAIL_NOT_KEPT)
+    setContact((c) => ({ ...c, email: kept, emailUnread: false }))
+  }
   return (
     <SubPapersWindowView
       open={open}
@@ -188,7 +214,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       marksUnread={acks === null}
       canSend={maySend}
       sendBy={SEND_BY}
-      emailDoor={subPaperEmailDoor()}
+      emailDoor={subPaperEmailDoor(maySend)}
+      onKeepEmail={keepEmail}
       startOnSend={startOnSend}
       onSend={async (plan, papers, by, sendRange) => {
         if (by !== 'email' || !personId || sending.current) return false

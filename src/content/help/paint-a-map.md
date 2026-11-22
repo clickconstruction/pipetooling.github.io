@@ -744,17 +744,19 @@ Open a saved map to read it. The map under the lines is Google Maps.
 
 A walk is painted on Google Maps too. The map follows you as you go.
 
-Press {{button:blue|Draw a line}} or {{button:outline|＋ Place}} and the picture under the map changes. You draw on the view from above the app has always used.
+{{button:outline|＋ Place}} puts its dot down on Google Maps too. Drag the dot, or press the map to bring it there.
 
-The map then stays on that picture until you close it. Your new line stays on the photograph you drew it over.
+{{button:blue|Draw a line}} draws on Google Maps too. The corners, the hold and the magnifying glass work as they always have.
+
+So the map stays on Google Maps from the moment you open it until you save.
 
 On a weak signal Google's map can take a few seconds to load. Your lines and numbered places show at once on a blank ground. The photograph comes in under them, and nothing moves. You can tap a place while you wait.
 
-The two photographs were taken on different days. A line can sit a few feet to one side on the other one.
+**Time** changes the picture, since the older photographs are not Google's. Press **Time** again to go back to Google Maps.
 
-**Time** changes the picture too, since the older photographs are not Google's. Press **Time** again to go back to Google Maps.
+A picture and a printed page are drawn on the view from above, never on Google Maps. Once you make a picture, the map stays on the view from above until you close it.
 
-A picture and a printed page are drawn on the view from above, never on Google Maps.
+The two photographs were taken on different days. A line can sit a few feet to one side in a picture or on a printed page.
 
 When Google Maps cannot load, the map opens on the view from above. Nothing on the map is lost.
 

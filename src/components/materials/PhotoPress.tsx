@@ -4,8 +4,9 @@
  * job's Drive folder (*2026-10-28 Jordan · A1 after Put in.jpg*) and sends it; the sweep files it and
  * the note reads "in the job's folder". With no signal the shot stays on the phone and the box screen
  * offers Send now, or Share instead through the share sheet. `BoxPhotos` draws the thumbnails, on every phone and
- * at the office since v2.7819: from this phone's own store, else from the job's Drive folder, else from the bucket
- * (`boxPhotoBytesIo.ts`), and a press on one opens the whole picture.
+ * at the office since v2.7819: a filed shot from the job's Drive folder, a shot that waits from this phone's own
+ * store as a small copy, else from the bucket (`boxPhotoBytesIo.ts`), and a press on one opens the whole picture.
+ * A square reads its picture only once it is near the screen, so a page of ninety boxes reads the few in view.
  */
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import { updatePhoto } from '../../lib/materials/onSiteStore'
@@ -29,6 +30,9 @@ export function CameraGlyph({ size = 14 }: { size?: number }) {
 }
 
 type Toast = (m: string, t: 'success' | 'info' | 'error') => void
+
+/** How far past the screen's top and bottom a square starts reading its picture: about a screen ahead on a phone. */
+const BOX_PHOTO_NEAR_MARGIN = '600px 0px'
 
 export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId, byName, onToast, onTaken, style, fact, factStyle }: {
   jobId: string
@@ -85,33 +89,80 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
 
 /** The box's photos as thumbnails with their status; on the phone a kept shot offers Send now and Share instead. */
 export function BoxPhotos({ photos, canAct, onToast, size = 56, quiet = false }: { photos: PhotoNote[]; canAct: boolean; onToast?: Toast; size?: number; /** A filed photo says its day and who took it, never where it is or its size (punch list #398). */ quiet?: boolean }) {
-  // The picture comes from the first place that holds it (`boxPhotoBytesIo.ts`); the bytes are kept beside the url
-  // when this phone has them, so Send now and Share instead can run inside the press.
-  const [loaded, setLoaded] = useState<Record<string, { url: string; blob: Blob | null }>>({})
+  // The picture comes from the place that holds it (`boxPhotoBytesIo.ts`); the bytes are kept beside the url when this
+  // phone has them, so Send now and Share instead can run inside the press. The url is null where this phone holds the
+  // bytes and could not make a small copy: the square stays empty and the two presses still work.
+  const [loaded, setLoaded] = useState<Record<string, { url: string | null; blob: Blob | null }>>({})
   /** The photos whose read came back with nothing: the square says why. */
   const [missing, setMissing] = useState<Record<string, true>>({})
   const [open, setOpen] = useState<PhotoNote | null>(null)
-  // A shot the sweep filed since the last look is read again, from its folder.
+  // A square reads its picture once it is near the screen. With no observer (an old browser, the test DOM) every square reads at once.
+  const [near, setNear] = useState<Record<string, true>>({})
+  const squares = useRef(new Map<string, HTMLElement>())
+  const photoIds = photos.map((p) => p.id).join('|')
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setNear(Object.fromEntries(photoIds.split('|').filter(Boolean).map((id) => [id, true as const])))
+      return
+    }
+    const obs = new IntersectionObserver((entries) => {
+      const seen: string[] = []
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        obs.unobserve(e.target)
+        const id = (e.target as HTMLElement).dataset.photoId
+        if (id) seen.push(id)
+      }
+      if (seen.length) setNear((m) => ({ ...m, ...Object.fromEntries(seen.map((id) => [id, true as const])) }))
+    }, { rootMargin: BOX_PHOTO_NEAR_MARGIN })
+    for (const el of squares.current.values()) obs.observe(el)
+    return () => obs.disconnect()
+  }, [photoIds])
+  // One read a photo, kept by the row's own state: a shot the sweep filed since the last look is read again, from its
+  // folder, and the picture it had stays up until the new one lands.
+  const reads = useRef(new Map<string, { key: string; url: string | null; live: boolean }>())
   const ids = photos.map((p) => `${p.id}:${p.status}:${p.driveFileId ?? ''}`).join('|')
   useEffect(() => {
-    let live = true
-    const made: string[] = []
-    setLoaded({})
-    setMissing({})
-    for (const p of photos) {
-      void readBoxPhotoBytes(p, 'thumb').then(
-        (got) => {
-          if (!got) { if (live) setMissing((m) => ({ ...m, [p.id]: true })); return }
-          if (!live) { URL.revokeObjectURL(got.url); return }
-          made.push(got.url)
-          setLoaded((m) => ({ ...m, [p.id]: { url: got.url, blob: got.blob } }))
-        },
-        () => { if (live) setMissing((m) => ({ ...m, [p.id]: true })) },
-      )
+    const now = new Map(photos.map((p) => [p.id, p]))
+    const gone: string[] = []
+    for (const [id, r] of reads.current) {
+      if (now.has(id)) continue
+      r.live = false
+      if (r.url) URL.revokeObjectURL(r.url)
+      reads.current.delete(id)
+      gone.push(id)
     }
-    return () => { live = false; for (const u of made) URL.revokeObjectURL(u) }
+    if (gone.length) {
+      const without = <T,>(m: Record<string, T>): Record<string, T> => { const next = { ...m }; for (const id of gone) delete next[id]; return next }
+      setLoaded(without)
+      setMissing(without)
+    }
+    for (const p of photos) {
+      if (!near[p.id]) continue
+      const key = `${p.status}:${p.driveFileId ?? ''}`
+      const before = reads.current.get(p.id)
+      if (before?.key === key) continue
+      if (before) before.live = false
+      const r = { key, url: before?.url ?? null, live: true }
+      reads.current.set(p.id, r)
+      const landed = (got: { url: string | null; blob: Blob | null } | null) => {
+        if (!r.live) { if (got?.url) URL.revokeObjectURL(got.url); return }
+        if (r.url) URL.revokeObjectURL(r.url)
+        r.url = got?.url ?? null
+        setLoaded((m) => { const next = { ...m }; if (got) next[p.id] = { url: got.url, blob: got.blob }; else delete next[p.id]; return next })
+        setMissing((m) => { const next = { ...m }; if (got) delete next[p.id]; else next[p.id] = true; return next })
+      }
+      void readBoxPhotoBytes(p, 'thumb', size).then(landed, () => landed(null))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids])
+  }, [ids, near])
+  useEffect(() => {
+    const all = reads.current
+    return () => {
+      for (const r of all.values()) { r.live = false; if (r.url) URL.revokeObjectURL(r.url) }
+      all.clear()
+    }
+  }, [])
   const [busyId, setBusyId] = useState<string | null>(null)
   const sendNow = async (p: PhotoNote) => {
     const got = loaded[p.id]
@@ -149,9 +200,9 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56, quiet = false }:
         const got = loaded[p.id]
         const words = photoStatusWords(p.status)
         return (
-          <div key={p.id} style={{ display: 'grid', gap: 4, justifyItems: 'start', maxWidth: 220 }} title={`${p.fileName} · ${bytesWords(p.bytes)}${p.width ? ` · ${p.width} × ${p.height}` : ''}`}>
+          <div key={p.id} data-photo-id={p.id} ref={(el) => { if (el) squares.current.set(p.id, el); else squares.current.delete(p.id) }} style={{ display: 'grid', gap: 4, justifyItems: 'start', maxWidth: 220 }} title={`${p.fileName} · ${bytesWords(p.bytes)}${p.width ? ` · ${p.width} × ${p.height}` : ''}`}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {got ? (
+              {got?.url ? (
                 <button type="button" aria-label={boxPhotoOpenLabel(p)} onClick={() => setOpen(p)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', lineHeight: 0, flex: 'none' }}>
                   <img src={got.url} alt={p.fileName} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
                 </button>
@@ -188,10 +239,11 @@ export function BoxPhotoViewer({ photo, onClose }: { photo: PhotoNote; onClose: 
     setState('loading')
     void readBoxPhotoBytes(photo, 'full').then(
       (got) => {
-        if (!got) { if (live) setState('none'); return }
-        if (!live) { URL.revokeObjectURL(got.url); return }
-        made = got.url
-        setState({ url: got.url })
+        const u = got?.url
+        if (!u) { if (live) setState('none'); return }
+        if (!live) { URL.revokeObjectURL(u); return }
+        made = u
+        setState({ url: u })
       },
       () => { if (live) setState('none') },
     )

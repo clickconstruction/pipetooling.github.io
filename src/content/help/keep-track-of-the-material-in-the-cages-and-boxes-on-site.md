@@ -90,15 +90,21 @@ The count becomes the truth for that box. A short count is what the office reads
 
 ## Add a container or a part
 
-Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery.
+Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery. The office's Materials page has the same press on every box.
 
-Type the part's name. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it.
+A new box can take its first part in the same press. Type the part in **What is in it** and the count in **How many**. The press then reads like **Add G101 with 40 Hangers**. Leave **How many** empty to add the box alone.
+
+The sheet opens with choices. **This box says** offers the box's own words as the part. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it. What you type is offered first, as **Use “hangers” as typed**.
+
+Then say how many. Type the number, or tap **+10**, **+25** or **+100**. Tap the blue press to add the part and close the sheet. Tap **Add 40 and another part** to add it and stay for the next part.
+
+A part put into a box that held none of it is counted as it goes in. The box does not ask you to count what you just put in. When the box already held some, count the box as usual.
 
 ## Take a photo
 
 On a box, tap {{button:outline|Photo}} under the parts. The press says how many photos the box has. For ten minutes after a count, an added part or a put away the press is outlined in blue. The press then says what the photo will show, like Of A1 as you counted it. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
-The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it.
+The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it. A picture in the job's folder needs signal to show, on every phone.
 
 With no signal the photo stays on the phone. It sends by itself when the signal is back. Tap **Send now** to send it at once. Tap **Share instead** to send it another way.
 
@@ -158,7 +164,7 @@ A label printed before November 11, 2026 can open a web search on an iPhone. Pri
 
 A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job. A sticker's code works the same way. The sticker's box opens, or a reserved sticker opens the sheet that puts it on a box.
 
-To print one box's label, open the box, tap **More** and tap **Print the label**. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
+To print one box's label, open the box, tap **More** and tap **Print the label**. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. On a phone, press the **Print** icon beside **Track** there. The office, an estimator, a primary and a superintendent have that press.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 

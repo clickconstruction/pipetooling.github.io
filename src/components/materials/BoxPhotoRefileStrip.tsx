@@ -4,7 +4,7 @@
  * going down, names a held file with its reason and offers one press to try the held ones again. Nothing is drawn when
  * nothing is due. The words are `boxPhotoRefileStrip.ts`'s; the read and the ask are `boxPhotoRefileIo.ts`'s.
  */
-import { useEffect, useSyncExternalStore, type CSSProperties } from 'react'
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useOnSiteStoreVersion } from '../../hooks/useOnSiteStore'
 import { mayAskRefile, refileStripView } from '../../lib/materials/boxPhotoRefileStrip'
@@ -23,7 +23,8 @@ const headStyle: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)' 
 const subStyle: CSSProperties = { color: 'var(--text-700)', fontSize: '0.85rem' }
 const press: CSSProperties = { justifySelf: 'start', minHeight: 36, padding: '0 0.8rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: '#2563eb', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }
 
-export default function BoxPhotoRefileStrip({ jobId, onToast }: { jobId: string; onToast: Toast }) {
+export default function BoxPhotoRefileStrip({ jobId, onToast, fold = false }: { jobId: string; onToast: Toast; /** A phone (v2.8284): the held notice is one line that opens it, where it stood a quarter of the screen over the boxes. */ fold?: boolean }) {
+  const [opened, setOpened] = useState(false)
   useSyncExternalStore(subscribeRefile, refileVersion, refileVersion)
   useOnSiteStoreVersion()
   const { role } = useAuth()
@@ -73,6 +74,14 @@ export default function BoxPhotoRefileStrip({ jobId, onToast }: { jobId: string;
         ) : null}
         {heldList}
       </div>
+    )
+  }
+  if (fold && !opened) {
+    return (
+      <button type="button" aria-expanded={false} onClick={() => setOpened(true)} data-testid="box-photo-refile-fold" style={{ ...amber, display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 44, boxSizing: 'border-box', textAlign: 'left', font: 'inherit', cursor: 'pointer', color: 'var(--text-strong)' }}>
+        <span style={{ ...headStyle, flex: '1 1 auto', minWidth: 0, fontSize: '0.9rem' }}>{view.head}</span>
+        <span aria-hidden style={{ flex: '0 0 auto', color: 'var(--text-muted)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>
+      </button>
     )
   }
   return (

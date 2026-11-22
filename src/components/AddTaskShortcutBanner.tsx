@@ -13,13 +13,89 @@ const INSTALL_PAGE_HREF = '/task-install.html'
  *
  * It is the first line above the header, so it draws in `AppTopBanner` like the others. Safari keeps
  * its own bar over the status bar, so the inset it would pay is 0px wherever the offer can show.
+ *
+ * `quiet` (the new phone layout, `lib/phoneLayout`): the same offer as one quiet row inside the
+ * Dashboard's own content, where it scrolls away with the page and takes no room from the bars. The
+ * same Add, the same Dismiss and the same remembered dismissal; Layout mounts it on the Dashboard alone.
  */
-export default function AddTaskShortcutBanner({ role }: { role: UserRole | null }) {
+export default function AddTaskShortcutBanner({ role, quiet = false }: { role: UserRole | null; quiet?: boolean }) {
   const [visible, setVisible] = useState(
     () => showHeaderTaskChecklistButton(role) && shouldShowAddTaskBanner()
   )
 
   if (!visible) return null
+
+  const add = () => {
+    window.location.href = INSTALL_PAGE_HREF
+  }
+  const dismiss = () => {
+    markAddTaskBannerDismissed()
+    setVisible(false)
+  }
+
+  if (quiet) {
+    return (
+      <div
+        role="region"
+        aria-label="Add Task home screen shortcut"
+        data-add-task-offer="quiet"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          margin: '0 0 0.5rem',
+          padding: '0 0.25rem 0 0.75rem',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          background: 'var(--surface)',
+          color: 'var(--text-muted)',
+          fontSize: '0.8125rem',
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0, lineHeight: 1.3, padding: '0.4rem 0' }}>
+          Add a one-tap <strong style={{ color: 'var(--text-strong)' }}>Add Task</strong> icon to your Home Screen.
+        </span>
+        <button
+          type="button"
+          onClick={add}
+          style={{
+            flexShrink: 0,
+            minHeight: 44,
+            padding: '0 0.6rem',
+            background: 'none',
+            color: 'var(--text-link)',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: '0.875rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={dismiss}
+          style={{
+            flexShrink: 0,
+            minHeight: 44,
+            padding: '0 0.6rem',
+            background: 'none',
+            color: 'var(--text-muted)',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Dismiss
+        </button>
+      </div>
+    )
+  }
 
   return (
     <AppTopBanner
@@ -56,9 +132,7 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
       </span>
       <button
         type="button"
-        onClick={() => {
-          window.location.href = INSTALL_PAGE_HREF
-        }}
+        onClick={add}
         style={{
           padding: '0.3rem 0.75rem',
           background: '#f97316',
@@ -74,10 +148,7 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
       </button>
       <button
         type="button"
-        onClick={() => {
-          markAddTaskBannerDismissed()
-          setVisible(false)
-        }}
+        onClick={dismiss}
         style={{
           padding: '0.3rem 0.5rem',
           background: 'transparent',

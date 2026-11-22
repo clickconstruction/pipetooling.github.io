@@ -9,6 +9,7 @@ import { MONEY_SORT_COLUMN, paySpeedPayerIds,
   MONEY_SORT_LABELS,
   MONEY_SORT_MODES,
   buildSiteMoney,
+  moneyInKindLine,
   moneyLookWords,
   sortMoneyRows,
   type MoneyDates,
@@ -292,5 +293,32 @@ describe('paySpeedPayerIds — the payers the Money look reads the pace of (punc
     expect(sql).toContain('public.get_billed_customer_pay_speeds()')
     expect(sql).toContain('SECURITY INVOKER')
     for (const key of ['company', 'segments', 'quality', 'customers', 'customerTypes', 'receipts']) expect(sql, key).toContain(`'${key}'`)
+  })
+})
+
+describe('the Money look and a job an in kind deal pays (punch list #301)', () => {
+  const billed = (id: string, over: Partial<MemberJob> = {}) => job({ id, status: 'billed', revenue: 5_000, payments_made: 1_000, customer_id: 'c-ridgeway', last_bill_date: '2026-06-01', last_work_date: '2026-05-20', ...over })
+  const model = buildSiteMoney(inputs({ jobs: [billed('K1', { in_kind_arrangement_id: 'deal-1' }), billed('L1')] }, { paySpeed }))
+  const by = Object.fromEntries(model.sections.flatMap((s) => s.rows).map((r) => [r.number, r]))
+
+  it('a covered bill has no expected day and is never past due; its lien runway stays', () => {
+    expect(by.K1!.dates).toMatchObject({ inKind: true, expected: null, due: null, billedYmd: '2026-06-01' })
+    expect(by.K1!.dates!.lien).not.toBeNull()
+    expect(by.K1!.next.askForDate).toBe(false)
+    expect(by.K1!.billed).toBe(4_000)
+  })
+
+  it('an ordinary late bill on the same site is still past due', () => {
+    expect(by.L1!.dates!.inKind).toBeUndefined()
+    expect(by.L1!.dates!.expected?.state).toBe('late')
+    expect(by.L1!.next.askForDate).toBe(true)
+  })
+
+  it('the band counts one past due, and says what is scheduled in kind', () => {
+    expect(model.band.pastDue).toBe(1)
+    expect(model.band.billed).toBe(8_000)
+    expect(model.band.inKind).toEqual({ count: 1, dollars: 4_000 })
+    expect(moneyInKindLine(model.band)).toBe('$4,000 on 1 bill is scheduled in kind, not past due')
+    expect(moneyInKindLine(buildSiteMoney(inputs({ jobs: [billed('L1')] }, { paySpeed })).band)).toBeNull()
   })
 })

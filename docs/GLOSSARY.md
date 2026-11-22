@@ -1671,6 +1671,41 @@ Sign out and the reloads sit last, under a grey band and no label.
 The wrench's press, where a narrow phone's header had no room for it, stays the first row, above every label.
 The phone dock's More sheet uses the same four labels: its last group read **Settings** until v2.8059.
 Display-only — no role's menu gained or lost a row.
+Since v2.8285 **Show** also holds **New phone layout** on a phone, for the roles in its trial (see *New phone layout*).
+
+### New phone layout (app-wide, a trial)
+**New phone layout** is one tick in the gear menu's **Show** group, off until someone ticks it (v2.8285).
+It is kept per device, not per person: the stored key `pt_new_phone_layout` carries no user id, so a dev who ticks it keeps it while looking as another role through View as.
+The one rule is `newPhoneLayoutOn` in `lib/phoneLayout/newPhoneLayout.ts`, read through the hook `useNewPhoneLayout`: the tick is on AND the screen is a phone's width by `useNarrowViewport640`.
+With the tick off, or at a desk, every screen draws what it drew before the switch.
+The tick is drawn at a phone's width only, for the roles in `NEW_PHONE_LAYOUT_TICK_ROLES` (dev and master technician), and for anyone on a device that already has it on, so the way off is always on the screen drawn the new way.
+**The one-row bar** is the phone's header under the tick: the menu where the role has one, the page's name in words (`phoneBarPageName`), Search, the green phone that calls the office and the gear, 51 px tall.
+Home leaves the bar only while Job Mode's tabs are up, whose first tab opens the Dashboard.
+Dispatch Mode's first tab opens the Dispatch home, so there home stays.
+**The moved rows** are the other presses of the old row as named rows at the top of the gear menu, in the row's order: Statement, Tell the dev, Task Dispatch, Ask estimating, Task, Customers, People (`phoneBarPlan`, `PhoneBarGearRows`).
+The Bids page's **Bid** press stays in the bar.
+The role dock's row has no gear, so it keeps every press it has.
+**The one-line tab rows** are the Jobs page's tabs and the People page's sections and pills under the tick, since v2.8288 (`lib/phoneLayout/phoneTabRows.ts`): each row is one line in `ScrollableTabStrip` and never folds.
+The open tab is kept whole in view with the start of the next tab beside it (`activePeek`), and an edge with more past it carries a small arrow (`edgeMarks`), drawn only once a letter is hidden.
+The page's own title is left undrawn only while the one-row bar names the page (`PhoneBarPageNameContext`), so under the role dock's row, which names no page, the title stays.
+Under the tick Needs you is a one-line door on the Dashboard and opens on Walk the list where it is worked, since v2.8289 (→ *Needs You card*).
+Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
+**The phone job card** is the Job Mode card under the tick, since v2.8286 (`lib/phoneLayout/jobCard.ts`, `phoneJobCardOn`): the same pieces, each once, in a thumb's order.
+It opens on **Call**, **Directions** and **Text**, 44 px each, under the job's name and address.
+**Text** is the card's own Message the customer door in that shape, drawn only where the door is offered today (`jobModeMessagesOffered`, on the job the person is clocked onto).
+The customer's name and number share one quiet line, the number as a phone number (`phoneAsWritten`, over `phoneContact`) and never cut, and the email is a 44 px press that copies it.
+Five full-width rows follow: Materials on site, Photos, Job updates, Job details, Job calendar (`CardRow`, `CardFold`).
+Job updates opens in place and is shut until pressed.
+Shut, the row says **the newest note** on one quiet line: who wrote it, its day and its first words (`lib/phoneLayout/jobUpdatesNewest.ts`).
+The newest note is the newest entry the thread's Notes filter lists, never a line the app wrote.
+The row is marked **New** while that note is another person's and newer than the viewer's **last look**, and a new note reads in strong words.
+A look is recorded when the row is pressed, kept in browser storage per person and per job (`pt_job_updates_look_<user>_<job>`).
+With no look kept, another person's note written today is new and an older one is not.
+Paint a map, Place on this job and My spend share one row of presses, and Photo of a spot keeps a press of its own.
+A day with one stop is one line, the time and *1 of 1 today*, and that line is still the stop's press.
+**The folded squares** are Job Mode's top row drawn as the card's own presses and rows: the row leaves only for the job the card says it holds (`foldedJob.ts`, `jobSquaresFolded`).
+A day with no job, the short Job Mode page, a job closed by its papers and a card with no details keep the old card and the squares.
+**The card's floor** is `.jobModeCardPhone` in `index.css`: no press under 40 px and no words under 12 px on the card, whichever piece draws them, and it stops at every dialog.
 
 ### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
@@ -3242,7 +3277,10 @@ The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
-Drawing a line, placing a dot, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
+**Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map for a picture keeps the Leaflet map until it closes.
+A line is drawn by hand on Google since v2.8236, so the window is on Google from the moment it opens to Save: a press adds a corner, a press held still then slid places one under the glass, and the corners and the dots in the middle of the legs are Google's own markers a finger drags.
+A place's dot is put down on Google since v2.8235: one of Google's own markers a finger drags, with the magnifying glass above it, whose picture is a second small Google map made once for the page and kept (`paintedGoogleGlassMap.ts`).
+The catch, the held press and the glass's place are one set of rules both canvases read (`handPlacing.ts`).
 A walk is painted on Google since v2.8212 (step 3 of #387): the canvas slides to the walker when they near its edge (`followMe.ts`) and draws again only the line that grew.
 The picture and the printed page are not on Google.
 The public page `/way` is on Google for its reader since v2.8210, on Taunya's yes of 2026-11-21: it hands the rule its own ask (`screen: 'way'`), and Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`, v2.8208) and stays light on the page's paper.
@@ -4668,6 +4706,7 @@ What of it is on main, one line a piece:
   guide *edit the quick replies* → The lines the app ships with.
   Since v2.5649 (punch list #129) a customer's own line in the thread carries **Write down their word** under it (`useFollowUpThreadSlots`' `underLine`, `messages/wordFromLine.ts` over `list_customer_money_strip`): the Pipeline's promise sheet on the job the line is tied to, else the customer's one job with money open, else a pick, with the customer's name and the line's channel filled in.
   Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
+  Since v2.8271 a promise saved from a line also marks that line's own promise as a payment by the day (`write_down_payment`), so the job's *They promised* row names it and the thread reads *Their move · until Fri Nov 27 · payment* once our word is the newest, and *Never said that* takes the mark back off.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
   *Flow · step*).
@@ -4890,6 +4929,10 @@ It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the who
 The letterhead is the bill's issuer block from Settings.
 A month or a year closes on today, never on a day that has not come.
 *Since the last statement* starts the day after the last statement that ended before today: one that ended today is set apart (`subPaperRegister`'s `statementToday`, v2.8106), so a second statement the same day covers the first one's days and its line names both.
+Since v2.8269 a period is cut by the date on a payment and a late one is carried (the owner, 2026-11-21): *Since the last statement* hands the builder `lateAfter`, when the statement before was made (`lastStatement.madeAt`), and a payment, a back-charge or a sheet dated before the period and typed after that moment counts in this one.
+A carried payment is listed under its own date as *recorded after the last statement*, and `statementLateWords` says what was carried under *How it adds up*, so the statement opens on what the last one closed on.
+The other four periods and the sub's own page are cut by the date alone.
+Since v2.8274 the dev seat's `since_last` follows the same two rules (`statementsOf` in `_shared/subStatementMake.ts`): a statement made today is set apart, and a line typed late is carried.
 Since v2.7552 a paper is numbered the moment it is made: Print, Download and, since v2.7983, Send first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call, and `_shared/subPaperMarks.ts` the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
 Since v2.7983 the window sends: *Send to <name>…* opens a send step that shows who the paper goes to, the message, the files and what the press does, and its press posts the PDFs to `send-sub-paper-email`.
 The function mails them to the roster's own address for the person and files each paper as a sent copy of its own, and the window hands it no address.
@@ -4901,6 +4944,8 @@ A held work statement with no number names its sheet's day beside its job, so tw
 Since v2.8262 every press in the window stands 44 px tall at 640 px and under (`PHONE_PRESS_MIN_HEIGHT`).
 Since v2.8262 the ledger the papers stand on (`useSubLaborLedger`) draws nothing from a read of lines or payments that failed (`subLedgerReadFailure`): it keeps what it last read whole and the page says why.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
+Since v2.8265 the send step's To line takes the address in place (`ChangeableValue` over `subPaperRosterEmail.ts`): it is saved on the person's roster row, `people.email`, where the function reads it, and the press goes live.
+A sub's sign-in address is offered under the To line and goes on the roster row only on its press (`rosterEmailOffer`).
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
 Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
 Since v2.8217 the last press's line goes when the window moves to another paper or another step, and a new line always shows (`subPaperSaid.ts`).
@@ -4912,6 +4957,9 @@ Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a
 The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
 Print on the sub's page still prints the Today paper, whichever view shows.
 Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
+Since v2.8273 a third answer is built and switched off (`SUB_PAPER_CONFIRM_LIVE`, false): **Confirm** on a work statement the office made and that has not changed since, kept as a `confirmed` row with the paper, the revision the sub saw and what it came to.
+A confirm on record prints on the work statement on both sides by one rule (`portalConfirms`), and the paper says so once the statement has changed.
+What a confirm means is the second of counsel's six sentences, still draft wording.
 The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
 A note also lands in the dispatch inbox with a push, and a payment nobody marked says nothing.
 Since v2.8217 the office's payment record reads the same marks (`paymentRecordReceived`): the window reads the person's `sub_paper_acks` before it draws, and the *Received* box says the day the sub pressed Got it, on the preview and on the paper as made.
@@ -5040,6 +5088,7 @@ the strip's groups are **Plan**, **Purchase** and **Track**): **Materials → On
 For the office it is the Materials desk, the component Jobs → Materials mounts ([`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md));
 for an estimator, a primary and a superintendent it lists their jobs with boxes as doors to the Tally's On site tab.
 **Scan a label**, **Print labels** and, since v2.7272 for the office, a primary and a superintendent, **Print future stickers** are presses at the right end of the tab's row.
+On a phone (v2.8282) **Track** opens On site in one press, and the presses are two icons beside the group names: **Scan a label**, and **Print**, which opens the **Print sheet** (`lib/materials/printSheet.ts`) on the open job or, with none open, on what the strip offers.
 
 ### Supply house bill lines — every line on a bill as a row, counted only when it adds up (punch list #298, v2.6817 · v2.6819 · v2.6882 · v2.6897)
 A bill was its total, its job and a link to its PDF;
@@ -5358,7 +5407,8 @@ An In kind payment leaves pay speed.
 Since v2.8218 the Dashboard's receivables card, the Bridge's Collect pile and balances, the Pipeline's 30+ and 90+ chips, *Who owes what*, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list leave them out too, each naming them in one line (`splitInKind`, `supabase/functions/_shared/inKindApart.ts`), and the Pipeline's Billed header counts them on an **In kind** chip.
 Since v2.8219 the Billed awaiting payment email leaves them out of its rows, totals and chips with the same line, and a residential customer's Paid step gives such a bill no due day, so no pay reminder is due by itself.
 Since v2.8266 the customer's profile window reads such a bill as *billed · scheduled in kind* with no day and no red (`profileJobRowMoney`'s `scheduledInKind`, `profileJobRowMeta`), the customer page's Invoices tab reads *Billed · in kind* with no days, and the dev seat's `get_customer` and `get_job` carry the column.
-The Pipeline's map, a development's Money look, the printed Billed awaiting payment report and the office's statement week still age them.
+Since v2.8272 the Pipeline's map keeps such a job's pin with nothing to collect, no age and no place on the ask list (`JobsMapJob.inKind`, `jobsMapInKindLine`), a development's Money look reads *Scheduled in kind* in place of Expected and never past due (`MoneyDates.inKind`, `moneyInKindLine`), and the aging chart and the printed Billed awaiting payment report leave the bill out with one line each.
+The office's statement week still ages them.
 A deal with a **monthly credit** has months: each is settled by one line (a line of zero is *no credit this month*), a month with none is **due** once it is over or its bill has left the bank, and the card and the Dashboard's Needs you line (`in-kind-credit-due`, v2.6831) offer the press that enters it with the amount read from the bank.
 Nothing is entered by itself.
 A line's amount is a **cost**: overhead on the day it was given (the overhead pool's materials, source `in_kind`), or the material of the job it is put on (the Costs tab's 🤝 *Given in kind* stream and row, the profit band).
@@ -5641,6 +5691,7 @@ and since v2.6823 the Bridge is the second surface to read **`isZzBidName`** (`w
 since v2.8280 `withoutZzBridgeEstimates` in `src/lib/bridge/zzTestJobs.ts` leaves it out of the count of asks, the estimates sent, won, lost and still out, and the Market and Sales windows' own lists too, by the viewer's switch alone and not by the set of ids the left-out list fills);
 and a dev sees them only while their per-device switch in Hide groups… shows them (hidden by default;
 `zzTestJobSwitch.ts`;
+on the Bridge the switch holds beside the left-out list since v2.8281, where the list's jobs reach the reads as ids alone (`jobIdsAlone`, `withLeftOutJobIds`) and take out no ZZ job or ZZ bid the list does not name;
 a chip on the Pipeline says how many are hidden).
 Since v2.5583 (punch list #113) a ZZ-named **prospect** follows the same switch: out of the three lanes' decks, queue rails, bench strip, Prospect Lists and Activity for every role but dev (`withoutZzProspects`, `src/lib/prospects/zzProspects.ts`).
 It is a view rule, not RLS: twins and live passes run as non-dev roles and must read the ZZ rows they make.
@@ -6776,6 +6827,8 @@ Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of wor
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
+Since v2.8264 (step 6) a trade's **certificate is held against a job's sheet**, one certificate for each job: the card **Certificates for this job** says where each stands, and **Check it against the sheet** ticks one line for each name, the place, the certificate holder and each coverage with its amount (`certificates.ts`, `sheetAsks`).
+A certificate is **outdated** when one of those lines changes on the published sheet, and not when the sheet's other words do.
 
 ### Agreements tab
 
@@ -7054,6 +7107,14 @@ Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
 Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
 *The Board* above).
+On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
+The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
+A door that is new under the tick stands in for the list alone, so the Lien desk's strip ([`NeedsYouLienBoardStrip`](../src/components/dashboard/NeedsYouLienBoardStrip.tsx), drawn on its own as a card, `needsYouLienStripUnderDoor`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
+Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
+With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
+Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.
+Under the tick the door says the viewer's own count and first line (`needsYouDoorLine`): the number in the card's pill and the line Walk the list opens on.
+With the tick off the door counts every line and the card opens as it did.
 
 ### Amber / red age (age state)
 The app's one convention for **how long a waiting item has waited** (v2.2895, journey-map #40).

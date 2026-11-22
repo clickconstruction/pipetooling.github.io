@@ -230,6 +230,8 @@ The clock sits under the table on **Market**. The clock's bar shows how long you
 
 In San Antonio the clock runs from an application to its permit. The wait is weeks long. Call while the application waits.
 
+That clock counts only applications that have their permit. An application still waiting has no second day, so the clock reads short. The line under the clock says how many still wait. The same line says how many of those were filed over six months ago. The city does not say whether a long wait is a slow review or a job that stopped.
+
 In Austin the clock runs from the building permit to the plumber's permit. A job with two plumbing permits is measured to its first. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
 
 A city with too few dated permits draws no clock.

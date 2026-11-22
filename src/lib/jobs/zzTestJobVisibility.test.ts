@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeBillTruth } from '../billing/billTruth'
 import { buildArBuckets } from '../dashboardFinancials'
-import { hidesZzTestJobs, withoutZzTestJobMoney, withoutZzTestJobRows, withoutZzTestJobs, zzTestJobIds } from './zzTestJobVisibility'
+import { hidesZzTestJobs, jobIdsAlone, leavesOutByIdAlone, withoutZzTestJobMoney, withoutZzTestJobRows, withoutZzTestJobs, zzTestJobIds } from './zzTestJobVisibility'
 
 // Made-up jobs, customers and amounts.
 const job = (id: string, jobName: string, customerName: string | null) => ({
@@ -167,3 +167,64 @@ describe('withoutZzTestJobMoney · reads with no job id on a payment (v2.5120)',
   })
 })
 
+/**
+ * v2.8281 (punch list #334, a fault found while building): the Bridge's left-out list hands every read a set of job
+ * ids, and every read took any set to mean *hide the ZZ tests too*. So a dev who shows ZZ tests lost them all once the
+ * list named one job. `jobIdsAlone` is a set that leaves out its own jobs and reads no name.
+ */
+describe('job ids alone', () => {
+  const invoice = (id: string, jobId: string) => ({ id, job_id: jobId, amount: 100 })
+  const payment = (id: string, jobId: string | null, invoiceId: string | null) => ({ id, job_id: jobId, invoice_id: invoiceId, amount: 40 })
+  const LEFT_OUT = job('L', '40 Pine Road', 'Bo Diaz')
+  const jobs = [REAL, ZZ_BY_NAME, ZZ_BY_CUSTOMER, LEFT_OUT]
+  const money = {
+    jobs,
+    invoices: [invoice('ia', 'A'), invoice('iz', 'Z'), invoice('iy', 'Y'), invoice('il', 'L')],
+    payments: [payment('pa', 'A', 'ia'), payment('pz', 'Z', 'iz'), payment('py', null, 'iy'), payment('pl', 'L', 'il'), payment('pl2', null, 'il')],
+  }
+
+  it('is a set of its ids, and is told apart from a plain set and from none', () => {
+    const alone = jobIdsAlone(['L'])
+    expect([...alone]).toEqual(['L'])
+    expect(alone.has('L')).toBe(true)
+    expect(alone.size).toBe(1)
+    expect(leavesOutByIdAlone(alone)).toBe(true)
+    expect(leavesOutByIdAlone(new Set(['L']))).toBe(false)
+    expect(leavesOutByIdAlone(new Set())).toBe(false)
+    expect(leavesOutByIdAlone(['L'])).toBe(false)
+    expect(leavesOutByIdAlone(null)).toBe(false)
+    expect(leavesOutByIdAlone(undefined)).toBe(false)
+  })
+
+  it('rows: the named job leaves by its id, and a ZZ job stays', () => {
+    expect(withoutZzTestJobRows(jobs, (j) => j.id, jobIdsAlone(['L'])).map((j) => j.id)).toEqual(['A', 'Z', 'Y'])
+    // The same ids as a plain set are a viewer who hides ZZ tests: the ZZ jobs leave by their names as well.
+    expect(withoutZzTestJobRows(jobs, (j) => j.id, new Set(['L'])).map((j) => j.id)).toEqual(['A'])
+  })
+
+  it('rows: the same array when the ids name none of them', () => {
+    expect(withoutZzTestJobRows(jobs, (j) => j.id, jobIdsAlone(['nobody']))).toBe(jobs)
+  })
+
+  it('money: the named job goes with its bills and payments, and a ZZ job keeps its own', () => {
+    const kept = withoutZzTestJobMoney(money, jobIdsAlone(['L']))
+    expect(kept.jobs.map((j) => j.id)).toEqual(['A', 'Z', 'Y'])
+    expect(kept.invoices.map((i) => i.id)).toEqual(['ia', 'iz', 'iy'])
+    expect(kept.payments.map((p) => p.id)).toEqual(['pa', 'pz', 'py'])
+    expect([...kept.zzJobIds]).toEqual(['L'])
+  })
+
+  it('money: what stays is what a dev who shows ZZ tests reads with no list, less the named job alone', () => {
+    const kept = withoutZzTestJobMoney(money, jobIdsAlone(['L']))
+    expect(kept.jobs).toEqual(money.jobs.filter((j) => j.id !== 'L'))
+    expect(kept.invoices).toEqual(money.invoices.filter((i) => i.job_id !== 'L'))
+    expect(kept.payments).toEqual(money.payments.filter((p) => p.job_id !== 'L' && p.invoice_id !== 'il'))
+  })
+
+  it('money: a plain set reads as it always did, the ZZ jobs gone with the named one', () => {
+    const kept = withoutZzTestJobMoney(money, new Set(['L']))
+    expect(kept.jobs.map((j) => j.id)).toEqual(['A'])
+    expect(kept.invoices.map((i) => i.id)).toEqual(['ia'])
+    expect(kept.payments.map((p) => p.id)).toEqual(['pa'])
+  })
+})

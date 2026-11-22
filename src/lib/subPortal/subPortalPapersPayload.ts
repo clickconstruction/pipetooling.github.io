@@ -5,7 +5,7 @@
  *
  * Pure: no React, no fetch.
  */
-import type { PaperContext, PaperMoneyLine, PaperSheet } from '../../../supabase/functions/_shared/subPapers'
+import type { PaperConfirm, PaperContext, PaperMoneyLine, PaperSheet } from '../../../supabase/functions/_shared/subPapers'
 import type { PortalWrongNote, SubPortalPapers } from '../../../supabase/functions/_shared/subPortalPapers'
 
 export type { SubPortalPapers }
@@ -48,8 +48,14 @@ function parseSheet(raw: unknown): PaperSheet | null {
     if (!line) return null
     money.push(line)
   }
-  // Confirm is not built on the page (it waits on counsel), so a sheet never carries one here.
-  return { id: raw.id, number: raw.number, revision: isNum(raw.revision) && raw.revision >= 1 ? raw.revision : 1, replacesCopyOf: isStr(raw.replacesCopyOf) ? raw.replacesCopyOf : '', jobNumber: raw.jobNumber, jobName: raw.jobName, address: raw.address, day: raw.day, lines, money, confirm: null }
+  // A confirm is read as defensively as the rest: one that is not whole is no confirm, and the sheet still shows.
+  return { id: raw.id, number: raw.number, revision: isNum(raw.revision) && raw.revision >= 1 ? raw.revision : 1, replacesCopyOf: isStr(raw.replacesCopyOf) ? raw.replacesCopyOf : '', jobNumber: raw.jobNumber, jobName: raw.jobName, address: raw.address, day: raw.day, lines, money, confirm: parseConfirm(raw.confirm) }
+}
+
+/** A sub's confirm of a work statement, as the function hands it back: the revision, what it came to, the day and where from. */
+export function parseConfirm(raw: unknown): PaperConfirm | null {
+  if (!isObj(raw) || !isNum(raw.revision) || raw.revision < 1 || !isNum(raw.amount) || !isStr(raw.at) || !isStr(raw.from)) return null
+  return { revision: raw.revision, amount: raw.amount, at: raw.at, from: raw.from }
 }
 
 function parseCtx(raw: unknown): PaperContext | null {
@@ -92,11 +98,18 @@ export function parseSubPortalPapers(raw: unknown): SubPortalPapers | null {
 }
 
 /** What the function answers to *Got it* or *Something is wrong*, read as defensively as the block. */
-export function parseSubPortalAnswer(raw: unknown): { received?: Record<string, string>; wrong?: PortalWrongNote | null } {
+export function parseSubPortalAnswer(raw: unknown): { received?: Record<string, string>; wrong?: PortalWrongNote | null; confirmed?: Record<string, PaperConfirm> } {
   if (!isObj(raw)) return {}
+  const confirmed: Record<string, PaperConfirm> = {}
+  if (isObj(raw.confirmed)) {
+    for (const [sheetId, c] of Object.entries(raw.confirmed)) {
+      const confirm = parseConfirm(c)
+      if (confirm) confirmed[sheetId] = confirm
+    }
+  }
   const received: Record<string, string> = {}
   if (isObj(raw.received)) for (const [key, day] of Object.entries(raw.received)) if (isStr(day)) received[key] = day
   const w = raw.wrong
   const wrong: PortalWrongNote | null = isObj(w) && (w.about === 'statement' || w.about === 'payment') && isStr(w.key) && w.key ? { about: w.about, key: w.key, day: isStr(w.day) ? w.day : '', note: isStr(w.note) ? w.note : '' } : null
-  return { ...(Object.keys(received).length > 0 ? { received } : {}), ...(wrong ? { wrong } : {}) }
+  return { ...(Object.keys(received).length > 0 ? { received } : {}), ...(wrong ? { wrong } : {}), ...(Object.keys(confirmed).length > 0 ? { confirmed } : {}) }
 }

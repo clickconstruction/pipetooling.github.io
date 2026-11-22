@@ -8,6 +8,7 @@ import {
   pctDoneOffered,
   pickJobModeDayPress,
   PRESS_BAR_WORDS,
+  turnawayOffered,
   type JobModeDayPress,
 } from './pressBar'
 
@@ -110,21 +111,27 @@ describe('buildJobModePressBar — the rows', () => {
     expect(wrap.bottom[1]).toEqual({ id: 'day-press', label: 'Wrap Up Day', disabled: false })
   })
 
-  it('not clocked in: Turnaway and Leave report are dead, % done and Clock out are hidden, the day’s press stands', () => {
+  it('Turnaway is offered once the person is on the clock with a job, and not before', () => {
+    expect(turnawayOffered({ sessionOpen: true, hasCurrentJob: true })).toBe(true)
+    expect(turnawayOffered({ sessionOpen: false, hasCurrentJob: true })).toBe(false)
+    expect(turnawayOffered({ sessionOpen: true, hasCurrentJob: false })).toBe(false)
+    expect(turnawayOffered({ sessionOpen: false, hasCurrentJob: false })).toBe(false)
+  })
+
+  it('not clocked in: Turnaway is not drawn, Leave report is dead, % done and Clock out are hidden, the day’s press stands', () => {
     const first = pickJobModeDayPress({ leg: 'unmarked', state: 'not-clocked-in-with-schedule', hasNextBlock: true, canClockOut: true })
     const rows = buildJobModePressBar({ dayPress: first, role: 'helpers', sessionOpen: false, canClockOut: true, hasCurrentJob: false })
-    expect(rows.top).toEqual([{ id: 'turnaway', label: 'Turnaway', disabled: true }])
+    expect(rows.top).toEqual([])
     expect(rows.bottom).toEqual([
       { id: 'leave-report', label: 'Leave report', disabled: true },
       { id: 'day-press', label: 'On my way', disabled: false },
     ])
   })
 
-  it('clocked into a bid: no job, so Turnaway and Leave report are dead and % done hidden, but Clock out shows', () => {
+  it('clocked into a bid: no job, so Turnaway is not drawn, Leave report is dead and % done hidden, but Clock out shows', () => {
     const bid = pickJobModeDayPress({ leg: 'unmarked', state: 'on-bid', hasNextBlock: false, canClockOut: true })
     const rows = buildJobModePressBar({ dayPress: bid, role: 'subcontractor', sessionOpen: true, canClockOut: true, hasCurrentJob: false })
-    expect(ids(rows.top)).toEqual(['turnaway', 'clock-out'])
-    expect(rows.top[0]!.disabled).toBe(true)
+    expect(ids(rows.top)).toEqual(['clock-out'])
     expect(rows.bottom[0]!.disabled).toBe(true)
     expect(rows.bottom[1]!.label).toBe('Choose Next Job')
   })

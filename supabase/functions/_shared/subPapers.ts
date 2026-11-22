@@ -57,6 +57,14 @@ export const SUB_PAPER_COUNSEL_SENTENCES: Record<CounselSentenceKey, string> = {
 /** True while the six sentences are still the drafts: every print marks them. */
 export const SUB_PAPER_COUNSEL_PENDING = true
 
+/**
+ * Whether a sub can confirm a work statement from their page (the card's PR 7). Off: the press is not drawn and
+ * the page's function refuses the answer. What a confirm means is counsel's, and their words for it are not in
+ * hand (sentence 2, `confirmMeans`). Turning it on is a deploy of the client and of `sub-portal`, both of which
+ * read this one line. A confirm already on record prints whatever this says.
+ */
+export const SUB_PAPER_CONFIRM_LIVE = false
+
 export type CounselSentence = { key: CounselSentenceKey; text: string; pending: boolean }
 
 function counsel(key: CounselSentenceKey, company: string, sub: string): CounselSentence {
@@ -102,6 +110,8 @@ export type PaperSheet = {
   address: string
   /** The day the work is dated. */
   day: string
+  /** When the sheet was typed, an ISO instant; absent where the reader does not hand it in. Only a statement that carries late work reads it. */
+  at?: string
   lines: ReadonlyArray<{ label: string; amount: number }>
   money: ReadonlyArray<PaperMoneyLine>
   confirm: PaperConfirm | null
@@ -352,7 +362,14 @@ export function buildPaymentRecord(sending: PaperSending, sheets: readonly Paper
 
 // ── C. Statement of account ──────────────────────────────────────────────────────────────────────────────────
 
-export type StatementRange = { from: string | null; to: string | null }
+/**
+ * A statement's period. `lateAfter` is the moment the statement before this period was made, an ISO instant, and
+ * only *Since the last statement* hands it in. A period is cut by the date on a payment (the owner, 2026-11-21).
+ * But a line typed after that moment and dated before `from` was on no statement: the one before was made
+ * without it, and this one would start after it. So it is carried into this period, under its own date, and the
+ * statement opens on what the last one closed on.
+ */
+export type StatementRange = { from: string | null; to: string | null; lateAfter?: string | null }
 
 export type StatementOfAccount = {
   kind: 'statement_of_account'
@@ -368,7 +385,10 @@ export type StatementOfAccount = {
   stillOpen: number
   rows: Array<{ sheetId: string; section: 'forward' | 'period'; sheetName: string; job: string; words: string; comesTo: number; paid: number; open: number }>
   totals: { comesTo: number; paid: number; open: number }
-  lastPayments: Array<{ key: string; day: string; how: string; number: string; amount: number }>
+  /** `late` is a payment dated before the period and recorded after the last statement was made: carried into this one. */
+  lastPayments: Array<{ key: string; day: string; how: string; number: string; amount: number; late?: boolean }>
+  /** What this statement carries from before its period, each recorded after the last statement was made. Absent when nothing is. */
+  late?: { payments: number; backcharges: number; sheets: number } | null
   paidInPeriod: number
   /** Open at the start, plus new work, less back-charges, less payments, is what is open at the end. */
   adds: { opening: number; newWork: number; backcharges: number; payments: number; closing: number }
@@ -401,8 +421,13 @@ export function buildStatementOfAccount(sheets: readonly PaperSheet[], range: St
   const edged = !!from || !!to
   // A line counts up to the period's end. One with no day counts only on a statement of every date.
   const upToEnd = (m: PaperMoneyLine) => (m.ymd ? !to || m.ymd <= to : !edged)
-  const beforeStart = (m: PaperMoneyLine) => !!from && !!m.ymd && m.ymd < from
+  // Late: typed after the statement before this period was made. Dated before the period, it was on no statement.
+  const lateAfter = from && range.lateAfter ? Date.parse(range.lateAfter) : NaN
+  const typedLate = (at: string | undefined) => Number.isFinite(lateAfter) && !!at && Date.parse(at) > lateAfter
+  const carried = (m: PaperMoneyLine) => !!from && !!m.ymd && m.ymd < from && typedLate(m.at)
+  const beforeStart = (m: PaperMoneyLine) => !!from && !!m.ymd && m.ymd < from && !carried(m)
   const inPeriod = (m: PaperMoneyLine) => upToEnd(m) && !beforeStart(m)
+  const late = { payments: 0, backcharges: 0, sheets: 0 }
 
   const rows: StatementOfAccount['rows'] = []
   let opening = 0
@@ -419,10 +444,15 @@ export function buildStatementOfAccount(sheets: readonly PaperSheet[], range: St
     if (day ? !!to && day > to : edged) continue
     const priced = paperSheetSums(s).agreed
     const linesToEnd = all.filter(upToEnd)
-    const linesBefore = all.filter(beforeStart)
+    // A sheet dated before the period and typed after the last statement was made is new work on this one, with
+    // every line it has: the statement before knew nothing of it.
+    const lateSheet = !!from && !!day && day < from && typedLate(s.at)
+    const linesBefore = lateSheet ? [] : all.filter(beforeStart)
     const atEnd = paperSheetSums(s, linesToEnd)
-    const forward = !!from && !!day && day < from
-    const moved = all.filter(inPeriod)
+    const forward = !!from && !!day && day < from && !lateSheet
+    const moved = lateSheet ? linesToEnd : all.filter(inPeriod)
+    if (lateSheet) late.sheets += 1
+    late.backcharges += moved.filter((m) => m.amount < 0 && !!from && !!m.ymd && m.ymd < from).length
     // The credit a set of lines leaves with us: kept with a payment, less what was used from it.
     const heldOver = (lines: readonly PaperMoneyLine[]) => cents(lines.reduce((n, m) => n + (m.amount > 0 && !m.fromCredit ? Math.max(0, m.creditKept) : 0) - (m.fromCredit && m.amount > 0 ? m.amount : 0), 0))
     let history = false
@@ -454,8 +484,11 @@ export function buildStatementOfAccount(sheets: readonly PaperSheet[], range: St
   rows.sort((a, b) => (a.section === b.section ? 0 : a.section === 'forward' ? -1 : 1) || (order.get(a.sheetId) ?? '').localeCompare(order.get(b.sheetId) ?? ''))
 
   // A credit used is no money sent, so it is in no payment total; it lowers the credit they hold and the sheet alike.
-  const sendings = paperSendings(sheets).filter((snd) => (snd.ymd ? (!to || snd.ymd <= to) && (!from || snd.ymd >= from) : !edged))
-  const lastPayments = sendings.slice().reverse().map((snd) => ({ key: snd.key, day: paperMoneyDay(snd), how: snd.how || 'Not recorded', number: snd.number, amount: snd.amount }))
+  // A sending dated before the period is listed when it was recorded after the last statement was made.
+  const lateSending = (snd: PaperSending) => !!from && !!snd.ymd && snd.ymd < from && typedLate(snd.at)
+  const sendings = paperSendings(sheets).filter((snd) => (snd.ymd ? (!to || snd.ymd <= to) && (!from || snd.ymd >= from || lateSending(snd)) : !edged))
+  const lastPayments = sendings.slice().reverse().map((snd) => ({ key: snd.key, day: paperMoneyDay(snd), how: snd.how || 'Not recorded', number: snd.number, amount: snd.amount, ...(lateSending(snd) ? { late: true } : {}) }))
+  late.payments = lastPayments.filter((p) => p.late).length
   const paidInPeriod = cents(sendings.reduce((n, snd) => n + snd.amount, 0))
   const stillOpen = cents(rows.reduce((n, r) => n + r.open, 0))
   const closingDay = to ?? ctx.today
@@ -475,6 +508,7 @@ export function buildStatementOfAccount(sheets: readonly PaperSheet[], range: St
     rows,
     totals: { comesTo: cents(rows.reduce((n, r) => n + r.comesTo, 0)), paid: cents(rows.reduce((n, r) => n + r.paid, 0)), open: stillOpen },
     lastPayments,
+    ...(late.payments + late.backcharges + late.sheets > 0 ? { late } : {}),
     paidInPeriod,
     adds: { opening, newWork, backcharges, payments, closing: cents(opening + newWork - backcharges - payments) },
     credit,
@@ -483,6 +517,23 @@ export function buildStatementOfAccount(sheets: readonly PaperSheet[], range: St
     sentences: [...(paidYear > 0 ? [counsel('notATaxForm', ctx.company.name, ctx.sub.name)] : []), counsel('openUnderTerms', ctx.company.name, ctx.sub.name)],
     foot: [opts.number || `Prepared ${ctx.preparedAt} ${ctx.zone}`, `${rows.length} ${rows.length === 1 ? 'statement' : 'statements'}`, `${lastPayments.length} ${lastPayments.length === 1 ? 'payment' : 'payments'}`].join(' · '),
   }
+}
+
+/** The words beside a payment a statement carries from before its period. */
+export const STATEMENT_LATE_PAYMENT_WORDS = 'recorded after the last statement'
+
+/**
+ * What a statement says of the lines it carries from before its period, or '' when it carries none:
+ * `1 payment and 1 back-charge dated before this period were recorded after the last statement was made, so they are counted in this one.`
+ */
+export function statementLateWords(c: Pick<StatementOfAccount, 'late'>): string {
+  const l = c.late
+  if (!l) return ''
+  const parts = [l.payments > 0 ? `${l.payments} ${l.payments === 1 ? 'payment' : 'payments'}` : '', l.backcharges > 0 ? `${l.backcharges} ${l.backcharges === 1 ? 'back-charge' : 'back-charges'}` : '', l.sheets > 0 ? `${l.sheets} ${l.sheets === 1 ? 'work statement' : 'work statements'}` : ''].filter(Boolean)
+  if (parts.length === 0) return ''
+  const one = l.payments + l.backcharges + l.sheets === 1
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return `${list} dated before this period ${one ? 'was' : 'were'} recorded after the last statement was made, so ${one ? 'it is' : 'they are'} counted in this one.`
 }
 
 /** `Open on Oct 1 $1,800.00 + new work $7,900.00 − back-charges $100.00 − payments $5,500.00 = $4,100.00`. */

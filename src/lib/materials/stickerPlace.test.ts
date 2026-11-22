@@ -20,6 +20,7 @@ import {
   reservedByWords,
   reservedLineWords,
   reservedMarkWords,
+  reservedShortWords,
   reservedOfJob,
   openBoxLabel,
   PLACE_UNREAD_WORDS,
@@ -233,6 +234,14 @@ describe('what printed of the reserved stickers (punch list #373)', () => {
     expect(jobBlankWords(58, { printed: 0, waiting: 58, unknown: 0 })).toBe('This job has 58 stickers reserved and not on a box yet. None printed yet.')
     expect(jobBlankWords(0, { printed: 0, waiting: 0, unknown: 0 })).toBe('')
     expect(reservedLineWords(NO_RESERVED, 'Nov 17')).toBe('')
+  })
+
+  it('the phone’s one line is the count and which, and nothing at none (v2.8282)', () => {
+    expect(reservedShortWords(reservedOfJob([newRun(0)]))).toBe('58 stickers reserved, G1 to G58')
+    expect(reservedShortWords({ count: 1, span: 'G93', runs: 1 })).toBe('1 sticker reserved, G93')
+    expect(reservedShortWords({ count: 40, span: '', runs: 2 })).toBe('40 stickers reserved, in 2 runs')
+    expect(reservedShortWords({ count: 12, span: '', runs: 1 })).toBe('12 stickers reserved')
+    expect(reservedShortWords(NO_RESERVED)).toBe('')
   })
 })
 

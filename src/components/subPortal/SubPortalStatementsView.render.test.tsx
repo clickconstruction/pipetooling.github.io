@@ -6,11 +6,12 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { StatementRange } from '../../../supabase/functions/_shared/subPapers'
-import { buildSubPortalPapers } from '../../../supabase/functions/_shared/subPortalPapers'
+import { buildWorkStatement, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
+import { subPaperFingerprint } from '../../../supabase/functions/_shared/subPaperMarks'
+import { buildSubPortalPapers, portalPaperSet } from '../../../supabase/functions/_shared/subPortalPapers'
 import { subPortalT, type SubPortalLang, type SubPortalStringKey } from '../../lib/subPortal/subPortalI18n'
 import { parseSubPortalPapers, type SubPortalPapers } from '../../lib/subPortal/subPortalPapersPayload'
-import { SENDING_226, SENDING_231, harlanRows } from '../../lib/subPortal/subPortalPapersFixture'
+import { CEDAR_1, PAPER_CEDAR_1_REV_2, SENDING_226, SENDING_231, harlanRows, registerRows } from '../../lib/subPortal/subPortalPapersFixture'
 import type { SubPaper } from '../../lib/subWorkOrders/subPaperSend'
 import { SubPortalStatementsView, type SubPortalAnswer, type SubPortalAnswerResult } from './SubPortalStatementsView'
 
@@ -240,5 +241,77 @@ describe('SubPortalStatementsView: Got it and Something is wrong (v2.7609)', () 
     fireEvent.click(within(screen.getAllByTestId('statements-work-row')[0]!).getByRole('button', { name: 'Algo está mal' }))
     expect(screen.getByTestId('statements-wrong-panel').textContent).toContain('Dígale a la oficina qué se ve malSobre WS-2041-1 · #2041 Cedar Hollow Clinic.')
     expect(screen.getByRole('button', { name: 'Enviar a la oficina' })).toBeTruthy()
+  })
+})
+
+describe('SubPortalStatementsView: Confirm a work statement (the card’s PR 7), built and switched off', () => {
+  const t = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT('en', key, vars)
+  // The office's live copy of cedar-1 carries today's figures, so it is the one statement that can be confirmed.
+  const set = portalPaperSet(harlanRows(), WHO)
+  const asIssued = subPaperFingerprint(buildWorkStatement(set.sheets.find((s) => s.id === CEDAR_1)!, set.ctx))
+  /** What cedar-1 comes to: a confirm is of this figure, and one at another figure is not of the statement as it stands. */
+  const comesTo = buildWorkStatement(set.sheets.find((s) => s.id === CEDAR_1)!, set.ctx).comesTo
+  const papersWith = (acks: Parameters<typeof harlanRows>[0] = {}) => parseSubPortalPapers(JSON.parse(JSON.stringify(buildSubPortalPapers(harlanRows({ register: registerRows(asIssued), ...acks }), WHO))))!
+  const cedar = () => screen.getAllByTestId('statements-work-row').find((row) => row.textContent?.includes('WS-2041-1'))!
+  const drawOn = (papers: SubPortalPapers, onAnswer: (a: SubPortalAnswer) => Promise<SubPortalAnswerResult>, confirmLive: boolean | undefined, lang: SubPortalLang = 'en') =>
+    render(<SubPortalStatementsView papers={papers} subName="Harlan Mechanical" lang={lang} t={(key, vars) => subPortalT(lang, key, vars)} switcher={null} onAnswer={onAnswer} confirmLive={confirmLive} />)
+
+  it('with the switch as it ships, no statement offers Confirm', () => {
+    drawOn(papersWith(), async () => ({ ok: true }), undefined)
+    expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull()
+  })
+
+  it('on, only a statement the office made and that has not changed since offers it', () => {
+    drawOn(papersWith(), async () => ({ ok: true }), true)
+    expect(screen.getAllByRole('button', { name: 'Confirm' })).toHaveLength(1)
+    expect(within(cedar()).getByRole('button', { name: 'Confirm' })).toBeTruthy()
+  })
+
+  it('one tap, then one question with counsel’s draft sentence, and the row reads Confirmed', async () => {
+    const onAnswer = vi.fn(async (a: SubPortalAnswer): Promise<SubPortalAnswerResult> => (a.action === 'confirm' ? { ok: true, confirmed: { [a.key]: { revision: 2, amount: comesTo, at: 'Nov 16, 2026', from: '203.0.113.7' } } } : { ok: true }))
+    drawOn(papersWith(), onAnswer, true)
+    fireEvent.click(within(cedar()).getByRole('button', { name: 'Confirm' }))
+    const panel = screen.getByTestId('statements-confirm-panel').textContent ?? ''
+    expect(panel).toContain('Confirm this work statement?')
+    expect(panel).toContain('WS-2041-1 comes to ')
+    // Counsel's sentence is marked draft wording, and nothing else on the panel says what a confirm means.
+    expect(panel).toContain('§ By confirming, Harlan Mechanical agrees that the statement is its bill to Your Company Name for this work.')
+    expect(panel).toContain('You are paid the same whether or not you confirm.')
+    expect(onAnswer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, I confirm it' }))
+    await waitFor(() => expect(onAnswer).toHaveBeenCalledWith({ action: 'confirm', key: CEDAR_1 }))
+    await waitFor(() => expect(screen.queryByTestId('statements-confirm-panel')).toBeNull())
+    expect(t('confirmedOn', { date: 'x' })).toBe('Confirmed x')
+    expect(screen.getByTestId('statements-confirmed').textContent).toMatch(/^Confirmed /)
+    expect(within(cedar()).queryByRole('button', { name: 'Confirm' })).toBeNull()
+  })
+
+  it('a confirm of another figure is not of the statement as it stands: the row says so and offers Confirm again', () => {
+    const earlier = papersWith({ acks: [{ kind: 'confirmed', paper_id: PAPER_CEDAR_1_REV_2, labor_job_id: CEDAR_1, sending_id: null, payment_id: null, note: null, created_at: '2026-11-01T18:00:00Z', revision: 1, amount: comesTo - 100, said_from: '203.0.113.7' }] })
+    drawOn(earlier, async () => ({ ok: true }), true)
+    expect(screen.queryByTestId('statements-confirmed')).toBeNull()
+    expect(cedar().textContent).toContain('You confirmed an earlier copy on ')
+    expect(within(cedar()).getByRole('button', { name: 'Confirm' })).toBeTruthy()
+  })
+
+  it('Not yet sends nothing, and an answer that does not go through keeps the question open', async () => {
+    const onAnswer = vi.fn(async (): Promise<SubPortalAnswerResult> => ({ ok: false, failure: 'network' as never }))
+    drawOn(papersWith(), onAnswer, true)
+    fireEvent.click(within(cedar()).getByRole('button', { name: 'Confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet' }))
+    expect(onAnswer).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('statements-confirm-panel')).toBeNull()
+    fireEvent.click(within(cedar()).getByRole('button', { name: 'Confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, I confirm it' }))
+    await waitFor(() => expect(onAnswer).toHaveBeenCalledTimes(1))
+    expect(screen.getByTestId('statements-confirm-panel')).toBeTruthy()
+    expect(screen.queryByTestId('statements-confirmed')).toBeNull()
+  })
+
+  it('a confirm on record reads on its row whatever the switch says, and in Spanish', () => {
+    const confirmed = papersWith({ acks: [{ kind: 'confirmed', paper_id: PAPER_CEDAR_1_REV_2, labor_job_id: CEDAR_1, sending_id: null, payment_id: null, note: null, created_at: '2026-11-14T18:00:00Z', revision: 2, amount: comesTo, said_from: '203.0.113.7' }] })
+    drawOn(confirmed, async () => ({ ok: true }), false, 'es')
+    expect(screen.getByTestId('statements-confirmed').textContent).toMatch(/^Confirmada el /)
+    expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull()
   })
 })

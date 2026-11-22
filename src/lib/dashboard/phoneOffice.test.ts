@@ -15,6 +15,16 @@ describe('needsYouInitialMode', () => {
     expect(needsYouInitialMode({ stored: 'cards', isPhone: true, role: 'assistant' })).toBe('cards')
     expect(needsYouInitialMode({ stored: 'walk', isPhone: false, role: 'dev' })).toBe('walk')
   })
+  it('under the new phone layout every role with no saved choice opens on Walk, and a saved choice still wins', () => {
+    const roles = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', null]
+    for (const role of roles) {
+      expect(needsYouInitialMode({ stored: null, isPhone: true, role, newPhoneLayout: true })).toBe('walk')
+      expect(needsYouInitialMode({ stored: 'cards', isPhone: true, role, newPhoneLayout: true })).toBe('cards')
+      expect(needsYouInitialMode({ stored: 'walk', isPhone: true, role, newPhoneLayout: true })).toBe('walk')
+      // Off, the answer is the one the card gave before the switch, whether the input is left out or false.
+      expect(needsYouInitialMode({ stored: null, isPhone: true, role, newPhoneLayout: false })).toBe(needsYouInitialMode({ stored: null, isPhone: true, role }))
+    }
+  })
 })
 
 describe('needsYouWalkOrder', () => {

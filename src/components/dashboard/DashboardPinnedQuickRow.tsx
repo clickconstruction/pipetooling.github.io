@@ -3,11 +3,13 @@ import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
-import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
+import { DISPATCH_MODE_INBOX_PATH, needsYouDoorLine, needsYouLienStripUnderDoor } from '../../lib/phoneLayout/needsYouPlace'
+import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
 import { JobModeTopRow } from '../jobMode/JobModeTopRow'
 import { canSeeWaitingOnLeader } from '../../lib/dashboard/waitingOnLeader'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
+import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
 import DashboardWaitingOnLeaderCard from './DashboardWaitingOnLeaderCard'
 import { DashboardOfficeRoundCard } from './DashboardOfficeRoundCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
@@ -95,8 +97,21 @@ export interface DashboardPinnedQuickRowProps {
    * pins/quick actions, and slots.
    */
   hideBanners?: boolean
-  /** The office person's phone with Dispatch Mode on (v2.3883): Needs You is a one-line door to the Inbox tab's deck, not the card. */
+  /**
+   * Needs You is a one-line door to an Inbox tab's deck, not the card: the office person's phone with Dispatch Mode
+   * on (v2.3883) and, under the new phone layout, every phone whose mode has an Inbox tab (`needsYouPlace.ts`).
+   * With `hideBanners` the door is the one thing of the banners drawn, which is Job Mode's own Dashboard.
+   */
   needsYouDoor?: boolean
+  /** The Inbox tab the door opens. Dispatch Mode's unless said: Job Mode's Dashboard hands its own. */
+  needsYouDoorTo?: string
+  /**
+   * The door stands in for the Needs you list alone, so the rest of the card's neighbourhood stays on the page: the
+   * Lien desk's strip, drawn under the door as a card of its own, and the two cards under the list, the office's
+   * round and, for the office, what waits on the leader. Unset, the door takes all three to the Inbox tab, as the
+   * office person's phone has had it since v2.3883.
+   */
+  needsYouDoorKeepsCards?: boolean
   /** The office person's phone (v2.3891, the owner's pick 2026-09-27): no Tally and Job Report squares beside the clock — two quiet links under it instead, so both stay one tap away. */
   quietSquares?: boolean
   /**
@@ -298,6 +313,8 @@ export function DashboardPinnedQuickRow({
   bannersOnly = false,
   hideBanners = false,
   needsYouDoor = false,
+  needsYouDoorTo = DISPATCH_MODE_INBOX_PATH,
+  needsYouDoorKeepsCards = false,
   quietSquares = false,
   hideJobReport = false,
   jobModeDay,
@@ -308,8 +325,13 @@ export function DashboardPinnedQuickRow({
   // Every Needs You source, read once for this host (v2.5771, punch list #146): the gates live in
   // `needsYouSourceGates`, the hooks in `useNeedsYouInputs`, the doors in `needsYouDoor` — shared
   // with Quickfill's station, so the two hosts cannot drift.
-  const needsYou = useNeedsYouInputs({ authUserId, role, host: 'dashboard', enabled: !hideBanners, dispatchAged })
+  // Read where the list is drawn: with the banners, and for the door alone on Job Mode's own Dashboard.
+  const needsYou = useNeedsYouInputs({ authUserId, role, host: 'dashboard', enabled: !hideBanners || needsYouDoor, dispatchAged })
   const needsYouItems = needsYou.items
+  // The door's words: the list's count and first line, or under the new phone layout the viewer's own, as the card it opens says them.
+  const newPhoneLayout = useNewPhoneLayout().on
+  // With the banners hidden the door stands in for no card (Job Mode's own Dashboard), so it is drawn for the viewer's own lines alone.
+  const doorLine = needsYouDoor ? needsYouDoorLine(needsYouItems, { newPhoneLayout, role, ownOnly: hideBanners }) : null
   const { officeEligible, handles } = needsYou
   const { tallyUnlinkedCount, arBankUnallocatedCount, contractNudge, gcReviewStatus, gcReviewNudge } = handles
   const press = useNeedsYouPress({
@@ -355,6 +377,11 @@ export function DashboardPinnedQuickRow({
       cancelled = true
     }
   }, [role, arBankUnallocatedCount, contractNudge, readyToBillCount])
+
+  // The two cards under the list: drawn with the banners, and left off a page whose door takes them to the Inbox tab.
+  const cardsUnderTheList = !hideBanners && (!needsYouDoor || needsYouDoorKeepsCards)
+  // The Lien desk's strip on its own: under a door that keeps the cards, while the list has a line, as the card shows it.
+  const lienStripUnderDoor = needsYouLienStripUnderDoor({ door: doorLine != null, cardsStay: needsYouDoorKeepsCards, bannersHidden: hideBanners })
 
   const pinsToShow = filterPinsToShow(visiblePins)
 
@@ -445,23 +472,24 @@ export function DashboardPinnedQuickRow({
       {/* Needs You card (v2.2339): the hook-driven banners as one card with
           Cards / Walk-the-list views. The remaining self-gating banners below
           migrate item-by-item (job follow-ups joined in v2.2487). */}
-      {!hideBanners && needsYouDoor && needsYouDoorWords(needsYouItems) ? (
+      {doorLine ? (
         <button
           type="button"
           data-needs-you-door
           onClick={() => {
             recordNavClick(authUserId, role, 'needs-you', '#door-inbox')
-            navigate('/dispatch-mode/inbox')
+            navigate(needsYouDoorTo)
           }}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 48, padding: '0.6rem 0.85rem', marginBottom: '1rem', border: '1px solid var(--border-amber)', borderRadius: 10, background: 'var(--bg-amber-tint)', color: 'var(--text)', font: 'inherit', fontSize: '0.9375rem', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }}
         >
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <strong>Needs you · {needsYouItems.length}</strong>
-            <span style={{ color: 'var(--text-muted)' }}> · {needsYouItems[0]?.title}</span>
+            <strong>Needs you · {doorLine.count}</strong>
+            <span style={{ color: 'var(--text-muted)' }}> · {doorLine.first}</span>
           </span>
           <span style={{ color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Inbox ›</span>
         </button>
       ) : null}
+      {lienStripUnderDoor ? <NeedsYouLienBoardStrip standalone strip={needsYou.lienBoardStrip} userId={authUserId} role={role} onOpenBoard={() => navigate(LIEN_DESK_PATH)} /> : null}
       {!hideBanners && !needsYouDoor && (
         <DashboardNeedsYouCard
           userId={authUserId}
@@ -474,9 +502,9 @@ export function DashboardPinnedQuickRow({
         />
       )}
       {/* Waiting on the leader (punch list #365, PR 2): the lines only he can clear, for the office that chases them. */}
-      {!hideBanners && !needsYouDoor ? <DashboardWaitingOnLeaderCard authUserId={authUserId} role={role} enabled={canSeeWaitingOnLeader(role)} desk={needsYou.lienDeskData} deskReading={needsYou.reading.lienDesk} /> : null}
+      {cardsUnderTheList ? <DashboardWaitingOnLeaderCard authUserId={authUserId} role={role} enabled={canSeeWaitingOnLeader(role)} desk={needsYou.lienDeskData} deskReading={needsYou.reading.lienDesk} /> : null}
       {/* The office's round (v2.5845, punch list #176, change 5): the round's close sheet in two lines, for the office. */}
-      {!hideBanners && !needsYouDoor ? <DashboardOfficeRoundCard enabled={officeEligible} /> : null}
+      {cardsUnderTheList ? <DashboardOfficeRoundCard enabled={officeEligible} /> : null}
       {/* Wednesday GC certification (v2.1984): the due state lives in the card
           (v2.2490); the green rest-of-Wednesday confirmation stays a notice. */}
       {!hideBanners && officeEligible && gcReviewStatus != null && gcReviewNudge === 'done' && (

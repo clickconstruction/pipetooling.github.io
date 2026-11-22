@@ -14,6 +14,7 @@ import {
   type PressBarRows,
 } from '../../lib/jobMode/pressBar'
 import { READING_AGAIN_WORDS } from '../../lib/keptRead'
+import { PHONE_DAY_PRESS_COMPACT_MIN_PX, PHONE_DAY_PRESS_ROW_PX } from '../../lib/phoneLayout/phoneBar'
 
 /**
  * The press bar's stacking level: one above the tab bar, so the bar is never covered by it, and
@@ -112,6 +113,53 @@ const bigDisabled: CSSProperties = {
   cursor: 'not-allowed',
 }
 
+/**
+ * The new phone layout (`lib/phoneLayout`): the same buttons on one row. The compact ones are as wide as
+ * their words, the day's press takes the rest. With all five up on a 375 px phone the two-word labels fold
+ * onto two lines (Clock out, Leave report) so the day's press keeps its room. The row never wraps at 350 px
+ * or wider; under that the stylesheet lets it (`.jobModePressBarOneRow`), the bar grows by a line and its
+ * measured height follows, so nothing is cut off or runs off the side.
+ */
+export const JOB_MODE_PRESS_BAR_ONE_ROW_CLASS = 'jobModePressBarOneRow'
+const ONE_ROW_PAD = 6
+const barWrapOneRow: CSSProperties = {
+  ...barWrap,
+  padding: `${ONE_ROW_PAD}px 8px`,
+  display: 'flex',
+  alignItems: 'stretch',
+  gap: 5,
+}
+
+/**
+ * A compact press: as wide as its words, never grown. It gives room a thousand times as readily as the day's
+ * press, so a two-word label is folded onto two lines before the day's press is asked for a pixel.
+ */
+const oneRowCompact: CSSProperties = {
+  flex: '0 1000 auto',
+  minWidth: 'min-content',
+  minHeight: PHONE_DAY_PRESS_COMPACT_MIN_PX,
+  padding: '0 4px',
+}
+
+/**
+ * The day's press on the one row: the rest of the row. It asks for 120 px, enough for *On my way* on one line,
+ * and gives down to 88 px only once every compact label beside it is folded.
+ */
+const oneRowDayPress: CSSProperties = {
+  flex: '1 1 120px',
+  minWidth: 88,
+  minHeight: PHONE_DAY_PRESS_ROW_PX,
+  padding: '0 6px',
+}
+
+/** Leave report as a compact press: its own blue under white words, at the compact size. */
+const oneRowLeaveReport: CSSProperties = {
+  ...smallBtn,
+  border: 'none',
+  background: LEAVE_REPORT_BLUE,
+  color: 'white',
+}
+
 type Props = {
   rows: PressBarRows
   /** The day's press colour, from the kernel's tone. */
@@ -125,6 +173,12 @@ type Props = {
    * again…* as its hover words. The bar itself stays solid, so the card never shows through it.
    */
   held?: boolean
+  /**
+   * The new phone layout (`useNewPhoneLayout`): every button of the two rows on one row, in the same
+   * order, the day's press last and widest. The same buttons, labels, colours and presses. Off, the bar
+   * is its two rows.
+   */
+  oneRow?: boolean
 }
 
 /**
@@ -132,7 +186,7 @@ type Props = {
  * `buildJobModePressBar`'s rows and nothing else. While mounted it sets `--job-mode-press-bar`
  * on the root to its measured height, so Layout's <main> pads by it and nothing scrolls under it.
  */
-export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held = false }: Props) {
+export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held = false, oneRow = false }: Props) {
   const keyboardOpen = useOnScreenKeyboardOpen()
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -159,10 +213,11 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held
       title={held ? READING_AGAIN_WORDS : b.disabled && b.id === 'turnaway' ? (noJobReason ?? undefined) : undefined}
       aria-label={b.id === 'turnaway' ? 'Turnaway — client not home or site not ready' : b.id === 'pct-done' ? 'Update % done' : b.label}
       data-testid={`job-mode-press-${b.id}`}
-      style={{ ...(b.id === 'turnaway' ? turnawaySmallBtn : smallBtn), ...(b.disabled ? smallDisabled : null) }}
+      style={{ ...(b.id === 'turnaway' ? turnawaySmallBtn : smallBtn), ...(oneRow ? oneRowCompact : null), ...(b.disabled ? smallDisabled : null) }}
       onClick={() => onPress(b.id)}
     >
-      {b.label}
+      {/* On the one row a label folds at a space when the row is short of room: "% done" stays whole. */}
+      {oneRow && b.id === 'pct-done' ? b.label.replace(' ', ' ') : b.label}
     </button>
   )
 
@@ -175,12 +230,17 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held
       title={held ? READING_AGAIN_WORDS : b.disabled && b.id === 'leave-report' ? (noJobReason ?? undefined) : undefined}
       aria-label={b.id === 'leave-report' ? 'Leave Report' : b.label}
       data-testid={`job-mode-press-${b.id}`}
-      style={{
-        ...bigBtn,
-        background: b.id === 'leave-report' ? LEAVE_REPORT_BLUE : DAY_PRESS_COLORS[dayPressTone],
-        color: b.id === 'leave-report' ? 'white' : DAY_PRESS_TEXT[dayPressTone],
-        ...(b.disabled ? bigDisabled : null),
-      }}
+      style={
+        oneRow && b.id === 'leave-report'
+          ? { ...oneRowLeaveReport, ...oneRowCompact, ...(b.disabled ? bigDisabled : null) }
+          : {
+              ...bigBtn,
+              ...(oneRow ? oneRowDayPress : null),
+              background: b.id === 'leave-report' ? LEAVE_REPORT_BLUE : DAY_PRESS_COLORS[dayPressTone],
+              color: b.id === 'leave-report' ? 'white' : DAY_PRESS_TEXT[dayPressTone],
+              ...(b.disabled ? bigDisabled : null),
+            }
+      }
       onClick={() => onPress(b.id)}
     >
       {b.label}
@@ -194,15 +254,27 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held
       aria-label="The day's presses"
       data-testid="job-mode-press-bar"
       data-held={held || undefined}
+      data-one-row={oneRow || undefined}
+      className={oneRow ? JOB_MODE_PRESS_BAR_ONE_ROW_CLASS : undefined}
       aria-hidden={keyboardOpen || undefined}
       style={{
-        ...barWrap,
+        ...(oneRow ? barWrapOneRow : barWrap),
         transform: keyboardOpen ? onTabBarKeyboardSlideCss() : undefined,
         pointerEvents: keyboardOpen ? 'none' : undefined,
       }}
     >
-      <div style={smallRow}>{rows.top.map(small)}</div>
-      <div style={bigRow}>{rows.bottom.map(big)}</div>
+      {oneRow ? (
+        <>
+          {rows.top.map(small)}
+          {rows.bottom.map(big)}
+        </>
+      ) : (
+        <>
+          {/* The small row is drawn only when it holds a button: before the clock it holds none (`turnawayOffered`), and an empty row would leave the bar's gap over Leave report. */}
+          {rows.top.length > 0 ? <div style={smallRow}>{rows.top.map(small)}</div> : null}
+          <div style={bigRow}>{rows.bottom.map(big)}</div>
+        </>
+      )}
     </div>
   )
 }

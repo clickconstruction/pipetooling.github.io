@@ -208,7 +208,9 @@ describe('Market, the clock', () => {
     // A middle well along the bar is said under its mark, apart from the bar's first word.
     expect((clock.querySelector('[data-clock-start]') as HTMLElement).textContent).toBe('applied')
     const note = clock.querySelector('[data-clock-note]') as HTMLElement
-    expect(note.textContent).toMatch(/^Half of the applications wait 45 days or more for the permit\./)
+    expect(note.textContent).toMatch(/^Half of the applications that have a permit waited 45 days or more for it\./)
+    // Every application here has its permit: no line about waiting.
+    expect(clock.querySelector('[data-clock-waiting]')).toBeNull()
     // The note's days and its count are drawn apart from its words: worked out, so bold and no press.
     expect([...note.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent?.replace(/[\d,]+ applications/, 'N applications'))).toEqual(['45 days', expect.stringMatching(/^\d+ to \d+ days$/), 'N applications'])
     expect(document.querySelector('.vipChange')).toBeNull()
@@ -216,6 +218,27 @@ describe('Market, the clock', () => {
     // San Antonio's permits name no plumber: nothing is drawn about plumbers.
     expect(document.querySelector('[data-market-clock="plumber"]')).toBeNull()
     expect(screen.getByText('~6 weeks')).toBeTruthy()
+  })
+
+  it('says under the clock how many applications still wait, and how many were filed over six months ago', async () => {
+    // Two more applications with no permit yet: one filed last month, one filed in March.
+    marketIo.loadMarketPermits.mockResolvedValue([
+      ...PERMITS,
+      permit({ builder_key: 'juniperhospitalitygroup', stage: 'applied', work_type: 'Commercial project', submitted_on: '2026-10-20', issued_on: null }),
+      permit({ builder_key: 'juniperhospitalitygroup', stage: 'applied', work_type: 'Commercial project', submitted_on: '2026-03-02', issued_on: null }),
+    ])
+    draw()
+    expect(await screen.findByText('San Antonio · application to permit')).toBeTruthy()
+    const clock = document.querySelector('[data-market-clock="application"]') as HTMLElement
+    // The clock itself still stands on the five that have their permit.
+    expect(within(clock).getByText('45 days', { selector: 'strong' })).toBeTruthy()
+    const waiting = clock.querySelector('[data-clock-waiting]') as HTMLElement
+    expect(waiting.textContent).toBe(
+      '2 of the 7 applications filed in twelve months still wait for a permit. The clock counts only the ones that have their permit, so it reads short. 1 of them was filed over six months ago. The city does not say whether a long wait is a slow review or a job that stopped.',
+    )
+    // Its counts are worked out: drawn apart from the words, bold, and no press.
+    expect([...waiting.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['2', '7 applications', '1'])
+    expect(document.querySelector('.vipChange')).toBeNull()
   })
 
   it('draws building permit to the plumber’s permit where the city names plumbers', async () => {

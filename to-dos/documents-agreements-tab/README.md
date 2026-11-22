@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · 2026-11-19 night: the first two things under What is left built on branches on four picks · 2026-11-20: each cut onto that day's main as its own PR, held for his calls and armed by him alone, the reminders v2.8013 first and the signer's copy in the PR on top of it · 2026-11-21: Taunya answered the six calls, the first five kept as built and the estimator let in to open a plain paper's PDF, and moved the company's own signature to card #412 · the reminders landed that day on her go, v2.8013, its migration pushed and `send-contract-for-signature` and `remind-person-papers` deployed, the switch off · the signer's copy landed that day too on her go, v2.8016, its migration pushed and `accept-contract` and `person-paper-pdf` deployed · both walked signed in on prod that night on a ZZ Test person: a paper sent, reminded once by the hourly job, sent again, signed, its copy emailed with the PDF, and the PDF opened from the signed record · left: the owner’s own look
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · 2026-11-19 night: the first two things under What is left built on branches on four picks · 2026-11-20: each cut onto that day's main as its own PR, held for his calls and armed by him alone, the reminders v2.8013 first and the signer's copy in the PR on top of it · 2026-11-21: Taunya answered the six calls, the first five kept as built and the estimator let in to open a plain paper's PDF, and moved the company's own signature to card #412 · the reminders landed that day on her go, v2.8013, its migration pushed and `send-contract-for-signature` and `remind-person-papers` deployed, the switch off · the signer's copy landed that day too on her go, v2.8016, its migration pushed and `accept-contract` and `person-paper-pdf` deployed · both walked signed in on prod that night on a ZZ Test person: a paper sent, reminded once by the hourly job, sent again, signed, its copy emailed with the PDF, and the PDF opened from the signed record · left: the owner’s own look, five more walks, and the loose ends and calls under What is left
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,7 +12,7 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The owner opens Documents → Agreements, presses Send a paper, Send again and Contract library, and types a name on the Search tab. The reminders and the signer's copy both landed on 2026-11-21 and were walked signed in on prod that night, on a ZZ Test person. Each row under What is left says Taunya's answer and what the walk saw. Reminders stay off until someone turns them on in Settings → People & teams. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
+next: The owner takes the first walk under What is left, on Documents → Agreements. Then the five other walks there, each on ZZ Test rows. The reminders and the signer's copy both landed on 2026-11-21 and were walked signed in on prod that night, on a ZZ Test person. Reminders stay off until someone turns them on in Settings → People & teams. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S), then M as a second train of three (M · M · S)
 blocker: None.
 ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932 · v2.7937 · v2.7938 · v2.8013 · v2.8016
@@ -249,7 +249,7 @@ there is no migration.
 
 ### What is left
 
-The first two are built and live, both landed on 2026-11-21: the reminders as v2.8013 and the signer's copy as v2.8016. Taunya answered their calls that day, and each row says its answer. The other two are not built here: each moved to a card of its own, #403 and #412.
+The first two are built, live and walked: the reminders as v2.8013 and the signer's copy as v2.8016, both landed on 2026-11-21. Taunya answered their calls that day, and each row says its answer. The other two are not built here: each moved to a card of its own, #403 and #412. The walks still owed, the loose ends and the calls follow the table.
 
 | What | Today | What it takes | Size |
 |---|---|---|---|
@@ -258,7 +258,36 @@ The first two are built and live, both landed on 2026-11-21: the reminders as v2
 | **An outside party as a record** | Moved to its own card, #403 | Card #403 weighs the options, picks one and lists the owner's calls | L |
 | **The company's own signature** | Moved to its own card, #412, on Taunya's word of 2026-11-21 | Card #412 says what it takes and holds the two calls: who may sign, and whether every paper needs it or only some | M to L |
 
-**The calls are answered (Taunya, 2026-11-21).** Each piece was a PR cut from main on 2026-11-20, and its first line names the calls and their answers. Both are live. The reminders went first: merged, pushed and deployed on 2026-11-21, with their types in PR #9252. The signer's copy followed that evening: PR #9182 merged, its migration pushed, `accept-contract` deployed, then `person-paper-pdf`, with its types in PR #9294. The dev seat was redeployed after that PR, on Taunya's go, and reads the two columns. The switch for reminders stays off until someone turns it on in Settings → People & teams. All four functions have done their real work on prod, in the walk of 2026-11-21: one reminder, one signed copy and two PDFs, all on ZZ Test papers and the mail service's test address. The walk's rows are deleted. Six stored files and four email log lines stay, since a dev cannot delete them.
+**Where it stands, read 2026-11-22.** Both pieces are merged, pushed, deployed and walked. The reminders went first: PR #9181, with its types in PR #9252. The signer's copy followed: PR #9182, with its types in PR #9294. All four functions run main's code: `send-contract-for-signature`, `remind-person-papers`, `accept-contract` and `person-paper-pdf`. The dev seat was redeployed after PR #9294, on Taunya's go, and reads the new columns. No migration of this card is left to push. The walk on prod of 2026-11-21 is written up in PR #9343.
+
+**Walks still owed.** Each uses ZZ Test rows only, and email goes only to the mail service's test address, `delivered+<label>@resend.dev`. Every row a walk makes is deleted before it ends, and the switch is put back off.
+
+1. **The owner's own look.** As the owner, on their own account, at a desk width and on a phone, in light and in dark. Open Documents → Agreements. Press **Waiting on a signature**, then **Staff and subs**, then **Outside companies**. Type a person's name in **Find an agreement**. Open a signed line and press **Open the PDF**. Press **Send a paper**, pick a paper and a person, read the email window, and press **Cancel**. Press **Contract library** and close it. On the Search tab, type a person's name and find their paper under **Agreements**. In Settings → People & teams, read **Paper reminders by email** and leave it as it is. Should see: each press opens what its words say, and nothing is sent. Not walked yet: the look is the owner's to take.
+2. **An estimator opens an outside company's PDF.** On prod, through Settings → View as, as an estimator's sample account, at 1280 and 375 px in dark. Open Documents → Agreements and press **Outside companies**. Open `ZZ Test Supply`'s signed *Subcontractor Agreement (Internal)*, paper `197de1dc-aad1-475c-ae8c-84dfda7153d6`, and press **Open the PDF**. Should see: the PDF opens, made on that first open, and it says *ZZ Test Rep* signed for *ZZ Test Supply*. No staff or sub paper shows on that list. End View as afterwards, since it swaps the shared pane's sign-in. Not walked yet: the walk of 2026-11-21 ran as a dev, so only the unit tests hold the estimator's rule. If that line offers no **Open the PDF** to an estimator, that is a finding for this card.
+3. **An outside company's signer gets a copy.** As a dev, at 1280 px. Press **Send a paper**, pick `ZZ Test Supply` and its signer `ZZ Test Rep` at the test address, and sign from the link. Should see: the copy goes with its PDF, and the PDF names the signer and the company. Not walked yet: the walk of 2026-11-21 signed a staff paper only.
+4. **The second and third reminder, and the stop.** As a dev, with the Settings switch on for the walk only, at 1280 and 375 px in light. Send a ZZ Test person a paper and move its reminder date up by hand three times, one hourly run apart. Should see: the line reads *1 of 3*, *2 of 3*, then *3 of 3*, and no fourth goes. Then archive a ZZ Test person whose paper waits and move that date up. Should see: no reminder goes and the date clears. Not walked yet: the walk of 2026-11-21 sent one reminder and looked in dark only.
+5. **The three emails as the signer reads them.** The ask, a reminder and the signed copy, each opened from Documents → Sent copies before the walk's cleanup, at 1280 and 375 px. Should see: the reminder says the link before it stops working, and the copy names its attached PDF. Not walked yet: the test address is a sink nobody can open, and the walk's kept copies went with its rows.
+6. **The signing page on a phone.** Sign a ZZ Test paper at 375 px. Should see: the paper, the name box, both ticks and **Submit signature** fit with no sideways scroll. Not walked yet: the walk of 2026-11-21 signed at 1100 px.
+
+**Loose ends.**
+
+- **The reminders switch is off,** `0`, read 2026-11-22 at 06:12 UTC, and no paper carries a reminder date. Turning it on reaches only papers sent after.
+- **A job's paper built from settings is never reminded.** Since v2.8156 such a paper can be sent with no words of its own. While the switch is on, its send sets a first reminder date. Then `remind-person-papers` finds nothing to sign, holds it and clears the date. Seen in the code on 2026-11-21 and not fixed. The fix would read the job's settings the way the send does. It waits on the first call below.
+- **Test files a dev cannot delete,** left by the walk of 2026-11-21. Their rows are deleted, so no screen reads them, and a delete as the service role would take them.
+  - `contract-form-pdfs/7484d33e-a6aa-464e-af7b-dce28a8c5d9e/signed-paper.pdf`.
+  - Five files in `sent-documents`, under `ef25c215-8c12-43b4-b9e6-9821e43ce2d6/`, `2a4a643f-916d-4a45-b005-2f8012dc2de2/`, `5839f588-9507-4ab7-87b3-582553075eb6/` and `5dbe1ea9-e5b9-485d-bb4f-a6ba0de0b155/`.
+  - Four `email_send_log` lines: `a9233ed3-8040-4e9b-be54-8a94da5a0e81`, `45a3fafc-aa96-4511-a942-73e431403b3d`, `308a07fd-0643-4253-8f90-6df72a8ed0ea` and `1ee781cd-a030-474c-9800-3fcbbf52143b`.
+- **`ZZ Test Hand`'s paper,** `4358a4e4-0f9b-4ecd-a121-f86182d4b5f5`, is a standing test row from an earlier walk. Its first open on 2026-11-21 made its PDF, `contract-form-pdfs/4358a4e4-0f9b-4ecd-a121-f86182d4b5f5/signed-paper.pdf`. It was left in place.
+- **Two old claims still stand:** `refs/claims/migration-20261120060000` and `refs/claims/migration-20261120061000`, from the first cut of these migrations. They landed as `20261120133000` and `20261120134000`. The claim script releases versions and punch-list numbers only.
+- **Card #404 is out of date about this card.** Row 6 of `to-dos/document-builder/README.md` still calls these two migrations unpushed, by their old stamps. Left to that card.
+- **Small presses.** On a waiting line, **Turn reminders off**, **Send again** and **Copy the signing link** are 28 px tall at 375 px, and the Settings press is 32 px. They match the presses the line had before, so they were not changed.
+
+**Calls still open.**
+
+1. Whether a job's paper built from settings is reminded. Built today: it is not.
+2. Whether an outside company's paper is reminded. Taunya's answer of 2026-11-21: not yet, and it comes back once card #403's train lands. Built today: it is not.
+3. When the reminders go on for the whole team. Built: the switch ships off, and the owner or a dev turns it on.
+4. The company's own signature, on card #412.
 
 Smaller things the tab still leaves to People, each S, none asked for yet:
 
@@ -308,6 +337,6 @@ He took all seven picks as the mock-up draws them.
 - On prod with a ZZ Test job (`live-test` recipe): send a contract, see it under *Waiting on a
   signature* with the count one higher, sign it, see the chip turn, void it, see it leave the default
   list and show under *Voided or ended*. Find it by the job's number and by the customer's name.
-- Open `/documents` as an estimator's sample account: no Agreements tab, and `?tab=agreements` lands on
-  Estimates.
+- Open `/documents` as an estimator's sample account. Since card #403's call 8 (v2.8175) the Agreements tab
+  shows, with the estimator's chips only and no press that acts.
 - Hold the read to see the retry panel, and filter to nothing to see both empty states.

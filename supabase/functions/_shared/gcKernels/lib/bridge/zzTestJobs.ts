@@ -20,13 +20,19 @@
  */
 import { isZzBidName, isZzTestName } from '../jobs/zzTestJobSweep.ts'
 import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility.ts'
+import { leavesOutByIdAlone } from '../jobs/zzTestJobVisibility.ts'
 
-/** The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). */
+/**
+ * The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). Since v2.8281 a set made by
+ * `jobIdsAlone` is the third case: a dev who shows ZZ tests while the Bridge's left-out list names something. Those
+ * jobs leave by their ids, and every ZZ job and ZZ bid the list does not name stays (`leftOut.ts`,
+ * `withLeftOutJobIds`).
+ */
 export type BridgeZzTestJobIds = ReadonlySet<string> | null
 
 type NamedJobRow = { id: string; job_name?: string | null; customer_name?: string | null }
 
-/** Job rows without the ZZ test jobs, by their own names or the shared ids. The same array when none is dropped. */
+/** Job rows without the ZZ test jobs, by their own names or the shared ids; by the ids alone under `jobIdsAlone`. The same array when none is dropped. */
 export function withoutZzBridgeJobs<T extends NamedJobRow>(rows: T[], zzTestJobIds: BridgeZzTestJobIds): T[] {
   return zzTestJobIds ? withoutZzTestJobRows(rows, (r) => r.id, zzTestJobIds) : rows
 }
@@ -45,10 +51,12 @@ export function bridgeCollections(rows: Array<NamedJobRow & { revenue: number | 
 
 /**
  * Every ZZ test job a read knows: the shared ids, and the jobs its own rows name as ZZ (one made since the ids were
- * read). Null when the viewer keeps them, so it passes straight on as the next read's `zzTestJobIds`.
+ * read). Null when the viewer keeps them, so it passes straight on as the next read's `zzTestJobIds`. Ids made by
+ * `jobIdsAlone` pass on as they are: under them a row's ZZ name names no job to leave out.
  */
 export function bridgeZzJobIds(namedRows: ReadonlyArray<NamedJobRow>, zzTestJobIds: BridgeZzTestJobIds): BridgeZzTestJobIds {
   if (!zzTestJobIds) return null
+  if (leavesOutByIdAlone(zzTestJobIds)) return zzTestJobIds
   const named = zzIdsAmong(namedRows)
   if (named.size === 0) return zzTestJobIds
   for (const id of zzTestJobIds) named.add(id)
@@ -72,10 +80,10 @@ export function withoutZzJobKeyedRows<T>(rows: T[], jobIdOf: (row: T) => string 
  * Bid rows without the ZZ bids (`isZzBidName` on the project name), for the viewer who leaves ZZ test jobs out:
  * `zzTestJobIds` is that viewer's switch here, null keeping every bid for a dev who shows them. The picker keeps a ZZ
  * bid marked by or for the person; the Bridge reads for no person, so every ZZ bid leaves. The same array when none
- * is dropped.
+ * is dropped. Ids made by `jobIdsAlone` are a dev who shows ZZ tests, so every bid stays under them.
  */
 export function withoutZzBridgeBids<T extends { project_name?: string | null }>(rows: T[], zzTestJobIds: BridgeZzTestJobIds): T[] {
-  if (!zzTestJobIds) return rows
+  if (!zzTestJobIds || leavesOutByIdAlone(zzTestJobIds)) return rows
   const isZz = (b: T) => isZzBidName(b.project_name)
   return rows.some(isZz) ? rows.filter((b) => !isZz(b)) : rows
 }

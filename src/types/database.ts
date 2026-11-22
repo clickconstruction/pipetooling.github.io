@@ -52436,6 +52436,57 @@ export type Database = {
           zip: string
         }[]
       }
+      research_permits_v4: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          builder_key: string
+          builder_kind: string
+          builder_mark: string
+          builder_mark_at: string
+          builder_mark_by_name: string
+          builder_mark_reason: string
+          builder_name: string
+          builder_open: number
+          builder_permits: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_first_permit_on: string
+          plumber_permit_on: string
+          plumbing_nearby: number
+          plumbing_nearby_by: string
+          plumbing_nearby_on: string
+          plumbing_nearby_what: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_for_name: string
+          verdict_for_user: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_pursue_for: string
+          verdict_reason: string
+          verdict_reason_code: string
+          work_type: string
+          zip: string
+        }[]
+      }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
@@ -53325,6 +53376,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_check_to_look: { Args: { p_fixture_id: string }; Returns: string[] }
       start_check_windows: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -53928,6 +53980,10 @@ export type Database = {
       }
       write_down: {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
+        Returns: undefined
+      }
+      write_down_payment: {
+        Args: { p_day?: string; p_message_id: string }
         Returns: undefined
       }
       write_up_people: { Args: never; Returns: Json }

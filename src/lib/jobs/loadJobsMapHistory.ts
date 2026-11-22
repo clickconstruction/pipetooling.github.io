@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllRows } from '../supabasePaging'
-import type { JobsMapBillRow, JobsMapHistory, JobsMapHistoryJob, JobsMapPaymentRow, JobsMapStatusMove } from './jobsMapAsOf'
+import { JOBS_MAP_AS_OF_FLOOR_YMD, type JobsMapBillRow, type JobsMapHistory, type JobsMapHistoryJob, type JobsMapPaymentRow, type JobsMapStatusMove } from './jobsMapAsOf'
 
 const CACHE_TTL_MS = 5 * 60_000
 
@@ -33,7 +33,9 @@ type JobRow = {
   customer_name: string | null
   gc_customer_id: string | null
   bill_to_party: string | null
+  in_kind_arrangement_id: string | null
   gc_customer: { name: string | null } | { name: string | null }[] | null
+  in_kind: { created_at: string | null } | { created_at: string | null }[] | null
 }
 type MoveRow = { job_id: string; from_status: string | null; to_status: string; changed_at: string }
 type BillRow = { id: string; job_id: string; amount: number | null; billed_at: string | null; estimated_bill_date: string | null }
@@ -45,6 +47,16 @@ const ymdOf = (iso: string | null | undefined): string | null => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
   const ymd = calendarYmdInAppTzFromIso(t)
   return ymd || null
+}
+
+/**
+ * The day a job's in kind deal was recorded, for the rewound map (punch list #301). A job on a deal whose row could
+ * not be read still reads as in kind, from the first day of history: the column alone is the truth today.
+ */
+export function inKindSinceYmd(r: { in_kind_arrangement_id: string | null; in_kind: { created_at: string | null } | { created_at: string | null }[] | null }): string | null {
+  if (!r.in_kind_arrangement_id) return null
+  const deal = Array.isArray(r.in_kind) ? (r.in_kind[0] ?? null) : r.in_kind
+  return ymdOf(deal?.created_at) ?? JOBS_MAP_AS_OF_FLOOR_YMD
 }
 
 function page<T>(build: (from: number, to: number) => PromiseLike<unknown>, label: string): Promise<T[]> {
@@ -63,7 +75,7 @@ async function read(): Promise<JobsMapHistory> {
       (from, to) =>
         supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, job_address, status, created_at, collections_at, uncollectible_at, customer_id, customer_name, gc_customer_id, bill_to_party, gc_customer:gc_customer_id(name)')
+          .select('id, hcp_number, click_number, job_name, job_address, status, created_at, collections_at, uncollectible_at, customer_id, customer_name, gc_customer_id, bill_to_party, in_kind_arrangement_id, gc_customer:gc_customer_id(name), in_kind:in_kind_arrangement_id(created_at)')
           .order('id')
           .range(from, to),
       'jobs map history jobs',
@@ -106,6 +118,7 @@ async function read(): Promise<JobsMapHistory> {
       gc_customer_id: r.gc_customer_id,
       gc_name: gc?.name ?? null,
       bill_to_party: r.bill_to_party,
+      in_kind_since_ymd: inKindSinceYmd(r),
     }
   })
   const moves: JobsMapStatusMove[] = []

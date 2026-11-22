@@ -40,6 +40,12 @@ export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' |
    * a row this viewer cannot read, is any time. Never rejects.
    */
   loadPushHours?(userIds: readonly string[]): Promise<PushHoursByUser>
+  /**
+   * The mark a payment word leaves on its line (v2.8271, punch list #129, `write_down_payment`): with a day, the
+   * line's promise is a payment by that day; with none, a payment mark comes back off as just talk. Rejects with the
+   * database's own words on a refusal.
+   */
+  writeDownPayment?(messageId: string, ymd: string | null): Promise<void>
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
@@ -77,6 +83,11 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
     async setPrefers(contactId, prefers) {
       const result = await db.rpc('contact_set_prefers', { p_contact: contactId, p_prefers: prefers })
       checkSupabaseError(result, 'set how they hear from us')
+    },
+    async writeDownPayment(messageId, ymd) {
+      // No day is left off the call, and the function's own default (NULL) takes the mark off.
+      const result = await db.rpc('write_down_payment', ymd ? { p_message_id: messageId, p_day: ymd } : { p_message_id: messageId })
+      checkSupabaseError(result, 'mark the line with their promise')
     },
     async loadTeam() {
       const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false)

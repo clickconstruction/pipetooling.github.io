@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { flowFigure, officeFlow, phoneFlow, startOfDayIso } from './flowRow'
+import { flowFigure, flowTileWord, officeFlow, phoneFlow, startOfDayIso } from './flowRow'
 import type { Container, Movement } from './onSite'
 
 const NOW = new Date('2026-10-28T20:00:00Z')
@@ -82,6 +82,9 @@ describe('the row words', () => {
   it('marks thousands and keeps the day start on this device', () => {
     expect(flowFigure(1250)).toBe('1,250')
     expect(flowFigure(0)).toBe('0')
+    // a phone's tile reads its word alone under the number, first letter capital
+    expect(['came in', 'on site', 'used', 'missing'].map(flowTileWord)).toEqual(['Came in', 'On site', 'Used', 'Missing'])
+    expect(flowTileWord('')).toBe('')
     const start = new Date(startOfDayIso(NOW))
     expect(start.getHours()).toBe(0)
     expect(start.getTime()).toBeLessThanOrEqual(NOW.getTime())
