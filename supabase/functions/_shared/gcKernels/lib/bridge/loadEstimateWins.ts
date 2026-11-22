@@ -7,8 +7,10 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { fetchAllRows } from '../supabasePaging.ts'
 import type { EstimateSent } from './estimateWins.ts'
 import { isLeftOut, type LeftOutRule } from './leftOut.ts'
-import { isZzTestName } from '../jobs/zzTestJobSweep.ts'
-import type { BridgeZzTestJobIds } from './zzTestJobs.ts'
+import { isZzEstimate, type BridgeZzTestJobIds } from './zzTestJobs.ts'
+
+// The rule sits with the Bridge's other ZZ rules since v2.8280; it is handed on here for the readers that took it from this file.
+export { isZzEstimate }
 
 /**
  * The read behind the estimates' won coefficient (punch list #318): every estimate ever sent,
@@ -18,16 +20,9 @@ import type { BridgeZzTestJobIds } from './zzTestJobs.ts'
  *
  * A ZZ test estimate is left out too (punch list #334, PR 3), for the viewer who leaves ZZ test jobs out. The owner,
  * reading the estimates behind the won rate, saw test estimates among them: eight were inside the rate. Before this
- * the estimates had no ZZ rule (`loadDemandPace.ts` still reads them all for the count of asks).
+ * the estimates had no ZZ rule. Since v2.8280 the count of asks and the Market and Sales windows follow it too
+ * (`withoutZzBridgeEstimates` in `zzTestJobs.ts`).
  */
-
-/**
- * A test estimate by the convention: its customer's name is a ZZ name, or its title is once the usual opening
- * *Estimate for* is taken off. The title alone would miss one whose title was typed over.
- */
-export function isZzEstimate(row: { title?: string | null; customerName?: string | null }): boolean {
-  return isZzTestName(row.customerName) || isZzTestName((row.title ?? '').replace(/^\s*estimate\s+for\s+/i, ''))
-}
 
 type Row = { id: string; estimate_number: number | null; title: string | null; customers: { name: string | null } | null; sent_at: string | null; status: string; total_cents: number | null; doc_kind: string | null; customer_id: string | null; customer_email: string | null; for_address: string | null; acceptor_consented_at: string | null; updated_at: string | null }
 

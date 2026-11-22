@@ -266,7 +266,10 @@ app, so each waits here.
 - **ZZ test estimates still count in the asks and in the Market and Sales lists.** PR 3 took them out of the
   won rate alone, which was the ask. Market's count of asks and the two windows' own lists of estimates
   still count a test estimate for a viewer who hides tests. The bids follow the switch everywhere already.
-  The rule PR 3 added would bring the estimates in line.
+  The rule PR 3 added would bring the estimates in line. **Fixed in v2.8280**: every estimates read on the
+  page and the Monday email's count of asks drop a test estimate by that rule, for a viewer who hides tests.
+  A dev who shows tests keeps every estimate, with or without a left-out list. `bridge-weekly-sheet` is owed
+  a redeploy after the merge.
 - **On a phone the page scrolls sideways once Money owed is open.** At 375 px wide the page grows to 404 px
   once the accrual balance's press opens Money owed behind the Money door. It did the same before the train,
   so it belongs to Money owed. A layout fix there would end it.
