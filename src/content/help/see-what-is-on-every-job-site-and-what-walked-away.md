@@ -145,7 +145,7 @@ Press **Print** with a job open. A sheet opens with that job's number and its na
 
 Press **Print** with no job open. The sheet offers **Print labels** and **Print future stickers**.
 
-On a job's page the four figures sit in one row of tiles. They read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
+On a job's page the four figures sit in one row of tiles. The tiles read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
 
 Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*. Press the line. A sheet opens with the full count, **These are on boxes**, **Runs** and the press that prints them.
 
