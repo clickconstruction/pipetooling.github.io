@@ -51,6 +51,8 @@ export type JobThreadNoteRow = {
   body: string
   created_at: string
   author: { name: string | null } | null
+  /** Who wrote it, by account: the Job Mode card's Job updates row tells the viewer's own note from another person's by it. Absent on a row a read does not ask it of. */
+  author_user_id?: string | null
 }
 
 export type JobThreadActivityItem =

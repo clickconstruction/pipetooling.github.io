@@ -70,7 +70,7 @@ Three presses sit first, under the job's name and address.
 - **Directions** opens your phone's maps at the job's address.
 - **Text** opens **Message the customer**. You see **Text** only where you see **Message the customer** today.
 
-The customer's number is written as a phone number under those presses.
+The customer's name and number are under those presses. The number is written as a phone number.
 
 Five rows come next. Each row opens what it opened before.
 
@@ -79,6 +79,12 @@ Five rows come next. Each row opens what it opened before.
 - **Job updates** says how many updates there are. Tap the row to read them and to write a note.
 - **Job details** opens the job's window.
 - **Job calendar** shows the days the job is on people's calendars.
+
+The **Job updates** row also says the newest note. You read who wrote the note, the day and the first words.
+
+The row says **New** when someone else wrote a note after you last opened the row. Tap the row and the mark goes away.
+
+Your last look is kept on the phone you used. A note from today counts as new on a phone that has no look yet.
 
 **Paint a map**, **Place on this job** and **My spend** share one row under the rows. **Photo of a spot** keeps a press of its own.
 

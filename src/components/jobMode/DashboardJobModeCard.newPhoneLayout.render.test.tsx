@@ -23,7 +23,9 @@ const scenario: {
   role: string
   phone: boolean
   closed: Set<string>
-} = { blocks: [], openSession: null, visited: [], role: 'helpers', phone: true, closed: new Set() }
+  /** The job's thread notes, as the thread's read returns them. */
+  notes: Array<Record<string, unknown>>
+} = { blocks: [], openSession: null, visited: [], role: 'helpers', phone: true, closed: new Set(), notes: [] }
 
 const doors = vi.hoisted(() => ({ openJobDetail: vi.fn(), openInExternalBrowser: vi.fn(), navigate: vi.fn() }))
 
@@ -53,6 +55,7 @@ vi.mock('../../lib/supabase', () => {
           ? Promise.resolve({ data: scenario.openSession, error: null, count: 0 })
           : Promise.resolve({ data: scenario.visited, error: null, count: 0 })
       }
+      if (table === 'jobs_ledger_thread_notes') return Promise.resolve({ data: single ? null : scenario.notes, error: null, count: 0 })
       // The job's own row: its labels for a job off today's schedule, and its customer for the details.
       if (table === 'jobs_ledger' && single) {
         return Promise.resolve({
@@ -139,9 +142,14 @@ function device(opts: { switchOn: boolean; phone: boolean }) {
   else localStorage.removeItem(NEW_PHONE_LAYOUT_STORAGE_KEY)
 }
 
-type Day = Partial<Pick<typeof scenario, 'blocks' | 'openSession' | 'visited' | 'role'>> & { closed?: string[] }
+type Day = Partial<Pick<typeof scenario, 'blocks' | 'openSession' | 'visited' | 'role' | 'notes'>> & { closed?: string[] }
 function day(d: Day) {
-  Object.assign(scenario, { blocks: [], openSession: null, visited: [], role: 'helpers', ...d, closed: new Set(d.closed ?? []) })
+  Object.assign(scenario, { blocks: [], openSession: null, visited: [], role: 'helpers', notes: [], ...d, closed: new Set(d.closed ?? []) })
+}
+
+/** A thread note. `ago` is how long before now it was written, in hours. */
+function threadNote(id: string, hoursAgo: number, body: string, author: string, authorUserId: string) {
+  return { id, body, created_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(), author_user_id: authorUserId, author: { name: author } }
 }
 
 const clockedInMidDay = () => day({ blocks: makeBlocks(), openSession: { id: 'sess-1', job_ledger_id: JOB_B, bid_id: null }, visited: [{ job_ledger_id: JOB_A }] })
@@ -358,7 +366,16 @@ describe('DashboardJobModeCard: the card laid out for a thumb', { timeout: 15_00
 
   it('the number reads as a phone number on one quiet line, and the email is a 44 px press that copies it', async () => {
     await drawNew(() => day({ blocks: makeBlocks(1) }))
-    expect(screen.getByTestId('job-card-phone-line').textContent).toBe('Customer (617) 555-0142')
+    // The customer's name, then the number. The name is the part that is cut when the line is short of room.
+    const line = screen.getByTestId('job-card-phone-line')
+    expect(line.textContent).toBe('Pat Customer · (617) 555-0142')
+    const name = within(line).getByTestId('job-card-phone-name')
+    expect(name.style.textOverflow).toBe('ellipsis')
+    expect(Number.parseFloat(name.style.minWidth)).toBe(0)
+    const number = line.querySelector('b') as HTMLElement
+    expect(number.textContent).toBe('(617) 555-0142')
+    expect(number.style.flex).toMatch(/^(none|0 0 auto)$/)
+    expect(number.style.whiteSpace).toBe('nowrap')
     expect(screen.queryByText('6175550142')).toBeNull()
     const copy = screen.getByTestId('job-mode-customer-email-copy')
     expect(copy.getAttribute('aria-label')).toBe('Copy the customer’s email address')
@@ -420,6 +437,85 @@ describe('DashboardJobModeCard: the card laid out for a thumb', { timeout: 15_00
     expect(body.style.display).toBe('')
     // The row says Job updates, so the thread does not say it again.
     expect(within(fold).getAllByText('Job updates')).toHaveLength(1)
+  })
+
+  it('the Job updates row says the newest note: who wrote it, its day and its first words', async () => {
+    await drawNew(() =>
+      day({
+        blocks: makeBlocks(1),
+        notes: [threadNote('n1', 300, 'The first note', 'Taunya', 'u-taunya'), threadNote('n2', 240, 'Is 25% right?\nSecond line', 'Robert', 'u-robert')],
+      }),
+    )
+    const newest = await screen.findByTestId('job-card-updates-newest')
+    expect(newest.textContent).toMatch(/^Robert, .+: Is 25% right\?$/)
+    // One line, cut with an ellipsis where the row ends, at 13 px.
+    const line = newest.parentElement as HTMLElement
+    expect(line.style.whiteSpace).toBe('nowrap')
+    expect(line.style.textOverflow).toBe('ellipsis')
+    expect(line.style.fontSize).toBe('0.8125rem')
+    // Ten days old with no look recorded: it is read on the row, and not called new.
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
+    // The rows are one column no wider than the card, so the one-line note is cut at the row's end and never widens them.
+    const rows = card().querySelector('[data-job-card-rows]') as HTMLElement
+    expect(rows.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+  })
+
+  it('marks the row New for another person’s note of today, and a press opens the thread, records the look and clears the mark', async () => {
+    await drawNew(() => day({ blocks: makeBlocks(1), notes: [threadNote('n1', 0.1, 'Gate code is 4471', 'Robert', 'u-robert')] }))
+    const mark = await screen.findByTestId('job-card-updates-new')
+    expect(mark.textContent).toBe('New')
+    expect(screen.getByTestId('job-card-updates-newest').textContent).toBe('Robert, today: Gate code is 4471')
+    // The mark is the dot Message the customer wears, in the word's own colour, and the new note reads in strong words.
+    expect(mark.style.color).toBe('var(--text-orange-700)')
+    expect((mark.firstElementChild as HTMLElement).style.background).toBe('currentcolor')
+    expect(screen.getByTestId('job-card-updates-newest').style.fontWeight).toBe('600')
+    expect(screen.getByTestId('job-card-updates-newest').style.color).toBe('var(--text-strong)')
+    const key = `pt_job_updates_look_u1_${JOB_A}`
+    expect(localStorage.getItem(key)).toBeNull()
+
+    const press = screen.getByTestId('job-card-updates')
+    fireEvent.click(press)
+    expect(press.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
+    // The look is this person's, on this job, on this phone.
+    expect(Date.parse(localStorage.getItem(key) ?? '')).toBeGreaterThan(Date.now() - 5_000)
+    // Shut again, the row reads the note and is not marked: it was looked at.
+    fireEvent.click(press)
+    expect(screen.getByTestId('job-card-updates-newest').textContent).toBe('Robert, today: Gate code is 4471')
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
+    // Looked at, the note is the quiet line again.
+    expect(screen.getByTestId('job-card-updates-newest').style.fontWeight).toBe('')
+  })
+
+  it('reads the look the phone kept: a note after it is new, a note before it is not', async () => {
+    const key = `pt_job_updates_look_u1_${JOB_A}`
+    const notes = [threadNote('n1', 30, 'Bring the lift', 'Robert', 'u-robert')]
+    device({ switchOn: true, phone: true })
+    day({ blocks: makeBlocks(1), notes })
+    localStorage.setItem(key, new Date(Date.now() - 48 * 3_600_000).toISOString())
+    renderCard()
+    expect((await screen.findByTestId('job-card-updates-new')).textContent).toBe('New')
+    cleanup()
+
+    device({ switchOn: true, phone: true })
+    day({ blocks: makeBlocks(1), notes })
+    localStorage.setItem(key, new Date(Date.now() - 3_600_000).toISOString())
+    renderCard()
+    await screen.findByTestId('job-card-updates-newest')
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
+  })
+
+  it('the viewer’s own note newest is read on the row and never marked New', async () => {
+    await drawNew(() => day({ blocks: makeBlocks(1), notes: [threadNote('n1', 2, 'From the office', 'Robert', 'u-robert'), threadNote('n2', 0.1, 'On my way now', 'Luis Ortega', 'u1')] }))
+    expect((await screen.findByTestId('job-card-updates-newest')).textContent).toBe('Luis Ortega, today: On my way now')
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
+  })
+
+  it('with no note the row has no second line and no mark', async () => {
+    await drawNew(() => day({ blocks: makeBlocks(1) }))
+    await waitFor(() => expect(screen.getByTestId('job-card-updates').textContent).toContain('Job updates'))
+    expect(screen.queryByTestId('job-card-updates-newest')).toBeNull()
+    expect(screen.queryByTestId('job-card-updates-new')).toBeNull()
   })
 
   it('Paint a map is drawn once, in one row with Place on this job and My spend', async () => {

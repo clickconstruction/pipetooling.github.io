@@ -28,6 +28,8 @@ import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 import { JOB_CARD_FIRST_ROW_WORDS, JOB_CARD_ROW_WORDS, phoneAsWritten, rowCountWords } from '../../lib/phoneLayout/jobCard'
 import { CardFold, CardRow } from './JobModePhoneCardParts'
+import { JOB_UPDATES_NEW_WORD, newestNote, newestNoteIsNew, newestNoteLine, readJobUpdatesLook, writeJobUpdatesLook } from '../../lib/phoneLayout/jobUpdatesNewest'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { CARD_PRESS } from './jobModePhoneCardLook'
 
 type CustomerContact = {
@@ -122,10 +124,33 @@ export type JobModeDetailsPhone = {
   onJobDetailsPressed?: () => void
 }
 
+/** The phone's own storage, or none where it is switched off. */
+function deviceStorage(): Storage | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The mark on a row with something new: the dot Message the customer wears when the customer answered, beside the
+ * word, in that press's own orange words. The dot takes the word's colour: in the door's paler orange it all but
+ * left the dark theme, and a dot and a word of one colour read as one mark.
+ */
+const newMark: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-orange-700)' }
+const newDot: CSSProperties = { width: 9, height: 9, borderRadius: '50%', background: 'currentColor', flex: 'none' }
+/** A new note's words on the row: the card's strong words, a weight up from the quiet line a note already looked at reads in. */
+const newNoteWords: CSSProperties = { color: 'var(--text-strong)', fontWeight: 600 }
+
 /** The first row's presses share the width equally: one, two or three of them. */
 const firstRow: CSSProperties = { display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(0, 1fr)', gap: 6 }
 /** The quiet line under the first row: whose number, and the number as a phone number. */
 const phoneLine: CSSProperties = { margin: 0, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.35 }
+const phoneLineRow: CSSProperties = { display: 'flex', justifyContent: 'center', alignItems: 'baseline', minWidth: 0 }
+const phoneLineName: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+const phoneLineDot: CSSProperties = { flex: 'none', whiteSpace: 'pre' }
+const phoneLineNumber: CSSProperties = { flex: 'none', whiteSpace: 'nowrap', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }
 /** The customer's address as a 44 px press that copies it: the words at the left, what the press does at the end. */
 const emailPress: CSSProperties = { ...CARD_PRESS, width: '100%', justifyContent: 'flex-start', padding: '0 0.7rem', fontWeight: 600 }
 
@@ -306,6 +331,11 @@ export default function JobModeDetailsSection({
   const ourLead = forSub && jobLead.loaded ? ourLeadWords(jobLead.lead, officePhone?.display ?? null) : null
   /** Job updates is one of the card's rows under the new phone layout, opening in place. Shut until pressed. */
   const [updatesOpen, setUpdatesOpen] = useState(false)
+  /** This person's last look at this job's updates, kept on the device: the row is marked New for a note that came after it. */
+  const [updatesLook, setUpdatesLook] = useState<string | null>(() => readJobUpdatesLook(deviceStorage(), authUser?.id, jobId))
+  useEffect(() => {
+    setUpdatesLook(readJobUpdatesLook(deviceStorage(), authUser?.id, jobId))
+  }, [authUser?.id, jobId])
   const name = contact?.customer_name?.trim() ?? ''
   const phone = forSub ? '' : (contact?.customer_phone?.trim() ?? '')
   const email = forSub ? '' : (contact?.customer_email?.trim() ?? '')
@@ -329,6 +359,19 @@ export default function JobModeDetailsSection({
     const callAria = phone ? `Call customer at ${phone}` : ourLead?.phone ? `Call ${ourLead.name} at ${ourLead.phone}` : undefined
     const updatesCount = threadNotes.loading ? null : threadNotes.activity.length + (customerLines?.length ?? 0)
     const hasFirstRow = Boolean(callNumber || phoneCard.onDirections || phoneCard.textPress)
+    // The row says the newest note itself, so a note from the office is read without a press, and is marked New until
+    // the row is pressed (`jobUpdatesNewest.ts`). The thread is mounted while shut, so nothing more is read for it.
+    const todayYmd = todayYmdInAppTz()
+    const newest = threadNotes.loading ? null : newestNote(threadNotes.activity)
+    const newestLine = newest ? newestNoteLine(newest, todayYmd) : null
+    const updatesNew = !updatesOpen && newestNoteIsNew({ note: newest, viewer: { userId: authUser?.id, name: profileName }, lastLookIso: updatesLook, todayYmd })
+    const toggleUpdates = () => {
+      // A press is a look: opening it, and closing it after reading what came in while it was open.
+      const now = new Date().toISOString()
+      writeJobUpdatesLook(deviceStorage(), authUser?.id, jobId, now)
+      setUpdatesLook(now)
+      setUpdatesOpen((o) => !o)
+    }
     return (
       <div data-job-mode-details="phone" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', minWidth: 0 }}>
         {hasFirstRow ? (
@@ -360,23 +403,62 @@ export default function JobModeDetailsSection({
             // An empty line names the next step: the office is who adds a customer to a job.
             contact == null ? 'Loading…' : 'This job has no customer contact yet. Ask the office to add one.'
           ) : phone ? (
-            <>
-              Customer <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(phone)}</b>
-            </>
+            // The customer's name, then the number. A long name is cut, the number never is.
+            <span style={phoneLineRow}>
+              {name ? (
+                <span data-testid="job-card-phone-name" style={phoneLineName}>
+                  {name}
+                </span>
+              ) : null}
+              {name ? <span aria-hidden style={phoneLineDot}>{' · '}</span> : null}
+              <b style={phoneLineNumber}>{phoneAsWritten(phone)}</b>
+            </span>
           ) : ourLead?.phone ? (
             <>
               {ourLead.name} {ourLead.note} <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(ourLead.phone)}</b>
             </>
+          ) : name ? (
+            // No number on the job: the name alone.
+            <span style={phoneLineRow}>
+              <span data-testid="job-card-phone-name" style={phoneLineName}>
+                {name}
+              </span>
+            </span>
           ) : (
             'This job has no phone number yet. Ask the office to add one.'
           )}
         </p>
         {phoneCard.day}
         <JobModeArrivalCheck jobId={jobId} />
-        <div data-job-card-rows style={{ display: 'grid', gap: 6 }}>
+        {/* One column no wider than the card: a row's one-line note is cut at the row's end, and never widens the rows. */}
+        <div data-job-card-rows style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, minWidth: 0 }}>
           {phoneCard.materialsRow}
           <JobModePhotosLine row jobId={jobId} hcpNumber={hcpNumber} jobName={jobName} jobAddress={jobAddress} />
-          <CardFold row="updates" title={JOB_CARD_ROW_WORDS.updates} count={rowCountWords(updatesCount)} open={updatesOpen} onToggle={() => setUpdatesOpen((o) => !o)} testId="job-card-updates">
+          <CardFold
+            row="updates"
+            title={JOB_CARD_ROW_WORDS.updates}
+            count={rowCountWords(updatesCount)}
+            // Shut, the row reads its newest note. Open, the thread under it does.
+            // A new note reads in the card's strong words, as an unread line does in any inbox. Once looked at it is quiet again.
+            note={
+              !updatesOpen && newestLine ? (
+                <span data-testid="job-card-updates-newest" style={updatesNew ? newNoteWords : undefined}>
+                  {newestLine}
+                </span>
+              ) : null
+            }
+            mark={
+              updatesNew ? (
+                <span style={newMark} data-testid="job-card-updates-new">
+                  <span aria-hidden style={newDot} />
+                  {JOB_UPDATES_NEW_WORD}
+                </span>
+              ) : null
+            }
+            open={updatesOpen}
+            onToggle={toggleUpdates}
+            testId="job-card-updates"
+          >
             <JobThreadNotesPanel
               activity={threadNotes.activity}
               loading={threadNotes.loading}

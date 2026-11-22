@@ -30,12 +30,13 @@ type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error')
 
 const OPTIMISTIC_JOB_THREAD_NOTE_PREFIX = '__optimistic__:'
 
-function makeOptimisticThreadNote(body: string, authorDisplayName: string | null | undefined): JobThreadNoteRow {
+function makeOptimisticThreadNote(body: string, authorDisplayName: string | null | undefined, authorUserId?: string | null): JobThreadNoteRow {
   return {
     id: `${OPTIMISTIC_JOB_THREAD_NOTE_PREFIX}${crypto.randomUUID()}`,
     body,
     created_at: new Date().toISOString(),
     author: { name: authorDisplayName?.trim() ? authorDisplayName.trim() : null },
+    author_user_id: authorUserId ?? null,
   }
 }
 
@@ -75,8 +76,9 @@ async function fetchJobEventItems(jobId: string): Promise<JobThreadEventActivity
   return jobActivityEventsFromRpc(pack.error ? [] : pack.data)
 }
 
+// `author_user_id` rides the same read (v2.8286): the Job Mode card's Job updates row marks another person's note new.
 const SELECT =
-  'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)'
+  'id, body, created_at, author_user_id, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)'
 
 async function queryNotesForJob(jobId: string): Promise<JobThreadNoteRow[]> {
   const data = await withSupabaseRetry(
@@ -238,7 +240,7 @@ export function useJobThreadNotesForModal(
       const id = openJobIdRef.current
       const trimmed = body.trim()
       if (!authUserId || !id || !trimmed) return false
-      const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null)
+      const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null, authUserId ?? null)
       inFlightThreadNoteRef.current = { optimisticId: optimistic.id }
       const optimisticItem: JobThreadActivityItem = { kind: 'note', note: optimistic }
       setActivity((prev) => sortJobThreadActivity([...prev, optimisticItem]))

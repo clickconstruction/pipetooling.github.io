@@ -7,8 +7,8 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'With New phone layout ticked, the job card opens on Call and Directions under the job’s name and address. Text joins them where Message the customer is already offered.',
-    'The customer’s number reads as a phone number, and copying the email is one press a thumb can hit.',
-    'Materials on site, Photos, Job updates, Job details and Job calendar are full-width rows. The four squares above the card fold into it, so each thing is on the screen once.',
+    'The customer’s name and number sit under those presses, the number written as a phone number. Copying the email is one press a thumb can hit.',
+    'Materials on site, Photos, Job updates, Job details and Job calendar are full-width rows. The Job updates row says the newest note, and is marked New until you press it. The four squares above the card fold into it.',
     'Nothing on the card is under 12 px, and no press is under 40 px tall. With the tick off, and on every computer, the card is the card it was.',
   ],
 }
