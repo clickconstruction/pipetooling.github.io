@@ -132,6 +132,15 @@ export function clockOutOffered(input: { sessionOpen: boolean; canClockOut: bool
   return input.sessionOpen && input.canClockOut && input.dayPressKind !== 'wrap-up'
 }
 
+/**
+ * Turnaway's rule (the owner's word, 2026-11-22): a person turns away from a job only once they are on the clock,
+ * on the way to it or on site. Until then the press is not drawn. On the clock with no current job it is not drawn
+ * either, where it was drawn dead. The press bar and the desk's grid both read this.
+ */
+export function turnawayOffered(input: { sessionOpen: boolean; hasCurrentJob: boolean }): boolean {
+  return input.sessionOpen && input.hasCurrentJob
+}
+
 export type PressBarButtonId = 'turnaway' | 'pct-done' | 'clock-out' | 'leave-report' | 'day-press'
 
 export type PressBarButton = {
@@ -152,8 +161,9 @@ export function oneLine(label: string): string {
 }
 
 /**
- * The bar's rows. Turnaway and Leave report always show and are dead without a current job (the
- * card's `leaveReportTarget`); % done shows only for the roles that move a job's percent and only
+ * The bar's rows. Turnaway shows once the person is on the clock with a current job (`turnawayOffered`);
+ * Leave report always shows and is dead without a current job (the card's `leaveReportTarget`); %
+ * done shows only for the roles that move a job's percent and only
  * with a job clocked in; Clock out shows under the quiet link's rule; the day's press is always
  * the last button, one line.
  */
@@ -165,7 +175,7 @@ export function buildJobModePressBar(input: {
   hasCurrentJob: boolean
 }): PressBarRows {
   const { dayPress, role, sessionOpen, canClockOut, hasCurrentJob } = input
-  const top: PressBarButton[] = [{ id: 'turnaway', label: PRESS_BAR_WORDS.turnaway, disabled: !hasCurrentJob }]
+  const top: PressBarButton[] = turnawayOffered({ sessionOpen, hasCurrentJob }) ? [{ id: 'turnaway', label: PRESS_BAR_WORDS.turnaway, disabled: false }] : []
   if (pctDoneOffered(role) && hasCurrentJob) top.push({ id: 'pct-done', label: PRESS_BAR_WORDS.pctDone, disabled: false })
   if (clockOutOffered({ sessionOpen, canClockOut, dayPressKind: dayPress.kind })) {
     top.push({ id: 'clock-out', label: PRESS_BAR_WORDS.clockOut, disabled: false })

@@ -63,6 +63,7 @@ import {
   JOB_MODE_PRESS_WORDS,
   LEAVE_REPORT_BLUE,
   pickJobModeDayPress,
+  turnawayOffered,
   type PressBarButtonId,
 } from '../../lib/jobMode/pressBar'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
@@ -1600,20 +1601,23 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           >
             {rightButton.label}
           </button>
-          <button
-            type="button"
-            style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
-            disabled={leaveDisabled || held}
-            className={held ? 'keptPress' : undefined}
-            title={held ? READING_AGAIN_WORDS : (leaveDisabledReason ?? undefined)}
-            aria-label="Turnaway — client not home or site not ready"
-            onClick={() => {
-              if (!leaveReportTarget) return
-              onTurnaway(leaveReportTarget)
-            }}
-          >
-            {JOB_MODE_PRESS_WORDS.turnaway}
-          </button>
+          {/* Turnaway is offered once the person is on the clock with a job, as on the phone's bar (`turnawayOffered`). */}
+          {turnawayOffered({ sessionOpen: daySession != null, hasCurrentJob: leaveReportTarget != null }) ? (
+            <button
+              type="button"
+              style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
+              disabled={leaveDisabled || held}
+              className={held ? 'keptPress' : undefined}
+              title={held ? READING_AGAIN_WORDS : (leaveDisabledReason ?? undefined)}
+              aria-label="Turnaway — client not home or site not ready"
+              onClick={() => {
+                if (!leaveReportTarget) return
+                onTurnaway(leaveReportTarget)
+              }}
+            >
+              {JOB_MODE_PRESS_WORDS.turnaway}
+            </button>
+          ) : null}
         </div>
       )}
       {changeOrderLink}
