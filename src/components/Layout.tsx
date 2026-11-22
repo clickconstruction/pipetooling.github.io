@@ -107,7 +107,11 @@ import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 import { leaveViewAsHere } from '../lib/impersonationExit'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
-import { BookOpen, Wrench } from 'lucide-react'
+import { BookOpen, Smartphone, Wrench } from 'lucide-react'
+import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
+import { NEW_PHONE_LAYOUT_SWITCH_ARIA, NEW_PHONE_LAYOUT_SWITCH_LABEL, newPhoneLayoutSwitchTip, newPhoneLayoutTickShown } from '../lib/phoneLayout/newPhoneLayout'
+import { PHONE_BAR_PAD_Y_PX, PHONE_BAR_PRESS_PX, phoneBarPageName, phoneBarPlan, type PhoneBarPress } from '../lib/phoneLayout/phoneBar'
+import { PhoneBarGearRows } from './layout/PhoneBarGearRows'
 import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
 import { GEAR_SECTION_LABELS, gearPagesInOrder } from '../lib/gearMenuSections'
 import { GearSectionLabel } from './layout/GearSectionLabel'
@@ -145,6 +149,13 @@ const GEAR_PEOPLE_ROW = ['people'] as const
 /** A gear row's name with its icon: the two show-or-hide switches under the modes. */
 // `nowrap`: the menu is as wide as its longest row, so a name with an icon widens it and never folds under its tick.
 const SWITCH_ROW_NAME: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }
+
+/** The wrench as a row of the gear menu under the new phone layout: the gear wears its answer's dot. */
+const WRENCH_IN_GEAR = ['wrench'] as const
+/** A press of the phone's one-row top bar (the new phone layout): a 44 px square at least, its mark in the middle. */
+const PHONE_BAR_PRESS: CSSProperties = { minWidth: PHONE_BAR_PRESS_PX, minHeight: PHONE_BAR_PRESS_PX, justifyContent: 'center' }
+/** A coloured press of that bar, the green phone and Bid: its own look, 40 px tall and a press wide. */
+const PHONE_BAR_COLOURED_PRESS: CSSProperties = { height: 40, minWidth: PHONE_BAR_PRESS_PX }
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 // The height above and each press's icon are in em, so the type size is part of the size and lives here.
@@ -309,6 +320,14 @@ export default function Layout() {
   }, [authUser?.id])
   const phoneDockSlots = useMemo(() => resolveDockSlots(role, phoneDockRaw), [role, phoneDockRaw])
   const phoneDockActive = dispatchModeActive && isMobile && phoneDockSlots != null
+  // The new phone layout (`lib/phoneLayout`): one tick per device, off until someone ticks it, and only ever on at a
+  // phone's width. Off, every line below draws what it drew before the switch. On, the bars are drawn its way: the
+  // Home Screen offer is a row of the Dashboard, the top bar is one row of 52 px or less with the page's name, and the
+  // tabs stand at 52 px. `phoneBarOneRow` is that top bar. The role dock's row has no gear to take a press, so it keeps its own.
+  const newPhoneLayout = useNewPhoneLayout()
+  const phoneBars = newPhoneLayout.on
+  const phoneBarOneRow = phoneBars && !phoneDockActive
+  const newPhoneLayoutTick = Boolean(authUser?.id) && newPhoneLayoutTickShown({ role, stored: newPhoneLayout.stored, phoneWidth: viewportNarrow })
   // The phone's row is one line, always (`lib/navRowFit.ts`, the owner's ask of 2026-11-18): when it has no room
   // the wrench, then the people press, then the customers press become rows of the gear menu. The row is measured,
   // since what it holds differs by role and by mode. With the dock up there is no gear, so nothing moves.
@@ -319,8 +338,9 @@ export default function Layout() {
   const navRow = useNavRowFit(
     navRef,
     isMobile,
-    { wrench: navRowHasWrench && !phoneDockActive, people: navRowHasPeople, customers: navRowHasCustomers },
-    `${navContentKey}|${fixModeEnabled ? 1 : 0}|${phoneDockActive ? 1 : 0}|${partnerNav.isPartner ? 1 : 0}`,
+    // On the one-row bar none of the three is drawn in the row, so there is nothing to measure out of it.
+    { wrench: navRowHasWrench && !phoneDockActive && !phoneBarOneRow, people: navRowHasPeople && !phoneBarOneRow, customers: navRowHasCustomers && !phoneBarOneRow },
+    `${navContentKey}|${fixModeEnabled ? 1 : 0}|${phoneDockActive ? 1 : 0}|${partnerNav.isPartner ? 1 : 0}|${phoneBarOneRow ? 1 : 0}`,
   )
   const navRowGap = `${navRow.tight ? NAV_ROW_TIGHT_GAP_REM : NAV_ROW_GAP_REM}rem`
   // A person on Short (punch list #365, PR 4): the bar's Dashboard tab opens the short page, whichever mode is on.
@@ -371,6 +391,10 @@ export default function Layout() {
         // Not modes: each shows or hides one thing, so the sheet lists them under Show and each wears its thing's icon.
         { key: 'pin', label: PIN_BAR_SWITCH_LABEL, group: 'show', icon: <PinIcon filled={false} size={18} />, on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
         { key: 'fix', label: TELL_THE_DEV_SWITCH_LABEL, group: 'show', icon: <Wrench size={18} strokeWidth={2.25} aria-hidden />, on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
+        // The new phone layout's tick: the dock has no gear, so the sheet is where a phone with it on switches it off.
+        ...(newPhoneLayoutTick
+          ? [{ key: 'phone-layout', label: NEW_PHONE_LAYOUT_SWITCH_LABEL, group: 'show' as const, icon: <Smartphone size={18} strokeWidth={2.25} aria-hidden />, on: newPhoneLayout.stored, onToggle: () => newPhoneLayout.setStored(!newPhoneLayout.stored) }]
+          : []),
         { key: 'dark', label: 'Dark Mode', group: 'show', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
       ]
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string; role: UserRole | null; estimatorProspectsAccess: boolean }>>([])
@@ -409,6 +433,31 @@ export default function Layout() {
   const fieldJobLookup = fieldJobLookupEligible(role, taskModeActive)
   const doorsOnlySearch = doorsOnlyHeaderSearchEligible(role, taskModeActive)
   const headerSearchEligible = headerSearchEligibleForRole(role, taskModeActive)
+  // The new phone layout: this person's row as it is drawn today, press by press under each press's own gate below,
+  // and where each one goes (`phoneBarPlan`). Null with the switch off, so the row is the row it was.
+  const phoneBarNow = phoneBars
+    ? phoneBarPlan(
+        ([
+          !isSubcontractorLikeRole(role) && !phoneDockActive && 'menu',
+          !taskModeActive && role !== 'estimator' && 'home',
+          !taskModeActive && partnerNav.isPartner && 'statement',
+          !taskModeActive && headerSearchEligible && 'search',
+          navRowHasWrench && 'tell-the-dev',
+          jobModeFooterActive && jobModeContactPhone != null && 'call-office',
+          showTaskDispatchButton(role) && !taskModeActive && 'task-dispatch',
+          showEstimatorInboxButton(role) && !taskModeActive && 'ask-estimating',
+          showHeaderTaskChecklistButton(role) && 'task',
+          showHeaderNewBidButton(role, taskModeActive, location.pathname) && 'new-bid',
+          navRowHasCustomers && 'customers',
+          navRowHasPeople && 'people',
+          !phoneDockActive && 'gear',
+        ] as const).filter((p): p is PhoneBarPress => p !== false),
+        // Job Mode's first tab opens the Dashboard, so home is that tab. Dispatch Mode's opens the Dispatch home.
+        { dashboardTab: jobModeFooterActive },
+      )
+    : null
+  /** A press of the row that is a row of the gear menu instead, under the new phone layout. */
+  const inGearRows = (press: PhoneBarPress) => phoneBarNow != null && phoneBarNow.gearRows.includes(press)
 
   // Task Mode is a hard lens: whatever route the user lands on (post-login
   // default, deep link, stale bookmark), bounce to the checklist. The landing
@@ -689,6 +738,32 @@ export default function Layout() {
   )
 
   function renderMobileHeaderLinks() {
+    // The new phone layout's one-row bar: home where no tab is the Dashboard, then the page's name in words.
+    // Search moves to the right end, and a partner's Statement is a row of the gear menu.
+    if (phoneBarOneRow && phoneBarNow) {
+      return (
+        <>
+          {phoneBarNow.bar.includes('home') ? (
+            <NavLink
+              to="/dashboard"
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '0.5rem', color: 'inherit', textDecoration: 'none', flexShrink: 0, ...PHONE_BAR_PRESS }}
+              end
+              title="Dashboard"
+              aria-label="Dashboard"
+              onPointerEnter={scheduleDashboardPrefetch}
+            >
+              {dashboardIcon}
+            </NavLink>
+          ) : null}
+          <span
+            data-phone-bar-page
+            style={{ flex: '1 1 0', minWidth: 0, padding: '0 0.25rem', fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {phoneBarPageName(location.pathname)}
+          </span>
+        </>
+      )
+    }
     if (taskModeActive) return null
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
       display: 'inline-flex' as const,
@@ -926,12 +1001,16 @@ export default function Layout() {
           // It is the footer's measured height (v2.8035), not 60 px plus the inset, which a phone with a
           // home indicator stands 10 px under.
           [APP_BOTTOM_CHROME_VAR as string]: bottomChromeCss(dispatchModeActive || jobModeFooterActive, DISPATCH_MODE_FOOTER_HEIGHT_PX),
+          // The new phone layout: the header row's own room above and below, which the nav and the search bar over it
+          // both read. 3 px with 44 px presses and the row's line is a 51 px bar. The status bar's inset still wins.
+          ...(phoneBars ? { ['--app-nav-pad-y' as string]: `${PHONE_BAR_PAD_Y_PX}px` } : null),
         }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
       {/* The lines above the header (v2.8053): each is an `AppTopBanner`, a direct child here. The first one showing
-          pays the phone's status bar, and the lines, the View-as strip and the header under it pay none. */}
-      <AddTaskShortcutBanner role={role} />
+          pays the phone's status bar, and the lines, the View-as strip and the header under it pay none.
+          Under the new phone layout the Add Task offer is a quiet row of the Dashboard instead, mounted in <main> below. */}
+      {phoneBars ? null : <AddTaskShortcutBanner role={role} />}
       {isDigitalTwin && (
         <AppTopBanner
           role="status"
@@ -983,7 +1062,8 @@ export default function Layout() {
         }}
       >
         {isMobile ? (
-          <div data-nav-row-left style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+          // The one-row bar's left end holds the page's name, which takes what room is left and shortens before anything else.
+          <div data-nav-row-left style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', ...(phoneBarOneRow ? { flex: '1 1 0', minWidth: 0 } : { flexShrink: 0 }) }}>
             {!isSubcontractorLikeRole(role) && !phoneDockActive && (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
@@ -1003,6 +1083,7 @@ export default function Layout() {
                   border: 'none',
                   cursor: 'pointer',
                   color: 'inherit',
+                  ...(phoneBarOneRow ? PHONE_BAR_PRESS : null),
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24" fill="currentColor" aria-hidden="true">
@@ -1143,12 +1224,14 @@ export default function Layout() {
         <span data-nav-row-right style={{ marginLeft: 'auto', display: 'flex', gap: navRowGap, alignItems: 'center', ...(isMobile && { minWidth: 0 }) }}>
           {/* Tell the dev (punch list #380): on a phone the wrench sits here, since nothing may float over Job Mode's bars.
               On a row with no room for it, it is the gear menu's first row instead (`lib/navRowFit.ts`). */}
-          {navRowHasWrench && !navRow.inMenu.includes('wrench') && (
+          {navRowHasWrench && !navRow.inMenu.includes('wrench') && !inGearRows('tell-the-dev') && (
             <span data-nav-row-press="wrench" style={{ display: 'inline-flex', flexShrink: 0 }}>
               <TellTheDevHeaderButton />
             </span>
           )}
           {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
+          {/* The one-row bar (the new phone layout): Search is the first press of the right end, the same press as the strip's. */}
+          {phoneBarOneRow && phoneBarNow?.bar.includes('search') ? <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} style={PHONE_BAR_PRESS} /> : null}
           {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
               viewport fits; small viewports keep the icon buttons with a phone on the left. */}
           {jobModeContactRowFits && (
@@ -1168,6 +1251,7 @@ export default function Layout() {
                 background: '#16a34a',
                 color: 'white',
                 textDecoration: 'none',
+                ...(phoneBarOneRow ? PHONE_BAR_COLOURED_PRESS : null),
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" style={NAV_ROW_ICON_HOLD}>
@@ -1232,7 +1316,7 @@ export default function Layout() {
               teammate
             </button>
           )}
-          {showTaskDispatchButton(role) && !taskModeActive && !jobModeContactRowFits && (
+          {showTaskDispatchButton(role) && !taskModeActive && !jobModeContactRowFits && !inGearRows('task-dispatch') && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -1251,7 +1335,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showEstimatorInboxButton(role) && !taskModeActive && !jobModeContactRowFits && (
+          {showEstimatorInboxButton(role) && !taskModeActive && !jobModeContactRowFits && !inGearRows('ask-estimating') && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -1270,7 +1354,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showHeaderTaskChecklistButton(role) && !jobModeContactRowFits && (
+          {showHeaderTaskChecklistButton(role) && !jobModeContactRowFits && !inGearRows('task') && (
             <button
               type="button"
               onClick={() => checklistAddModal?.openAddModal()}
@@ -1303,6 +1387,7 @@ export default function Layout() {
                 background: '#2563eb',
                 color: 'white',
                 fontWeight: 500,
+                ...(phoneBarOneRow ? PHONE_BAR_COLOURED_PRESS : null),
               }}
             >
               Bid
@@ -1366,7 +1451,7 @@ export default function Layout() {
           )}
           {navRowIconLinks && (
             <>
-              {navRowHasCustomers && !navRow.inMenu.includes('customers') && (
+              {navRowHasCustomers && !navRow.inMenu.includes('customers') && !inGearRows('customers') && (
                 <NavLink
                   to="/customers"
                   data-nav-row-press="customers"
@@ -1384,7 +1469,7 @@ export default function Layout() {
                   <CustomerContactCardIcon size={20} />
                 </NavLink>
               )}
-              {navRowHasPeople && !navRow.inMenu.includes('people') && (
+              {navRowHasPeople && !navRow.inMenu.includes('people') && !inGearRows('people') && (
                 <NavLink
                   to="/people"
                   data-nav-row-press="people"
@@ -1419,6 +1504,7 @@ export default function Layout() {
                 border: 'none',
                 cursor: 'pointer',
                 color: 'inherit',
+                ...(phoneBarOneRow ? PHONE_BAR_PRESS : null),
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
@@ -1428,7 +1514,7 @@ export default function Layout() {
             {/* On a phone the Checklist link is inside this menu, so its count rides the button too (punch list #375). */}
             {isMobile && canShowChecklistNav ? <ChecklistTagsBadge style={{ top: 0, right: 0 }} /> : null}
             {/* The wrench's answer dot rides the gear too while the wrench is one of its rows. */}
-            <GearAnswerDot inMenu={navRow.inMenu} />
+            <GearAnswerDot inMenu={inGearRows('tell-the-dev') ? WRENCH_IN_GEAR : navRow.inMenu} />
             {gearOpen && (
               <div
                 data-navtrack="gear-menu"
@@ -1445,8 +1531,21 @@ export default function Layout() {
                   zIndex: 50,
                   // A label's grey strip may be the first row: keep it inside the rounded corners.
                   overflow: 'hidden',
+                  // The one-row bar's menu holds the presses that left the row, so it is longer: it scrolls inside the
+                  // screen, clear of the bars at the foot, where the rows under them could only be reached by scrolling the page.
+                  ...(phoneBarOneRow ? { maxHeight: `calc(100dvh - 5.5rem - ${pageBottomPaddingCss()})`, overflowY: 'auto' as const, overscrollBehavior: 'contain' as const } : null),
                 }}
               >
+                {/* The new phone layout: the presses that left the one-row bar, each a named row in the row's own order. */}
+                {phoneBarNow && phoneBarNow.gearRows.length > 0 ? (
+                  <PhoneBarGearRows
+                    rows={phoneBarNow.gearRows}
+                    onClose={() => setGearOpen(false)}
+                    onTaskDispatch={() => dispatchTaskModal?.openDispatchModal()}
+                    onAskEstimating={() => estimatorTaskModal?.openEstimatorModal()}
+                    onTask={() => checklistAddModal?.openAddModal()}
+                  />
+                ) : null}
                 <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {/* The menu reads in groups, each under its label (`gearMenuSections.ts`). Modes change the page. */}
                 {authUser?.id && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
@@ -1751,6 +1850,60 @@ export default function Layout() {
                       }}
                     >
                       {fixModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
+                {/* The new phone layout's tick (`lib/phoneLayout`): this device's, a trial, drawn at a phone's width for
+                    the roles in the trial and for anyone on a device that has it on. */}
+                {newPhoneLayoutTick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      newPhoneLayout.setStored(!newPhoneLayout.stored)
+                      setGearOpen(false)
+                    }}
+                    title={newPhoneLayoutSwitchTip(newPhoneLayout.stored)}
+                    aria-label={NEW_PHONE_LAYOUT_SWITCH_ARIA}
+                    aria-pressed={newPhoneLayout.stored}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: newPhoneLayout.stored ? 600 : 400,
+                    }}
+                  >
+                    <span style={SWITCH_ROW_NAME}>
+                      <Smartphone size={20} strokeWidth={2.25} aria-hidden />
+                      {NEW_PHONE_LAYOUT_SWITCH_LABEL}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: newPhoneLayout.stored ? '#16a34a' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {newPhoneLayout.stored ? '✓' : ''}
                     </span>
                   </button>
                 )}
@@ -2173,6 +2326,9 @@ export default function Layout() {
       >
         {taskModeActive ? <TaskModeChip onExit={exitTaskMode} /> : null}
         <AssistantReadyToBillBanner />
+        {/* The new phone layout: the Add Task offer left the top of every page for one quiet row of the Dashboard.
+            Keyed by the role, which lands after the first draw, so the offer is decided once the role is known. */}
+        {phoneBars && location.pathname === '/dashboard' ? <AddTaskShortcutBanner key={role ?? 'no-role'} role={role} quiet /> : null}
         <div
           style={{
             flex: 1,
@@ -2426,6 +2582,7 @@ export default function Layout() {
           slots={phoneDockActive ? phoneDockSlots : null}
           onOpenMore={phoneDockActive ? (swapIndex) => setPhoneDockSheet({ open: true, swapIndex }) : undefined}
           shortHome={shortDashboardHome}
+          compact={phoneBars}
         />
       ) : null}
       {phoneDockActive && phoneDockSlots ? (
@@ -2444,7 +2601,7 @@ export default function Layout() {
           ownLogbookShown={ownLogbookShown}
         />
       ) : null}
-      {jobModeFooterActive ? <DispatchModeFooter variant="job" shortHome={jobModeShortHome} /> : null}
+      {jobModeFooterActive ? <DispatchModeFooter variant="job" shortHome={jobModeShortHome} compact={phoneBars} /> : null}
       <TellTheDevRoot isMobile={isMobile} modes={tellTheDevModes} fixMode={fixModeEnabled} />
       <ChecklistAddModal />
       {/* Painted maps (punch list #345): the one host that answers a line under an address, whatever window it sits in. */}

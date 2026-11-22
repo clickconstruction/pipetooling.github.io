@@ -1671,6 +1671,21 @@ Sign out and the reloads sit last, under a grey band and no label.
 The wrench's press, where a narrow phone's header had no room for it, stays the first row, above every label.
 The phone dock's More sheet uses the same four labels: its last group read **Settings** until v2.8059.
 Display-only — no role's menu gained or lost a row.
+Since v2.8285 **Show** also holds **New phone layout** on a phone, for the roles in its trial (see *New phone layout*).
+
+### New phone layout (app-wide, a trial)
+**New phone layout** is one tick in the gear menu's **Show** group, off until someone ticks it (v2.8285).
+It is kept per device, not per person: the stored key `pt_new_phone_layout` carries no user id, so a dev who ticks it keeps it while looking as another role through View as.
+The one rule is `newPhoneLayoutOn` in `lib/phoneLayout/newPhoneLayout.ts`, read through the hook `useNewPhoneLayout`: the tick is on AND the screen is a phone's width by `useNarrowViewport640`.
+With the tick off, or at a desk, every screen draws what it drew before the switch.
+The tick is drawn at a phone's width only, for the roles in `NEW_PHONE_LAYOUT_TICK_ROLES` (dev and master technician), and for anyone on a device that already has it on, so the way off is always on the screen drawn the new way.
+**The one-row bar** is the phone's header under the tick: the menu where the role has one, the page's name in words (`phoneBarPageName`), Search, the green phone that calls the office and the gear, 51 px tall.
+Home leaves the bar only while Job Mode's tabs are up, whose first tab opens the Dashboard.
+Dispatch Mode's first tab opens the Dispatch home, so there home stays.
+**The moved rows** are the other presses of the old row as named rows at the top of the gear menu, in the row's order: Statement, Tell the dev, Task Dispatch, Ask estimating, Task, Customers, People (`phoneBarPlan`, `PhoneBarGearRows`).
+The Bids page's **Bid** press stays in the bar.
+The role dock's row has no gear, so it keeps every press it has.
+Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
 
 ### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).

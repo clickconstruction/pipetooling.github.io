@@ -118,7 +118,8 @@ describe('Layout: the gear menu’s sections and switches', () => {
     expect(groups.Modes!.every((n) => /Mode|PO tab/.test(n))).toBe(true)
     expect(groups.Modes![groups.Modes!.length - 1]).toMatch(/^Task Mode/)
     // The switches, each with its icon. The only row called a mode outside Modes is the phone's own Dark Mode.
-    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
+    // A leader on a phone is offered the new phone layout's tick too, unticked until they tick it.
+    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'New phone layout', 'Dark Mode'])
     const show = menu.querySelector('[data-gear-section="Show"]')!
     expect(show.nextElementSibling!.querySelector('svg')).toBeTruthy()
     expect(show.nextElementSibling!.nextElementSibling!.querySelector('svg')).toBeTruthy()
@@ -140,6 +141,8 @@ describe('Layout: the gear menu’s sections and switches', () => {
     expect(groups.top).toEqual([])
     expect(groups.Pages).not.toContain('Checklist')
     expect(groups.Pages).toContain('Calendar')
+    // The new phone layout's tick is a phone's: at a desk the Show group is the three it was.
+    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
   })
 
   it('reads each switch’s state and next press aloud, and keeps the stored keys', async () => {
