@@ -52,7 +52,7 @@ const google = vi.hoisted(() => ({ mounts: 0, throws: false, props: null as null
 vi.mock('./PaintedMapGoogleCanvas', async () => {
   const { useEffect } = await import('react')
   return {
-    default: function GoogleStub(props: { mapTypeId: string; apiKey: string; openOn?: { center: { lat: number; lng: number }; zoom: number } | null; lines: unknown[]; places: Array<{ id: string }>; onUnavailable: (reason: string) => void; onCamera?: (v: { center: { lat: number; lng: number }; zoom: number }) => void; onPlaceTap?: (id: string) => void }) {
+    default: function GoogleStub(props: { mapTypeId: string; apiKey: string; openOn?: { center: { lat: number; lng: number }; zoom: number } | null; lines: unknown[]; places: Array<{ id: string }>; onUnavailable: (reason: string) => void; onCamera?: (v: { center: { lat: number; lng: number }; zoom: number }) => void; onLive?: (live: unknown) => void; onPlaceTap?: (id: string) => void }) {
       if (google.throws) throw new Error('made-up failure while drawing')
       google.props = props
       useEffect(() => {
@@ -63,6 +63,8 @@ vi.mock('./PaintedMapGoogleCanvas', async () => {
           <button type="button" onClick={() => props.onUnavailable('auth: Google rejected the browser key for this page')}>google refuses the key</button>
           <button type="button" onClick={() => props.onCamera?.({ center: { lat: 29.5533, lng: -98.2966 }, zoom: 20 })}>the painter moves in on a spot</button>
           <button type="button" onClick={() => props.onPlaceTap?.('gate')}>press the gate</button>
+          <button type="button" onClick={() => props.onLive?.({ kind: 'dot', point: { lat: 30.2, lng: -98.1 }, caught: { id: 'gate', lat: 30.2, lng: -98.1, label: 'Truck gate' } })}>the dot nears the gate</button>
+          <button type="button" onClick={() => props.onLive?.(null)}>the finger lifts</button>
         </div>
       )
     },
@@ -151,6 +153,44 @@ describe('the public page (step 4)', () => {
     expect(google.props?.frameMe).toBe(true)
     // The painting window follows the app's theme.
     expect(google.props?.light).toBe(false)
+  })
+})
+
+describe('the painting window, putting a place down (step 3)', () => {
+  const PLACING: PaintedCanvasGoogleAsk = { screen: 'window', use: 'placing' }
+  const dot = () => ({ point: { lat: 30.201, lng: -98.099 }, label: 'the gate', onMove: () => {} })
+
+  it('puts the dot down on Google’s map, with no Leaflet map, and opens no place under the finger', async () => {
+    const onPlaceTap = vi.fn()
+    const d = dot()
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={PLACING} dot={d} onPlaceTap={onPlaceTap} />)
+    await screen.findByTestId('google')
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.props?.dot).toBe(d)
+    // A press on a place while a dot is being put down moves the dot. It does not open the place.
+    expect(google.props?.onPlaceTap).toBeUndefined()
+  })
+
+  it('keeps the one Google map from reading to placing and back', async () => {
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={PLACING} dot={dot()} />)
+    expect(provider()).toBe('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
+    expect(provider()).toBe('google')
+    expect(google.mounts).toBe(1)
+  })
+
+  it('says what the dot caught, and tells the window what the glass shows', async () => {
+    const onGlass = vi.fn()
+    render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={PLACING} dot={dot()} onGlass={onGlass} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'the dot nears the gate' }))
+    expect(document.querySelector('[data-painted-caught]')?.textContent).toBe('On Truck gate')
+    expect(onGlass).toHaveBeenLastCalledWith({ point: { lat: 30.2, lng: -98.1 }, caught: expect.objectContaining({ label: 'Truck gate' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'the finger lifts' }))
+    expect(document.querySelector('[data-painted-caught]')).toBeNull()
+    expect(onGlass).toHaveBeenLastCalledWith(null)
   })
 })
 
