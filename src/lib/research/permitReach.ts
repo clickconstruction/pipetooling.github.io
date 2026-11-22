@@ -35,10 +35,18 @@ export function recordsStartOf(runs: ReadonlyArray<{ source: string; since: stri
   return start
 }
 
-/** How far back the records are worth reading: the first day of the city's current datastore. */
+/**
+ * How far back the records are worth reading. It is the first day of San Antonio's current datastore, and
+ * the owner's pick for how far back to read at all (#307, call 2). The other cities' doors go back further,
+ * and are read to the same day so every city's counts cover the same months.
+ */
 export const HISTORY_GOAL_YMD = '2025-01-01'
-/** The cities whose feed can be read up to a day: the ones `permit-pull` reads back as history. */
-export const HISTORY_CITIES: readonly string[] = ['San Antonio']
+/**
+ * The cities whose feed can be read up to a day: the ones `permit-pull` reads back as history. San Antonio
+ * alone until v2.8297, and every city the pull reads since. `permitCities.test.ts` holds this list against
+ * the feeds that have a `pageUrlBefore`.
+ */
+export const HISTORY_CITIES: readonly string[] = ['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin']
 /** How much one read back takes: about three months, a run the pull finishes inside its time budget. */
 export const HISTORY_STEP_DAYS = 92
 

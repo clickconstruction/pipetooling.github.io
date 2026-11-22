@@ -18,6 +18,7 @@ import {
   dayFromUsDate,
   feedPasses,
   feedsToPull,
+  layerDayWindow,
   permitCity,
   permitRowFromAustin,
   permitRowFromNewBraunfels,
@@ -29,6 +30,7 @@ import {
   texasPoint,
 } from '../../../supabase/functions/_shared/permitCities'
 import { SA_APPLIED_FEED } from '../../../supabase/functions/_shared/permitFeed'
+import { HISTORY_CITIES } from './permitReach'
 
 // Every name, street and number here is made up.
 function austin(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -392,14 +394,45 @@ describe('a read back as history (punch list #307)', () => {
     }
   })
 
-  it('reads San Antonio’s two feeds up to a day, and leaves the other cities without a read back', () => {
+  it('reads San Antonio’s two feeds up to a day', () => {
     const [issued, applied] = feedsToPull('San Antonio')
     const url = decodeURIComponent(issued!.pageUrlBefore!('2026-05-26', '2026-08-26', 2000, 0))
     expect(url).toContain(`"DATE ISSUED" >= '2026-05-26' AND "DATE ISSUED" < '2026-08-26'`)
     expect(decodeURIComponent(applied!.pageUrlBefore!('2026-05-26', '2026-08-26', 2000, 0))).toContain(`"DATE SUBMITTED" < '2026-08-26'`)
     // The usual page has no end.
     expect(decodeURIComponent(issued!.pageUrl('2026-05-26', 2000, 0))).not.toContain(' < ')
-    for (const city of ['Austin', 'New Braunfels', 'San Marcos', 'Seguin']) expect(feedsToPull(city).every((f) => f.pageUrlBefore == null)).toBe(true)
+  })
+
+  it('reads every other city up to a day too, each door in its own words (v2.8297)', () => {
+    const before = (city: string) => new URL(feedsToPull(city)[0]!.pageUrlBefore!('2026-05-27', '2026-08-27', 2000, 4000))
+    // Austin: the same $where with an end, the same order, the same paging.
+    const austin = before('Austin')
+    expect(austin.searchParams.get('$where')).toBe(austinWhere('2026-05-27', '2026-08-27'))
+    expect(austinWhere('2026-05-27', '2026-08-27')).toContain(`issue_date >= '2026-05-27T00:00:00' AND issue_date < '2026-08-27T00:00:00' AND ((permittype = 'BP'`)
+    expect(austin.searchParams.get('$order')).toBe('issue_date ASC, permit_number ASC')
+    expect([austin.searchParams.get('$limit'), austin.searchParams.get('$offset')]).toEqual(['2000', '4000'])
+    // The usual page is the page it always was.
+    expect(austinWhere('2026-05-27')).not.toContain(' < ')
+    expect(new URL(AUSTIN_READER.pageUrl('2026-05-27', 2000, 0)).searchParams.get('$where')).toBe(austinWhere('2026-05-27'))
+    // A map layer holds each of its day columns to the window by itself.
+    expect(before('San Marcos').searchParams.get('where')).toMatch(/^\(\(APPLIED >= DATE '2026-05-27' AND APPLIED < DATE '2026-08-27'\) OR \(ISSUED >= DATE '2026-05-27' AND ISSUED < DATE '2026-08-27'\)\) AND TYPE IN \(/)
+    expect(before('Seguin').searchParams.get('where')).toMatch(/^\(USER_APPLYDATE >= DATE '2026-05-27' AND USER_APPLYDATE < DATE '2026-08-27'\) AND \(USER_DESCRIPTION LIKE /)
+    expect(before('New Braunfels').searchParams.get('where')).toMatch(/^\(\(Permit_Submit_Date >= DATE '2026-05-27' AND Permit_Submit_Date < DATE '2026-08-27'\) OR \(Permit_Issue_Date >= DATE '2026-05-27' AND Permit_Issue_Date < DATE '2026-08-27'\)\) AND Permit_Group = 'Building' AND /)
+    // A layer's page keeps its own size and order, and the daily page has no end.
+    expect(before('San Marcos').searchParams.get('resultRecordCount')).toBe('1000')
+    expect(before('San Marcos').searchParams.get('resultOffset')).toBe('4000')
+    for (const reader of [SAN_MARCOS_READER, SEGUIN_READER, NEW_BRAUNFELS_READER]) expect(new URL(reader.pageUrl('2026-05-27', 2000, 0)).searchParams.get('where')).not.toContain(' < ')
+    expect(layerDayWindow(['A', 'B'], '2026-05-27')).toBe(`(A >= DATE '2026-05-27' OR B >= DATE '2026-05-27')`)
+    expect(layerDayWindow(['A'], '2026-05-27')).toBe(`A >= DATE '2026-05-27'`)
+    // A day that is not a day is refused before it reaches a door.
+    expect(() => feedsToPull('Seguin')[0]!.pageUrlBefore!('2026-05-27', 'Aug 27', 10, 0)).toThrow(/YYYY-MM-DD/)
+    expect(() => austinWhere('2026-05-27', '8/27/2026')).toThrow(/YYYY-MM-DD/)
+  })
+
+  it('offers the read back in exactly the cities whose every feed can be read up to a day', () => {
+    const can = PERMIT_CITIES.filter((c) => c.feeds.every((f) => f.pageUrlBefore != null)).map((c) => c.name)
+    expect([...HISTORY_CITIES].sort()).toEqual([...can].sort())
+    expect([...HISTORY_CITIES].sort()).toEqual([...PERMIT_CITY_NAMES].sort())
   })
 })
 
