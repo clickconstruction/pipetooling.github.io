@@ -25900,6 +25900,7 @@ export type Database = {
           confirm_token_hash: string | null
           confirmed_at: string | null
           created_at: string
+          digest_claimed_until: string | null
           digest_time: string
           digest_weekday: number
           email: string
@@ -25924,6 +25925,7 @@ export type Database = {
           confirm_token_hash?: string | null
           confirmed_at?: string | null
           created_at?: string
+          digest_claimed_until?: string | null
           digest_time?: string
           digest_weekday?: number
           email: string
@@ -25948,6 +25950,7 @@ export type Database = {
           confirm_token_hash?: string | null
           confirmed_at?: string | null
           created_at?: string
+          digest_claimed_until?: string | null
           digest_time?: string
           digest_weekday?: number
           email?: string
@@ -26799,6 +26802,7 @@ export type Database = {
       }
       legal_notification_queue: {
         Row: {
+          claimed_until: string | null
           created_at: string
           digested_at: string | null
           firm_id: string
@@ -26810,6 +26814,7 @@ export type Database = {
           trigger: string
         }
         Insert: {
+          claimed_until?: string | null
           created_at?: string
           digested_at?: string | null
           firm_id: string
@@ -26821,6 +26826,7 @@ export type Database = {
           trigger: string
         }
         Update: {
+          claimed_until?: string | null
           created_at?: string
           digested_at?: string | null
           firm_id?: string
@@ -49473,6 +49479,35 @@ export type Database = {
           p_review_note?: string
         }
         Returns: Json
+      }
+      legal_notify_claim_digest: {
+        Args: {
+          p_last_digest_at: string
+          p_lease_seconds?: number
+          p_recipient_id: string
+        }
+        Returns: boolean
+      }
+      legal_notify_claim_events: {
+        Args: { p_firm_id: string; p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          claimed_until: string | null
+          created_at: string
+          digested_at: string | null
+          firm_id: string
+          id: string
+          matter_id: string | null
+          payload: Json
+          sent_now_at: string | null
+          sent_to: Json
+          trigger: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "legal_notification_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       legal_offer_add: {
         Args: {
