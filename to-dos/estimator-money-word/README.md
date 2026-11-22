@@ -104,7 +104,11 @@ Answered 2026-11-21.
   pushed) writes the line's `message_promises` row as a payment by the day saved, and the client calls it
   after the sheet saves (v2.8271). The job's **They promised** row names the day, and the thread reads
   *Their move · until Fri Nov 27 · payment* once our word is the newest. **Never said that** takes the mark
-  back off. A refused mark is said in words and leaves the Pipeline's promise standing.
+  back off. A refused mark is said in words and leaves the Pipeline's promise standing. Walked
+  2026-11-22 on the dev server as the dev, after the push: a promise for Nov 27 saved from a test
+  customer's text on a ZZ TEST job turned the thread's chip to *Their move · until Fri Nov 27 ·
+  payment* and the job's **They promised** row to *promised a payment by Fri Nov 27*, and **Never
+  said that** put both back.
 
 ## The follow-ups
 
