@@ -6034,8 +6034,8 @@ describe('LienDesk — the last day of work, set from under the timeline’s LAS
     expect(screen.getByTestId('lien-last-work-shift').textContent).toBe('Type a day.')
     expect(document.activeElement).toBe(within(win).getByLabelText('Last day of work'))
     expect((screen.getByTestId('lien-last-work-confirm-set') as HTMLButtonElement).disabled).toBe(true)
-    // The line's own editor stayed shut: the press opened the window, not the line a screen below.
-    expect(screen.queryByTestId('lien-last-work-editor')).toBeNull()
+    // The line's own field stayed shut: the press opened the window, not the line a screen below.
+    expect(screen.getByTestId('lien-last-work').querySelector('[data-value="field"]')).toBeNull()
     const day = within(win).getByLabelText('Last day of work')
     fireEvent.change(day, { target: { value: '2026-07-24' } })
     fireEvent.blur(day)

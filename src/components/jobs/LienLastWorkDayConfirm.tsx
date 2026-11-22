@@ -114,7 +114,7 @@ export function LienLastWorkDayConfirm({ jobLabel, input, day, onDay, note, onNo
             <span style={kicker}>Why, in a line</span>
             <input ref={noteRef} aria-label="Why the last day is set by hand" value={note} onChange={(e) => onNote(e.target.value)} placeholder="what was done that day, and why the hours do not show it" style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', boxSizing: 'border-box' }} />
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Kept on the job beside the day. The chip will read <strong>set by hand</strong>; Change › Back puts the clock hours back.
+              Kept on the job beside the day. The chip will read <strong>set by hand</strong>. To undo it, press the day and then <strong>Back to clock hours</strong>.
             </span>
           </label>
         </div>

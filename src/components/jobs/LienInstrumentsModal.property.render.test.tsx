@@ -288,7 +288,6 @@ describe('LienInstrumentsModal · a saved last day is handed to the opener, for 
     const day = await screen.findByLabelText('Last day of work')
     fireEvent.change(day, { target: { value: '2026-09-04' } })
     fireEvent.blur(day)
-    fireEvent.click(screen.getByTestId('lien-last-work-save'))
     fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'Went back for the valve' } })
     // The write lands: this is the row the window reads back.
     const saved = { last_work_date: '2026-08-11', lien_last_work_on: '2026-09-04', lien_last_work_note: 'Went back for the valve', lien_last_work_set_at: '2026-10-24T17:00:00+00:00', lien_last_work_set_by: 'u-office' }
@@ -306,7 +305,6 @@ describe('LienInstrumentsModal · a saved last day is handed to the opener, for 
     const day = await screen.findByLabelText('Last day of work')
     fireEvent.change(day, { target: { value: '2026-09-04' } })
     fireEvent.blur(day)
-    fireEvent.click(screen.getByTestId('lien-last-work-save'))
     fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'Went back for the valve' } })
     db.rows.jobs_ledger = []
     fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))

@@ -32,7 +32,7 @@ An overdue job is listed with its property when that property has a date still a
 
 A property with an overdue job says its money in two piles on its heading. The heading reads like *Lien open on 5 jobs · $13,439 · lien gone on 3 · $4,608 · $18,047 owed here*. The first pile is what a lien can still cover. The second pile is owed, and no lien covers it. The GC's total counts the first pile only.
 
-Sometimes the app is the one that is wrong. The work may have run later than the day the app holds. Press **Worked later? ›** on the greyed row. The job's Lien window opens with the last day of work ready to change. Set the day and press {{button:blue|Save the day}}. Every window is counted from that day, so a later day can put the job back on the lien.
+Sometimes the app is the one that is wrong. The work may have run later than the day the app holds. Press **Worked later? ›** on the greyed row. The job's Lien window opens, with the window that sets the last day of work over it. Pick the day and type the reason. Then press {{button:blue|Set the day}}. Every window is counted from that day, so a later day can put the job back on the lien.
 
 :::example the band on top of this month
 This month, by Oct 15 in 14 days. 24 notices across 9 GCs. 31 jobs.
