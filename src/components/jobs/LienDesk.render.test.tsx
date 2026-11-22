@@ -3588,15 +3588,18 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect(may.textContent).toContain('skipped')
     expect(may.textContent).toContain('Taunya: “Lowbeck paid the May invoice in full”')
     expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
-    // This notice is the last column, lettered after the papers (none here). Its head is the name alone.
-    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('AThis notice')
+    // This notice is the last column, lettered after the papers (none here). Its head is the name with the claim small under it (v2.8234).
+    expect((box.querySelector('[data-lien-grid-paper="this"] .lienLedgerThisTop') as HTMLElement).textContent).toBe('AThis notice')
+    expect((box.querySelector('[data-lien-grid-paper="this"] [data-lien-grid-head-figure]') as HTMLElement).textContent).toMatch(/^\$[\d,]+$/)
     // The total sits at the foot of that column (Taunya's ask of 2026-11-15): since punch list #361 it is the claim's own
     // line, the figure said once, with the months this notice names under it.
     const foot = box.querySelector('[data-lien-grid-foot]') as HTMLElement
     expect(foot.closest('[data-lien-claim-box]')).toBeTruthy()
     expect(foot.textContent).toBe('This notice names Jun, Jul, Aug · 3 months')
     expect(box.querySelector('tfoot')).toBeNull()
-    expect(box.textContent?.match(/\$33,500/g)).toHaveLength(1)
+    // Twice in the card since v2.8234: small in the head of this notice's column, and once in the money block as the total.
+    expect(box.textContent?.match(/\$33,500/g)).toHaveLength(2)
+    expect((box.querySelector('[data-lien-ledger-money]') as HTMLElement).textContent?.match(/\$33,500/g)).toHaveLength(1)
     // A skip is not a miss: no line under the grid says a lien right is gone.
     expect(box.querySelector('[data-lien-months-missed]')).toBeNull()
     // A closed month's cells are the one-line kind; an open month keeps its two lines.

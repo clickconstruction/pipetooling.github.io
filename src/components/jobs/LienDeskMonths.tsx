@@ -264,8 +264,15 @@ export default function LienDeskMonths({
                   ))}
                   {thisShown && thisPaper ? (
                     <th data-col="this" data-lien-grid-paper="this">
-                      <span className="lienLedgerLetter" data-tone="this">{thisPaper.letter}</span>
-                      This notice
+                      {/* The claim figure sits small under the name (v2.8234, Taunya's pick of 2026-11-21, shown three ways): beside the name it
+                          widened the column and cut the window's words, and ran off a phone's card. The name's line is as wide as it was. */}
+                      <span className="lienLedgerThisName">
+                        <span className="lienLedgerThisTop">
+                          <span className="lienLedgerLetter" data-tone="this">{thisPaper.letter}</span>
+                          This notice
+                        </span>
+                        {claim ? <span className="lienLedgerHeadFigure" data-lien-grid-head-figure>{claim}</span> : null}
+                      </span>
                     </th>
                   ) : null}
                 </tr>

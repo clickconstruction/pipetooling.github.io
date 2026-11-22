@@ -4469,6 +4469,11 @@ body.my-time-boundary-dragging {
 .lienLedgerWindow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
 .lienLedgerLetter { display: inline-block; width: 18px; height: 18px; margin-right: 5px; border-radius: 4px; text-align: center; line-height: 18px; font-size: 0.68rem; font-weight: 800; }
 .lienLedgerLetter[data-tone='paper'] { background: var(--bg-green-tint); color: var(--text-green-800); }
+/* The head of this notice's column: the name, and the claim figure small under it (v2.8234). The figure starts under the
+   name's first letter, past the lettered square, and the column stays as wide as the name. */
+.lienLedgerThisName { display: inline-flex; flex-direction: column; align-items: flex-start; vertical-align: bottom; line-height: 1.25; }
+.lienLedgerThisTop { white-space: nowrap; }
+.lienLedgerHeadFigure { padding-left: 23px; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .lienLedgerLetter[data-tone='this'] { background: var(--surface); color: var(--text-blue-700); }
 .lienLedgerMarkLetter { display: none; }
 /* A paper's head keeps its name on one line; the words under it wrap, so a long one does not widen the column. */
