@@ -382,6 +382,12 @@ describe('PaintedPlacePanel, more than one photo', () => {
   const lastSave = () => presses.onSave.mock.calls[presses.onSave.mock.calls.length - 1]?.[0] as { more?: { keep: Array<{ path: string }>; add: Array<{ id: string }> } }
   const save = () => fireEvent.click(document.querySelector('[data-painted-place-save]') as HTMLButtonElement)
 
+  it('gives the photos’ own presses and Remove this place a thumb’s height, 44 px', () => {
+    edit()
+    const named = (name: string) => (screen.getByRole('button', { name }) as HTMLButtonElement).style.minHeight
+    expect(['Take another', 'Remove the photo', 'Remove photo 2', 'Remove photo 3', 'Remove this place'].map(named)).toEqual(['44px', '44px', '44px', '44px', '44px'])
+  })
+
   it('offers another photo only once the place has its first', () => {
     draw()
     expect(block()).toBeNull()
