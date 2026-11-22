@@ -2,7 +2,7 @@
 name: "Intro to HVAC: built and on for everyone; the licensed read, the learner walks and one redeploy are left"
 number: 419
 group: close
-status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read, the walks below, and the twin-mcp redeploy that waits on her go by name
+status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below
 summary: >
   The fourth training course, thirty five-minute lessons on how a house is cooled and heated,
   where the heat, the air and the water go, for the people who work on it or beside it. HVAC is
@@ -14,7 +14,7 @@ next: >
   reading every lesson's Check yourself questions and all 47 drawings. No press is needed and no
   go is owed. Then the learner walk on a test account, below.
 size: S as walks and loose ends; the reader's corrections are unsized until the read
-blocker: A licensed HVAC reader, not yet named. The twin-mcp redeploy waits on Taunya's go by name.
+blocker: A licensed HVAC reader, not yet named.
 ver: v2.8158 · 8163 · 8168 · 8169 · 8209 · 8239
 opinion: your call — the course is built, checked by its tests and read live; what is left is a licensed read and walks as a learner
 mockup: not required — walks and loose ends only; the course page is built and live
@@ -54,7 +54,7 @@ The course is thirty lessons and forty-seven drawings. The files are `src/conten
 
 ### Loose ends
 
-- **twin-mcp is behind main.** v2.8239 regenerated `supabase/functions/twin-mcp/briefs.ts` from `docs/twins/APP_DIRECTORY.md`. The redeploy from main was refused in auto mode because Taunya's words did not name this deploy. It runs on her go by name: `bash scripts/deploy-functions.sh twin-mcp` from a checkout at origin/main.
+- **twin-mcp is in step with main.** v2.8239 regenerated `supabase/functions/twin-mcp/briefs.ts` from `docs/twins/APP_DIRECTORY.md`. On Taunya's go, *Yes, redeploy twin-mcp*, it was redeployed from main at 06:44Z on 2026-11-22 as version 135, and the drift check no longer names it. Its directory was not read back, since no session here holds a twin token.
 - **No PR is open.** All six are merged and deployed.
 - **On before the read.** The course went on before any licensed HVAC person read it. A correction after the read reaches no one who passed it as an offered course, because **Everyone takes it again…** leaves an offered pass alone. That is a gap in the Training mechanism, not in this course.
 - **The reader.** A licensed HVAC reader is not named. The plan asked for a Texas air conditioning contractor with the environmental air endorsement who holds the EPA card. Each correction is one commit whose `from:` line names the reader. The reader's name and the code edition then go on `course.md`'s `line`, which v2.8239 left with no blank.
