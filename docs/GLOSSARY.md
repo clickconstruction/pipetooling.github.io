@@ -4918,6 +4918,9 @@ Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a
 The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
 Print on the sub's page still prints the Today paper, whichever view shows.
 Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
+Since v2.8273 a third answer is built and switched off (`SUB_PAPER_CONFIRM_LIVE`, false): **Confirm** on a work statement the office made and that has not changed since, kept as a `confirmed` row with the paper, the revision the sub saw and what it came to.
+A confirm on record prints on the work statement on both sides by one rule (`portalConfirms`), and the paper says so once the statement has changed.
+What a confirm means is the second of counsel's six sentences, still draft wording.
 The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
 A note also lands in the dispatch inbox with a push, and a payment nobody marked says nothing.
 Since v2.8217 the office's payment record reads the same marks (`paymentRecordReceived`): the window reads the person's `sub_paper_acks` before it draws, and the *Received* box says the day the sub pressed Got it, on the preview and on the paper as made.

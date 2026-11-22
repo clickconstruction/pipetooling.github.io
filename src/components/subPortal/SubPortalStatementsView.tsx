@@ -14,7 +14,7 @@
  * Neither is a condition of being paid, and nothing on a statement changes.
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import type { StatementRange } from '../../../supabase/functions/_shared/subPapers'
+import { SUB_PAPER_CONFIRM_LIVE, SUB_PAPER_COUNSEL_PENDING, SUB_PAPER_COUNSEL_SENTENCES, type PaperConfirm, type StatementRange } from '../../../supabase/functions/_shared/subPapers'
 import type { PortalWrongNote } from '../../../supabase/functions/_shared/subPortalPapers'
 import { portalFailure, type PortalFailureCause } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from '../portal/PortalFailureNote'
@@ -30,10 +30,10 @@ import { saveBlobAs } from '../../lib/storageSave'
 type T = (key: SubPortalStringKey, vars?: Record<string, string>) => string
 
 /** What a sub says back from the view: a payment reached them, or something looks wrong. */
-export type SubPortalAnswer = { action: 'got_it'; key: string } | { action: 'something_wrong'; about: 'statement' | 'payment'; key: string; note: string }
+export type SubPortalAnswer = { action: 'got_it'; key: string } | { action: 'something_wrong'; about: 'statement' | 'payment'; key: string; note: string } | { action: 'confirm'; key: string }
 /** What the function answered: the day a payment was marked received, or the note as it was kept. */
 export type SubPortalAnswerResult =
-  | { ok: true; received?: Record<string, string>; wrong?: PortalWrongNote | null }
+  | { ok: true; received?: Record<string, string>; wrong?: PortalWrongNote | null; /** By sheet id: the confirm as it was kept. */ confirmed?: Record<string, PaperConfirm> }
   /** `say` is one of the function's own refusals the page has words for; without it the failure's class is read. */
   | { ok: false; failure: PortalFailureCause; say?: 'answerOfficeLooking' | 'answerTooManyNotes' }
 
@@ -48,9 +48,16 @@ export type SubPortalStatementsViewProps = {
   savePaper?: (paper: SubPaper, range: StatementRange) => Promise<void>
   /** Sends one answer to the office. Without it the two presses are not drawn. */
   onAnswer?: (answer: SubPortalAnswer) => Promise<SubPortalAnswerResult>
+  /** Whether a work statement can be confirmed here. The switch's own value by default; a test turns it on. */
+  confirmLive?: boolean
 }
 
 const TO_DATE: StatementRange = { from: null, to: null }
+
+/** Counsel's sentence for a confirm, with the two names in: the paper prints it only once a confirm is on record, and the press shows it before. */
+function confirmMeansText(papers: SubPortalPapersReady): string {
+  return SUB_PAPER_COUNSEL_SENTENCES.confirmMeans.replace(/\{company\}/g, papers.ctx.company.name).replace(/\{sub\}/g, papers.ctx.sub.name)
+}
 
 async function saveToDevice(paper: SubPaper, range: StatementRange): Promise<void> {
   saveBlobAs(await drawSubPaperPdf(paper, range), subPaperAttachmentName(paper))
@@ -67,16 +74,19 @@ const amountStyle: CSSProperties = { fontWeight: 800, fontVariantNumeric: 'tabul
 const smallLine: CSSProperties = { fontSize: 12.5, color: MUTED, marginTop: 2, lineHeight: 1.5 }
 const panel: CSSProperties = { background: NOTE_BAND, borderRadius: 8, padding: '0.75rem 0.85rem', marginTop: 4 }
 
-export function SubPortalStatementsView({ papers: sent, subName, lang, t, switcher, savePaper = saveToDevice, onAnswer }: SubPortalStatementsViewProps) {
+export function SubPortalStatementsView({ papers: sent, subName, lang, t, switcher, savePaper = saveToDevice, onAnswer, confirmLive = SUB_PAPER_CONFIRM_LIVE }: SubPortalStatementsViewProps) {
   // What the sub answered since the page was read, laid over what the function sent: the list and the PDFs read both.
-  const [said, setSaid] = useState<{ received: Record<string, string>; wrong: PortalWrongNote[] }>({ received: {}, wrong: [] })
-  const papers = useMemo<SubPortalPapers>(() => (sent.ok ? { ...sent, received: { ...sent.received, ...said.received }, wrong: [...sent.wrong, ...said.wrong] } : sent), [sent, said])
+  const [said, setSaid] = useState<{ received: Record<string, string>; wrong: PortalWrongNote[]; confirmed: Record<string, PaperConfirm> }>({ received: {}, wrong: [], confirmed: {} })
+  const papers = useMemo<SubPortalPapers>(
+    () => (sent.ok ? { ...sent, sheets: sent.sheets.map((s) => (said.confirmed[s.id] ? { ...s, confirm: said.confirmed[s.id]! } : s)), received: { ...sent.received, ...said.received }, wrong: [...sent.wrong, ...said.wrong] } : sent),
+    [sent, said],
+  )
   const answer = useMemo(
     () =>
       onAnswer
         ? async (a: SubPortalAnswer): Promise<SubPortalAnswerResult> => {
             const r = await onAnswer(a)
-            if (r.ok) setSaid((s) => ({ received: { ...s.received, ...(r.received ?? {}) }, wrong: r.wrong ? [...s.wrong, r.wrong] : s.wrong }))
+            if (r.ok) setSaid((s) => ({ received: { ...s.received, ...(r.received ?? {}) }, wrong: r.wrong ? [...s.wrong, r.wrong] : s.wrong, confirmed: { ...s.confirmed, ...(r.confirmed ?? {}) } }))
             return r
           }
         : undefined,
@@ -107,7 +117,7 @@ export function SubPortalStatementsView({ papers: sent, subName, lang, t, switch
       </div>
       {switcher}
       {ready ? (
-        <StatementsBody papers={ready.papers} work={ready.view.work} payments={ready.view.payments} stillOpen={ready.view.stillOpen} lastPayment={ready.view.lastPayment} lang={lang} t={t} date={date} savePaper={savePaper} answer={answer} />
+        <StatementsBody papers={ready.papers} work={ready.view.work} payments={ready.view.payments} stillOpen={ready.view.stillOpen} lastPayment={ready.view.lastPayment} confirmLive={confirmLive} lang={lang} t={t} date={date} savePaper={savePaper} answer={answer} />
       ) : (
         // The papers do not agree with each other. A sub never sees a paper that does not add up, nor the reason.
         <div style={{ ...card, marginTop: 20 }} role="status">
@@ -142,7 +152,9 @@ function StatementsBody({
   date,
   savePaper,
   answer,
+  confirmLive,
 }: {
+  confirmLive: boolean
   papers: SubPortalPapersReady
   work: StatementsWorkRow[]
   payments: StatementsPaymentRow[]
@@ -157,7 +169,7 @@ function StatementsBody({
   const today = papers.ctx.today
   const phone = papers.officePhone
   /** The question that is open under a row: Got it on a payment, or a note about a statement or a payment. */
-  const [asking, setAsking] = useState<{ kind: 'got_it'; key: string } | { kind: 'wrong'; about: 'statement' | 'payment'; key: string } | null>(null)
+  const [asking, setAsking] = useState<{ kind: 'got_it'; key: string } | { kind: 'wrong'; about: 'statement' | 'payment'; key: string } | { kind: 'confirm'; key: string } | null>(null)
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
   const [answerFailure, setAnswerFailure] = useState<{ failure: PortalFailureCause; say?: 'answerOfficeLooking' | 'answerTooManyNotes' } | null>(null)
@@ -347,16 +359,48 @@ function StatementsBody({
               ) : null}
             </div>
             {w.changedSince ? <div style={{ ...smallLine, color: FAINT }}>{t('wsChanged', { date: date(w.changedSince) })}</div> : null}
+            {w.confirm && !w.confirm.current ? <div style={{ ...smallLine, color: FAINT }}>{t('confirmedBefore', { date: date(w.confirm.day || today) })}</div> : null}
             {toldLine('statement', w.sheetId)}
             {wrongLink('statement', w.sheetId)}
           </div>
           <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             {w.open > 0 ? <span style={amountStyle}>{formatPortalUsd(w.open)}</span> : <span style={{ fontSize: 11.5, fontWeight: 700, color: PAPER_GREEN, border: `1px solid ${HAIR}`, borderRadius: 999, padding: '1px 9px' }}>{t('paidLabel')}</span>}
+            {/* Confirm (the card's PR 7), only while its switch is on: a chip once the statement as it stands is confirmed, else the press where the office's copy is the one on the page. */}
+            {w.confirm?.current ? (
+              <span data-testid="statements-confirmed" style={{ fontSize: 11.5, fontWeight: 700, color: PAPER_GREEN, border: `1px solid ${HAIR}`, borderRadius: 999, padding: '1px 9px' }}>
+                {t('confirmedOn', { date: date(w.confirm.day || today) })}
+              </span>
+            ) : confirmLive && answer && w.confirmable ? (
+              <button type="button" style={quietPress} onClick={() => open(asking?.kind === 'confirm' && asking.key === w.sheetId ? null : { kind: 'confirm', key: w.sheetId })}>
+                {t('confirmStatement')}
+              </button>
+            ) : null}
             {pdfPress(w.sheetId, (rows) => {
               const row = rows.work.find((r) => r.sheetId === w.sheetId)
               return row ? { paper: row.paper, range: TO_DATE } : null
             })}
           </span>
+          {asking?.kind === 'confirm' && asking.key === w.sheetId ? (
+            <div style={{ ...panel, flexBasis: '100%' }} data-testid="statements-confirm-panel">
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{t('confirmQuestion')}</div>
+              <div style={smallLine}>{t('confirmDetail', { number: w.number, amount: formatPortalUsd(w.comesTo) })}</div>
+              {/* What a confirm means is counsel's sentence, as the paper prints it. It is marked while it is draft wording. */}
+              <div style={{ ...smallLine, color: INK }}>
+                {SUB_PAPER_COUNSEL_PENDING ? '§ ' : ''}
+                {confirmMeansText(papers)}
+              </div>
+              <div style={{ ...smallLine, color: FAINT }}>{t('confirmNotForPay')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                <button type="button" disabled={sending} onClick={() => send({ action: 'confirm', key: w.sheetId }, w.sheetId)} style={{ font: 'inherit', fontSize: 13, fontWeight: 700, padding: '0.5rem 1rem', borderRadius: 6, border: 'none', cursor: 'pointer', ...portalPressFill(true) }}>
+                  {sending ? t('sendingAnswer') : t('confirmYes')}
+                </button>
+                <button type="button" style={quietPress} disabled={sending} onClick={() => open(null)}>
+                  {t('gotItNotYet')}
+                </button>
+              </div>
+              {failureNote}
+            </div>
+          ) : null}
           {wrongPanel('statement', w.sheetId, [w.number, w.job].filter(Boolean).join(' · ') || sheetName({ number: '', day: papers.sheets.find((s) => s.id === w.sheetId)?.day ?? '' }))}
         </div>
       ))}

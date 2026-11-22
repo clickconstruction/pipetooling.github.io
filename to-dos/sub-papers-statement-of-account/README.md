@@ -184,7 +184,7 @@ Never applied silently. A sub reads the payment record and must find their own a
 4. **The payment record** (S). Paper B. One per sending once #347 has sendings. For a payment recorded before then, one per row. The window after Record payment. Waits on PR #7992's push.
 5. **Send** (M, an edge deploy). The send window, `send-sub-paper-email`, the texted link, the sent copies on the sub and the job, a guide. A sub with no email on the roster gets a line that says so and a door to add one.
 6. **The portal's Statements tab** (M, an edge deploy of `sub-portal`). The three papers from the same kernel, paid sheets, the period, **Got it** on a payment record. It sat on #346's PR 6, which is not built: a sheet names one person, so a sub's portal shows only their own sheets (card #346, call 3).
-7. **Confirm a work statement** (M, behind a `SUB_PAPER_CONFIRM_LIVE` switch, off). The press, its record, the revision rule. Waits on counsel's sentence 2 and the owner's call 3.
+7. **Confirm a work statement** (M, behind a `SUB_PAPER_CONFIRM_LIVE` switch, off). The press, its record, the revision rule. Waits on counsel's sentence 2 and the owner's call 3. **Built 2026-11-21, v2.8273, and switched off**, on the owner's word (*Please do*): the press on the sub's page, the `confirmed` row and the rule that reads it onto the work statement on both sides. A sub confirms only a copy the office made and that has not changed since. Turning it on waits on counsel's words for sentence 2: it is a one-line change, a client deploy and a redeploy of `sub-portal`, then a walk on the test sub's page.
 
 ## Where it stands
 
@@ -219,7 +219,7 @@ Hard lines:
 
 1. **The names.** My pick: Work statement, Payment record, Statement of account, and *Still open* for what we owe. Your words go on once counsel has read sentences 1 to 6. **Taunya's to answer**, since she picked the card on 2026-11-15. **Answered 2026-11-16: she keeps the names**, relayed by the owner. A number may print under them.
 2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved. **Built as picked** in v2.7404, card #347's *By hand*.
-3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's.
+3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's. **Built as picked 2026-11-21 (v2.8273), switched off**: the owner said to build PR 7, and the press says *You are paid the same whether or not you confirm.*
 4. **Do payment records send by themselves?** My pick: no. The window after Record payment offers it. The portal shows the payment at once either way.
 5. **What period does a statement cover by default?** My pick: since the last statement sent to that sub, and to date the first time. Since v2.8106 a statement made earlier the same day does not move it. The period still starts after the last statement from before today. **How a period is cut, answered by the owner 2026-11-21: by the date on the payment, and a late one is carried.** A payment typed after the last statement was made and dated inside it is listed on the next statement under its own date, so each statement opens on what the last one closed on. Built in v2.8269, for a back-charge and a sheet typed late as well.
 6. **A sheet that is not payable yet.** My pick: it is on the statement under *Still open*, with counsel's one line about terms, and no due date.

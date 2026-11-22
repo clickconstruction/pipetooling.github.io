@@ -1553,6 +1553,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A row is written only by `mint_sub_paper` and voided only by `void_sub_paper`, both definer functions that refuse a caller outside the office, a training account, a digital twin and an archived account.
   A sub reads their own papers through the portal's function, which holds the service key.
   Since v2.7569 (punch list #371) that function also writes what a sub answers into `sub_paper_acks`, each row naming its person and its sheet, sending or payment (`docs/migrations/20261117150000_sub_paper_ack_targets.md`).
+  Since v2.8273 it can also write a `confirmed` row, a sub's confirm of a work statement, and does not while `SUB_PAPER_CONFIRM_LIVE` is false: the answer is refused as an unknown action, and the office looking at a sub's page is refused as for the other two.
   It reads `sub_papers` and never writes it, so a number is given only by the office.
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
   Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.

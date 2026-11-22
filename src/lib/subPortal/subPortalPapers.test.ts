@@ -5,12 +5,13 @@
  * give one set of papers.
  */
 import { describe, expect, it } from 'vitest'
-import { buildStatementOfAccount, buildWorkStatement, paperSendings, type PaperCompany } from '../../../supabase/functions/_shared/subPapers'
+import { buildStatementOfAccount, buildWorkStatement, paperSendings, SUB_PAPER_CONFIRM_LIVE, type PaperCompany } from '../../../supabase/functions/_shared/subPapers'
 import { subPaperFingerprint } from '../../../supabase/functions/_shared/subPaperMarks'
 import {
   buildSubPortalPapers,
   planPortalAnswer,
   portalAnswers,
+  portalConfirms,
   portalOwnSheetIds,
   portalPaperSet,
   portalPaperSheets,
@@ -259,5 +260,73 @@ describe('an answer, planned', () => {
 
   it('takes no answer while the papers do not add up', () => {
     expect(planPortalAnswer({ action: 'got_it', key: SENDING_231 }, rows, { ...set, ok: false })).toEqual({ ok: false, status: 409, error: 'The office is checking your statements. Please call the office.' })
+  })
+})
+
+describe('confirming a work statement (the card’s PR 7), built and switched off', () => {
+  // The office's live copy of cedar-1 is revision 2, and its figures are today's: the one thing a sub can confirm.
+  const base = harlanRows()
+  const baseSet = portalPaperSet(base, WHO)
+  const asIssued = subPaperFingerprint(buildWorkStatement(baseSet.sheets.find((s) => s.id === CEDAR_1)!, baseSet.ctx))
+  const comesTo = buildWorkStatement(baseSet.sheets.find((s) => s.id === CEDAR_1)!, baseSet.ctx).comesTo
+  const rowsWith = (acks: PapersAckRow[] = [], fingerprint = asIssued) => harlanRows({ register: registerRows(fingerprint), acks })
+  const confirmedAck = (over: Partial<PapersAckRow> = {}): PapersAckRow => ({ kind: 'confirmed', paper_id: PAPER_CEDAR_1_REV_2, labor_job_id: CEDAR_1, sending_id: null, payment_id: null, note: null, created_at: '2026-11-14T18:00:00Z', revision: 2, amount: comesTo, said_from: '203.0.113.7', ...over })
+  const plan = (rows = rowsWith(), live = true) => planPortalAnswer({ action: 'confirm', key: CEDAR_1 }, rows, portalPaperSet(rows, WHO), live)
+
+  it('the switch is off, so the page’s function refuses the answer as any unknown one', () => {
+    expect(SUB_PAPER_CONFIRM_LIVE).toBe(false)
+    const rows = rowsWith()
+    expect(planPortalAnswer({ action: 'confirm', key: CEDAR_1 }, rows, portalPaperSet(rows, WHO))).toEqual({ ok: false, status: 400, error: 'Unknown action.' })
+    expect(plan(rows, false)).toEqual({ ok: false, status: 400, error: 'Unknown action.' })
+  })
+
+  it('on, a confirm records the office’s copy: its paper, the revision the sub saw and what it comes to', () => {
+    expect(plan()).toEqual({
+      ok: true,
+      already: null,
+      what: 'WS-2041-1 · #2041 Cedar Hollow Clinic',
+      row: { kind: 'confirmed', person_id: HARLAN, note: null, labor_job_id: CEDAR_1, sending_id: null, payment_id: null, paper_id: PAPER_CEDAR_1_REV_2, revision: 2, amount: comesTo },
+    })
+  })
+
+  it('a sheet the office has not papered, one that changed since its copy, and another person’s sheet have nothing to confirm', () => {
+    const rows = rowsWith()
+    const set = portalPaperSet(rows, WHO)
+    // alder-1's only paper is void, so it has no live copy.
+    expect(planPortalAnswer({ action: 'confirm', key: ALDER_1 }, rows, set, true)).toEqual({ ok: false, status: 409, error: 'The office has not made this statement yet, so there is nothing to confirm. Please call the office.' })
+    expect(plan(rowsWith([], 'not today'))).toEqual({ ok: false, status: 409, error: "This statement changed since the office's copy. Please call the office for a new copy to confirm." })
+    expect(planPortalAnswer({ action: 'confirm', key: ORA_1 }, rows, set, true)).toEqual({ ok: false, status: 404, error: 'That statement is not on your page.' })
+    expect(planPortalAnswer({ action: 'confirm', key: '' }, rows, set, true)).toEqual({ ok: false, status: 400, error: 'Say which statement this is about.' })
+    expect(planPortalAnswer({ action: 'confirm', key: CEDAR_1 }, rows, { ...set, ok: false }, true)).toMatchObject({ ok: false, status: 409 })
+  })
+
+  it('a statement is confirmed once per revision: a second press reads the first day back', () => {
+    expect(plan(rowsWith([confirmedAck()]))).toMatchObject({ ok: true, already: 'Nov 14, 2026' })
+    // A confirm of an earlier revision does not stand for this one.
+    expect(plan(rowsWith([confirmedAck({ revision: 1 })]))).toMatchObject({ ok: true, already: null, row: { revision: 2 } })
+  })
+
+  it('the rows are read by one rule: the newest confirm that names its sheet and its revision', () => {
+    const confirms = portalConfirms([confirmedAck({ revision: 1, created_at: '2026-10-30T18:00:00Z', amount: 4000 }), confirmedAck(), confirmedAck({ labor_job_id: CEDAR_2, revision: null }), { ...confirmedAck(), kind: 'received' }])
+    expect([...confirms]).toEqual([[CEDAR_1, { revision: 2, amount: comesTo, at: 'Nov 14, 2026', from: '203.0.113.7' }]])
+    expect(portalConfirms([confirmedAck({ said_from: null })]).get(CEDAR_1)!.from).toBe('their page')
+  })
+
+  it('a confirm on record prints on the work statement, with counsel’s sentence, and says so once the statement has changed', () => {
+    const rows = rowsWith([confirmedAck()])
+    const set = portalPaperSet(rows, WHO)
+    const sheet = set.sheets.find((s) => s.id === CEDAR_1)!
+    expect(sheet.confirm).toEqual({ revision: 2, amount: comesTo, at: 'Nov 14, 2026', from: '203.0.113.7' })
+    const paper = buildWorkStatement(sheet, set.ctx)
+    expect(paper.confirm).toEqual({ current: true, words: `Harlan Mechanical confirmed revision 2 of this statement, at $${comesTo.toLocaleString('en-US', { minimumFractionDigits: 2 })}, on Nov 14, 2026, from 203.0.113.7.` })
+    expect(paper.sentences.map((x) => x.key)).toContain('confirmMeans')
+    // The confirm is not one of the paper's figures: the office's copy is still the copy.
+    expect(subPaperFingerprint(paper)).toBe(asIssued)
+    // The office makes revision 3: the confirm was of revision 2.
+    const later = buildWorkStatement({ ...sheet, revision: 3 }, set.ctx)
+    expect(later.confirm!.current).toBe(false)
+    expect(later.confirm!.words).toContain('It has changed since, and this revision has not been confirmed.')
+    // A sheet nobody confirmed carries none, and prints no sentence about confirming.
+    expect(buildWorkStatement(portalPaperSet(rowsWith(), WHO).sheets.find((s) => s.id === CEDAR_1)!, set.ctx).sentences.map((x) => x.key)).not.toContain('confirmMeans')
   })
 })

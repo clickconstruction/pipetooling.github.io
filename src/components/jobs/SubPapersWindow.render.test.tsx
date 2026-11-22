@@ -675,6 +675,17 @@ describe('SubPapersWindow, with the register on the database', () => {
     expect(screen.getByRole('dialog').textContent).toContain('The file is WS-2041-1.pdf')
   })
 
+  it('a sub’s confirm on record prints on the office’s work statement, and none prints where there is none', async () => {
+    // The press is switched off, so no row exists yet. A row is read the day one does.
+    db.rows = [NUMBERED]
+    db.acks = [{ id: 'ack-c', kind: 'confirmed', person_id: 'harlan', labor_job_id: 'cedar-1', sending_id: null, payment_id: null, note: null, said_by_name: 'Harlan Mechanical', created_at: '2026-11-14T18:00:00Z', revision: NUMBERED.revision, amount: 4100, said_from: '203.0.113.7' }]
+    open({ sheet: 'cedar-1' })
+    await waitFor(() => expect(screen.getByTestId('sub-paper-preview').textContent).toContain('No. WS-2041-1'))
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(`Harlan Mechanical confirmed revision ${NUMBERED.revision} of this statement, at $4,100.00, on Nov 14, 2026, from 203.0.113.7.`)
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'ridge-1' } })
+    expect(screen.getByTestId('sub-paper-preview').textContent).not.toContain('confirmed revision')
+  })
+
   it('a payment typed after the last statement and dated inside it is carried into Since the last statement, and the paper says so', async () => {
     // SA-0003 ran to Nov 10 and was made that day at 15:00. A $300 check dated Nov 8 was typed on Nov 12.
     const jobs: LaborJob[] = [sheet('cedar-1', 'cedar', '2041', '2026-10-28', [['Rough-in', 2400]], [{ id: 'p1', amount: 1000, payment_date: '2026-10-31' }, { id: 'p2', amount: 300, payment_date: '2026-11-08', created_at: '2026-11-12T15:00:00Z' }])]
