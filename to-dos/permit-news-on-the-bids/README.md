@@ -62,7 +62,7 @@ And on reading that mock-up:
 
 ## What is there today (read on main at v2.7901)
 
-Punch list #307 built it ([`to-dos/bid-permits/`](../bid-permits/README.md)).
+Punch list #307 built it (`bid-permits`, closed 2026-11-22: its Closed line is in [`to-dos/README.md`](../README.md), and the card lives in git history).
 
 - **The strip** is `BidBoardPermitNews`, drawn by `BidsBidBoardTab` above the sticky sections row,
   so above every bid. Four lines show and the rest fold behind *See N more*. The fold is not
