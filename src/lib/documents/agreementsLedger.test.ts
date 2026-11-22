@@ -19,6 +19,7 @@ import {
   agreementDoor,
   agreementNeedsAList,
   agreementSignerWords,
+  agreementSigningForWords,
   agreementFindWords,
   agreementGroup,
   agreementJobTail,
@@ -524,5 +525,30 @@ describe('what a press opens', () => {
       expect(agreementDoor(row({ kind, source_id: 'p1', job_id: null, facts: { status: 'signed' } })), kind).toEqual({ kind: 'person-signed', documentId: 'p1' })
       expect(agreementDoor(row({ kind, source_id: 'p1', state: 'waiting', job_id: null, facts: { status: 'sent' } })), kind).toEqual({ kind: 'none' })
     }
+  })
+})
+
+describe('the business a paper names, on its line', () => {
+  const party = (over: Partial<AgreementRow>): AgreementRow =>
+    row({ id: 'customer_agreement:d9', kind: 'customer_agreement', source_id: 'd9', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Ridgeway Builders', job_id: null, job_hcp_number: null, job_name: null, job_address: null, ...over })
+
+  it('says signing for the business when the line names another party: someone added to a list under a second company', () => {
+    expect(agreementSigningForWords(party({ facts: { status: 'sent', party_kind: 'customer', signer_name: 'Noor Haddad', signing_for: 'Haddad Engineering' } }))).toBe('signing for Haddad Engineering')
+  })
+
+  it('says nothing when the line’s party is the business the paper names', () => {
+    expect(agreementSigningForWords(party({ facts: { status: 'sent', party_kind: 'customer', signer_name: 'Dana Ruiz', signing_for: 'Ridgeway Builders' } }))).toBe('')
+    expect(agreementSigningForWords(party({ with_name: 'ridgeway builders', facts: { status: 'sent', signer_name: 'Dana Ruiz', signing_for: 'Ridgeway Builders' } }))).toBe('')
+  })
+
+  it('says nothing for a paper that kept no business, and for someone who signs for themselves', () => {
+    expect(agreementSigningForWords(party({ facts: { status: 'sent', signer_name: 'Dana Ruiz' } }))).toBe('')
+    expect(agreementSigningForWords(party({ with_name: 'A customer', facts: { status: 'signed', signer_name: 'Pat Tallman', signer_printed_name: 'Pat Tallman', signing_for: 'Pat Tallman' } }))).toBe('')
+  })
+
+  it('says it on a person’s own paper that names their company, and never on a kind that keeps no signer', () => {
+    expect(agreementSigningForWords(row({ kind: 'person_agreement', with_name: 'Marco Ibarra', facts: { status: 'signed', signer_name: 'Marco Ibarra', signing_for: 'Juniper Mechanical LLC' } }))).toBe('signing for Juniper Mechanical LLC')
+    expect(agreementSigningForWords(row({ kind: 'job_contract', facts: { status: 'signed', signing_for: 'Juniper Mechanical LLC' } }))).toBe('')
+    expect(agreementSigningForWords(row({ kind: 'work_order', facts: { status: 'accepted', signing_for: 'Juniper Mechanical LLC' } }))).toBe('')
   })
 })

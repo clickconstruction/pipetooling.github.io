@@ -6773,6 +6773,7 @@ Since v2.7938 **Contract library**, beside it, opens the library People → Cont
 Nothing left People → Contracts: both pages keep a door.
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
+Since v2.8244 a line whose paper names another business than the party beside it also says *signing for* that business, on the tab and on the party's own page (`signingForBeside`, [`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.

@@ -177,6 +177,23 @@ describe('what a line says', () => {
     expect(lines[1]?.state.words).toBe('replaced by a newer one')
   })
 
+  it('says signing for the business a paper names when it is not the party whose page this is', () => {
+    const typedIn = paper('a', { signer_name: 'Noor Haddad', signer_title: null, signing_for: 'Haddad Engineering' })
+    expect(partyPaperLine(typedIn, new Set(), TODAY, 'Ridgeway Builders').signingFor).toBe('signing for Haddad Engineering')
+    expect(partyPaperLine(typedIn, new Set(), TODAY, 'haddad engineering').signingFor).toBe('')
+  })
+
+  it('says no signing for on a paper that kept no business, or with no party name to hold it against', () => {
+    expect(partyPaperLine(paper('a'), new Set(), TODAY, 'Tallgrass Supply Co.').signingFor).toBe('')
+    expect(partyPaperLine(paper('a', { signing_for: 'Haddad Engineering' }), new Set(), TODAY).signingFor).toBe('')
+    expect(partyPaperLine(paper('a', { signing_for: 'Haddad Engineering' }), new Set(), TODAY, '  ').signingFor).toBe('')
+  })
+
+  it('carries the party’s name through to every line', () => {
+    const lines = partyPaperLines([paper('a', { signing_for: 'Haddad Engineering' }), paper('b', { signing_for: 'Ridgeway Builders' })], ['k-house'], TODAY, 'Ridgeway Builders')
+    expect(lines.map((l) => l.signingFor).sort()).toEqual(['', 'signing for Haddad Engineering'])
+  })
+
   it('counts the papers with the count marked as a value', () => {
     expect(plainSentence(partyPaperCountWords(1))).toBe('1 paper')
     expect(plainSentence(partyPaperCountWords(3))).toBe('3 papers')
