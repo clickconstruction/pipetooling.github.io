@@ -21,7 +21,7 @@ export type SharedContacts = ReadonlyMap<string, ReadonlyMap<string, readonly Co
 
 /**
  * What the worklist reads once for every city: our customers, the answers already given, our
- * bids, and the phones and web domains shared with names on permits (v2.8303, empty before
+ * bids, and the phones and web domains shared with names on permits (v2.8308, empty before
  * that read is on the database).
  */
 export type LookAlikeShared = { customers: ReadonlyArray<{ id: string; name: string }>; answers: readonly NameAnswerRow[]; bids: readonly WorklistBid[]; contacts: SharedContacts }

@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: same phone, same web domain, shared phone, followup, answer, not our job, still waiting, we lost it, red number, ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: followup, answer, not our job, still waiting, we lost it, red number, ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---

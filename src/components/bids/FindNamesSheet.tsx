@@ -34,7 +34,7 @@ import { BidGcTiedNames } from './BidGcTiedNames'
  * Find a customer's names on permits (punch list #307, PR 9). Our names for customers do not
  * match the names a city lists, so a person links them here. The sheet suggests names that may
  * be the customer, each with its reasons: a permit on an address we bid to them first, then a
- * phone or a web domain the two share (v2.8303), then how alike the names are. Compare puts ours
+ * phone or a web domain the two share (v2.8308), then how alike the names are. Compare puts ours
  * beside the city's. A search reaches every name. Two presses on a name, and nothing is tied on
  * a likeness or a shared phone alone.
  */

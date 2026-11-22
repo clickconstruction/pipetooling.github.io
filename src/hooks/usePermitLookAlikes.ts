@@ -13,7 +13,7 @@ type Ground = { customers: ReadonlyArray<{ id: string; name: string }>; contacts
  * of our customers, for the worklist on Builders. `null` pairs mean the answers table is not on
  * the database yet, and the chip is not drawn. An answer drops its pair and reads the answers
  * again. Site evidence comes from the newest thousand bids with a customer on them. A phone or a
- * web domain a customer shares with a name is a reason of its own (v2.8303).
+ * web domain a customer shares with a name is a reason of its own (v2.8308).
  */
 export function usePermitLookAlikes(city: string, builders: readonly BuilderRow[]): { pairs: LookAlike[] | null; error: string | null; busy: boolean; answer: (pair: LookAlike, tie: boolean) => Promise<void> } {
   const [ground, setGround] = useState<Ground | null>(null)

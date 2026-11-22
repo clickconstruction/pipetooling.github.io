@@ -6,7 +6,7 @@
  * apart, a shared telling word, initials. The common trade words (construction, builders,
  * group) count for little, and a word that only sits inside a longer, unrelated word is no
  * match at all. A phone or a web domain the two share is a reason of its own, graded beside one
- * name beginning the other (v2.8303). Nothing here ties anything: only the exact same name is
+ * name beginning the other (v2.8308). Nothing here ties anything: only the exact same name is
  * ever joined without a person. No React, no Supabase.
  */
 import { contactDomainOf, contactParts, nameKey, phoneDigitsOf, phoneWords } from '../../../supabase/functions/_shared/permitLookup'

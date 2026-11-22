@@ -215,7 +215,7 @@ export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[
   }
 }
 
-// --- A phone or a web domain the two share (v2.8303) ------------------------------------------
+// --- A phone or a web domain the two share (v2.8308) ------------------------------------------
 
 const CONTACT_MATCHES_DOING = 'read the phones and web domains shared with names on permits'
 
