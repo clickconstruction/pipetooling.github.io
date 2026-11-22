@@ -145,7 +145,7 @@ describe('PaintedWay', () => {
 
   it('tells the canvas it is the public page and is only read, so the one rule decides which map is under it (#387)', async () => {
     open(fakeIo([OPEN]))
-    // The page decides nothing itself: `paintedMapProvider.ts` keeps it on the Leaflet canvas until its yes.
+    // The page decides nothing itself: `paintedMapProvider.ts` puts it on Google, or on the Leaflet canvas when Google cannot be used.
     expect((await screen.findByTestId('canvas')).getAttribute('data-google-ask')).toBe('way looking')
   })
 

@@ -687,7 +687,7 @@ A picture and a printed page are drawn on the view from above, never on Google M
 
 When Google Maps cannot load, the map opens on the view from above. Nothing on the map is lost.
 
-The page a link opens is not on Google Maps yet.
+The page a link opens is on Google Maps too. A reader who presses **Show where I am** sees their own dot and the whole line together.
 
 ## When the picture is old
 

@@ -2106,7 +2106,7 @@ pipetooling.github.io/
 #### `src/lib/supabase.ts`
 - Initializes Supabase client
 - Reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from environment
-- Optional `VITE_GOOGLE_MAPS_BROWSER_KEY` (v2.3145): Maps JavaScript API browser key for every card that mounts `PinsMapGoogleCanvas` (the Dashboard **Your jobs on a map** card first) and, since v2.7990, for a saved painted map read on `PaintedMapGoogleCanvas`; unset, rejected, or slow → the card draws with Leaflet + OpenStreetMap
+- Optional `VITE_GOOGLE_MAPS_BROWSER_KEY` (v2.3145): Maps JavaScript API browser key for every card that mounts `PinsMapGoogleCanvas` (the Dashboard **Your jobs on a map** card first) and, since v2.7990, for a saved painted map read on `PaintedMapGoogleCanvas` (the public page `/way` too since v2.8210); unset, rejected, or slow → the card draws with Leaflet + OpenStreetMap
 - Throws error if missing (prevents silent failures)
 - Uses `db: { schema: 'public' }` to avoid RPC schema mismatches (e.g. 404 when PostgREST schema differs)
 
