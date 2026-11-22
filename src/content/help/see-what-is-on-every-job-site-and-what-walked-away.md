@@ -129,7 +129,7 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
-Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. The new box scrolls into view. Press **Add a part** on a box to put a part in it. The sheet is the one the crew has on the phone. An empty box's **Contents** tab has the same press. On a line, **Correct…** sets the count the crew should have found. That press writes a count row in your name.
+Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. The new box scrolls into view. Press **Add a part** on a box to put a part in it. The sheet is the one the crew has on the phone. Fill **How many** beside **What is in it** to give a new box its first part in the same press. An empty box's **Contents** tab has the same press. On a line, **Correct…** sets the count the crew should have found. That press writes a count row in your name.
 
 Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's window opens on its **Where is it?** tab. The tab says the place, the note, and who pinned the box and on what day. Under the words is the site from above with the box's pin. The tab is the same sheet the crew has on the phone. [Find a box on the site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#find-a-box-on-the-site) says what each press does.
 
@@ -148,6 +148,10 @@ Press **Print** with no job open. The sheet offers **Print labels** and **Print 
 On a job's page the four figures sit in one row of tiles. The tiles read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
 
 Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*. Press the line. A sheet opens with the full count, **These are on boxes**, **Runs** and the press that prints them.
+
+Each box is one row on a phone. The row reads the box's name, what is in it and how its count stands. Press a row to open the box on the phone screen. The back press there returns to this page. A box with no part reads *Empty*, and its row says **Add a part**. Press that row to put the first part in.
+
+A notice about box photos that did not move shows as one line. Press the line to read it and to try again.
 
 ## Move everything on site to another job
 

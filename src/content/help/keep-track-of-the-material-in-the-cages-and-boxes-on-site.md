@@ -92,7 +92,13 @@ The count becomes the truth for that box. A short count is what the office reads
 
 Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery. The office's Materials page has the same press on every box.
 
-Type the part's name. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it.
+A new box can take its first part in the same press. Type the part in **What is in it** and the count in **How many**. The press then reads like **Add G101 with 40 Hangers**. Leave **How many** empty to add the box alone.
+
+The sheet opens with choices. **This box says** offers the box's own words as the part. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it. What you type is offered first, as **Use “hangers” as typed**.
+
+Then say how many. Type the number, or tap **+10**, **+25** or **+100**. Tap the blue press to add the part and close the sheet. Tap **Add 40 and another part** to add it and stay for the next part.
+
+A part put into a box that held none of it is counted as it goes in. The box does not ask you to count what you just put in. When the box already held some, count the box as usual.
 
 ## Take a photo
 
