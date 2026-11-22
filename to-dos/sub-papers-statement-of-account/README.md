@@ -280,7 +280,9 @@ sheets of one job read alike. Since v2.8262 a held work statement names its shee
   *Built 2026-11-21, v2.8262*: a read that fails is not drawn. The ledger keeps what it last read whole and the page says
   why (`subLedgerReadFailure`), on the Pay view and on People → Subs.
 - *On a phone* every press in the window was 26 to 33 px tall. *Built 2026-11-21, v2.8262*: each stands 44 px tall at 640 px
-  and under. The phone's Pay view still has no paper press: the door on a phone is People → Subs. A matter of taste.
+  and under. The phone's Pay view had no paper press: the door on a phone was People → Subs. *Built 2026-11-22, v2.8303*, on
+  the owner's word: a sheet's bottom sheet of verbs offers *Work statement…* in Print's place and *Statement of account…*
+  after it, on a sheet that is one person's and for the office. A payment record is reached from the window's own pick.
 - *The dev seat and the window differed, built 2026-11-21 (v2.8274)*: the seat's *since_last* now sets a statement made today apart and carries a line typed late, as the window does. `sub-statement` is redeployed after the merge. As it was noted: *The dev seat and the window differ* after a statement made today. The seat refuses *since_last* and asks for
   *to_date*. The window runs from the last statement before today. Since v2.8269 they differ in one more way: the window's
   *Since the last statement* carries a line typed late, and the seat's *since_last* is still cut by the date alone. The
