@@ -165,6 +165,14 @@ Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*.
 
 Each box is one row on a phone. The row reads the box's name, what is in it and how its count stands. Press a row to open the box on the phone screen. The back press there returns to this page. A box with no part reads *Empty*, and its row says **Add a part**. Press that row to put the first part in.
 
+Press the **Missing** tile. The parts that walked away come first. Each row has its number on the right. Under the name, the row reads what was bought and what is left. The other parts wait behind one press under them. It reads like *Show 104 parts with nothing walked away*. Press it to see them.
+
+Under that list are the counts that came up short. A short count has an amber edge and reads the box, what was expected and what was counted. A **Can't find** has a red edge. Press **7 days** or **30 days** to change how far back the list goes.
+
+Press the **Used** tile to see every press, newest first. A row reads the part, what was done, where and who. The number on the right is how many. The list shows sixty rows. Press **Show 60 more** at the foot for the next sixty.
+
+Press the **Came in** tile to see each invoice that landed. A row reads the invoice, when it landed and who landed it. The number on the right is its pieces.
+
 A notice about box photos that did not move shows as one line. Press the line to read it and to try again.
 
 ## Move everything on site to another job

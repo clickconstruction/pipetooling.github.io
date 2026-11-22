@@ -42,6 +42,9 @@ import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSu
 import { onSiteJobHead, onSiteJobNumber, onSiteJobWords, type OnSiteJobNamed } from '../../lib/materials/onSiteJobWords'
 import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
 import MaterialsDeskPhone from '../materials/MaterialsDeskPhone'
+import { SectionPhoneFoot, SectionPhoneMore, SectionPhoneRow } from '../materials/SectionPhoneRow'
+import { sectionPhoneLine } from '../materials/sectionPhoneStyles'
+import { SECTION_PHONE_PAGE, cannotFindPhoneRow, comparisonPhoneRow, countDiffPhoneRow, deliveryPhoneRow, historyPhoneRow, movementSign, movementWhereWords, pagePhoneRows, quietPartsLabel, splitComparison } from '../../lib/materials/jobSectionsPhone'
 import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
 import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -128,6 +131,8 @@ const headPress: CSSProperties = { font: 'inherit', color: 'var(--text-strong)',
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '0.2em', textAlign: 'left' }
 const quietPressDead: CSSProperties = { ...quietPress, color: 'var(--text-muted)', cursor: 'default', textDecoration: 'none' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
+/** History's two filters on a phone (v2.8292): a thumb's height, side by side on a row of their own under the heading. */
+const HISTORY_FILTER_PHONE: CSSProperties = { minHeight: 40, flex: '1 1 45%', minWidth: 0, marginLeft: 0, fontSize: '0.875rem' }
 /** A delivery line on the table with the id its Delivered row lands under (v2.7267). */
 type DeliveryLine = ParsedLine & { id: string }
 const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflowX: 'auto', overflowY: 'hidden', minWidth: 0 }
@@ -725,6 +730,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
   const [sinceDays, setSinceDays] = useState<7 | 30>(7)
+  /** A phone draws History a page at a time (v2.8292): a job can hold thousands of presses. */
+  const [historyShown, setHistoryShown] = useState(SECTION_PHONE_PAGE)
+  /** A phone's Missing leads with the parts that have a gap (v2.8292). How many of the rest are drawn: none until their press. */
+  const [quietPartsShown, setQuietPartsShown] = useState(0)
   /** The labels window: every box, or one (`only`) from a panel's Label button or the phone's link (`?label=<id>`). */
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
@@ -801,6 +810,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const since = new Date(now.getTime() - sinceDays * 86_400_000).toISOString()
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
+  /** What the reported rows come to, priced: the table's last line and the phone's. */
+  const reportedMoney = missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0)
+  /** History's rows: every press, newest first, narrowed by the two filters. */
+  const historyRows = [...movements].sort((a, b) => (a.at < b.at ? 1 : -1)).filter((m) => (!reasonFilter || m.reason === reasonFilter) && (!whoFilter || m.byName === whoFilter))
 
   const head = onSiteJobHead(job, jobLabel(job, jobId))
   /** The flow row's four figures, as the desk's pills and the phone's tiles both draw them. */
@@ -1012,6 +1025,42 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <div style={sec}>
             <h5 style={secH}>Bought · reported · left · walked away<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>per part across the job, at the parts book’s price with the day it was checked, or the invoice’s where the book’s is older than {BOOK_PRICE_FRESH_DAYS} days or missing</span></h5>
             <BookPricesLine />
+{phone ? (
+              // A phone (v2.8292): a row a part. What walked away is the figure, the table's two bold columns are the first line, and what was reported is said only where there is something to say.
+              comparison.length === 0 ? (
+                <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main="No deliveries or presses on this job yet." next={{ label: 'Deliveries', onPress: () => setSection('deliveries') }} tail="lands the first invoice as a delivery, and the crew’s presses fill the rest." /></div>
+              ) : (
+                <div data-testid="materials-phone-comparison">
+                  {(() => {
+                    // The parts with a gap lead, and the rest wait behind one press: the reports under this list were a hundred rows down.
+                    const { gap, quiet } = splitComparison(comparison)
+                    const more = quietPartsShown > 0 ? pagePhoneRows(quiet, quietPartsShown) : null
+                    const drawn = more ? [...gap, ...more.rows] : gap
+                    return (
+                      <>
+                        {gap.length === 0 ? <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main="Nothing has walked away on this job." /></div> : null}
+                        {drawn.map((r, i) => {
+                    const p = comparisonPhoneRow(r)
+                    return (
+                      <SectionPhoneRow key={p.key} first={i === 0 && gap.length > 0} title={p.title} maker={p.maker} figure={p.figure} edge={p.marked ? 'amber' : null}>
+                        <span style={sectionPhoneLine}>{p.held}</span>
+                        {p.reported ? <span style={sectionPhoneLine}>{p.reported}</span> : null}
+                        <span style={sectionPhoneLine}>
+                          {p.money != null ? <><Money n={p.money} /> <PriceChip jobId={jobId} partKey={r.partKey} /> · </> : p.noPrice ? 'no price · ' : null}
+                          {p.lastCountAt ? <>last count <Stamp iso={p.lastCountAt} inline /></> : <span style={chip('amber')}>never counted</span>}
+                        </span>
+                      </SectionPhoneRow>
+                    )
+                  })}
+                        {!more && quiet.length > 0 ? <SectionPhoneMore label={quietPartsLabel(quiet.length)} onPress={() => setQuietPartsShown(SECTION_PHONE_PAGE)} /> : null}
+                        {more?.moreLabel ? <SectionPhoneMore label={more.moreLabel} onPress={() => setQuietPartsShown(more.next)} /> : null}
+                      </>
+                    )
+                  })()}
+                  <SectionPhoneFoot words="Walked away, priced"><Money n={walkedMoney} /></SectionPhoneFoot>
+                </div>
+              )
+) : (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={{ ...th, minWidth: 180 }}>Part</th><th style={{ ...th, ...num }}>Bought</th><th style={{ ...th, ...num }}>Added on site</th><th style={{ ...th, ...num }}>Used</th><th style={{ ...th, ...num }}>Returned</th><th style={{ ...th, ...num }}>Taken, damaged</th><th style={{ ...th, ...num }}>Can’t find</th><th style={{ ...th, ...num }}>Left</th><th style={{ ...th, ...num }}>Walked away</th><th style={{ ...th, ...num }}>Money</th><th style={{ ...th, ...num }}>Last count</th></tr></thead>
               <tbody>
@@ -1034,10 +1083,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 {comparison.length ? <tr><td style={{ ...td, fontWeight: 700 }} colSpan={9}>Walked away, priced</td><td style={{ ...td, ...num, fontWeight: 700 }}><Money n={walkedMoney} /></td><td style={td}></td></tr> : null}
               </tbody>
             </table>
+)}
             <p style={{ ...muted, margin: 0, padding: '0.5rem 0.9rem 0.75rem' }}>Walked away is bought plus added, minus used, returned, taken and left. It is only as true as the Used presses and the last count: a box nobody counted can hide a gap, and an honest count shows it.</p>
           </div>
         <div style={sec}>
-          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
+          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: phone ? 36 : 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
+{phone ? (
+            // A phone (v2.8292): a row a report. A short count's figure is what is missing, a Can't find's is its count, and the press to the takes before a short count is in its row.
+            <div data-testid="materials-phone-reported">
+              {missingRows.length === 0 && cannotRows.length === 0 ? <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main={`Nothing missing in the last ${sinceDays} days.`} /></div> : null}
+              {[...missingRows.map((d) => countDiffPhoneRow(d, byLabel(d.containerId))), ...cannotRows.map((m) => cannotFindPhoneRow(m, byLabel(m.fromContainerId), partKey(m.partId, m.partName)))].map((p, i) => {
+                const price = unitPrice(jobId, { partKey: p.partKey })
+                const m = missingMoney(p.moneyQty, price)
+                const before = p.kind === 'short' && p.boxId ? takesBefore(takes, p.boxId, p.at).length : 0
+                return (
+                  <SectionPhoneRow key={p.key} first={i === 0} title={p.title} maker={p.maker} figure={p.figure} edge={p.kind === 'short' ? 'amber' : p.kind === 'cannot' ? 'red' : null}>
+                    {p.facts ? <span style={sectionPhoneLine}>{p.facts}</span> : null}
+                    {m != null ? <span style={sectionPhoneLine}><Money n={m} /> <PriceChip jobId={jobId} partKey={p.partKey} /></span> : price == null ? <span style={sectionPhoneLine}>no price</span> : null}
+                    <span style={sectionPhoneLine}>{p.byName} <Stamp iso={p.at} inline />{p.note ? ` · ${p.note}` : ''}</span>
+                    {before > 0 && p.boxId ? <button type="button" style={{ display: 'block', minHeight: 36, marginTop: 2, background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left' }} onClick={() => { setTakesBox(p.boxId); setSection('history') }} data-testid="missing-takes-door">{takesBeforeLabel(before)}</button> : null}
+                  </SectionPhoneRow>
+                )
+              })}
+              <SectionPhoneFoot words={`In the last ${sinceDays} days`}>{money(reportedMoney)}</SectionPhoneFoot>
+            </div>
+) : (
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>Part</th><th style={th}>Container</th><th style={{ ...th, ...num }}>Expected</th><th style={{ ...th, ...num }}>Counted</th><th style={{ ...th, ...num }}>Missing</th><th style={{ ...th, ...num }}>Money</th><th style={th}>Who, when</th></tr></thead>
             <tbody>
@@ -1077,9 +1147,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(reportedMoney)}</td><td style={td}></td></tr>
             </tbody>
           </table>
+)}
         </div>
         </div>
       ) : null}
@@ -1184,6 +1255,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
           <div style={sec}>
             <h5 style={secH}>Deliveries so far<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>one row per invoice or PO that landed</span></h5>
+{phone ? (
+              // A phone (v2.8292): a row an invoice or a PO that landed, its pieces as the figure.
+              deliveries.length === 0
+                ? <p style={{ ...muted, margin: 0, padding: '0.6rem 0.9rem' }}>No delivery has landed yet. Paste an invoice above, or add a part on the phone from the box it went in.</p>
+                : <div data-testid="materials-phone-deliveries">{deliveries.map((d, i) => { const p = deliveryPhoneRow(d, when(d.at)); return <SectionPhoneRow key={p.key} first={i === 0} title={p.title} figure={p.figure}><span style={sectionPhoneLine}>{p.facts}</span></SectionPhoneRow> })}</div>
+) : (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={th}>Source</th><th style={th}>When</th><th style={th}>By</th><th style={{ ...th, ...num }}>Lines</th><th style={{ ...th, ...num }}>Pieces</th></tr></thead>
               <tbody>
@@ -1193,6 +1270,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 ))}
               </tbody>
             </table>
+)}
           </div>
         </div>
       ) : null}
@@ -1211,21 +1289,41 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {section === 'history' ? (
         <div style={sec}>
           <h3 style={secH}>History · every press, newest first
-            <select aria-label="Filter by reason" value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} style={{ marginLeft: 'auto', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500 }}>
+            <select aria-label="Filter by reason" value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} style={{ marginLeft: 'auto', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500, ...(phone ? HISTORY_FILTER_PHONE : {}) }}>
               <option value="">Every reason</option>
               {Object.entries(REASON_WORDS).map(([k, w]) => <option key={k} value={k}>{w.past}</option>)}
             </select>
-            <select aria-label="Filter by person" value={whoFilter} onChange={(e) => setWhoFilter(e.target.value)} style={{ minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500 }}>
+            <select aria-label="Filter by person" value={whoFilter} onChange={(e) => setWhoFilter(e.target.value)} style={{ minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500, ...(phone ? HISTORY_FILTER_PHONE : {}) }}>
               <option value="">Everyone</option>
               {people.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </h3>
+{phone ? (
+            // A phone (v2.8292): a row a press, newest first, a page at a time. A job can hold thousands, and a phone should not draw them all at once.
+            (() => {
+              const page = pagePhoneRows(historyRows, historyShown)
+              return (
+                <div data-testid="materials-phone-history">
+                  {page.rows.map((m, i) => {
+                    const p = historyPhoneRow(m, byLabel)
+                    return (
+                      <SectionPhoneRow key={p.key} first={i === 0} title={p.title} figure={p.figure}>
+                        <span style={sectionPhoneLine}>{p.what}{p.creditDue ? <> <span style={chip('blue')}>credit due</span></> : null}{p.where ? (p.where.startsWith('→') ? ` ${p.where}` : ` · ${p.where}`) : ''}</span>
+                        <span style={sectionPhoneLine}>{p.byName} · {when(p.at)}{p.note ? ` · ${p.note}` : ''}</span>
+                      </SectionPhoneRow>
+                    )
+                  })}
+                  {page.moreLabel ? <SectionPhoneMore label={page.moreLabel} onPress={() => setHistoryShown(page.next)} /> : null}
+                </div>
+              )
+            })()
+) : (
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>When</th><th style={th}>What</th><th style={th}>Part</th><th style={{ ...th, ...num }}>Qty</th><th style={th}>Where</th><th style={th}>Who</th><th style={th}>Note</th></tr></thead>
             <tbody>
-              {[...movements].sort((a, b) => (a.at < b.at ? 1 : -1)).filter((m) => (!reasonFilter || m.reason === reasonFilter) && (!whoFilter || m.byName === whoFilter)).map((m) => {
-                const sign = m.reason === 'counted' ? '' : m.reason === 'delivered' ? '+' : m.reason === 'moved' ? '' : '−'
-                const where = m.reason === 'delivered' ? `→ ${byLabel(m.toContainerId)}${m.source ? ` · ${m.source}` : ''}` : m.reason === 'moved' ? `${byLabel(m.fromContainerId)} → ${byLabel(m.toContainerId)}` : m.reason === 'returned' ? `${byLabel(m.fromContainerId)} → the supply house` : m.reason === 'taken' ? `${byLabel(m.fromContainerId)} → ${m.note || 'off site'}` : byLabel(m.fromContainerId)
+              {historyRows.map((m) => {
+                const sign = movementSign(m.reason)
+                const where = movementWhereWords(m, byLabel)
                 return (
                   <tr key={m.id}>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{when(m.at)}</td>
@@ -1240,6 +1338,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               })}
             </tbody>
           </table>
+)}
         </div>
       ) : null}
 
