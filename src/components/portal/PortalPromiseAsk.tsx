@@ -78,8 +78,10 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
     background: on ? COPPER : CARD,
     color: on ? '#fff' : INK,
     borderRadius: 999,
-    padding: '5px 12px',
-    fontSize: 12.5,
+    // A thumb's height (v2.8294): the chips stood 28 px, and a customer picks a pay day with one.
+    minHeight: 40,
+    padding: '0 14px',
+    fontSize: 13.5,
     fontWeight: on ? 700 : 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
@@ -116,7 +118,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
             value={picked}
             min={todayYmd}
             onChange={(e) => { setPicked(e.target.value); if (ui.kind === 'error' || ui.kind === 'failed') setUi({ kind: 'idle' }) }}
-            style={{ padding: '0.35rem 0.5rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13 }}
+            style={{ minHeight: 40, boxSizing: 'border-box', padding: '0 0.5rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 16 }}
           />
         ) : null}
       </div>
@@ -125,7 +127,8 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
         onChange={(e) => setNote(e.target.value.slice(0, 300))}
         placeholder="Anything we should know? (optional)"
         aria-label="Note"
-        style={{ padding: '0.4rem 0.55rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13, fontFamily: 'inherit' }}
+        // 16 px, so a phone does not zoom the page when the box is pressed.
+        style={{ minHeight: 44, boxSizing: 'border-box', padding: '0 0.6rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 16, fontFamily: 'inherit' }}
       />
       {ui.kind === 'error' ? <div style={{ color: '#b42318' }}>{ui.text}</div> : null}
       <PortalFailureNote
@@ -138,7 +141,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
           type="button"
           disabled={ui.kind === 'sending' || !picked}
           onClick={() => void send()}
-          style={{ ...portalPressFill(Boolean(picked)), border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
+          style={{ ...portalPressFill(Boolean(picked)), border: 'none', borderRadius: 6, minHeight: 44, padding: '0 1.1rem', fontSize: 14, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
         >
           {ui.kind === 'sending' ? '…' : 'Tell us'}
         </button>

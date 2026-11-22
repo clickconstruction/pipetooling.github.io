@@ -8,6 +8,7 @@
  * `mint_customer_rating`. Customer-facing, so the page stays light (`data-theme="light"`).
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { INLINE_THUMB_PAD } from '../components/contracts/signatureFormStyles'
 import { useSearchParams } from 'react-router-dom'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import {
@@ -299,14 +300,14 @@ export default function CustomerRating() {
               {extras.portalUrl ? (
                 <>
                   {R.everything}{' '}
-                  <a href={sample ? '#sample' : extras.portalUrl} style={{ color: 'var(--text-link)' }}>
+                  <a href={sample ? '#sample' : extras.portalUrl} style={{ color: 'var(--text-link)', ...INLINE_THUMB_PAD }}>
                     {portalReadable(extras.portalUrl)}
                   </a>
                   {' · '}
                 </>
               ) : null}
               {R.callUs}{' '}
-              <a href={`tel:${extras.company.phone.replace(/[^\d+]/g, '')}`} style={{ color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+              <a href={`tel:${extras.company.phone.replace(/[^\d+]/g, '')}`} style={{ color: 'var(--text-link)', whiteSpace: 'nowrap', ...INLINE_THUMB_PAD }}>
                 {extras.company.phone}
               </a>
             </div>

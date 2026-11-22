@@ -42,7 +42,7 @@ export default function PortalYourJobs({ jobs, lang = 'en' }: { jobs: readonly P
             })}
           </ol>
           {j.rateToken ? (
-            <a href={`/rate?t=${encodeURIComponent(j.rateToken)}`} style={{ fontSize: 13.5, fontWeight: 600, color: COPPER, textDecoration: 'none', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>
+            <a href={`/rate?t=${encodeURIComponent(j.rateToken)}`} style={{ fontSize: 13.5, fontWeight: 600, color: COPPER, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
               {w.rate} →
             </a>
           ) : j.stars != null ? (

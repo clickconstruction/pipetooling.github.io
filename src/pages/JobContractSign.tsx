@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
+import { INLINE_THUMB_PAD } from '../components/contracts/signatureFormStyles'
+import { telHrefFor } from '../lib/phoneContact'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import { SignedSignatureBlock } from '../components/SignedSignatureBlock'
@@ -500,7 +502,18 @@ export default function JobContractSign() {
             </>
             )}
             <p style={{ margin: '0.8rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              Questions first?{issuer?.phone ? ` Call ${issuer.phone} or` : ''} reply to our email.
+              Questions first?{' '}
+              {issuer?.phone ? (
+                <>
+                  Call{' '}
+                  {/* The number dials (v2.8294). It was words, and a signer with a question copied it by hand. */}
+                  <a href={telHrefFor(issuer.phone)} style={{ color: 'var(--text-link)', whiteSpace: 'nowrap', ...INLINE_THUMB_PAD }}>
+                    {issuer.phone}
+                  </a>{' '}
+                  or{' '}
+                </>
+              ) : null}
+              reply to our email.
             </p>
           </div>
         )}
