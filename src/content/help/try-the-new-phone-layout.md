@@ -68,6 +68,30 @@ The tabs keep their words and their order. The tabs stand a little shorter.
 
 The offer to add an **Add Task** icon no longer sits above every page. The offer is one quiet row at the top of the Dashboard. **Add** and **Dismiss** do what they did. An offer you dismissed stays dismissed.
 
+## Needs you
+
+On your Dashboard, **Needs you** is one line. The line says how many things wait on you. The line names the first one.
+
+:::example the Needs you line
+*Needs you · 8 · Sign 7 lien notices before the run* **Inbox ›**
+:::
+
+Tap the line to open the **Inbox** tab. The whole list is there.
+
+In the **Inbox** tab the list opens on **Walk the list**. You see one thing at a time, with its press. Tap **Skip for now** to see the next one.
+
+Tap **Cards** to see every line at once. The phone keeps your pick.
+
+You get the one line when **Inbox** is a tab at the foot of your phone. Job Mode and Dispatch Mode both have that tab. In Job Mode the line shows only when a line is yours.
+
+With no **Inbox** tab, the list stays on your Dashboard. The list opens on **Walk the list** there too.
+
+The count on the line is your own lines. Lines that wait on other people are in the list, under their name.
+
+Nothing else on your Dashboard moved. **The office's round** is where it was, under the line.
+
+The guide [work the Needs you list on the dashboard](/help/needs-you-card) says what each line means.
+
 ## Tell us how it goes
 
 This layout is a trial. Open the gear menu and tap **Tell the dev** to say what works and what does not. The guide [tell the dev what is wrong with a page](/help/tell-the-dev-about-a-page) says how.

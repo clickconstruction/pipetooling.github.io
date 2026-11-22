@@ -1685,6 +1685,7 @@ Dispatch Mode's first tab opens the Dispatch home, so there home stays.
 **The moved rows** are the other presses of the old row as named rows at the top of the gear menu, in the row's order: Statement, Tell the dev, Task Dispatch, Ask estimating, Task, Customers, People (`phoneBarPlan`, `PhoneBarGearRows`).
 The Bids page's **Bid** press stays in the bar.
 The role dock's row has no gear, so it keeps every press it has.
+Under the tick Needs you is a one-line door on the Dashboard and opens on Walk the list where it is worked, since v2.8289 (→ *Needs You card*).
 Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
 
 ### Tell the dev and its switch (app-wide)
@@ -7087,6 +7088,14 @@ Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
 Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
 *The Board* above).
+On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
+The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
+A door that is new under the tick stands in for the card alone, so the office's round stays on the Dashboard under it (`cardsStay`), where the office phone's door takes that card to the Inbox tab as before.
+Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
+With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
+Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.
+Under the tick the door says the viewer's own count and first line (`needsYouDoorLine`): the number in the card's pill and the line Walk the list opens on.
+With the tick off the door counts every line and the card opens as it did.
 
 ### Amber / red age (age state)
 The app's one convention for **how long a waiting item has waited** (v2.2895, journey-map #40).
