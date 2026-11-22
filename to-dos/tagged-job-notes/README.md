@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: close
-status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked
+status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · the job window's Note sheet on a phone tags too since v2.8223, found without tags on the owner's phone walk of 2026-11-21 · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,7 +11,7 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Taunya looks at the tag that waits on her, on the ZZ Test Walk Project job, which is the tagged side of the walk. Then a phone width, the floating window's box, and a phone with notices on that takes one. Nothing waits to be built.
+next: Taunya looks at the tag that waits on her, on the ZZ Test Walk Project job, which is the tagged side of the walk. Then the tagged side at a phone width, the floating window's box, and a phone with notices on that takes one. The sender's side in the job window was walked at a phone width on 2026-11-21. Nothing waits to be built.
 size: L as a train of six (S · M · M · M · S · M)
 blocker: none. The tagged side waits on Taunya's own look, which she asked for.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
@@ -30,6 +30,7 @@ opinion: build, it is the cheapest way to make a job note reach a person, and th
 | #8302 | v2.7400, v2.7407 | the list of names on the Pipeline note boxes, the count above Jobs, the section, the Needs you line, the guide |
 | #8303 | v2.7410, v2.7412 | `notify-note-tag`, and tagging from the job window, with the second migration, pushed 2026-11-16 |
 | #8313 | v2.7426 | the chip shows the moment a note is posted |
+| the phone-walk PR of 2026-11-21 | v2.8223 | the job window's Note sheet on a phone tags as the Activity box does, its row of names in the sheet's flow |
 
 **Walked on prod**, as the dev login, on *ZZ Test Walk Project 2026-11-08*:
 
@@ -39,7 +40,7 @@ opinion: build, it is the cheapest way to make a job note reach a person, and th
 
 **Found on the walk**: the chip did not draw until the page was read again. Fixed in v2.7426.
 
-**Not walked**: the tagged person's screen (the red count, the cards, an answer, No reply needed, the question back), the floating window's box, a phone width, and a notice arriving on a phone. The render tests and the `job-note-tags` SQL bed cover the rules; no person has seen those screens with a tag on them.
+**Not walked**: the tagged person's screen (the red count, the cards, an answer, No reply needed, the question back), the floating window's box, the tagged side at a phone width, and a notice arriving on a phone. The owner walked the job window at a phone width on 2026-11-21 and found the bar's Note sheet with no row of names, which v2.8223 gave it. The render tests and the `job-note-tags` SQL bed cover the rules; no person has seen those screens with a tag on them.
 
 **Cleaned up**: the walk's two notes on that ZZ job, each tagging the Sample superintendent account, were deleted on 2026-11-16 by one SQL delete on their ids, and their tags went with them. `jobs_ledger_thread_notes` has no delete policy, so the app cannot remove a note.
 

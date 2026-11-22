@@ -75,6 +75,9 @@ const pressStyle: CSSProperties = {
 const pressNameStyle: CSSProperties = { fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }
 const pressSaysStyle: CSSProperties = { fontSize: '0.6875rem', color: 'var(--text-muted)' }
 
+/** The row in the flow of a sheet: two lines of names and a sliver of the third, so the sheet keeps its box and Save above a phone's keyboard. */
+const INLINE_ROW_MAX_HEIGHT = 124
+
 /** The keys a phone keyboard reports when it does not say which key was pressed. */
 const UNNAMED_KEYS: readonly string[] = ['Unidentified', 'Process']
 
@@ -118,8 +121,11 @@ export function useNoteTagBox(opts: {
   askerId?: string | null
   /** The names offered as presses before a letter is typed: the person who asked, in an answer box. */
   offer?: readonly NoteTagOffer[]
-  /** A phone opens the row above the box, clear of the keyboard. */
-  place?: 'above' | 'below'
+  /**
+   * A phone opens the row above the box, clear of the keyboard. `inline` draws the row in the flow instead, for a box
+   * in a sheet from the bottom: the sheet grows by the row, where a row hung above the box would be cut by the sheet's edge.
+   */
+  place?: 'above' | 'below' | 'inline'
   /** The @ button as tall as a box whose buttons are 44 px, a task's. */
   bigAt?: boolean
 }): NoteTagBox {
@@ -416,17 +422,22 @@ export function useNoteTagBox(opts: {
       data-note-tag-list
       onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'absolute',
-        left: 8,
-        right: 8,
-        ...(place === 'above' ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
-        zIndex: 20,
+        ...(place === 'inline'
+          ? // In a column that is short of room the row is what shrinks, down to one name's height, and it scrolls.
+            { maxHeight: INLINE_ROW_MAX_HEIGHT, minHeight: 58, flex: '0 1 auto' }
+          : {
+              position: 'absolute' as const,
+              left: 8,
+              right: 8,
+              ...(place === 'above' ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+              zIndex: 20,
+              boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
+              maxHeight: 260,
+            }),
         background: 'var(--surface)',
         border: '1px solid var(--border-strong)',
         borderRadius: 10,
-        boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
         padding: 6,
-        maxHeight: 260,
         overflowY: 'auto',
         textAlign: 'left',
         display: 'flex',

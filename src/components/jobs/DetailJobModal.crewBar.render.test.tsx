@@ -146,6 +146,10 @@ describe('DetailJobModal · the crew bar on a phone', () => {
     const sheet = await screen.findByRole('dialog', { name: 'Note' })
     // The phone sheet: risen from the bottom, its backdrop as tall as the room the keyboard leaves.
     expect(sheet.closest('[data-phone-sheet]')?.getAttribute('data-phone-sheet')).toBe('sheet')
+    // The phone walk of 2026-11-21: the sheet is drawn at the top of the page, and the bar stands down under it.
+    expect(sheet.closest('[data-phone-sheet]')?.parentElement).toBe(document.body)
+    expect(screen.queryByRole('toolbar', { name: 'Job actions' })).toBeNull()
+    expect(bar.style.visibility).toBe('hidden')
     const box = within(sheet).getByRole('textbox', { name: 'Add a note' })
     await waitFor(() => expect(document.activeElement).toBe(box))
     const save = within(sheet).getByRole('button', { name: 'Save' })
