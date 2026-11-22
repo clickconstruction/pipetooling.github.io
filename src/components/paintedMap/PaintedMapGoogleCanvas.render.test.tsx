@@ -16,6 +16,8 @@ type Listener = (e?: unknown) => void
 const lib = vi.hoisted(() => ({
   mapProps: null as null | Record<string, unknown>,
   moves: [] as Array<{ center?: { lat: number; lng: number }; zoom?: number }>,
+  /** Each change of the map's own options the canvas asked for: a held press stops the map moving under the finger. */
+  options: [] as Array<Record<string, unknown>>,
   /** Each slide the canvas asked for: a walker followed. */
   pans: [] as Array<{ lat: number; lng: number }>,
   listeners: {} as Record<string, Listener>,
@@ -41,6 +43,9 @@ const fakeMap = {
     lib.camera = { ...lib.camera, center: to }
   },
   getDiv: () => lib.div,
+  setOptions: (o: Record<string, unknown>) => {
+    lib.options.push(o)
+  },
   getCenter: () => ({ lat: () => lib.camera.center.lat, lng: () => lib.camera.center.lng }),
   getZoom: () => lib.camera.zoom,
   addListener: (name: string, fn: Listener) => {
@@ -69,7 +74,7 @@ vi.mock('@vis.gl/react-google-maps', async () => {
   }
 })
 
-import type { PaintedCanvasDot, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
+import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import PaintedMapGoogleCanvas, { type PaintedMapGoogleCanvasProps } from './PaintedMapGoogleCanvas'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { forgetPaintedGlassForTests } from './paintedGoogleGlassMap'
@@ -83,6 +88,9 @@ class PolylineStub {
   }
   setMap(map: unknown) {
     this.on = map
+  }
+  setPath(path: Array<{ lat: number; lng: number }>) {
+    this.opts.path = path
   }
 }
 class CircleStub {
@@ -205,6 +213,7 @@ beforeEach(() => {
   lib.load = () => {}
   lib.moves.length = 0
   lib.pans.length = 0
+  lib.options.length = 0
   lib.listeners = {}
   lib.removed.length = 0
   lib.camera = { center: { lat: 29.55, lng: -98.3 }, zoom: 17 }
@@ -490,6 +499,282 @@ describe('a rough reading (punch list #402)', () => {
   })
 })
 
+describe('a line drawn by hand (step 3)', () => {
+  const A = { lat: 29.55, lng: -98.3 }
+  const B = { lat: 29.551, lng: -98.299 }
+  const C = { lat: 29.552, lng: -98.2985 }
+  const draftOf = (points: Array<{ lat: number; lng: number }>, over: Partial<PaintedCanvasDraft> = {}): PaintedCanvasDraft => ({ points, picked: null, targets: [], onAdd: vi.fn(), onMove: vi.fn(), onInsert: vi.fn(), onPick: vi.fn(), ...over })
+  const event = (lat: number, lng: number) => ({ latLng: { lat: () => lat, lng: () => lng } })
+  const corners = () => MarkerStub.made.filter((m) => m.on !== null && m.opts.title === 'Drag to move this corner')
+  const middles = () => MarkerStub.made.filter((m) => m.on !== null && m.opts.title === 'Drag to make a corner here')
+  const iconOf = (m: MarkerStub) => decodeURIComponent((m.opts.icon as { url: string }).url)
+  /** The line in hand: the two lines drawn over every saved one. */
+  const inHand = () => PolylineStub.made.filter((l) => l.on !== null && (l.opts.zIndex as number) > 10)
+  /** A pointer event on the map's box, or on the window for a move and a lift. */
+  const pointer = (on: EventTarget, type: string, at: { x: number; y: number }, pointerType = 'touch', pointerId = 1) => {
+    const e = new Event(type, { bubbles: true, cancelable: true })
+    Object.assign(e, { clientX: at.x, clientY: at.y, pointerId })
+    Object.defineProperty(e, 'pointerType', { value: pointerType })
+    act(() => void on.dispatchEvent(e))
+  }
+
+  beforeEach(() => {
+    ;(globalThis as unknown as { google: { maps: Record<string, unknown> } }).google.maps.Map = GlassMapStub
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('draws a corner at each point and a small dot in the middle of each leg, each a marker a finger can drag', () => {
+    mount({ draft: draftOf([A, B, C]) })
+    expect(corners().map((m) => m.opts.position)).toEqual([A, B, C])
+    expect(middles().map((m) => m.opts.position)).toEqual([
+      { lat: (A.lat + B.lat) / 2, lng: (A.lng + B.lng) / 2 },
+      { lat: (B.lat + C.lat) / 2, lng: (B.lng + C.lng) / 2 },
+    ])
+    for (const m of [...corners(), ...middles()]) expect(m.opts.draggable).toBe(true)
+    // A corner is over a middle, so a finger on both takes the corner.
+    expect(corners()[0]?.opts.zIndex as number).toBeGreaterThan(middles()[0]?.opts.zIndex as number)
+    // Two presses on a line being drawn are two corners, not a zoom.
+    expect(lib.mapProps?.disableDoubleClickZoom).toBe(true)
+  })
+
+  it('rings the picked corner in purple and the others in ink', () => {
+    mount({ draft: draftOf([A, B, C], { picked: 1 }) })
+    expect(iconOf(corners()[1]!)).toContain('stroke="#7c3aed"')
+    expect(iconOf(corners()[0]!)).not.toContain('#7c3aed')
+  })
+
+  it('draws the line in hand over every saved line, dashed as a line drawn by hand, and no line for one corner', () => {
+    const { rerender } = mount({ lines: [DRAWN], draft: draftOf([A]) })
+    expect(inHand()).toHaveLength(2)
+    expect(inHand().every((l) => l.opts.path.length === 0)).toBe(true)
+    rerender({ lines: [DRAWN], draft: draftOf([A, B]) })
+    expect(inHand()).toHaveLength(2)
+    expect(inHand()[0]?.opts.path).toEqual([A, B])
+    // The paint is a dash repeated along a line that is not itself drawn.
+    expect((inHand()[1]?.opts.icons as unknown[] | undefined)?.length).toBe(1)
+  })
+
+  it('adds a corner where the map is pressed, and lets go of any picked corner', () => {
+    const draft = draftOf([A, B], { picked: 0 })
+    mount({ draft })
+    act(() => lib.listeners.click?.(event(29.553, -98.297)))
+    expect(draft.onPick).toHaveBeenCalledWith(null)
+    expect(draft.onAdd).toHaveBeenCalledWith({ lat: 29.553, lng: -98.297 })
+  })
+
+  it('picks a pressed corner, lets it go on a second press, and takes neither press for a new corner', () => {
+    const draft = draftOf([A, B])
+    const { rerender } = mount({ draft })
+    act(() => corners()[1]!.fire('click', event(B.lat, B.lng)))
+    expect(draft.onPick).toHaveBeenLastCalledWith(1)
+    // Google tells the map of the same press a moment after.
+    act(() => lib.listeners.click?.(event(B.lat, B.lng)))
+    expect(draft.onAdd).not.toHaveBeenCalled()
+    const picked = draftOf([A, B], { picked: 1 })
+    rerender({ draft: picked })
+    act(() => corners()[1]!.fire('click', event(B.lat, B.lng)))
+    expect(picked.onPick).toHaveBeenLastCalledWith(null)
+  })
+
+  it('moves a dragged corner: the line follows the finger, and the caller is told when it lifts', () => {
+    const draft = draftOf([A, B, C])
+    const onLive = vi.fn()
+    mount({ draft, onLive })
+    const to = { lat: 29.5512, lng: -98.2987 }
+    act(() => corners()[1]!.fire('dragstart', event(B.lat, B.lng)))
+    act(() => corners()[1]!.fire('drag', event(to.lat, to.lng)))
+    expect(onLive).toHaveBeenLastCalledWith({ kind: 'move', index: 1, point: to, caught: null })
+    expect(inHand()[0]?.opts.path).toEqual([A, to, C])
+    expect(draft.onMove).not.toHaveBeenCalled()
+    act(() => corners()[1]!.fire('dragend', event(to.lat, to.lng)))
+    expect(draft.onMove).toHaveBeenCalledWith(1, to)
+    expect(onLive).toHaveBeenLastCalledWith(null)
+    // The lift is not also a press on the map.
+    act(() => lib.listeners.click?.(event(to.lat, to.lng)))
+    expect(draft.onAdd).not.toHaveBeenCalled()
+  })
+
+  it('makes a corner in a leg when the dot in its middle is dragged', () => {
+    const draft = draftOf([A, B, C])
+    mount({ draft })
+    const to = { lat: 29.5507, lng: -98.2992 }
+    act(() => middles()[0]!.fire('drag', event(to.lat, to.lng)))
+    expect(inHand()[0]?.opts.path).toEqual([A, to, B, C])
+    act(() => middles()[0]!.fire('dragend', event(to.lat, to.lng)))
+    expect(draft.onInsert).toHaveBeenCalledWith(0, to)
+  })
+
+  it('catches the end of another line, lands the corner on it, and says what it caught', () => {
+    const end = { id: 'end', lat: 29.553, lng: -98.297, label: 'the end of line 1' }
+    const draft = draftOf([A, B], { targets: [end] })
+    const onLive = vi.fn()
+    mount({ draft, onLive })
+    act(() => corners()[1]!.fire('drag', event(29.55302, -98.297)))
+    expect(onLive).toHaveBeenLastCalledWith({ kind: 'move', index: 1, point: { lat: end.lat, lng: end.lng }, caught: end })
+    act(() => corners()[1]!.fire('dragend', event(29.55302, -98.297)))
+    expect(draft.onMove).toHaveBeenCalledWith(1, { lat: end.lat, lng: end.lng })
+  })
+
+  it('makes its corners again when the line changes, and takes the old ones off', () => {
+    const { rerender } = mount({ draft: draftOf([A, B]) })
+    const before = [...corners(), ...middles()]
+    rerender({ draft: draftOf([A, B, C]) })
+    for (const m of before) expect(m.on).toBeNull()
+    expect(corners()).toHaveLength(3)
+    expect(middles()).toHaveLength(2)
+  })
+
+  it('places a corner under the glass when a finger is held still, then slid, and stops the map moving under it', () => {
+    vi.useFakeTimers()
+    const draft = draftOf([A, B])
+    const onLive = vi.fn()
+    mount({ draft, onLive })
+    // The middle of the 600 by 400 box is the middle of the view: 29.55, -98.3.
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(379))
+    expect(onLive).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1))
+    expect(lib.options).toContainEqual({ gestureHandling: 'none' })
+    const first = onLive.mock.calls[0]?.[0] as { kind: string; point: { lat: number; lng: number } }
+    expect(first.kind).toBe('add')
+    expect(first.point.lat).toBeCloseTo(29.55, 6)
+    expect(first.point.lng).toBeCloseTo(-98.3, 6)
+    expect(document.querySelector('[data-painted-glass]')).not.toBeNull()
+    // Slid to the right: the corner goes east, and the line in hand reaches for it.
+    pointer(window, 'pointermove', { x: 340, y: 200 })
+    const slid = onLive.mock.calls[onLive.mock.calls.length - 1]?.[0] as { point: { lat: number; lng: number } }
+    expect(slid.point.lng).toBeGreaterThan(-98.3)
+    expect(inHand()[0]?.opts.path).toHaveLength(3)
+    pointer(window, 'pointerup', { x: 340, y: 200 })
+    expect(draft.onAdd).toHaveBeenCalledTimes(1)
+    expect((draft.onAdd as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].lng).toBeCloseTo(slid.point.lng, 9)
+    expect(onLive).toHaveBeenLastCalledWith(null)
+    // The map moves under a finger again, and the lift is not also a press on the map.
+    expect(lib.options[lib.options.length - 1]).toEqual({ gestureHandling: 'greedy' })
+    act(() => lib.listeners.click?.(event(29.55, -98.3)))
+    expect(draft.onAdd).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes a press that slides before the hold for a drag of the map, and a second finger for a pinch', () => {
+    vi.useFakeTimers()
+    const onLive = vi.fn()
+    mount({ draft: draftOf([A, B]), onLive })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    pointer(window, 'pointermove', { x: 320, y: 200 })
+    act(() => vi.advanceTimersByTime(1000))
+    expect(onLive).not.toHaveBeenCalled()
+    pointer(window, 'pointerup', { x: 320, y: 200 })
+    // Held, then a second finger comes down: the hold is over and nothing is placed.
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(400))
+    expect(onLive).toHaveBeenCalledTimes(1)
+    pointer(lib.div, 'pointerdown', { x: 100, y: 100 }, 'touch', 2)
+    expect(onLive).toHaveBeenLastCalledWith(null)
+    expect(lib.options[lib.options.length - 1]).toEqual({ gestureHandling: 'greedy' })
+  })
+
+  it('never holds for a mouse, which places with a click, or for a press on a corner or one of Google’s buttons', () => {
+    vi.useFakeTimers()
+    const onLive = vi.fn()
+    mount({ draft: draftOf([A, B]), onLive })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 }, 'mouse')
+    act(() => vi.advanceTimersByTime(1000))
+    expect(onLive).not.toHaveBeenCalled()
+    // Google's marker is a box with a title inside the map's own box.
+    const mark = document.createElement('div')
+    mark.title = 'Drag to move this corner'
+    lib.div.appendChild(mark)
+    pointer(mark, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(1000))
+    expect(onLive).not.toHaveBeenCalled()
+    expect(lib.options).toHaveLength(0)
+  })
+
+  it('shows the line in hand in the glass, with the move a finger is making', () => {
+    mount({ draft: draftOf([A, B]) })
+    const down = new Event('pointerdown', { bubbles: true })
+    Object.defineProperty(down, 'pointerType', { value: 'touch' })
+    Object.assign(down, { clientX: 5, clientY: 5, pointerId: 9 })
+    const mark = document.createElement('div')
+    mark.title = 'Drag to move this corner'
+    lib.div.appendChild(mark)
+    act(() => void mark.dispatchEvent(down))
+    act(() => corners()[1]!.fire('drag', event(29.5511, -98.2989)))
+    const glass = document.querySelector('[data-painted-glass]')
+    expect(glass).not.toBeNull()
+    // The line in hand alone: its dark edge and its dashes.
+    expect(glass?.querySelectorAll('polyline')).toHaveLength(2)
+  })
+
+  it('takes no press on the map for a corner while a finger is held, whenever Google says it', () => {
+    // Google may tell the map it was pressed before this canvas hears the finger lift. The hold is quiet from its start.
+    vi.useFakeTimers()
+    const draft = draftOf([A, B])
+    mount({ draft })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(380))
+    act(() => lib.listeners.click?.(event(29.55, -98.3)))
+    expect(draft.onAdd).not.toHaveBeenCalled()
+    pointer(window, 'pointerup', { x: 300, y: 200 })
+    expect(draft.onAdd).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives a press to the corner Google gave it to: the corner’s own drag ends a hold the same press began', () => {
+    vi.useFakeTimers()
+    const draft = draftOf([A, B])
+    const onLive = vi.fn()
+    mount({ draft, onLive })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(380))
+    expect(lib.options[lib.options.length - 1]).toEqual({ gestureHandling: 'none' })
+    const to = { lat: 29.5512, lng: -98.2987 }
+    act(() => corners()[1]!.fire('dragstart', event(to.lat, to.lng)))
+    // The map moves under a finger again, and the move in hand is the corner's and not a new one.
+    expect(lib.options[lib.options.length - 1]).toEqual({ gestureHandling: 'greedy' })
+    expect(onLive).toHaveBeenLastCalledWith({ kind: 'move', index: 1, point: to, caught: null })
+    act(() => corners()[1]!.fire('dragend', event(to.lat, to.lng)))
+    pointer(window, 'pointerup', { x: 320, y: 180 })
+    expect(draft.onMove).toHaveBeenCalledTimes(1)
+    expect(draft.onAdd).not.toHaveBeenCalled()
+  })
+
+  it('never begins a hold for a press that turned out to be a press on a corner', () => {
+    vi.useFakeTimers()
+    const draft = draftOf([A, B])
+    const onLive = vi.fn()
+    mount({ draft, onLive })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(100))
+    act(() => corners()[0]!.fire('click', event(A.lat, A.lng)))
+    act(() => vi.advanceTimersByTime(1000))
+    expect(onLive).not.toHaveBeenCalled()
+    expect(lib.options).toHaveLength(0)
+    expect(draft.onPick).toHaveBeenCalledWith(0)
+    expect(draft.onAdd).not.toHaveBeenCalled()
+  })
+
+  it('lets go of everything when the drawing ends: its corners, its line, its listeners and the map’s own drag', () => {
+    vi.useFakeTimers()
+    const onLive = vi.fn()
+    const { rerender } = mount({ draft: draftOf([A, B, C]), onLive })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(400))
+    rerender({ draft: null })
+    expect(corners()).toHaveLength(0)
+    expect(middles()).toHaveLength(0)
+    expect(inHand()).toHaveLength(0)
+    expect(lib.removed).toEqual(expect.arrayContaining(['click', 'dragstart', 'drag', 'dragend']))
+    // The hold that was under way gave the map back its drag.
+    expect(lib.options[lib.options.length - 1]).toEqual({ gestureHandling: 'greedy' })
+    const calls = onLive.mock.calls.length
+    pointer(window, 'pointermove', { x: 350, y: 220 })
+    pointer(window, 'pointerup', { x: 350, y: 220 })
+    expect(onLive.mock.calls.length).toBe(calls)
+  })
+})
+
 describe('a place’s dot, put down by hand (step 3)', () => {
   const AT = { lat: 29.5505, lng: -98.2995 }
   const dotAt = (point: { lat: number; lng: number }, over: Partial<PaintedCanvasDot> = {}): PaintedCanvasDot => ({ point, label: 'the gate', onMove: vi.fn(), ...over })
@@ -624,6 +909,41 @@ describe('a place’s dot, put down by hand (step 3)', () => {
     act(() => marker().fire('drag', event(29.5506, -98.2994)))
     expect(glass()).not.toBeNull()
     expect(GlassMapStub.made).toHaveLength(1)
+  })
+
+  it('keeps one glass map for each look, however often the theme goes back and forth', () => {
+    document.documentElement.dataset.theme = 'dark'
+    try {
+      const { rerender } = mount({ dot: dotAt(AT) })
+      down('touch')
+      const dragOnce = () => {
+        act(() => marker().fire('drag', event(29.5506, -98.2994)))
+        act(() => marker().fire('dragend', event(29.5506, -98.2994)))
+      }
+      dragOnce()
+      expect(GlassMapStub.made.map((g) => g.opts.colorScheme)).toEqual(['DARK'])
+      rerender({ dot: dotAt(AT), light: true })
+      dragOnce()
+      expect(GlassMapStub.made.map((g) => g.opts.colorScheme)).toEqual(['DARK', 'LIGHT'])
+      rerender({ dot: dotAt(AT), light: false })
+      dragOnce()
+      rerender({ dot: dotAt(AT), light: true })
+      dragOnce()
+      expect(GlassMapStub.made).toHaveLength(2)
+    } finally {
+      delete document.documentElement.dataset.theme
+    }
+  })
+
+  it('leaves no glass up when the placing ends with a finger still down', () => {
+    const onLive = vi.fn()
+    const { rerender } = mount({ dot: dotAt(AT), onLive })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(glass()).not.toBeNull()
+    rerender({ dot: null, onLive })
+    expect(onLive).toHaveBeenLastCalledWith(null)
+    expect(glass()).toBeNull()
   })
 
   it('rings the glass green when the dot has caught a target', () => {

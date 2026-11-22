@@ -218,14 +218,15 @@ describe('the painting window, on a walk (step 3)', () => {
     expect(google.mounts).toBe(1)
   })
 
-  it('goes to the Leaflet map, and stays, when a line of the walk is fixed by hand', async () => {
+  it('stays on the one Google map when a line of the walk is fixed by hand, and after', async () => {
     const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={WALKING} follow />)
     await screen.findByTestId('google')
     view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={DRAWING} draft={DRAFT} />)
-    expect(provider()).toBe('osm')
+    expect(provider()).toBe('google')
     view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} />)
-    await waitFor(() => expect(provider()).toBe('osm'))
-    expect(screen.queryByTestId('google')).toBeNull()
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.mounts).toBe(1)
   })
 })
 
@@ -294,11 +295,25 @@ describe('the rule, kept', () => {
 })
 
 describe('making something', () => {
-  it('draws a line on the Leaflet map, opened where the painter was looking', async () => {
+  it('draws a line on Google’s map, the one it was read on, and opens no place under the finger (step 3)', async () => {
+    const onPlaceTap = vi.fn()
+    const view = render(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={LOOKING} onPlaceTap={onPlaceTap} />)
+    await screen.findByTestId('google')
+    view.rerender(<PaintedMapCanvas lines={LINES} places={PLACES} height="100%" google={DRAWING} draft={DRAFT} onPlaceTap={onPlaceTap} />)
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
+    expect(google.props?.draft).toBe(DRAFT)
+    // A press on a place while a line is drawn is a corner. It does not open the place.
+    expect(google.props?.onPlaceTap).toBeUndefined()
+    expect(google.mounts).toBe(1)
+  })
+
+  it('takes the line up on the Leaflet map, on the spot the painter was looking at, when Google fails under it', async () => {
     const view = render(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={LOOKING} />)
     await screen.findByTestId('google')
     fireEvent.click(screen.getByRole('button', { name: 'the painter moves in on a spot' }))
     view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={DRAWING} draft={DRAFT} />)
+    fireEvent.click(screen.getByRole('button', { name: 'google refuses the key' }))
     expect(provider()).toBe('osm')
     expect(screen.queryByTestId('google')).toBeNull()
     const leaflet = screen.getByTestId('leaflet')
@@ -307,23 +322,24 @@ describe('making something', () => {
     expect(leaflet.getAttribute('data-zoom')).toBe('20')
   })
 
-  it('keeps the Leaflet map after the save: the new line stays on the photograph it was drawn over', async () => {
+  it('keeps Google’s map after the save: the new line stays on the photograph it was drawn over', async () => {
     const view = render(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={LOOKING} />)
     await screen.findByTestId('google')
     view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={DRAWING} draft={DRAFT} />)
     view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={LOOKING} />)
-    await waitFor(() => expect(provider()).toBe('osm'))
-    expect(screen.queryByTestId('google')).toBeNull()
+    expect(provider()).toBe('google')
+    expect(screen.queryByTestId('leaflet')).toBeNull()
     // One Google map was made in this window, and no second one.
     expect(google.mounts).toBe(1)
   })
 
-  it('never shows Google under a window that opened to draw', () => {
+  it('opens on Google in a window that opened to draw, and reads the saved line on the same map', async () => {
     const view = render(<PaintedMapCanvas lines={[]} places={[]} height="100%" google={DRAWING} draft={DRAFT} />)
-    expect(provider()).toBe('osm')
+    await screen.findByTestId('google')
+    expect(provider()).toBe('google')
     view.rerender(<PaintedMapCanvas lines={LINES} places={[]} height="100%" google={LOOKING} />)
-    expect(provider()).toBe('osm')
-    expect(google.mounts).toBe(0)
+    expect(provider()).toBe('google')
+    expect(google.mounts).toBe(1)
   })
 
   it('takes Google’s map down under a picture of the map, and does not bring it back', async () => {

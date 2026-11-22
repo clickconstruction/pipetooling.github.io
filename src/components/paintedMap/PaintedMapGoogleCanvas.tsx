@@ -1,9 +1,9 @@
 /**
  * A painted map on a Google map (punch list #387): its lines, its numbered places and the person's
  * own dot, over Google's photograph or its road map. It is read on it, and since step 3 a walk is
- * painted on it and a place's dot is put down on it. It draws no corner and takes no drawing press
- * yet. While a line is drawn by hand, and while Time is on, the Leaflet canvas is the map
- * (`paintedMapProvider.ts`), and `PaintedMapCanvas` mounts one or the other.
+ * painted on it, a place's dot is put down on it and a line is drawn on it by hand. While Time is
+ * on, and while a picture of the map is up, the Leaflet canvas is the map (`paintedMapProvider.ts`),
+ * and `PaintedMapCanvas` mounts one or the other.
  *
  * - **Lines** are Google's own lines, stroked as the Leaflet canvas strokes them
  *   (`paintedGoogleShapes.ts`): a dark edge under the paint, dashes for a line drawn by hand, faint
@@ -21,6 +21,10 @@
  * - **A dot placed by hand** (step 3): one of Google's own markers, wearing the Leaflet canvas's dot,
  *   that a finger drags. A press on the map brings it there, and a target it nears catches it, by
  *   the rules both canvases read (`handPlacing.ts`).
+ * - **A line drawn by hand** (step 3): a press adds a corner, a press held still then slid places one
+ *   under the glass, a drag on a corner moves it, and a drag on the dot in the middle of a leg makes
+ *   one. The corners are Google's own markers too, and the line in hand is one pair of lines that is
+ *   moved and never remade.
  * - **The glass** rides above a finger that is placing. Its picture is a second small Google map,
  *   made once for the page and kept, showing the big map's own view drawn larger, so it never asks
  *   for a zoom Google has no photograph for. The lines and places in it are drawn here, sharp.
@@ -37,7 +41,7 @@
  * Its doors to Leaflet are the pins canvas's own (`useGoogleCanvasDoors`). Lazy-load this file: it
  * pulls in the Maps library.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { APIProvider, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps'
 import { useGoogleCanvasDoors, useStampedTheme } from '../../hooks/useGoogleCanvasDoors'
@@ -45,17 +49,18 @@ import { googleColorSchemeForTheme } from '../../lib/dashboardJobsMap'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { followStep, pointInBox } from '../../lib/paintedMap/followMe'
+import { legMiddles } from '../../lib/paintedMap/draftLine'
 import { frameMeStep } from '../../lib/paintedMap/frameMe'
-import { GLASS_SIZE, GLASS_ZOOM_IN, glassSpot, glassView, settlePoint, type PaintedLive } from '../../lib/paintedMap/handPlacing'
+import { GLASS_SIZE, GLASS_ZOOM_IN, HOLD_MS, HOLD_SLOP_PX, glassSpot, glassView, settlePoint, spotAtBox, withLive, type PaintedLive } from '../../lib/paintedMap/handPlacing'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
-import { lineRuns, type PaintedPoint } from '../../lib/paintedMap/paintedLine'
+import { lineRuns, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 import { PAINTED_POINT_ZOOM, paintedFitView, paintedOpeningView, paintedViewBounds, type PaintedMapView } from '../../lib/paintedMap/paintedMapView'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
 import { GLASS_MAP_PX, keptPaintedGlassMap, paintedGlassMap } from './paintedGoogleGlassMap'
-import type { PaintedCanvasDot, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
+import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import { PAINT_COLOR, PAINT_INK, PAINT_ME_BLUE, PAINT_PAPER } from './paintedMapLook'
 import { PaintedWaitSketch } from './PaintedWaitSketch'
 
@@ -88,6 +93,8 @@ export type PaintedMapGoogleCanvasProps = {
   /** Frame everything on the map again each time this number changes. */
   refit?: number
   onPlaceTap?: (id: string) => void
+  /** The line being drawn or reshaped by hand. The canvas reports each move, and the caller keeps the corners. */
+  draft?: PaintedCanvasDraft | null
   /** One dot being placed or moved by hand: a place. */
   dot?: PaintedCanvasDot | null
   /** What a finger is doing right now, for the caller's words: the spot and what it caught. Null when it lifts. */
@@ -314,6 +321,209 @@ function readView(map: google.maps.Map): { view: PaintedMapView; box: { width: n
   return { view: { center: { lat: c.lat(), lng: c.lng() }, zoom: z }, box: { width: div.clientWidth, height: div.clientHeight } }
 }
 
+/** A corner of the line being drawn, and the small dot in the middle of a leg: the Leaflet canvas's own, as pictures in boxes a fingertip can find. */
+const CORNER_BOX = 44
+const cornerSvg = (picked: boolean) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${CORNER_BOX}" height="${CORNER_BOX}"><circle cx="22" cy="23" r="10" fill="rgba(0,0,0,.4)"/><circle cx="22" cy="22" r="7.5" fill="${PAINT_PAPER}" stroke="${picked ? GLASS_PICKED : PAINT_INK}" stroke-width="3"/></svg>`
+const MIDDLE_BOX = 36
+const MIDDLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${MIDDLE_BOX}" height="${MIDDLE_BOX}"><circle cx="18" cy="18" r="4" fill="${PAINT_PAPER}" fill-opacity=".75" stroke="${PAINT_INK}" stroke-width="2"/></svg>`
+/** What a press on the map is not a press on the ground for: one of Google's markers or buttons, or a mark of ours. */
+const NOT_THE_GROUND = '[title], [role="button"], button, a, .gmnoprint'
+
+/** The spot an event of Google's own happened on. */
+function eventSpot(e: google.maps.MapMouseEvent): PaintedPoint | null {
+  return e.latLng ? { lat: e.latLng.lat(), lng: e.latLng.lng() } : null
+}
+
+/** The line being drawn, with the move a finger is making laid over it: one pair of Google's lines, moved and never remade. */
+function DraftLine({ points }: { points: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const pair = useRef<google.maps.Polyline[]>([])
+  useEffect(() => {
+    if (!map) return
+    // Over the saved lines, so the line in hand is never under one it crosses.
+    pair.current = sureRunStrokes('drawn', LOOK).map((look) => new google.maps.Polyline({ map, path: [], clickable: false, ...look, zIndex: look.zIndex + 10 }))
+    return () => {
+      pair.current.forEach((l) => l.setMap(null))
+      pair.current = []
+    }
+  }, [map])
+  useEffect(() => {
+    // One corner is not a line yet.
+    const path = points.length >= 2 ? points.map((p) => ({ lat: p.lat, lng: p.lng })) : []
+    pair.current.forEach((l) => l.setPath(path))
+  }, [map, points])
+  return null
+}
+
+/**
+ * The corners, the middles of the legs and the presses that draw a line by hand, as the Leaflet canvas takes them:
+ * a press adds a corner, a press held still then slid places one under the glass, a drag on a corner moves it, and a
+ * drag on the dot in the middle of a leg makes a corner there.
+ */
+function DraftLayer({ draft, setLive, coarse }: { draft: PaintedCanvasDraft; setLive: (live: PaintedLive | null) => void; coarse: MutableRefObject<boolean> }) {
+  const map = useMap()
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  // The press that ended a hold, or a drag of a corner, is not also a new corner.
+  const quietUntil = useRef(0)
+  // A press Google gave to a corner or a middle dot is that marker's: it ends any hold the same press began.
+  const endHold = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    if (!map) return
+    const settle = (p: PaintedPoint) => settlePoint(p, draftRef.current.targets, map.getZoom() ?? PAINTED_POINT_ZOOM)
+    const click = map.addListener('click', (e: google.maps.MapMouseEvent) => {
+      const p = eventSpot(e)
+      if (!p || Date.now() < quietUntil.current) return
+      draftRef.current.onPick(null)
+      draftRef.current.onAdd(p)
+    })
+    // A press held still becomes a placing press: the map stops moving under the finger, the glass shows, and lifting sets the corner.
+    const el = map.getDiv()
+    let timer = 0
+    let down: { x: number; y: number; id: number } | null = null
+    let holding = false
+    let last: { x: number; y: number } | null = null
+    const at = (x: number, y: number): PaintedPoint | null => {
+      const seen = readView(map)
+      if (!seen) return null
+      const r = el.getBoundingClientRect()
+      return spotAtBox({ x: x - r.left, y: y - r.top }, seen.view, seen.box)
+    }
+    const show = (x: number, y: number) => {
+      const p = at(x, y)
+      if (p) setLive({ kind: 'add', ...settle(p) })
+    }
+    const stop = () => {
+      window.clearTimeout(timer)
+      if (holding) {
+        map.setOptions({ gestureHandling: 'greedy' })
+        // However the hold ends, the press that made it is not also a press on the map.
+        quietUntil.current = Date.now() + 600
+      }
+      down = null
+      holding = false
+      last = null
+    }
+    const onDown = (e: PointerEvent) => {
+      coarse.current = e.pointerType !== 'mouse'
+      // A second finger is a pinch. A mouse places with a click, and has no need of the glass.
+      if (down || e.pointerType === 'mouse') {
+        if (down) {
+          setLive(null)
+          stop()
+        }
+        return
+      }
+      if ((e.target as HTMLElement | null)?.closest?.(NOT_THE_GROUND)) return
+      down = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      last = { x: e.clientX, y: e.clientY }
+      timer = window.setTimeout(() => {
+        if (!down || !last) return
+        holding = true
+        // Quiet from here, not from the lift: Google may say the map was pressed before this canvas hears the finger lift.
+        quietUntil.current = Number.POSITIVE_INFINITY
+        map.setOptions({ gestureHandling: 'none' })
+        show(last.x, last.y)
+      }, HOLD_MS)
+    }
+    const onMove = (e: PointerEvent) => {
+      if (!down || e.pointerId !== down.id) return
+      last = { x: e.clientX, y: e.clientY }
+      if (!holding) {
+        if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > HOLD_SLOP_PX) stop()
+        return
+      }
+      e.preventDefault()
+      show(e.clientX, e.clientY)
+    }
+    const onUp = (e: PointerEvent) => {
+      if (!down || e.pointerId !== down.id) return
+      if (holding) {
+        const p = at(e.clientX, e.clientY)
+        if (p) draftRef.current.onAdd(settle(p).point)
+        setLive(null)
+      }
+      stop()
+    }
+    const onCancel = () => {
+      setLive(null)
+      stop()
+    }
+    endHold.current = () => {
+      if (!down) return
+      if (holding) setLive(null)
+      stop()
+    }
+    el.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    return () => {
+      endHold.current = () => {}
+      // A drawing that ends with a finger still down leaves no glass up and no words about a catch.
+      setLive(null)
+      google.maps.event.removeListener(click)
+      el.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      stop()
+    }
+  }, [map, setLive, coarse])
+
+  // The corners and the middles are made again whenever the line changes. It changes when a finger lifts, never while one drags.
+  const { points, picked } = draft
+  useEffect(() => {
+    if (!map) return
+    const settle = (p: PaintedPoint) => settlePoint(p, draftRef.current.targets, map.getZoom() ?? PAINTED_POINT_ZOOM)
+    const made: google.maps.Marker[] = []
+    const listeners: google.maps.MapsEventListener[] = []
+    const drags = (m: google.maps.Marker, live: (landed: { point: PaintedPoint; caught: SnapTarget | null }) => PaintedLive, done: (p: PaintedPoint) => void) => {
+      const say = (e: google.maps.MapMouseEvent) => {
+        const p = eventSpot(e)
+        if (p) setLive(live(settle(p)))
+      }
+      listeners.push(
+        m.addListener('dragstart', (e: google.maps.MapMouseEvent) => {
+          endHold.current()
+          say(e)
+        }),
+        m.addListener('drag', say),
+        m.addListener('dragend', (e: google.maps.MapMouseEvent) => {
+          quietUntil.current = Date.now() + 400
+          const p = eventSpot(e)
+          if (p) done(settle(p).point)
+          setLive(null)
+        }),
+      )
+    }
+    legMiddles(points).forEach((mid, i) => {
+      const m = new google.maps.Marker({ map, position: { lat: mid.lat, lng: mid.lng }, draggable: true, icon: svgIcon(MIDDLE_SVG, MIDDLE_BOX), zIndex: 400, title: 'Drag to make a corner here', crossOnDrag: false, optimized: false })
+      made.push(m)
+      drags(m, (landed) => ({ kind: 'insert', after: i, ...landed }), (p) => draftRef.current.onInsert(i, p))
+    })
+    points.forEach((corner, i) => {
+      const m = new google.maps.Marker({ map, position: { lat: corner.lat, lng: corner.lng }, draggable: true, icon: svgIcon(cornerSvg(picked === i), CORNER_BOX), zIndex: 500, title: 'Drag to move this corner', crossOnDrag: false, optimized: false })
+      made.push(m)
+      listeners.push(
+        m.addListener('click', () => {
+          endHold.current()
+          quietUntil.current = Date.now() + 400
+          draftRef.current.onPick(draftRef.current.picked === i ? null : i)
+        }),
+      )
+      drags(m, (landed) => ({ kind: 'move', index: i, ...landed }), (p) => draftRef.current.onMove(i, p))
+    })
+    return () => {
+      listeners.forEach((l) => google.maps.event.removeListener(l))
+      made.forEach((m) => m.setMap(null))
+    }
+  }, [map, points, picked, setLive])
+  return null
+}
+
 /** One dot a finger places or moves: a place. A drag moves it, a press on the map brings it there, and a target it nears catches it. */
 function DotLayer({ dot, setLive, coarse }: { dot: PaintedCanvasDot; setLive: (live: PaintedLive | null) => void; coarse: MutableRefObject<boolean> }) {
   const map = useMap()
@@ -323,7 +533,7 @@ function DotLayer({ dot, setLive, coarse }: { dot: PaintedCanvasDot; setLive: (l
   useEffect(() => {
     if (!map) return
     const settle = (p: PaintedPoint) => settlePoint(p, dotRef.current.targets ?? [], map.getZoom() ?? PAINTED_POINT_ZOOM)
-    const where = (e: google.maps.MapMouseEvent): PaintedPoint | null => (e.latLng ? { lat: e.latLng.lat(), lng: e.latLng.lng() } : null)
+    const where = eventSpot
     const at = dotRef.current.point
     // Over every place and line. Google lifts a dragged marker off its spot and draws a cross under it: neither here, the glass shows the spot.
     const m = new google.maps.Marker({ map, position: { lat: at.lat, lng: at.lng }, draggable: true, icon: svgIcon(DOT_SVG, DOT_BOX), zIndex: 800, title: `Drag to place ${dotRef.current.label}`, crossOnDrag: false, optimized: false })
@@ -357,6 +567,8 @@ function DotLayer({ dot, setLive, coarse }: { dot: PaintedCanvasDot; setLive: (l
     }
     div.addEventListener('pointerdown', onDown, true)
     return () => {
+      // A placing that ends with a finger still down leaves no glass up.
+      setLive(null)
       listeners.forEach((l) => google.maps.event.removeListener(l))
       div.removeEventListener('pointerdown', onDown, true)
       m.setMap(null)
@@ -400,11 +612,11 @@ function Glass({ live, lines, places, draftPoints, mapTypeId, scheme, frame }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheme])
   useEffect(() => {
-    const glass = keptPaintedGlassMap()
+    const glass = keptPaintedGlassMap(scheme)
     if (!glass) return
     glass.map.setOptions({ mapTypeId, ...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {}) })
     glass.map.moveCamera({ center: { lat, lng }, zoom })
-  }, [lat, lng, zoom, mapTypeId])
+  }, [lat, lng, zoom, mapTypeId, scheme])
   if (!seen) return null
   const at = glassSpot(pointInBox(live.point, seen.view, seen.box), seen.box)
   const half = GLASS_SIZE / 2
@@ -543,7 +755,7 @@ function Camera({ flyTo, held, refit, points, onView, onCamera }: { flyTo?: Pain
   return null
 }
 
-export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, follow, frameMe, light, refit, onPlaceTap, dot, onLive, onView, onCamera }: PaintedMapGoogleCanvasProps) {
+export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeId, lines, places, framed, start, openOn, flyTo, me, frameMargin, follow, frameMe, light, refit, onPlaceTap, draft, dot, onLive, onView, onCamera }: PaintedMapGoogleCanvasProps) {
   const theme = useStampedTheme()
   const scheme = googleColorSchemeForTheme(light ? 'light' : theme)
   // What a finger is doing right now. Kept here for the glass, and told to the caller for its words.
@@ -571,6 +783,9 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
   // With a view carried over, the place the caller last flew to is behind the painter already.
   const held = opening.current.openOn ? opening.current.flyTo : null
   const everything = [...lines.flatMap((l) => l.points), ...places]
+  // The line in hand with the move a finger is making laid over it, for the map and for the glass.
+  const draftPoints = draft?.points ?? null
+  const draftShown = useMemo(() => (draftPoints ? withLive(draftPoints, live) : null), [draftPoints, live])
 
   return (
     <GoogleCanvasBoundary onUnavailable={onUnavailable}>
@@ -610,8 +825,8 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
               zoomControl
               clickableIcons={false}
               styles={GOOGLE_MAP_STYLES}
-              // Two presses on a dot being placed are two presses, not a zoom.
-              disableDoubleClickZoom={!!dot}
+              // Two presses on a dot being placed, or on a line being drawn, are two presses and not a zoom.
+              disableDoubleClickZoom={!!dot || !!draft}
               reuseMaps
             >
               <Camera flyTo={flyTo} held={held} refit={refit} points={everything} onView={onView} onCamera={onCamera} />
@@ -621,9 +836,11 @@ export default function PaintedMapGoogleCanvas({ apiKey, onUnavailable, mapTypeI
               {frameMargin ? <FrameMargin me={me ?? null} points={everything} /> : null}
               {frameMe && me && !me.area ? <FrameMe me={me} points={everything} /> : null}
               {me ? <Me me={me} /> : null}
+              {draft ? <DraftLine points={draftShown ?? []} /> : null}
+              {draft ? <DraftLayer draft={draft} setLive={setLive} coarse={coarse} /> : null}
               {dot ? <DotLayer dot={dot} setLive={setLive} coarse={coarse} /> : null}
               {/* A mouse is already that exact, so a mouse gets no glass. */}
-              {live && frame && coarse.current ? <Glass live={live} lines={lines} places={places} draftPoints={null} mapTypeId={mapTypeId} scheme={scheme} frame={frame} /> : null}
+              {live && frame && coarse.current ? <Glass live={live} lines={lines} places={places} draftPoints={draftShown} mapTypeId={mapTypeId} scheme={scheme} frame={frame} /> : null}
             </GoogleMap>
           ) : null}
         </APIProvider>
