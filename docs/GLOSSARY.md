@@ -5615,6 +5615,7 @@ since v2.6127 the rule lives in `supabase/functions/_shared/zzTestJob.ts`, which
 `isZzSinkJob`), never by number — through `migrate_job_ledger_costs_and_delete`.
 Since v2.6127 the same rule holds a saved report's two sends: a report on a ZZ job, a ZZ project or a ZZ bid is emailed to no subscriber and pushed to no phone (`send-report-email` and `send-report-notification` read the subject first, `_shared/reportSubject.ts`, and answer `skipped: 'zz_test_job'`;
 **Send now** leaves such reports out and says how many), so a session's walk on a test row reaches no one.
+Since v2.8237 the rule holds a new Dispatch request's push as well: a request on a ZZ job or a ZZ bid rings no dispatcher's phone and its line stays in the inbox (`notify-dispatch-request` asks `dispatchRequestPushSkip` in `_shared/reportSubject.ts`).
 Since v2.5116 (punch list #61, PR 1 of 3) the same rule hides ZZ test jobs from every role but dev on the Pipeline and wherever its jobs cache is read (`/accounts-receivable`, two Quickfill sections), and from the Pipeline strip's and Quickfill's money (`hidesZzTestJobs`, `withoutZzTestJobMoney`, `src/lib/jobs/zzTestJobVisibility.ts`).
 Since v2.5120 (PR 2a) the Dashboard's Billed pin, AR / Unbilled card and Ready to bill / Billed lists leave them out too, by a shared read of every ZZ job id (`src/lib/jobs/zzTestJobRows.ts`: a name starting with ZZ, or one character then ZZ, re-checked;
 one answer a minute per signed-in user, cleared by the sweep;

@@ -4412,6 +4412,8 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 ### notify-dispatch-request
 
+> **v2.8237 — a request on a ZZ test job rings no phone** (punch list #382; redeployed only on a go that names it): before the `created` fan-out the request's job or bid is read by name (`dispatchRequestPushSkip`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts), the read and the rule the report sends use). On a ZZ test job or a ZZ bid nothing is sent and the function answers `skipped: 'zz_test_job'` with `push_sent: 0`. The row stays in the inbox, and the requester's own closed, reopened and replied pushes are not held. A request on no job and no bid rings as before.
+
 **Papers before a job opens (v2.7665)**: when the request is on a job, a group member who still owes that job a paper is left out of the new-request push, and `recipients` counts who was sent to. The requester's own closed, reopened and replied push is unchanged.
 
 > **v2.6630 — the cron door** (punch list #253): a POST carrying `X-Cron-Secret` equal to `CRON_SECRET` is an internal caller like the service key, for the `created` fan-out alone (`isCronCaller`, a constant-time compare; an unset secret opens to nobody). The morning license-expiry sweep (`license_expiry_notices_sweep()`, migration [`20261107120000`](./migrations/20261107120000_license_expiry_notices_sweep.md)) files its rows in SQL under pg_cron, where no session exists, and posts each one here so the Dispatch group hears it as it does after a Save. `x-cron-secret` joins the CORS allow-list. **Redeploy required**, before the migration is pushed.
