@@ -98,6 +98,13 @@ that saves except a ZZ test row's own setup and cleanup.
   So the PR goes back in only when someone on Fable 5.2 can push within minutes of its merge. Before
   re-arming, merge `origin/main` into its branch if it has fallen behind, and test it against each
   queued head with `git merge-tree`.
+- **The migration's stamp is now behind main's.** `20261122021600` was the newest when it was written;
+  by 07:00 UTC on 2026-11-22 main held three later ones (the last `20261122032000`). If those are on
+  prod, `supabase db push` refuses a file older than the last one applied. Before re-arming, rename the
+  file past `origin/main`'s newest stamp, register it with `npm run claim -- --migration <file>`, and
+  rename its doc in `docs/migrations/` and the stamp named in `docs/ACCESS_CONTROL.md` and in the
+  v2.8251 fragment and release note's PR to match. The bed finds the file by its slug, so it needs no
+  change.
 - **The walks are held for Fable too**, on the same word.
 - **The other unpressed saves still run in View as.** From the survey, still open: nav telemetry
   (`ui_nav_clicks`), the Dashboard's day book snapshot (`day_book_queue_snapshots`), the dispatch
