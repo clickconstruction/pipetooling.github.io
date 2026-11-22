@@ -53,7 +53,10 @@ describe('JobModeArrivalCheck', () => {
     renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={mem} />)
     await screen.findByRole('region', { name: 'Is it as told?' })
     // The lead holds for a bullet somebody told us and for one still open: it claims nobody's word.
-    expect(screen.getByText('Look before you unload. These must be true before Rough In.')).toBeTruthy()
+    const card = screen.getByRole('region', { name: 'Is it as told?' })
+    expect(card.textContent).toContain('Look before you unload. These must be true before Rough In.')
+    // Values in place: the stage is a value the app works out, drawn apart from the words around it.
+    expect(Array.from(card.querySelectorAll('[data-value="worked-out"]')).map((v) => v.textContent)).toEqual(['Rough In'])
     expect(Array.from(document.querySelectorAll('[data-arrival-bullet]')).map((r) => (r as HTMLElement).dataset.answer)).toEqual(['as-told', 'as-told'])
     // Each bullet's press is the word No, never a state to read: nothing on it says As told.
     expect(Array.from(document.querySelectorAll('.scArrivalNo')).map((b) => b.textContent)).toEqual(['No', 'No'])

@@ -5,12 +5,13 @@
  * `stageCheckPayloadFrom` answers null for it and the inbox reads it here: its door is the job's list, not a check.
  * Screen-only words live here and not in `startChecks.ts`, which is copied to the edge. Pure.
  */
+import { val } from '../valuesInPlace'
 import { countWords } from './startChecks'
 
 export const ARRIVAL_WORDS = {
   heading: 'Is it as told?',
-  /** True of every bullet on the card, told or still open: each must be true before the stage. */
-  lead: (stage: string) => `Look before you unload. These must be true before ${stage}.`,
+  /** True of every bullet on the card, told or still open: each must be true before the stage. The stage is marked, so the card draws it as a value. */
+  lead: (stage: string) => `Look before you unload. These must be true before ${val('stage', stage)}.`,
   no: 'No',
   allYes: 'Yes, all as told',
   send: (n: number) => `Tell Dispatch: ${countWords(n, 'thing', 'things')} not as told`,
