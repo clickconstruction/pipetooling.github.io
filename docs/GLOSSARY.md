@@ -6174,6 +6174,7 @@ A value that can be changed, but not by this person, is shown with a dashed line
 One fact sits on each line, the label on the left and the values in a column (`ValueLines`), and there is no *Change a date* link or edit window for a value already on the screen.
 A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`, the screen draws it with `ValueSentence`, and a text or an email reads it with `plainSentence` ([`valuesInPlace.ts`](../src/lib/valuesInPlace.ts)).
 `keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
+Since v2.8299 a value handed `startOpen` draws its field at once, for a fact a screen asks for right after another: the Lien desk's retainage pane asks how our contract ended, then opens its day.
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
 The words to ask for it on any screen are *give this screen values in place*.
 
