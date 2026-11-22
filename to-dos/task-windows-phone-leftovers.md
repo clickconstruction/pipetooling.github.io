@@ -131,6 +131,22 @@ Built 2026-11-13 on the owner's word *build the leftovers*. Each PR carries its 
 - **Rows 12 and 13** are left alone, as written.
 - **Grace's two notes** below still wait on her word.
 
+### The walk of 2026-11-21
+
+The owner's main session opened a person's thread on `/messages` in the iOS Simulator's Safari (iPhone 17, iOS 26.2), looking only. Two things were seen.
+
+- **The list page was wider than the phone.** Fixed in v2.8232: the page, both lanes and their rows now fit (punch list #324 has the cause).
+- **With the keyboard up in a thread, the reply box and its send press sit on the keyboard, but the window's header leaves the top of the screen**: the way back, the name and ⋯. Not fixed. The thread window (`ThreadWindow.tsx`) is pinned to the page, `inset: 0`, as the sheets inside it were before row 5.
+
+What the header needs, from a try on 2026-11-21 that was walked once on a ZZ Test person's thread and taken back out:
+
+1. **Follow the part of the page that shows.** On a phone the backdrop takes `visibleBand`'s top and height, as `PhoneSheet` does. Walked: the header then stays on screen with the keyboard up.
+2. **Decide what gives way.** The keyboard leaves about 375 px on an iPhone 17. The header is 149, the flow strip 42, the lines' floor 112 and the reply box about 135 in Text. Following the band alone cut the foot of the box, the field being typed in, which is worse than a header out of sight. Dropping the lines' floor while the keyboard is up fits an iPhone 17 in Text, and does not fit Email or a small phone. So the window wants an order: the box whole, then the header's first row, then the rest of the header and the flow strip, and the lines last.
+3. **Walk it** in the simulator and on a small phone, in Text and in Email, with nothing typed into a real person's thread and no send pressed.
+
+It changes nothing at a desk: every branch is behind the window's own phone flag. Size S to M, one PR.
+
+
 To walk a phone window in the simulator, switch its on-screen keyboard on first. It is hidden
 until this is run once for the device, and a field is tapped again:
 
