@@ -278,6 +278,8 @@ The **Plumber** column is the signal. **none yet** means no plumbing permit is t
 
 A plumbing permit is tied to a job by its permit number or by its street address. San Antonio is the exception. There a job's plumbing permit carries the job's own number and the applicant's name. So in San Antonio a permit at the address counts only when the same applicant filed it. Another tenant's permit in the same centre never closes a job there.
 
+Only the building's own plumbing permit counts. A city files lawn sprinklers, gas lines and sewer taps under plumbing too. Those do not say a plumber has the job. They close nothing, and the row does not list them.
+
 A permit that does not count is still shown. Under **none yet** a line reads **at this address, not counted**. It names who the permit lists and the day. The skim card says the same under **Who**, with the work the permit names. Read it and judge. If it is this job's plumber, press **Decide…** on the row and pick **Has a plumber**.
 
 Press **map** beside an address to see the site in Google Maps. Press the address to open the building.
