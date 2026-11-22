@@ -41,6 +41,7 @@ import {
   buildSubPortalPapers,
   planPortalAnswer,
   portalAnswers,
+  portalConfirmKept,
   portalConfirms,
   portalPaperSet,
   portalPaymentKeyOf,
@@ -282,6 +283,15 @@ async function answerFromPage(req: Request, admin: Admin, link: { id?: string | 
     // Two presses at the same moment: the table keeps one *received* per payment, and the second reads as done.
     if ((error as { code?: string }).code === '23505' && plan.row.kind === 'received') {
       return jsonResponse({ ok: true, already: true, received: portalAnswers([{ kind: 'received', paper_id: null, labor_job_id: null, sending_id: plan.row.sending_id, payment_id: plan.row.payment_id, note: null, created_at: new Date().toISOString() }]).received })
+    }
+    // Two presses of one copy at the same moment: the table keeps one confirm per copy, and the second reads the first back.
+    if ((error as { code?: string }).code === '23505' && plan.row.kind === 'confirmed' && plan.row.paper_id) {
+      const { data: kept } = await admin
+        .from('sub_paper_acks')
+        .select('id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at, revision, amount, said_from')
+        .eq('kind', 'confirmed')
+        .eq('paper_id', plan.row.paper_id)
+      return jsonResponse({ ok: true, already: true, confirmed: Object.fromEntries(portalConfirmKept(plan.row, (kept ?? []) as PapersAckRow[], new Date().toISOString())) })
     }
     console.error('sub-portal answer not saved', error)
     return jsonResponse({ error: 'That could not be saved. Please try again, or call the office.' }, 500)
