@@ -120,6 +120,7 @@ stamped with its own name.
 Two saves no press asks for are held while an imitation is on (v2.8176, `isImpersonationSessionActive()` read at each send): the app activity heartbeat (`bump_user_app_activity`, so the person's last seen time and app time stay their own) and the clock button's salary sync (`syncSalaryClockSessionsUnasked`), and Exit takes the flag off only after the session is the operator's again.
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
+A session swap that Exit finds refused signs that browser out and lands on the sign-in page, never on the page left while still the person (v2.8241, `leaveViewAs` in `impersonationExit.ts`).
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).

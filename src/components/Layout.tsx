@@ -103,7 +103,8 @@ import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT
 import { APP_BOTTOM_CHROME_VAR, bottomChromeCss, pageBottomPaddingCss } from '../lib/bottomChrome'
 import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
-import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
+import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
+import { leaveViewAsHere } from '../lib/impersonationExit'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen, Wrench } from 'lucide-react'
@@ -537,24 +538,9 @@ export default function Layout() {
   }, [role])
 
   async function handleBackToMyAccount() {
-    const raw = localStorage.getItem(IMPERSONATION_KEY)
     setImpersonating(false)
-    if (!raw) return
-    const stash = readImpersonationStash(raw)
-    // The flag comes off only after the session is the operator's again: until then the page is
-    // still signed in as the person, and what is held while View as is on stays held.
-    try {
-      if (stash?.access_token && stash.refresh_token) {
-        await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
-      }
-    } catch {
-      localStorage.removeItem(IMPERSONATION_KEY)
-      navigate('/sign-in', { replace: true })
-      return
-    }
-    localStorage.removeItem(IMPERSONATION_KEY)
-    // v2.3606: Exit returns to the page the operator left (a full load, so every loader re-reads as them).
-    window.location.assign(impersonationReturnPath(stash, window.location.origin))
+    // The kernel puts the dev's session back or signs this browser out, and takes the flag off last.
+    await leaveViewAsHere()
   }
 
   const impersonationExitLabel = useMemo(

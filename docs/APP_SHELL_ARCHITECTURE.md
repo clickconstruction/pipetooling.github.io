@@ -332,7 +332,7 @@ There is **no data engine**. Layout loads almost nothing itself; each banner, fo
 | 3 | mode derivations 148, 152, 163–164, 178–179, 195–198, 252, 270; `phoneDockModes` 284–308 | `src/lib/shellModes.ts` → `resolveShellModes(…)`, `shellModeRows(…)` | truth table: Task > Job > Dispatch, one at a time (the order itself is `pageMode.ts` since v2.8038); PO tab only dev/master/assistant-like while Dispatch is on (the controller since v2.5011); dock only assistant-like on a phone |
 | 4 | optimistic pin flip 2075–2094; bid label `${prefix}${num}` 226–231; pin-for refusal + name fallback 2204–2212, 2229 | `pinnedTabs.ts` → `togglePinnedOptimistic`, `bidPinLabel`, `pinForTargetCheck` | add/remove idempotence incl. `bidId`; label fallback `'Bid'`; refusal copy |
 | 5 | `signOutEverywhere` 276–282 (≡ Settings `handleSignOut` 566–574) | `src/lib/signOut.ts` → `clearSupabaseStorageKeys(storage)` + `signOutEverywhere()` | only `sb-*` keys are removed |
-| 6 | `handleBackToMyAccount` 469–485 (near-copy of Settings 630–646: there a `setSession` failure and the return use `window.location.href`, here `navigate('/sign-in')` and `location.assign`; both also clear local `impersonating` state, which stays in each component); literal `IMPERSONATION_KEY` 116 (≡ Settings 626/631/632) | `impersonationSession.ts` → `returnToOriginalAccount()`; use `IMPERSONATION_ORIGINAL_STORAGE_KEY` | stash missing / tokens missing / `setSession` throws |
+| 6 | `handleBackToMyAccount` 469–485 (near-copy of Settings 630–646: there a `setSession` failure and the return use `window.location.href`, here `navigate('/sign-in')` and `location.assign`; both also clear local `impersonating` state, which stays in each component); literal `IMPERSONATION_KEY` 116 (≡ Settings 626/631/632) | done in v2.8241: `impersonationExit.ts` → `leaveViewAs` / `leaveViewAsHere`, called by both | stash missing / tokens missing / `setSession` throws or answers `{ error }`: each signs the browser out |
 | 7 | `SignInRoute` saved-path sanitizer (App 133–142) | **done**: `src/lib/signInReturnAddress.ts` → `safeReturnAddress`, `signedInDestination` | `//evil`, `http://…`, `/\evil`, `/..//evil`, empty → the role's landing |
 | 8 | `AuthHandler` hash parse (App 155–162) | `parseMagicLinkHash(hash)` | only `type=magiclink` with both tokens |
 
@@ -416,7 +416,7 @@ One PR per step. Each runs `npm run typecheck && npm run lint && npm test`, pres
 | Pattern | Here | Elsewhere |
 |---|---|---|
 | Sign-out + `sb-*` localStorage sweep | Layout `signOutEverywhere` 276–282 | `Settings.tsx` `handleSignOut` 566–574 |
-| Return from impersonation | Layout `handleBackToMyAccount` 469–485, key literal 116 | `Settings.tsx` 625–646 (literal key at 626/631/632; failure path is a full-load `href`, not `navigate`); constant `IMPERSONATION_ORIGINAL_STORAGE_KEY` in `impersonationSession.ts` 4 (written by `loginAsUser.ts` 49) |
+| Return from impersonation | Layout `handleBackToMyAccount` 469–485, key literal 116 | `Settings.tsx` 625–646 (literal key at 626/631/632); since v2.8241 both call `leaveViewAsHere` (`impersonationExit.ts`), one failure path; constant `IMPERSONATION_ORIGINAL_STORAGE_KEY` in `impersonationSession.ts` 4 (written by `loginAsUser.ts` 49) |
 | Role home path | guard 402 | `roleHomePath` (`roleGate.ts` 149) |
 | Pins load + `pipetooling-pins-changed` listener | Layout 406–428 | `Dashboard.tsx` 699–711 + 802–821 (`refreshPinned`), `Settings.tsx` 924–946 (`loadMyPins`) |
 | Mode toggles rendered twice | gear rows 1323–1635 | `phoneDockModes` 284–308 → `PhoneDockMoreSheet` |
