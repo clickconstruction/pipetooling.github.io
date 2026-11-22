@@ -2,7 +2,7 @@
 name: "Write someone up, from the Dashboard, on a phone"
 number: 410
 group: close
-status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · walked again at an iPhone's size as a leader, as a superintendent and with the signal cut · the person's side dropped on Taunya's word 2026-11-21 · left: a look on a leader's and a superintendent's own phone
+status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · walked again at an iPhone's size as a leader, as a superintendent and with the signal cut · the person's side dropped on Taunya's word 2026-11-21 · the kept note that stayed after a no-signal send fixed in v2.8250 and walked live 2026-11-22 · left: a look on real phones in real hands and four smaller walks, see *Left to do and to walk*
 summary: >
   Taunya said writing someone up was not made easy enough for a leader or a superintendent from
   their Dashboard. A leader's only door was the HR Report card, 8.7 phone screens down the full
@@ -11,9 +11,9 @@ summary: >
   kind, what was seen, photos, who saw it, then a read-back and one press that sends. It lands in
   the Pending reports the office already reads, with the job, the time and the facts the record
   lacked. Seven PRs, built on the HR report queue and not on the Writeups forms.
-next: A leader and a superintendent each write one up on their own phone, with a photo, once with no signal and once from the short Dashboard. Then the card closes on Taunya's word.
+next: A leader and a superintendent each write one up about ZZ Test Hand on their own phone, with a photo and a few spoken words, once with no signal. Then the card closes on Taunya's word. The smaller walks are listed under *Left to do and to walk*.
 size: L as a train of seven (S · M · S · M · M · S · S); left: a look on a real phone (XS)
-ver: v2.8157, v2.8160, v2.8172, v2.8174
+ver: v2.8157, v2.8160, v2.8172, v2.8174, v2.8250
 blocker: A leader's and a superintendent's own phone. A kept voice recording is set aside and the person's side is dropped, see *Set aside*.
 opinion: your call — the train is built and live, and what is left is watching a leader use it once
 ---
@@ -118,7 +118,7 @@ alone to any use.
 
 ## Where it plugs in
 
-- Exists: `person_reports`, `file_person_report`, `dismiss_person_report`, `DashboardPersonReportCard`,
+- Exists: `person_reports`, `file_person_report`, `dismiss_person_report`, `DashboardPersonReportCard` (retired in v2.8174),
   `HrPendingReportsSection`, the outbox (`src/lib/offline/outbox.ts`), report photos (`useReportPhotos`),
   spoken words (`useVoiceNote`), the supervision rule (`src/lib/people/supervision.ts`).
 - New: the kernel `src/lib/people/writeUp.ts`, the sheet under `src/components/writeUp/`, and the press.
@@ -146,13 +146,75 @@ site:
   cannot be walked as a sample account.
 - In an iPhone simulator's Safari: the press on a leader's first screen, and the sheet.
 
-Found on that walk: the *Kept on this phone* note stays on **Your write-ups** after the write-up has gone.
+Found on that walk: the *Kept on this phone* note stayed on **Your write-ups** after the write-up had gone. Fixed
+in v2.8250 and walked live on 2026-11-22 at an iPhone's size as a dev seat, with the signal cut and restored: the
+note turned into *Sent to HR at 12:42 am* within three seconds of the signal coming back, over a row reading
+**Waiting on HR**. The write-up was then taken back.
 
 What the company keeps: a write-up is on the person's file from the moment it is sent, with its writer and its
 day. One that is taken back stays there too, marked dismissed with the reason.
 
-Not walked: the short Dashboard and Job Mode, and a real phone's camera and microphone in a real hand. Those
-are the look that is left.
+## Left to do and to walk (2026-11-22)
 
-Left on that test person's file, where entries append and never change: one filed field report with its
-photo, one waiting to be filed and four taken back. All say they are tests.
+Every walk so far used the roster's `ZZ Test Hand` and a made-up test picture. The script walks ran in a desktop
+browser set to an iPhone's size, 390 px wide, with touch and a phone's user agent. A simulator's Safari drew the
+press and the sheet, but its automation could not type into them.
+
+### Walks still owed
+
+- **A real phone in a crew lead's hand.** `/dashboard`, **Write someone up**. A real leader and a real
+  superintendent, each on their own phone, one iPhone and one Android, on `ZZ Test Hand`, in the light they work
+  in. They should see the camera open on **Take a photo**, the phone type their words on **Talk it through**, the
+  read-back and *Sent to HR*. Not walked because it needs those people and their phones. This is the card's
+  `next`.
+- **Photos on a weak signal.** The same press, as a dev seat, at 375 px, with a full-size phone photo of 3 to
+  5 MB on a slow or flaky link rather than none. It should end in *Sent to HR*, or in *Kept on this phone* and
+  then send by itself. Not walked because the walks cut the signal cleanly and used a small test picture. As a
+  dev seat because the app keeps nothing on the phone while View as is on.
+- **A kept write-up after the app is closed.** Send with no signal as a dev seat, close the tab, open the app
+  again with signal. The write-up should send by itself and **Your write-ups** should say so. Not walked
+  because every walk kept the page open.
+- **Job Mode and its Short view.** Turn on Job Mode from the gear menu, as the leader's and the superintendent's
+  sample accounts by View as, at 375 px, light and dark. The press should sit under the Job Mode card, and in the
+  Short view's waiting area. Not walked yet. Job Mode is kept in the browser alone, so this walk writes nothing.
+- **The short Dashboard.** A leader whose Dashboard is set to Short, at 375 px. The press should sit under the
+  schedule and open the same sheet. Not walked because no sample account is set to Short. The setting is
+  `users.dashboard_view`, so the walk sets it on the sample leader and sets it back after.
+- **Add to it.** On a write-up still **Waiting on HR**, as a leader, press **Add to it**, write more and send.
+  The office's card should show it as written after the first. Not walked live. It has smoke tests.
+- **A kept write-up that is refused.** Only smoke tests cover the case where the server refuses a write-up that
+  waited on the phone. It is hard to make happen live, and is listed for completeness.
+
+### Loose ends
+
+- **PRs.** None open. The train merged as #9197, #9201, #9208, #9222, #9265, #9285, #9317 and #9327, with
+  #9235 for a timer that turned CI red.
+- **Migrations.** Both are pushed to prod: `20261121131500_person_report_write_up.sql` and
+  `20261121143500_person_report_photos.sql`.
+- **Edge functions.** None owed. `npm run check:edge-drift` was clean on 2026-11-22. On 2026-11-21 it named
+  `your-week-email` and `bridge-weekly-sheet` as one shared line behind. Neither reads that line, and both are
+  current now.
+- **A fault seen and not fixed.** The app's own *A new version is ready* toast sits over the sheet's bottom
+  button until **Not now** or **Reload** is pressed. A reload keeps the words since v2.8174, but not the photos.
+- **Test rows on prod**, all about `ZZ Test Hand`, all saying they are tests. Each id below is a
+  `person_reports` row.
+  - `281fd830-3872-4561-bd23-2e12ae99baed` is **Waiting on HR**, written by the leader's sample account. It is
+    left for Taunya to try filing.
+  - `0ff1a92e-fed1-4ee0-a8c6-917dc3094934` is filed. Its file entry is `034282d1-18b9-43f1-a172-87ac58a2f0a0`
+    and its evidence record `928c063e-694c-4a28-a745-63ed9d5d837e`, exhibit 3, with its photo copied into the
+    test person's Drive folder. File entries and evidence append and never change, so these stay.
+  - Five are taken back: `7194284a-2754-4ddd-ad8d-627e5eced37e`, `71e274cc-3c2a-42a7-9ffb-bcd6be20c6f7`,
+    `d5802b28-d465-40ed-85c5-2a639b002a61`, `421325f4-e2b3-4cee-8812-47f550c5d6e7` and
+    `032d8704-5fed-40f8-97b2-dc90d336a232`. A delete of the first was declined on 2026-11-21, so they stay
+    unless Taunya says otherwise.
+  - Five test pictures sit in the private `person-report-photos` bucket, one row each in
+    `person_report_photos`.
+
+### Set aside and Taunya's calls
+
+- **The person's side** is dropped, see *Set aside*.
+- **A kept voice recording** is set aside until a lawyer answers.
+- **Start a Writeup from it** on the office's card is not built. It waits for her word that it is wanted.
+- **Who reads Pending reports** is dev seats, as built. She names anyone else later.
+- **The test rows above** stay unless she says to delete the taken-back ones.
+- **Closing the card** is hers, after the real-phone look.
