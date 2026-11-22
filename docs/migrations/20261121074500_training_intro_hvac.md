@@ -10,9 +10,9 @@ Apply order: push after v2.8158 merges. The client reads the catalog with `selec
 
 No table is created, so no fence applier; RLS is the row's. `ACCESS_CONTROL.md` → Training carries the row.
 
-## The switch stays off
+## The switch
 
-The row is seeded off on purpose. The lessons were written from code sections read at the source and from general trade knowledge, and each lesson's `from:` line says which is which. The course goes **On** in Settings → Training only after a licensed HVAC reader has read it and the corrections are in.
+The row is seeded off on purpose. The lessons were written from code sections read at the source and from general trade knowledge, and each lesson's `from:` line says which is which. The plan was for the course to go **On** in Settings → Training only after a licensed HVAC reader had read it and the corrections were in. Taunya switched it on for every role on 2026-11-21, before that read (v2.8239). The row stays required of nobody, and the read and its corrections are still owed.
 
 ## Verify
 
