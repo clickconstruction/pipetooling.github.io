@@ -76,7 +76,9 @@ describe('the sheets the function builds are the sheets the office builds', () =
   const mine = portalPaperSheets(rows)
 
   it('sheet for sheet: the same lines, money, days, numbers and revisions', () => {
-    expect(mine).toEqual(officeView(rows))
+    // The office's sheet also says when it was typed (`at`), which only the office's *Since the last statement*
+    // reads. The sub's page cuts a period by the date alone, so its sheets do not carry it.
+    expect(mine).toEqual(officeView(rows).map(({ at: _typed, ...sheet }) => sheet))
     expect(mine.map((s) => s.id)).toEqual([ALDER_1, CEDAR_1, CEDAR_2])
   })
 

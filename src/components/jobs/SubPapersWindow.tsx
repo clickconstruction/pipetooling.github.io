@@ -72,7 +72,7 @@ export type SubPapersWindowViewProps = {
   ctx: PaperContext
   contact: SubPaperContact
   /** The last statement of account sent to this person, from the register; null before one has gone. Absent while no register records one: the period offers no *Since the last statement* then. */
-  lastStatement?: { number: string; endedOn: string } | null
+  lastStatement?: { number: string; endedOn: string; /** When it was made. With it, a line typed since and dated inside that statement is carried into *Since the last statement*. */ madeAt?: string } | null
   /** A statement that ended today, from the register. It is said beside the period and does not move it. */
   statementToday?: { number: string } | null
   /** Offer a payment record beside the other two papers. */
@@ -150,7 +150,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
 
   const range: StatementRange = useMemo(() => {
     // A period never starts after it ends: a last statement that ended today or later leaves the statement to date.
-    if (period === 'since') return lastStatement && nextDay(lastStatement.endedOn) <= ctx.today ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
+    if (period === 'since') return lastStatement && nextDay(lastStatement.endedOn) <= ctx.today ? { from: nextDay(lastStatement.endedOn), to: ctx.today, lateAfter: lastStatement.madeAt ?? null } : { from: null, to: null }
     if (period === 'all') return { from: null, to: null }
     if (period === 'custom') return { from: custom.from || null, to: custom.to || null }
     // The ledger's month and year run to the period's last day as a filter. A paper closes on a real day, today at the latest.

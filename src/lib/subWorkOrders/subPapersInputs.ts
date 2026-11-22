@@ -52,6 +52,8 @@ export function paperSheetFrom(job: LaborJob, opts: { jobName: string; register?
     address: (job.address ?? '').trim(),
     // The day the work is dated, else the day the sheet was made: the ledger's rule, so the two agree on a period.
     day: (job.job_date ?? '').slice(0, 10) || (job.created_at ? calendarYmdInAppTzFromIso(job.created_at).slice(0, 10) : ''),
+    // When the sheet was typed: a statement since the last one counts a sheet typed after it as new work.
+    at: job.created_at ?? '',
     lines: (job.items ?? []).map((it) => ({ label: (it.fixture ?? '').trim() || 'A line', amount: cents(lineLaborCost(it, rate)) })),
     money,
     confirm: opts.register?.confirm ?? null,

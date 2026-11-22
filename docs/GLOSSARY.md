@@ -4891,6 +4891,9 @@ It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the who
 The letterhead is the bill's issuer block from Settings.
 A month or a year closes on today, never on a day that has not come.
 *Since the last statement* starts the day after the last statement that ended before today: one that ended today is set apart (`subPaperRegister`'s `statementToday`, v2.8106), so a second statement the same day covers the first one's days and its line names both.
+Since v2.8269 a period is cut by the date on a payment and a late one is carried (the owner, 2026-11-21): *Since the last statement* hands the builder `lateAfter`, when the statement before was made (`lastStatement.madeAt`), and a payment, a back-charge or a sheet dated before the period and typed after that moment counts in this one.
+A carried payment is listed under its own date as *recorded after the last statement*, and `statementLateWords` says what was carried under *How it adds up*, so the statement opens on what the last one closed on.
+The other four periods and the sub's own page are cut by the date alone.
 Since v2.7552 a paper is numbered the moment it is made: Print, Download and, since v2.7983, Send first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call, and `_shared/subPaperMarks.ts` the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
 Since v2.7983 the window sends: *Send to <name>…* opens a send step that shows who the paper goes to, the message, the files and what the press does, and its press posts the PDFs to `send-sub-paper-email`.
 The function mails them to the roster's own address for the person and files each paper as a sent copy of its own, and the window hands it no address.
