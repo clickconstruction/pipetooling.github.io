@@ -9,6 +9,8 @@
  *     saves once;
  *   - the hourly limit: 60 acts per matter, and the refusal names the matter
  *     and the time it lifts;
+ *   - the cap on confirmation emails: three to a person and twenty-four to a firm
+ *     in an hour, and the refusal says which;
  *   - who recorded it (`meta.recordedBy` = { id, name } from the firm's own list);
  *   - undo with a reason (PR 2): which entries each side may void, and that a
  *     voided entry leaves every total.
@@ -54,6 +56,59 @@ export function isLegalClientId(v: unknown): v is string {
 export function legalRateLimitMessage(payerName: string, retryAt: string | null): string {
   const who = payerName.trim() || 'this matter'
   return `${LEGAL_ACTS_PER_MATTER_PER_HOUR} changes on ${who} in the last hour is the limit.${retryAt ? ` Try again after ${retryAt}.` : ' Try again in an hour.'}`
+}
+
+/**
+ * The cap on confirmation emails (punch list #85, a review residual). Adding a person and *Resend the
+ * confirmation* each send one email from the company's own address, and the firm's link is all a caller
+ * needs, so before the cap a caller could have the company send them without end.
+ *
+ * The count is the portal's own throttle, `legal_portal_guess_gate` (`_shared/legalPortalGuessGate.ts`): the
+ * same hour-long count that slows a guesser, kept under a key for the person and a key for the firm in place
+ * of a caller's address. A person is sent three in an hour, their first and two more. A firm is sent
+ * twenty-four in an hour, its whole list of twelve twice over. A missing count reads as none, as the
+ * guess gate reads it, so the portal never closes on a throttle that cannot answer.
+ */
+export const LEGAL_CONFIRMS_PER_PERSON_PER_HOUR = 3
+export const LEGAL_CONFIRMS_PER_FIRM_PER_HOUR = 24
+
+/** The throttle's keys for a confirmation. No caller's address can equal one: an address has no `confirm` in front. */
+export function legalConfirmCapKeys(firmId: string, recipientId: string | null): { firm: string; person: string | null } {
+  return { firm: `confirm-firm:${firmId}`, person: recipientId ? `confirm:${recipientId}` : null }
+}
+
+/**
+ * Why one more confirmation cannot go now; null when it can. Each count is how many went in the last hour
+ * before this one. The person's limit is said first: it is the one a second press on Resend reaches.
+ */
+export function legalConfirmCapProblem(sent: { toPerson: number; fromFirm: number }, email: string): string | null {
+  if (sent.toPerson >= LEGAL_CONFIRMS_PER_PERSON_PER_HOUR) return `${LEGAL_CONFIRMS_PER_PERSON_PER_HOUR} confirmation emails to ${email.trim() || 'this person'} in the last hour is the limit. Try again in an hour.`
+  if (sent.fromFirm >= LEGAL_CONFIRMS_PER_FIRM_PER_HOUR) return `${LEGAL_CONFIRMS_PER_FIRM_PER_HOUR} confirmation emails to your firm in the last hour is the limit. Try again in an hour.`
+  return null
+}
+
+/**
+ * The cap, asked of the throttle in two steps. `count(key, record)` answers how many are under a key in the
+ * last hour, after adding this one when `record` is set.
+ *
+ * First without recording: a press the cap refuses is never counted, so pressing again cannot push the hour
+ * out. Then recorded and read back: of presses that passed the first step together, the ones over the limit
+ * are refused, and what they recorded only keeps the hour closed. `recipientId` is null when the person is
+ * being added and has no key yet; the caller records their first one once the row exists.
+ */
+export async function askLegalConfirmCap(count: (key: string, record: boolean) => Promise<number>, firmId: string, recipientId: string | null, email: string): Promise<string | null> {
+  const keys = legalConfirmCapKeys(firmId, recipientId)
+  const read = async (record: boolean): Promise<{ toPerson: number; fromFirm: number }> => {
+    const [toPerson, fromFirm] = await Promise.all([keys.person ? count(keys.person, record) : Promise.resolve(record ? 1 : 0), count(keys.firm, record)])
+    // Once recorded, each count holds this one too.
+    return record ? { toPerson: toPerson - 1, fromFirm: fromFirm - 1 } : { toPerson, fromFirm }
+  }
+  return legalConfirmCapProblem(await read(false), email) ?? legalConfirmCapProblem(await read(true), email)
+}
+
+/** The refusal when the same person's confirmation was asked for twice in one instant: one went, and this press is told so. */
+export function legalConfirmTwinMessage(email: string): string {
+  return `A confirmation email to ${email.trim() || 'this person'} went a moment ago. Check that inbox before sending another.`
 }
 
 export type LegalRecordedBy = { id: string; name: string }

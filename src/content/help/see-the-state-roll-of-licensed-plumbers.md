@@ -8,7 +8,7 @@ order: 127
 ---
 The State roll tab keeps the state's public list of licensed plumbers who live near us. The tab shows when the list was last read and what changed.
 
-The state plumbing board publishes who holds a license. The app reads that list every Monday morning. The app keeps the plumbers who live in our counties.
+The state plumbing board publishes who holds a license. The app reads that list every Monday morning. The app keeps the plumbers who live in our counties. The app also keeps our own team's licenses, wherever they live.
 
 ## Who sees it
 
@@ -31,7 +31,7 @@ Each person's row has a name, a license, its dates, a county and a ZIP. A row ha
 
 ## Read the pulls
 
-A pull is one read of one state file. The state has four files. Each file has a card.
+A pull is one read of one state file. The app reads four state files for our counties. Each of the four has a card.
 
 :::example One file's card
 **Plumbing · journeyman**
@@ -44,7 +44,7 @@ That read: **4** new · **31** changed · **9** gone
 :::
 
 - **Last read** is the newest read that finished.
-- **Kept** is how many rows live in our counties.
+- **Kept** is how many rows live in our counties or belong to our own team.
 - **New** is a license that was not on the list last week.
 - **Changed** is a license that renewed, lapsed, moved or took a new endorsement.
 - **Gone** is a license the state took off its list.

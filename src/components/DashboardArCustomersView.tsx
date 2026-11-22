@@ -19,7 +19,8 @@ import {
   type ArCustomerRow,
   type ArCustomerSort,
 } from '../lib/arCustomerRollup'
-import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
+import { arInKindLine, type FinancialBucket, type FinancialItem } from '../lib/dashboardFinancials'
+import { Link } from 'react-router-dom'
 import type { OpenBillTone } from '../lib/jobs/moneyWaiting'
 import { calendarBillWords, payCalendarWords, payTermsNoun, payerCalendarLead } from '../lib/jobs/payCalendar'
 import type { CustomerSegment } from '../lib/jobs/billedExpectedPay'
@@ -85,6 +86,8 @@ export type ArCustomersViewProps = {
   billExtras: (item: FinancialItem) => ReactNode
   /** Parked difficult-to-collect receivables — its own quiet group at the bottom, outside pace math. */
   collectionsSection: FinancialBucket | null
+  /** Punch list #301: the bills an in kind deal pays. Named in one line under the list, never as a customer who is late. */
+  inKindSection?: FinancialBucket | null
   isMobile: boolean
   /** PR B slot: chase pill beside the customer name (null renders nothing). */
   rowBadge?: (row: ArCustomerRow) => ReactNode
@@ -103,6 +106,7 @@ export default function DashboardArCustomersView({
   onOpenJob,
   billExtras,
   collectionsSection,
+  inKindSection = null,
   isMobile,
   rowBadge,
   expansionFooter,
@@ -129,6 +133,8 @@ export default function DashboardArCustomersView({
   const paceFiltered = paceFilter == null ? searched : searched.filter((r) => (paceFilter === 'late' ? r.pastPace : !r.pastPace))
   const lienFiltered = lienLens == null || !lienChips ? paceFiltered : paceFiltered.filter((r) => lienArLensMatch(chipsOf(r), lienLens))
   const sorted = sortArCustomerRows(lienFiltered, sort)
+  // Punch list #301: the bills a deal pays are under no customer above. One line under the list says where they went.
+  const inKindLine = arInKindLine(inKindSection)
   // The lens pair's counts read the whole list, as the pace pair's do.
   const lienCounts = lienChips ? lienArLensCounts(rollup.rows.map((r) => ({ open: r.open, chips: chipsOf(r) }))) : null
   // The quiet on-pace group only forms in the default lens (slowest, no filter,
@@ -410,7 +416,8 @@ export default function DashboardArCustomersView({
           {...arCustomersEmptyWords({
             query,
             filtered: rollup.rows.length > 0,
-            hasCollections: (collectionsSection?.count ?? 0) > 0,
+            // A bill a deal pays is not paid either, so the empty words do not say every bill is.
+            hasCollections: (collectionsSection?.count ?? 0) > 0 || (inKindSection?.count ?? 0) > 0,
             clearSearch: onClearSearch ?? null,
             clearFilters: () => {
               setPaceFilter(null)
@@ -479,6 +486,14 @@ export default function DashboardArCustomersView({
           ) : null}
         </>
       )}
+      {inKindLine ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.6rem', padding: '0.5rem 0.45rem', marginTop: '0.25rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <span>{inKindLine}.</span>
+          <Link to="/in-kind" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+            Open In kind
+          </Link>
+        </div>
+      ) : null}
     </div>
   )
 }

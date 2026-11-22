@@ -132,6 +132,8 @@ The link always shows the published revision. It never shows a draft.
 
 The card says how often someone outside opened the link. Your own look is not counted.
 
+The card may say the link's address can no longer be shown. The link still opens for anyone who has it. Press **Make a new link** to get one you can copy.
+
 ### Who opened the link
 
 The card lists each open under **Who opened it**, newest first. Each line gives the day and the time.

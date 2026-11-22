@@ -192,6 +192,23 @@ describe('registerSubPaperSet: papers that go out together read as one set', () 
     expect(made.map(subPaperFingerprint)).toEqual([statement, ...work, record].map(subPaperFingerprint))
   })
 
+  it('a payment record made in a set keeps the sub’s mark, since it is built again over the numbered sheets', async () => {
+    const { seen, io } = registerOf()
+    const asked: string[] = []
+    const received = (key: string) => (asked.push(key), key === 'snd226' ? { at: 'Nov 2, 2026' } : null)
+    const made = await registerSubPaperSet([...work, record], { ...io, received })
+    const pr = made[2]!
+    expect(asked).toEqual(['snd226'])
+    expect(pr.kind === 'payment_record' && pr.received).toBe('Harlan Mechanical marked this received on Nov 2, 2026.')
+    // The register keeps the paper as it went, mark and all, and the mark is no change to its figures.
+    const kept = seen.find((p) => p.kind === 'payment_record')!
+    expect(kept.kind === 'payment_record' && kept.received).toBe('Harlan Mechanical marked this received on Nov 2, 2026.')
+    expect(subPaperFingerprint(pr)).toBe(subPaperFingerprint(record))
+    // With no marks handed in it reads as it always did.
+    const plain = (await registerSubPaperSet([record], registerOf().io))[0]!
+    expect(plain.kind === 'payment_record' && plain.received).toBe('Not marked yet. Harlan Mechanical can press Got it on their page.')
+  })
+
   it('a register that is not on the database yet leaves every paper as it was', async () => {
     const { io } = registerOf(() => null)
     const made = await registerSubPaperSet([statement, work[0]!], io)

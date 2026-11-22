@@ -10,13 +10,17 @@ summary: >
   two roster records. Every person now has a users row, so the re-key is cheaper than when it was shelved.
 next: When `scripts/audit-pay-keys.sql` reads zero rows with no person_id, the NOT NULL and the keys.
 size: L
-blocker: The owner's word on ten names across 85 pay rows; none disagrees with its name, seven are users rows with no People record and three match nobody.
+blocker: The owner's word on ten names across 85 pay rows (a reproduction on 2026-11-21, not the script, read 12 names across 87 rows, so run the script before acting on the difference); none disagrees with its name, seven are users rows with no People record and three match nobody.
 ver: v2.6517 · 6511
 opinion: build, carefully — it is the last place a person is a string, and it holds the money.
 mockup: not required — no screen changes; the keys under them do
 ---
 
 # The pay tables key on the person, not the name
+
+## Where it stands
+
+**Read 2026-11-21**, through the dev seat on production, read-only. This is a reproduction through the seat's row reads, not the answer of `scripts/audit-pay-keys.sql`. It matched each name exactly, where the script uses `btrim`, and it did not reproduce the script's per-table totals or its `name_differs`. It found 87 rows with no `person_id` across the ten tables, where this card says 85. They sit on six of the ten, the largest `people_hours` with 63. It found 12 distinct pay names, where this card says 10: 9 are a users row with no People record and 3 match nobody. The gate, zero, is not met. The script itself should be run before anyone acts on the difference from 85 and 10.
 
 ## The ask
 

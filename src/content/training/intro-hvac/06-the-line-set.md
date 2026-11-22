@@ -19,6 +19,7 @@ Two copper lines join the outdoor unit to the indoor unit. They look like water 
 - A kink chokes the flow like a half-shut valve. A kinked line is replaced, never bent back.
 - A line closer than **1-1/4 in** to the edge of a stud gets a steel plate over it. The plate stops a nail or a screw.
 - The filling ports on the outdoor unit wear locking caps. The caps keep the refrigerant away from children.
+- {{figure:line-set-care|A kinked line is replaced. An open end stays capped. The filling ports wear locking caps.}}
 
 ## Traps
 - A line set is not a hanger, a step or a place to strap a pipe. Weight and rubbing wear a hole in it.
@@ -43,9 +44,9 @@ Two copper lines join the outdoor unit to the indoor unit. They look like water 
 - [ ] When the thermostat is off
 - [ ] When the disconnect is pulled
 - [ ] In winter
-- [x] Never, until a certified technician has taken the refrigerant out
+- [x] Never, until a technician with the federal card has taken the refrigerant out
 > right: The lines hold pressure all the time. Only an emptied loop can be opened.
-> wrong: Power off does not empty the lines. They are under pressure until a certified technician recovers the refrigerant.
+> wrong: Power off does not empty the lines. They are under pressure until a technician with the federal card takes the refrigerant out.
 
 3. What is done with a kinked refrigerant line?
 - [ ] It is bent back straight

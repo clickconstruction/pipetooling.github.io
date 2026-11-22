@@ -10,6 +10,7 @@ import PaymentForecastShareModal from './PaymentForecastShareModal'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
+import type { BilledListFilter } from '../../lib/jobs/stagesSectionHeader'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
 import type { useAuth } from '../../hooks/useAuth'
@@ -91,7 +92,7 @@ export type StagesBilledMoneyModalsProps = {
   setStagesSectionOpen: Dispatch<SetStateAction<StagesSectionOpenState>>
   setPendingStagesJobFocusId: Dispatch<SetStateAction<string | null>>
   setStagesJobFlashId: Dispatch<SetStateAction<string | null>>
-  setBilledAgingFilter: Dispatch<SetStateAction<'30_90' | '90' | 'no_line' | null>>
+  setBilledAgingFilter: Dispatch<SetStateAction<BilledListFilter>>
   focusStagesSection: (key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => void
   tryOpenEditJob: (jobId: string, options?: OpenEditJobOptions) => void
   /** The Lien desk's page on the job's notice (punch list #182). */

@@ -238,7 +238,8 @@ export function moneyWaitingInKindLine(inKind: { count: number; dollars: number 
 /**
  * Open bills grouped for ANY customer with open money (off-pace or not), for
  * the "By customer" list's expansion — tones read against that customer's
- * baseline exactly as above.
+ * baseline exactly as above. A bill an in kind deal pays is left out here as it
+ * is above (punch list #301): no pace judges it, so no row colours it late.
  */
 export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string, calendars?: MoneyWaitingCalendars | null): Map<string, OpenBill[]> {
   const out = new Map<string, OpenBill[]>()
@@ -247,6 +248,7 @@ export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData 
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
+    if (jobIsScheduledInKind(r.job)) continue
     const customerId = listPayer(r.job, r.inv).id
     if (!customerId) continue
     const own = paySpeeds?.customers[customerId]

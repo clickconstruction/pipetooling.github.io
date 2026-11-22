@@ -21,7 +21,7 @@ Every gas appliance gets its gas the same way. A valve you can reach, a trap for
 - A joint is checked with leak soap. Bubbles mean a leak. A flame is never the test.
 
 ## Traps
-- A sediment trap is not a drip left over from the pipe. It is there on purpose, pointing down.
+- A sediment trap is not a leftover stub of pipe. It is there on purpose, pointing down.
 - A shutoff behind the appliance or in the next room does not count. It is in the room and within reach.
 - Two connectors joined end to end are not a longer connector. Each appliance gets one, and rigid pipe covers the rest.
 

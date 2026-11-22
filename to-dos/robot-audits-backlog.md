@@ -12,9 +12,9 @@ size: M (people time — about 31 audits, roughly 15 minutes each)
 ver: —
 mockup: not required — work in the existing Audits tab, no screen change
 group: waiting
-status: on 2026-09-29 the Robot Board read 31 audits waiting (oldest 29 d) · the owner's rule 2026-10-09: each estimator audits a standing half hour a week, oldest first · measured 2026-11-05 from the dev seat: 63 waiting, the oldest 65 days, 41 older than 14 days, one audit completed since the rule · the owner reset the cadence the same day
-next: The cadence restarts from 2026-11-05 (the owner's reset): Wendi and Stephen each work Bids → 🤖 Robots → Audits from the oldest for half an hour a week. Measure on 2026-11-19 from the dev seat (`read_rows bid_audits`, status pending, by requested_at): audits waiting under 10 and none older than 14 days. If a single audit takes more than about fifteen minutes, write down which step is slow — that is the case for #63's queue.
-blocker: Two weeks of the cadence, from 2026-11-05.
+status: on 2026-09-29 the Robot Board read 31 audits waiting (oldest 29 d) · the owner's rule 2026-10-09: each estimator audits a standing half hour a week, oldest first · measured 2026-11-05 from the dev seat: 63 waiting, the oldest 65 days, 41 older than 14 days, one audit completed since the rule · the owner reset the cadence the same day · measured 2026-11-21 from the dev seat: 74 waiting, the oldest 82 days, 64 older than 14 days, none completed since 2026-11-05, so the target is not met
+next: The cadence restarts from 2026-11-05 (the owner's reset): Wendi and Stephen each work Bids → 🤖 Robots → Audits from the oldest for half an hour a week. The measure of 2026-11-21 from the dev seat (`read_rows bid_audits`, status pending, by requested_at) did not meet the target: audits waiting under 10 and none older than 14 days. If a single audit takes more than about fifteen minutes, write down which step is slow — that is the case for #63's queue.
+blocker: The cadence itself: the two weeks from 2026-11-05 passed with no audit completed.
 ---
 
 # Robot audits backlog: 31 waiting, oldest 29 days
@@ -22,3 +22,7 @@ blocker: Two weeks of the cadence, from 2026-11-05.
 Found during the owner's 2026-09-29 review of Bids → Robots (*do we make it easy for an estimator to load in what a robot needs?*). The intake half got fixed that day (v2.4162, v2.4165). This row is the half that intake cannot fix: the robots only earn first drafts when their sealed numbers are audited. The Robot Board's strip carries the live count (*audits waiting · oldest N d*) and *kinds of job earned first drafts*; the guide *audit a robot bid and teach it what you know* covers the how.
 
 Flagged to the top by the owner the same evening.
+
+## Where it stands
+
+**Read 2026-11-21**, through the dev seat on production, read-only, from `bid_audits` (status pending, by `requested_at`). 74 audits are waiting. The count was 31 on 2026-09-29 and 63 on 2026-11-05. The oldest has waited 82 days (it was 29, then 65), and 64 of the 74 are older than 14 days. No audit was completed since 2026-11-05, and one since 2026-09-29. The target, under 10 waiting and none past 14 days, is not met, and the backlog has grown.

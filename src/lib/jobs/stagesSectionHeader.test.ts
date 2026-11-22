@@ -54,6 +54,15 @@ describe('billedListRows', () => {
     expect(ids(billedListRows(rows, '90', NOW))).toEqual(['d'])
     expect(rows.map((r) => billedStageRowAgingBucket(r, NOW))).toEqual([null, null, null, '90', null, '30_90'])
   })
+  it('the In kind chip keeps the rows a deal pays that still have money open; they are in neither aging bucket (punch list #301)', () => {
+    const onDeal = (r: StageRow): StageRow => ({ ...r, job: { ...r.job, in_kind_arrangement_id: 'deal-1' } }) as StageRow
+    // 'd' is 120 days old and 'c' is paid off: on a deal, 'd' leaves the 90+ chip for the In kind one and 'c' is in neither.
+    const withDeal = rows.map((r) => (r.job.id === 'd' || r.job.id === 'c' ? onDeal(r) : r))
+    expect(ids(billedListRows(withDeal, 'in_kind', NOW))).toEqual(['d'])
+    expect(ids(billedListRows(withDeal, '90', NOW))).toEqual([])
+    expect(ids(billedListRows(withDeal, '30_90', NOW))).toEqual(['f'])
+    expect(ids(billedListRows(rows, 'in_kind', NOW))).toEqual([])
+  })
   it('the no-line chip keeps rows with money owed and no bill line: every job-shell row, and an invoice with no date', () => {
     expect(ids(billedListRows(rows, 'no_line', NOW))).toEqual(['a', 'b', 'e'])
     expect(rows.map((r) => stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r))).toEqual([true, true, false, false, true, false])

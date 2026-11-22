@@ -10,9 +10,11 @@
  * the wiring the three lists share — the scroller's ref, the lit pile, the press and the scroll handler — and the
  * title's markup, so the behavior is one code path, not three copies.
  */
-import { useRef, useState, type MutableRefObject, type ReactNode } from 'react'
+import { useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type MutableRefObject, type ReactNode } from 'react'
+import { thumbInLine } from '../../lib/phonePress'
 import { lienPileHeadPlace, lienPileReached, lienPileScrollTop } from '../../lib/jobs/lienPhoneLists'
 import { lienFindPileCount } from '../../lib/jobs/lienDeskFind'
+import { LIEN_PHONE_PILE_PRESS } from './lienDeskRowStyles'
 
 export type LienPileHeads<P extends string> = {
   /** The list's scroller: `position: relative` and `overflow: auto`, so each pile's `offsetTop` is measured against it. */
@@ -98,5 +100,32 @@ export function LienPileHead<P extends string>({ pile, label, count, i, n, phone
         </button>
       ) : null}
     </div>
+  )
+}
+
+/** What a pile's title has inside its two edges on a phone: `LIEN_PILE_HEAD_H_PHONE` less the hairline over it and the one under. */
+const PHONE_PILE_HEAD_INNER = 38
+
+/** The phone's press around the pill: no look of its own, a thumb tall, and the title bar left as tall as it was. */
+const PHONE_PILE_PRESS_BOX: CSSProperties = { flex: 'none', display: 'inline-flex', alignItems: 'center', ...thumbInLine(PHONE_PILE_HEAD_INNER), border: 'none', background: 'none', padding: 0, font: 'inherit', letterSpacing: 0, textTransform: 'none', cursor: 'pointer' }
+
+/**
+ * A press inside a pile's title: *Print and mail 14* on Approved · to print, the deliveries lens on Sent. On a
+ * computer it is the small pill it was, the button itself wearing `look`. On a phone the phone walk of 2026-11-21 read
+ * the pill at 30 px, so there the button is a thumb's 44 px and the pill is drawn inside it at the size it had: the
+ * bar reads the same and stays its 40 px, since a taller pinned title takes rows from the list (punch list #352).
+ */
+export function LienPilePress({ phone, look, children, ...rest }: { phone: boolean; /** The pill: its fill, its edge and its words' size at a desk. */ look: CSSProperties } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style' | 'type'>) {
+  if (!phone) {
+    return (
+      <button type="button" {...rest} style={look}>
+        {children}
+      </button>
+    )
+  }
+  return (
+    <button type="button" {...rest} style={PHONE_PILE_PRESS_BOX}>
+      <span data-lien-pile-press-pill style={{ ...look, ...LIEN_PHONE_PILE_PRESS, display: 'inline-flex', alignItems: 'center', cursor: 'inherit' }}>{children}</span>
+    </button>
   )
 }

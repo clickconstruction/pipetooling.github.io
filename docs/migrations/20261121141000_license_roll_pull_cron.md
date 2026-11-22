@@ -30,3 +30,7 @@ SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'license-roll-
 SELECT file, started_at, rows_seen, rows_kept, added, changed, gone, error
   FROM public.license_roll_pulls ORDER BY started_at DESC LIMIT 8;                                   -- after a Monday
 ```
+
+## Applied
+
+On the prod ledger, read on 2026-11-21 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

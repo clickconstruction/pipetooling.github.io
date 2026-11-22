@@ -2,7 +2,7 @@
 title: answer a check the crew sent
 category: Office
 roles: dev, assistant, estimator
-keywords: stage check, dispatch inbox, reply, reply and close, lower priority, not now, open the check, open the job, crew, can't do it, need a part, need a decision, stage checklist, closes itself
+keywords: stage check, dispatch inbox, reply, reply and close, lower priority, not now, open the check, open the job, crew, can't do it, need a part, need a decision, stage checklist, closes itself, not as told, sent on arrival, open the list
 where: /dispatch-mode/inbox
 order: 24
 ---
@@ -78,6 +78,18 @@ Closed · Luis Ortega · Mon 2:10 PM
 :::
 
 Nobody needs to close by hand what the row already settled. You can still close it yourself with words. Type the reply and press {{button:outline|Reply and close}}. The crew member hears it as a push. The person who sent the check never closes their own. The sender's window says to answer the check on the sheet instead.
+
+## When the crew says a site is not as told
+
+The crew answers **Is it as told?** when they reach a stage. A **No** there lands in the inbox as a stage check too.
+
+That row has no check behind it. Its window reads *sent on arrival* where a check reads *sent from the sheet*.
+
+Press {{button:outline-blue|Open the list}} to open the job on its **Documents** tab. Tick the bullet there once it is true, or change the list.
+
+Nothing closes this row by itself. Close it once the site is as told, or once the list has changed.
+
+The crew's steps are in [say whether a site is as we were told](/help/say-whether-a-site-is-as-we-were-told).
 
 ## Lower the priority
 

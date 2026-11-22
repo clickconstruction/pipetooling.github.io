@@ -9,6 +9,7 @@ import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { jobWindowVerb, tabbedJobWindowBar } from '../../lib/jobs/jobWindowBar'
+import { JOB_WINDOW_BODY_SCROLL, jobWindowBarStandsDown } from '../../lib/jobs/jobWindowSheets'
 import { headerScrollState, jobWindowSheetRows, type HeaderScrollState, type JobWindowSheetKey } from '../../lib/jobs/jobWindowPhone'
 import { JobWindowMoreSheet } from './JobWindowMoreSheet'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
@@ -548,7 +549,7 @@ export function JobWindowModal({
           ref={bodyRef}
           onScroll={phone ? onBodyScroll : undefined}
           className="job-window-body"
-          style={{ position: 'relative', flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}
+          style={{ position: 'relative', flex: 1, minHeight: 0, ...JOB_WINDOW_BODY_SCROLL, padding: '0.5rem 1.25rem 1.25rem' }}
         >
           {phone ? (
             <div ref={headRef} className="job-window-head" data-testid="job-window-head" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', padding: 'calc(0.5rem + env(safe-area-inset-top, 0px)) 0 0.25rem' }}>
@@ -754,6 +755,8 @@ export function JobWindowModal({
           <>
             <JobWindowActionBar
               buttons={tabbedJobWindowBar(verb, paneBar?.stamp ?? null)}
+              // A sheet from the window is up (Status ▾, ⋯ or the pane's Note): the bar is not drawn under it.
+              standsDown={jobWindowBarStandsDown({ status: statusSheetOpen, more: sheetOpen, note: paneBar?.noteOpen })}
               onPress={(key) => {
                 if (key === 'status') setStatusSheetOpen(true)
                 else if (key === 'verb') onVerb()

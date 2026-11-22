@@ -1,3 +1,5 @@
+import { phoneTall } from '../../lib/phonePressFloor'
+
 export type TaskDayTab = 'today' | 'history'
 
 type Props = {
@@ -13,6 +15,7 @@ const SEGMENTS: ReadonlyArray<[TaskDayTab, string]> = [
 /**
  * Task Mode's two tabs as one joined bar (punch list #369): the shape the New task window gives *When*, lit the same
  * way. Task Mode shows only Today and History, so the tab strip and the page's title make way for this one row.
+ * 38 px at a desk and a thumb's 44 on a phone (the phone walk of 2026-11-21).
  */
 export function TaskDayBar({ tab, onPick }: Props) {
   return (
@@ -30,7 +33,7 @@ export function TaskDayBar({ tab, onPick }: Props) {
               minWidth: 0,
               font: 'inherit',
               fontSize: 13,
-              minHeight: 38,
+              minHeight: phoneTall(38),
               padding: '0 12px',
               border: 'none',
               borderLeft: i === 0 ? 'none' : '1px solid var(--border)',

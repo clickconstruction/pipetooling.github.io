@@ -16,14 +16,15 @@ A cooling coil makes water all summer, gallons of it on a damp day. That water h
 - The line has a capped tee near the unit. Through it a clog is cleared without cutting the pipe.
 - The code says where the water may end. It never ends in a street or an alley, or where it makes a nuisance.
 - A condensate drain is never tied straight into a plumbing drain, a waste pipe or a vent.
-- It ends over a floor drain, a standpipe or a utility sink, or outdoors on the ground.
+- It ends over a floor drain or a utility sink, or outdoors on the ground. A washer's open drain pipe will do too.
 - An air gap is the open air between the end of the pipe and the drain under it. Sewer water cannot climb back across it.
+- {{figure:drain-end|Tied straight in, the drain can bring sewer gas up to the unit. Ending in the open, over a drain, nothing comes back.}}
 - Cities add their own rules on where the water may end. The company follows the city the job is in.
 
 ## Traps
 - A condensate line is not a small sewer line. Tied straight into a drain, it can bring sewer gas to the unit.
 - A flat drain is not a slow drain. It is a clog that has not finished forming.
-- No trap where the maker wants one holds the water in the pan. The blower pulls air up the pipe instead.
+- A drain with no trap, where the maker wants one, keeps its water in the pan. The blower pulls air up the pipe instead.
 
 ## Numbers
 - **3/4 in** is the smallest a condensate drain may be

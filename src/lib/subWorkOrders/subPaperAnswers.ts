@@ -8,8 +8,12 @@
  *    answered (`answer_sub_paper_ack`), and stays on the sheet afterwards as a line that says who answered and when.
  *
  * A note about a payment shows on every sheet that payment paid on, since the Pay view is read by sheet.
+ *
+ * The office's payment record reads the same marks (`paymentRecordReceived`), so its *Received* box says what the
+ * Pay view's chip says.
  * Pure: no React, no Supabase.
  */
+import { paperDay } from '../../../supabase/functions/_shared/subPapers'
 
 /** One row of `sub_paper_acks`, as the Pay view reads it. The answered columns are absent before their migration. */
 export type SubPaperAckRow = {
@@ -89,6 +93,19 @@ export function subPaperAnswers(rows: readonly SubPaperAckRow[], dayOf: (iso: st
 export function paymentReceivedDay(answers: SubPaperAnswers, p: { id: string; amount: number; sending_id?: string | null }): string {
   if (!(Number(p.amount) > 0)) return ''
   return (p.sending_id ? answers.receivedBySending.get(p.sending_id) : answers.receivedByPayment.get(p.id)) ?? ''
+}
+
+/**
+ * What a payment record's *Received* box is built from (`buildPaymentRecord`'s last argument), by the paper's own
+ * key: a sending's id, or `row:<payment id>` for a payment from before sendings. Null while the sub has not
+ * pressed Got it, and the paper then reads *Not marked yet*. The day reads as the sub's own page words it.
+ */
+export function paymentRecordReceived(answers: SubPaperAnswers, key: string): { at: string } | null {
+  const lone = key.startsWith('row:')
+  const marks = lone ? answers.receivedByPayment : answers.receivedBySending
+  const id = lone ? key.slice(4) : key
+  if (!id || !marks.has(id)) return null
+  return { at: paperDay(marks.get(id)) || 'a day not recorded' }
 }
 
 /** The notes that touch a sheet: about the sheet itself, or about a payment that paid on it. Waiting ones first, then newest. */

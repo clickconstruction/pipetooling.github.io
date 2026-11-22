@@ -3,7 +3,9 @@
  * The tabbed job window's bar on a phone (punch list #189, PR 4): at 375 px a viewer on the job's crew — a master
  * or a primary, who are techs and open the tabbed window — gets the stamp they are due between the verb and Note,
  * and the composer's Arrived / Leaving chips leave the composer; the office, off the crew, keeps Status ▾ · verb ·
- * Note. Note opens the pane's note sheet with its box focused, from any tab, landing on the Job tab.
+ * Note. Note opens the pane's note sheet with its box focused, from any tab, landing on the Job tab. While a sheet
+ * from the window is up (Note, Status ▾, ⋯) the bar stands down, and the Note sheet is drawn outside the window
+ * (the phone walk of 2026-11-21: the bar showed over the sheet with the keyboard up).
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -94,6 +96,8 @@ function renderWindowAs(role: string, job: JobWithDetails) {
 }
 
 const bar = () => screen.getByRole('toolbar', { name: 'Job actions' })
+/** The bar while it stands down: still in the page, out of every role query. */
+const stoodDown = () => document.querySelector<HTMLElement>('[role="toolbar"][data-stands-down]')
 const barLabels = () => within(bar()).getAllByRole('button').map((b) => b.textContent)
 const tab = (name: string) => screen.getByRole('tab', { name })
 
@@ -135,8 +139,53 @@ describe('JobWindowModal · the phone bar', () => {
       fireEvent.click(within(bar()).getByRole('button', { name: 'Note' }))
       expect(screen.getByRole('dialog', { name: 'Note' })).toBeTruthy()
     })
-    expect(barLabels()).toHaveLength(3)
+    // The bar is read with the sheet shut again: while the sheet is up the bar stands down.
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Note' })).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(barLabels()).toHaveLength(3))
     expect(within(bar()).queryByRole('button', { name: /^(Arrived|Leaving)$/ })).toBeNull()
     expect([barLabels()[0], barLabels()[2]]).toEqual(['Status ▾', 'Note'])
+  })
+
+  it('stands the bar down under the Note sheet, which is drawn outside the window, and brings it back when the sheet shuts', async () => {
+    renderWindowAs('master_technician', makeJob({ id: 'job-1', hcp_number: '9001', job_name: 'Kitchen rough-in', team_members: [makeTeamMember(SMOKE_AUTH_USER_ID, 'Luis Ortega')] }))
+    await settle()
+    await within(bar()).findByRole('button', { name: 'Arrived' })
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Note' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Note' })
+    // Not drawn and not pressable: Ready to bill and Arrived both write, and sat beside the keyboard.
+    await waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Job actions' })).toBeNull())
+    expect(stoodDown()?.style.visibility).toBe('hidden')
+    // The sheet is a child of the page, not of the window's body that scrolls.
+    const layer = sheet.closest('[data-phone-sheet]') as HTMLElement
+    expect(layer.parentElement).toBe(document.body)
+    expect(document.querySelector('.job-window-body')?.contains(layer)).toBe(false)
+    // The master may tag: the sheet's box carries the @ the Activity composer has.
+    expect(within(sheet).getByRole('button', { name: 'Tag a teammate' })).toBeTruthy()
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(bar().style.visibility).toBe(''))
+    expect(barLabels()).toHaveLength(4)
+    // The window itself is still open: a press on the sheet's × closes the sheet alone.
+    expect(tab('Job')).toBeTruthy()
+  })
+
+  it('stands the bar down under Status ▾ and under ⋯ too', async () => {
+    renderWindowAs('assistant', makeJob({ id: 'job-1', hcp_number: '9001', job_name: 'Kitchen rough-in' }))
+    await settle()
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Status ▾' }))
+    const status = await screen.findByRole('dialog', { name: 'Job status' })
+    expect(screen.queryByRole('toolbar', { name: 'Job actions' })).toBeNull()
+    fireEvent.click(within(status).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(bar().style.visibility).toBe(''))
+    fireEvent.click(screen.getByRole('button', { name: 'More on this job' }))
+    await waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Job actions' })).toBeNull())
+    expect(stoodDown()?.style.visibility).toBe('hidden')
+  })
+
+  it('scrolls its body with no touch-scrolling layer, which cut a sheet pinned from inside it on an iPhone', async () => {
+    renderWindowAs('assistant', makeJob({ id: 'job-1', hcp_number: '9001', job_name: 'Kitchen rough-in' }))
+    await settle()
+    const body = document.querySelector('.job-window-body') as HTMLElement
+    expect(body.style.overflowY).toBe('auto')
+    expect(body.getAttribute('style') ?? '').not.toContain('overflow-scrolling')
   })
 })

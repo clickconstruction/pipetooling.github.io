@@ -18,6 +18,7 @@ What a flame leaves behind has to get out of the house. On most water heaters an
 - A furnace and a water heater often share one vent. The vent is sized for the two together.
 - Take the furnace off a shared vent and the water heater is left alone. The vent is now too big for it.
 - A vent too big stays cold. The gas cools, stalls and can spill at the draft hood.
+- {{figure:left-alone-on-the-vent|With the furnace on it, the vent stays hot and draws. With the furnace gone, the water heater cannot warm it, and the gas spills.}}
 - A condensing furnace vents in plastic pipe with a fan. That pipe slopes back so its water drains to the furnace.
 
 ## Traps

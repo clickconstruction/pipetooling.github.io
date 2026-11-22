@@ -2,7 +2,7 @@
 title: tag a teammate in a job note
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent, helpers, primary
-keywords: tag, tagged, tagged job notes, mention, at sign, @, job note, note, notes, pipeline, jobs, teammate, ask, question, answer, reply, no reply needed, you asked, waiting on, red number, count, needs you, backspace, phone, keyboard, names
+keywords: tag, tagged, tagged job notes, mention, at sign, @, job note, note, notes, pipeline, jobs, teammate, ask, question, answer, reply, no reply needed, you asked, waiting on, red number, count, needs you, backspace, phone, keyboard, names, note sheet, bar, save
 where: /jobs
 order: 124
 ---
@@ -114,6 +114,15 @@ Press **Fold** on the section's top line to shut it. Press **Open** to bring it 
 ## Tag from the job's own window
 
 The note box in the job's window has the same **@** button and the same row of names. So does the box in Job Mode. A note you type there answers a tag the same way.
+
+On a phone the window has a bar at the bottom. {{button:outline|Note}} on that bar opens a note box over the keyboard. That box tags too.
+
+1. Press {{button:outline|Note}} on the bar.
+2. Type your note. Type **@** where the name goes, or press the **@** button beside the box.
+3. Press a name in the row above the box. The row sits above the keyboard.
+4. Press {{button:blue|Save}}.
+
+The name is shaded in your words, and it shows after **Will tag**. One Backspace takes it off, as in every note box.
 
 A note typed with no signal is kept on your phone. The tag goes with the note when the note is sent.
 

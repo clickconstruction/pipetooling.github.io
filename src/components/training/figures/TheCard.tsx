@@ -29,7 +29,7 @@ export function TheCard({ titleId }: FigureProps) {
         R-410A
       </Label>
       <Label x={182} y={67} anchor="middle" bold color="currentColor" size={7.5}>
-        A2L
+        R-454B
       </Label>
       <Label x={42} y={110} anchor="middle" size={6.5}>
         the old one
@@ -44,7 +44,7 @@ export function TheCard({ titleId }: FigureProps) {
         does not burn
       </Label>
       <Label x={186} y={110} anchor="middle" size={6.5}>
-        R-32 and R-454B
+        and R-32, class A2L
       </Label>
       <Label x={186} y={119} anchor="middle" size={6.5} color={WRONG}>
         can burn

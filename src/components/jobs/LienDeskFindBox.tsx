@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, type CSSProperties } from 'react'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { LIEN_FIND_PLACEHOLDER, lienFindCountWords, lienFindParts, type LienFindFact } from '../../lib/jobs/lienDeskFind'
 
 /**
@@ -12,6 +13,10 @@ import { LIEN_FIND_PLACEHOLDER, lienFindCountWords, lienFindParts, type LienFind
  * head. The focus wakes the glyph and turns the hairline blue; nothing moves. The `/` key
  * shows only while the column is hovered or the box has the focus (`.lienFind` in index.css).
  * The line is as tall as the pill and its margins were, so the pile heads under it stay put.
+ *
+ * On a phone the box itself is a thumb tall (the phone walk of 2026-11-21 read the field at 34 px inside a 57 px
+ * line): the field and its × are 44 px, and the line's own padding came in by what they grew, so the line is still
+ * 57 px and the list under it stays put.
  */
 type Props = {
   value: string
@@ -46,7 +51,7 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
       data-testid="lien-desk-find"
       data-finding={finding ? 'yes' : 'no'}
       data-lien-find-quiet
-      style={{ display: 'flex', alignItems: 'center', gap: 6, boxSizing: 'border-box', ...(isMobile ? { minHeight: 44, padding: '11px 0.9rem' } : { height: 47, padding: '0 0.9rem' }) }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, boxSizing: 'border-box', ...(isMobile ? { minHeight: 44, padding: '6px 0.9rem' } : { height: 47, padding: '0 0.9rem' }) }}
     >
       <span aria-hidden="true" className="lienFindGlyph" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1 }}>⌕</span>
       <input
@@ -65,12 +70,12 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
         aria-label="Find on the list"
         autoComplete="off"
         data-testid="lien-desk-find-input"
-        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', font: 'inherit', fontSize: isMobile ? '1rem' : '0.8125rem', color: 'var(--text-strong)', outline: 'none', padding: '2px 0', ...(isMobile ? { minHeight: 34 } : null) }}
+        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', font: 'inherit', fontSize: isMobile ? '1rem' : '0.8125rem', color: 'var(--text-strong)', outline: 'none', padding: '2px 0', ...(isMobile ? { minHeight: PHONE_PRESS_MIN_HEIGHT } : null) }}
       />
       {finding ? (
         <>
           <span data-testid="lien-desk-find-count" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{lienFindCountWords(matched)}</span>
-          <button type="button" className="lienFindClear" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', borderRadius: 999, width: isMobile ? 34 : 20, height: isMobile ? 34 : 20, fontSize: isMobile ? '1.1rem' : '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0, flex: 'none' }}>
+          <button type="button" className="lienFindClear" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', borderRadius: 999, width: isMobile ? PHONE_PRESS_MIN_HEIGHT : 20, height: isMobile ? PHONE_PRESS_MIN_HEIGHT : 20, fontSize: isMobile ? '1.1rem' : '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0, flex: 'none' }}>
             ×
           </button>
         </>

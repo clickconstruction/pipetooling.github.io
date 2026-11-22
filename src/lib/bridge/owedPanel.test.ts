@@ -62,3 +62,34 @@ describe('buildOwedPanel', () => {
     expect(p.closing).toBe('The gap between +$81.4k and +$314k is Bill’s pile. The gap between +$81.4k and $390 in the bank is Collect’s.')
   })
 })
+
+describe('buildOwedPanel: the bills an in kind deal pays (punch list #301)', () => {
+  const base = {
+    todayYmd: '2026-10-10',
+    cashUsd: 1_000,
+    ar: { total: 900, count: 1, items: [{ amount: 900, dateYmd: '2026-04-01' }] },
+    arCollections: { total: 0, count: 0 },
+    ap: { total: 0, supplyTotal: 0, payrollTotal: 0, subLaborTotal: 0, upcomingTotal: 0 },
+    unbilled: { total: 0, count: 0 },
+    bills: [],
+    noContractJobs: 0,
+    noPctJobs: 0,
+    pendingClosedHours: 0,
+    unattributedNoncard: 0,
+    dayLabel: (y: string) => y,
+  }
+
+  it('names them as shown and not counted, with the door to In kind, and leaves owed to you as the money alone', () => {
+    const p = buildOwedPanel({ ...base, arInKind: { total: 14_643.46, count: 8 } })
+    const row = p.sources.find((s) => s.input === 'in kind')
+    expect(row).toMatchObject({ from: 'bills an in kind arrangement pays: $14.6k on 8, shown and not counted', tone: 'green', door: { to: '/in-kind', label: 'Open In kind' } })
+    expect(p.waterfall.find((b) => b.label === 'owed to you')?.usd).toBe(900)
+    // The bill off the deal is still aged: 192 days is past 90.
+    expect(p.aging.find((b) => b.label === '90+ days')).toMatchObject({ usd: 900, count: 1 })
+  })
+
+  it('says nothing of in kind when no bill is on a deal', () => {
+    expect(buildOwedPanel(base).sources.some((s) => s.input === 'in kind')).toBe(false)
+    expect(buildOwedPanel({ ...base, arInKind: { total: 0, count: 0 } }).sources.some((s) => s.input === 'in kind')).toBe(false)
+  })
+})

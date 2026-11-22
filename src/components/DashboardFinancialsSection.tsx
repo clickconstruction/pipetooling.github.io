@@ -35,7 +35,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
-import { apBillPartPaidWords, redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
+import { AR_IN_KIND_SECTION_TITLE, apBillPartPaidWords, arFooterTotalLabel, arInKindLine, redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
 import { daysPastDue } from '../lib/supplyHouseAging'
 import { useIsMobile } from '../hooks/useIsMobile'
 import {
@@ -429,6 +429,7 @@ function ItemsModal({
   apBills,
   arCollectionsSection,
   arUncollectibleSection = null,
+  arInKindSection = null,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -447,6 +448,8 @@ function ItemsModal({
   arCollectionsSection: FinancialBucket | null
   /** v2.4784: the Uncollectible section of the AR drill-down (punch list #94). */
   arUncollectibleSection?: FinancialBucket | null
+  /** Punch list #301: the bills an in kind deal pays, in their own section, outside the total and never aged. */
+  arInKindSection?: FinancialBucket | null
 }) {
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
@@ -494,7 +497,7 @@ function ItemsModal({
               ] as ModalSection[]
             ).filter((s) => s.items.length > 0)
           })()
-        : cardKey === 'ar' && ((arCollectionsSection && arCollectionsSection.count > 0) || (arUncollectibleSection && arUncollectibleSection.count > 0))
+        : cardKey === 'ar' && ((arCollectionsSection && arCollectionsSection.count > 0) || (arUncollectibleSection && arUncollectibleSection.count > 0) || (arInKindSection && arInKindSection.count > 0))
           ? (
               [
                 { title: null, items: bucket.items },
@@ -502,6 +505,8 @@ function ItemsModal({
                 { title: 'Collections', items: arCollectionsSection?.items ?? [], noun: 'bill' },
                 // v2.4784: given up on — its own section, outside Owed altogether (punch list #94).
                 { title: 'Uncollectible — not owed', items: arUncollectibleSection?.items ?? [], noun: 'bill' },
+                // Punch list #301: a deal pays these down on a schedule. Its rows carry no date, so nothing here ages them.
+                { title: AR_IN_KIND_SECTION_TITLE, items: arInKindSection?.items ?? [], noun: 'bill' },
               ] as ModalSection[]
             ).filter((s) => s.title === null || s.items.length > 0)
           : [{ title: null, items: bucket.items }]
@@ -823,9 +828,7 @@ function ItemsModal({
   const footerTotalLabel =
     upcomingSection && upcomingSection.count > 0
       ? 'Total (incl. estimate)'
-      : sections.some((sec) => sec.title === 'Collections')
-        ? 'Total (excl. Collections)'
-        : 'Total'
+      : arFooterTotalLabel({ collections: sections.some((sec) => sec.title === 'Collections'), inKind: sections.some((sec) => sec.title === AR_IN_KIND_SECTION_TITLE) })
   const pillStyle = (on: boolean): CSSProperties => ({
     padding: '0.4rem 0.7rem',
     borderRadius: 999,
@@ -872,6 +875,7 @@ function ItemsModal({
         onOpenJob={onOpenJob}
         billExtras={arBillExtras}
         collectionsSection={arCollectionsSection}
+        inKindSection={arInKindSection}
         isMobile={isMobile}
         lienChips={arLienChips}
         onOpenLien={(chip) => navigate(lienArChipHref(chip.door))}
@@ -1680,6 +1684,8 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
                 ? ` · Uncollectible ${formatMoneyShortK(data.arUncollectible.total)} (${data.arUncollectible.count}), not owed`
                 : ''
             }`,
+            // Punch list #301: what an in kind deal pays is out of the total above — said, so the total does not shrink with no word.
+            ...[arInKindLine(data.arInKind)].filter((line): line is string => line != null),
             // Bills the kernel keeps out of Owed (on a paid or deleted job) — said, never summed.
             ...(data.arExcluded.count > 0
               ? [
@@ -1873,6 +1879,7 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
           apBills={openCard === 'ap' ? data.apBills : null}
           arCollectionsSection={openCard === 'ar' ? data.arCollections : null}
           arUncollectibleSection={openCard === 'ar' ? data.arUncollectible : null}
+          arInKindSection={openCard === 'ar' ? data.arInKind : null}
         />
       ) : null}
       {apBill ? (

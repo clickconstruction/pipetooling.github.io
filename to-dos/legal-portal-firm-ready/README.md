@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 23 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door), v2.4712 (replace the firm, migration 20261006234500) and v2.4749 (the grid reads better), all live; 12–15 and 19 wait for the firm; 10 is the owner's
+status: 23 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door), v2.4712 (replace the firm, migration 20261006234500) and v2.4749 (the grid reads better), all live; 12–15 and 19 wait for the firm; 10 is the owner's; of the review's residuals the cap on confirmation emails is built (v2.8225, 2026-11-21, live once `submit-legal-portal` is redeployed)
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -105,7 +105,7 @@ Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating
 Found by the reviews and left for later:
 
 - A message the mail service accepts and then bounces is not caught; that needs Resend's webhook events.
-- Anyone holding the firm's link can make the company send up to 12 confirmation emails, as often as they like; no rate cap on adding a person or resending.
+- ~~Anyone holding the firm's link can make the company send up to 12 confirmation emails, as often as they like; no rate cap on adding a person or resending.~~ (v2.8225, 2026-11-21: three to a person and twenty-four to a firm in an hour, counted by the portal's own throttle with no migration; a capped press answers 429 in words, and two presses in one instant send one email. Needs `supabase functions deploy submit-legal-portal`.)
 - Two overlapping dispatcher runs can send the same email twice (claim rows with `FOR UPDATE SKIP LOCKED`); 50 events stuck retrying can hold back new ones for up to an hour.
 - The contact-scope rule (item 24) reads job numbers out of prose, so a year or a phone fragment that equals a job number matches; `customer_contacts` has no job column.
 - *Recorded by* is the firm's own claim, since anyone holding the link can pick any name, and the link never expires. Per-person access, a link for each person on the firm's list or an expiry and a fresh link, is the structural fix if the firm asks who can see the portal.

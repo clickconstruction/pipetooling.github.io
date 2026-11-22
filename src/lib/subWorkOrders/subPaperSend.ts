@@ -68,6 +68,20 @@ export function subPaperTitle(p: SubPaper): string {
   return `Work statement${p.number ? ` ${p.number}` : ''} · ${p.sub.name} · ${p.job.label}`
 }
 
+/**
+ * The subject of the email a paper leads. A work statement and a payment record name their number once they have
+ * one; a statement of account reads the same either way.
+ *
+ * The send step draws it from the paper as previewed, and a sheet's first work statement has no number until the
+ * press registers it. So the send builds it again from the paper as numbered: the subject then names the number
+ * on the file beside it.
+ */
+export function subPaperSendSubject(lead: SubPaper, company: string): string {
+  if (lead.kind === 'statement_of_account') return `Your statement of account from ${company}`
+  if (lead.kind === 'payment_record') return `Payment record${lead.number ? ` ${lead.number}` : ''} from ${company}`
+  return `Work statement${lead.number ? ` ${lead.number}` : ''} from ${company}`
+}
+
 export type SubPaperSendPlan = {
   subject: string
   /** The message as the sub reads it. */
@@ -94,18 +108,15 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
   const papers = [i.lead, ...i.attached]
   const files = papers.map(subPaperAttachmentName)
   const page = i.portalUrl ? ` The same papers are on your page: ${i.portalUrl}` : ''
-  let subject: string
+  const subject = subPaperSendSubject(i.lead, i.company)
   let lines: string[]
   if (i.lead.kind === 'statement_of_account') {
-    subject = `Your statement of account from ${i.company}`
     // `To date, Nov 19, 2026` and `To Nov 13, 2026` follow the word straight: *your statement to date, Nov 19, 2026*.
     const period = /^To /.test(i.lead.period) ? ` t${i.lead.period.slice(1)}` : ` for ${i.lead.period}`
     lines = [`Here is your statement${period}.`, `We still have ${paperMoney(i.lead.stillOpen)} open with you.`, i.lastPayment ? `Our last payment was ${paperMoney(i.lastPayment.amount)} on ${i.lastPayment.day}.` : '']
   } else if (i.lead.kind === 'payment_record') {
-    subject = `Payment record${i.lead.number ? ` ${i.lead.number}` : ''} from ${i.company}`
     lines = [`We sent you ${paperMoney(i.lead.amountSent)} on ${i.lead.sentOn}${i.lead.how && i.lead.how !== 'Not recorded' ? ` by ${i.lead.how}` : ''}.`, `The record shows how much went to each statement.`, i.lead.stillOpenAfter > 0 ? `${paperMoney(i.lead.stillOpenAfter)} is still open with you after it.` : 'Nothing is still open with you after it.']
   } else {
-    subject = `Work statement${i.lead.number ? ` ${i.lead.number}` : ''} from ${i.company}`
     lines = [`Here is our statement of your work on ${i.lead.job.label}.`, `It comes to ${paperMoney(i.lead.comesTo)}.`, i.lead.stillOpen > 0 ? `${paperMoney(i.lead.stillOpen)} is still open on it.` : 'It is paid in full.']
   }
   const body = `Hi ${i.subName}. ${lines.filter(Boolean).join(' ')}${page}`

@@ -91,7 +91,7 @@ While you are clocked into a job, the card keeps going below the buttons:
 - **Customer** shows the customer's name with tap-to-call phone and tap-to-email links. So reaching them is one tap.
 - You tap {{button:outline|Job detail}}. The job's window opens right over the card. On a phone the window carries a bar at the bottom. See [the job window on a phone](#the-job-window-on-a-phone).
 - A **Street View photo** of the job address. You tap it to open Street View in Google Maps.
-- **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card. The pills over it show only the kinds of lines you can read. A helper sees All, Notes, Status and Crew.
+- **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card. The pills over it show only the kinds of lines you can read. A helper sees All, Notes, Status, Crew and Customer. On a phone the pills stay on one row. When the row is too long, slide it sideways to see the rest.
 
 ## The job window on a phone
 
@@ -100,7 +100,7 @@ You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The 
 - {{button:green|Arrived}} posts an arrived note on the job's thread. Once you press it or clock in on the job, the button reads {{button:outline-amber|Leaving}} instead.
 - {{button:outline-amber|Leaving}} posts a leaving note. Then the On my way sheet opens for your next job. One press clocks the drive and texts the customer. With no next job on your schedule, Update Focus opens instead, so you can pick any job. The button reads Arrived again for when you come back.
 - {{button:blue|Leave report}} opens the phone's camera, then the field report form for this job. Each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report) and [file and review field reports](/help/reports).
-- {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
+- {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes. The bar is put away while the box is up. Type **@** in the box to [tag a teammate](/help/tag-a-teammate-in-a-job-note#tag-from-the-job-s-own-window).
 
 Above the bar the window reads from the top down. The job's name comes first, with its status beside it. The job's number and the customer sit on a quiet line under the name. At the right, **⋯** opens a short list of doors, like **Share the job**. **✕** under it closes the window.
 

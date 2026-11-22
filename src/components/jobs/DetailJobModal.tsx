@@ -88,6 +88,8 @@ import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobStatusStepper'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { crewJobWindowBar, crewStampOffer, viewerOnCrew, type JobWindowBarKey, type JobWindowVerb } from '../../lib/jobs/jobWindowBar'
+import { JOB_WINDOW_BODY_SCROLL, jobWindowBarStandsDown } from '../../lib/jobs/jobWindowSheets'
+import { canTagInJobNotes } from '../../lib/jobs/noteTags'
 import { accountQuietWords, jobAccountsLine, jobWindowMoneyLine, type JobWindowSheetDoors, type JobWindowSheetKey } from '../../lib/jobs/jobWindowPhone'
 import { stripStateWord } from '../../lib/jobs/jobAccountStrip'
 import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
@@ -228,8 +230,9 @@ export type JobPanePhoneBarKey = 'arrived' | 'leaving' | 'note'
  * What the Job pane gives the job window's phone bar (punch list #189, PR 4): the stamp a viewer on
  * the crew is due (`crewStampOffer`, null off the crew) and the press that answers Arrived, Leaving
  * and Note with the pane's own handlers, Note opening the pane's note sheet over the composer's draft.
+ * `noteOpen` says that sheet is up, so the window stands its bar down under it (`jobWindowBarStandsDown`).
  */
-export type JobPanePhoneBar = { stamp: JobThreadStampKind | null; press: (key: JobPanePhoneBarKey) => void }
+export type JobPanePhoneBar = { stamp: JobThreadStampKind | null; press: (key: JobPanePhoneBarKey) => void; noteOpen?: boolean }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
 export function splitScheduleDetailRowLabel(label: string): { hcp: string; jobName: string } {
@@ -1546,8 +1549,8 @@ export default function DetailJobModal({
   const paneBarPress = useCallback((key: JobPanePhoneBarKey) => paneBarPressRef.current(key), [])
   useEffect(() => {
     if (!paneMode || !onPhoneBarChange) return
-    onPhoneBarChange(phonePane ? { stamp: stampDue, press: paneBarPress } : null)
-  }, [paneMode, phonePane, stampDue, onPhoneBarChange, paneBarPress])
+    onPhoneBarChange(phonePane ? { stamp: stampDue, press: paneBarPress, noteOpen: noteSheetOpen } : null)
+  }, [paneMode, phonePane, stampDue, onPhoneBarChange, paneBarPress, noteSheetOpen])
   useEffect(() => {
     if (!paneMode || !onPhoneBarChange) return
     return () => onPhoneBarChange(null)
@@ -1975,7 +1978,7 @@ export default function DetailJobModal({
             .crew-window-body [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
           `}</style>
         ) : null}
-        <div ref={crewBodyRef} className={phoneCrew ? 'crew-window-body' : undefined} style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 0.9rem 1.25rem' } : undefined}>
+        <div ref={crewBodyRef} className={phoneCrew ? 'crew-window-body' : undefined} style={phoneCrewBar ? { flex: 1, minHeight: 0, ...JOB_WINDOW_BODY_SCROLL, padding: '0.5rem 0.9rem 1.25rem' } : undefined}>
         {phoneCrew ? (
           <div data-testid="crew-window-head" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', paddingBottom: '0.25rem' }}>
             <div style={{ flex: 1, minWidth: 0, paddingTop: '0.45rem' }}>
@@ -2954,6 +2957,7 @@ export default function DetailJobModal({
             customerLines={customerLines}
             showComposerLabel={false}
             viewerRole={authRole as UserRole | null}
+            hostCard={phoneShape}
             customerBox={
               fullJob && jobBoxOffered(authRole as UserRole | null)
                 ? {
@@ -3506,9 +3510,10 @@ export default function DetailJobModal({
         </div>
         </div>
         </div>
-        {phoneCrewBar ? <JobWindowActionBar buttons={crewBar} onPress={onCrewBarPress} safeAreaBottom={false} /> : null}
+        {phoneCrewBar ? <JobWindowActionBar buttons={crewBar} onPress={onCrewBarPress} safeAreaBottom={false} standsDown={jobWindowBarStandsDown({ more: crewSheetOpen, note: noteSheetOpen })} /> : null}
         {/* The Note sheet on a phone, in either window: outside the pane's hidden body, so the tabbed
-            window's Note opens it from any tab. */}
+            window's Note opens it from any tab. It draws itself at the top of the page, clear of the body that scrolls,
+            and tags a teammate as the Activity composer does (punch list #363). */}
         {phoneCrew && crewSheetOpen ? <JobWindowMoreSheet title={modalTitleParts.name} rows={crewRows} onPress={(key) => (key === 'legend' ? undefined : sheetPress(key))} onClose={() => setCrewSheetOpen(false)} /> : null}
         {narrowViewport ? (
           <JobWindowNoteSheet
@@ -3516,8 +3521,10 @@ export default function DetailJobModal({
             draft={threadNotes.draft}
             onDraftChange={threadNotes.setDraft}
             submitting={threadNotes.submitting}
-            onSave={threadNotes.submitNote}
+            onSave={(tagged) => threadNotes.submitNote(tagged)}
             onClose={() => setNoteSheetOpen(false)}
+            tagJobId={fullJob?.id ?? null}
+            canTag={threadNotes.canPost && canTagInJobNotes(authRole)}
           />
         ) : null}
       </div>

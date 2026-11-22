@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { thumbInLine } from '../../lib/phonePress'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import {
   LIEN_CALENDAR_KEY,
@@ -1048,7 +1049,7 @@ function PhoneJobRow({ j, closed, later, onOpenJob, onOpenJobWindow, onOpenLastW
               e.stopPropagation()
               onOpenLastWork(j.jobId)
             }}
-            style={{ flex: 'none', minHeight: 28, border: 'none', padding: '0 2px', backgroundColor: 'transparent', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--text-link)', cursor: 'pointer' }}
+            style={{ flex: 'none', ...thumbInLine(28), border: 'none', padding: '0 2px', backgroundColor: 'transparent', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--text-link)', cursor: 'pointer' }}
           >
             {LIEN_WORKED_LATER}
           </button>

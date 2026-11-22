@@ -110,7 +110,7 @@ What the second pass found in the first:
    still on the phone keeps its amber words and **Send now**. A filed one has no words.
 7. Take from a box's **Take from G12**, sticky at the bottom.
 
-**More for G12** lists Edit G12, Say what is in it, Move G12, Print the label, Print the manifest
+**More for G12** lists Edit G12, Say it better (Say what is in it on a box with no line yet), Move G12, Print the label, Print the manifest
 and Copy the label code, each with one line that says what it does. Retire G12 sits apart at the
 bottom, and the *Last touched* line is under it. Every sheet behind a row is the one the app has
 today.
@@ -190,3 +190,16 @@ text.
 
 **Left alone on purpose**: Damaged and Back to the supply house sit under Move to…, where a person
 with a cracked fitting may not look. That sheet wants its own look.
+
+### The walk of 2026-11-21
+
+The owner's main session walked the screen at 375 px in a browser, signed in as the dev, looking only, on the test job's empty box. Every press met 48 px but one, and v2.8227 fixed it:
+
+- **The More sheet's × was 39 by 38.** It is 48 by 48 now, on every sheet of the On site tab, and the title row did not move.
+
+Read by the walk and left as they are:
+
+- **An empty box still draws the sticky *Take from …* press.** It shows on every box but Unsorted and a box with a run left open. Should an empty box hide it, or grey it with a line that says there is nothing to take? That changes what the screen does, so it waits for the owner's word.
+- **The sheet read *Say it better* where this card said *Say what is in it*.** Both are the screen's own words: *Say it better* over a box that has a line, *Say what is in it* on a box with none yet. The sentence above now says both.
+
+This card still waits on the screen in the owner's hand.
