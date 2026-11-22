@@ -73,7 +73,8 @@ describe('JobModePressBar: one row under the new phone layout', () => {
     const twoFaces = two.buttons.map(face)
     const dayTwo = two.buttons[two.buttons.length - 1]!
     const dayLook = { background: dayTwo.style.background, color: dayTwo.style.color }
-    expect(twoFaces.length).toBeGreaterThanOrEqual(3)
+    // Before the clock the bar holds Leave report and the day's press alone: Turnaway waits for the clock (`turnawayOffered`, v2.8287).
+    expect(twoFaces.length).toBeGreaterThanOrEqual(2)
     cleanup()
 
     const one = draw(c, { oneRow: true })

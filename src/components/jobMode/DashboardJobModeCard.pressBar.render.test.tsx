@@ -235,6 +235,10 @@ describe('DashboardJobModeCard — the press bar on a phone', { timeout: 15_000 
     const leave = screen.getByTestId('job-mode-press-leave-report') as HTMLButtonElement
     // Turnaway waits for the clock (`turnawayOffered`): it is not drawn dead, it is not drawn.
     expect(screen.queryByTestId('job-mode-press-turnaway')).toBeNull()
+    // With nothing in it the small row is not drawn, so the bar is the big row's two presses with no gap over them.
+    const bar = screen.getByTestId('job-mode-press-bar')
+    expect(bar.children).toHaveLength(1)
+    expect(bar.querySelectorAll('button')).toHaveLength(2)
     expect(leave.disabled).toBe(true)
     expect(leave.title).toBe('Start a job first.')
     expect(screen.queryByTestId('job-mode-press-pct-done')).toBeNull()
