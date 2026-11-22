@@ -4101,7 +4101,8 @@ A wider pool is one `CREATE OR REPLACE` on `legal_mark_attorney_ready`.
 the service role reads the firm's own through `legal_portal_link_token` / one by id through `legal_portal_link_token_by_id` for the emails, and since v2.4750 the office reads every live key back through `list_legal_portal_links`, the window's list);
 the links — the firm's own and one per person at the firm since v2.4750 (`purpose`) — are created/rotated/turned off by the Collections managers (`create_legal_portal_link`, `rotate_legal_portal_link`, `revoke_legal_portal_link_by_id`;
 the older `mint_legal_portal_link` / `revoke_legal_portal_link` still work on the firm's own;
-since v2.4756 create and rotate take the address the office picked, checked by `legal_portal_address_problem`, and `legal_portal_misses` — wrong keys by caller IP, read and written only by the service role through `legal_portal_guess_gate` — throttles a guesser at ten misses an hour);
+since v2.4756 create and rotate take the address the office picked, checked by `legal_portal_address_problem`, and `legal_portal_misses` — wrong keys by caller IP, read and written only by the service role through `legal_portal_guess_gate` — throttles a guesser at ten misses an hour;
+since v2.8225 the same count, under a key for the person and a key for the firm, holds the confirmation emails `submit-legal-portal` sends to three per person and twenty-four per firm an hour);
 the same roles email it to the firm (`legal-send-firm-link`, v2.4624: JWT checked in the handler, then `legal_office_can_read`;
 the function reads the token from Vault, never the office).
 The office previews the portal by firm id, signed in (`/legal?firm=<id>&preview=1`;
