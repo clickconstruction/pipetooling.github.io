@@ -16,6 +16,18 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
     io.asked.push(home)
     return io.answer
   },
+  paintedPlacePhotoUrls: async (paths: Array<string | null>) => new Map(paths.filter((p): p is string => !!p).map((p) => [p, `https://signed.test/${p}`])),
+}))
+/** The places earlier jobs kept at this job's address, and the opens that were counted. */
+const kept = vi.hoisted(() => ({ lists: [] as unknown[], asked: [] as string[], opened: [] as string[], fails: false }))
+vi.mock('../../lib/paintedMap/paintedAddressPlacesIo', () => ({
+  loadAddressPlaceLists: async (jobId: string) => {
+    kept.asked.push(jobId)
+    return kept.fails ? { ok: false, error: 'No signal.' } : { ok: true, value: kept.lists }
+  },
+  notePaintedPlaceOpened: (placeId: string) => {
+    kept.opened.push(placeId)
+  },
 }))
 
 const phone = vi.hoisted(() => ({ reads: 0, answer: { ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6 } } as unknown }))
@@ -50,6 +62,10 @@ afterEach(() => {
   io.calls = 0
   io.asked = []
   phone.reads = 0
+  kept.lists = []
+  kept.asked = []
+  kept.opened = []
+  kept.fails = false
   phone.answer = { ok: true, fix: { lat: 29.5004, lng: -98.2004, accuracyM: 6 } }
 })
 
@@ -336,5 +352,101 @@ describe('Photo of a spot (#413)', () => {
     await waitFor(() => expect(document.querySelector('[data-painted-map-line]')).not.toBeNull())
     expect(press()).toBeNull()
     expect(input()).toBeNull()
+  })
+})
+
+/**
+ * Places kept at this address, and each place as a row (punch list #413, steps 4 and 5). An earlier job at the same
+ * customer address kept a list of places, and this job reads it under its own lines. With `rows` each place is a row
+ * with its photo, and a press on a row opens its list on that place and counts an open.
+ */
+describe('places kept at this address, and each place as a row (#413)', () => {
+  const jp = (id: string, mapId: string, letter: string, name: string, more: Record<string, unknown> = {}) => ({ id, mapId, name, words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: null, setBy: 'u9', setAt: '2026-11-21T15:00:00Z', number: letter.charCodeAt(0) - 64, letter, ...more })
+  const earlier = (places: unknown[], jobLabel: string | null = '4135 Sewer line') => ({ map: { id: 'old-list', name: 'Places on this job', words: '', jobId: 'j0', developmentId: null, jobList: true, createdBy: 'u9', createdAt: '2026-11-21T15:00:00Z' }, places, jobLabel })
+  const rowsOf = (listId: string) => [...document.querySelectorAll(`[data-job-place-rows="${listId}"] [data-job-place-row]`)] as HTMLButtonElement[]
+
+  it('asks for the lists kept at this job’s address, and shows a line for one with the job that kept it', async () => {
+    listen()
+    kept.lists = [earlier([jp('p1', 'old-list', 'A', 'Meter'), jp('p2', 'old-list', 'B', 'Cleanout', { kind: 'cleanout' })])]
+    render(<JobPaintedMapsStrip jobId="j1" jobLabel="Drain call" address="1 Made Up Road" />)
+    await waitFor(() => expect(document.querySelector('[data-address-places-line]')).not.toBeNull())
+    expect(kept.asked).toEqual(['j1'])
+    const line = document.querySelector('[data-address-places-line]') as HTMLButtonElement
+    expect(line.textContent).toBe('AKept at this address2 places · from 4135 Sewer line, Nov 2026 ›')
+    expect(line.style.borderStyle).toBe('dashed')
+    // No rows on a strip that was not asked for them.
+    expect(document.querySelector('[data-job-place-row]')).toBeNull()
+    fireEvent.click(line)
+    expect(asks).toEqual([{ kind: 'open', mapId: 'old-list', address: '1 Made Up Road' }])
+  })
+
+  it('says the month alone when the reader cannot read the job that kept the list', async () => {
+    kept.lists = [earlier([jp('p1', 'old-list', 'A', 'Meter')], null)]
+    render(<JobPaintedMapsStrip jobId="j1" />)
+    await waitFor(() => expect(document.querySelector('[data-address-places-line]')).not.toBeNull())
+    expect(document.querySelector('[data-address-places-line]')?.textContent).toBe('AKept at this address1 place · kept Nov 2026 ›')
+  })
+
+  it('a read of the address that fails shows none, and the job’s own maps still stand', async () => {
+    kept.fails = true
+    io.answer = { ok: true, value: [whole('way', 'The way in', { jobId: 'j1' }, 265, 2)] }
+    render(<JobPaintedMapsStrip jobId="j1" />)
+    await waitFor(() => expect(document.querySelector('[data-painted-map-line]')).not.toBeNull())
+    await waitFor(() => expect(kept.asked).toEqual(['j1']))
+    expect(document.querySelector('[data-address-places-line]')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('shows on a sheet that shows the maps alone, where a tech reads the way in before driving', async () => {
+    kept.lists = [earlier([jp('p1', 'old-list', 'A', 'Meter')])]
+    render(<JobPaintedMapsStrip jobId="j1" only="maps" />)
+    await waitFor(() => expect(document.querySelector('[data-address-places-line]')).not.toBeNull())
+    expect(document.querySelector('[data-job-spot]')).toBeNull()
+  })
+
+  it('with rows, draws each place of the earlier list with its photo, its mark and the start of its words', async () => {
+    const long = '4 in. PVC sewer, from the house to the tap at the street. About 4 ft deep at the walk and 6 ft at the curb. It runs straight.'
+    kept.lists = [earlier([jp('p1', 'old-list', 'A', 'Meter'), jp('p2', 'old-list', 'B', 'Buried sewer line', { kind: 'buried_sewer', words: long, photoPath: 'old-list/line.jpg' })])]
+    render(<JobPaintedMapsStrip jobId="j1" rows address="1 Made Up Road" />)
+    await waitFor(() => expect(rowsOf('old-list')).toHaveLength(2))
+    const [meter, line] = rowsOf('old-list')
+    expect(meter!.getAttribute('aria-label')).toBe('Meter: open this place')
+    expect(meter!.style.minHeight).toBe('64px')
+    expect(meter!.querySelector('img')).toBeNull()
+    await waitFor(() => expect(line!.querySelector('img')?.getAttribute('src')).toBe('https://signed.test/old-list/line.jpg'))
+    expect(line!.querySelector('[data-place-mark]')?.getAttribute('data-place-mark')).toBe('buried_sewer')
+    expect(line!.textContent).toContain('Buried sewer line')
+    expect(line!.textContent).toContain('4 in. PVC sewer, from the house to the tap at the street.')
+    expect(line!.textContent).not.toContain('It runs straight.')
+  })
+
+  it('a press on a row opens its list on that place and counts an open', async () => {
+    listen()
+    kept.lists = [earlier([jp('p1', 'old-list', 'A', 'Meter'), jp('p2', 'old-list', 'B', 'Cleanout')])]
+    render(<JobPaintedMapsStrip jobId="j1" rows address="1 Made Up Road" />)
+    await waitFor(() => expect(rowsOf('old-list')).toHaveLength(2))
+    fireEvent.click(rowsOf('old-list')[1]!)
+    expect(kept.opened).toEqual(['p2'])
+    expect(asks).toEqual([{ kind: 'open', mapId: 'old-list', address: '1 Made Up Road', place: 'p2' }])
+  })
+
+  it('with rows, draws the job’s own places under its own line too', async () => {
+    listen()
+    io.answer = { ok: true, value: [listWhole('list', 'j1', 2, '2026-11-18T15:00:00Z')] }
+    render(<JobPaintedMapsStrip jobId="j1" rows address="1 Made Up Road" />)
+    await waitFor(() => expect(rowsOf('list')).toHaveLength(2))
+    fireEvent.click(rowsOf('list')[0]!)
+    expect(asks).toEqual([{ kind: 'open', mapId: 'list', address: '1 Made Up Road', place: 'list-p0' }])
+  })
+
+  it('draws four rows of a long list and one press for the rest', async () => {
+    listen()
+    kept.lists = [earlier(['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l, i) => jp(`p${i}`, 'old-list', l, `Place ${l}`)))]
+    render(<JobPaintedMapsStrip jobId="j1" rows address="1 Made Up Road" />)
+    await waitFor(() => expect(rowsOf('old-list')).toHaveLength(4))
+    const more = document.querySelector('[data-job-place-rows-more]') as HTMLButtonElement
+    expect(more.textContent).toBe('＋ 3 more ›')
+    fireEvent.click(more)
+    expect(asks).toEqual([{ kind: 'open', mapId: 'old-list', address: '1 Made Up Road' }])
   })
 })

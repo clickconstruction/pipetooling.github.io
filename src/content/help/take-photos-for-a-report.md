@@ -85,6 +85,12 @@ Open Settings → **My Reports** and press {{button:blue|Edit}} on the report. T
 
 A photo already on the report stays. Take one back in the job's Drive folder.
 
+## Where a photo was taken
+
+The app keeps where your phone was when you took a report's photo. Your phone is read once, as you take the photo.
+
+[Where a photo was taken](/help/add-a-photo-to-a-job#where-a-photo-was-taken) says who can read it and where it shows.
+
 ## Keep a photo's spot on the job
 
 On **Leave Report**, each photo has {{button:outline|Keep this spot}} under it.
