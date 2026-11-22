@@ -118,6 +118,7 @@ so RLS answers exactly what that role gets.
 Not read-only: a sample's writes are ordinary rows
 stamped with its own name.
 Two saves no press asks for are held while an imitation is on (v2.8176, `isImpersonationSessionActive()` read at each send): the app activity heartbeat (`bump_user_app_activity`, so the person's last seen time and app time stay their own) and the clock button's salary sync (`syncSalaryClockSessionsUnasked`), and Exit takes the flag off only after the session is the operator's again.
+The seen marks a page makes with no press are held the same way (v2.8246), so what is new for the person stays new: `markAnswersSeen` (a tagged note's answers), `markBidRequestsSeen`, `upsertBidNotesReadWatermark`, the plan question answers in `usePlanQuestions`, `legal_firm_intake_seen`, the First look's looked stamp, and the day editor's salary sync on an empty day (`useMyTimeSalaryPrefetch`).
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
