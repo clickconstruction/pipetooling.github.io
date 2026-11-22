@@ -11,7 +11,7 @@ What is in the loop is controlled by federal law. Opening the loop takes a card.
 - Each refrigerant has a number, like R-410A. The unit's nameplate says which one it holds.
 - R-22 is the old one. None has been made or brought into the country since **2020**.
 - R-410A filled most systems after it. It does not burn.
-- New home systems use R-32 or R-454B. Both are in a class called A2L, and they can burn.
+- New home systems use R-32 or R-454B. Both are in a class called A2L, named lower flammability. They can burn.
 - An A2L line carries a label. It says Risk of Fire, Flammable Refrigerant.
 - {{figure:the-card|Three refrigerants a crew meets. The newest ones can burn. Opening any of them takes the card.}}
 - The Environmental Protection Agency, the EPA, sets the rules. Its Section 608 card is the licence to open a loop.
@@ -19,6 +19,7 @@ What is in the loop is controlled by federal law. Opening the loop takes a card.
 - A helper may do that work only beside a carded technician who watches closely the whole time.
 - Venting is letting refrigerant out into the air. Doing it knowingly is against federal law.
 - Recovery is pumping the refrigerant into a tank before a loop is opened. It is the legal way.
+- {{figure:vent-or-recover|Cutting a line lets the refrigerant out, which is venting. Pumping it into a tank first is recovery, the legal way.}}
 - Only a carded technician may buy refrigerant.
 
 ## Traps

@@ -13,11 +13,12 @@ The ducts are half the system and the half that gets hurt most. They run through
 - A return duct brings room air back to the unit. It starts at a return grille, often the big one in a hall.
 - Every cubic foot the supply sends out has to come back by the return. A blocked return starves the blower.
 - The plenum is the box on the unit where the ducts begin.
-- {{figure:supply-and-return|The supply carries treated air out to the rooms. The return brings room air back. Block either and the unit starves.}}
+- {{figure:supply-and-return|The supply carries heated or cooled air out to the rooms. The return brings room air back. Block either and the unit starves.}}
 - Flex duct is a wire coil in plastic, wrapped in insulation. It is light, and it crushes underfoot.
 - Flex duct is hung the way its maker says, with wide straps and gentle bends.
 - A kink, a sag or a crushed spot chokes the air, like a half-shut valve in a pipe.
 - A leak in an attic duct blows paid-for air into the attic. A leak in a return pulls attic dust into the house.
+- {{figure:duct-faults|A kink, a sag and a crushed spot each choke the air. A leak in a supply loses air, and a leak in a return pulls dust in.}}
 - A duct is never cut, moved or squeezed to make room for a pipe. The pipe goes round.
 
 ## Traps

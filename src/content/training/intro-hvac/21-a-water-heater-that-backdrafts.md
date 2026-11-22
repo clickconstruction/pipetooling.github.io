@@ -16,6 +16,7 @@ A backdraft is the flame's gas coming down the vent and out into the room. It is
 - A closet with its air openings blocked causes it too.
 - The signs sit on top of the heater. Melted plastic rings at the pipes, soot, rust and streaks of water.
 - A technician tests the draft with smoke at the hood, a few minutes after the burner lights. The smoke should be pulled in.
+- {{figure:backdraft-signs|The signs are on top of the heater. In the smoke test, the smoke should be pulled in.}}
 - A heater that spills is shut off and stays off. The room is aired out.
 - The cause is found and fixed before the heater is lit again.
 
@@ -25,7 +26,7 @@ A backdraft is the flame's gas coming down the vent and out into the room. It is
 - Warm, damp air at the top of the heater is not harmless. It is the flame's gas.
 
 ## Numbers
-- **4** causes, a blocked vent, a vent too big, a room pulled short of air, a starved closet
+- **4** causes, a vent blocked or sagging, a vent too big, a room short of air, a starved closet
 - **the top of the heater** is where the signs sit
 - **off** is how a spilling heater stays until the cause is fixed
 

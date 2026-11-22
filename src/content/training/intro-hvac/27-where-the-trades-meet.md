@@ -17,7 +17,7 @@ One company with three trades meets itself on every job. The plumber, the electr
 - {{figure:six-touch-points|Six places the trades meet. The drain, the gas, the vent and the air, the power, the holes, and the machines with water in them.}}
 - The holes are the fifth. A line set, a duct, a cable and a pipe all run through the same studs and attic.
 - Nothing is cut, crushed or moved to make room. The new work goes round, and a steel plate guards what sits close.
-- The machines with water in them are the sixth. Water in pipes is plumbing, and a sealed loop is a carded technician's.
+- The machines with water in them are the sixth, from lesson 18. Water in pipes is plumbing, and a sealed loop is a carded technician's.
 - The rule under all six is a word before a cut. Tell the other trade before their work is touched.
 
 ## Traps

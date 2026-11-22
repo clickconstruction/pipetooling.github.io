@@ -18,6 +18,7 @@ Carbon monoxide is the one thing in this course that kills with no warning. You 
 - The code wants a CO alarm in a house with a fuel-burning appliance or an attached garage.
 - The alarm goes outside each sleeping area, near the bedrooms.
 - A home alarm is slow on purpose. At **70 ppm** it may take one to four hours to sound.
+- {{figure:co-scale|OSHA's limit is 50 ppm over a work day. A home alarm can take hours at 70. At 1,200 the air can kill.}}
 - When an alarm sounds, everyone goes outside to fresh air. Then call 911 from outside.
 
 ## Traps

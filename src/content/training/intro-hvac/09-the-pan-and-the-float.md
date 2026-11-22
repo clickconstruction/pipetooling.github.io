@@ -17,6 +17,7 @@ A unit in an attic sits over somebody's ceiling. When its drain clogs, the water
 - {{figure:pan-and-float|The unit's own drain is the first defence. The second pan and its drain, or a float switch, is the second.}}
 - The third way is a second pan with no drain and a float switch in it.
 - The fourth way is a float switch alone, set where a blocked drain will lift it.
+- {{figure:four-defences|The four ways. A pan with a drain, an overflow drain, a pan with a float switch, or a float switch alone.}}
 - The second drain is its own pipe to its own place. Tied into the first drain, one clog blocks both.
 - A dry second pan is the normal state. Water in it means the first drain is blocked.
 
@@ -27,7 +28,7 @@ A unit in an attic sits over somebody's ceiling. When its drain clogs, the water
 
 ## Numbers
 - **1-1/2 in** is the least depth of the second pan
-- **3 in** larger than the unit is the least size of that pan
+- **3 in** larger than the unit is as small as that pan may be
 - **4** ways the code allows for the second defence
 
 ## Check yourself

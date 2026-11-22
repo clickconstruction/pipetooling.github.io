@@ -16,6 +16,7 @@ A heat pump is an air conditioner that can run backwards. In summer it carries h
 - {{figure:heat-pump-reverse|One valve turns the loop round. In summer the heat goes out. In winter the same loop brings heat in.}}
 - In heating, frost grows on the outdoor coil. The unit runs a defrost, a few minutes in cooling, to melt it.
 - Steam off the outdoor unit and a whoosh from the valve during a defrost are both normal.
+- {{figure:defrost|Frost grows on the outdoor coil in heating. A defrost melts it, and the steam is normal.}}
 - Heat strips are electric heaters in the air handler. They help on the coldest days and during a defrost.
 - Heat strips use far more power than the heat pump does. The thermostat shows them as auxiliary or emergency heat.
 

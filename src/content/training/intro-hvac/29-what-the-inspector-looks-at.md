@@ -12,7 +12,7 @@ The mechanical inspector reads the same things on every house, and most of them 
 - The condensate drain is on the list. Its size, its slope, its trap and where it ends.
 - Over a ceiling, the second defence is on the list. The second pan and its drain, or the float switch.
 - The attic is on the list. The opening, the walkway, the work space, the light and the outlet.
-- {{figure:inspector-mechanical|The inspector reads the drain and its second defence. Then the gas, the closet's air, the vent and the attic.}}
+- {{figure:inspector-mechanical|Six places on one house. The drain, the second defence, the attic, the gas, the closet's air and the vent.}}
 - The gas is on the list. The shutoff within reach, the sediment trap and the connector.
 - The closet's two air openings are on the list. So is the room an appliance sits in.
 - The vent is on the list. Its slope, its joints and what else shares it.

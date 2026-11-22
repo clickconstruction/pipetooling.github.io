@@ -14,6 +14,7 @@ An air conditioner can freeze itself solid on the hottest day of the year. The c
 - Too little refrigerant is the other cause. Low pressure in the coil means a colder boil.
 - The signs are weak air at the registers and a house that will not cool.
 - Ice on the big wrapped line at the outdoor unit is another sign. That line should be cool and wet, never white.
+- {{figure:ice-on-the-line|The big wrapped line should be cool and wet. White with ice, it says the coil indoors is freezing.}}
 - The ice blocks the air, so the coil gets colder still. A frozen coil never fixes itself while it runs.
 - The first step is the thermostat set to off and the fan set to on. Room air melts the ice.
 - A full thaw can take hours, and all that ice becomes water for the drain.
@@ -26,7 +27,7 @@ An air conditioner can freeze itself solid on the hottest day of the year. The c
 
 ## Numbers
 - **2** causes, too little air or too little refrigerant
-- **off** for the thermostat and **on** for the fan, to thaw it
+- **fan on** and thermostat off is how a frozen coil thaws
 - **hours** is how long a full thaw can take
 
 ## Check yourself

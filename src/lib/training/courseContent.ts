@@ -138,6 +138,7 @@ function parseNumbers(items: string[], where: string): CourseNumber[] {
   return items.map((item) => {
     const m = NUMBER_ITEM.exec(item)
     if (!m) fail(where, `a Numbers item is not "**value** label": ${item}`)
+    if ((m[2] ?? '').includes('**')) fail(where, `a Numbers label holds a second bold, which the chip draws as asterisks: ${item}`)
     return { value: (m[1] ?? '').trim(), label: (m[2] ?? '').trim() }
   })
 }

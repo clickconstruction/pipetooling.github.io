@@ -17,6 +17,7 @@ export function OutdoorUnit({ titleId }: FigureProps) {
       <line x1="0" y1="156" x2="300" y2="156" stroke="var(--text-muted)" strokeWidth="1.2" />
       <rect x="112" y="150" width="106" height="6" fill="var(--bg-subtle)" stroke="currentColor" strokeWidth="1.2" />
       <Conductor d="M40 78 H70 V140 H120" />
+      <Conductor d="M34 44 H104 V82 H120" dash="3 2" />
       <Box x={120} y={74} w={90} h={76} />
       {louvres.map((ly) => (
         <g key={ly} stroke="var(--text-muted)" strokeWidth="1">
@@ -44,6 +45,9 @@ export function OutdoorUnit({ titleId }: FigureProps) {
       </Label>
       <Label x={76} y={136} size={7}>
         240 V
+      </Label>
+      <Label x={40} y={38} size={7}>
+        24 V, the call
       </Label>
       <Label x={155} y={93} size={6.5} bold color="currentColor">
         capacitor

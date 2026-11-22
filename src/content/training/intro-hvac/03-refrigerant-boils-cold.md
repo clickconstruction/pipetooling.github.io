@@ -17,7 +17,8 @@ Boiling is how the system picks heat up, and it does not take a flame. Refrigera
 - Now the outdoor air is the cooler thing. The heat flows out, and the vapor turns back into liquid.
 - {{figure:boil-and-squeeze|Low pressure lets the refrigerant boil cold and soak up heat. High pressure makes it hot enough to give the heat away.}}
 - Each refrigerant has one boiling temperature for each pressure. A gauge reads the pressure and a chart gives the temperature.
-- Reading those gauges and that chart is a certified technician's work. Knowing why they matter is everyone's.
+- {{figure:gauge-and-chart|A gauge reads the pressure. The chart for that refrigerant turns the pressure into a boiling temperature.}}
+- Reading those gauges and that chart is work for a technician who holds the federal card. Lesson 7 covers the card.
 
 ## Traps
 - Boiling does not mean hot. Refrigerant boils at temperatures that would chill your hand.
@@ -57,7 +58,7 @@ Boiling is how the system picks heat up, and it does not take a flame. Refrigera
 4. Whose work is reading the gauges against the chart?
 - [ ] Anyone with a gauge
 - [ ] The homeowner
-- [x] A certified technician
+- [x] A technician who holds the federal card
 - [ ] The inspector
 > right: Connecting gauges opens the loop, and that takes the federal card.
-> wrong: Gauges go on the sealed loop. That is a certified technician's work.
+> wrong: Gauges go on the sealed loop. That takes the federal card, which lesson 7 covers.

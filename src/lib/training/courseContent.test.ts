@@ -164,6 +164,7 @@ describe('parseLesson', () => {
 
   it('a Numbers item is **value** label', () => {
     expect(() => parseLesson(FIXTURE.replace('- **5 ft** a system', '- 5 ft a system'), '03-a-fixture')).toThrow(/not "\*\*value\*\* label"/)
+    expect(() => parseLesson(FIXTURE.replace('- **5 ft** a system', '- **5 ft** a system and **6 ft** a box'), '03-a-fixture')).toThrow(/a second bold/)
   })
 })
 
