@@ -39,7 +39,12 @@ BEGIN
     RETURN false;
   END IF;
 
-  v_amr := auth.jwt() -> 'amr';
+  -- The token's claims as PostgREST hands them to the request, read the way auth.jwt() reads them. That function is
+  -- the sign-in service's own and a bare Postgres image has none, so the claim is read here and not through it.
+  v_amr := coalesce(
+    nullif(current_setting('request.jwt.claim', true), ''),
+    nullif(current_setting('request.jwt.claims', true), '')
+  )::jsonb -> 'amr';
   IF v_amr IS NULL OR jsonb_typeof(v_amr) <> 'array' THEN
     RETURN false;
   END IF;
