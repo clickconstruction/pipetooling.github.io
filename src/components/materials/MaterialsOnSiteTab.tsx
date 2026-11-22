@@ -21,6 +21,9 @@ import { groupDeskBySite } from '../../lib/materials/siteRollup'
 import { useOnSiteSites } from '../../hooks/useOnSiteSites'
 import SiteMaterialsView from './SiteMaterialsView'
 import MaterialsDeskPhone from './MaterialsDeskPhone'
+import OnSiteFindPhoneList from './OnSiteFindPhoneList'
+import { findPhoneRow } from '../../lib/materials/onSiteFindPhone'
+import { boxScreenFromMaterials } from '../../lib/materials/boxRow'
 import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
 import { staleWords } from '../../lib/materials/onSiteSummary'
 import { isMaterialsOfficeRole } from '../../lib/materials/materialsTabs'
@@ -134,7 +137,24 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
 
       {!office || searching ? <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The boxes did not load.') : null} onRetry={desk.retry} surface="materials-on-site-tab" idempotent /> : null}
 
-      {showSearch && searching ? (
+      {showSearch && searching && phone ? (
+        // A phone (v2.8291): a hit is one row that reads down, where the table under this needs six columns. The row
+        // opens the box. For a field role that is the table's own Open the box. For the office the table opens the
+        // job, and a phone opens the box on the Tally's screen as a row of the job's page does, with the job one
+        // Back away.
+        found.hits.length === 0 ? (
+          desk.loading && !desk.loaded
+            ? <span style={muted}>Loading the boxes…</span>
+            : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on site', query: query.trim() }), { onPress: () => setQuery('') })} />
+        ) : (
+          <OnSiteFindPhoneList
+            rows={found.hits.map((h) => {
+              const last = lastCountedAt(listMovements(h.jobId), h.container.id)
+              return { ...findPhoneRow(h, { words: lastCountWords(last, now), due: countIsDue(last, now) }), href: office ? boxScreenFromMaterials(h.jobId, h.container.id) : boxOnSiteLink(h.jobId, h.container.id) }
+            })}
+          />
+        )
+      ) : showSearch && searching ? (
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={{ ...th, minWidth: 200 }}>Part</th><th style={th}>Box</th><th style={th}>Job</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last counted</th><th style={th} aria-label="Door"></th></tr></thead>

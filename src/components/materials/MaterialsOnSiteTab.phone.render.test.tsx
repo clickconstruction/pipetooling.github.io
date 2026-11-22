@@ -4,6 +4,10 @@
  * jobs with boxes as the office's phone desk draws them, with no money. Two figures, one row a job that opens the
  * job's boxes on the Tally, and a site's heading with Whole site for the roles that read a site. At a computer the
  * table stays. The live walk cannot cover this: the sample accounts are on no job with a box.
+ *
+ * The search over the list, *Find a part or a box on any job*, draws its hits as rows on a phone for every role: a
+ * field role's row opens the box, as the table's Open the box does, and the office's opens the box on the Tally's
+ * screen, where the table opens the job.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -65,6 +69,8 @@ vi.mock('../../lib/materials/partTiesIo', () => ({ fetchPartTies: async () => []
 vi.mock('../../hooks/useOnSiteSites', () => ({
   useOnSiteSites: () => ({ siteOfJob: new Map([['ja', 'dev1'], ['jb', 'dev1'], ['jc', null]]), siteNames: new Map([['dev1', 'ZZ Test Ridge']]), loaded: true }),
 }))
+// The office's desk is another test's business. Here the office only searches, and the hits stand in the desk's place.
+vi.mock('../jobs/JobsMaterialsTab', () => ({ default: () => <div data-testid="office-desk" /> }))
 // The site's own screen is another test's business. Here it only has to be where the press lands.
 vi.mock('./SiteMaterialsView', () => ({ default: ({ site, showMoney }: { site: { name: string }; showMoney: boolean }) => <div data-testid="site-view">{site.name}{showMoney ? ' with money' : ' with no money'}</div> }))
 
@@ -142,6 +148,76 @@ describe('Materials → On site for a field role on a phone · where the presses
     expect(rows()).toEqual(['ja', 'jb'])
     expect(tiles().map((t) => t.getAttribute('aria-pressed'))).toEqual(['false', 'true'])
     fireEvent.click(tiles()[1]!)
+    expect(rows()).toEqual(['ja', 'jb', 'jc'])
+  })
+})
+
+describe('Find a part or a box on any job · a phone and a computer', () => {
+  const find = (words: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Find a part or a box on any job' }), { target: { value: words } })
+  const hits = () => [...document.querySelectorAll('[data-find-phone-row]')] as HTMLAnchorElement[]
+
+  it('a computer keeps the table of six columns', () => {
+    draw('superintendent', false)
+    find('elbow')
+    expect(document.querySelector('[data-testid="on-site-find-phone"]')).toBeNull()
+    expect([...document.querySelectorAll('th')].map((th) => th.textContent)).toEqual(['Part', 'Box', 'Job', 'On hand', 'Last counted', ''])
+    expect(screen.getAllByRole('link', { name: 'Open the box' })).toHaveLength(4)
+  })
+
+  it('a phone draws each hit as one row that reads down, with how many are on hand as a figure', () => {
+    draw('superintendent', true)
+    find('elbow')
+    expect(document.querySelector('table')).toBeNull()
+    expect(hits()).toHaveLength(4)
+    const first = hits()[0]!
+    expect(first.getAttribute('aria-label')).toBe('Open R12 on 224 · ZZ Test phase 2')
+    expect(first.textContent).toContain('ZZ test elbow')
+    expect(first.textContent).toContain('R12 · cage')
+    expect(first.textContent).toContain('224 · ZZ Test phase 2')
+    expect(first.querySelector('[data-find-phone-on-hand]')!.textContent).toBe('9on hand')
+    // The list of jobs gives way to the hits, and the count of them is still said beside the box.
+    expect(document.querySelector('[data-testid="materials-desk-phone"]')).toBeNull()
+    expect(screen.getByText('4 lines in 4 boxes on 3 jobs')).toBeTruthy()
+  })
+
+  it('a box due a count says so in amber words, and a counted one in quiet words', () => {
+    draw('superintendent', true)
+    find('elbow')
+    const count = (label: string) => hits().find((h) => h.getAttribute('aria-label')!.startsWith(`Open ${label} `))!.querySelector('[data-find-phone-count]')!
+    expect(count('R13').hasAttribute('data-due')).toBe(true)
+    expect(count('R13').textContent).toBe('never counted')
+    expect(count('R12').hasAttribute('data-due')).toBe(false)
+    expect(count('R12').textContent).toMatch(/^counted /)
+  })
+
+  it('a box that matched by its own name is a row with no figure', () => {
+    draw('superintendent', true)
+    find('P1')
+    expect(hits()).toHaveLength(1)
+    expect(hits()[0]!.textContent).toContain('P1')
+    expect(hits()[0]!.querySelector('[data-find-phone-on-hand]')).toBeNull()
+  })
+
+  it('a field role’s row opens the box, where the table’s Open the box leads', () => {
+    draw('superintendent', true)
+    find('elbow')
+    expect(hits()[0]!.getAttribute('href')).toBe('/tally?tab=on-site&job=ja&container=r12')
+  })
+
+  it('the office’s row opens the box on the Tally’s screen, with the way back to Materials', () => {
+    draw('master_technician', true)
+    expect(screen.getByTestId('office-desk')).toBeTruthy()
+    find('elbow')
+    expect(screen.queryByTestId('office-desk')).toBeNull()
+    expect(hits()[0]!.getAttribute('href')).toBe('/tally?tab=on-site&job=ja&container=r12&from=materials')
+  })
+
+  it('words that find nothing say so, with the press that clears them', () => {
+    draw('superintendent', true)
+    find('zz nothing has this name')
+    expect(hits()).toHaveLength(0)
+    expect(document.querySelector('table')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /clear/i }))
     expect(rows()).toEqual(['ja', 'jb', 'jc'])
   })
 })
