@@ -145,6 +145,58 @@ describe('WhoHasItPill: who is off (v2.6060, punch list #141 PR 4)', () => {
   })
 })
 
+describe('WhoHasItPill: a face alone in a folded thread header (punch list #348)', () => {
+  it('draws the holder’s initials and no words; the words are its name and its hover', () => {
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa', hasSince: '2026-09-26T19:30:00.000Z', hasHow: 'took' }), { bare: true, face: true })
+    const face = screen.getByRole('button', { name: 'Rosa has this' })
+    expect(face.textContent).toBe('R')
+    expect(face.getAttribute('aria-label')).toBe('Rosa has this')
+    expect(face.getAttribute('title')).toMatch(/^Rosa claimed it, so nobody else answers it\./)
+    expect(face.className).toBe('thread-head-control')
+    expect(face.style.padding).toBe('0px')
+    expect(face.hasAttribute('data-who-face')).toBe(true)
+  })
+
+  it('nobody has it: a ? that opens the same menu, and I’ll take it takes it', () => {
+    const onHand = renderPill(greg(), { bare: true, face: true })
+    const face = screen.getByRole('button', { name: 'Nobody has it · Take it' })
+    expect(face.textContent).toBe('?')
+    fireEvent.click(face)
+    expect(screen.getByText('Nobody has Greg Paulk yet. Hand it to:')).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /^I'll take it/ }))
+    expect(onHand).toHaveBeenCalledWith('u-robert')
+  })
+
+  it('mine: my initials on the tint', () => {
+    renderPill(greg({ has: 'Robert', hasUserId: 'u-robert' }), { bare: true, face: true })
+    const face = screen.getByRole('button', { name: 'Robert has this' })
+    expect(face.textContent).toBe('R')
+    expect(face.style.background).toBe('var(--bg-blue-tint)')
+  })
+
+  it('the menu says who is off, since a face has no words and a phone has no hover', () => {
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { bare: true, face: true, pushHours: new Map([['u-rosa', WEEKDAYS]]), nowIso: LATE_WED })
+    const face = screen.getByRole('button', { name: 'Rosa has this · off until 6 AM' })
+    expect(face.textContent).toBe('R')
+    fireEvent.click(face)
+    expect(screen.getByRole('menu').querySelector('[data-who-off]')?.textContent).toBe('Rosa has the replies and is off until 6 AM. The office hears at once. Rosa sees what waited on their Dashboard at 6 AM.')
+  })
+
+  it('the menu adds no line while nobody is off, and the whole pill’s menu never does', () => {
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { bare: true, face: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Rosa has this' }))
+    expect(screen.getByRole('menu').querySelector('[data-who-off]')).toBeNull()
+    cleanup()
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { bare: true, pushHours: new Map([['u-rosa', WEEKDAYS]]), nowIso: LATE_WED })
+    const whole = screen.getByRole('button', { name: 'Rosa has this · off until 6 AM' })
+    expect(whole.textContent).toBe('RRosa has this · off until 6 AM')
+    expect(whole.getAttribute('aria-label')).toBeNull()
+    expect(whole.hasAttribute('data-who-face')).toBe(false)
+    fireEvent.click(whole)
+    expect(screen.getByRole('menu').querySelector('[data-who-off]')).toBeNull()
+  })
+})
+
 /** A phone's width: `useNarrowViewport640` reads matchMedia, which jsdom lacks, so a wide screen is the default. */
 function phoneWidth(): () => void {
   const was = window.matchMedia

@@ -128,12 +128,12 @@ function BoxStandIn({ contactId }: { contactId: string }) {
 }
 
 /** The slots as the window draws them, for one person, with or without a reply box. */
-function Harness({ io, contact, box = false, line, loadLines, lines }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage; loadLines?: (customerId: string) => Promise<BidMoneyLine[]>; lines?: readonly ThreadMessage[] }) {
+function Harness({ io, contact, box = false, line, loadLines, lines, folded }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage; loadLines?: (customerId: string) => Promise<BidMoneyLine[]>; lines?: readonly ThreadMessage[]; folded?: boolean }) {
   const slots = useFollowUpThreadSlots(io, loadLines)
   return (
     <div>
       <div data-testid="under">{line ? slots.underLine?.(line, contact) : null}</div>
-      <div data-testid="header">{slots.headerRight?.(contact)}</div>
+      <div data-testid="header">{folded === undefined ? slots.headerRight?.(contact) : slots.headerRight?.(contact, { folded })}</div>
       <div data-testid="status">{slots.statusRow?.(contact, lines)}</div>
       <div data-testid="above">{slots.aboveBox?.(contact)}</div>
       <div data-testid="court">{JSON.stringify(slots.court?.(contact) ?? null)}</div>
@@ -586,6 +586,32 @@ describe('Write down their word under their line (v2.5649)', () => {
  * off whenever the test runs, back inside the week.
  */
 const notToday = (): OfficeHours => ({ ...OFFICE_HOURS, days: [(new Date().getDay() + 3) % 7], opens: '06:00', closes: '07:00', always: false })
+
+describe('useFollowUpThreadSlots: the pill in a folded header (punch list #348)', () => {
+  const renderLook = (folded: boolean) =>
+    renderWithProviders(
+      <MessagesRereadContext.Provider value={reread}>
+        <Harness io={fakeIo()} contact={GREG} folded={folded} />
+      </MessagesRereadContext.Provider>,
+    )
+
+  it('a folded header gets the face alone, with the words as its name', async () => {
+    renderLook(true)
+    const face = await header().findByRole('button', { name: 'Rosa has this' })
+    expect(face.textContent).toBe('R')
+    expect(face.hasAttribute('data-who-face')).toBe(true)
+  })
+
+  it('a wide header, and a window that hands no look, get the whole pill', async () => {
+    renderLook(false)
+    const wide = await header().findByRole('button', { name: 'Rosa has this' })
+    expect(wide.textContent).toBe('RRosa has this')
+    expect(wide.hasAttribute('data-who-face')).toBe(false)
+    cleanup()
+    renderThread(fakeIo())
+    expect((await header().findByRole('button', { name: 'Rosa has this' })).textContent).toBe('RRosa has this')
+  })
+})
 
 describe('useFollowUpThreadSlots: who is off (v2.6060)', () => {
   beforeEach(() => {
