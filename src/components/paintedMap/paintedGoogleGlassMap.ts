@@ -6,8 +6,8 @@
  * something on a painted map, and used again for every drag and every painted map after it until
  * the page is loaded again. Between drags its box waits off the page.
  *
- * A second one is made only if the app's theme changed since: Google takes its light or dark look
- * when a map is made and not after.
+ * Google takes its light or dark look when a map is made and not after, so there is one for each
+ * look the page has placed in: two at the most, however often the theme is changed back and forth.
  */
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import type { GoogleMapTypeId } from '../../lib/map/googleMapType'
@@ -17,11 +17,12 @@ import type { PaintedPoint } from '../../lib/paintedMap/paintedLine'
 export const GLASS_MAP_PX = 240
 
 type KeptGlass = { host: HTMLDivElement; map: google.maps.Map; scheme: 'DARK' | 'LIGHT' }
-let kept: KeptGlass | null = null
+const kept: Partial<Record<'DARK' | 'LIGHT', KeptGlass>> = {}
 
 /** The glass's map, made now if the page has none in this look. */
 export function paintedGlassMap(scheme: 'DARK' | 'LIGHT', open: { center: PaintedPoint; zoom: number; mapTypeId: GoogleMapTypeId }): KeptGlass {
-  if (kept && kept.scheme === scheme) return kept
+  const was = kept[scheme]
+  if (was) return was
   const host = document.createElement('div')
   host.style.cssText = `position:absolute;width:${GLASS_MAP_PX}px;height:${GLASS_MAP_PX}px;pointer-events:none`
   const map = new google.maps.Map(host, {
@@ -37,16 +38,18 @@ export function paintedGlassMap(scheme: 'DARK' | 'LIGHT', open: { center: Painte
     // The look every Google map in the app wears: Google's own place labels off, as on the map the glass rides over.
     styles: GOOGLE_MAP_STYLES,
   })
-  kept = { host, map, scheme }
-  return kept
+  const made: KeptGlass = { host, map, scheme }
+  kept[scheme] = made
+  return made
 }
 
-/** The glass's map if the page has made one. */
-export function keptPaintedGlassMap(): KeptGlass | null {
-  return kept
+/** The glass's map in this look, if the page has made one. */
+export function keptPaintedGlassMap(scheme: 'DARK' | 'LIGHT'): KeptGlass | null {
+  return kept[scheme] ?? null
 }
 
 /** A new page, for a test. */
 export function forgetPaintedGlassForTests(): void {
-  kept = null
+  delete kept.DARK
+  delete kept.LIGHT
 }

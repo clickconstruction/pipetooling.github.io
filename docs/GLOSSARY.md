@@ -3242,7 +3242,8 @@ The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
-Drawing a line, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
+**Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map for a picture keeps the Leaflet map until it closes.
+A line is drawn by hand on Google since v2.8236, so the window is on Google from the moment it opens to Save: a press adds a corner, a press held still then slid places one under the glass, and the corners and the dots in the middle of the legs are Google's own markers a finger drags.
 A place's dot is put down on Google since v2.8235: one of Google's own markers a finger drags, with the magnifying glass above it, whose picture is a second small Google map made once for the page and kept (`paintedGoogleGlassMap.ts`).
 The catch, the held press and the glass's place are one set of rules both canvases read (`handPlacing.ts`).
 A walk is painted on Google since v2.8212 (step 3 of #387): the canvas slides to the walker when they near its edge (`followMe.ts`) and draws again only the line that grew.
