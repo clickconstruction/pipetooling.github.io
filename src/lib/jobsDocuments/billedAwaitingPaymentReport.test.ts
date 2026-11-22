@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StageRow } from '../jobsStagesBoard'
-import { buildBilledAwaitingPaymentReportHtml } from './billedAwaitingPaymentReport'
+import { billedPrintInKindLine, buildBilledAwaitingPaymentReportHtml } from './billedAwaitingPaymentReport'
 
 function job(p: Partial<Record<string, unknown>>): JobWithDetails {
   return {
@@ -60,5 +60,34 @@ describe('buildBilledAwaitingPaymentReportHtml', () => {
     )
     expect(html).toContain('A &amp; &lt;B&gt;')
     expect(html).toContain('&lt;Job&gt;')
+  })
+})
+
+describe('the printed report and a bill an in kind deal pays (punch list #301)', () => {
+  const rows: StageRow[] = [
+    jobRow({ id: 'k', customer_id: 'c1', customer_name: 'Covered Co', revenue: 1700, in_kind_arrangement_id: 'deal-1' }),
+    jobRow({ id: 'p', customer_id: 'c1', customer_name: 'Covered Co', revenue: 400 }),
+    jobRow({ id: 'l', customer_id: 'c2', customer_name: 'Late LLC', revenue: 4000 }),
+  ]
+
+  it('a covered bill is in no list, no subtotal and not in the grand total, and one line says so', () => {
+    const html = buildBilledAwaitingPaymentReportHtml(rows, { dateStr: '11/21/2026' })
+    expect(html).not.toContain('$1,700.00')
+    expect(html).toContain('Grand total: $4,400.00')
+    expect(html).toContain('$1,700 on 1 bill is scheduled in kind, not money due')
+    expect(billedPrintInKindLine(rows)).toBe('$1,700 on 1 bill is scheduled in kind, not money due')
+  })
+
+  it('a payer part covered keeps the bill off the deal, under its own subtotal', () => {
+    const html = buildBilledAwaitingPaymentReportHtml(rows, { dateStr: '11/21/2026' })
+    expect(html).toContain('Covered Co')
+    expect(html).toContain('$400.00')
+  })
+
+  it('with no bill on a deal the report is as it was', () => {
+    const html = buildBilledAwaitingPaymentReportHtml([rows[2]!], { dateStr: '11/21/2026' })
+    expect(html).toContain('Grand total: $4,000.00')
+    expect(html).not.toContain('scheduled in kind')
+    expect(billedPrintInKindLine([rows[2]!])).toBeNull()
   })
 })

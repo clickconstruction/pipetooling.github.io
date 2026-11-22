@@ -1,5 +1,6 @@
 import type { StageRow } from '../jobsStagesBoard'
-import { printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { billedStageRowIsInKind, printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { inKindApartWords, noInKindApart, type InKindApart } from '../inKind/inKindApart'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
@@ -13,7 +14,9 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
  * lifetime cost (six streams, from get_billed_aging_costs — wage-derived, so
  * the whole chart is dev/controller-gated). A job whose cost exceeds its
  * revenue is flagged "underwater". Rows with no billed/est date are skipped
- * and counted so the chart never silently hides money.
+ * and counted so the chart never silently hides money. A row an in kind deal
+ * pays (punch list #301) is scheduled, not aging: it is left off the chart and
+ * out of every figure, and counted in `stats.inKind` so the chart says so.
  */
 
 export type BilledAgingPoint = {
@@ -41,6 +44,8 @@ export type BilledAgingStats = {
   underwaterTotal: number
   /** Rows with open money but no aging date — listed so nothing hides. */
   skippedNoDate: number
+  /** Rows an in kind deal pays, left off the chart: how many and what is open on them. */
+  inKind: InKindApart
 }
 
 export type BilledAgingChartData = { points: BilledAgingPoint[]; stats: BilledAgingStats }
@@ -52,9 +57,15 @@ export function buildBilledAgingChart(
 ): BilledAgingChartData {
   const points: BilledAgingPoint[] = []
   let skippedNoDate = 0
+  const inKind = noInKindApart()
   for (const r of rows) {
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
+    if (billedStageRowIsInKind(r)) {
+      inKind.count += 1
+      inKind.dollars += open
+      continue
+    }
     const days = printBilledRowReferenceDate(r, now).ageDays
     if (r.kind === 'job' || days == null) {
       skippedNoDate++
@@ -98,8 +109,14 @@ export function buildBilledAgingChart(
       underwaterCount: underwater.length,
       underwaterTotal: underwater.reduce((s, p) => s + p.open, 0),
       skippedNoDate,
+      inKind: { count: inKind.count, dollars: Math.round(inKind.dollars * 100) / 100 },
     },
   }
+}
+
+/** The chart's line on what it left off: "$13,858 on 8 bills is scheduled in kind, not plotted". Null with none. */
+export function billedAgingInKindLine(stats: Pick<BilledAgingStats, 'inKind'>): string | null {
+  return inKindApartWords(stats.inKind, 'plotted')
 }
 
 /* ── Scales (pure, pixel-space; the modal feeds plot bounds) ──────────────── */

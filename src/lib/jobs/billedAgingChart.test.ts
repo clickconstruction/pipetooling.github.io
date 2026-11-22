@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BILLED_AGING_Y_FLOOR,
+  billedAgingInKindLine,
   billedAgingMoneyLabel,
   billedAgingRadius,
   billedAgingX,
@@ -125,5 +126,23 @@ describe('scales', () => {
     expect(billedAgingMoneyLabel(3000)).toBe('$3k')
     expect(billedAgingMoneyLabel(18200)).toBe('$18.2k')
     expect(billedAgingMoneyLabel(224400)).toBe('$224k')
+  })
+})
+
+describe('the aging chart and a bill an in kind deal pays (punch list #301)', () => {
+  const covered = invRow({ id: 'k', amount: 1700, estimated_bill_date: '2026-01-05', job: job({ id: 'jk', in_kind_arrangement_id: 'deal-1' } as Partial<JobWithDetails>) })
+  const late = invRow({ id: 'l', amount: 4000, estimated_bill_date: '2026-04-01', job: job({ id: 'jl' }) })
+
+  it('a covered bill is left off the chart and out of every figure, and counted apart', () => {
+    const { points, stats } = buildBilledAgingChart([covered, late], null, NOW)
+    expect(points.map((p) => p.invoiceId)).toEqual(['l'])
+    expect(stats).toMatchObject({ plottedCount: 1, openTotal: 4000, count90: 1, sum90: 4000, skippedNoDate: 0, inKind: { count: 1, dollars: 1700 } })
+    expect(billedAgingInKindLine(stats)).toBe('$1,700 on 1 bill is scheduled in kind, not plotted')
+  })
+
+  it('with no bill on a deal the chart says nothing more', () => {
+    const { stats } = buildBilledAgingChart([late], null, NOW)
+    expect(stats.inKind).toEqual({ count: 0, dollars: 0 })
+    expect(billedAgingInKindLine(stats)).toBeNull()
   })
 })

@@ -4,7 +4,9 @@
  * collect · how many jobs to ask) that double as pin filters, the
  * ask-for-money list — longest waiting first, then nearest — and the pinned
  * total. Everything here is read off the pins the card already has: no new
- * reads.
+ * reads. A job an in kind deal pays (punch list #301) keeps its pin and its
+ * place in a bucket's count, but its money is not to collect and it is never
+ * on the ask list; the rail counts it apart and says one line.
  *
  * The bid map's rail lists nearest first because distance decides where you
  * drive. On the Pipeline the question is which invoice is oldest, so a 46-day
@@ -16,6 +18,8 @@
 import { milesBetween } from '../bids/bidBoardMap'
 import { DISTANCE_BUCKETS, distanceBucketFor, formatMoneyCompact, type DistanceBucketKey, type DistanceBucketVisibility, type MapAnchor } from '../bids/bidBoardMapRail'
 import type { JobsMapPin } from './jobsMap'
+import { formatCurrencyNoCents } from './jobFormatting'
+import { noInKindApart, type InKindApart } from '../inKind/inKindApart'
 
 export { DEFAULT_DISTANCE_BUCKETS, DISTANCE_BUCKETS, type DistanceBucketKey, type DistanceBucketVisibility, type MapAnchor } from '../bids/bidBoardMapRail'
 
@@ -36,9 +40,9 @@ export function jobsMapPinsInBuckets(pins: readonly JobsMapPin[], anchor: MapAnc
   })
 }
 
-/** A pin that belongs on the ask list: billed or ready to bill, and not a bill the office gave up on. */
-export function jobsMapPinAsks(pin: Pick<JobsMapPin, 'section'> & { uncollectible?: boolean }): boolean {
-  return !pin.uncollectible && (pin.section === 'billed' || pin.section === 'readyToBill')
+/** A pin that belongs on the ask list: billed or ready to bill, not a bill the office gave up on, and not one an in kind deal pays. */
+export function jobsMapPinAsks(pin: Pick<JobsMapPin, 'section'> & { uncollectible?: boolean; inKind?: boolean }): boolean {
+  return !pin.uncollectible && !pin.inKind && (pin.section === 'billed' || pin.section === 'readyToBill')
 }
 
 export type JobsMapAskTone = 'collections' | 'late' | 'billed' | 'ready'
@@ -78,6 +82,14 @@ export interface JobsMapRailModel {
   pinnedCount: number
   toCollectDollars: number
   toCollectLabel: string
+  /** Pinned jobs an in kind deal pays (punch list #301): in no bucket's dollars, on no ask list, counted here. */
+  inKind: InKindApart
+}
+
+/** The rail's line on the jobs it left out of *to collect*: `$13,858 on 8 jobs is scheduled in kind, not money to collect`. Null with none. */
+export function jobsMapInKindLine(inKind: InKindApart): string | null {
+  if (inKind.count <= 0) return null
+  return `$${formatCurrencyNoCents(inKind.dollars)} on ${inKind.count} ${inKind.count === 1 ? 'job' : 'jobs'} is scheduled in kind, not money to collect`
 }
 
 export const RAIL_ASK_ROWS = 5
@@ -92,10 +104,15 @@ export function jobsMapRail(pins: readonly JobsMapPin[], anchor: MapAnchor, opts
     DISTANCE_BUCKETS.map((b) => [b.key, { key: b.key, label: b.label, count: 0, toCollectDollars: 0, toCollectLabel: '$0', toAsk: 0 }]),
   )
   let total = 0
+  const inKind = noInKindApart()
   const ask: JobsMapAskRow[] = []
   for (const p of pins) {
     const miles = jobsMapPinMiles(p, anchor)
     total += p.owedDollars
+    if ((p.inKindDollars ?? 0) > 0) {
+      inKind.count += 1
+      inKind.dollars += p.inKindDollars ?? 0
+    }
     const key = distanceBucketFor(miles)
     if (key) {
       const s = stats.get(key)!
@@ -120,5 +137,6 @@ export function jobsMapRail(pins: readonly JobsMapPin[], anchor: MapAnchor, opts
     pinnedCount: pins.length,
     toCollectDollars: total,
     toCollectLabel: formatMoneyCompact(total),
+    inKind: { count: inKind.count, dollars: Math.round(inKind.dollars * 100) / 100 },
   }
 }

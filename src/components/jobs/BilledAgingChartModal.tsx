@@ -11,6 +11,7 @@ import {
   billedAgingY,
   billedAgingYDomainMax,
   billedAgingYTicks,
+  billedAgingInKindLine,
   buildBilledAgingChart,
   type BilledAgingPoint,
 } from '../../lib/jobs/billedAgingChart'
@@ -74,6 +75,7 @@ export default function BilledAgingChartModal({
   }, [showToast])
 
   const { points, stats } = useMemo(() => buildBilledAgingChart(rows, costs), [rows, costs])
+  const inKindLine = billedAgingInKindLine(stats)
   const xMax = useMemo(() => billedAgingXDomainMax(points), [points])
   const yMax = useMemo(() => billedAgingYDomainMax(points), [points])
   const yTicks = useMemo(() => billedAgingYTicks(yMax), [yMax])
@@ -273,6 +275,7 @@ export default function BilledAgingChartModal({
           </span>
           {rows.length === 0 && <span role="status">Loading billed rows…</span>}
           {costsLoading && <span role="status">Sizing bubbles…</span>}
+          {inKindLine ? <span data-aging-chart-in-kind>{inKindLine}</span> : null}
           {stats.skippedNoDate > 0 && (
             <span>
               {stats.skippedNoDate} row{stats.skippedNoDate === 1 ? '' : 's'} without a bill date not plotted

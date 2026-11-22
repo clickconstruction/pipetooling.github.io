@@ -41,6 +41,12 @@ export type JobsMapHistoryJob = {
   collections_ymd: string | null
   /** The day the office gave up on it (Uncollectible); the mark clears on pay or Put back, so no history before that. */
   uncollectible_ymd: string | null
+  /**
+   * The day the in kind deal that pays this job was recorded (punch list #301); null or absent for a job on no deal.
+   * From that day the job's open bills are scheduled, not money to collect. The deal's own day stands in for the day
+   * the job went on it, which the ledger does not keep.
+   */
+  in_kind_since_ymd?: string | null
   customer_id: string | null
   customer_name: string | null
   gc_customer_id: string | null
@@ -165,6 +171,7 @@ export function jobsMapJobsAsOf(
     const numberLabel = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
     const jobName = (j.job_name ?? '').trim() || '—'
     const money = !uncollectible && (section === 'billed' || section === 'readyToBill') ? moneyOnDay(idx.billsByJob.get(j.id) ?? [], idx.paymentsByInvoice, ymd) : { owedDollars: 0, billedAgeDays: null }
+    const inKind = !uncollectible && j.in_kind_since_ymd != null && j.in_kind_since_ymd <= ymd
     const job: JobsMapJob = {
       id: j.id,
       label: `${numberLabel} · ${jobName}`,
@@ -177,8 +184,10 @@ export function jobsMapJobsAsOf(
       inCollections,
       uncollectible,
       pctComplete: null,
-      owedDollars: money.owedDollars,
-      billedAgeDays: section === 'billed' ? money.billedAgeDays : null,
+      owedDollars: inKind ? 0 : money.owedDollars,
+      billedAgeDays: section === 'billed' && !inKind ? money.billedAgeDays : null,
+      inKind,
+      inKindDollars: inKind ? money.owedDollars : 0,
       row: null,
     }
     if (addressKey.length < 3) noAddress.push(job)

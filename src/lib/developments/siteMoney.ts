@@ -14,6 +14,8 @@ import { daysBetweenYmd, lienByForJob } from '../jobs/lienPayRunway'
 import { jobsLedgerStatusDotColor, normalizeJobsLedgerStatus } from '../jobsLedgerStatusPipeline'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { bidMoney, bidUndecided, type MemberJob, type Members } from './overview'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
+import { inKindApartWords, type InKindApart } from '../inKind/inKindApart'
 
 export type MoneySortMode = 'tightest' | 'progress' | 'left' | 'number'
 
@@ -52,6 +54,11 @@ export type MoneyDates = {
   /** The calendar's due day (punch list #323, v2.7140); null for a payer with no Pay calendar, who reads Expected as before. */
   due: MoneyDue | null
   lien: { ymd: string; daysLeft: number | null; kindAssumed: boolean } | null
+  /**
+   * An in kind deal pays this job (punch list #301): its bill is scheduled, so it has no expected day and no due day,
+   * and it is never past due. The lien runway stays, since a credit does not move a deadline.
+   */
+  inKind?: boolean
 }
 
 export type MoneyRow = {
@@ -100,6 +107,8 @@ export type MoneyBand = {
   left: number
   jobs: number
   pastDue: number
+  /** Billed jobs an in kind deal pays: how many, and what is open on them. Their money is in `billed`, never in `pastDue`. */
+  inKind: InKindApart
   stages: Array<{ key: string; label: string; count: number; color: string }>
   bidUndecidedUsd: number
   bidUndecidedCount: number
@@ -156,6 +165,10 @@ function datesFor(job: MemberJob, inp: SiteMoneyInputs): MoneyDates {
   const newest = bills[0] ?? null
   const billedYmd = newest?.billed_at ? calendarYmdInAppTzFromIso(newest.billed_at) : job.last_bill_date ? job.last_bill_date.slice(0, 10) : null
   const billedAgoDays = billedYmd ? daysBetweenYmd(billedYmd, inp.todayYmd) : null
+  const lienBy = lienByForJob(job.last_work_date, '')
+  const lien = lienBy.ymd ? { ymd: lienBy.ymd, daysLeft: daysBetweenYmd(inp.todayYmd, lienBy.ymd), kindAssumed: lienBy.kindAssumed } : null
+  // A deal pays this job a credit at a time: no day to expect the money by, and none to be late against.
+  if (jobIsScheduledInKind(job)) return { billedYmd, billedAgoDays, expected: null, due: null, lien, inKind: true }
   const payerId = job.gc_customer_id ?? job.customer_id
   const expected = billedPayModel(
     {
@@ -177,8 +190,6 @@ function datesFor(job: MemberJob, inp: SiteMoneyInputs): MoneyDates {
     held?.onCalendar && expected
       ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness, expected.calendarOwn, expected.ownDue != null, expected.calendar) }
       : null
-  const lienBy = lienByForJob(job.last_work_date, '')
-  const lien = lienBy.ymd ? { ymd: lienBy.ymd, daysLeft: daysBetweenYmd(inp.todayYmd, lienBy.ymd), kindAssumed: lienBy.kindAssumed } : null
   return { billedYmd, billedAgoDays, expected, due, lien }
 }
 
@@ -315,11 +326,22 @@ export function buildSiteMoney(inp: SiteMoneyInputs): SiteMoneyModel {
     left: rows.reduce((s, r) => s + r.left, 0),
     jobs: rows.length,
     pastDue: rows.filter((r) => r.next.askForDate).length,
+    inKind: inKindOf(rows),
     stages: sections.map((s) => ({ key: s.key, label: s.label, count: s.rows.length, color: s.color })),
     bidUndecidedUsd: undecided.reduce((s, b) => s + (bidMoney(b) ?? 0), 0),
     bidUndecidedCount: undecided.length,
   }
   return { band, sections }
+}
+
+function inKindOf(rows: readonly MoneyRow[]): InKindApart {
+  const on = rows.filter((r) => r.dates?.inKind && r.billed > 0.005)
+  return { count: on.length, dollars: Math.round(on.reduce((s, r) => s + r.billed, 0) * 100) / 100 }
+}
+
+/** The band's line on the billed money a deal pays: `$13,858 on 8 bills is scheduled in kind, not past due`. Null with none. */
+export function moneyInKindLine(band: Pick<MoneyBand, 'inKind'>): string | null {
+  return inKindApartWords(band.inKind, 'past due')
 }
 
 /** The strip's words for the Money look: the plain count and, in amber, the bills past due. */
