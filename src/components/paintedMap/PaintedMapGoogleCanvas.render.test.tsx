@@ -11,7 +11,7 @@ import { forgetGoogleKeyRefusalForTests } from '../../lib/map/googleAuthFailure'
 import { MARGIN_FRAME_PADDING_PX, MARGIN_FRAME_ZOOM, areaBox } from '../../lib/paintedMap/marginFrame'
 import { paintedFitView, PAINTED_POINT_ZOOM, PAINTED_WIDE_VIEW } from '../../lib/paintedMap/paintedMapView'
 
-type Listener = () => void
+type Listener = (e?: unknown) => void
 /** The map the library hands the canvas, and what the canvas handed the library's Map. */
 const lib = vi.hoisted(() => ({
   mapProps: null as null | Record<string, unknown>,
@@ -28,6 +28,8 @@ const lib = vi.hoisted(() => ({
   loads: true,
   /** The script arrives now, for a case that held it back. */
   load: () => {},
+  /** The map's own box on the page: presses on it reach the canvas's listeners. */
+  div: null as unknown as HTMLDivElement,
 }))
 const fakeMap = {
   moveCamera: (to: { center?: { lat: number; lng: number }; zoom?: number }) => {
@@ -38,7 +40,7 @@ const fakeMap = {
     lib.pans.push(to)
     lib.camera = { ...lib.camera, center: to }
   },
-  getDiv: () => ({ clientWidth: lib.box.width, clientHeight: lib.box.height }),
+  getDiv: () => lib.div,
   getCenter: () => ({ lat: () => lib.camera.center.lat, lng: () => lib.camera.center.lng }),
   getZoom: () => lib.camera.zoom,
   addListener: (name: string, fn: Listener) => {
@@ -67,9 +69,10 @@ vi.mock('@vis.gl/react-google-maps', async () => {
   }
 })
 
-import type { PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
+import type { PaintedCanvasDot, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import PaintedMapGoogleCanvas, { type PaintedMapGoogleCanvasProps } from './PaintedMapGoogleCanvas'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
+import { forgetPaintedGlassForTests } from './paintedGoogleGlassMap'
 
 class PolylineStub {
   static made: PolylineStub[] = []
@@ -127,6 +130,54 @@ class OverlayStub {
     return this.panes.overlayMouseTarget.querySelector('[data-painted-mark]') ?? this.panes.markerLayer.querySelector('[data-painted-mark]')
   }
 }
+/** One of Google's own markers, stood in: it keeps what it was made with and a case fires its events. */
+class MarkerStub {
+  static made: MarkerStub[] = []
+  on: unknown
+  position: unknown
+  title: unknown
+  readonly handlers: Record<string, (e: unknown) => void> = {}
+  constructor(readonly opts: Record<string, unknown>) {
+    this.on = opts.map
+    this.position = opts.position
+    this.title = opts.title
+    MarkerStub.made.push(this)
+  }
+  addListener(name: string, fn: (e: unknown) => void) {
+    this.handlers[name] = fn
+    return name
+  }
+  fire(name: string, e: unknown) {
+    this.handlers[name]?.(e)
+  }
+  setPosition(p: unknown) {
+    this.position = p
+  }
+  setTitle(t: unknown) {
+    this.title = t
+  }
+  setMap(map: unknown) {
+    this.on = map
+  }
+}
+/** The glass's own map, stood in: the page makes one and a case counts them. */
+class GlassMapStub {
+  static made: GlassMapStub[] = []
+  readonly moves: Array<{ center?: { lat: number; lng: number }; zoom?: number }> = []
+  constructor(readonly host: HTMLElement, readonly opts: Record<string, unknown>) {
+    GlassMapStub.made.push(this)
+  }
+  setOptions() {}
+  moveCamera(to: { center?: { lat: number; lng: number }; zoom?: number }) {
+    this.moves.push(to)
+  }
+}
+class SizeStub {
+  constructor(readonly width: number, readonly height: number) {}
+}
+class PointStub {
+  constructor(readonly x: number, readonly y: number) {}
+}
 class LatLngStub {
   constructor(readonly lat: number, readonly lng: number) {}
 }
@@ -158,11 +209,17 @@ beforeEach(() => {
   lib.removed.length = 0
   lib.camera = { center: { lat: 29.55, lng: -98.3 }, zoom: 17 }
   lib.box = { width: 600, height: 400 }
+  lib.div = document.createElement('div')
+  Object.defineProperty(lib.div, 'clientWidth', { get: () => lib.box.width })
+  Object.defineProperty(lib.div, 'clientHeight', { get: () => lib.box.height })
+  MarkerStub.made = []
+  GlassMapStub.made = []
+  forgetPaintedGlassForTests()
   PolylineStub.made = []
   CircleStub.made = []
   OverlayStub.made = []
   OverlayStub.preventMapHitsFrom.mockClear()
-  vi.stubGlobal('google', { maps: { Polyline: PolylineStub, Circle: CircleStub, OverlayView: OverlayStub, LatLng: LatLngStub, event: { removeListener: (handle: unknown) => lib.removed.push(handle) } } })
+  vi.stubGlobal('google', { maps: { Polyline: PolylineStub, Circle: CircleStub, OverlayView: OverlayStub, LatLng: LatLngStub, Marker: MarkerStub, Size: SizeStub, Point: PointStub, event: { removeListener: (handle: unknown) => lib.removed.push(handle) } } })
 })
 
 afterEach(() => {
@@ -430,6 +487,151 @@ describe('a rough reading (punch list #402)', () => {
   it('moves nothing for a rough reading without frameMargin', () => {
     mount({ lines: [DRAWN], me: ROUGH })
     expect(lib.moves).toHaveLength(0)
+  })
+})
+
+describe('a place’s dot, put down by hand (step 3)', () => {
+  const AT = { lat: 29.5505, lng: -98.2995 }
+  const dotAt = (point: { lat: number; lng: number }, over: Partial<PaintedCanvasDot> = {}): PaintedCanvasDot => ({ point, label: 'the gate', onMove: vi.fn(), ...over })
+  const event = (lat: number, lng: number) => ({ latLng: { lat: () => lat, lng: () => lng } })
+  const marker = () => MarkerStub.made[MarkerStub.made.length - 1]!
+  /** A finger, or a mouse, comes down on the map. */
+  const down = (pointerType: string) => {
+    const e = new Event('pointerdown', { bubbles: true })
+    Object.defineProperty(e, 'pointerType', { value: pointerType })
+    act(() => void lib.div.dispatchEvent(e))
+  }
+  const glass = () => document.querySelector('[data-painted-glass]')
+
+  // Google's own map class is on the page by the time a finger can place anything. The other cases leave it out, so a
+  // canvas that has just come up still reads the page as waiting on Google's script.
+  beforeEach(() => {
+    ;(globalThis as unknown as { google: { maps: Record<string, unknown> } }).google.maps.Map = GlassMapStub
+  })
+
+  it('is one of Google’s markers a finger can drag, on its spot, named for the place', () => {
+    mount({ dot: dotAt(AT) })
+    expect(MarkerStub.made).toHaveLength(1)
+    expect(marker().opts.position).toEqual(AT)
+    expect(marker().opts.draggable).toBe(true)
+    expect(marker().opts.title).toBe('Drag to place the gate')
+    // Google would lift a dragged marker off its spot and draw a cross under it. The glass shows the spot instead.
+    expect(marker().opts.crossOnDrag).toBe(false)
+    // Its picture is the dot in a box a fingertip can find, its middle on the spot.
+    const icon = marker().opts.icon as { url: string; anchor: { x: number; y: number }; scaledSize: { width: number } }
+    expect(icon.url.startsWith('data:image/svg+xml')).toBe(true)
+    expect(icon.scaledSize.width).toBe(44)
+    expect(icon.anchor).toEqual({ x: 22, y: 22 })
+    // Two presses on a dot being placed are two presses, not a zoom.
+    expect(lib.mapProps?.disableDoubleClickZoom).toBe(true)
+  })
+
+  it('draws no marker and zooms on two presses when nothing is being placed', () => {
+    mount()
+    expect(MarkerStub.made).toHaveLength(0)
+    expect(lib.mapProps?.disableDoubleClickZoom).toBe(false)
+  })
+
+  it('says where the finger is while it drags, and sets the dot where it lifts', () => {
+    const dot = dotAt(AT)
+    const onLive = vi.fn()
+    mount({ dot, onLive })
+    act(() => marker().fire('dragstart', event(29.5506, -98.2994)))
+    act(() => marker().fire('drag', event(29.5507, -98.2993)))
+    expect(onLive).toHaveBeenLastCalledWith({ kind: 'dot', point: { lat: 29.5507, lng: -98.2993 }, caught: null })
+    expect(dot.onMove).not.toHaveBeenCalled()
+    act(() => marker().fire('dragend', event(29.5508, -98.2992)))
+    expect(dot.onMove).toHaveBeenCalledTimes(1)
+    expect(dot.onMove).toHaveBeenCalledWith({ lat: 29.5508, lng: -98.2992 })
+    expect(marker().position).toEqual({ lat: 29.5508, lng: -98.2992 })
+    expect(onLive).toHaveBeenLastCalledWith(null)
+  })
+
+  it('brings the dot to a press on the map, for a dot that is a long drag away', () => {
+    const dot = dotAt(AT)
+    mount({ dot })
+    act(() => lib.listeners.click?.(event(29.556, -98.29)))
+    expect(dot.onMove).toHaveBeenCalledWith({ lat: 29.556, lng: -98.29 })
+  })
+
+  it('catches a target it nears, lands on it, and says what it caught', () => {
+    const gate = { id: 'gate', lat: 29.55, lng: -98.3, label: 'Truck gate' }
+    const dot = dotAt(AT, { targets: [gate] })
+    const onLive = vi.fn()
+    mount({ dot, onLive })
+    // The map is at zoom 17: a catch reaches about 13 m, and this is about 2 m from the gate.
+    act(() => marker().fire('drag', event(29.55002, -98.3)))
+    expect(onLive).toHaveBeenLastCalledWith({ kind: 'dot', point: { lat: gate.lat, lng: gate.lng }, caught: gate })
+    act(() => marker().fire('dragend', event(29.55002, -98.3)))
+    expect(dot.onMove).toHaveBeenCalledWith({ lat: gate.lat, lng: gate.lng })
+    // The marker is put on the gate, not left where the finger lifted.
+    expect(marker().position).toEqual({ lat: gate.lat, lng: gate.lng })
+  })
+
+  it('follows the caller to a new spot with the same marker, and wears a new name', () => {
+    const { rerender } = mount({ dot: dotAt(AT) })
+    rerender({ dot: dotAt({ lat: 29.551, lng: -98.299 }, { label: 'the meter' }) })
+    expect(MarkerStub.made).toHaveLength(1)
+    expect(marker().position).toEqual({ lat: 29.551, lng: -98.299 })
+    expect(marker().title).toBe('Drag to place the meter')
+  })
+
+  it('takes the marker and its listeners off when the placing ends', () => {
+    const { rerender } = mount({ dot: dotAt(AT) })
+    const m = marker()
+    rerender({ dot: null })
+    expect(m.on).toBeNull()
+    expect(lib.removed).toEqual(expect.arrayContaining(['dragstart', 'drag', 'dragend', 'click']))
+  })
+
+  it('shows no glass to a mouse, which is already that exact', () => {
+    mount({ lines: [DRAWN], dot: dotAt(AT) })
+    down('mouse')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(glass()).toBeNull()
+    expect(GlassMapStub.made).toHaveLength(0)
+  })
+
+  it('shows a finger the spot under it in the glass: the kept map, the lines and a place that is near', () => {
+    mount({ lines: [DRAWN], places: [GATE, place({ id: 'far', number: 3, name: 'Far gate', lat: 29.6, lng: -98.2 })], dot: dotAt(AT) })
+    down('touch')
+    // On the gate, which is at 29.55, -98.3.
+    act(() => marker().fire('drag', event(29.55001, -98.29999)))
+    expect(glass()?.getAttribute('data-painted-glass')).toBe('open')
+    expect(GlassMapStub.made).toHaveLength(1)
+    // The picture is the big map's own view: its zoom, on the spot under the finger.
+    expect(GlassMapStub.made[0]?.moves[GlassMapStub.made[0].moves.length - 1]).toEqual({ center: { lat: 29.55001, lng: -98.29999 }, zoom: 17 })
+    expect(glass()?.querySelector('[data-painted-glass-map]')?.contains(GlassMapStub.made[0]?.host ?? null)).toBe(true)
+    // The drawn line: its dark edge and its dashes.
+    expect(glass()?.querySelectorAll('polyline')).toHaveLength(2)
+    expect(glass()?.querySelectorAll('[data-painted-glass-place]')).toHaveLength(1)
+    act(() => marker().fire('dragend', event(29.55001, -98.29999)))
+    expect(glass()).toBeNull()
+  })
+
+  it('makes the glass’s map once for the page, however many drags and painted maps follow', () => {
+    const first = mount({ dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    act(() => marker().fire('dragend', event(29.5506, -98.2994)))
+    act(() => marker().fire('drag', event(29.5507, -98.2993)))
+    expect(glass()).not.toBeNull()
+    act(() => marker().fire('dragend', event(29.5507, -98.2993)))
+    first.view.unmount()
+    // Another painted map, later on the same page.
+    mount({ dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(glass()).not.toBeNull()
+    expect(GlassMapStub.made).toHaveLength(1)
+  })
+
+  it('rings the glass green when the dot has caught a target', () => {
+    const gate = { id: 'gate', lat: 29.55, lng: -98.3, label: 'Truck gate' }
+    mount({ dot: dotAt(AT, { targets: [gate] }) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.55002, -98.3)))
+    expect(glass()?.getAttribute('data-painted-glass')).toBe('caught')
   })
 })
 

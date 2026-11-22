@@ -72,8 +72,13 @@ describe('resolvePaintedMapProvider', () => {
 })
 
 describe('PAINTED_GOOGLE_REACH, today', () => {
-  it('puts both screens on Google for looking and for a walk, and nothing else', () => {
-    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'looking' || use === 'walking' ? 'google' : 'osm')
+  it('puts both screens on Google for everything but drawing a line by hand', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'drawing' ? 'osm' : 'google')
+  })
+
+  it('puts a place’s dot down on Google (step 3)', () => {
+    expect(PAINTED_GOOGLE_REACH.uses).toContain('placing')
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('place') }))).toBe('google')
   })
 
   it('paints a walk on Google from its first reading to Done (step 3)', () => {
@@ -87,11 +92,10 @@ describe('PAINTED_GOOGLE_REACH, today', () => {
     expect(PAINTED_GOOGLE_REACH.screens).toContain('way')
   })
 
-  it('keeps drawing by hand and placing off Google until the canvas carries each', () => {
-    // The reading of Google's terms they waited on (3.2.3 (c)) was settled on 2026-11-21, on Taunya's word from her
-    // lawyer. Each word goes in with the part of the Google canvas that draws it, and with nothing else.
+  it('keeps drawing a line by hand off Google until the canvas carries it', () => {
+    // The reading of Google's terms it waited on (3.2.3 (c)) was settled on 2026-11-21, on Taunya's word from her
+    // lawyer. The word goes in with the part of the Google canvas that draws corners, and with nothing else.
     expect(PAINTED_GOOGLE_REACH.uses).not.toContain('drawing')
-    expect(PAINTED_GOOGLE_REACH.uses).not.toContain('placing')
   })
 })
 
@@ -120,7 +124,7 @@ describe('paintedMapKeepsLeaflet', () => {
   })
 
   it('holds a painter on one photograph from the first corner to the window’s close', () => {
-    // Read, draw, save and read again, in the window as it is today.
+    // Read, draw, save and read again, in the window as it is today. Placing is on Google, but this window left it to draw.
     let kept = false
     const seen: string[] = []
     for (const mode of ['view', 'draw', 'view', 'place', 'view'] as const) {
@@ -141,8 +145,9 @@ describe('paintedWindowUse', () => {
 
   it('is placing already in a window opened to add a place, before its panel is up', () => {
     expect(paintedWindowUse('view', true)).toBe('placing')
-    // So Google's map is never made only to be taken down a moment later.
-    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('view', true) }))).toBe('osm')
+    // So the map is one map through the wait, whichever it is: never made only to be taken down a moment later.
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('view', true) }))).toBe(resolvePaintedMapProvider(ask({ use: paintedWindowUse('place') })))
+    expect(resolvePaintedMapProvider(ask({ use: paintedWindowUse('view', true) }), WINDOW_LOOKING)).toBe('osm')
     // Only the wait is placing. Every other mode says what it is.
     expect(paintedWindowUse('review', true)).toBe('looking')
     expect(paintedWindowUse('draw', true)).toBe('drawing')

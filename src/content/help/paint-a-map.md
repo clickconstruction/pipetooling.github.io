@@ -744,7 +744,9 @@ Open a saved map to read it. The map under the lines is Google Maps.
 
 A walk is painted on Google Maps too. The map follows you as you go.
 
-Press {{button:blue|Draw a line}} or {{button:outline|＋ Place}} and the picture under the map changes. You draw on the view from above the app has always used.
+{{button:outline|＋ Place}} puts its dot down on Google Maps too. Drag the dot, or press the map to bring it there.
+
+Press {{button:blue|Draw a line}} and the picture under the map changes. You draw on the view from above the app has always used.
 
 The map then stays on that picture until you close it. Your new line stays on the photograph you drew it over.
 

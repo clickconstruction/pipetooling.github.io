@@ -49,16 +49,17 @@ export type PaintedGoogleReach = {
  * saved map opened to be read draws on Google, and so does a kept walk opened to be looked over,
  * and so does the map a link opens for a reader. A walk is painted on it from its first reading to
  * Done (step 3, v2.8212): the line comes from the phone's readings, and the canvas follows the walker.
+ * A place's dot is put down on it too (step 3, v2.8235): dragged, caught and seen under the glass.
  *
  * Each step of the train adds its own word here, in the change that builds the part.
- * - Drawing on Google adds `drawing` and `placing`, each with the part of the canvas that carries
- *   it. The reading of Google's terms on content made from its imagery (3.2.3 (c)) that they waited
- *   on was settled on 2026-11-21, on Taunya's word from her lawyer (the card's call 6).
+ * - Drawing on Google adds `drawing`, with the part of the canvas that carries it. The reading of
+ *   Google's terms on content made from its imagery (3.2.3 (c)) that drawing and placing waited on
+ *   was settled on 2026-11-21, on Taunya's word from her lawyer (the card's call 6).
  * - The public page added `way` in v2.8210. What it needed came in v2.8208: the page hands its ask,
  *   and the Google canvas keeps a reader and the line in the picture together (`frameMe.ts`) and
  *   stays light on the page's paper.
  */
-export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window', 'way'], uses: ['looking', 'walking'] }
+export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window', 'way'], uses: ['looking', 'walking', 'placing'] }
 
 export type PaintedMapProviderAsk = {
   /** The browser key (`googleMapsBrowserKey()`). Empty when the build has none. */
