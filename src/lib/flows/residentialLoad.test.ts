@@ -12,6 +12,7 @@ import type {
 import { fillLine } from '../quickReplies/blanks'
 import { nudgeLine } from './nudgeDispatch'
 import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps, warrantyRounds, type JobAgreementRow } from './residentialLoad'
+import { PIPELINE_SELECTS } from './residentialRows'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
 import { readFlow, stepById } from './state'
@@ -403,5 +404,38 @@ describe('the warranty in place of a contract', () => {
     const r = read(rows)
     expect(where(r)).toBe('booked@job-1400')
     expect(r.lanes.find((l) => l.jobId === 'job-1400')!.steps.find((s) => s.stepId === 'warranty_paper')!.state).toBe('now')
+  })
+})
+
+describe('a bill on a job an in kind deal pays (punch list #301)', () => {
+  // Six weeks on: her pace put this bill's day on 2026-10-18, so by now an ordinary bill reads late.
+  const LATER = new Date('2026-11-21T17:00:00Z')
+  const onDeal = (rows: ResidentialRows, jobId: string): ResidentialRows => ({ ...rows, jobs: rows.jobs.map((j) => (j.id === jobId ? { ...j, in_kind_arrangement_id: 'deal-1' } : j)) })
+  const paidStep = (rows: ResidentialRows, jobId: string) =>
+    readFlow(SEED_FLOWS.residential, residentialStampsFor(rows, LATER), LATER).lanes.find((l) => l.jobId === jobId)!.steps.find((s) => s.stepId === 'paid')!
+
+  it('a covered bill waits with no due day: the round is open, never late, so its reminder is never due by itself', () => {
+    const rows = onDeal(dana('billed'), 'job-1312')
+    expect(paidRounds(rows, 'job-1312', LATER).map((x) => `${x.key} due ${x.due} ${x.stamps.map((s) => `${s.fact} ${s.mark}`)}`)).toEqual(['inv-1312 due null paid wait'])
+    expect(paidStep(rows, 'job-1312').rounds.map((x) => `${x.state} ${x.day?.late ?? 'no day'}`)).toEqual(['now no day'])
+    // Her promise is a day too, and a deal's bill takes none.
+    expect(paidRounds({ ...rows, promisedPay: { 'job-1312': { promisedYmd: '2026-10-15', markedByName: 'Rosa' } } }, 'job-1312', LATER).map((x) => x.due)).toEqual([null])
+  })
+
+  it('a customer part covered: her other job’s bill keeps its day and reads late', () => {
+    // The August job is on the deal; the October job is not.
+    const august = dana('billed').jobs.find((j) => j.id !== 'job-1312')!.id
+    const rows = onDeal(dana('billed'), august)
+    expect(paidRounds(rows, 'job-1312', LATER).map((x) => x.due)).toEqual(['2026-10-18'])
+    expect(paidStep(rows, 'job-1312').rounds.map((x) => `${x.state} ${x.day?.late}`)).toEqual(['now true'])
+  })
+
+  it('an ordinary late bill is late as before, and a deal’s bill that is paid reads paid', () => {
+    expect(paidStep(dana('billed'), 'job-1312').rounds.map((x) => `${x.state} ${x.day?.late}`)).toEqual(['now true'])
+    expect(paidRounds(onDeal(dana('paid'), 'job-1312'), 'job-1312', LATER).map((x) => x.stamps.map((s) => `${s.fact} ${s.mark}`).join())).toEqual(['paid ok'])
+  })
+
+  it('the morning run and the step card select the column', () => {
+    expect(PIPELINE_SELECTS.jobs.split(', ')).toContain('in_kind_arrangement_id')
   })
 })

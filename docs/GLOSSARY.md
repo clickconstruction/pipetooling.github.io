@@ -5339,7 +5339,8 @@ A line pays the deal's open bills oldest first as In kind payments.
 The jobs a deal pays read as **scheduled in kind**, never late, on the customer's page, the Pipeline's Billed row, the Payment Chase and the Payment forecast (v2.6834), and since v2.6931 in the forecast's email and on **Money waiting**, the Pay speeds window's list and its email.
 An In kind payment leaves pay speed.
 Since v2.8218 the Dashboard's receivables card, the Bridge's Collect pile and balances, the Pipeline's 30+ and 90+ chips, *Who owes what*, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list leave them out too, each naming them in one line (`splitInKind`, `supabase/functions/_shared/inKindApart.ts`), and the Pipeline's Billed header counts them on an **In kind** chip.
-The Pipeline's map, the customer's profile window, a development's Money look and the printed Billed awaiting payment report still age them.
+Since v2.8219 the Billed awaiting payment email leaves them out of its rows, totals and chips with the same line, and a residential customer's Paid step gives such a bill no due day, so no pay reminder is due by itself.
+The Pipeline's map, the customer's profile window, a development's Money look, the printed Billed awaiting payment report and the office's statement week still age them.
 A deal with a **monthly credit** has months: each is settled by one line (a line of zero is *no credit this month*), a month with none is **due** once it is over or its bill has left the bank, and the card and the Dashboard's Needs you line (`in-kind-credit-due`, v2.6831) offer the press that enters it with the amount read from the bank.
 Nothing is entered by itself.
 A line's amount is a **cost**: overhead on the day it was given (the overhead pool's materials, source `in_kind`), or the material of the job it is put on (the Costs tab's 🤝 *Given in kind* stream and row, the profit band).
