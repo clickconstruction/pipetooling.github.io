@@ -213,7 +213,7 @@ describe('find_person tries each word when the whole name matches no one (v2.765
 
 describe('the server and the docs carry the manifest (v2.7651 / 0.97.0)', () => {
   it('the instructions send an HR read to get_case_brief before their first three hundred words end, and no longer say whole', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.124.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.125.0'")
     const at = SERVER.indexOf('const INSTRUCTIONS =')
     const opening = SERVER.slice(at, at + 700)
     expect(opening).toContain("For a person's HR file call get_case_brief first")
