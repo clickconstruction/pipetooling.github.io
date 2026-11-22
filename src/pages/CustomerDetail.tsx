@@ -24,7 +24,10 @@ import { useAuth } from '../hooks/useAuth'
 import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import { isOfficeRole } from '../lib/doorRoles'
 import { canResearchPermits } from '../lib/research/permitResearch'
-import { CustomerPermitNamesCard } from '../components/customers/CustomerPermitNamesCard'
+import { CustomerPermitsDoor, CustomerPermitsTab } from '../components/customers/CustomerPermitsTab'
+import { CUSTOMER_TAB_LABELS, customerDetailTabs, parseCustomerTab, type CustomerDetailTab } from '../lib/customers/customerDetailTabs'
+import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
+import { PHONE_PILL_FADE_SLACK_PX, PHONE_PILL_PEEK_PX } from '../lib/phoneLayout/phoneTabRows'
 import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
 import GcDifficultyCard from '../components/customers/GcDifficultyCard'
 import GcDifficultyFeedbackCard from '../components/customers/GcDifficultyFeedbackCard'
@@ -62,8 +65,10 @@ import { customerInvoicesWithoutZz, customerPageDataWithoutZz, customerPageZzJob
  * Customer Hub — the dedicated page per customer at /customers/:id.
  * Landing tab is Profile: identity header, contact band, the money strip
  * (lifetime value, open balance + aging, pays-in, estimates won), and the
- * open-jobs panel. Further tabs (Estimates / Jobs / Invoices) ship on this
- * same shell; the tab lives in the URL (?tab=) so views are linkable.
+ * open-jobs panel. Further tabs (Estimates / Jobs / Invoices, and Permits for
+ * the people who research permits) ship on this same shell; the tab lives in
+ * the URL (?tab=) so views are linkable. Which tabs a role has is
+ * `customerDetailTabs`.
  *
  * The quick-peek CustomerProfileModal stays for board surfaces — both share
  * fetchCustomerProfile + customerProfileStats so the numbers can't diverge.
@@ -71,20 +76,6 @@ import { customerInvoicesWithoutZz, customerPageDataWithoutZz, customerPageZzJob
 
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
-
-export type CustomerDetailTab = 'profile' | 'estimates' | 'jobs' | 'invoices'
-
-const TAB_LABELS: Record<CustomerDetailTab, string> = {
-  profile: 'Profile',
-  estimates: 'Estimates',
-  jobs: 'Jobs',
-  invoices: 'Invoices',
-}
-const TABS: CustomerDetailTab[] = ['profile', 'estimates', 'jobs', 'invoices']
-
-function parseTab(raw: string | null): CustomerDetailTab {
-  return TABS.includes(raw as CustomerDetailTab) ? (raw as CustomerDetailTab) : 'profile'
-}
 
 const capStyle: CSSProperties = {
   fontSize: '0.66rem',
@@ -216,7 +207,18 @@ export default function CustomerDetail() {
   const invoicesData = useMemo(() => customerInvoicesWithoutZz(invoicesDataAll, zzJobs), [invoicesDataAll, zzJobs])
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
-  const activeTab = parseTab(searchParams.get('tab'))
+  const tabs = useMemo(() => customerDetailTabs(myRole), [myRole])
+  const activeTab = parseCustomerTab(searchParams.get('tab'), tabs)
+  const openTab = useCallback(
+    (tab: CustomerDetailTab) =>
+      setSearchParams((p) => {
+        const n = new URLSearchParams(p)
+        if (tab === 'profile') n.delete('tab')
+        else n.set('tab', tab)
+        return n
+      }),
+    [setSearchParams],
+  )
 
   const load = useCallback(() => {
     if (!customerId) return
@@ -445,9 +447,10 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {/* tab strip */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', margin: '10px 0 16px' }}>
-        {TABS.map((tab) => {
+      {/* tab strip: one row that slides once the tabs are wider than a phone (v2.8302, with the fifth tab). Each tab and the rest of the row carry the rule under them. */}
+      <div style={{ margin: '10px 0 16px', minWidth: 0 }} data-testid="customer-tabs">
+        <ScrollableTabStrip activeKey={activeTab} activePeek={PHONE_PILL_PEEK_PX} fadeSlack={PHONE_PILL_FADE_SLACK_PX} edgeMarks fill gap="0" align="start" ariaLabel="Customer tabs">
+        {tabs.map((tab) => {
           const on = tab === activeTab
           const count =
             tab === 'estimates'
@@ -461,34 +464,30 @@ export default function CustomerDetail() {
             <button
               key={tab}
               type="button"
+              data-tabkey={tab}
               aria-pressed={on}
-              onClick={() =>
-                setSearchParams((p) => {
-                  const n = new URLSearchParams(p)
-                  if (tab === 'profile') n.delete('tab')
-                  else n.set('tab', tab)
-                  return n
-                })
-              }
+              onClick={() => openTab(tab)}
               style={{
+                flex: '0 0 auto',
                 fontSize: '0.87rem',
                 fontWeight: 600,
-                padding: '6px 14px 8px',
+                padding: '6px 16px 8px',
                 color: on ? 'var(--text-link)' : 'var(--text-muted)',
                 border: 'none',
-                borderBottom: on ? '2px solid var(--text-link)' : '2px solid transparent',
-                marginBottom: -2,
+                borderBottom: on ? '2px solid var(--text-link)' : '2px solid var(--border)',
                 background: 'none',
                 cursor: 'pointer',
               }}
             >
-              {TAB_LABELS[tab]}
+              {CUSTOMER_TAB_LABELS[tab]}
               {count != null && count > 0 ? (
                 <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', fontWeight: 600, marginLeft: 4 }}>{count}</span>
               ) : null}
             </button>
           )
         })}
+        <span aria-hidden style={{ flex: '1 0 0', alignSelf: 'stretch', borderBottom: '2px solid var(--border)' }} />
+        </ScrollableTabStrip>
       </div>
 
       {activeTab === 'profile' ? (
@@ -580,8 +579,8 @@ export default function CustomerDetail() {
           {/* Punch list #403, step 4: an estimator has no Agreements card, so the papers that are with the customer get a card of their own. */}
           {myRole === 'estimator' && customerId ? <PartyPapersCard party={{ kind: 'customer', id: customerId }} partyName={data.customer.name} /> : null}
 
-          {/* v2.6886: Names on permits — the names a city lists that are this customer's, and the press that finds more (punch list #307). The people who research permits. */}
-          {canResearchPermits(myRole) && customerId ? <CustomerPermitNamesCard customerId={customerId} customerName={data.customer.name ?? ''} /> : null}
+          {/* v2.6886, v2.8302: Names on permits stood here as a card. The names and the press that finds more are on the Permits tab now, with the jobs priced for them; this is the door to it. The people who research permits. */}
+          {canResearchPermits(myRole) && customerId ? <CustomerPermitsDoor onOpen={() => openTab('permits')} /> : null}
 
           {/* v2.3508: Their journey — the What-customers-see strips for this customer, as it actually went. Office roles only; reads only. */}
           {canSeeWhatCustomersSee(myRole) ? (
@@ -1222,6 +1221,8 @@ export default function CustomerDetail() {
             </table>
           )}
         </div>
+      ) : activeTab === 'permits' ? (
+        <CustomerPermitsTab customerId={customerId} customerName={(customer.name ?? '').trim()} />
       ) : null}
     </div>
   )

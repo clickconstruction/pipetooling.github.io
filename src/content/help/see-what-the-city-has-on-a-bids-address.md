@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: followup, answer, not our job, still waiting, we lost it, red number, ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: customer page, permits tab, followup, answer, not our job, still waiting, we lost it, red number, ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -59,15 +59,27 @@ One line counts the sites. It says how many have a permit, out of how many we ca
 
 Another line names the towns where the GC's other bids are. No permit records are read there.
 
-On a phone the jobs fold behind **See the jobs**.
+On a phone the jobs in a bid's window fold behind **See the jobs**.
 
 Below the jobs sits **Other permits under names tied to them**. It lists the GC's own name and each name someone tied to the GC. Each row says whose word it is and how many permits the city lists that name on. Press **See them** to read the list. Press **Take back** to undo a tie.
+
+## See the same block on the customer's page
+
+Go to **Customers** and open the customer. Press the **Permits** tab.
+
+The tab holds the same block as the bid's window. It lists the jobs you priced for them, then the names tied to them. On a phone the first six jobs show here, with a press for the rest.
+
+Two customer rows sometimes carry one name. The tab reads them together and says so under the block.
+
+The **Profile** tab keeps a **Names on permits** line where the card used to be. Press **Open Permits** on that line to reach the tab.
+
+The office and estimators see the tab.
 
 ## Link a customer to its names on permits
 
 Our name for a customer is often not the name a city lists. You can link the two.
 
-Press **Find their names on permits** under the names tied to the GC. The same press sits on the customer's page, in the **Names on permits** card.
+Press **Find their names on permits** under the names tied to the GC. The same press sits on the customer's page, on the **Permits** tab.
 
 A sheet opens with names that may be them. Each one says why it is offered. The strongest reason is a permit on an address you bid to them. The others are about the name. One name may begin the other. They may be one letter apart. They may share a word.
 
