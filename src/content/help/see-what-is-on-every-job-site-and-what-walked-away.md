@@ -145,6 +145,16 @@ Press **Print** with a job open. A sheet opens with that job's number and its na
 
 Press **Print** with no job open. The sheet offers **Print labels** and **Print future stickers**.
 
+With no job open, the page starts with three figures. They read *Boxes on site*, *Due a count* and *Missing this week*. Each one adds up every job.
+
+Press **Due a count** to see only the jobs with a box due. Press **Missing this week** to see only the jobs that came up short. Press the same figure again to see every job. A grey figure has nothing behind it.
+
+Under the figures, each job is one row. The row reads the job's number, its name and its boxes. A job that needs something has an amber edge. Its row names the boxes due a count, or what came up short. Press a row to open the job.
+
+A site's name sits over its jobs. Press **Whole site** beside the name to see everything on that site. Jobs on no site sit under *Not on a site*.
+
+Press **Open a job** under the list to reach a job with no box yet.
+
 On a job's page the four figures sit in one row of tiles. The tiles read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
 
 Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*. Press the line. A sheet opens with the full count, **These are on boxes**, **Runs** and the press that prints them.
@@ -169,7 +179,7 @@ The wrong job's page then reads empty. The right job's page reads the boxes. The
 
 A refusal is said with its reason, and nothing moves. A phone that still has the wrong job open should open the right one. A press it sends lands on the box's job now.
 
-On the Materials desk, a site that holds boxes under two jobs has the same press on its row. There you pick both jobs from that site's jobs.
+On the Materials desk, a site that holds boxes under two jobs has the same press on its row. There you pick both jobs from that site's jobs. A phone does not show that press on the desk. Open the job the boxes are on and use the press under its boxes.
 
 ## Missing
 
