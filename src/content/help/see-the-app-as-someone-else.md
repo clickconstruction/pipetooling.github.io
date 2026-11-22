@@ -24,6 +24,8 @@ Then you go to the page you wanted to check. That role may not be able to open i
 
 The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to your own account **and to the page you left**. On a phone it is a thin amber bar across the top of the screen. A press anywhere along the bar works. Settings → *Back to my account* does the same.
 
+Sometimes the app cannot put your own sign-in back. Then the app signs this browser out and shows the sign-in page. You sign in again as yourself.
+
 ## Sample accounts
 
 They live under Settings → System → **Digital twins & samples**. They are hidden from every roster, picker, Person rail and notification, the way digital twins are. They are fixtures, never people. So they never get a roster row or pay. {{button:gray|Create the missing samples}} makes one per role that has none. {{button:gray|Manage accounts…}} beside it sets a sample's switches like anyone's. You turn on Hiring for *Sample assistant*, then View as it. The board shows exactly what an assistant with that switch gets.

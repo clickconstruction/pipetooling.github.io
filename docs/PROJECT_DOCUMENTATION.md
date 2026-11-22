@@ -1795,7 +1795,7 @@ user_id = auth.uid()
 5. Browser redirects to magic link URL with tokens in hash
 6. AuthHandler component processes tokens and sets session
 7. User is redirected to dashboard as the target user
-8. **Restore session**: **[`Layout.tsx`](../src/components/Layout.tsx)** (desktop nav, not mobile) shows a short **Back** button with **`title="Back to my account"`** and an **`aria-label`** that names returning to the original signed-in account; **[`Settings.tsx`](../src/pages/Settings.tsx)** impersonation banner uses the full label **Back to my Account**. Both clear **`impersonation_original`** and call **`setSession`** with the stored tokens.
+8. **Restore session**: **[`Layout.tsx`](../src/components/Layout.tsx)** (desktop nav, not mobile) shows a short **Back** button with **`title="Back to my account"`** and an **`aria-label`** that names returning to the original signed-in account; **[`Settings.tsx`](../src/pages/Settings.tsx)** impersonation banner uses the full label **Back to my Account**. Both call **`leaveViewAsHere`** (`impersonationExit.ts`): **`setSession`** with the stored tokens, then **`impersonation_original`** cleared; a swap that is refused signs this browser out and lands on the sign-in page.
 
 **Restrictions**:
 - No one can impersonate a dev
