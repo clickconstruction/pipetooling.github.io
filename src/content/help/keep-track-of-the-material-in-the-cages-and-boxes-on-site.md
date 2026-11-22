@@ -90,7 +90,7 @@ The count becomes the truth for that box. A short count is what the office reads
 
 ## Add a container or a part
 
-Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery.
+Tap {{button:outline|Add a container}} to add a cage, a box or a loose pile. The app fills in the next free name on this site, like R89. Change it only when the paint on the steel says something else. A name is one to three letters and a number from 1 to 999, like R76 or G24B. A name is one of a kind across the whole site. Words typed after the name are kept. R76 TOILETS becomes the name R76, and Toilets moves to **What is in it**. Pick how it sits, say its place on the site, and tap the press that names the box. On a box, tap **Add a part** for a part that came without a delivery. The office's Materials page has the same press on every box.
 
 Type the part's name. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it.
 
