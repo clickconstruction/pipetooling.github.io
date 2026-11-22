@@ -2,14 +2,14 @@
 name: "Values in place: where else the app should mark its values and change them where they sit"
 number: 399
 group: gated
-status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · the shared piece is built (v2.7985, #382's PR 1) · the first screen shipped 2026-11-21 (v2.8222): the last day of work and the days that follow it are drawn as values on the Lien desk · the owner said yes the same day to a press on the day, and v2.8258 built it: the day is changed where it sits, and Keep opens the window that shows what moves before anything is written
+status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · the shared piece is built (v2.7985, #382's PR 1) · the first screen shipped 2026-11-21 (v2.8222): the last day of work and the days that follow it are drawn as values on the Lien desk · the owner said yes the same day to a press on the day, and v2.8258 built it: the day is changed where it sits, and Keep opens the window that shows what moves before anything is written · the second screen shipped 2026-11-22 (v2.8299): the retainage pane's facts are one a line, and the day our contract ended, how it ended, the retainage and the bond are changed where they sit
 summary: >
   #382 approved one way to draw a value on a screen. A date, a count, a name or an amount is drawn apart
   from the words. If a person can change it, it is underlined and tinted, and a press turns it into a field
   right there with Keep and Cancel. If the app works it out, it is plain bold and updates by itself. One fact
   sits on each line, with the values in a column. This card lists the other screens where that look fits,
   what the shared piece must hold before they can use it, and an order to roll it out.
-next: The next screen of the Lien desk group, `LienDeskRetainagePane.tsx`, one screen a PR.
+next: The next screen of the Lien desk group, `LienDeskNoticePane.tsx`, one screen a PR.
 size: L as a train, one S per screen once the piece exists
 blocker: None in the code. The shared piece this card waited on is on main (v2.7985).
 opinion: build, one screen at a time, after the shared piece — the owner asked for it across the app, and one piece keeps every screen's look the same
@@ -79,7 +79,7 @@ not checked line by line; each PR reads that first.
 | Screen | The values |
 |---|---|
 | `LienLastWorkDayLine.tsx`, `LienTimelineStrip.tsx` | The last day of work, and the days that follow from it. **Built: shown in v2.8222, changed in place since v2.8258** |
-| `LienDeskRetainagePane.tsx` | Retainage dates and amounts |
+| `LienDeskRetainagePane.tsx` | Retainage dates and amounts. **Built, v2.8299**: one fact a line, and the day our contract ended, how it ended, the retainage and the bond are changed in place |
 | `LienDeskNoticePane.tsx` | Notice dates and the deadline worked out from them |
 | `LienDeskAffidavitPane.tsx` | The owner's answers (`ownerCallWords`) |
 | `src/lib/jobs/lienGateRow.ts` and its rows | Each gate's date and state |
@@ -143,7 +143,7 @@ the first group ships.
 
 | Call | Default |
 |---|---|
-| Does a changed value on a lien date save at once, or ask first? | Ask first when it moves a legal deadline, and save at once otherwise. **Settled for the last day of work**, see below: Keep opens the window that shows what moves, and that window's *Set the day* is the write |
+| Does a changed value on a lien date save at once, or ask first? | Ask first when it moves a legal deadline, and save at once otherwise. **Settled for the last day of work**, see below: Keep opens the window that shows what moves, and that window's *Set the day* is the write. The retainage pane follows it (v2.8299): the day our contract ended asks first in a confirm window that names the day the notice is then due |
 | Which look does a company default wear? | Bold with a small *default* word after it, and a press to set this record's own |
 | Is a screen done when every value is marked, or only the ones a person changes? | Every value, as the owner's words say |
 
@@ -181,4 +181,13 @@ screen a person can change, and it is changed where it sits. The render test in 
 `LienLastWorkDayLine.render.test.tsx`: press, type, Keep, and the write happens once, on the window's *Set the
 day*. The shared piece's `fromDefault` takes a drawn word since then, for a default whose word has its own look.
 
-Next is `LienDeskRetainagePane.tsx`. The other 30 strong fits are not built.
+**The second screen shipped 2026-11-22 (v2.8299).** The retainage pane draws its gates one fact a line, each gate's
+own words on the left and its value on the right. The day our contract ended, how it ended, the retainage the GC
+holds and the payment bond are changed where they sit, and *Change ›* is gone. The day asks first, in a confirm
+window that names the day the notice is then due. The other three save on Keep. A contract still open starts its
+clock on the line: the way first, then the day, with nothing written until *Start the clock*. The shared piece
+took one small prop for that, `startOpen`. Two things were not asked of the owner and follow the card's defaults:
+the confirm window as the way to ask first, and the Clock not started footer's press opening the line's field
+where it opened Edit Job.
+
+Next is `LienDeskNoticePane.tsx`. The other 29 strong fits are not built.

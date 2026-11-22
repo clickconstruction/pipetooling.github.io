@@ -950,6 +950,16 @@ last_updated: 2026-11-21
 > **Keep** writes nothing: it opens `LienLastWorkDayWindow` on the day typed, because the day moves every lien deadline, and the window's *Set the day* is still the one write.
 > The field opens on `lienLastWorkOpeningDay`, so a stand-in opens empty, and it holds a day after today.
 > With `startEditing` (the Lien window's press under LAST WORK) the line opens that window at once with the day to pick inside, and `onCancel` folds the line away when the window closes with nothing saved.
+> **v2.8299 (values in place, punch list #399, the second screen):** `LienDeskRetainagePane` draws its gates section one fact a line (`ValueLines`), each gate's own words on the left and its value on the right, with the day the notice is due, the retainage the notice claims, what is still unpaid and the payment bond on lines of their own.
+> The three facts a person types are changed where they sit, each a `ChangeableValue` for the lien office (`isLienOffice`) and plain bold for anyone else: the day our contract ended with how it ended, the retainage the GC holds, and the payment bond.
+> *Change ›* and *Set on the job ›* are gone from the pane, and *Property record ›* stays, because a missing owner is another record's fact.
+> [`lienRetainageFacts.ts`](../src/lib/jobs/lienRetainageFacts.ts) holds the choices, the words each value reads as, the line under an open field, the window that asks first and the patch each one writes, and [`lienRetainageFactsIo.ts`](../src/lib/jobs/lienRetainageFactsIo.ts) is the one write, straight to the job as Edit Job's row writes it.
+> A change to the day asks first, because it moves the § 53.057 deadline: **Keep** opens the confirm window, which names the day the notice is then due and the day it was due, and its press is the write (`lienContractEndedAsk`).
+> *Still open* on an ended contract asks first too, because the clock stops (`lienContractStillOpenAsk`), and another way of ending, the retainage and the bond are saved on **Keep**.
+> A contract still open starts its clock on the line in two steps, the way and then the day: the way is held unsaved in the pane (`startHow`), the day's field opens beside it (`startOpen` on the shared piece), and nothing is written until the window's *Start the clock*.
+> The Clock not started footer's *Set the day our contract ended* opens that field on the line, where it opened Edit Job.
+> A figure read from a pay application is `locked` with the tag *pay application*, since the AIA window is where it changes, and a figure may be set to 0 on the pane but not emptied, which would take the job off the list.
+> The chip, the window line, the source line and the footers draw their days through `retainageDeadlineValues` and `lienDayValues`, so the kernels' words are untouched.
 > A role that cannot set the day reads it bold with no press.
 > The mini row, the fold's counts, money and percents are as they were.
 > **v2.4632 (the chip as a door to the paper):** `LienDeskNextUp` draws the Notice / Affidavit chip as a `lienPaperDoor` button when the desk passes `onOpenPaper` (`gapsFor` puts a red count or a tick on it);
@@ -1374,6 +1384,7 @@ Sizes and test counts in this table are as each row was last written, so count a
 | `lienLetterTwo.ts` | 119 | 8 | kinds, `letterTwoIsDue`; since v2.6383 `ownerCalledAt` on every status and `letterTwoWords` for the courtesy's footer |
 | `lienOwnerCall.ts` | 268 | 5 | piles A/B/C, call words |
 | `lienDeskRetainage.ts` | 258 | 5 | retainage piles/words; `parsePaymentBond` (no direct test) |
+| `lienRetainageFacts.ts` | 217 | 19 | the retainage pane's facts as values in place (v2.8299): the choices and words of the contract's state, the retainage and the bond, `retainageDeadlineValues` for the chip, the line under an open field, the two windows that ask first, the words after a save and the four patches; not mirrored |
 | `lienDeskAffidavits.ts` | 265 | 18 | affidavit piles and the five gates (`affidavitGates`: owner, legal, contractor, notice, homestead). The owner slot is `ownerGate` (v2.6954, punch list #314): no owner, a public owner (key `public_owner`, `lienOwnerIsPublic` over every name the record gives, filled by `withPublicOwner` from the property rows `useLienDeskData` reads under the affidavits, in light mode too), or the owner. The homestead slot is `homesteadGate` (v2.6937): marked homestead, nobody answered (key `homestead_answer`, a residential property whose `homestead_answered_at` is NULL, the words in [`lib/customers/homesteadAnswer.ts`](../src/lib/customers/homesteadAnswer.ts)), or *Not a homestead*; `withHomesteadAnswer` fills the fact from the property rows `useLienDeskData` reads under the residential affidavits, in light mode too. `contractorAddressGate` (v2.6932, punch list #305) holds a job under a GC while the GC's customer row has no address, its words shared with the Lien window's tab; `withContractorAddress` fills the fact from the GC rows `useLienDeskData` read, and a row nobody read the GC for is not judged. A hold moves a paper not yet sent from To send (To draft until v2.7327) to Needs the property facts, or since v2.7457 to Waiting on its notice (`needs_notice`) when the notice is the one closed gate (`affidavitWaitsOnNoticeAlone`); an approved paper a gate holds stands in Held with its status kept (v2.7449, `lienAffidavitGateHeld`) |
 | `lienMonthGrid.ts` | 213 | 5 | the months grid |
 | `lienTimelineDesk.ts` | 386 | 43 | `buildLienTimelineFromDesk`, `lienRetainageClockFromDesk` — the second **not named in its test** (it tests `buildLienTimelineFromWindow` and, since v2.7077, `lienWindowDeskNotice`: the job's desk entry read into `{ state, holdUntil }`, which the Lien window's openers pass as `deskNotice` so its header names the step a notice is on; a notice in the mail with no number typed is the timeline's `printed` state; since v2.7187 `lienWindowDeskAffidavit` reads the job's affidavit entry into `{ state, missing, holdUntil }` the same way, passed as `deskAffidavit`, and `buildLienTimelineFromDesk` hands the kernel the entry's pile too, so the header and the desk's own timeline name the step an affidavit is on: to draft, awaiting approval, ready, held, or held by a fact) |
@@ -1439,7 +1450,7 @@ Each cut's fragment in `docs/recent-features/` says what moved, what stayed and 
 **Next, by value over risk:**
 
 1. **`useLienDeskPapers`** (region N, 834–941 and the two mounts): about 135 lines and four state values, with nothing else writing them.
-2. **Tests for the two panes** (`LienDeskAffidavitPane` 880 lines, `LienDeskRetainagePane` 393): neither has its own, and both are next in size after the run and the calendar.
+2. **A test for the affidavit pane** (`LienDeskAffidavitPane` 880 lines): it has none of its own, where the retainage pane has had one since v2.8299.
 3. **The sent notice's three doors as one component**, then the owner's call, the courtesy notice and the call script (2892–2980): about 170 lines.
 4. **Stage A from the list above**, starting with `mergeNoticeFields` and `lienAskReasonFor`: small, and each pins a rule under a test.
 5. **`actOnNextUp` as a kernel**, so the router is a switch.
@@ -1529,7 +1540,7 @@ The line is where the desk mounts or calls each one.
 | `LienBoard` | 594 | 2781 | render 21 |
 | `LienDeskNextUp` | 593 | 2785 | render 42 |
 | `useLienDeskBoard` | 412 | 778 | render 5 |
-| `LienDeskRetainagePane` | 393 | 2353 | none (the desk's render test) |
+| `LienDeskRetainagePane` | 570 | 2608 | render 20 |
 | `LienNoticeSignLine` | 381 | 2459, 2465 | render 6 |
 | `LienDeskLeaderFooters` | 365 | 2553–2559 | render 10 |
 | `useLienDeskAffidavits` | 277 | 1658 | 5 in `LienDeskAffidavitList.render.test.tsx` |
