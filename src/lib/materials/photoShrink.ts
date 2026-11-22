@@ -2,7 +2,9 @@
  * Materials on site (punch list #209): the phone shrinks a shot before it leaves. A 12-megapixel JPEG of
  * three to five megabytes becomes a 1,600-pixel JPEG of two to four hundred kilobytes: enough to read a
  * stencil and count fittings, and it uploads in a second on one bar. Re-encoding drops the camera's
- * metadata, so no position travels with the picture. The arithmetic is pure; `shrinkPhoto` is browser io.
+ * metadata, so no position travels with the picture. A thumbnail drawn from a shot the phone still holds is a small
+ * copy made here too (`thumbOfPhoto`), never the shot itself. The arithmetic is pure; `shrinkPhoto` and `thumbOfPhoto`
+ * are browser io.
  */
 
 /** The long edge of a shrunk photo, and the second pass for a shot that is still heavy after the first. */
@@ -20,6 +22,21 @@ export function fitWithin(width: number, height: number, maxEdge: number): { wid
   return { width: Math.max(1, Math.round(width * k)), height: Math.max(1, Math.round(height * k)) }
 }
 
+/** A thumbnail is drawn at this many times its square's CSS size, enough for a phone's dense screen. */
+export const THUMB_SCALE = 2
+export const THUMB_QUALITY = 0.7
+/** The square a thumbnail is taken to fill when its caller names none, in CSS pixels. */
+export const THUMB_CSS_EDGE = 160
+
+/** The size of a thumbnail that covers a square of `cssEdge` CSS pixels: the short side at `THUMB_SCALE` times the square, never scaled up. */
+export function thumbSize(width: number, height: number, cssEdge: number): { width: number; height: number } {
+  const short = Math.min(width, height)
+  const want = Math.max(1, Math.round(cssEdge * THUMB_SCALE))
+  if (short <= want) return { width, height }
+  const k = want / short
+  return { width: Math.max(1, Math.round(width * k)), height: Math.max(1, Math.round(height * k)) }
+}
+
 /** After a pass that left `bytes`: the edge of the next pass, or null when the shot is small enough. */
 export function nextPassEdge(bytes: number, edgeUsed: number): number | null {
   return bytes > PHOTO_HEAVY_BYTES && edgeUsed > PHOTO_SECOND_PASS_EDGE ? PHOTO_SECOND_PASS_EDGE : null
@@ -33,7 +50,7 @@ export function bytesWords(bytes: number): string {
 
 export type ShrunkPhoto = { blob: Blob; width: number; height: number; /** False when the browser could not decode the shot and it goes as it came. */ shrunk: boolean }
 
-async function decode(file: File): Promise<ImageBitmap> {
+async function decode(file: Blob): Promise<ImageBitmap> {
   try {
     return await createImageBitmap(file, { imageOrientation: 'from-image' })
   } catch {
@@ -74,4 +91,34 @@ export async function shrinkPhoto(file: File, maxEdge = PHOTO_MAX_EDGE, quality 
   } finally {
     bitmap.close()
   }
+}
+
+/** The small copies wait in one line: each decodes its whole shot, and a phone that decodes ninety at once runs out of memory. */
+let thumbLine: Promise<unknown> = Promise.resolve()
+
+/**
+ * A small JPEG of a shot this phone holds, for a square of `cssEdge` CSS pixels (`thumbSize`). One is made at a time and
+ * the decoded shot is let go as soon as its copy is drawn. Null when the browser cannot decode or draw the shot: the
+ * square then stays empty, since the whole shot is never handed to a thumbnail. Never throws.
+ */
+export function thumbOfPhoto(blob: Blob, cssEdge: number = THUMB_CSS_EDGE, quality = THUMB_QUALITY): Promise<Blob | null> {
+  const make = async (): Promise<Blob | null> => {
+    let bitmap: ImageBitmap
+    try {
+      bitmap = await decode(blob)
+    } catch {
+      return null
+    }
+    try {
+      const size = thumbSize(bitmap.width, bitmap.height, cssEdge)
+      return await encode(bitmap, size.width, size.height, quality)
+    } catch {
+      return null
+    } finally {
+      bitmap.close()
+    }
+  }
+  const next = thumbLine.then(make)
+  thumbLine = next
+  return next
 }

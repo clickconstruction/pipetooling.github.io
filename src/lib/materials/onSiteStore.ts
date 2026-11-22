@@ -25,6 +25,7 @@ import type { BoxPatch } from './editBox'
 import { cleanBoxLine } from './boxLine'
 import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from './stickers'
 import type { PhotoNote, PhotoStatus } from './photo'
+import { dropFiledPhotoBlobs } from './photoBlobs'
 import type { TakeMovement } from './takeRun'
 import { loadPartPriceRows } from './partPrices'
 import { bookPartIds, bookPriceRow, priceLookup, type BookPriceRow, type PricePick } from './bookPrice'
@@ -181,6 +182,8 @@ export function loadJob(jobId: string, opts: { force?: boolean; quiet?: boolean 
       c.photos = read.photos
       c.moves = read.moves
       c.loadedAt = Date.now()
+      // This phone's copies of the shots the sweep has filed go: the job's folder holds them. Best effort, never waited on.
+      void dropFiledPhotoBlobs(c.photos)
       void loadBookPrices(bookPartIds(c.movements))
       void loadSitePricing([jobId])
     } catch (e) {
