@@ -8,6 +8,7 @@
  * (`supabase/functions/_shared/gcKernels`), and screen words have no reader there.
  */
 import { formatYmdMonthDay } from './billedExpectedPay'
+import { lienLastWorkDay, type LienLastWorkJob } from './lienLastWorkDay'
 
 /** Over a day that came from clock hours or from a person. */
 export const LIEN_LAST_WORK_DOOR_CHANGE_WORDS = 'change ›'
@@ -52,9 +53,30 @@ export const LIEN_LAST_WORK_VALUE_LABEL = 'last day of work'
  */
 export const LIEN_LAST_WORK_KEEP_HINT = 'Keep shows what moves with the day and asks why before anything is saved. Clock hours and pay are not changed.'
 
+/**
+ * What a day set by hand goes back to when it is taken off: the day the job reads with no hand day on it. Clock hours
+ * come first, then the latest sent, unpaid bill (v2.7224), then the job's creation. A caller that holds no bills (Edit
+ * Job's row) cannot tell a bill's day from the creation day on a job with no hours, so the answer there names neither.
+ */
+export type LienLastWorkBackTo = 'hours' | 'bill' | 'created' | 'worked_out'
+
+export function lienLastWorkBackTo(job: LienLastWorkJob | null | undefined): LienLastWorkBackTo {
+  if ((job?.last_work_date ?? '').slice(0, 10)) return 'hours'
+  if (job?.invoices == null) return 'worked_out'
+  const source = lienLastWorkDay({ ...job, lien_last_work_on: null }).source
+  return source === 'bill' ? 'bill' : 'created'
+}
+
+const BACK_TO_WORDS: Record<LienLastWorkBackTo, string> = {
+  hours: 'Back to clock hours',
+  bill: "Back to the bill's day",
+  created: "Back to the job's creation day",
+  worked_out: 'Back to the day the app works out',
+}
+
 /** The press in the open field of a day set by hand: what the day goes back to. */
-export function lienLastWorkBackWords(hasClockHours: boolean): string {
-  return hasClockHours ? 'Back to clock hours' : "Back to the job's creation day"
+export function lienLastWorkBackWords(to: LienLastWorkBackTo): string {
+  return BACK_TO_WORDS[to]
 }
 
 /** The words after a save: one wording for the line's value and the strip's press. */
@@ -62,7 +84,7 @@ export function lienLastWorkSavedWords(day: string): string {
   return `Last day of work set to ${formatYmdMonthDay(day)}. The lien months follow it; clock hours are untouched.`
 }
 
-/** The words after *Back to clock hours*, or back to the creation day on a job with no hours. */
-export function lienLastWorkClearedWords(hasClockHours: boolean): string {
-  return hasClockHours ? 'Back to the clock hours.' : "Back to the job's creation day."
+/** The words after that press: where the day went back to, in the press's own words. */
+export function lienLastWorkClearedWords(to: LienLastWorkBackTo): string {
+  return to === 'hours' ? 'Back to the clock hours.' : `${BACK_TO_WORDS[to]}.`
 }

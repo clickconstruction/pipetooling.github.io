@@ -6679,6 +6679,10 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .vipLines { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr); gap: 8px 16px; align-items: baseline; line-height: 1.6; }
 .vipLineLabel { color: var(--text-muted); }
 .vipLineValues { min-width: 0; }
+/* The last day of work's open field (punch list #399) takes the row to itself. The line under a field is as wide as
+   the field, and a date box with Keep and Cancel is narrow, so the line ran to three short lines beside empty room. */
+.lienLastWorkDay:has(> .vipField) { flex: 1 1 100%; }
+.lienLastWorkDay > .vipField { display: flex; }
 .vipLegend { margin: 8px 0 0; color: var(--text-muted); font-size: 0.78125rem; }
 /* Before we start (punch list #382): a stage's list (`StartCheckStage.tsx`). `.scBox` is a bullet's tick box,
    `.scChip` a small choice, `.scWord` a press that is words alone. Their hover, focus and phone sizes need a class. */
