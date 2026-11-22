@@ -323,54 +323,105 @@ The card's first pick was to stop here and watch for three or four weeks. Taunya
 3. **The words.** *Photo of a spot*, *Keep this spot on the job*, *Describe it* and *Something else*
    are guesses.
 4. **Does a place follow the address to the next job there.** It is the strongest reason to build
-   this for service work, and it changes who can read a place.
+   this for service work, and it changes who can read a place. Answered by her word *Please build it
+   all here*: built in v2.8200.
 5. **Should every job photo keep the phone's spot without asking.** Clock punches and reports
    already do. It is a record of where a worker stood, so step 3 wants a yes in words, and the guide
-   should say it plainly.
+   should say it plainly. Answered by the same word: built in v2.8201, and the guides for job photos
+   and report photos say it plainly.
 6. **Is a spot's photo also filed in the job's Drive folder.** A place's photo is not today.
 7. **May a customer be sent their places as a matter of course, or only when they ask.**
 
-## How to verify
+## Left to do and to walk (2026-11-22)
 
-- **The migration.** After the push, read the check on `painted_map_places.words` back from prod.
-  It allows 4,000 characters. The app still cuts a place's words at 160 until PR 1.
-- **PR 1.** On a ZZ Test job, standing outside, press **Photo of a spot**, take a photo, press a
-  kind and **Add this place**. Press **Buried line**, then **Sewer**: the place is named for it and
-  draws green on the job's maps. Press **＋ Something else** and type a name. Type a description of
-  several hundred characters, then read it whole on the opened place and short on its row, on a
-  printed page and on the place's link. The place's row holds a point within the phone's margin, the margin,
-  the kind and a photo. Do it again indoors, where the reading is rough: the dot sits on the job's
-  address and the row holds no margin. Do it once in airplane mode. Open the job as a second person
-  on its team and read the place. Delete the places and their photos after.
-- **PR 2.** Add two photos in the Job photos window and keep the spot of one. One place is made, and
-  both photos reach the job's Drive folder as today.
-- A real phone on a real site is the walk that matters. A desktop browser has no reading to give.
+This is the one list of what is left. The build is done and live, except #9346, which is in the
+merge queue. The *Where it stands* table at the top says what a session walked on prod on
+2026-11-21. Everything below is for a person, and most of it needs a real phone.
+
+### Walks still owed
+
+Use ZZ Test jobs only. JP9309, *ZZ Test Stages Walk 2026-11-18*, is the office's test job.
+JP1113, *ZZ Test Walk Project 2026-11-08*, has the sample superintendent on its team. Neither has a
+customer address, and both have a Drive folder. Throw away every place, line and photo after, with
+**Throw this list away** in the Places window and **Throw this map away** on a line's own map.
+
+1. **Photo of a spot, outdoors (steps 1b and 3).** On JP1113's job window, under the address, as
+   the superintendent. Use an iPhone in Safari and an Android phone in Chrome, location on, standing
+   outside. Press **Photo of a spot**, take a photo, press **Buried line**, then **Water**, then
+   **Add this place**. The sheet opens with the photo on top and the dot where you stand, under a
+   line that says how sure the phone was. The place's row says the same. No session has a camera or
+   a location to give.
+2. **Photo of a spot, indoors (step 1b).** The same, inside a building, where the reading is rough.
+   The dot stays on the job's address or where the map was looking, and the sheet says why. The
+   place saves with no margin. No session has a rough reading to give.
+3. **A place set with no signal (step 2b).** The same, with the phone in airplane mode. The sheet
+   closes, and a line reads *Kept on this phone. It goes to the job when the signal is back.* A line
+   above the dock counts the places that wait, with **Send now**. Turn the signal back on. The place
+   reaches the job once, with its photos, and the line goes. No session can cut a phone's signal.
+4. **Keep this spot on the job, from a job photo (steps 2 and 3).** In the **Job photos** window of
+   JP1113, as the superintendent, on a phone outside. Add two photos and press **＋ Keep this spot on
+   the job** on one. One place is made, and both photos reach the job's Drive folder as before. Open
+   the kept photo: it says where it was taken. Delete the two test photos from the Drive folder by
+   hand after. A session stopped here because the app copies a job photo to Drive and cannot take it
+   back, and because it has no reading to keep.
+5. **Keep this spot from a report's photo (step 2).** In **Leave Report** on JP1113, as the
+   superintendent, on a phone outside. Take a photo in the report and press **＋ Keep this spot on
+   the job** on it. New report, Turnaway and the edit of a saved report have no such press. Delete
+   the test report after. Same reasons as 4.
+6. **Places follow the address (step 4).** Give two ZZ jobs the same ZZ customer address, keep a
+   place on the first, then open the second. As the office, and as a crew member on the second
+   job's team, the second job shows the first job's places under **Kept at this address**. A crew
+   member on neither job sees none of it. No ZZ job had a customer address, so a session had nothing
+   to open.
+7. **The crew's window draws the places (step 5).** The plain job window on a phone, at 390 px in
+   light and in dark, as the superintendent on JP1113 with five places kept. Under **Where**, four
+   places show as rows with their photos, then **＋ 1 more ›**. A press on a row opens the job's
+   list on that place. A session would need **View as**, which swaps the sign-in of the browser
+   every session shares.
+8. **Walk a buried line (step 6).** On a buried place's row, on a phone outside, press **＋ Walk
+   this line**, walk the trench and save. The row reads the length and *walked*, with **Open the
+   line**. A session walked **＋ Draw this line** only. Walking needs a phone's readings.
+9. **A second person opens a place (step 3's count).** A place set by one person, opened by another
+   on the job's team, from its dot on the **Map** tab, its row or its photo. The place's count of
+   opens goes up by one (`painted_map_places.opened_count`). The person who set it is never counted.
+   The session walked with one account, so its count stayed at 0, as designed.
+10. **Dark theme, and the 44 px presses once #9346 merges.** The place sheet and the Places window
+    at 390 px, and the **Map** tab at 390 and 1100 px, all in dark. **Take another**, **Remove the
+    photo**, **Remove**, **Remove this place**, **Change this place** and **Open the line** are each
+    44 px tall. The session's walk did not look at the dark theme, and came before #9346.
+
+### Loose ends
+
+- **#9346 is in the merge queue**, 14th at 06:11 UTC on 2026-11-22. It raises the six small presses
+  to 44 px and moves this card to the close column. Nothing else of the card is unmerged. Both
+  migrations are pushed, and the card has no edge function.
+- **Small presses seen, and not this card's.** On the painted map's window, the link presses are
+  32 px tall, such as **Remove this line**, **Move its corners** and **Type a length measured with a
+  wheel or a tape**. **Send more…** on a place's row is 32 px. **From above** and **Streets** are
+  34 px, and the window's **Close** is 47 by 40 px. They belong to the painted map (#345) and wait
+  for a sweep of their own.
+- **Google map loads to watch.** The **Map** tab draws on the old map and loads nothing from Google.
+  A press on a dot, a row or **Places on this job** opens the painted map's window, which shows a
+  saved map on Google. Each open counts in #387's tally of loads. Watch it once crews keep places.
+- **Step 0 is Taunya's.** Two crews press **Photo of a spot** on every job for three or four weeks,
+  starting with the shutoff and the cleanout. The count of opens now says whether anyone came back
+  to a place.
+- **Taunya's calls still open:** 1, 2, 3, 6 and 7 under *Taunya's calls*. One more is hers: whether
+  the crew's rows also want the small picture from above that step 5 named. A row opens the list's
+  own map instead.
+- **Closing the card is her word**, once #9346 has merged. It deletes this folder. The walks and
+  calls left here then go into the closing line in `to-dos/README.md`, or to a card of their own.
 
 ## Picking this up
 
 For a person or a session on another computer, starting cold.
 
 - Read `CLAUDE.md`, then `AGENTS.md`, `docs/AI_CONTEXT.md` and `docs/SESSIONS.md`. Then this card
-  and its mock-up, and the guide `src/content/help/paint-a-map.md`, which is how the places work
-  today.
-- Put your branch in this card's `status` and drop a session card. `npm run sessions -- --brief`
-  prints what the other sessions hold.
-- Build in this order: the migration alone and pushed, PR 1, PR 2. Each PR claims its version, and
-  ships its release note, its fragment and its part of the guide. Mark each step built on this card
-  in the PR that builds it.
-- Settled, and not to reopen: no Map tab in these three PRs, no Google map in the job window, a dot
-  dragged by hand stays on Esri's photograph (#387, call 6), and no reading of the spot inside a
-  photo.
-- Taunya's to change at any time: the lists and the words under *Taunya's calls*. Build the card's
-  picks and show her the sheet on a phone.
-- Before step 3 or any later step, ask her. Step 3 keeps where a worker stood on every photo, and
-  step 4 changes who can read a place.
+  and its mock-up, and the guide `src/content/help/paint-a-map.md`, which is how the places work.
+- The build is done. What is left is under *Left to do and to walk*: walks on a real phone, and
+  Taunya's calls.
+- Settled, and not to reopen: no Google map in the job window, a dot dragged by hand stays on Esri's
+  photograph (#387, call 6), and no reading of the spot inside a photo.
+- Taunya's to change at any time: the lists and the words under *Taunya's calls*.
 - A walk writes to prod, since there is no staging. Use a ZZ Test job, and delete the places and
   their photos after.
-
-## What was not checked
-
-- Two crew phones, for what each gives a web page.
-- Photos in the Drive folders the file index has not read yet. It has read 35 of 121 live jobs.
-- What the place sheet does today with no signal.
-- How the photo tables read for anyone but a dev.
