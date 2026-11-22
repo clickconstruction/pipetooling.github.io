@@ -1,14 +1,18 @@
 import type { CSSProperties } from 'react'
+import { phoneTall } from '../phonePressFloor'
 
 /**
  * The quiet press of a task card (punch list #369): the New task window's Add row, brought to Checklist → Today. A
  * card's extras wait as grey pills with their names on them, and one that is open or set is lit in the window's blue.
  * One home, so the card's own note press and the page's extras beside it cannot drift apart.
+ *
+ * 32 px at a desk and a thumb's 44 on a phone (`phoneTall`): the phone walk of 2026-11-21 read ＋ Note, 📷 Photo,
+ * 🗺 Map and ⋯ More at 32 on the Next card.
  */
 export const TASK_PILL_STYLE: CSSProperties = {
   font: 'inherit',
   fontSize: 12.5,
-  minHeight: 32,
+  minHeight: phoneTall(32),
   padding: '4px 11px',
   borderRadius: 999,
   border: '1px solid transparent',
