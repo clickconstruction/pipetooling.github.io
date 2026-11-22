@@ -67,7 +67,7 @@ Below the jobs sits **Other permits under names tied to them**. It lists the GC'
 
 Go to **Customers** and open the customer. Press the **Permits** tab.
 
-The tab holds the same block as the bid's window. It lists the jobs you priced for them, then the names tied to them. On a phone the first six jobs show here, with a press for the rest.
+The tab holds the same block as the bid's window. The block lists the jobs you priced for them, then the names tied to them. On a phone the first six jobs show here, with a press for the rest.
 
 Two customer rows sometimes carry one name. The tab reads them together and says so under the block.
 
