@@ -188,7 +188,7 @@ export function StateRollOwn() {
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFilter(c.key)}
-                  style={{ ...press, borderRadius: 999, fontWeight: on ? 700 : 400, borderColor: on ? 'var(--text)' : 'var(--border)' }}
+                  style={{ ...press, borderRadius: 999, fontWeight: on ? 700 : 400, borderColor: on ? 'var(--text-base)' : 'var(--border)' }}
                 >
                   {c.label} · <WorkedOutValue>{String(c.count)}</WorkedOutValue>
                 </button>
