@@ -15,6 +15,7 @@
  * what is true now, or leaves. Without that read a second person on the crew kept a card no press could answer.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ARRIVAL_WORDS as W } from '../../lib/startChecks/arrival'
 import { supabaseStartChecksIo, type ArrivalAsk, type StartChecksIo } from '../../lib/startChecks/startChecksIo'
@@ -99,7 +100,9 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     <section data-testid="job-mode-arrival-check" data-arrival-stage={ask.fixtureId} aria-label={W.heading} style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', padding: '0.7rem 0.8rem', display: 'grid', gap: 8 }}>
       <div>
         <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-strong)' }}>{W.heading}</div>
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.lead(ask.name)}</div>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <ValueSentence text={W.lead(ask.name)} />
+        </div>
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
         {ask.bullets.map((b) => {

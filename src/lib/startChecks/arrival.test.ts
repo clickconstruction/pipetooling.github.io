@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { stageCheckPayloadFrom, stageCheckTitleParts } from '../jobs/stageCheckDispatch'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import { ARRIVAL_WORDS, notAsToldFrom } from './arrival'
 
 // Every name here is made up.
@@ -10,7 +11,9 @@ describe('the crew’s card on arrival', () => {
     expect(ARRIVAL_WORDS.send(1)).toBe('Tell Dispatch: 1 thing not as told')
     expect(ARRIVAL_WORDS.send(3)).toBe('Tell Dispatch: 3 things not as told')
     expect(ARRIVAL_WORDS.saidNo(2)).toBe('Dispatch has it: 2 things not as told.')
-    expect(ARRIVAL_WORDS.lead('Top Out')).toBe('Look before you unload. These must be true before Top Out.')
+    // The stage is a value the app works out, so the sentence marks it and the card draws it apart.
+    expect(plainSentence(ARRIVAL_WORDS.lead('Top Out'))).toBe('Look before you unload. These must be true before Top Out.')
+    expect(sentenceParts(ARRIVAL_WORDS.lead('Top Out'))).toEqual(['Look before you unload. These must be true before ', { kind: 'stage', text: 'Top Out' }, '.'])
   })
 })
 
