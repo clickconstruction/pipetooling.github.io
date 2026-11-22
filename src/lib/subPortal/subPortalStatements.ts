@@ -59,6 +59,10 @@ export type StatementsWorkRow = {
   open: number
   /** The day of the office's copy, when the sheet changed since it was made. '' otherwise. */
   changedSince: string
+  /** The office made a copy and today's figures are that copy's: the one thing a sub can confirm. */
+  confirmable: boolean
+  /** The sub's confirm: the day, and whether it is of the statement as it stands. Null when there is none. */
+  confirm: { day: string; current: boolean } | null
   paper: WorkStatement
 }
 
@@ -121,7 +125,7 @@ export function subPortalStatementsView(papers: SubPortalPapersReady, ctx: Paper
   for (const s of sheets) {
     const made = pageWorkStatement(papers, s.id, ctx)
     if (!made) continue
-    work.push({ sheetId: s.id, number: s.number, job: made.paper.job.label, comesTo: made.paper.comesTo, paid: made.paper.paidSoFar, open: made.paper.stillOpen, changedSince: made.changedSince, paper: made.paper })
+    work.push({ sheetId: s.id, number: s.number, job: made.paper.job.label, comesTo: made.paper.comesTo, paid: made.paper.paidSoFar, open: made.paper.stillOpen, changedSince: made.changedSince, confirmable: !!s.number && papers.numbers[s.id]?.asIssued === true, confirm: s.confirm && made.paper.confirm ? { day: ymdFromPaperDay(s.confirm.at), current: made.paper.confirm.current } : null, paper: made.paper })
   }
   work.sort((a, b) => Number(b.open > 0) - Number(a.open > 0) || (dayOf.get(b.sheetId) ?? '').localeCompare(dayOf.get(a.sheetId) ?? '') || b.sheetId.localeCompare(a.sheetId))
 

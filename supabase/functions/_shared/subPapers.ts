@@ -57,6 +57,14 @@ export const SUB_PAPER_COUNSEL_SENTENCES: Record<CounselSentenceKey, string> = {
 /** True while the six sentences are still the drafts: every print marks them. */
 export const SUB_PAPER_COUNSEL_PENDING = true
 
+/**
+ * Whether a sub can confirm a work statement from their page (the card's PR 7). Off: the press is not drawn and
+ * the page's function refuses the answer. What a confirm means is counsel's, and their words for it are not in
+ * hand (sentence 2, `confirmMeans`). Turning it on is a deploy of the client and of `sub-portal`, both of which
+ * read this one line. A confirm already on record prints whatever this says.
+ */
+export const SUB_PAPER_CONFIRM_LIVE = false
+
 export type CounselSentence = { key: CounselSentenceKey; text: string; pending: boolean }
 
 function counsel(key: CounselSentenceKey, company: string, sub: string): CounselSentence {

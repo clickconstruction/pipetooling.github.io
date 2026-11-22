@@ -34,7 +34,8 @@ import { supabase } from '../../lib/supabase'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { mintRefusal, mintSubPaperArgs, mintedFrom, registerSubPaperSet, subPaperRegister, SUB_PAPER_ROW_COLUMNS, type MintedSubPaper, type SubPaperRow } from '../../lib/subWorkOrders/subPaperRegister'
-import { NO_SUB_PAPER_ANSWERS, paymentRecordReceived, subPaperAnswers, SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED, type SubPaperAckRow } from '../../lib/subWorkOrders/subPaperAnswers'
+import { NO_SUB_PAPER_ANSWERS, paymentRecordReceived, subPaperAnswers, SUB_PAPER_ACK_COLUMNS_FOR_PAPERS, type SubPaperAckRow } from '../../lib/subWorkOrders/subPaperAnswers'
+import { portalConfirms } from '../../../supabase/functions/_shared/subPortalPapers'
 import { paperPreparedAt, paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import { drawSubPaperPdf } from '../../lib/subWorkOrders/subPaperPdfDraw'
 import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendSubject, subPaperSendUnknownWords, subPaperSentWords, subPaperTitle, SUB_PAPER_SENT_KIND, type SubPaper, type SubPaperSendBy } from '../../lib/subWorkOrders/subPaperSend'
@@ -135,7 +136,7 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
     let cancelled = false
     void (async () => {
       // The marks alone: the notes a sub sent are the Pay view's to show. The older columns do, so one read serves every database.
-      const read = personId ? await supabase.from('sub_paper_acks').select(SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED).eq('person_id', personId) : { data: [], error: null }
+      const read = personId ? await supabase.from('sub_paper_acks').select(SUB_PAPER_ACK_COLUMNS_FOR_PAPERS).eq('person_id', personId) : { data: [], error: null }
       if (cancelled) return
       setAcks(read.error ? null : ((read.data ?? []) as unknown as SubPaperAckRow[]))
       setMarksRead(true)
@@ -148,7 +149,14 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
 
   // Today is handed in, so a statement made today does not start *Since the last statement* tomorrow.
   const register = useMemo(() => subPaperRegister(rows ?? [], (iso) => calendarYmdInAppTzFromIso(iso).slice(0, 10), todayYmdInAppTz()), [rows])
-  const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: register.bySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, register])
+  // A sub's confirm of a work statement rides on its sheet's register row, by the rule their own page reads it by.
+  // None is written while `SUB_PAPER_CONFIRM_LIVE` is off, so this adds nothing until then.
+  const registerBySheet = useMemo(() => {
+    const confirms = portalConfirms(acks ?? [])
+    if (confirms.size === 0) return register.bySheet
+    return new Map([...register.bySheet].map(([sheetId, row]) => [sheetId, { ...row, confirm: confirms.get(sheetId) ?? null }]))
+  }, [register, acks])
+  const sheets = useMemo(() => paperSheetsFor(subKey, laborJobs, assigneesByJobId, namesByJobId, roster, { rule, register: registerBySheet }), [subKey, laborJobs, assigneesByJobId, namesByJobId, roster, rule, registerBySheet])
   const ctx = useMemo<PaperContext | null>(() => (company ? { company, sub: { name, lines: [] }, today: todayYmdInAppTz(), preparedAt: paperPreparedAt(new Date(), APP_CALENDAR_TZ), zone: 'Central time' } : null), [company, name])
   const jobIdsOf = (paper: SubPaper): string[] => {
     const ids = paper.kind === 'work_statement' ? [paper.sheetId] : paper.kind === 'payment_record' ? paper.applied.map((a) => a.sheetId) : paper.rows.map((r) => r.sheetId)
