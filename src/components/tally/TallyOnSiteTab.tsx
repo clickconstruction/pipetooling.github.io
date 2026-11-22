@@ -27,6 +27,8 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
 import { AddPartSheet, Stepper, type OnSitePart } from './AddPartSheet'
+import OnSiteBoxRow from './OnSiteBoxRow'
+import { FIRST_PART_COUNT_LABEL, FIRST_PART_NEEDS_WORDS, addBoxWithPartLabel, addPartDoneWords, addPartRows, boxKeptPartHeldWords, boxWithPartDoneWords, firstPartCount, firstPartOf, type AddPartPick } from '../../lib/materials/addPart'
 import OnSiteBoxScreen from './OnSiteBoxScreen'
 import { moreRows, moreTitle, type MoreKey } from '../../lib/materials/boxScreen'
 import StickerNewSheet from './StickerNewSheet'
@@ -53,6 +55,7 @@ import { openPlaceWay, paintPlaceWay } from '../materials/placeWayPaint'
 import { boxWantsPin, takePinAsk, takeScannedBox } from '../../lib/materials/pinAsk'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
 import { usePaintedMapsLayer } from '../../hooks/usePaintedMapsLayer'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
@@ -78,7 +81,7 @@ import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox
 import { BOX_LINE_FIELD_LABEL, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
-import { onHandNames } from '../../lib/materials/onSiteNames'
+import { onHandNames, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, newId, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { noteBoxOpen } from '../../lib/people/personWatchIo'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
@@ -118,6 +121,8 @@ type Props = {
   askSeq?: number
   /** Told which box's screen is open, null on the list, so the page can keep it on the address (v2.6904). */
   onOpenContainer?: (containerId: string | null) => void
+  /** The box was opened from another page (the office's Materials desk on a phone, v2.8284): the box screen's back press goes there, under this name. */
+  boxBack?: { label: string; onBack: () => void }
   /** Told which sticker's sheet is open, null once it closes, so the page keeps it on the address (v2.7298). */
   onOpenSticker?: (code: string | null) => void
 }
@@ -172,12 +177,14 @@ type Sheet =
   | { kind: 'where'; container: Container }
   | { kind: 'pick-box' }
 
-export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker }: Props) {
+export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker, boxBack }: Props) {
   const { showToast, showActionToast } = useToastContext()
   // Send someone to it (punch list #372, step 5): the New task window, where the app has one mounted.
   const addTask = useChecklistAddModal()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
+  /** A phone, by the app's 640 px rule: the held-photo notice folds to one line (v2.8284). */
+  const phoneWide = useNarrowViewport640()
   const jobId = selectedJobId
   const load = useOnSiteJob(jobId)
   useEffect(() => { setOnSiteErrorHandler((m, tone) => showToast(m, tone)) }, [showToast])
@@ -425,6 +432,18 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 
   const write = (reason: MovementReason, line: Pick<ContainerLine, 'partId' | 'partName' | 'manufacturer'>, quantity: number, from: string | null, to: string | null, note = '') =>
     addMovement({ jobId, partId: line.partId, partName: line.partName, manufacturer: line.manufacturer, quantity, reason, fromContainerId: from, toContainerId: to, note, byUserId, byName })
+  /** Add a part's rows (v2.8284): the delivery into the box, and the line's count when the line held none (`addPartRows`). */
+  const addPartTo = (box: Container, part: AddPartPick, n: number) => { for (const row of addPartRows({ jobId, containerId: box.id, part, quantity: n, byUserId, byName, lines, now: new Date() })) addMovement(row) }
+  /** A new box's first part (v2.8284): written after the box, and said in one toast. A part that fails leaves the box, with the reason. */
+  const addFirstPart = (box: Container, first: { part: AddPartPick; n: number } | null) => {
+    if (!first) return
+    try {
+      addPartTo(box, first.part, first.n)
+      showToast(boxWithPartDoneWords(box.label, first.n, first.part.partName), 'success')
+    } catch (e) {
+      showToast(boxKeptPartHeldWords(box.label, first.n, first.part.partName, formatErrorMessage(e, 'It did not save.')), 'warning')
+    }
+  }
 
   // ── Take from a box ─────────────────────────────────────────────────────────────────────────
   const putTake = (run: TakeRun | null) => { takeRef.current = run; setTake(run); if (run) keepTakeRun(run) }
@@ -554,7 +573,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
         <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-phone" idempotent />
         {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move. */}
-        {jobId ? <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} /> : null}
+        {jobId ? <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} fold={phoneWide} /> : null}
         {/* Take from a box: a run left on one of this job's boxes is offered again, on the list as on the box. */}
         {readTakeRuns(jobId, Date.now()).map((run) => {
           const c = containers.find((x) => x.id === run.containerId)
@@ -698,30 +717,12 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                   {g.containers.map((c) => {
                 const ls = linesOf(lines, c.id)
                 const last = lastCountedAt(movements, c.id)
-                const due = c.kind !== 'unsorted' && countIsDue(last, now)
                 const cannot = ls.reduce((s, l) => s + l.cannotFindSinceCount, 0)
                 const parts = ls.filter((l) => l.onHand > 0).length
                 // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts, which already says how many.
                 const line = c.kind === 'unsorted' ? ({ text: '', by: 'none' } as BoxLine) : boxLineOf(c, lines)
-                return (
-                  <button key={c.id} type="button" onClick={() => setView({ kind: 'container', id: c.id })} style={{ ...card, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-strong)', borderColor: due || cannot ? 'var(--text-amber-800)' : 'var(--border)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)', minHeight: TOUCH_MIN, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.02em' }}>{c.label}</span>
-                      {stickersOn(c) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="on-site-box-stickers">· {stickersOn(c)}</span> : null}
-                      <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}</span>
-                      {c.where ? <span style={muted}>{c.where}</span> : null}
-                    </div>
-                    {line.text ? <div style={{ fontWeight: 600, marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-testid="on-site-box-row-line" data-by={line.by}>{line.text}</div> : null}
-                    <div style={{ ...muted, marginTop: '0.15rem' }}>
-                      {line.by === 'app' ? null : <><b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{parts} {parts === 1 ? 'part' : 'parts'}</b> · </>}
-                      {c.kind === 'unsorted' ? <>put them in a cage</> : <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{lastCountWords(last, now)}</span>}
-                      {cannot > 0 ? <> · <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{cannot} can't find</span></> : null}
-                    </div>
-                    </div>
-                    <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '1.5rem', lineHeight: 1 }}>›</span>
-                  </button>
-                )
+                // The row is its own file since v2.8284, when the office's desk took it for a phone.
+                return <OnSiteBoxRow key={c.id} box={c} line={line} parts={parts} cannot={cannot} last={last} now={now} stickers={stickersOn(c)} onPress={() => setView({ kind: 'container', id: c.id })} />
               })}
                 </div>
               ))
@@ -736,7 +737,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {stickerFound === 'looking' ? <p style={{ ...muted, margin: 0 }} data-testid="on-site-sticker-looking">Reading the sticker…</p> : null}
         {stickerSheet}
         {onBoxesOpen && jobId && job ? <StickersOnBoxes sheet jobId={jobId} jobLabel={onSiteJobWords(job)} places={places} onClose={() => setOnBoxesOpen(false)} onPlaced={() => { void loadJob(jobId, { force: true }); jobStickers.refresh() }} /> : null}
-        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); offerPin(c); setView({ kind: 'container', id: c.id }) }} /> : null}
+        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} names={onHandNames(lines, containers)} onClose={() => setSheet(null)} onMade={(c, first) => { setSheet(null); addFirstPart(c, first); offerPin(c); setView({ kind: 'container', id: c.id }) }} /> : null}
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>
             <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -813,7 +814,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const after = lastAct && lastAct.containerId === container.id && actIsFresh(lastAct.at, Date.now()) ? lastAct.what : null
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-      <button type="button" aria-label="Back to the containers" onClick={() => { setSheet(null); setView({ kind: 'containers' }) }} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem' }}>‹</button>
+      <button type="button" aria-label={boxBack?.label ?? 'Back to the containers'} onClick={() => { setSheet(null); if (boxBack) boxBack.onBack(); else setView({ kind: 'containers' }) }} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem' }}>‹</button>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}{stickersOn(container) ? <span style={{ ...muted, fontWeight: 600, fontSize: '1rem' }} title="The stickers on it" data-testid="on-site-box-header-stickers"> · {stickersOn(container)}</span> : null}</div>
         <div style={muted}>{container.where ? `${container.where} · ` : ''}{ls.filter((l) => l.onHand > 0).length} parts · <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{container.kind === 'unsorted' ? 'put them in a cage' : lastCountWords(last, now)}</span></div>
@@ -934,7 +935,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         photoTile={(tile) => <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} onTaken={() => offerPin(container)} style={tile.style} fact={tile.fact} factStyle={tile.factStyle} />}
         filed={loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct quiet onToast={showToast} /> : null}
         takes={<BoxTakes jobId={jobId} containerId={container.id} containerLabel={container.label} />}
-        onBack={() => { setSheet(null); setView({ kind: 'containers' }) }}
+        onBack={() => { setSheet(null); if (boxBack) boxBack.onBack(); else setView({ kind: 'containers' }) }}
+        backLabel={boxBack?.label}
         onMore={() => setSheet({ kind: 'more', container })}
         onCount={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}
         onAddPart={() => setSheet({ kind: 'add-part', container })}
@@ -987,10 +989,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <MoveSheet line={sheet.line} from={sheet.container} others={others} onClose={() => setSheet(null)} onMove={(n, to) => { write('moved', sheet.line, n, sheet.container.id, to.id); setLastAct({ containerId: to.id, what: sheet.container.kind === 'unsorted' ? 'Put in' : 'Move', at: Date.now() }); setSheet(null); showToast(`Moved ${n} to ${to.label}.`, 'success') }} onTaken={(n, where) => { write('taken', sheet.line, n, sheet.container.id, null, where); setSheet(null); showToast(`Took ${n} to ${where}.`, 'success') }} onReturned={(n) => { write('returned', sheet.line, n, sheet.container.id, null); setSheet(null); showToast(`${n} going back to the supply house. The office will expect a credit.`, 'success') }} onDamaged={(n) => { write('damaged', sheet.line, n, sheet.container.id, null); setSheet(null); showToast(`${n} marked damaged.`, 'success') }} onNewContainer={(n) => setSheet({ kind: 'add-container', moveAfter: { line: sheet.line, qty: n, from: sheet.container } })} />
       ) : null}
       {sheet?.kind === 'add-part' ? (
-        <AddPartSheet container={sheet.container} names={onHandNames(lines, containers)} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { write('delivered', part, n, null, sheet.container.id, 'added on site'); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(`${n} ${part.partName} added to ${sheet.container.label}.`, 'success') }} />
+        <AddPartSheet container={sheet.container} names={onHandNames(lines, containers)} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { addPartTo(sheet.container, part, n); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(addPartDoneWords(n, part.partName, sheet.container.label), 'success') }} onAddAnother={(part, n) => { addPartTo(sheet.container, part, n); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); return true }} />
       ) : null}
       {sheet?.kind === 'add-container' ? (
-        <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else { offerPin(c); setView({ kind: 'container', id: c.id }) } }} />
+        <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} names={onHandNames(lines, containers)} onClose={() => setSheet(null)} onMade={(c, first) => { const mv = sheet.moveAfter; setSheet(null); addFirstPart(c, first); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else { offerPin(c); setView({ kind: 'container', id: c.id }) } }} />
       ) : null}
       {pinSheet}
       {stickerSheet}
@@ -1206,7 +1208,7 @@ function MoveSheet({ line, from, others, onClose, onMove, onTaken, onReturned, o
  * `boxName.ts`; words typed after it are split off and land on **What is in it**, the box's own line (`boxLine.ts`).
  * How it sits opens on the kind this phone added last.
  */
-function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobId: string; siteBoxes: ReadonlyArray<SiteBox>; places: Place[]; onClose: () => void; onMade: (c: Container) => void }) {
+function AddContainerSheet({ jobId, siteBoxes, places, names, onClose, onMade }: { jobId: string; siteBoxes: ReadonlyArray<SiteBox>; places: Place[]; /** The names this job holds: the first part's words are matched to one. */ names: ReadonlyArray<OnHandName>; onClose: () => void; /** The box made, and its first part when **How many** was filled (v2.8284): the host writes it. */ onMade: (c: Container, first: { part: AddPartPick; n: number } | null) => void }) {
   const [kind, setKind] = useState<BoxKindChoice>(() => readLastBoxKind())
   /** What was typed into the name; null while the site's offer stands in the field. */
   const [typed, setTyped] = useState<string | null>(null)
@@ -1221,12 +1223,17 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
   const wordsNote = verdict.ok ? nameWordsNote(verdict.words, lineTyped) : null
   const whereSaved = where.trim()
   const longWhere = whereSaved.length > BOX_WHERE_MAX
-  const dead = !verdict.ok || longWhere || !line.ok
+  /** How many (v2.8284): empty is the box alone; filled, the box takes that many of what **What is in it** names, in the same press. */
+  const [howMany, setHowMany] = useState('')
+  const count = firstPartCount(howMany)
+  const first = line.ok ? firstPartOf(names, line.said, count) : null
+  const needsWords = count.kind === 'count' && line.ok && !line.said
+  const dead = !verdict.ok || longWhere || !line.ok || count.kind === 'bad' || needsWords
   const add = () => {
-    if (!verdict.ok || longWhere || !line.ok) return
+    if (!verdict.ok || dead || !line.ok) return
     const loc = newPlace.trim() ? addPlace({ jobId, name: newPlace }).id : placeId
     rememberBoxKind(kind)
-    onMade(addContainer({ jobId, label: verdict.name, kind, where: whereSaved, said: line.said, locationId: loc }))
+    onMade(addContainer({ jobId, label: verdict.name, kind, where: whereSaved, said: line.said, locationId: loc }), first)
   }
   return (
     <Sheet title="Add a container" sub="The next free name on this site is ready. Change it only if the paint says something else." onClose={onClose}>
@@ -1241,7 +1248,12 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
         </div>
       </div>
       {/* What is in it (punch list #351, PR 2): never asked for. Words typed after the name stand here until the field is touched. */}
-      <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input type="text" value={lineFieldValue(lineTyped, verdict.words)} onChange={(e) => setLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={input} data-testid="add-box-line" /></label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 6.5rem', gap: '0.5rem', alignItems: 'end' }}>
+        <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600, minWidth: 0 }}>{BOX_LINE_FIELD_LABEL}<input type="text" value={lineFieldValue(lineTyped, verdict.words)} onChange={(e) => setLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={input} data-testid="add-box-line" /></label>
+        {/* How many (v2.8284): the box's first part goes in with the same press. */}
+        <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600, minWidth: 0 }}>{FIRST_PART_COUNT_LABEL}<input type="text" inputMode="numeric" value={howMany} onChange={(e) => setHowMany(e.target.value)} placeholder="None yet" aria-label={FIRST_PART_COUNT_LABEL} style={input} data-testid="add-box-how-many" /></label>
+      </div>
+      {count.kind === 'bad' ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{count.words}</p> : needsWords ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{FIRST_PART_NEEDS_WORDS}</p> : null}
       {line.ok ? (line.said ? null : <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: 'var(--text-muted)' }}>{BOX_LINE_LATER_NOTE}</p>) : <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{line.words}</p>}
       <div style={{ display: 'grid', gap: '0.35rem' }}>
         <span style={{ fontWeight: 600 }}>Which place on site</span>
@@ -1256,7 +1268,7 @@ function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobI
       </div>
       <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Where exactly, if it helps<input type="text" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={input} /></label>
       {longWhere ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>The where line holds {BOX_WHERE_MAX} characters. This one is {whereSaved.length}.</p> : null}
-      <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(dead) }} disabled={dead} onClick={add}>{addPressLabel(verdict)}</button>
+      <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(dead) }} disabled={dead} onClick={add} data-testid="add-box-press">{first && verdict.ok ? addBoxWithPartLabel(verdict.name, first.n, first.part.partName) : addPressLabel(verdict)}</button>
     </Sheet>
   )
 }
