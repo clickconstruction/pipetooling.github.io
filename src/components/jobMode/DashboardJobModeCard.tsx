@@ -47,6 +47,7 @@ import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
 import { MessageCustomerDoor } from './MessageCustomerDoor'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import FieldPctUpdateModal from '../dashboard/FieldPctUpdateModal'
 import {
   buildJobModePressBar,
@@ -409,6 +410,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const { showToast } = useToastContext()
   /** A phone (punch list #189, PR 2): the day's press leaves the card for the bar pinned above the tab bar. */
   const phone = useNarrowViewport640()
+  /** The new phone layout's switch (`lib/phoneLayout`): on, the press bar's buttons share one row. */
+  const newPhoneLayout = useNewPhoneLayout()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
   // Same planner pool as Stages' canOpenJobScheduleModal — gates the calendar's week-dispatch link.
@@ -1550,7 +1553,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         />
       ) : null}
       {pressBar ? (
-        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} held={held} />
+        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} held={held} oneRow={newPhoneLayout.on} />
       ) : null}
     </div>
   )

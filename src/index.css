@@ -1481,6 +1481,19 @@ button:focus-visible {
    whose test holds this rule: one line, set nowhere else. */
 @media (max-width: 640px) { :root { --phone-press-min: 44px; } }
 
+/* The Job Mode press bar on one row (the new phone layout, `lib/phoneLayout`): the buttons stay on one line, and
+   the compact ones fold a two-word label before the day's press gives up room. A row that wraps would never fold
+   them, since an item moves to the next line before it shrinks. Under 350 px the five do not fit on one line with
+   their words whole, so there the row may wrap and the bar grows by a line. */
+.jobModePressBarOneRow {
+  flex-wrap: nowrap;
+}
+@media (max-width: 349px) {
+  .jobModePressBarOneRow {
+    flex-wrap: wrap;
+  }
+}
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {
