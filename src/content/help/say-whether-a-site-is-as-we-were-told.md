@@ -46,9 +46,19 @@ The card says what was kept. You read *Saved: all as told.* or *Dispatch has it:
 
 Nothing stops you. Keep working either way.
 
-A stage is asked about once. The first of ours to answer has answered for the whole crew.
+The first of ours to answer has answered for the whole crew.
 
-A send after someone else has answered is not kept. The app says who answered first.
+A **Yes, all as told** after someone else has answered is not kept. The app says who answered first.
+
+A **No** is kept even then. Your card may have been open before the other person answered. Dispatch still gets your line.
+
+## When the card comes back
+
+A line with a **No** can come back on a later day.
+
+The office calls the customer about it. The customer says the thing is ready now. The card then asks about that line again.
+
+Look at the thing and answer the same way. You are the first of ours to see it since the **No**.
 
 ## With no signal
 
