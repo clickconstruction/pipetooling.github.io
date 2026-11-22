@@ -7105,6 +7105,7 @@ The money a shortfall is worth reads the parts book's price since v2.6673 (the o
 A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.6915 any change of job, v2.6927 the strip): when a combine or a move changes a photo's job the file is marked due and moved into the new job's photo folder by the photo sweep, and the job's screens show the count while it runs and name a **held** file, one that could not move, with its reason.
 **Take from a box** (v2.7824) is the run a person makes when they take parts out of a cage or box on site: a photo of the box as found, what they took, a photo of the box after.
 Its press, **Take from G12**, stays at the bottom of the phone's box screen, and its save press names its count, as **Take 3 from G12**.
+On a box with nothing on hand the press is a quiet link that asks whether something was taken out and opens the same run (`takeDoor` and `takeQuietLabel` in `src/lib/materials/takeRun.ts`).
 A **take** is not a row: it is an id minted on the phone and written on each ledger row and box photo the run makes (`take_id`, and `kind` on the photo, `docs/migrations/20261118130000_box_takes.md`).
 A take's photos are asked for and never required, and the take is saved before the photo after (`src/lib/materials/takeRun.ts`).
 **A box's own screen** on the phone (v2.7873, punch list #398) reads top to bottom: the box's name with **More**, its parts as closed rows with their numbers, four tiles, its photos and takes, and **Take from G12** (`OnSiteBoxScreen.tsx` over `boxScreen.ts`).
