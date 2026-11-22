@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { JOBS_MAP_COLLECTIONS_RING_COLOR, JOBS_MAP_SECTION_COLOR, type JobsMapPin } from '../../lib/jobs/jobsMap'
 import { JOBS_MAP_CREW_RING_COLOR } from '../../lib/jobs/jobsMapCrewDay'
-import { bucketAskLine, type DistanceBucketKey, type DistanceBucketVisibility, type JobsMapAskTone, type JobsMapRailModel } from '../../lib/jobs/jobsMapRail'
+import { bucketAskLine, jobsMapInKindLine, type DistanceBucketKey, type DistanceBucketVisibility, type JobsMapAskTone, type JobsMapRailModel } from '../../lib/jobs/jobsMapRail'
 
 type Props = {
   rail: JobsMapRailModel
@@ -39,6 +39,7 @@ const TONE_COLOR: Record<JobsMapAskTone, string> = {
  * dollars still to collect, and the unplaced-jobs line.
  */
 export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOff, crewLine, unmappedLine, unmappedCount, unmappedRows, onFocusJob, resolving, isMobile }: Props) {
+  const inKindLine = jobsMapInKindLine(rail.inKind)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: 0 }}>
       <h4 style={H4}>By distance from the office · pinned jobs</h4>
@@ -115,7 +116,13 @@ export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOf
         </>
       ) : null}
 
-      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)', paddingTop: '0.15rem' }}>
+      {inKindLine ? (
+        <p data-jobs-map-in-kind style={{ margin: 0, marginTop: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {inKindLine}
+        </p>
+      ) : null}
+
+      <div style={{ marginTop: inKindLine ? undefined : 'auto', display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)', paddingTop: '0.15rem' }}>
         <span style={{ fontVariantNumeric: 'tabular-nums' }}>
           {rail.pinnedCount} pinned · {rail.toCollectLabel} to collect
           {paidOff > 0 ? ` · Paid ${paidOff} off` : ''}

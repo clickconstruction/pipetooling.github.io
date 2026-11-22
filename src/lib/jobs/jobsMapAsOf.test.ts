@@ -144,3 +144,32 @@ describe('the Time row on a card with two clocks (punch list #395)', () => {
     expect(jobsMapTimePinsWords('Tue Sep 1')).toBe('The pins are as of Tue Sep 1.')
   })
 })
+
+describe('the rewound map and a job an in kind deal pays (punch list #301)', () => {
+  const h: JobsMapHistory = {
+    jobs: [hjob({ id: 'kind', status: 'billed', in_kind_since_ymd: '2026-09-10' }), hjob({ id: 'plain', hcp_number: '1002', status: 'billed' })],
+    moves: [
+      { job_id: 'kind', from_status: 'working', to_status: 'billed', ymd: '2026-08-01' },
+      { job_id: 'plain', from_status: 'working', to_status: 'billed', ymd: '2026-08-01' },
+    ],
+    bills: [
+      { invoice_id: 'k1', job_id: 'kind', amount: 1700, billed_ymd: '2026-08-01' },
+      { invoice_id: 'p1', job_id: 'plain', amount: 4000, billed_ymd: '2026-08-01' },
+    ],
+    payments: [],
+    loadedAt: 0,
+  }
+  const on = (ymd: string) => new Map(jobsMapJobsAsOf(h, indexJobsMapHistory(h), ymd).jobs.map((j) => [j.id, j]))
+
+  it('before the deal was recorded the bill was money, with its age', () => {
+    expect(on('2026-09-01').get('kind')).toMatchObject({ inKind: false, owedDollars: 1700, inKindDollars: 0, billedAgeDays: 31 })
+  })
+
+  it('from the deal’s day the bill is scheduled: nothing to collect and no age', () => {
+    expect(on('2026-09-10').get('kind')).toMatchObject({ inKind: true, owedDollars: 0, inKindDollars: 1700, billedAgeDays: null })
+  })
+
+  it('a job on no deal ages on every day', () => {
+    expect(on('2026-09-10').get('plain')).toMatchObject({ inKind: false, owedDollars: 4000, billedAgeDays: 40 })
+  })
+})

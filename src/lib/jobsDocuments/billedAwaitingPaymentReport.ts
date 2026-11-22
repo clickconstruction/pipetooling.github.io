@@ -1,26 +1,40 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { formatCurrency, formatPrintDaysSince } from '../jobs/jobFormatting'
 import {
+  billedStageRowIsInKind,
   printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledRemainingAmount,
 } from '../jobs/invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { inKindApartWords, splitInKind } from '../inKind/inKindApart'
 
 /**
  * Stages → Billed Awaiting Payment "Print" report (Stage A of the Jobs.tsx
  * decomposition — see docs/JOBS_TABS_ARCHITECTURE.md). Pure HTML builder;
  * the empty-rows guard and window.open/print glue stay at the call site.
  * Output bytes are unchanged from the inline `printBilledAwaitingPaymentReport`.
+ *
+ * A row an in kind deal pays (punch list #301) is scheduled, not waiting on
+ * money: it is in no customer's list, no subtotal and not in the grand total,
+ * and one line under the total says how much was left out, as the emailed
+ * report does (`billedReportInKindLine`).
  */
 
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+/** The printed report's line on the bills it left out; the emailed report says the same words. */
+export function billedPrintInKindLine(rows: readonly StageRow[]): string | null {
+  return inKindApartWords(splitInKind(rows, billedStageRowIsInKind, stageRowBilledRemainingAmount).inKind, 'money due')
+}
+
 export function buildBilledAwaitingPaymentReportHtml(
-  rows: StageRow[],
+  allRows: StageRow[],
   opts?: { searchFilter?: string; dateStr?: string },
 ): string {
+  const rows = splitInKind(allRows, billedStageRowIsInKind, stageRowBilledRemainingAmount).money
+  const inKindLine = billedPrintInKindLine(allRows)
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString()
   const title = escapeHtml(`Billed awaiting payment — ${dateStr}`)
   const filterNote = opts?.searchFilter?.trim()
@@ -107,6 +121,7 @@ export function buildBilledAwaitingPaymentReportHtml(
 </style></head><body>
   <h1>${title}</h1>${filterNote}
   ${sectionsHtml}
-  <p style="margin-top:1rem; font-size:1rem; font-weight:600; text-align:right">Grand total: $${formatCurrency(grandTotal)}</p>
+  <p style="margin-top:1rem; font-size:1rem; font-weight:600; text-align:right">Grand total: $${formatCurrency(grandTotal)}</p>${inKindLine ? `
+  <p style="margin:0.25rem 0 0; font-size:0.9rem; color:#4b5563; text-align:right">${escapeHtml(inKindLine)}</p>` : ''}
 </body></html>`
 }
