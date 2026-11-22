@@ -1,8 +1,10 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { lienHoursAfterHandDay, lienHoursAfterHandDayWords, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
+import { lienHoursAfterHandDayValues, lienLastWorkSourceValues } from '../../lib/jobs/lienDayValues'
+import { lienHoursAfterHandDay, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
 import { lienLastWorkClearedWords } from '../../lib/jobs/lienLastWorkDoor'
 import { FinishedDateInput } from '../FinishedDateInput'
+import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
 
@@ -16,18 +18,30 @@ import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*. Since v2.7684 that window and
  * its write are `LienLastWorkDayWindow`, which the timeline's press under LAST WORK opens too.
+ *
+ * Values in place (punch list #399, the first screen): one fact a line, the labels in a column and the values beside
+ * them. The day, who set it and when, and the later hours' last day are drawn bold, apart from the words
+ * (`lienDayValues.ts` marks them inside the kernel's own sentences). Nothing about the day or its change moved: the
+ * day is still set through *Change ›* and the window that shows what moves, because it moves every lien deadline.
  */
 const chip = (tone: 'hand' | 'hours' | 'bill' | 'created'): CSSProperties => ({
   display: 'inline-block',
   padding: '0 7px',
-  borderRadius: 999,
+  // The chip sits in the values column since punch list #399, so a long *set by hand · name · day* wraps inside it on a phone, where it ran past its box.
+  borderRadius: 9,
   fontSize: '0.7rem',
   fontWeight: 700,
   lineHeight: '18px',
-  whiteSpace: 'nowrap',
+  minWidth: 0,
   background: tone === 'hand' ? 'var(--bg-green-tint)' : tone === 'hours' ? 'var(--bg-blue-tint)' : 'var(--bg-amber-tint)',
   color: tone === 'hand' ? 'var(--text-green-800)' : tone === 'hours' ? 'var(--text-blue-700)' : 'var(--text-amber-800)',
 })
+/** A day never breaks across two lines; a name may. */
+const whole = (text: string) => (
+  <WorkedOutValue>
+    <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
+  </WorkedOutValue>
+)
 const btn = (primary = false): CSSProperties => ({ padding: '4px 10px', borderRadius: 7, border: primary ? '1px solid transparent' : '1px solid var(--border-strong)', background: primary ? '#2563eb' : 'var(--surface)', color: primary ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' })
 
 export function LienLastWorkDayLine({
@@ -96,18 +110,36 @@ export function LienLastWorkDayLine({
 
   return (
     <div data-testid="lien-last-work" data-source={d.source} data-flat={flat ? 'yes' : undefined} style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem', ...(flat ? null : { padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }) }}>
-        <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Last day of work</span>
-        <strong data-testid="lien-last-work-day">{d.day ? formatYmdMonthDay(d.day) : 'none yet'}</strong>
-        <span style={chip(d.source)} data-testid="lien-last-work-source">{lienLastWorkSourceLine(d, setByName)}</span>
-        {d.note ? <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }} data-testid="lien-last-work-note">“{d.note}”</span> : null}
-        {/* v2.7193, punch list #335, row 1: hours approved after a day set by hand do not move it, and the line says they are there. */}
-        {laterHoursDay ? <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem', fontWeight: 600 }} data-testid="lien-last-work-later-hours">{lienHoursAfterHandDayWords(laterHoursDay)}</span> : null}
-        {canEdit && !editing ? (
-          <button type="button" onClick={() => setEditing(true)} data-testid="lien-last-work-change" style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
-            Change ›
-          </button>
-        ) : null}
+      <div style={{ fontSize: '0.8125rem', ...(flat ? null : { padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }) }}>
+        <ValueLines>
+          <ValueLine label="Last day of work">
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem 0.5rem', flexWrap: 'wrap' }}>
+              {/* The day the desk reads, whichever source it came from: worked out, so bold with no press. */}
+              <span data-testid="lien-last-work-day">{d.day ? whole(formatYmdMonthDay(d.day)) : <span style={{ color: 'var(--text-muted)' }}>none yet</span>}</span>
+              <span style={chip(d.source)} data-testid="lien-last-work-source">
+                <ValueSentence text={lienLastWorkSourceValues(d, setByName)} values={{ when: whole }} />
+              </span>
+              {canEdit && !editing ? (
+                <button type="button" onClick={() => setEditing(true)} data-testid="lien-last-work-change" style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
+                  Change ›
+                </button>
+              ) : null}
+            </span>
+          </ValueLine>
+          {d.note ? (
+            <ValueLine label="Why">
+              <span style={{ color: 'var(--text-muted)' }} data-testid="lien-last-work-note">“{d.note}”</span>
+            </ValueLine>
+          ) : null}
+          {/* v2.7193, punch list #335, row 1: hours approved after a day set by hand do not move it, and the line says they are there. */}
+          {laterHoursDay ? (
+            <ValueLine label="Later hours">
+              <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }} data-testid="lien-last-work-later-hours">
+                <ValueSentence text={lienHoursAfterHandDayValues(laterHoursDay)} values={{ hours: whole }} />
+              </span>
+            </ValueLine>
+          ) : null}
+        </ValueLines>
       </div>
       {editing ? (
         <div data-testid="lien-last-work-editor" style={{ display: 'grid', gap: 8, padding: '0.6rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)' }}>
