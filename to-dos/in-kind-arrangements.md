@@ -13,7 +13,7 @@ summary: >
   that is due, and the In kind page lists every one. This card holds what is left.
 next: The owner's call on what a GC's statement, GC Review and the customer's portal say about a bill a deal pays. It settles the statement week with it. Then the loose ends under Left: the cost readers, a combine of two jobs. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219 · 8266 · 8272
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219 · 8266 · 8272 · 8277
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
