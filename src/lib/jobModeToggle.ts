@@ -11,6 +11,11 @@
  *   which is why "off" is now stored as `'0'` instead of removing the key);
  * - roles that cannot use Job Mode at all (`canLeaveJobFieldReport` false) read
  *   OFF regardless of what the device has stored.
+ * - under the new phone layout (`lib/phoneLayout/newPhoneLayout.ts`, a phone's width
+ *   with the device's tick on) an absent key is ON for a master technician and a
+ *   superintendent too: Job Mode is the phone's home for the people who lead a job.
+ *   A stored value still wins, so a person who turned it off stays off, and the
+ *   first-run card is not drawn where Job Mode is already on.
  *
  * Storage uses one key per user so a shared device with multiple accounts
  * doesn't leak the toggle. Mirrors the lightweight pattern from
@@ -48,9 +53,27 @@ export function jobModeCardDismissedKey(userId: string): string {
   return `${CARD_DISMISSED_PREFIX}_${userId}`
 }
 
+/**
+ * What the rule reads beside the role and the stored value. `newPhoneLayout` is `useNewPhoneLayout().on`:
+ * the device's tick AND a phone's width, so it is never true at a desk. Left out, the rule answers as it
+ * answered before the new phone layout.
+ */
+export interface JobModeRuleOptions {
+  newPhoneLayout?: boolean
+}
+
+/** The roles that start in Job Mode on a phone under the new phone layout, beside the sub-like roles who start in it everywhere. */
+export const JOB_MODE_PHONE_HOME_ROLES: readonly UserRole[] = ['master_technician', 'superintendent']
+
+/** Pure: whether Job Mode is this role's home on a phone under the new phone layout. */
+export function isJobModePhoneHomeRole(role: UserRole | string | null | undefined): boolean {
+  return role != null && (JOB_MODE_PHONE_HOME_ROLES as readonly string[]).includes(role)
+}
+
 /** Pure: the role-level default when the device has no stored value. */
-export function jobModeDefaultForRole(role: UserRole | string | null | undefined): boolean {
-  return isSubcontractorLikeRole(role as UserRole | null | undefined)
+export function jobModeDefaultForRole(role: UserRole | string | null | undefined, opts?: JobModeRuleOptions): boolean {
+  if (isSubcontractorLikeRole(role as UserRole | null | undefined)) return true
+  return opts?.newPhoneLayout === true && isJobModePhoneHomeRole(role)
 }
 
 /** Pure: normalise whatever is in storage to the three values we understand. */
@@ -66,12 +89,13 @@ export function parseJobModeStoredValue(raw: string | null | undefined): JobMode
 export function isJobModeEnabled(
   role: UserRole | string | null | undefined,
   storedValue: JobModeStoredValue | string | null | undefined,
+  opts?: JobModeRuleOptions,
 ): boolean {
   if (!canLeaveJobFieldReport(role)) return false
   const stored = parseJobModeStoredValue(storedValue)
   if (stored === '1' || stored === 'card') return true
   if (stored === '0') return false
-  return jobModeDefaultForRole(role)
+  return jobModeDefaultForRole(role, opts)
 }
 
 /** Pure: which `source` an active Job Mode should report for this device state. */
@@ -86,16 +110,20 @@ export function jobModeActiveSource(storedValue: JobModeStoredValue | string | n
  * Pure: should the Dashboard show the one-time "Working in the field? Turn on
  * Job Mode" card? Only for roles that CAN use Job Mode but default off and also
  * plausibly work in the field — master_technician and superintendent. Never for
- * sub-like roles (already on by default) and never for office roles.
+ * sub-like roles (already on by default) and never for office roles. Never where
+ * Job Mode is on by default for the role (the new phone layout): the card offers
+ * what the person already has, and it would be drawn behind Show full dashboard.
  */
 export function showJobModeFirstRunCard(
   role: UserRole | string | null | undefined,
   storedValue: JobModeStoredValue | string | null | undefined,
   dismissed: boolean,
+  opts?: JobModeRuleOptions,
 ): boolean {
   if (dismissed) return false
   if (role !== 'master_technician' && role !== 'superintendent') return false
   if (!canLeaveJobFieldReport(role)) return false
+  if (jobModeDefaultForRole(role, opts)) return false
   return parseJobModeStoredValue(storedValue) === null
 }
 
@@ -112,9 +140,10 @@ export function readJobModeStoredValue(userId: string | null | undefined): JobMo
 export function readJobModeEnabled(
   userId: string | null | undefined,
   role: UserRole | string | null | undefined,
+  opts?: JobModeRuleOptions,
 ): boolean {
   if (!userId) return false
-  return isJobModeEnabled(role, readJobModeStoredValue(userId))
+  return isJobModeEnabled(role, readJobModeStoredValue(userId), opts)
 }
 
 /**

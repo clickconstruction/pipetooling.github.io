@@ -7,6 +7,7 @@ import {
   writeJobModeCardDismissed,
 } from '../../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../../lib/jobModeTelemetry'
+import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 
 /**
  * One-time Dashboard card — "Working in the field? Turn on Job Mode" — for the
@@ -16,7 +17,9 @@ import { recordJobModeEnabledOncePerSession } from '../../lib/jobModeTelemetry'
  * see it (`showJobModeFirstRunCard`). One tap turns Job Mode on (stored
  * per user + device with provenance `card`) and the Dashboard re-renders into
  * the Job Mode card; "Not now" hides it for good on this device. "Not now" sits at the
- * left edge and the green press at the right (v2.7787).
+ * left edge and the green press at the right (v2.7787). Under the new phone layout Job
+ * Mode is on for these two roles with nothing stored, so the card is not drawn: it would
+ * offer what the person has, on the page behind Show full dashboard.
  */
 export default function DashboardJobModeFirstRunCard({
   userId,
@@ -29,8 +32,9 @@ export default function DashboardJobModeFirstRunCard({
   onEnable: () => void
 }) {
   const [dismissed, setDismissed] = useState(() => readJobModeCardDismissed(userId))
+  const newPhoneLayout = useNewPhoneLayout().on
   if (!userId) return null
-  if (!showJobModeFirstRunCard(role, readJobModeStoredValue(userId), dismissed)) return null
+  if (!showJobModeFirstRunCard(role, readJobModeStoredValue(userId), dismissed, { newPhoneLayout })) return null
 
   function dismiss() {
     writeJobModeCardDismissed(userId)

@@ -21,6 +21,24 @@ The switch belongs to the phone you tick it on. Your other phone keeps its own c
 
 Leaders and devs see the row for now. A phone with the layout on shows the row to anyone who signs in on it. So anyone on that phone can switch it off.
 
+## Where the phone starts for a leader
+
+With the new layout on, a leader's phone starts in Job Mode. A superintendent's phone does too.
+
+Job Mode is the Dashboard made for the field. You see the day's card, the day's presses and four tabs at the foot.
+
+Your phone starts there only when you never chose on that phone. A phone where you turned Job Mode off stays off.
+
+To leave Job Mode, open the {{icon:gear}} gear menu and tap **Job Mode**. The phone keeps that choice.
+
+A leader goes back to Dispatch Mode and its tabs. A superintendent goes back to the full Dashboard.
+
+To see the full Dashboard for one visit, tap **Show full dashboard** under the card.
+
+The card that offers Job Mode is not shown, since Job Mode is already on. The card reads *Working in the field? Turn on Job Mode.*
+
+Your own blue buttons stay at the top of the Dashboard.
+
 ## The top bar
 
 The top bar is one row. The bar says the name of the page you are on.

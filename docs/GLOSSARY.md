@@ -1569,6 +1569,8 @@ It moves neither the planned finish nor the score.
 Three stored values: `'1'` (on via the gear menu — also the legacy on-value), `'card'` (on via the first-run Dashboard card), `'0'` (explicitly off).
 **Absent key ⇒ the role default**: ON for `subcontractor` / `helpers` (`isSubcontractorLikeRole`), OFF for every other role;
 a stored value always wins, and a role that fails `canLeaveJobFieldReport` reads OFF whatever the device holds.
+Under the **New phone layout** tick (v2.8290) an absent key is ON for `master_technician` and `superintendent` too, on a phone alone (`JOB_MODE_PHONE_HOME_ROLES`, `JobModeRuleOptions.newPhoneLayout`), so Job Mode is the phone's home for the people who lead a job.
+A stored value still wins under the tick, so a person who turned Job Mode off on that phone stays off.
 Pure kernel **`isJobModeEnabled(role, storedValue)`** + **`showJobModeFirstRunCard`** + **`jobModeActiveSource`** in **[`jobModeToggle.ts`](../src/lib/jobModeToggle.ts)** (16-case role matrix test);
 hook **[`useJobModeEnabled(userId, role)`](../src/hooks/useJobModeEnabled.ts)**.
 Since v2.8038 the shell and the Dashboard read it through `usePageMode`, so the Job Mode page is drawn only when Job Mode is the page's mode (*Page mode*).
@@ -1579,6 +1581,7 @@ Turn on Job Mode.") renders at the top of the full Dashboard for `master_technic
 one tap stores `'card'` and the Dashboard re-renders into the Job Mode card;
 **Not now** stores `dashboard_job_mode_card_dismissed_${userId}`.
 Never for sub-like (already on) or office roles.
+Never where Job Mode is on with nothing stored, which under the New phone layout tick is these two roles on a phone (v2.8290): the card would offer what the person has, on the page behind **Show full dashboard**.
 
 **Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the card tap, or the gear turn-on.
 
@@ -1652,6 +1655,7 @@ Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the 
 `pageModeTicks` is what a menu row's tick reads, on only for the mode drawn, so two rows are never ticked together;
 `pageModeWrites` is what a press stores: switching a mode on switches off the modes above it in the order and leaves the ones under it, and switching one off clears that value alone, so the page goes back to the mode underneath.
 Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
+Under the New phone layout tick a master technician's phone starts in Job Mode with nothing stored, so Job Mode is drawn over the Dispatch Mode that is on for the role, and the gear menu's Job Mode or Dispatch Mode row goes back to Dispatch Mode with Job Mode stored off (v2.8290).
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
 Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the Dashboard's Job Mode card all go through its `set`.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
@@ -1678,6 +1682,7 @@ Since v2.8285 **Show** also holds **New phone layout** on a phone, for the roles
 It is kept per device, not per person: the stored key `pt_new_phone_layout` carries no user id, so a dev who ticks it keeps it while looking as another role through View as.
 The one rule is `newPhoneLayoutOn` in `lib/phoneLayout/newPhoneLayout.ts`, read through the hook `useNewPhoneLayout`: the tick is on AND the screen is a phone's width by `useNarrowViewport640`.
 With the tick off, or at a desk, every screen draws what it drew before the switch.
+Under the tick a master technician's or a superintendent's phone with no stored Job Mode choice starts in Job Mode, since v2.8290 (→ *Job Mode*).
 The tick is drawn at a phone's width only, for the roles in `NEW_PHONE_LAYOUT_TICK_ROLES` (dev and master technician), and for anyone on a device that already has it on, so the way off is always on the screen drawn the new way.
 **The one-row bar** is the phone's header under the tick: the menu where the role has one, the page's name in words (`phoneBarPageName`), Search, the green phone that calls the office and the gear, 51 px tall.
 Home leaves the bar only while Job Mode's tabs are up, whose first tab opens the Dashboard.

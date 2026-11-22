@@ -11,8 +11,10 @@
  *
  * - **One mode is drawn**, by this order: Task Mode, then Job Mode, then Dispatch Mode. Task Mode is
  *   a lens put over the day. Job Mode is this device's own pick, and nobody who can hold Dispatch
- *   Mode has Job Mode on unless they switched it on here. Dispatch Mode follows the person to every
- *   device and is on for some roles before they ever choose, so it gives way to the other two.
+ *   Mode has Job Mode on unless they switched it on here, or are a master technician on a phone
+ *   with the new phone layout on, whose phone starts in Job Mode (`jobModeToggle.ts`). Dispatch Mode
+ *   follows the person to every device and is on for some roles before they ever choose, so it
+ *   gives way to the other two.
  * - **The tick is the page.** A row is ticked only when its mode is the one drawn (`pageModeTicks`),
  *   so two rows are never ticked together.
  * - **A press switches to that mode.** It switches off whatever would be drawn over it and leaves

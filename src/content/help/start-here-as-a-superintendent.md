@@ -45,7 +45,7 @@ Marking someone **off**, meaning not coming in, is an office action. The `off` b
 
 ## Working from the truck
 
-The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. Your Dashboard, Schedule, Inbox and Customers sit on a bottom tab bar. {{button:outline|Not now}} keeps the full Dashboard. The {{icon:gear}} gear menu toggles it any time. See [clocking in and out with Job Mode](/help/job-mode-clocking).
+The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. Your Dashboard, Schedule, Inbox and Customers sit on a bottom tab bar. {{button:outline|Not now}} keeps the full Dashboard. With the [new phone layout](/help/try-the-new-phone-layout#where-the-phone-starts-for-a-leader) on, your phone starts in Job Mode and the offer is not shown. The {{icon:gear}} gear menu toggles it any time. See [clocking in and out with Job Mode](/help/job-mode-clocking).
 
 ## Work orders
 

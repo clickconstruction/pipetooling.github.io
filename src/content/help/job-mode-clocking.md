@@ -11,7 +11,7 @@ Job Mode turns the Dashboard into one big card built for working in the field. I
 ## Is Job Mode on?
 
 - **Subs and helpers:** yes, already. Job Mode is on the first time you open the app on any phone. Nothing to set up.
-- **Leaders and superintendents:** the Dashboard shows a one-time card, **Working in the field? Turn on Job Mode.** You tap {{button:green|Turn on Job Mode}} and you are in. {{button:outline|Not now}} hides the card on that phone.
+- **Leaders and superintendents:** the Dashboard shows a one-time card, **Working in the field? Turn on Job Mode.** You tap {{button:green|Turn on Job Mode}} and you are in. {{button:outline|Not now}} hides the card on that phone. With the [new phone layout](/help/try-the-new-phone-layout#where-the-phone-starts-for-a-leader) on, your phone starts in Job Mode and the card is not shown.
 - **Anyone who can file field reports:** you tap the {{icon:gear}} **gear menu** in the top-right of the header. You toggle **Job Mode** on or off.
 
 Turning it **off** is remembered on that phone even if your role has it on by default. The same gear-menu row turns it back on. With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it. Then you see everything else for the rest of the visit. The next time you open the app you are back on the card.
