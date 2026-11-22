@@ -81,6 +81,6 @@ describe('useSubLaborLedger and a read that fails', () => {
     expect(hook.result.current.laborJobs).toHaveLength(1)
     expect(hook.result.current.laborJobs[0]!.items).toHaveLength(1)
     expect(hook.result.current.laborJobs[0]!.payments).toHaveLength(1)
-    expect(setError.mock.calls.at(-1)![0]).toContain('their lines did not load')
+    expect(setError.mock.calls[setError.mock.calls.length - 1]![0]).toContain('their lines did not load')
   })
 })
