@@ -53,7 +53,15 @@ vi.mock('../hooks/usePunchListPicks', () => ({
 }))
 // The ticks have a smoke of their own (PunchList.ticks.render.test.tsx); here nobody has ticked a card.
 vi.mock('../hooks/usePunchListTicks', () => ({
-  usePunchListTicks: () => ({ ticked: new Set<number>(), failure: null, loading: false, reload: async () => {}, toggle: async () => {} }),
+  usePunchListTicks: () => ({
+    claims: { byCard: new Map(), ticked: new Set<number>(), wiped: [] },
+    ticked: new Set<number>(),
+    failure: null,
+    loading: false,
+    reload: async () => {},
+    toggle: async () => {},
+    stillOn: async () => {},
+  }),
 }))
 
 import PunchList from './PunchList'

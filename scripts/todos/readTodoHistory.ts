@@ -16,6 +16,8 @@
  * (`shallow`); it never fails the build. `deploy.yml` checks the whole history out for this.
  */
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { cardsFromDocs, historyFromStates, packHistory, EMPTY_HISTORY, type HistoryCard, type HistoryState, type PunchListHistory } from '../../src/lib/todos/punchListHistory'
 import { isParseError, readTodoDoc } from '../../src/lib/todos/todoBoard'
 
@@ -51,6 +53,34 @@ export function parseRawLog(text: string): TodoCommit[] {
       commit.changes.push([m[3]!, m[2] === 'D' ? null : m[1]!])
     }
     out.push(commit)
+  }
+  return out
+}
+
+/** The card a path under `to-dos/` belongs to: its top-level `.md`'s name, or its folder. Null for the README and for a loose file. */
+export function slugOfTodoPath(path: string): string | null {
+  if (!path.startsWith('to-dos/')) return null
+  const parts = path.slice('to-dos/'.length).split('/')
+  if (parts.length === 1) return parts[0]!.endsWith('.md') && parts[0] !== 'README.md' ? parts[0]!.slice(0, -'.md'.length) : null
+  return parts[0] || null
+}
+
+/**
+ * When each card last changed, from the same `git log --raw` text: the newest commit that touched the card's
+ * file or anything in its folder (a mock-up counts: drawing one is work on the card). Slug to epoch seconds.
+ */
+export function touchedFromRawLog(text: string): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const chunk of text.split('\0')) {
+    const lines = chunk.split('\n')
+    const head = /^([0-9a-f]{40,64}) (\d+)$/.exec(lines[0] ?? '')
+    if (!head) continue
+    const t = Number(head[2])
+    for (const line of lines.slice(1)) {
+      const m = /^:\d+ \d+ [0-9a-f]+ [0-9a-f]+ [ADMT]\t(.+)$/.exec(line)
+      const slug = m ? slugOfTodoPath(m[1]!) : null
+      if (slug && t > (out.get(slug) ?? 0)) out.set(slug, t)
+    }
   }
   return out
 }
@@ -124,7 +154,12 @@ export function readTodoHistory(root: string): PunchListHistory {
     }
     const events = historyFromStates(statesFromCommits(commits, (blob) => texts.get(blob)))
     const shallow = git(['rev-parse', '--is-shallow-repository']).toString('utf8').trim() === 'true'
-    return { shallow, events }
+    // Only the cards still in the folder: a retired card has no row on the page to read its time.
+    const touched: Record<string, number> = {}
+    for (const [slug, t] of touchedFromRawLog(log)) {
+      if (existsSync(join(root, 'to-dos', `${slug}.md`)) || existsSync(join(root, 'to-dos', slug, 'README.md'))) touched[slug] = t
+    }
+    return { shallow, events, touched }
   } catch {
     return EMPTY_HISTORY
   }
