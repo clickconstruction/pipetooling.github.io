@@ -81,7 +81,20 @@ function namePress(narrow: boolean): CSSProperties {
  * The lines of a party's papers, from a read. `showEmpty` draws the empty list's words, for a place that always shows
  * the list. A place that hides when there is nothing leaves it off and asks `partyPapersQuiet` first.
  */
-export function PartyPapersList({ read, canSend, surface, showEmpty = false }: { read: PartyPapersRead; canSend: boolean; surface: string; showEmpty?: boolean }) {
+export function PartyPapersList({
+  read,
+  canSend,
+  surface,
+  showEmpty = false,
+  partyName,
+}: {
+  read: PartyPapersRead
+  canSend: boolean
+  surface: string
+  showEmpty?: boolean
+  /** The party's name today. A paper that names another business says *signing for* it on its line. */
+  partyName?: string | null
+}) {
   const narrow = useNarrowViewport640()
   const [signedDocId, setSignedDocId] = useState<string | null>(null)
   const today = todayYmdInAppTz()
@@ -91,8 +104,9 @@ export function PartyPapersList({ read, canSend, surface, showEmpty = false }: {
       rows,
       rows.map((r) => r.party_contact_id).filter((id): id is string => id != null),
       today,
+      partyName,
     )
-  }, [read.rows, today])
+  }, [read.rows, today, partyName])
   const empty = partyPapersEmptyWords(canSend)
 
   return (
@@ -128,7 +142,7 @@ export function PartyPapersList({ read, canSend, surface, showEmpty = false }: {
                         <span style={nameText}>{l.name}</span>
                       )}
                     </span>
-                    {l.signer ? <span style={subLine}>{l.signer}</span> : null}
+                    {l.signer || l.signingFor ? <span style={subLine}>{[l.signer, l.signingFor].filter(Boolean).join(' · ')}</span> : null}
                   </div>
                   <div style={lineRight}>
                     <span style={{ ...stateChip, background: colors.background, color: colors.color }}>{l.state.words}</span>
@@ -157,7 +171,7 @@ export function PartyPapersList({ read, canSend, surface, showEmpty = false }: {
  * A supply house's window: its papers, as a section that is always there for the five roles who read one. An empty
  * list says where a paper is sent from. Every other role is drawn nothing, and nothing is read for them.
  */
-export function PartyPapersSection({ party, heading = 'Papers' }: { party: PartyRecord; heading?: string }) {
+export function PartyPapersSection({ party, partyName, heading = 'Papers' }: { party: PartyRecord; partyName?: string | null; heading?: string }) {
   const { role } = useAuth()
   const reads = canReadPartyPapers(role)
   const read = usePartyPapers(reads ? party : null)
@@ -166,7 +180,7 @@ export function PartyPapersSection({ party, heading = 'Papers' }: { party: Party
     <section aria-label={heading} data-testid="party-papers-section" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
       <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>{heading}</div>
       <p style={{ ...quiet, marginBottom: '0.4rem' }}>The papers that are with this house or one of its contacts.</p>
-      <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} showEmpty />
+      <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} showEmpty partyName={partyName} />
     </section>
   )
 }
@@ -175,7 +189,7 @@ export function PartyPapersSection({ party, heading = 'Papers' }: { party: Party
  * The Customer page, for a reader who has no Agreements card there: the papers that are with the customer, in a card
  * of the same name. Drawn only when there is a paper or a failed read to show, as the office's card is.
  */
-export function PartyPapersCard({ party }: { party: PartyRecord }) {
+export function PartyPapersCard({ party, partyName }: { party: PartyRecord; partyName?: string | null }) {
   const { role } = useAuth()
   const reads = canReadPartyPapers(role)
   const read = usePartyPapers(reads ? party : null)
@@ -187,7 +201,7 @@ export function PartyPapersCard({ party }: { party: PartyRecord }) {
         <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>the papers that are with this customer</span>
       </div>
       <div style={{ padding: '6px 13px 10px' }}>
-        <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} />
+        <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} partyName={partyName} />
       </div>
     </div>
   )

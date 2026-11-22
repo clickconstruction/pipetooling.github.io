@@ -94,6 +94,17 @@ describe('a supply house’s papers', () => {
     expect(screen.getByTestId('party-papers-count').querySelector('[data-value="worked-out"]')?.textContent).toBe('1')
   })
 
+  it('says signing for on a paper that names another business than this house, and not on the house’s own', async () => {
+    io.rows = [
+      paper('p-other', { document_name: 'Site secrecy agreement', signer_name: 'Noor Haddad', signer_title: null, signing_for: 'Haddad Engineering' }),
+      paper('p-own', { document_name: 'Vendor terms', signing_for: 'Tallgrass Supply Co.' }),
+    ]
+    renderWithProviders(<PartyPapersSection party={HOUSE} partyName="Tallgrass Supply Co." />)
+    const words = (await screen.findAllByTestId('party-paper-row')).map((l) => l.textContent ?? '')
+    expect(words.find((w) => w.includes('Site secrecy agreement'))).toContain('Noor Haddad signs · signing for Haddad Engineering')
+    expect(words.find((w) => w.includes('Vendor terms'))).not.toContain('signing for')
+  })
+
   it('opens a signed paper’s record from its name, and gives a paper that is not signed no press', async () => {
     io.rows = [paper('p-signed', { status: 'signed', signed_at: '2026-11-20' }), paper('p-sent', { document_name: 'Vendor terms' })]
     renderWithProviders(<PartyPapersSection party={HOUSE} />)

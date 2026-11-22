@@ -34,6 +34,8 @@ After the tag comes the paper's name. Under it you see who it is with, then the 
 
 A paper with a company also says who signs. It reads *Lena Park signs, Branch manager*. Once signed it reads *signed by Lena Park, Branch manager*.
 
+Sometimes a paper names one company and its line names another. Adding someone to a list under a second company does this. The line then also reads *signing for Haddad Engineering*, the company the paper names.
+
 On the right is where it stands, in the words its own window uses. Then comes the day it was signed, sent or ended.
 
 :::example Three lines of the list
