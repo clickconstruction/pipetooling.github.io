@@ -52,7 +52,7 @@ export function expectedBills(state: GcState, project: GcProject, bars: CashBars
 }
 
 /**
- * Each trade's draws not asked for yet, each paid 10 days after the bill day it is asked by: its
+ * Each trade's draws not asked for yet, each paid 10 days after the customer should pay the bill it rides on: its
  * work at each bill day through its own pay application. As reported: one draw, for the work
  * reported and not drawn. On a job with no months to read, the same.
  */
@@ -75,7 +75,7 @@ export function expectedDraws(state: GcState, project: GcProject, bars: CashBars
       const number = drawn.draws.length + 1
       const app = payApplication(drawn, number, toPct)
       const { gross, retainage, net } = drawMoney(drawn, app)
-      if (net >= 1) moves.push({ ...base, project, dir: 'out', who, number, amount: net, on: addDays(on, PAY_WITHIN_DAYS), why: 'nextDraw', billOn: on, ...(follow ? { fromBars: true as const } : {}) })
+      if (net >= 1) moves.push({ ...base, project, dir: 'out', who, number, amount: net, on: addDays(paidOn(state, project, on) ?? on, PAY_WITHIN_DAYS), why: 'nextDraw', billOn: on, ...(follow ? { fromBars: true as const } : {}) })
       // The draw counts as made, so the next month starts from it.
       drawn = { ...drawn, draws: [...drawn.draws, { id: `${pkg.id}-expected-${number}`, number, requestedOn: on, gross, retainage, net, status: 'paid', waiver: 'conditional', lines: drawLinesOf(app) }] }
     }

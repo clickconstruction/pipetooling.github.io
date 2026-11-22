@@ -290,8 +290,8 @@ describe('billGroups and rowMove', () => {
       ['Kerr Electric', { side: 'theirs', words: 'their move' }],
       ['Alamo Steel', { side: 'none', words: 'nothing this period · Pat Alamo, by phone' }],
       ['Lone Star Mechanical', { side: 'ours', words: 'our move · 4 d' }],
-      // Approved Sep 30: paid within 10 days of approval.
-      ['Tejas Power', { side: 'paid', words: 'we pay by Oct 10' }],
+      // Approved Sep 30, with no bill to the customer since: due after the customer pays the next one.
+      ['Tejas Power', { side: 'paid', words: 'due 10 days after the customer pays our next bill' }],
     ])
   })
 

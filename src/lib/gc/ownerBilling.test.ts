@@ -325,28 +325,31 @@ describe('the next weeks of money across every job', () => {
     expect(cashAhead({ ...initialGcState(), today: '2026-10-04' }).weeks.slice(1, 3).map((w) => w.daysAway)).toEqual([1, 8])
   })
 
-  it('counts what is on the books: the two draws asked at Fair Oaks D take us to $39,272 carrying', () => {
+  it('counts what is on the books: the two draws asked at Fair Oaks D are due after the customer pays, past these weeks', () => {
     const a = cashAhead(initialGcState(), { countExpected: false })
     expect(r(a.standingNow)).toBe(80_428)
     expect(line(a)).toEqual([
       ['2026-09-28', 0, 0, 80_428],
       ['2026-10-05', 0, 0, 80_428],
-      ['2026-10-12', 0, 119_700, -39_272],
-      ['2026-10-19', 0, 0, -39_272],
-      ['2026-10-26', 0, 0, -39_272],
-      ['2026-11-02', 0, 0, -39_272],
+      ['2026-10-12', 0, 0, 80_428],
+      ['2026-10-19', 0, 0, 80_428],
+      ['2026-10-26', 0, 0, 80_428],
+      ['2026-11-02', 0, 0, 80_428],
     ])
-    expect(a.lowest?.start).toBe('2026-10-12')
-    expect(a.weeks[2]?.moves.map((m) => [m.who, m.why, m.on])).toEqual([
-      ['Iron Horse Fabrication', 'ifApprovedToday', '2026-10-12'],
-      ['Pecan Valley Electric', 'ifApprovedToday', '2026-10-12'],
+    expect(a.lowest).toBeNull()
+    // Approved today, they ride on the Oct 25 bill. Cibolo Creek pays in 38 days and we pay 10 days after: Dec 12.
+    // Counted from approval they fell on Oct 12 and took us $39,272 under.
+    expect(a.weeks.flatMap((w) => w.moves)).toEqual([])
+    expect(a.later.map((m) => [m.who, m.why, m.on, r(m.amount)])).toEqual([
+      ['Iron Horse Fabrication', 'ifApprovedToday', '2026-12-12', 79_200],
+      ['Pecan Valley Electric', 'ifApprovedToday', '2026-12-12', 40_500],
     ])
     expect(a.late.map((m) => [m.who, r(m.amount), m.on])).toEqual([['Cibolo Creek Partners', 288_879, '2026-09-30']])
   })
 
   it('counts the late bill this week only when asked, and then never drops below today', () => {
     const a = cashAhead(initialGcState(), { countLate: true, countExpected: false })
-    expect(line(a).map((w) => w[3])).toEqual([369_307, 369_307, 249_607, 249_607, 249_607, 249_607])
+    expect(line(a).map((w) => w[3])).toEqual([369_307, 369_307, 369_307, 369_307, 369_307, 369_307])
     expect(a.lowest).toBeNull()
   })
 
@@ -432,26 +435,30 @@ describe('finishing late against the owner contract', () => {
 describe('what we expect, beside what is on the books', () => {
   const r = (n: number) => Math.round(n)
 
-  it('counts the bills we send Oct 25 on each customer’s usual pay day, and the trades’ next draws ten days after', () => {
+  it('counts the bills we send Oct 25 on each customer’s usual pay day, and the trades’ next draws ten days after that', () => {
     // Every bar at what it reported (G-140): the same rule as the schedule's, giving the numbers from before it.
     const a = cashAhead(initialGcState(), { bars: 'reported' })
     expect([r(a.expected.in), r(a.expected.out)]).toEqual([145_868, 78_408])
-    const draws = a.weeks.flatMap((w) => w.moves).filter((m) => m.why === 'nextDraw')
+    // Dr. Raman pays in 21 days and Cibolo Creek in 38. Each trade's draw is due 10 days after its customer pays.
+    expect(a.weeks.flatMap((w) => w.moves).filter((m) => m.why === 'nextDraw')).toEqual([])
+    const draws = a.later.filter((m) => m.why === 'nextDraw')
     expect(draws.map((m) => [m.who, r(m.amount), m.on])).toEqual([
-      ['Hill Country Interiors', 14_688, '2026-11-04'],
-      ['Summit Roofing', 54_000, '2026-11-04'],
-      ['Cool Breeze Mechanical', 9_720, '2026-11-04'],
+      ['Hill Country Interiors', 14_688, '2026-11-25'],
+      ['Summit Roofing', 54_000, '2026-12-12'],
+      ['Cool Breeze Mechanical', 9_720, '2026-12-12'],
     ])
     expect(a.later.filter((m) => m.why === 'nextBill').map((m) => [m.who, r(m.amount), m.on])).toEqual([
       ['Dr. Priya Raman', 47_301, '2026-11-15'],
       ['Cibolo Creek Partners', 98_566, '2026-12-02'],
     ])
-    // We pay the trades before the customers pay us: the low point moves to the week of Nov 2.
-    expect([a.lowest?.start, r(a.lowest?.standing ?? 0)]).toEqual(['2026-11-02', -117_680])
+    // We pay the trades after the customers pay us, so these weeks have no low point. Counted from approval, the
+    // draws fell on Nov 4, before either customer paid, and took us $117,680 under.
+    expect(a.lowest).toBeNull()
   })
 
   it('a pay application we sent back counts what we see, as our bill does', () => {
-    const summit = cashAhead(initialGcState(), { bars: 'reported' }).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Summit Roofing' && m.expected)
+    const ahead = cashAhead(initialGcState(), { bars: 'reported' })
+    const summit = [...ahead.weeks.flatMap((w) => w.moves), ...ahead.later].find((m) => m.who === 'Summit Roofing' && m.expected)
     // They reported 70% of $132,000. On the lines we doubt we see less (the membrane at 50%, they say
     // 100%): $60,000 done, the same our bill uses for them, nothing drawn yet, less the 10% held.
     expect(r(summit?.amount ?? 0)).toBe(r(60_000 * 0.9))
