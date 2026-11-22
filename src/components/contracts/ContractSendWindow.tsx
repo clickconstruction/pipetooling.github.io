@@ -7,7 +7,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { quickSendPlanWrites, type QuickSendPlan } from '../../lib/contractsQuickSend'
 import { PERSON_PAPER_LINK_DAYS, initialSignerName as signerNameToOpenOn, sentToastWords, signerEmailRefusal, signerNameRefusal } from '../../lib/contracts/personPaperSend'
 import { PAPER_WORD_MAX } from '../../lib/contracts/paperParty'
-import { keepSignerWords, knownAddressRefusal, knownAddressWords, partySaysLine, partySigningFor, sendPartyHint, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
+import { ADDRESS_NOT_CHECKED, addressLookUpVerdict, keepSignerWords, knownAddressRefusal, knownAddressWords, partySaysLine, partySigningFor, sendPartyHint, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
 import { readContactForAddress, type KnownAddress } from '../../lib/documents/paperPartyIo'
 import { materializeQuickSendRow, readKeptSigner, readPortalSlugIfLive, sendPersonPaperForSignature } from '../../lib/contracts/personPaperSendIo'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -87,6 +87,8 @@ export function ContractSendWindow({
   const [keep, setKeep] = useState(true)
   /** Whose the typed address already is, for someone on no list. */
   const [known, setKnown] = useState<KnownAddress | null>(null)
+  /** The address the last look-up that answered was for. A press of Send email asks itself when it is not this one. */
+  const lookedUpFor = useRef<string | null>(null)
   const [subject, setSubject] = useState('')
   const [intro, setIntro] = useState('')
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
@@ -132,7 +134,8 @@ export function ContractSendWindow({
   }, [docId, initialSignerName])
 
   // Someone on no list is found by their address. One the app already keeps is named before the send, so nobody is
-  // added twice. Asked once the typing rests; a look-up that fails names nobody, and the send finds them itself.
+  // added twice. Asked once the typing rests. A look-up that fails names nobody here, and Send email asks again itself
+  // and holds the send until it has an answer (`send`, below).
   const lookUpAddress = party?.unlisted === true && !docId
   useEffect(() => {
     if (!lookUpAddress || signerEmailRefusal(email)) {
@@ -141,8 +144,14 @@ export function ContractSendWindow({
     }
     let cancelled = false
     const timer = setTimeout(() => {
+      // A press of Send email that beat this timer has asked already: the answer is on the window.
+      if (lookedUpFor.current === email.trim()) return
       readContactForAddress(email).then(
-        (found) => !cancelled && setKnown(found),
+        (found) => {
+          if (cancelled) return
+          lookedUpFor.current = email.trim()
+          setKnown(found)
+        },
         () => !cancelled && setKnown(null),
       )
     }, 350)
@@ -175,13 +184,37 @@ export function ContractSendWindow({
   }, [target, subject, intro, sender, portalUrl, party, signerName])
 
   async function send() {
-    const refusal = signerNameRefusal(signerName) ?? signerEmailRefusal(email) ?? (lookUpAddress ? knownAddressRefusal(known) : null)
+    const refusal = signerNameRefusal(signerName) ?? signerEmailRefusal(email)
     if (refusal) {
       setError(refusal)
       return
     }
     setSaving(true)
     setError(null)
+    if (lookUpAddress) {
+      // Whose the address is must be known before anything is written. A press that came before the look-up answered
+      // asks now and waits, so the roster's refusal and the note that names who holds the address are never skipped.
+      const address = email.trim()
+      const namedBefore = lookedUpFor.current === address
+      let who = known
+      if (!namedBefore) {
+        try {
+          who = await readContactForAddress(address)
+        } catch (e) {
+          setError(`${ADDRESS_NOT_CHECKED} ${formatErrorMessage(e, '')}`.trim())
+          setSaving(false)
+          return
+        }
+        lookedUpFor.current = address
+        setKnown(who)
+      }
+      const verdict = addressLookUpVerdict(who, namedBefore)
+      if (verdict.kind === 'hold') {
+        setError(verdict.why)
+        setSaving(false)
+        return
+      }
+    }
     try {
       // The user just committed: this is where a quick-send pick becomes a row. The id is pinned at once, so a failed
       // send retries against the same row instead of minting a second one.

@@ -44,7 +44,7 @@ import { jobToHandOn, newProjectSeedFromLead } from '../lib/prospects/gcLeadLane
 import { setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
-import { StateRollTab } from '../components/prospects/StateRollTab'
+import { StateRollTabForUser } from '../components/prospects/StateRollTab'
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
@@ -1409,7 +1409,7 @@ export default function Prospects() {
       )}
 
       {topTab === 'research' && canResearch && authUser?.id && <ProspectsResearchTab authUserId={authUser.id} />}
-      {topTab === 'roll' && canReadRoll && authUser?.id && <StateRollTab />}
+      {topTab === 'roll' && canReadRoll && authUser?.id && <StateRollTabForUser authUserId={authUser.id} />}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <ProspectsFollowUpTab

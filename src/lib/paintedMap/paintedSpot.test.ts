@@ -67,3 +67,38 @@ describe('where the dot starts for a spot', () => {
     expect(spotStart({ ok: false, why: 'refused' }, false)).toEqual({ kind: 'stale' })
   })
 })
+
+describe('the point a photo keeps (step 3)', () => {
+  const HERE = { lat: 29.5, lng: -98.2, accuracyM: 6.4 }
+  it('is the reading of a fresh photo, with the margin as a whole number of metres', async () => {
+    const { takenPointOf } = await import('./paintedSpot')
+    expect(takenPointOf({ ok: true, fix: HERE }, true)).toEqual({ lat: 29.5, lng: -98.2, accuracyM: 6 })
+    expect(takenPointOf({ ok: true, fix: { ...HERE, accuracyM: null } }, true)).toEqual({ lat: 29.5, lng: -98.2, accuracyM: null })
+  })
+  it('is a weak reading too, since its margin says how weak', async () => {
+    const { takenPointOf } = await import('./paintedSpot')
+    expect(takenPointOf({ ok: true, fix: { ...HERE, accuracyM: 48 } }, true)).toEqual({ lat: 29.5, lng: -98.2, accuracyM: 48 })
+  })
+  it('is nothing for a rough reading, no reading, a reading that did not come in time, or a photo that is not of this moment', async () => {
+    const { takenPointOf } = await import('./paintedSpot')
+    expect(takenPointOf({ ok: true, fix: { ...HERE, accuracyM: 3200 } }, true)).toBeNull()
+    expect(takenPointOf({ ok: false, why: 'refused' }, true)).toBeNull()
+    expect(takenPointOf(null, true)).toBeNull()
+    expect(takenPointOf({ ok: true, fix: HERE }, false)).toBeNull()
+  })
+  it('writes three columns for a point and none at all for no point', async () => {
+    const { takenPointColumns } = await import('./paintedSpot')
+    expect(takenPointColumns({ lat: 29.5, lng: -98.2, accuracyM: 6 })).toEqual({ taken_lat: 29.5, taken_lng: -98.2, taken_accuracy_m: 6 })
+    expect(takenPointColumns({ lat: 29.5, lng: -98.2, accuracyM: null })).toEqual({ taken_lat: 29.5, taken_lng: -98.2, taken_accuracy_m: null })
+    expect(takenPointColumns(null)).toEqual({})
+    expect(takenPointColumns(undefined)).toEqual({})
+    expect(takenPointColumns({ lat: Number.NaN, lng: -98.2, accuracyM: 6 })).toEqual({})
+  })
+  it('reads a stored row’s point back, and half a point as none', async () => {
+    const { takenPointFromRow } = await import('./paintedSpot')
+    expect(takenPointFromRow({ taken_lat: 29.5, taken_lng: -98.2, taken_accuracy_m: 6 })).toEqual({ lat: 29.5, lng: -98.2, accuracyM: 6 })
+    expect(takenPointFromRow({ taken_lat: 29.5, taken_lng: null, taken_accuracy_m: 6 })).toBeNull()
+    expect(takenPointFromRow({ taken_lat: null, taken_lng: null })).toBeNull()
+    expect(takenPointFromRow(null)).toBeNull()
+  })
+})

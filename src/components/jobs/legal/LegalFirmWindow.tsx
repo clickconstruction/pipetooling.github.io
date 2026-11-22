@@ -17,6 +17,7 @@ import { companyShortName } from '../../../lib/legal/legalPortalStart'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
 import { legalOfficeContactPrintLines, legalOfficeContactsGap, type LegalOfficeContacts } from '../../../lib/legal/legalOfficeContacts'
 import { readLegalOfficeContacts } from '../../../lib/legal/legalOfficeContactsIo'
+import { isImpersonationSessionActive } from '../../../lib/impersonationSession'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
 const db = supabase as unknown as SupabaseClient
@@ -225,6 +226,8 @@ function FirmIntakeAnswers({ firm, onSeen }: { firm: LegalFirmRow; onSeen: () =>
   const [wasNew] = useState(() => legalIntakeUnseen(firm))
   useEffect(() => {
     if (!wasNew) return
+    // Held while View as is on: the dot stays for the person whose desk it is.
+    if (isImpersonationSessionActive()) return
     let cancelled = false
     void db.rpc('legal_firm_intake_seen', { p_firm_id: firm.id }).then(({ error }) => {
       // A training-mode user's stamp is refused; the dot stays for someone who can read it.

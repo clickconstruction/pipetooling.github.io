@@ -36,7 +36,7 @@ export type PaintedMapHome = {
 export type PaintedMapToPaint = { id: string; name: string; words: string; home: PaintedMapHome; first?: 'line' | 'place' | 'walk'; /** The job's own list of places (#393): it holds places only. */ jobList?: boolean; /** A photo taken first (#413): the place sheet opens with it, and the dot where the person stood. */ spot?: PaintedSpot }
 
 export type PaintedMapAsk =
-  | { kind: 'open'; mapId: string; address?: string | null; /** Open it already adding a place, for a press that says so. */ add?: 'place'; /** That place starts from a photo already taken (#413). */ spot?: PaintedSpot }
+  | { kind: 'open'; mapId: string; address?: string | null; /** Open it already adding a place, for a press that says so. */ add?: 'place'; /** That place starts from a photo already taken (#413). */ spot?: PaintedSpot; /** Open it on this place: picked, and in view (#413). */ place?: string }
   | { kind: 'start'; home: PaintedMapHome }
   | { kind: 'paint'; start: PaintedMapToPaint; /** Called once when the painting window closes, saved or not. */ onClosed?: () => void }
 
@@ -55,9 +55,9 @@ export function onPaintedMapAsk(listener: AskListener): () => void {
 }
 
 /** Open a saved map. `false` when no host is listening, so a caller can say so instead of doing nothing. */
-export function openPaintedMap(mapId: string, address?: string | null, add?: 'place', spot?: PaintedSpot): boolean {
+export function openPaintedMap(mapId: string, address?: string | null, add?: 'place', spot?: PaintedSpot, place?: string): boolean {
   if (askListeners.size === 0) return false
-  for (const l of askListeners) l({ kind: 'open', mapId, address: address ?? null, ...(add ? { add } : {}), ...(spot ? { spot } : {}) })
+  for (const l of askListeners) l({ kind: 'open', mapId, address: address ?? null, ...(add ? { add } : {}), ...(spot ? { spot } : {}), ...(place ? { place } : {}) })
   return true
 }
 

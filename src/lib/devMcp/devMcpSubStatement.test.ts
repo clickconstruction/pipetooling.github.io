@@ -338,9 +338,9 @@ describe('the seat’s two verbs', () => {
     expect(SERVER).toContain("name: 'apply_sub_statement'")
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period })')
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period, make: true, expect: plan.fingerprint })')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.125.0'")
-    expect(SERVER).toContain('Writes are one hundred and fifty-four verbs and nothing else:')
-    expect(SERVER).toContain('the other ninety-six name no RPC')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.126.0'")
+    expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
+    expect(SERVER).toContain('the other ninety-eight name no RPC')
     expect(SERVER).toContain('plan_sub_statement → apply_sub_statement (a person\'s Statement of account as the papers window\'s Download makes it')
   })
   it('the function reads as the caller, refuses a changed set, registers before it draws and sends nothing', () => {
@@ -357,7 +357,7 @@ describe('the seat’s two verbs', () => {
   })
   it('is written down where the seat is', () => {
     expect(README).toContain('`plan_sub_statement(statement)` · `apply_sub_statement(statement, plan_hash)`')
-    expect(README).toContain('one hundred and fifty-four `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and fifty-six `plan_` / `apply_` / `revert_` verbs')
     expect(NOTES).toContain('0.121.0 (v2.8052;')
     expect(EDGE).toContain('### sub-statement')
     expect(EDGE).toContain('**v2.8052 (server 0.121.0) — a statement of account from the seat**')

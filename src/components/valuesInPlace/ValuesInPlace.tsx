@@ -81,8 +81,9 @@ export interface ChangeableValueProps {
   /**
    * The value is read from a default this record may override: the small word drawn after it, such as
    * "default". The value is then bold, since nobody typed it here, and a press beside it sets this record's own.
+   * A screen whose word has a look of its own hands in the drawn word (the Lien desk's source chip, punch list #399).
    */
-  fromDefault?: string
+  fromDefault?: ReactNode
   /** That press's words. */
   setOwnLabel?: string
   /** Offered in the open field when this record holds its own value: the press that puts the default back. */

@@ -118,8 +118,10 @@ so RLS answers exactly what that role gets.
 Not read-only: a sample's writes are ordinary rows
 stamped with its own name.
 Two saves no press asks for are held while an imitation is on (v2.8176, `isImpersonationSessionActive()` read at each send): the app activity heartbeat (`bump_user_app_activity`, so the person's last seen time and app time stay their own) and the clock button's salary sync (`syncSalaryClockSessionsUnasked`), and Exit takes the flag off only after the session is the operator's again.
+The seen marks a page makes with no press are held the same way (v2.8246), so what is new for the person stays new: `markAnswersSeen` (a tagged note's answers), `markBidRequestsSeen`, `upsertBidNotesReadWatermark`, the plan question answers in `usePlanQuestions`, `legal_firm_intake_seen`, the First look's looked stamp, and the day editor's salary sync on an empty day (`useMyTimeSalaryPrefetch`).
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
+A session swap that Exit finds refused signs that browser out and lands on the sign-in page, never on the page left while still the person (v2.8241, `leaveViewAs` in `impersonationExit.ts`).
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
@@ -246,7 +248,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and fifty-four verbs, fifty-eight of them POSTing one of twenty-five named RPCs as the dev, twenty-four of them dev-gated and one the app's own `trip_save` (one hundred and fifty-four since v2.8052, whose statement pair calls the `sub-statement` function as the dev, which reads under the papers window's own RLS and registers through `mint_sub_paper`'s office gate, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and fifty-six verbs, fifty-eight of them POSTing one of twenty-five named RPCs as the dev, twenty-four of them dev-gated and one the app's own `trip_save` (one hundred and fifty-six since v2.8257, one hundred and fifty-four since v2.8052, whose statement pair calls the `sub-statement` function as the dev, which reads under the papers window's own RLS and registers through `mint_sub_paper`'s office gate, with no new role and no new policy;
+Since v2.8257 `plan_paper_words` → `apply_paper_words` load a paper's words as a draft, with no RPC: a builder's draft or one new Contract Book entry, written as the dev under each table's own RLS, never a publish and never a change to an entry that exists.
 one hundred and fifty-two since v2.8000, whose standing pair POSTs `dev_engagement_write`, the one door of `person_engagements`, which takes a dev alone and is the door Standing… on People → HR writes through, with no new role and no new policy;
 one hundred and fifty since v2.7987, whose `drop_kept_plan` POSTs `dev_kept_plan_decide` and whose kept plans POST `dev_kept_plan_keep`, the two doors of `dev_seat_kept_plans`, each taking a dev alone, with no new role and no new policy;
 one hundred and forty-nine since v2.7976, whose case pair POSTs `dev_case_write`, the door the Case view on People → HR writes a case's items and log through, which takes a dev alone, with no new role and no new policy;
@@ -1295,6 +1298,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The second keeps the arrival, a yes we saw for each bullet as told in the caller's own name, and on a No takes their word back and inserts one `dispatch_requests` row as a stage check.
   It refuses a training account, a digital twin and an archived caller itself, and a No on a bullet that is not on the list to look at.
   It refuses a second answer at a stage in words that name who answered first (v2.8178, `docs/migrations/20261121150500_start_check_arrive_once.md`), so one person's **Yes, all as told** never replaces another's No.
+  Since v2.8238 (`docs/migrations/20261122030000_start_check_arrive_again.md`) it keeps a later No on a bullet we saw as a yes, and an answer to a bullet that is asked about again, each as an arrival of its own.
+  Both functions read what there is to look at from `start_check_to_look(fixture)`, a definer function nobody signed in may call.
   The crew holds no insert or update grant on any `start_check_*` table, so this function is the only way a crew member writes there.
 - **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
   It answers only for a job whose desk the caller is on, and nothing for an archived caller.
@@ -2657,6 +2662,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.8118 a press on a looked-up fact (**Checked**, **Wrong**, **Not right**, **Put back**) is one insert into `builder_lookup_checks` by anyone who reads permits, as oneself, with no update or delete (the Ask for block, v2.8121).
   The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties` and `license_roll_left_off`.
   A shared Hiring column does not open the State roll.
+  Its **Our own** view (v2.8233) is drawn only for a person who also passes People → Licenses' gate (`canAccessLicenses`), and it reads and writes `person_licenses` under that table's own policy, so it reaches no one the Licenses tab does not.
   Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and the tab's **Pull 4 files** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   The one write the gate opens to a person is a county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159);
   no screen offers it yet.
@@ -4124,6 +4130,7 @@ the firm cannot mark anything paid or touch a job.
 **The firm's emails** (v2.3325;
 every office event since v2.4649): `legal_firm_recipients` and `legal_notification_queue` are office-read, and the queue is written only by triggers, which since v2.6283 queue every office act and only while the firm has the matter (`released_at` set;
 a pull-back clears it), the dispatcher reading each digest line's source again so the firm reads nothing the portal hides (`legalDigestShows`);
+since v2.8228 the dispatcher claims its rows before it sends through `legal_notify_claim_events` and `legal_notify_claim_digest`, which only the service role may call;
 the firm manages its people through `submit-legal-portal` (service role);
 confirm and unsubscribe are public token links on `legal-notify-dispatch`.
 The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.

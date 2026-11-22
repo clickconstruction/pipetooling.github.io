@@ -72,13 +72,14 @@ describe('resolvePaintedMapProvider', () => {
 })
 
 describe('PAINTED_GOOGLE_REACH, today', () => {
-  it('puts the painting window on Google for looking, and nothing else', () => {
-    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(screen === 'window' && use === 'looking' ? 'google' : 'osm')
+  it('puts both screens on Google for looking, and nothing else', () => {
+    for (const screen of SCREENS) for (const use of USES) expect(resolvePaintedMapProvider(ask({ screen, use }))).toBe(use === 'looking' ? 'google' : 'osm')
   })
 
-  it('keeps the public page off Google until the owner’s look at the billing console says yes', () => {
-    // Every outside reader's open counts. This line comes out with his yes, and with nothing else.
-    expect(PAINTED_GOOGLE_REACH.screens).not.toContain('way')
+  it('puts the public page on Google, on Taunya’s yes of 2026-11-21', () => {
+    // Every outside reader's open counts. The line that held it off came out with that yes: no link had yet been
+    // made, and people alone made 10 to 40 map loads a day against the free 10,000 a month.
+    expect(PAINTED_GOOGLE_REACH.screens).toContain('way')
   })
 
   it('keeps drawing by hand off Google until Google’s terms on content made from its imagery are read', () => {

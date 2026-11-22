@@ -81,3 +81,15 @@ export function reportSendSkip(subject: ReportSubject): ReportSendSkip | null {
           : false
   return zz ? { reason: 'zz_test_job', message: ZZ_TEST_JOB_SKIP_MESSAGE } : null
 }
+
+/**
+ * A new dispatch request's push, held the same way (punch list #382): the request names a job, a bid or neither, and
+ * one on a ZZ test job or a ZZ bid rings no dispatcher's phone. Its line stays in the inbox, where a walk reads it.
+ * `notify-dispatch-request` asks this before its fan-out to the group. Null when the push may go.
+ */
+export async function dispatchRequestPushSkip(
+  db: ReportSubjectDb,
+  request: { job_ledger_id: string | null; bid_id: string | null },
+): Promise<ReportSendSkip | null> {
+  return reportSendSkip(await readReportSubject(db, { job_ledger_id: request.job_ledger_id, project_id: null, bid_id: request.bid_id }))
+}

@@ -17,7 +17,7 @@ import { calendarYmdInAppTzFromIso, formatWorkDateYmdFriendly, formatWorkDateYmd
 import { pluralNoun } from '../batchWords'
 import { emptyWords, type EmptyWords } from '../emptyWords'
 import { val } from '../valuesInPlace'
-import { paperSignerLine } from './paperParty'
+import { paperSignerLine, signingForBeside } from './paperParty'
 
 // ── Who reads the list ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -77,6 +77,8 @@ export type PartyPaperRow = {
   signer_name: string | null
   signer_title: string | null
   signer_printed_name: string | null
+  /** The business the paper says the signer signs for, in words. */
+  signing_for?: string | null
   /** A date, `YYYY-MM-DD`. */
   signed_at: string | null
   sent_at: string | null
@@ -152,6 +154,11 @@ export type PartyPaperLine = {
   state: { words: string; tone: PartyPaperTone }
   /** *Lena Park signs, Branch manager*, then *signed by Lena Park, Branch manager*. '' when the paper kept no signer. */
   signer: string
+  /**
+   * *signing for Haddad Engineering*: the business the paper names, when it is not the party whose page this is. ''
+   * when the paper kept none or names this party.
+   */
+  signingFor: string
   /** *Signed ⟪day|Nov 20⟫*, *Sent …*, *Made …*, the day marked with `val`. '' with no day. */
   day: string
   /** Whether a press opens its signed record. Only a signed paper has one. */
@@ -166,9 +173,10 @@ function ymdWords(ymd: string, todayYmd: string): string {
 /**
  * One paper's line. The state's words are the Agreements tab's own for a paper that waits or is signed
  * (`agreementStateChip`), so a line here and its line there never disagree. A paper that was made and never sent reads
- * *not sent*, which the tab has no line for. `todayYmd` is the company's day.
+ * *not sent*, which the tab has no line for. `todayYmd` is the company's day. `partyName` is the name of the party whose
+ * page this is, today: a paper that names another business says so.
  */
-export function partyPaperLine(row: PartyPaperRow, replaced: ReadonlySet<string>, todayYmd: string): PartyPaperLine {
+export function partyPaperLine(row: PartyPaperRow, replaced: ReadonlySet<string>, todayYmd: string, partyName?: string | null): PartyPaperLine {
   const kind = partyPaperKindWords(row.doc_type)
   const signed = row.status === 'signed' || row.status === 'received'
   const sent = row.status === 'sent'
@@ -197,16 +205,18 @@ export function partyPaperLine(row: PartyPaperRow, replaced: ReadonlySet<string>
     name: (row.document_name ?? '').trim() || kind,
     state,
     signer: paperSignerLine({ name: row.signer_name, title: row.signer_title, printedName: row.signer_printed_name }, row.status === 'signed'),
+    // With no party name to hold it against, the line says nothing: it never names the page's own party as another's.
+    signingFor: partyName?.trim() ? signingForBeside(row.signing_for, [partyName, row.signer_name, row.signer_printed_name]) : '',
     day,
     opens: row.status === 'signed',
   }
 }
 
 /** The lines of a party's papers, newest first, from the rows the read answered. */
-export function partyPaperLines(rows: ReadonlyArray<PartyPaperRow>, contactIds: ReadonlyArray<string>, todayYmd: string): PartyPaperLine[] {
+export function partyPaperLines(rows: ReadonlyArray<PartyPaperRow>, contactIds: ReadonlyArray<string>, todayYmd: string, partyName?: string | null): PartyPaperLine[] {
   const mine = papersOfParty(rows, contactIds)
   const replaced = replacedPaperIds(mine)
-  return mine.map((r) => partyPaperLine(r, replaced, todayYmd))
+  return mine.map((r) => partyPaperLine(r, replaced, todayYmd, partyName))
 }
 
 /** *⟪count|1⟫ paper*, *⟪count|3⟫ papers*, the count marked with `val`. */

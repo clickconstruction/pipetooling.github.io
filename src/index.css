@@ -4469,6 +4469,11 @@ body.my-time-boundary-dragging {
 .lienLedgerWindow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
 .lienLedgerLetter { display: inline-block; width: 18px; height: 18px; margin-right: 5px; border-radius: 4px; text-align: center; line-height: 18px; font-size: 0.68rem; font-weight: 800; }
 .lienLedgerLetter[data-tone='paper'] { background: var(--bg-green-tint); color: var(--text-green-800); }
+/* The head of this notice's column: the name, and the claim figure small under it (v2.8234). The figure starts under the
+   name's first letter, past the lettered square, and the column stays as wide as the name. */
+.lienLedgerThisName { display: inline-flex; flex-direction: column; align-items: flex-start; vertical-align: bottom; line-height: 1.25; }
+.lienLedgerThisTop { white-space: nowrap; }
+.lienLedgerHeadFigure { padding-left: 23px; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .lienLedgerLetter[data-tone='this'] { background: var(--surface); color: var(--text-blue-700); }
 .lienLedgerMarkLetter { display: none; }
 /* A paper's head keeps its name on one line; the words under it wrap, so a long one does not widen the column. */
@@ -4535,7 +4540,9 @@ body.my-time-boundary-dragging {
      with an edge (Note it as missed, the two editors' own) is that tall itself. */
   .lienLedger button, .lienLedger a { display: inline-flex; align-items: center; min-height: 44px; vertical-align: baseline; }
   .lienLedger button:not(.lienLedgerNoteMissed), .lienLedger a { margin-block: -13px; margin-block: calc((1lh - 44px) / 2); }
-  .lienLedger [data-lien-claim-editor] button, .lienLedger [data-testid='lien-last-work-editor'] button { margin-block: 0; }
+  .lienLedger [data-lien-claim-editor] button, .lienLedger button.vipKeep { margin-block: 0; }
+  /* The last day of work's value (punch list #399) is tinted, so it stays the height of its words; its touch area is the value piece's own. */
+  .lienLedger button.vipChange { display: inline-block; min-height: 0; margin-block: 0; }
   /* Two quiet rows, each with a press in its sentence, sit one under the other: a one-line row is 44 px itself, so the
      two touch areas do not overlap. */
   .lienLedgerQuiet:has(button, a) { padding-top: 13px; padding-bottom: 13px; }
@@ -6688,6 +6695,8 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .scWord { position: relative; margin: 0; padding: 0; border: none; background: none; color: var(--text-link); font: inherit; font-size: 0.8125rem; font-weight: 600; line-height: inherit; cursor: pointer; }
 .scWord:hover, .scWord:active { background: none; text-decoration: underline; text-underline-offset: 3px; }
 .scWord:disabled { color: var(--text-muted); text-decoration: none; cursor: wait; }
+/* A row of word presses. On a phone each has a 44px hit area, so a row that wraps keeps its lines 44px apart. */
+.scWords { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .scMore { margin: 0; padding: 0 4px; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 1.125rem; line-height: 1; cursor: pointer; position: relative; }
 .scMore:hover, .scMore:active { background: none; color: var(--text-strong); }
 /* The ready bar as a press (`ReadyMarks`): resting on it, or pressing it on a phone, lists what it takes to start. */
@@ -6700,7 +6709,8 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
    on a line of their own under the row's marks, which makes that row taller. On a phone the name sits over its track,
    so the whole span fits the screen with no scroll. */
 .scLine { margin-top: 12px; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
-.scLineRow { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr); gap: 10px; align-items: center; min-height: 30px; }
+/* 4px of air between rows: a name over its job line is 31px tall, so with none one stage's job sat on the next one's name. */
+.scLineRow { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr); gap: 10px; align-items: center; min-height: 30px; margin-top: 4px; }
 .scLineName { min-width: 0; font-size: 0.8125rem; line-height: 1.25; }
 .scLineName > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scLineName > span:first-child { font-weight: 700; color: var(--text-strong); }
@@ -6755,6 +6765,7 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
   .scReady { min-height: 32px; }
   .scPress { min-height: 44px; }
   .scBox::after, .scMore::after, .scWord::after { content: ''; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .scWords { gap: 26px 20px; }
   .scChip { min-height: 32px; padding: 4px 12px; }
   .scAdd { min-height: 44px; font-size: 16px; }
 }

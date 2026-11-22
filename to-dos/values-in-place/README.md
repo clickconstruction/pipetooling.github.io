@@ -2,14 +2,14 @@
 name: "Values in place: where else the app should mark its values and change them where they sit"
 number: 399
 group: gated
-status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · the shared piece is built (v2.7985, #382's PR 1) · the first screen shipped 2026-11-21 (v2.8222): the last day of work and the days that follow it are drawn as values on the Lien desk, with no press yet, because the day moves every lien deadline and that call is the owner's
+status: asked 2026-11-18 · the owner named values in place, an idea from #382's spike, as something he wants across the app, and asked where else it belongs · the whole app surveyed on main the same day by four read-only passes (liens, GC and scheduling · jobs and billing · bids and buying · people) · 60 places found, 32 of them strong fits · 21 of 22 sampled claims checked against the code on main · the shared piece is built (v2.7985, #382's PR 1) · the first screen shipped 2026-11-21 (v2.8222): the last day of work and the days that follow it are drawn as values on the Lien desk · the owner said yes the same day to a press on the day, and v2.8258 built it: the day is changed where it sits, and Keep opens the window that shows what moves before anything is written
 summary: >
   #382 approved one way to draw a value on a screen. A date, a count, a name or an amount is drawn apart
   from the words. If a person can change it, it is underlined and tinted, and a press turns it into a field
   right there with Keep and Cancel. If the app works it out, it is plain bold and updates by itself. One fact
   sits on each line, with the values in a column. This card lists the other screens where that look fits,
   what the shared piece must hold before they can use it, and an order to roll it out.
-next: First the owner's call on the last day of work, under Calls left. Then the next screen of the Lien desk group, `LienDeskRetainagePane.tsx`, one screen a PR.
+next: The next screen of the Lien desk group, `LienDeskRetainagePane.tsx`, one screen a PR.
 size: L as a train, one S per screen once the piece exists
 blocker: None in the code. The shared piece this card waited on is on main (v2.7985).
 opinion: build, one screen at a time, after the shared piece — the owner asked for it across the app, and one piece keeps every screen's look the same
@@ -78,7 +78,7 @@ not checked line by line; each PR reads that first.
 
 | Screen | The values |
 |---|---|
-| `LienLastWorkDayLine.tsx`, `LienTimelineStrip.tsx` | The last day of work, and the days that follow from it. **Shown, v2.8222.** Its change in place waits on the first call below |
+| `LienLastWorkDayLine.tsx`, `LienTimelineStrip.tsx` | The last day of work, and the days that follow from it. **Built: shown in v2.8222, changed in place since v2.8258** |
 | `LienDeskRetainagePane.tsx` | Retainage dates and amounts |
 | `LienDeskNoticePane.tsx` | Notice dates and the deadline worked out from them |
 | `LienDeskAffidavitPane.tsx` | The owner's answers (`ownerCallWords`) |
@@ -143,20 +143,23 @@ the first group ships.
 
 | Call | Default |
 |---|---|
-| Does a changed value on a lien date save at once, or ask first? | Ask first when it moves a legal deadline, and save at once otherwise. **Open on the last day of work**, see below |
+| Does a changed value on a lien date save at once, or ask first? | Ask first when it moves a legal deadline, and save at once otherwise. **Settled for the last day of work**, see below: Keep opens the window that shows what moves, and that window's *Set the day* is the write |
 | Which look does a company default wear? | Bold with a small *default* word after it, and a press to set this record's own |
 | Is a screen done when every value is marked, or only the ones a person changes? | Every value, as the owner's words say |
 
-### The last day of work, asked 2026-11-21
+### The last day of work, asked and answered 2026-11-21
 
-The first screen draws the last day of work bold, with no press of its own. The day is still set through
-*Change ›* and the window that shows what moves and asks why. It moves every lien deadline, so the session
-that built the screen stopped at showing it.
+The first screen drew the last day of work bold, with no press of its own, and asked the owner: may a press on
+the day itself open its field in place, with **Keep** opening the window that shows what moves and asks why?
 
-The question for the owner: may a press on the day itself open its field in place, with **Keep** opening
-that same window? The window and its write would not change. The *Change ›* link would go, as the rule asks.
-A day that came from clock hours, a bill or the job's creation would read as a default with its source word,
-and a day set by hand would offer *Back to clock hours* in the open field.
+**He said yes, and v2.8258 built it.** The *Change ›* link and the editor box are gone. A day from clock hours, a
+bill or the job's creation reads as a default, with its source chip and **Set by hand** beside it. A day set by
+hand is underlined, and its open field offers *Back to clock hours*. Keep writes nothing by itself. The window
+and its write did not change.
+
+This is the pattern for every other lien date that moves a legal deadline: the value opens in place, and Keep
+hands the typed value to the screen's own window that shows what moves. A date that moves no deadline saves on
+Keep.
 
 ## How to verify
 
@@ -171,7 +174,11 @@ Surveyed on 2026-11-18. The shared piece is built (v2.7985, #382's PR 1).
 **The first screen shipped 2026-11-21 (v2.8222).** The last-day line is one fact a line, and the timeline
 draws every day it prints as a bold value: each stop's date, the days in its small lines, the verdict band
 and the calendar's captions. `src/lib/jobs/lienDayValues.ts` marks the days inside the sentences the lien
-kernels already write, so no word and no date changed. No value on the screen takes a press yet. The render
-test in the recipe above, the one that presses Keep, waits on the owner's call on the last day of work.
+kernels already write, so no word and no date changed.
+
+**Its press shipped the same day (v2.8258),** on the owner's yes. The last day of work is the one value on the
+screen a person can change, and it is changed where it sits. The render test in the recipe above is in
+`LienLastWorkDayLine.render.test.tsx`: press, type, Keep, and the write happens once, on the window's *Set the
+day*. The shared piece's `fromDefault` takes a drawn word since then, for a default whose word has its own look.
 
 Next is `LienDeskRetainagePane.tsx`. The other 30 strong fits are not built.

@@ -25,7 +25,7 @@ describe('when we pay a draw', () => {
   it('has no pay-by day while it waits on us', () => {
     const s = initialGcState()
     const { pkg, draw } = steel(s)
-    expect(drawPayDays(fairOaks(s), pkg, draw, s.today)).toEqual({ approvedOn: null, payBy: null, paidOn: null, daysLate: 0 })
+    expect(drawPayDays(fairOaks(s), pkg, draw, s.today)).toEqual({ approvedOn: null, payBy: null, waitsOn: null, paidOn: null, daysLate: 0 })
   })
 
   it('reads a paid draw against its pay-by day', () => {
@@ -33,6 +33,7 @@ describe('when we pay a draw', () => {
     const pkg = fairOaks(s).packages.find((k) => k.id === 'fsteel')
     const first = pkg?.sow?.draws.find((d) => d.number === 1)
     if (!pkg || !first) throw new Error('no steel draw 1')
-    expect(drawPayDays(fairOaks(s), pkg, first, s.today)).toEqual({ approvedOn: '2026-08-23', payBy: '2026-09-02', paidOn: '2026-08-30', daysLate: 0 })
+    // Approved Aug 23, it rode on the bill we sent Aug 25. The customer paid that one Oct 1, so it was due Oct 11.
+    expect(drawPayDays(fairOaks(s), pkg, first, s.today)).toEqual({ approvedOn: '2026-08-23', payBy: '2026-10-11', waitsOn: null, paidOn: '2026-08-30', daysLate: 0 })
   })
 })

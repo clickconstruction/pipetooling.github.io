@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · left of the sweep: the senders (PR 2) and the screens listed under *Traced, not built*
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · left of the sweep: the screens listed under *Traced, not built*, dev-mcp's two reads, and the statement week, which waits with the owner's call on a GC's statement
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,9 +11,9 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: The senders, PR 2 of the sweep, from the table under Left. Then the screens under *Traced, not built*, each with its own small design. December 2026's credit comes from its Needs you line.
+next: The screens under *Traced, not built*, each with its own small design, and dev-mcp's two reads. The owner's call on what a GC's statement says settles the statement week with it. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
@@ -89,8 +89,8 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 
 - **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again. The customer's one job that was off the deal was put on it and its bill recorded in kind the same day, on the owner's word.
 - **Readers that read these bills as open and aged, closed in v2.8218 (2026-11-21)**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list. Each leaves a deal's bill out and says so in one line. (The Customers list's open balance is split since v2.6845.) The screens still open are in the table *The screens, traced 2026-11-21* below.
-- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. The Pay speeds window's **By customer** list left it out in v2.8218. Still open beside them: the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips. Two more emails do the same, found 2026-11-12: the office's statement week and the Monday Bridge sheet, both in the table below.
-- **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history, so the Paid step reads late. Read on prod 2026-11-12: that step is set to *offer*, so a person is asked each morning and nothing sends by itself. A hold on the contact stops the offer until the hold's day, then it comes back.
+- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. The Pay speeds window's **By customer** list left it out in v2.8218. The **Billed awaiting payment** report email (`billed-report-email`) left it out in v2.8219, and the Monday Bridge sheet in v2.8218. Still open beside them: the office's statement week, in the table below.
+- **The residential reminder flow, closed in v2.8219 (2026-11-21).** `messages-nudge-dispatch` read an in-kind bill's expected day from pay history, so the Paid step read late and a pay reminder was offered each morning. A bill on a job a deal pays has no due day now (`paidRounds`), so the step waits and its reminder is never due by itself. **Remind now** still works.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
 - **A combine of two jobs** carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables).
 - **A job billed to its GC, closed in v2.6946 (2026-11-11), the owner's call.** The Job window's strip read the job's customer while Bill Customer read the GC, so the two could disagree. Both read the GC's arrangement now, since the GC owes the bill. Still open beside it: a GC-billed job put on its *customer's* arrangement through **Change the terms** reads Scheduled in kind everywhere, yet Bill Customer opens a money window to the GC. No job is in that state today.
@@ -117,9 +117,11 @@ A session started the sweep and was closed before it built anything. It read pro
 | `customer-portal` | the function's own job select | owed, with a pay link, no late words | the customer's page |
 | dev-mcp `get_customer`, `get_job` | `devMcpComposites.ts`: neither select carries the column | counted in the 90-day aging; *scheduled in kind* reads zero | devs |
 
+**Where the senders stand (2026-11-21).** Built: `bridge-weekly-sheet` (v2.8218), `billed-report-email` and `messages-nudge-dispatch` (v2.8219). The statement week is not: `get_statement_week_for_office` hands back one line per GC, already summed, with no job to stamp. So it is a change to that RPC, and what it says follows the call below. The two dev-mcp reads need the column in their selects and a dev-mcp deploy. The GC's statement and the portal wait for the call.
+
 The lien months and deadlines stay as they are, on the desk and in counsel's lien book. v2.6834 decided that: a credit does not move a deadline.
 
-**A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state.
+**A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state. The office's statement week and GC Review's statements read the same rows, so they follow the same answer.
 
 **The screens, traced 2026-11-21.** Three loaders feed them. The Dashboard's own read (`loadDashboardFinancials`) did not select the column. The Pipeline's full board read selects `*`, so its rows had the column and no kernel read it. The Pipeline's lean read (`LEAN_STATS_JOB_COLUMNS`) did not select it, so even the chase queue's own skip could never fire on lean rows.
 
@@ -144,7 +146,7 @@ The lien months and deadlines stay as they are, on the desk and in counsel's lie
 
 **Neighbours.** Pay calendar (#323) edits the Stages row, the chase and the Pipeline's money windows. The Bridge's train (#334) edits its Collect desk and money card, and redeploys `bridge-weekly-sheet`. Read main and the open PRs for a file before touching it. A reader held by an open PR is left and named.
 
-**The plan.** Two small PRs, one armed at a time. The screens first, built in v2.8218: one helper beside `jobIsScheduledInKind` that splits rows into the money and the in kind count with its line (`splitInKind`, `inKindApartWords`, in `supabase/functions/_shared/inKindApart.ts` so the senders read the same file), read by each screen's kernel. Then the senders: the report email and the statement week stamped through `_shared/inKindPayloadRows.ts`, as v2.6931 did, and the column added to the reminder flow's job select so `paidRounds` passes a deal's bill over. Each reader gets three tests: a covered bill, a payer part covered, an ordinary late bill. Then a walk on prod with every write refused.
+**The plan.** Two small PRs, one armed at a time. The screens first, built in v2.8218: one helper beside `jobIsScheduledInKind` that splits rows into the money and the in kind count with its line (`splitInKind`, `inKindApartWords`, in `supabase/functions/_shared/inKindApart.ts` so the senders read the same file), read by each screen's kernel. Then the senders, built in v2.8219: the report email stamped through `_shared/inKindPayloadRows.ts`, as v2.6931 did, and the column added to the reminder flow's job select so `paidRounds` gives a deal's bill no due day. The statement week could not be stamped: see *Where the senders stand*. Each reader gets three tests: a covered bill, a payer part covered, an ordinary late bill. Then a walk on prod with every write refused.
 
 ## Where it plugs in
 

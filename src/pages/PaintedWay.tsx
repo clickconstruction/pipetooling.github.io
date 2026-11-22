@@ -37,7 +37,7 @@ import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 
 const PaintedMapCanvasLazy = lazy(() => import('../components/paintedMap/PaintedMapCanvas'))
-/** The page is read, never drawn on: Google's map when the rule allows it (`paintedMapProvider.ts`), the Leaflet canvas otherwise. */
+/** The page is read, never drawn on: Google's map since v2.8210 when the key is good and Google loads (`paintedMapProvider.ts`), the Leaflet canvas otherwise. */
 const WAY_ON_GOOGLE: PaintedCanvasGoogleAsk = { screen: 'way', use: 'looking' }
 
 type View = PaintedWayView | { kind: 'loading' }

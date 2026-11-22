@@ -3,10 +3,14 @@
  * email window says about the party and the signer. Every name, company and address here is made up.
  */
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import {
   PARTY_CHIPS,
   UNLISTED_ROW_TITLE,
   keepSignerWords,
+  ADDRESS_NOT_CHECKED,
+  KNOWN_ADDRESS_PRESS_AGAIN,
+  addressLookUpVerdict,
   knownAddressRefusal,
   knownAddressWords,
   partyFindAsksCustomers,
@@ -211,5 +215,35 @@ describe('what the email window says', () => {
   it('an address that is someone on the roster is refused: they are picked from the list', () => {
     expect(knownAddressRefusal({ name: 'Pat Tallman', party: 'person' })).toBe('This address is Pat Tallman, who is on the roster. Close this and pick them from the list.')
     expect(knownAddressWords({ name: 'Pat Tallman', party: 'person' })).toBe('')
+  })
+})
+
+describe('a press of Send email and the address look-up', () => {
+  it('sends when nobody holds the address', () => {
+    expect(addressLookUpVerdict(null, false)).toEqual({ kind: 'send' })
+    expect(addressLookUpVerdict(null, true)).toEqual({ kind: 'send' })
+  })
+
+  it('refuses someone on the roster, whether or not the window had named them', () => {
+    const pat = { name: 'Pat Tallman', party: 'person' as const }
+    expect(addressLookUpVerdict(pat, false)).toEqual({ kind: 'hold', why: 'This address is Pat Tallman, who is on the roster. Close this and pick them from the list.' })
+    expect(addressLookUpVerdict(pat, true)).toEqual(addressLookUpVerdict(pat, false))
+  })
+
+  it('names who holds the address and holds once, when the press came before the window named them', () => {
+    const lena = { name: 'Lena Park', party: 'supply_house' as const }
+    expect(addressLookUpVerdict(lena, false)).toEqual({
+      kind: 'hold',
+      why: 'The app already keeps this address: Lena Park, at a supply house. The paper goes to that record, and nobody is added twice. Press Send email again to send it to them.',
+    })
+  })
+
+  it('sends to someone the window had already named', () => {
+    expect(addressLookUpVerdict({ name: 'Lena Park', party: 'supply_house' }, true)).toEqual({ kind: 'send' })
+    expect(addressLookUpVerdict({ name: 'Noor Haddad', party: 'none' }, true)).toEqual({ kind: 'send' })
+  })
+
+  it('keeps its words plain', () => {
+    for (const words of [ADDRESS_NOT_CHECKED, KNOWN_ADDRESS_PRESS_AGAIN]) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

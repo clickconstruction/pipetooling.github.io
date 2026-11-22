@@ -20,6 +20,7 @@ import { jobReportPreviewLine } from '../jobReportsTimeline.ts'
 import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost.ts'
 import { carriesRatingAsk } from '../ratings/ratingAsk.ts'
 import { subLaborJobBalance } from '../subLaborOutstanding.ts'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger.ts'
 import { lane, nameOf, newest, offOf, stamp, type ContactRow } from './load.ts'
 import type { FactStamp, FlowStamps, JobStamps, RoundStamp } from './state.ts'
 
@@ -36,6 +37,8 @@ export type PipelineJobRow = {
   gc_customer_id: string | null
   bill_to_party: string | null
   customer_name?: string | null
+  /** The in kind deal that pays this job's bills (`jobIsScheduledInKind`, punch list #301); left out by a reader from before it. */
+  in_kind_arrangement_id?: string | null
 }
 /** `contact_jobs` on a Pipeline job: the star. */
 export type PipelineContactJobRow = { jobs_ledger_id: string | null; is_default: boolean }
@@ -225,6 +228,11 @@ export function billedRounds(rows: ResidentialRows, jobId: string): RoundStamp[]
  * (`billHeldDay`): their promise, else the due day of a payer on a Pay calendar (v2.7140), else the day the expected
  * pay chip reads from their own pace. No column keeps a customer's days to pay: `customers.payment_terms` is a policy,
  * not a count of days, so with no calendar the due day is a model, not their terms.
+ *
+ * A bill on a job an in kind deal pays has no due day (punch list #301). A credit pays it down a month or a load at a
+ * time, so no day makes it late: the round stays open, waiting since the bill went, and the step's reminder, which goes
+ * at its day, is never due by itself. Before it the round took a day from pay history, read late once that passed, and
+ * the morning run offered the customer a pay reminder with the open amount every day.
  */
 export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): RoundStamp[] {
   const job = rows.jobs.find((j) => j.id === jobId)
@@ -240,7 +248,7 @@ export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): Rou
     // The Stages tab's call (`JobsStagesTab`'s lien runway), as `billDueDay` in `followUp/theyOweUs.ts` makes it.
     const payer = job ? paySpeedPayer(job, inv) : null
     const due =
-      job && payer
+      job && payer && !jobIsScheduledInKind(job)
         ? billHeldDay(
             billedPayModel(
               { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name, acceptedYmd: rows.acceptedByInvoice?.get(inv.id) ?? null },

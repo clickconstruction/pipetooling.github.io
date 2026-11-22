@@ -334,6 +334,14 @@ describe('/messages: the page sits in the middle of a wide screen', () => {
     expect(page.style.marginLeft).toBe('auto')
     expect(page.style.marginRight).toBe('auto')
   })
+
+  // The walk of 2026-11-21: with no column named, the page was as wide as its widest row wanted, 1,014 px on a 375 px phone.
+  it('is one column that takes the screen’s width and never its widest child’s', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const page = screen.getByRole('heading', { name: 'Messages' }).closest('[data-messages-page]') as HTMLElement
+    expect([page.style.display, page.style.gridTemplateColumns]).toEqual(['grid', 'minmax(0, 1fr)'])
+  })
 })
 
 describe('/messages: the owner’s switch card (punch list #140 PR 2)', () => {

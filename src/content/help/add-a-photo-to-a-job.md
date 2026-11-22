@@ -68,6 +68,16 @@ Added the photo later, away from the spot? The dot is not put where you stand. D
 
 [Paint a map](/help/paint-a-map#start-with-a-photo) has more on places.
 
+## Where a photo was taken
+
+The app keeps where your phone was when you took a job photo. Your phone is read once, as you pick the photo, and is not followed.
+
+Open a photo on the job. **Taken here** opens that spot in your phone's maps, with how sure the phone was.
+
+A photo has no **Taken here** when the phone gave no good reading. A photo picked from the phone's library hours later has none either.
+
+Whoever can open the job's photos can read where one was taken.
+
 ## With no signal
 
 A shot taken with no signal is kept on the phone. Its tile reads *Kept on the phone. It goes when the signal is back.* Type the words as usual and press the Add button. The photos wait in the queue together. The line at the top reads *Job photos from 7:58 AM*, then *waiting to send* and *1 photo with it*.

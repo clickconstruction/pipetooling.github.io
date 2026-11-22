@@ -15,6 +15,7 @@ import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { useToastContext } from '../../contexts/ToastContext'
 import { pressProblem } from '../../lib/followUp/followUpIo'
 import { boxForNew } from '../../lib/messages/boxes'
+import { LANE_LIST, LONG_NAME_FIT, ONE_COLUMN, WAITING_ACTS_FIT, WAITING_NAME_FIT, WAITING_ROW_FIT } from '../../lib/messages/pageFit'
 import { HEARD_ROWS, HEARD_UNDO_MS, HEARD_WORDS, waitingOnThem, WAITING_WORDS, type HeardHow, type WaitLine, type WaitingRow } from '../../lib/messages/waitingOnThem'
 import { CallButton } from './CallButton'
 import { heardBack, loadWaitingOnThem } from '../../lib/messages/waitingOnThemIo'
@@ -37,7 +38,7 @@ export interface WaitingOnThemProps {
 }
 
 const answer: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.9rem' }
-const row: CSSProperties = { display: 'flex', gap: '0.6rem', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.85rem', background: 'var(--surface)' }
+const row: CSSProperties = { ...WAITING_ROW_FIT, gap: '0.4rem 0.6rem', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.85rem', background: 'var(--surface)' }
 const chip: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', whiteSpace: 'nowrap' }
 const rowBad: CSSProperties = { ...row, borderColor: 'var(--border-red)', background: 'var(--bg-red-tint)' }
 const chipBad: CSSProperties = { ...chip, border: '1px solid var(--border-red)', color: 'var(--text-red-700)', background: 'var(--surface)' }
@@ -137,7 +138,7 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, writ
           </span>
         </h3>
       </div>
-      <div style={{ display: 'grid', gap: '0.5rem' }}>
+      <div style={LANE_LIST}>
         {lines === undefined ? null : lines === null ? (
           <div style={answer}>{WAITING_WORDS.problem}</div>
         ) : rows.length === 0 ? (
@@ -147,9 +148,9 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, writ
         ) : (
           rows.map((r) => (
             <div key={r.contactId} style={r.mark?.bad ? rowBad : row} data-testid="waiting-row" data-delivery={r.mark ? (r.mark.bad ? 'bad' : 'ok') : undefined}>
-              <span style={{ display: 'grid', gap: '0.1rem', minWidth: 0, flex: 1 }}>
+              <span style={{ display: 'grid', gridTemplateColumns: ONE_COLUMN, gap: '0.1rem', ...WAITING_NAME_FIT }}>
                 <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => onOpenThread(r.contactId)} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', cursor: 'pointer' }} data-testid="waiting-name">
+                  <button type="button" onClick={() => onOpenThread(r.contactId)} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', cursor: 'pointer', textAlign: 'left', ...LONG_NAME_FIT }} data-testid="waiting-name">
                     {r.name}
                   </button>
                   {r.mark?.bad ? (
@@ -162,7 +163,7 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, writ
                   Us · {r.words} · {r.when}
                 </span>
               </span>
-              <span style={{ display: 'grid', gap: '0.3rem', justifyItems: 'end' }}>
+              <span style={{ display: 'grid', gap: '0.3rem', justifyItems: 'end', ...WAITING_ACTS_FIT }}>
                 <span style={chip} data-testid="waiting-chip">
                   {r.chip}
                 </span>

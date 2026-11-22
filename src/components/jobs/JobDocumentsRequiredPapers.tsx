@@ -34,9 +34,10 @@ import { documentsHeading, documentsQuietButton, documentsTd, documentsTh } from
 import { JobPaperSettingsWindow, type JobPaperSettingsTarget } from './JobPaperSettingsWindow'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
-const paperRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.6rem', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)' }
-const linkPress: CSSProperties = { border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap' }
-const bluePress: CSSProperties = { padding: '0.5rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 7, cursor: 'pointer', border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
+const paperRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.6rem', minHeight: 44, border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)' }
+// A word that is a press takes a finger: 44 px tall, with room either side so two of them do not sit shoulder to shoulder.
+const linkPress: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 44, border: 'none', background: 'transparent', padding: '0 0.5rem', cursor: 'pointer', font: 'inherit', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap' }
+const bluePress: CSSProperties = { minHeight: 44, padding: '0.5rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 7, cursor: 'pointer', border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
 const deadPress: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' }
 const stateChip: CSSProperties = { display: 'inline-block', fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap' }
 const note: CSSProperties = { ...muted, padding: '0.45rem 0.6rem', borderLeft: '3px solid var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-700)', borderRadius: '0 6px 6px 0' }
@@ -322,7 +323,7 @@ export function JobDocumentsRequiredPapers({
                 </div>
               ) : (
                 <div>
-                  <button type="button" style={documentsQuietButton} onClick={openPicker} disabled={busy != null}>
+                  <button type="button" style={{ ...documentsQuietButton, minHeight: 44 }} onClick={openPicker} disabled={busy != null}>
                     Add a paper
                   </button>
                 </div>
