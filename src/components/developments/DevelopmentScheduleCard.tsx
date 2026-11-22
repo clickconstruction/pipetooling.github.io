@@ -118,7 +118,7 @@ export function DevelopmentScheduleCard({
 
           {/* The line of time is behind a link and shut until it is asked for: the sentences are the first screen, never a
               chart. The link sits over the cards, where it is found on a site with many stages. */}
-          <div style={{ display: 'flex', gap: '4px 16px', flexWrap: 'wrap', marginTop: 10 }}>
+          <div className="scWords" style={{ marginTop: 10 }}>
             <button type="button" className="scWord" aria-expanded={onLine} onClick={() => setOnLine(!onLine)}>
               {onLine ? TIME_LINE_WORDS.hide : TIME_LINE_WORDS.show}
             </button>
