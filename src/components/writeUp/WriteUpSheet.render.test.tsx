@@ -7,7 +7,7 @@
  * back with a reason. Made-up people and a made-up job.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -269,6 +269,71 @@ describe('the sheet', () => {
     const photos = io.send.mock.calls[0]![3]!
     expect(photos).toHaveLength(1)
     expect(photos[0]).toMatchObject({ width: 1200, height: 900, originalBytes: 3, takenAt: NOW.toISOString() })
+  })
+
+  it('the kept note gives way to the sent one when the kept write-up goes by itself', async () => {
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: null, pressedAt: NOW.getTime(), reason: null, photos: 0 }
+    let keptNow: KeptWriteUp[] = []
+    let mineNow: MyWriteUpRow[] = []
+    let changed: () => void = () => {}
+    const io = makeIo({
+      send: async () => {
+        keptNow = [waiting]
+        return { kind: 'queued' }
+      },
+      kept: () => keptNow,
+      mine: async () => mineNow,
+      onKeptChange: (cb) => {
+        changed = cb
+        return () => {}
+      },
+    })
+    await openOn(io)
+    press(/Dana Pruitt/)
+    press('Safety')
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'The trench was open at lunch.' } })
+    press('Read it back')
+    press('Send write-up to HR')
+    await settle()
+    expect(screen.getByText(/Kept on this phone at 12:41 pm\./)).toBeTruthy()
+    // The signal is back and the outbox has sent it.
+    keptNow = []
+    mineNow = [WAITING]
+    act(() => changed())
+    await settle()
+    expect(screen.queryByText(/Kept on this phone at/)).toBeNull()
+    expect(screen.getByText(/Sent to HR at /)).toBeTruthy()
+    expect(screen.getByText('Waiting on HR')).toBeTruthy()
+  })
+
+  it('the kept note goes, with no word of sent, when the kept write-up is refused', async () => {
+    const waiting: KeptWriteUp = { id: 'press-1', state: 'waiting', subject_person_id: 'p-dana', kind: 'safety', occurred_date: TODAY, job_label: null, pressedAt: NOW.getTime(), reason: null, photos: 0 }
+    let keptNow: KeptWriteUp[] = []
+    let changed: () => void = () => {}
+    const io = makeIo({
+      send: async () => {
+        keptNow = [waiting]
+        return { kind: 'queued' }
+      },
+      kept: () => keptNow,
+      onKeptChange: (cb) => {
+        changed = cb
+        return () => {}
+      },
+    })
+    await openOn(io)
+    press(/Dana Pruitt/)
+    press('Safety')
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'The trench was open at lunch.' } })
+    press('Read it back')
+    press('Send write-up to HR')
+    await settle()
+    keptNow = [{ ...waiting, state: 'refused', reason: 'You cannot write yourself up.' }]
+    act(() => changed())
+    await settle()
+    expect(screen.queryByText(/Kept on this phone at/)).toBeNull()
+    expect(screen.queryByText(/Sent to HR at/)).toBeNull()
+    expect(screen.getByText('Not sent')).toBeTruthy()
   })
 
   it('a write-up kept from an earlier visit is counted on the row that opens the list', async () => {
