@@ -4,6 +4,7 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
+import { useVisualViewportBox } from '../../../hooks/useVisualViewportBox'
 import { contactById, firstName, initials, isOptedOut, kindWord, unnamedWords, type Contact } from '../../../lib/contacts/kernel'
 import { boxForReply, lastWroteTo } from '../../../lib/messages/boxes'
 import { CallButton } from '../../messages/CallButton'
@@ -15,6 +16,8 @@ import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, filedMark, threadOf } from '../../../lib/messages/thread'
 import { isThreadBeside, isThreadFolded, isThreadShort, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { threadHeaderPlan } from '../../../lib/messages/threadHeader'
+import { isPagePinched, threadRoom, threadWindowPlace } from '../../../lib/messages/threadWindowFrame'
+import { visibleBand } from '../../../lib/visibleBand'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -85,6 +88,16 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const cutSlots = useThreadSlots()
   const slots = slotsGiven ?? cutSlots
   const phone = useMatchMedia('(max-width: 760px)')
+  // On a phone the window follows the part of the page that shows, and gives up its header's lower rows and the lines'
+  // floor while that part is short (punch list #348, `threadWindowFrame.ts`): the keyboard used to push the header off
+  // the top of the screen. A page pinched larger is left pinned, since what shows is then a corner under two fingers.
+  const shown = useVisualViewportBox()
+  const pinched = typeof window !== 'undefined' && isPagePinched(window.visualViewport?.width, document.documentElement.clientWidth)
+  const shows = pinched ? null : visibleBand(shown)
+  const room = threadRoom(phone, shows)
+  // What waits while the room is tight wears this mark, and one rule in `index.css` hides it unless it holds the field
+  // being typed in: hidden, not taken out, so a row keeps what it holds.
+  const tightFold = room.rest ? undefined : ''
   const [columnRef, columnWidth] = useMeasuredWidth<HTMLDivElement>()
   const folded = isThreadFolded(columnWidth, phone)
   // A short window (v2.6474): the window takes its whole height and the reply box folds to one row. The header is the
@@ -265,7 +278,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
       onClick={onClose}
       style={{
         position: 'fixed',
-        inset: 0,
+        ...threadWindowPlace(phone, shows),
         background: 'rgba(15, 23, 42, 0.55)',
         zIndex: THREAD_WINDOW_Z,
         display: 'flex',
@@ -279,6 +292,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         aria-modal="true"
         aria-label={contact ? `${contact.name}: messages` : 'Messages'}
         data-thread-window={contactId}
+        data-thread-room={room.tight ? 'tight' : 'whole'}
         onClick={(e) => e.stopPropagation()}
         style={{
           // The page's ground, so the white lines sit on gray (v2.2203). `--surface-muted` was never a token: the backdrop showed through.
@@ -480,7 +494,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                 </div>
                 {/* The rest of their numbers and addresses, behind the arrow (v2.6505); every one on a narrow column. */}
                 {header.reachOpen && (
-                  <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                  <div data-thread-reach data-thread-tight-fold={tightFold} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
                     {behind.map(reachPress)}
                   </div>
                 )}
@@ -489,6 +503,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     its title. A narrow column scrolls the chips sideways and gives the sentence a row of its own. */}
                 <div
                   data-thread-status
+                  data-thread-tight-fold={tightFold}
                   style={{
                     display: 'flex',
                     gap: '0.4rem',
@@ -508,11 +523,11 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   )}
                 </div>
                 {header.rows.includes('stamps') && stampsLine && (
-                  <div data-thread-stamps style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
+                  <div data-thread-stamps data-thread-tight-fold={tightFold} style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
                     {stampsLine}
                   </div>
                 )}
-                {jobsRail}
+                {phone ? <div data-thread-jobs-fold data-thread-tight-fold={tightFold} style={{ display: 'contents' }}>{jobsRail}</div> : jobsRail}
                 {tying && (
                   <div role="status" style={{ fontSize: '0.8rem', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.3rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     Press a line to tie it to {view?.tiles[tying]?.num ?? 'the job'}.
@@ -523,11 +538,11 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                 )}
               </div>
               {/* On a phone the side (cut 4's flow) is a row over the lines, so the lines keep the whole width (cut 10). */}
-              {phone && slots.side?.(contact)}
+              {phone && <div data-thread-flow-fold data-thread-tight-fold={tightFold} style={{ display: 'contents' }}>{slots.side?.(contact)}</div>}
               {/* The lines and the box, and beside them on a short, wide window (v2.6478) what a cut draws above the lines:
                   the column keeps its place in the tree, so a draft in the box lives through a resize across the line. */}
               <div data-thread-body={beside ? 'beside' : 'under'} style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div data-thread-column style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', ...(room.columnScrolls ? { overflowY: 'auto' } : null) }}>
                   {/* What a cut draws above the lines (the sort card, Who has it) scrolls on its own when it is taller than the room
                       (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
                   {!beside && slots.aboveLines && (
@@ -537,7 +552,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   )}
                   <DndContext sensors={sensors} onDragEnd={onDragEnd}>
                     {/* One column no wider than the window (v2.6482): an address or a link that cannot break widened it past a phone's edge. */}
-                  <div data-thread-lines style={{ flex: 1, minHeight: 'max(7rem, 33%)', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', alignContent: 'start' }}>
+                  <div data-thread-lines style={{ flex: 1, minHeight: room.linesFloor, overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', alignContent: 'start' }}>
                       {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
                       {rows.length === 0 &&
                         (jobFilter ? (

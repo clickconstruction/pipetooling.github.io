@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  dispatchRequestPushSkip,
   readReportSubject,
   reportSendSkip,
   ZZ_TEST_JOB_SKIP_MESSAGE,
@@ -58,6 +59,28 @@ describe('readReportSubject', () => {
     expect(await readReportSubject(db, report({}))).toEqual({ kind: 'none' })
     expect(await readReportSubject(db, report({ job_ledger_id: 'gone' }))).toEqual({ kind: 'job', jobName: null, customerName: null, hcpNumber: null })
     expect(reads).toEqual(['jobs_ledger:job_name, customer_name, hcp_number:gone'])
+  })
+})
+
+describe('dispatchRequestPushSkip', () => {
+  it('holds a new request on a ZZ test job back, by one read of the job', async () => {
+    const reads: string[] = []
+    const db = fakeDb({ jobs_ledger: { j1: { job_name: 'ZZ Test Stages Walk', customer_name: 'Ann Lee', hcp_number: '2101' } } }, reads)
+    expect(await dispatchRequestPushSkip(db, { job_ledger_id: 'j1', bid_id: null })).toEqual({ reason: 'zz_test_job', message: ZZ_TEST_JOB_SKIP_MESSAGE })
+    expect(reads).toEqual(['jobs_ledger:job_name, customer_name, hcp_number:j1'])
+  })
+
+  it('holds one on a ZZ bid back the same way', async () => {
+    const db = fakeDb({ bids: { b1: { project_name: 'ZZ Shadow tower', gc_contact_name: 'Cole' } } })
+    expect((await dispatchRequestPushSkip(db, { job_ledger_id: null, bid_id: 'b1' }))?.reason).toBe('zz_test_job')
+  })
+
+  it('lets a real job’s request ring, and one on nothing, with no read for that one', async () => {
+    const reads: string[] = []
+    const db = fakeDb({ jobs_ledger: { j2: { job_name: 'Buzz Electric repipe', customer_name: 'Izzy Park', hcp_number: '1090' } } }, reads)
+    expect(await dispatchRequestPushSkip(db, { job_ledger_id: 'j2', bid_id: null })).toBeNull()
+    expect(await dispatchRequestPushSkip(db, { job_ledger_id: null, bid_id: null })).toBeNull()
+    expect(reads).toEqual(['jobs_ledger:job_name, customer_name, hcp_number:j2'])
   })
 })
 

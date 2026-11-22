@@ -37,6 +37,8 @@ export type JobPhotoTile = {
   /** Where it waits in the bucket once sent. */
   storagePath: string | null
   takenAt: string
+  /** Where the phone was when the shot was taken (punch list #413). Null with no good reading in time. */
+  takenPoint?: { lat: number; lng: number; accuracyM: number | null } | null
   /** Why it did not send, for the tile's Retry. */
   failWhy: string | null
 }

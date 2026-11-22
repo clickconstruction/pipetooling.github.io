@@ -101,6 +101,25 @@ export function takeStartLabel(containerLabel: string): string {
   return `Take from ${containerLabel}`
 }
 
+/**
+ * How a box's screen offers a take at its foot (the phone walk of 2026-11-21, punch list #398, the owner's pick).
+ *
+ * While the box has a part on hand, the blue press that stays under a thumb. With nothing on hand it is a quiet link:
+ * the app has the box as empty, so the next press there is Add a part and a blue *Take from* asked for a take of
+ * nothing. The door itself stays, since a list can be behind the box. A person who found parts in it still opens the
+ * same run and names them with *Something not on the list…*, or taps a line that reads none.
+ */
+export type TakeDoor = 'press' | 'quiet'
+
+export function takeDoor(lines: ReadonlyArray<Pick<ContainerLine, 'onHand'>>): TakeDoor {
+  return lines.some((l) => l.onHand > 0) ? 'press' : 'quiet'
+}
+
+/** The quiet link on a box with nothing on hand. It opens the same run as the press. */
+export function takeQuietLabel(containerLabel: string): string {
+  return `Took something out of ${containerLabel}? Say what ›`
+}
+
 /** The press that saves a take says its count; with nothing marked it is dead and says what to do. */
 export function takeSaveLabel(run: TakeRun, containerLabel: string, onePart: boolean): string {
   const n = takeTotal(run)

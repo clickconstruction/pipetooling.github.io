@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { takenPointColumns, type TakenPoint } from '../paintedMap/paintedSpot'
 import { databaseErrorFromResult, errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { JOB_PHOTO_NOTES_BUCKET, jobPhotoCaption, jobPhotoNotePath, type JobPhotoAddWrite, type JobPhotoNoteRow } from './jobPhotoNotes'
 import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
@@ -37,6 +38,8 @@ export type SendShotInput = {
   originalBytes: number
   width: number
   height: number
+  /** Where the phone was when the shot was taken (punch list #413). Left out or null, the row keeps no point. */
+  takenPoint?: TakenPoint | null
 }
 
 /** The io a shot-tile host mounts: where the bytes and the row go, and how an unadded shot is taken back. */
@@ -68,6 +71,7 @@ export async function sendJobPhotoNote(input: SendShotInput): Promise<{ storageP
       width: input.width,
       height: input.height,
       storage_path: storagePath,
+      ...takenPointColumns(input.takenPoint),
     },
     { onConflict: 'id' },
   )

@@ -5,20 +5,24 @@
  * Dispatch. The card asks once a stage, draws nothing when there is nothing to ask, and never stops anyone. The
  * database picks the stage and holds the answer (`start_check_arrive`).
  *
- * A read that fails asks nothing and shows nothing: the card is an extra on the way in, never a wall, and most jobs
- * have nothing to ask. It reads again by itself when the phone finds its signal or the page comes back to the front,
- * so a site with no signal at the gate is still asked once it has one. A later read that fails keeps the card that is
- * up, with the Nos pressed on it.
+ * A first read lost to the signal asks nothing and shows nothing: the card is an extra on the way in, never a wall,
+ * and most jobs have nothing to ask. It reads again by itself when the phone finds its signal or the page comes back
+ * to the front, so a site with no signal at the gate is still asked once it has one. A first read the app refuses is
+ * a fault of ours and not of the site, so the card says so with the reason, and offers no Retry (the owner's call D).
+ * A later read that fails keeps the card that is up, with the Nos pressed on it.
  *
  * A send that is refused reads again. The card was read before the answer, so a refusal means it is older than the
  * list: one of the crew answered first, or the office changed a bullet. The words say which, and the card then shows
  * what is true now, or leaves. Without that read a second person on the crew kept a card no press could answer.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { useToastContext } from '../../contexts/ToastContext'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { ARRIVAL_WORDS as W } from '../../lib/startChecks/arrival'
 import { supabaseStartChecksIo, type ArrivalAsk, type StartChecksIo } from '../../lib/startChecks/startChecksIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 
 export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { jobId: string; io?: Pick<StartChecksIo, 'readArrival' | 'arrive'> }) {
   const { showToast } = useToastContext()
@@ -27,16 +31,24 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
   const [busy, setBusy] = useState(false)
   /** What this person just answered: the card says so in place of leaving. */
   const [said, setSaid] = useState<{ no: number } | null>(null)
+  /** A read the app refused. A read lost to the signal is never kept here: that one stays silent. */
+  const [refused, setRefused] = useState<OfflineRecoveryLastError | null>(null)
   const gen = useRef(0)
 
   const read = useCallback(() => {
     const mine = ++gen.current
     io.readArrival(jobId).then(
       (next) => {
-        if (mine === gen.current) setAsk(next)
+        if (mine !== gen.current) return
+        setAsk(next)
+        setRefused(null)
       },
-      // A read that fails keeps what is drawn: nothing after the first read, the card after a later one.
-      () => {},
+      // A read that fails keeps what is drawn: the card after a later one. A refusal is said, a lost signal is not.
+      (e) => {
+        if (mine !== gen.current) return
+        const failure = recoveryFailureFromError(e, W.notRead)
+        setRefused(failure.kind === 'server' ? failure : null)
+      },
     )
   }, [io, jobId])
 
@@ -44,6 +56,7 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     setAsk(null)
     setNo({})
     setSaid(null)
+    setRefused(null)
     read()
     return () => {
       gen.current += 1
@@ -74,7 +87,17 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
       </section>
     )
   }
-  if (!ask || ask.bullets.length === 0) return null
+  if (!ask || ask.bullets.length === 0) {
+    // Nothing is drawn to answer. A refused read is said in the card's place: it is ours to mend, and no Retry mends it.
+    if (!refused) return null
+    return (
+      <section data-testid="job-mode-arrival-check" data-arrival-refused="yes" aria-label={W.heading} style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', padding: '0.7rem 0.8rem', display: 'grid', gap: 6 }}>
+        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-strong)' }}>{W.heading}</div>
+        <OfflineRetryPanel failure={refused} onRetry={read} surface="job-mode-arrival" idempotent style={{ margin: 0 }} />
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.either}</div>
+      </section>
+    )
+  }
   const nos = ask.bullets.filter((b) => no[b.id]).map((b) => b.id)
 
   async function send() {
@@ -99,7 +122,9 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     <section data-testid="job-mode-arrival-check" data-arrival-stage={ask.fixtureId} aria-label={W.heading} style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', padding: '0.7rem 0.8rem', display: 'grid', gap: 8 }}>
       <div>
         <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-strong)' }}>{W.heading}</div>
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.lead(ask.name)}</div>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <ValueSentence text={W.lead(ask.name)} />
+        </div>
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
         {ask.bullets.map((b) => {

@@ -16,6 +16,7 @@
  *   page*), so nothing here reads one.
  */
 import type { MyFix, MyFixFailure } from '../materials/myLocation'
+import { taskPlaceAccuracyWords } from '../tasks/taskPlace'
 import { readingMovesDot } from './paintedPlaceDot'
 
 /** The words of the press, in one spot: they are Taunya's to change (the card's call 3). */
@@ -90,4 +91,42 @@ export function spotStart(reading: SpotReading, fresh: boolean): SpotStart {
   if (!reading.ok) return { kind: 'none', why: reading.why }
   if (!readingMovesDot(reading.fix.accuracyM)) return { kind: 'rough', accuracyM: reading.fix.accuracyM ?? 0 }
   return { kind: 'here', fix: reading.fix }
+}
+
+/**
+ * Where the phone was when a photo was taken (punch list #413, step 3), as a job photo's and a
+ * report photo's row keeps it. The same reading and the same rules as a spot: only a fresh photo
+ * takes one, and a rough reading is kept by nobody.
+ */
+export type TakenPoint = { lat: number; lng: number; accuracyM: number | null }
+
+/** How long a photo's send waits for the phone's reading before it goes without one. A photo is never held for a point. */
+export const TAKEN_POINT_WAIT_MS = 2500
+
+/** The point a photo keeps, or null: no reading in time, a rough one, none at all, or a photo that is not of this moment. */
+export function takenPointOf(reading: SpotReading | null | undefined, fresh: boolean): TakenPoint | null {
+  if (!reading) return null
+  const start = spotStart(reading, fresh)
+  if (start.kind !== 'here') return null
+  const margin = start.fix.accuracyM
+  return { lat: start.fix.lat, lng: start.fix.lng, accuracyM: margin != null && Number.isFinite(margin) && margin >= 0 ? Math.round(margin) : null }
+}
+
+/** The row's three columns for a point, or none of them: a photo with no point writes no column at all. */
+export function takenPointColumns(point: TakenPoint | null | undefined): { taken_lat?: number; taken_lng?: number; taken_accuracy_m?: number | null } {
+  if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return {}
+  return { taken_lat: point.lat, taken_lng: point.lng, taken_accuracy_m: point.accuracyM }
+}
+
+/** A stored row's point, or null when the row has none or half of one. */
+export function takenPointFromRow(row: { taken_lat?: number | null; taken_lng?: number | null; taken_accuracy_m?: number | null } | null | undefined): TakenPoint | null {
+  if (!row || typeof row.taken_lat !== 'number' || typeof row.taken_lng !== 'number') return null
+  if (!Number.isFinite(row.taken_lat) || !Number.isFinite(row.taken_lng)) return null
+  return { lat: row.taken_lat, lng: row.taken_lng, accuracyM: typeof row.taken_accuracy_m === 'number' && row.taken_accuracy_m >= 0 ? row.taken_accuracy_m : null }
+}
+
+/** `Taken here · the phone was sure within 20 ft`: the press on an opened photo. Without the margin when the phone gave none. */
+export function takenPointWords(point: TakenPoint): string {
+  const sure = taskPlaceAccuracyWords(point.accuracyM)
+  return sure ? `Taken here · the phone was sure ${sure}` : 'Taken here'
 }

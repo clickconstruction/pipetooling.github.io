@@ -1,28 +1,32 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { lienHoursAfterHandDayValues, lienLastWorkSourceValues } from '../../lib/jobs/lienDayValues'
 import { lienHoursAfterHandDay, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
-import { lienLastWorkClearedWords } from '../../lib/jobs/lienLastWorkDoor'
-import { FinishedDateInput } from '../FinishedDateInput'
-import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { LIEN_LAST_WORK_KEEP_HINT, LIEN_LAST_WORK_SET_BY_HAND_WORDS, LIEN_LAST_WORK_VALUE_LABEL, lienLastWorkBackWords, lienLastWorkClearedWords, lienLastWorkOpeningDay } from '../../lib/jobs/lienLastWorkDoor'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
 
 /**
  * The last day of work, on one line (v2.4676): the day, a chip saying where it came from (clock
- * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
- * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
+ * hours, a bill, the job's creation, or a person) and the reason when a person set it. The day is set by hand
+ * here: a day and a one-line reason, saved on the job. Clock hours and pay are never
  * touched, and the line says so. Drawn as the first row of the Months card on the Lien desk (`flat`,
  * no box of its own) and in Edit Job's lien row; the caller re-reads after a save. Since v2.7447 (punch list #335) the day may be earlier
- * than the clock hours, and the window says what that takes off the lien clock. Since v2.4717 *Save the day* opens a window first
- * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
+ * than the clock hours, and the window says what that takes off the lien clock. Since v2.4717 a window opens before
+ * anything is written (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*. Since v2.7684 that window and
  * its write are `LienLastWorkDayWindow`, which the timeline's press under LAST WORK opens too.
  *
  * Values in place (punch list #399, the first screen): one fact a line, the labels in a column and the values beside
- * them. The day, who set it and when, and the later hours' last day are drawn bold, apart from the words
- * (`lienDayValues.ts` marks them inside the kernel's own sentences). Nothing about the day or its change moved: the
- * day is still set through *Change ›* and the window that shows what moves, because it moves every lien deadline.
+ * them. Who set the day and when, and the later hours' last day, are drawn bold, apart from the words
+ * (`lienDayValues.ts` marks them inside the kernel's own sentences).
+ *
+ * The day itself is a value a person can change where it sits (the owner's yes of 2026-11-21). There is no
+ * *Change ›* and no editor box. A day from clock hours, a bill or the job's creation is a default: bold, its source
+ * chip after it, and **Set by hand** beside it. A day set by hand is underlined, and a press on it opens its field,
+ * with *Back to clock hours* in it. **Keep** writes nothing. It opens the same window on the day typed, because the
+ * day moves every lien deadline: the window shows what moves, asks why, and its *Set the day* is the one write.
  */
 const chip = (tone: 'hand' | 'hours' | 'bill' | 'created'): CSSProperties => ({
   display: 'inline-block',
@@ -42,7 +46,6 @@ const whole = (text: string) => (
     <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
   </WorkedOutValue>
 )
-const btn = (primary = false): CSSProperties => ({ padding: '4px 10px', borderRadius: 7, border: primary ? '1px solid transparent' : '1px solid var(--border-strong)', background: primary ? '#2563eb' : 'var(--surface)', color: primary ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' })
 
 export function LienLastWorkDayLine({
   jobId,
@@ -79,34 +82,40 @@ export function LienLastWorkDayLine({
   affidavitMonths?: ReadonlyArray<string>
   /** 'residential' | 'commercial'; '' or absent draws the words without the table. */
   propertyKind?: string
-  /** Open on the editor (v2.4733): the Lien window draws the line only when its timeline's *change ›* is pressed. */
+  /**
+   * Open on the window (v2.4733): the Lien window draws the line only when its timeline's press under LAST WORK is
+   * pressed, and the window that sets the day opens with it, the day to pick inside. Until punch list #399 this
+   * opened the line's own editor box, which is gone.
+   */
   startEditing?: boolean
-  /** Cancel pressed: the Lien window folds the line away again. */
+  /** That window closed with nothing saved: the Lien window folds the line away again. */
   onCancel?: () => void
   /** No box of its own (punch list #361): the line is the first row of the Lien desk's Months card, on the card's hairline. */
   flat?: boolean
 }) {
   const d = lienLastWorkDay(job)
   const laterHoursDay = lienHoursAfterHandDay(job)
-  const [editing, setEditing] = useState(startEditing)
-  const [dayDraft, setDayDraft] = useState(d.day ?? '')
-  const [confirming, setConfirming] = useState(false)
+  // The day Keep handed over, which the window opens on and may still fix.
+  const [kept, setKept] = useState('')
+  // The window, and what opened it: the Lien window's press (`start`, the day picked inside) or Keep on the value.
+  // It is this job's window only: another job under the line starts with none.
+  const [win, setWin] = useState<{ jobId: string; from: 'start' | 'keep' } | null>(startEditing && canEdit ? { jobId, from: 'start' } : null)
+  const open = win && win.jobId === jobId ? win : null
+  const saved = useRef(false)
   // Back to the clock hours writes through the same door as the window's Set the day (`useLienLastWorkDayWrite`).
-  const { busy, write } = useLienLastWorkDayWrite(jobId, onSaved)
-  useEffect(() => {
-    // Back to how the line opened (the Lien window opens it editing) whenever the job or its day changes.
-    setEditing(startEditing)
-    setConfirming(false)
-    setDayDraft(d.day ?? '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId, job?.lien_last_work_on, job?.last_work_date])
+  const { write } = useLienLastWorkDayWrite(jobId, onSaved)
+  const clear = async () => {
+    await write(LIEN_LAST_WORK_CLEAR, lienLastWorkClearedWords(Boolean(job?.last_work_date)))
+  }
 
-  // Save the day opens the window (v2.4717); the write is its Set the day, after the day and the reason stand.
-  const save = () => setConfirming(true)
-  const clear = () =>
-    void write(LIEN_LAST_WORK_CLEAR, lienLastWorkClearedWords(Boolean(job?.last_work_date))).then((saved) => {
-      if (saved) setEditing(false)
-    })
+  const dayText = d.day ? formatYmdMonthDay(d.day) : 'none yet'
+  // Nobody typed a day from clock hours, a bill or the job's creation: it is a default this job may override.
+  const asDefault = canEdit && d.source !== 'hand' && Boolean(d.day)
+  const source = (
+    <span style={chip(d.source)} data-testid="lien-last-work-source">
+      <ValueSentence text={lienLastWorkSourceValues(d, setByName)} values={{ when: whole }} />
+    </span>
+  )
 
   return (
     <div data-testid="lien-last-work" data-source={d.source} data-flat={flat ? 'yes' : undefined} style={{ display: 'grid', gap: 6 }}>
@@ -114,16 +123,33 @@ export function LienLastWorkDayLine({
         <ValueLines>
           <ValueLine label="Last day of work">
             <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem 0.5rem', flexWrap: 'wrap' }}>
-              {/* The day the desk reads, whichever source it came from: worked out, so bold with no press. */}
-              <span data-testid="lien-last-work-day">{d.day ? whole(formatYmdMonthDay(d.day)) : <span style={{ color: 'var(--text-muted)' }}>none yet</span>}</span>
-              <span style={chip(d.source)} data-testid="lien-last-work-source">
-                <ValueSentence text={lienLastWorkSourceValues(d, setByName)} values={{ when: whole }} />
+              <span data-testid="lien-last-work-day" style={{ minWidth: 0, maxWidth: '100%' }}>
+                {canEdit ? (
+                  <ChangeableValue
+                    text={dayText}
+                    label={LIEN_LAST_WORK_VALUE_LABEL}
+                    type="date"
+                    // A stand-in is no day anyone said, so its field opens empty, as the window does (`lienLastWorkOpeningDay`).
+                    value={lienLastWorkOpeningDay(d)}
+                    max={todayYmd}
+                    hint={LIEN_LAST_WORK_KEEP_HINT}
+                    onKeep={(day) => {
+                      setKept(day)
+                      setWin({ jobId, from: 'keep' })
+                    }}
+                    fromDefault={asDefault ? source : undefined}
+                    setOwnLabel={LIEN_LAST_WORK_SET_BY_HAND_WORDS}
+                    backToDefault={d.source === 'hand' ? { label: lienLastWorkBackWords(Boolean(job?.last_work_date)), onPress: clear } : undefined}
+                  />
+                ) : d.day ? (
+                  // A role that cannot set the day reads it: worked out, so bold with no press.
+                  whole(dayText)
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>none yet</span>
+                )}
               </span>
-              {canEdit && !editing ? (
-                <button type="button" onClick={() => setEditing(true)} data-testid="lien-last-work-change" style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
-                  Change ›
-                </button>
-              ) : null}
+              {/* Beside a default the value piece draws the chip itself, as the default's word. */}
+              {asDefault ? null : source}
             </span>
           </ValueLine>
           {d.note ? (
@@ -141,57 +167,31 @@ export function LienLastWorkDayLine({
           ) : null}
         </ValueLines>
       </div>
-      {editing ? (
-        <div data-testid="lien-last-work-editor" style={{ display: 'grid', gap: 8, padding: '0.6rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)' }}>
-          <div style={{ display: 'flex', gap: '0.5rem 1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <label style={{ display: 'grid', gap: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Last day of work
-              <FinishedDateInput aria-label="Last day of work" value={dayDraft} onCommit={(day) => setDayDraft(day ?? '')} style={{ padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }} />
-            </label>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 16rem', minWidth: 0 }}>Save the day shows what moves with it before anything is written, and asks why.</span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={save} disabled={busy} data-testid="lien-last-work-save" style={btn(true)}>
-              {busy ? 'Saving…' : 'Save the day'}
-            </button>
-            {d.source === 'hand' ? (
-              <button type="button" onClick={clear} disabled={busy} data-testid="lien-last-work-clear" style={btn()}>
-                {job?.last_work_date ? 'Back to clock hours' : "Back to the job's creation day"}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false)
-                onCancel?.()
-              }}
-              disabled={busy}
-              style={btn()}
-            >
-              Cancel
-            </button>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Clock hours and pay are not changed. The day sets the lien months only.</span>
-          </div>
-        </div>
-      ) : null}
-      {confirming ? (
+      {open && canEdit ? (
         <LienLastWorkDayWindow
           jobId={jobId}
           job={job}
           todayYmd={todayYmd}
           userId={userId}
           onSaved={() => {
-            setEditing(false)
+            saved.current = true
             onSaved()
           }}
-          onClose={() => setConfirming(false)}
+          onClose={() => {
+            // The window closes itself after a save too. Only a window the Lien window's press opened, closed with
+            // nothing saved, folds the line away.
+            const fold = open.from === 'start' && !saved.current
+            saved.current = false
+            setWin(null)
+            if (fold) onCancel?.()
+          }}
           jobLabel={jobLabel}
           clockMonths={clockMonths}
           noticedMonths={noticedMonths}
           affidavitMonths={affidavitMonths}
           propertyKind={propertyKind}
-          day={dayDraft}
-          onDay={setDayDraft}
+          day={open.from === 'keep' ? kept : undefined}
+          onDay={open.from === 'keep' ? setKept : undefined}
         />
       ) : null}
     </div>

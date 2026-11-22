@@ -140,7 +140,7 @@ export function withPhoto(press: OutboxPress, id: string, change: { sent: true }
   return { ...press, payload: { ...(press.payload as PhotoCarryingPayload), photos: next } } as OutboxPress
 }
 
-export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byUserId: string; byName: string; takenAt: string; originalBytes: number; width: number; height: number }) => Promise<unknown>
+export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byUserId: string; byName: string; takenAt: string; originalBytes: number; width: number; height: number; takenPoint?: { lat: number; lng: number; accuracyM: number | null } | null }) => Promise<unknown>
 
 /** A task card's shot (punch list #273): the same row `sendTaskPhoto` writes live, under the kept id. */
 export type SendKeptTaskPhoto = (input: Omit<KeptTaskPhoto, 'sent' | 'bytes'> & { instanceId: string; blob: Blob; byUserId: string }) => Promise<unknown>
@@ -217,7 +217,7 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
       continue
     }
     try {
-      const facts = { id: photo.id, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height }
+      const facts = { id: photo.id, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height, ...((photo as KeptShot).takenPoint ? { takenPoint: (photo as KeptShot).takenPoint } : null) }
       if (writeUp) {
         // A write-up's photo goes to its own private bucket and row (punch list #410), keyed to the press, before the write-up lands.
         const sendWriteUp = io.sendWriteUp ?? (await import('../people/writeUpPhotosIo')).sendWriteUpPhoto

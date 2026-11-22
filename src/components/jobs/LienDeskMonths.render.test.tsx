@@ -87,6 +87,15 @@ function mount(grid: LienMonthGrid, over: Partial<Parameters<typeof LienDeskMont
 }
 
 describe('LienDeskMonths, the ledger (#361)', () => {
+  it('the head of this notice\u2019s column carries the claim it is handed, and the name alone when it is handed none (v2.8234)', () => {
+    const { card } = mount(fullGrid(), { claim: '$12,700' })
+    expect((card.querySelector('[data-lien-grid-paper="this"] [data-lien-grid-head-figure]') as HTMLElement).textContent).toBe('$12,700')
+    cleanup()
+    const bare = mount(fullGrid(), { claim: '' })
+    expect(bare.card.querySelector('[data-lien-grid-head-figure]')).toBeNull()
+    expect((bare.card.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('BThis notice')
+  })
+
   it('is one card in one order: the last day of work, the lead line, the grid, the missed line, the money, the quiet rows', () => {
     const { card } = mount(fullGrid())
     const parts = Array.from(card.children).map((el) => {
@@ -104,7 +113,9 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect(line.getAttribute('data-flat')).toBe('yes')
     expect((line.firstElementChild as HTMLElement).style.border).toBe('')
     expect((line.firstElementChild as HTMLElement).style.background).toBe('')
-    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Sep 8')
+    // A day from clock hours is a default: the value bold, its source chip and Set by hand after it (punch list #399).
+    expect(screen.getByTestId('lien-last-work-day').querySelector('[data-value]')?.textContent).toBe('Sep 8')
+    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Sep 8 from clock hours Set by hand')
     // One lead line where the paragraph was; the second sentence only because an earlier paper is on the job.
     expect((card.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('Tick a month to put it on this notice. A check is a paper that already names the month.')
     expect(card.textContent).not.toContain('Every month worked, oldest first.')
@@ -129,9 +140,15 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect(rows.map((r) => (r.querySelector('td.lienMonthOne') ? 'one' : 'two'))).toEqual(['one', 'one', 'one', 'two'])
     // The window on one line: a chip where the state changes, the rest faint words beside it.
     expect((rows[3]!.querySelector('.lienLedgerWindow') as HTMLElement).textContent).toBe('mail by Dec 1526 days left')
-    // The heads: the papers lettered, this notice the name alone (the total is at the foot).
+    // The heads: the papers lettered, this notice its name with the claim figure small under it (v2.8234, Taunya's pick of
+    // 2026-11-21). The total still stands at the foot.
     expect((card.querySelector('[data-lien-grid-paper="A"]') as HTMLElement).textContent).toBe('ASent Oct 14$15,722 · certified mail')
-    expect((card.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toBe('BThis notice')
+    const thisHead = card.querySelector('[data-lien-grid-paper="this"]') as HTMLElement
+    expect(thisHead.textContent).toBe('BThis notice$1,000')
+    // The name keeps a line of its own, letter and all, and the figure is the line under it.
+    expect((thisHead.querySelector('.lienLedgerThisTop') as HTMLElement).textContent).toBe('BThis notice')
+    expect((thisHead.querySelector('[data-lien-grid-head-figure]') as HTMLElement).textContent).toBe('$1,000')
+    expect(thisHead.querySelector('.lienLedgerThisName')!.children).toHaveLength(2)
     // June's cell under paper A carries the letter with its check, for the narrow card where the column is gone.
     const june = rows[0]!.querySelector('td[data-col="paper"]') as HTMLElement
     expect(june.getAttribute('data-cell')).toBe('info')
@@ -149,9 +166,11 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect(claim.classList.contains('lienLedgerClaim')).toBe(true)
     expect(claim.textContent).toBe('Claim amount on the notice$1,000 Still unpaid on this jobCorrect the claim ›This notice names Aug, Sep · 2 months')
     expect((claim.querySelector('[data-lien-grid-foot]') as HTMLElement).textContent).toBe('This notice names Aug, Sep · 2 months')
-    // The figure is said once on the card: no second total in the grid.
+    // No second total in the grid: the foot of the column is the claim's own line.
     expect(card.querySelector('tfoot')).toBeNull()
-    expect(card.textContent?.match(/\$1,000(?!\.)/g)).toHaveLength(1)
+    // Twice since v2.8234: small in the head of this notice's column, and here as the total. The money block says it once.
+    expect(card.textContent?.match(/\$1,000(?!\.)/g)).toHaveLength(2)
+    expect((card.querySelector('[data-lien-ledger-money]') as HTMLElement).textContent?.match(/\$1,000(?!\.)/g)).toHaveLength(1)
     const bills = money.querySelector('[data-lien-claim-bills]') as HTMLElement
     expect(Array.from(bills.querySelectorAll('[data-lien-claim-bill]')).map((b) => b.getAttribute('data-lien-claim-bill'))).toEqual(['inv-1', 'inv-2'])
     expect((bills.querySelector('[data-lien-claim-bill="inv-2"]') as HTMLElement).textContent).toContain('Owed$1,000.00')
@@ -177,11 +196,12 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     // Bill it from here ›
     fireEvent.click(card.querySelector('[data-lien-bill-from-here]') as HTMLButtonElement)
     expect(doors.onBill).toHaveBeenCalledTimes(1)
-    // Change › opens the day's editor in the row; Cancel closes it.
-    fireEvent.click(screen.getByTestId('lien-last-work-change'))
-    const editor = screen.getByTestId('lien-last-work-editor')
-    fireEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
-    expect(screen.queryByTestId('lien-last-work-editor')).toBeNull()
+    // Set by hand opens the day's own field in the row; Cancel closes it (punch list #399: no Change › and no editor box).
+    fireEvent.click(screen.getByRole('button', { name: 'Set by hand, last day of work' }))
+    const field = screen.getByTestId('lien-last-work-day').querySelector('[data-value="field"]') as HTMLElement
+    expect(within(field).getByLabelText('last day of work')).toBeTruthy()
+    fireEvent.click(within(field).getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByTestId('lien-last-work-day').querySelector('[data-value="field"]')).toBeNull()
     // Correct the claim › opens the claim's editor in the money block; Cancel closes it.
     fireEvent.click(screen.getByRole('button', { name: 'Correct the claim ›' }))
     const claimEditor = card.querySelector('[data-lien-claim-editor]') as HTMLElement
@@ -236,8 +256,8 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet.')
     expect(card.querySelector('table')).toBeNull()
     expect(card.querySelector('[data-lien-ledger-lead]')).toBeNull()
-    // The row above the empty words is the next step: the last day of work and its Change ›.
+    // The row above the empty words is the next step: the last day of work and the press that sets it.
     expect(card.firstElementChild?.matches('[data-lien-ledger-last-work]')).toBe(true)
-    expect(screen.getByTestId('lien-last-work-change')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Set by hand, last day of work' })).toBeTruthy()
   })
 })

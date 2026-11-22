@@ -9,6 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../../lib/impersonationSession'
 
 const H = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('../../lib/supabase', async () => {
@@ -80,7 +81,10 @@ beforeEach(() => {
   resetBidMarksStoreForTests()
   resetBidMarkHoldsForTests()
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  localStorage.removeItem(IMPERSONATION_ORIGINAL_STORAGE_KEY)
+})
 
 describe('the receiver', () => {
   it('the row wears the sender’s initial with the not-opened dot and the note, and the card’s Done finishes it', async () => {
@@ -195,5 +199,20 @@ describe('the open bid’s title', () => {
     fireEvent.click(within(strip).getByRole('button', { name: 'Done' }))
     await waitFor(() => expect(H.rpc).toHaveBeenCalledWith('bid_mark_requests_close', { p_bid_id: 'u1', p_outcome: 'done' }))
     expect(screen.queryByRole('note', { name: 'Marked for you' })).toBeNull()
+  })
+
+  it('while View as is on the strip does not mark the request seen, and a press still finishes it', async () => {
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
+    asRobert([req({ id: 'r1' })])
+    render(<BidWorkflowTabTitleWithPreview bid={openBid} previewEnabled={false} onOpenPreview={vi.fn()} />)
+    const strip = screen.getByRole('note', { name: 'Marked for you' })
+    expect(within(strip).getByText('GC moved the due date to Fri. Reprice the trim.')).toBeTruthy()
+    // A dev looking as the receiver has not shown the receiver anything: it stays unseen, on screen and in the row.
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(H.rpc).not.toHaveBeenCalledWith('bid_mark_requests_seen', { p_bid_id: 'u1' })
+    expect(getBidMarksSnapshot().requests.find((r) => r.id === 'r1')?.seen_at).toBeNull()
+    // A press is a press: it saves as that person, as every press in View as does.
+    fireEvent.click(within(strip).getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(H.rpc).toHaveBeenCalledWith('bid_mark_requests_close', { p_bid_id: 'u1', p_outcome: 'done' }))
   })
 })

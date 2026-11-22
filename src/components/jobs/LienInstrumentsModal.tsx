@@ -1338,7 +1338,7 @@ export default function LienInstrumentsModal({
             </div>
           ) : null}
           {lastWorkOpen && lastWorkJob && property ? (
-            // The By paper line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
+            // The By paper line, with the window that shows what moves (v2.4717) open over it, the day to pick inside (punch list #399): nothing is written before its Set the day.
             <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
               <LienLastWorkDayLine
                 jobId={lastWorkJob.id}

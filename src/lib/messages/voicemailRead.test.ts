@@ -10,6 +10,7 @@ import {
   ANOTHER_DAY,
   KEEP_THE_DAY,
   NO_TRANSCRIPT_YET,
+  daySaidIn,
   heardDay,
   heardDayWrite,
   heardTime,
@@ -158,5 +159,19 @@ describe('voicemailNeedsReply', () => {
     const [row] = needsReply([contact], [line], [], '2026-10-06')
     expect(row).toMatchObject({ contactId: 'dana', landOnId: 'vm-dana-1006', callBack: true })
     expect(row!.acts).toContain('Call back')
+  })
+})
+
+describe('daySaidIn: the reader under the chip, for any line’s own words (v2.8255)', () => {
+  it('reads a text as it reads a transcript: the first day said, from the line’s own day, with a time heard beside it', () => {
+    expect(daySaidIn('We can pay Friday by noon.', LEFT_AT, NOW)).toEqual({ day: '2026-10-09', label: 'Fri Oct 9', said: 'Friday', time: 'by noon', past: false })
+    expect(daySaidIn(DANA_WORDS, LEFT_AT, NOW)).toMatchObject({ day: '2026-10-08', said: 'Thursday', time: 'after 2 PM' })
+  })
+  it('marks a day gone by, and reads nothing from no words, no day, or a time that is no instant', () => {
+    expect(daySaidIn('We can pay Friday.', LEFT_AT, new Date('2026-10-12T15:00:00Z'))?.past).toBe(true)
+    expect(daySaidIn('', LEFT_AT, NOW)).toBeNull()
+    expect(daySaidIn(null, LEFT_AT, NOW)).toBeNull()
+    expect(daySaidIn('Thanks for the invoice.', LEFT_AT, NOW)).toBeNull()
+    expect(daySaidIn('We can pay Friday.', 'not a time', NOW)).toBeNull()
   })
 })

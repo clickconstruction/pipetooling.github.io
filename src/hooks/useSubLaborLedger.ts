@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent, SubPaymentExtras, SubSendingInput, SubSendingResult } from '../types/laborJob'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { subLedgerReadFailure } from '../lib/subWorkOrders/subLedgerRead'
 import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
@@ -140,6 +141,15 @@ export function useSubLaborLedger({
           .or(`from_job_id.in.(${jobIds.join(',')}),to_job_id.in.(${jobIds.join(',')})`)
           .order('created_at', { ascending: false }),
       ])
+      // A sheet drawn without its lines or its money says something untrue, and the papers stand on these rows. So a
+      // read that failed is not drawn: the ledger keeps what it last read whole, and the page says why.
+      const readFailure = subLedgerReadFailure({ lines: itemsRes.error, payments: paymentsRes.error })
+      if (readFailure) {
+        setError(readFailure)
+        setLaborJobsLoading(false)
+        setLaborJobsLoadedOnce(true)
+        return
+      }
       const { data: items } = itemsRes
       const { data: paymentsData } = paymentsRes
       const { data: ledgerJobs } = ledgerRes

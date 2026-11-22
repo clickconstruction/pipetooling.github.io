@@ -498,7 +498,7 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
         <div style={{ color: 'var(--text-strong)' }}>{b.words}</div>
         {no ? (
           <div style={{ ...rowLine, color: 'var(--text-red-700)', fontWeight: 600 }}>
-            {stage.arrival?.by} said No on site, {stage.arrival ? monthDay(stage.arrival.day) : ''}. It was not as told.
+            <WorkedOutValue tone="red">{stage.arrival?.by}</WorkedOutValue> said No on site, <WorkedOutValue tone="red">{stage.arrival ? monthDay(stage.arrival.day) : ''}</WorkedOutValue>. It was not as told.
             {/* A thing that was not as told on one site is worth asking on every job of this kind: the office is offered it here (PR 10). */}
             {canCompany && kind && !onCompanyList ? (
               <>

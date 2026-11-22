@@ -14,9 +14,12 @@
 /** Which paper the window is on, as the window holds it. */
 export type SubPaperPlaceView = { kind: 'statement' } | { kind: 'work'; sheetId: string } | { kind: 'payment'; sendingKey: string }
 
-/** Where the window is: the step, and the paper it is on. */
-export function subPaperPlace(view: SubPaperPlaceView, step: 'paper' | 'send'): string {
-  return `${step}:${view.kind === 'work' ? `work:${view.sheetId}` : view.kind === 'payment' ? `payment:${view.sendingKey}` : 'statement'}`
+/**
+ * Where the window is: the step, the paper it is on, and which email of a send in several it has open. `email`
+ * counts from 0, and the first email is the step itself: *Sent 12 papers* must not stand over the next twelve.
+ */
+export function subPaperPlace(view: SubPaperPlaceView, step: 'paper' | 'send', email: number = 0): string {
+  return `${step}${email > 0 ? `#${email}` : ''}:${view.kind === 'work' ? `work:${view.sheetId}` : view.kind === 'payment' ? `payment:${view.sendingKey}` : 'statement'}`
 }
 
 /** A line as the window holds it: where it arrived, and whether the window has moved on since. */

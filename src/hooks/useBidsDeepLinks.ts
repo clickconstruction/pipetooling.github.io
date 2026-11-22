@@ -19,6 +19,7 @@ import { isRobotBid } from '../lib/bidBoardScope'
 import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
 import { isBidWorkflowTab, isBidsTabKey, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { readSharedBidId } from '../lib/bids/sharedBidPointer'
+import { scrollToRowAndHold } from '../lib/scrollToRowAndHold'
 import { dropDayBookDoorParams } from '../lib/people/dayBookDoor'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import type { RoleGateDecision, RoleGateSurface } from '../lib/roleGate'
@@ -77,6 +78,8 @@ export function useBidsDeepLinks(input: {
   // The ring a deep link leaves on its row (hooks/useDeepLinkHighlight).
   const { id: bidBoardDeepLinkHighlightId, gen: bidBoardDeepLinkHighlightGen, flash: flashBidBoardRow } = useDeepLinkHighlight()
   const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
+  const cancelBidBoardScrollRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => cancelBidBoardScrollRef.current?.(), [])
   const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
   const openBidEditHandledRef = useRef<string | null>(null)
   const [workingBoardDeepLinkBidId, setWorkingBoardDeepLinkBidId] = useState<string | null>(null)
@@ -104,9 +107,12 @@ export function useBidsDeepLinks(input: {
     // v2.3222: the Robot Board mirror opens its own sections around the ringed row.
     if (!robot) setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
     flashBidBoardRow(bid.id)
-    window.setTimeout(() => {
-      document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 150)
+    // v2.8259: one scroll on a timer missed a row not drawn yet and landed short when the board grew above it.
+    // This waits for the row, holds it until the board is still, then rings it again, since the first ring may be over.
+    cancelBidBoardScrollRef.current?.()
+    cancelBidBoardScrollRef.current = scrollToRowAndHold(() => document.getElementById(`bid-board-row-${bid.id}`), {
+      onRest: () => flashBidBoardRow(bid.id),
+    })
     // Write the landing tab into the URL along with the bidId cleanup: the URL-sync
     // effect re-runs on every searchParams change and snaps activeTab back to ?tab= —
     // with only the React state set, a robot landing flashed and bounced back to the

@@ -7,6 +7,7 @@
 export type ShotTileStatus = 'shrinking' | 'sending' | 'sent' | 'kept' | 'failed'
 
 /** A shot on a form, from the shutter to its press: what every host's tile has. */
+import type { TakenPoint } from '../paintedMap/paintedSpot'
 export type ShotTileBase = {
   id: string
   status: ShotTileStatus
@@ -27,6 +28,8 @@ export type ShotTileBase = {
   storagePath: string | null
   /** The camera's own time once read, else the moment the host's `pickedAt` gave. */
   takenAt: string
+  /** Where the phone was when the shot was taken (punch list #413), on a host that keeps it. Null with no good reading in time. */
+  takenPoint?: TakenPoint | null
   /** Why it did not send, for the tile's Retry. */
   failWhy: string | null
 }

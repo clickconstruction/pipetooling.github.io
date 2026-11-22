@@ -21,6 +21,7 @@
  */
 import { useSyncExternalStore } from 'react'
 import { supabase } from '../supabase'
+import { isImpersonationSessionActive } from '../impersonationSession'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { EMPTY_BID_MARKS, removeBidMarks, toggleBidMark, type BidMarkMap } from './bidMarks'
 import {
@@ -185,8 +186,12 @@ function patchRequests(pick: (r: BidMarkRequest) => boolean, patch: Partial<BidM
   return before
 }
 
-/** The receiver opened the bid: their open, unseen requests on it are seen. */
+/**
+ * The receiver opened the bid: their open, unseen requests on it are seen. Held while View as is on,
+ * on screen too: the dev sees the request as the receiver still would, unseen.
+ */
 export async function markBidRequestsSeen(bidId: string): Promise<void> {
+  if (isImpersonationSessionActive()) return
   const me = snapshot.me
   if (!me) return
   const unseen = (r: BidMarkRequest) => r.bid_id === bidId && r.for_user_id === me && !r.closed_at && !r.seen_at

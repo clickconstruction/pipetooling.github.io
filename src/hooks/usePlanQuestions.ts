@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { isImpersonationSessionActive } from '../lib/impersonationSession'
 import { rfiQuestionFrom, type PlanQuestionRow } from '../lib/bids/planQuestions'
 import { formatErrorMessage } from '../utils/errorHandling'
 
@@ -36,6 +37,8 @@ export function usePlanQuestions(input: { bidId: string | null; enabled: boolean
         const list = (data ?? []) as PlanQuestionRow[]
         setRows(list)
         // Reading the thread marks the asker's fresh answers seen, so the Dashboard line clears.
+        // Held while View as is on: a dev reading as the asker is not the asker reading.
+        if (isImpersonationSessionActive()) return
         const mine = list.filter((r) => r.status === 'answered' && !r.seen_at && r.asked_by && r.asked_by === userId).map((r) => r.id)
         if (mine.length) await db.from('bid_plan_questions').update({ seen_at: new Date().toISOString() }).in('id', mine)
       } catch {

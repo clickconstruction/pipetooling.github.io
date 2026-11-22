@@ -23,6 +23,13 @@ export type FeedReader = {
    * without it cannot be read back yet, and `permit-pull` says so.
    */
   pageUrlBefore?: (sinceDay: string, untilDay: string, limit: number, offset: number) => string
+  /**
+   * The same feed read a second way, by the day a row's permit was issued: the rows issued on or
+   * after `sinceDay`, oldest first. For a feed of applications, where a row is filed on one day and
+   * takes its permit's issued day weeks later, long after the pull has stopped re-reading its
+   * filing day. Without it an application read once would say it still waits for ever.
+   */
+  issuedPageUrl?: (sinceDay: string, limit: number, offset: number) => string
   /** The records in the door's answer. Throws with the door's own words when it refused the read. */
   recordsOf: (body: unknown) => Record<string, unknown>[]
   /** One record as a `permits` row, or null when the pull does not keep it. */
@@ -55,6 +62,8 @@ function sanAntonioReader(feed: PermitFeed): FeedReader {
     stage: feed.stage,
     pageUrl: (sinceDay, limit, offset) => `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, sinceDay, limit, offset))}`,
     pageUrlBefore: (sinceDay, untilDay, limit, offset) => `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, sinceDay, limit, offset, untilDay))}`,
+    // San Antonio's applications carry the day their permit was issued, set weeks after the filing day the feed is read by.
+    ...(feed.stage === 'applied' ? { issuedPageUrl: (sinceDay: string, limit: number, offset: number) => `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql({ ...feed, dateColumn: 'DATE ISSUED' }, sinceDay, limit, offset))}` } : {}),
     recordsOf: (body) => {
       const b = body as { success?: boolean; result?: { records?: Record<string, unknown>[] }; error?: unknown } | null
       if (!b?.success) throw new Error(`the feed refused the read: ${JSON.stringify(b?.error ?? {}).slice(0, 300)}`)
@@ -600,6 +609,27 @@ export const PERMIT_CITY_NAMES: readonly string[] = PERMIT_CITIES.map((c) => c.n
 export function permitCity(name: string | null | undefined): PermitCity | null {
   const want = (name ?? '').trim().toLowerCase()
   return PERMIT_CITIES.find((c) => c.name.toLowerCase() === want) ?? null
+}
+
+/** One reading of a feed in a run: the door's page, and the `permits` day column the reading starts from. */
+export type FeedPass = {
+  pageUrl: FeedReader['pageUrl']
+  /** The column whose newest held day sets where the reading starts: ten days before it. */
+  dayColumn: 'issued_on' | 'submitted_on'
+  /** The second reading, by issued day, of a feed the first reads by filing day. */
+  issuedAgain: boolean
+}
+
+/**
+ * The readings one run makes of a feed. Every feed is read once by its own day. A feed of
+ * applications that also says when each permit was issued (`issuedPageUrl`) is read a second
+ * time by that day, so an application filed months ago takes its issued day the night after the
+ * city posts it. A read back as history makes the one reading: it touches nothing already held.
+ */
+export function feedPasses(feed: FeedReader, history: boolean): FeedPass[] {
+  const passes: FeedPass[] = [{ pageUrl: feed.pageUrl, dayColumn: feed.stage === 'issued' ? 'issued_on' : 'submitted_on', issuedAgain: false }]
+  if (feed.issuedPageUrl && !history) passes.push({ pageUrl: feed.issuedPageUrl, dayColumn: 'issued_on', issuedAgain: true })
+  return passes
 }
 
 /** The feeds a pull runs: one city's when it is named and known, every city's otherwise, in the list's order. */

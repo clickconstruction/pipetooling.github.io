@@ -65,7 +65,7 @@ import { phoneFlow } from '../../lib/materials/flowRow'
 import { actIsFresh } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph, PhotoPress } from '../materials/PhotoPress'
 import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
-import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
+import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeDoor, takeQuietLabel, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
 import { forgetTakeRun, keepTakeRun, readTakeRun, readTakeRuns } from '../../lib/materials/takeRunMemory'
 import type { PhotoNote } from '../../lib/materials/photo'
 import BoxTakes from '../materials/BoxTakes'
@@ -141,6 +141,8 @@ const scopePill = (on: boolean): CSSProperties => ({ minHeight: 40, padding: '0 
 /** Take from a box: a run left on a box, offered again. */
 const leftStrip: CSSProperties = { display: 'grid', gap: '0.5rem', padding: '0.6rem 0.75rem', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-strong)' }
 /** The press that stays at the bottom of a box's screen and of the run's, above the app's own bottom bar. */
+/** The foot of a box with nothing on hand: the take's quiet link over its line, centred, not pinned to the screen. */
+const takeQuietFoot: CSSProperties = { display: 'grid', justifyItems: 'center', gap: '0.1rem', textAlign: 'center' }
 const takeBar: CSSProperties = { position: 'sticky', bottom: 'var(--app-bottom-chrome, 0px)', zIndex: 5, display: 'grid', gap: '0.25rem', padding: '0.5rem 0 0.6rem', margin: '0 0 -1rem', background: 'var(--bg-page)', borderTop: '1px solid var(--border)' }
 /** Inline styles have no :disabled, so a dead press fades by hand. */
 const dis = (off: boolean): CSSProperties => (off ? { opacity: 0.45, cursor: 'default' } : {})
@@ -1020,10 +1022,17 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </Sheet>
       ) : null}
       {/* Take from a box: the run's press stays under a thumb however far the box scrolls. Never Unsorted, whose parts are put away, not taken. */}
-      {!unsorted && !leftRun ? (
+      {!unsorted && !leftRun && takeDoor(ls) === 'press' ? (
         <div style={takeBar} data-testid="on-site-take-bar">
           <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem' }} onClick={() => startTake(container)}><CameraGlyph size={18} />{takeStartLabel(container.label)}</button>
           <span style={{ ...muted, textAlign: 'center' }}>The camera opens for a photo of {container.label} as found.</span>
+        </div>
+      ) : null}
+      {/* A box with nothing on hand (punch list #398, the walk of 2026-11-21): the same run behind a quiet link, so the blue press does not ask for a take of nothing. */}
+      {!unsorted && !leftRun && takeDoor(ls) === 'quiet' ? (
+        <div style={takeQuietFoot} data-testid="on-site-take-quiet">
+          <button type="button" style={{ ...quiet, minHeight: TOUCH_MIN }} onClick={() => startTake(container)}>{takeQuietLabel(container.label)}</button>
+          <span style={muted}>The camera opens for a photo of {container.label} as found.</span>
         </div>
       ) : null}
     </div>

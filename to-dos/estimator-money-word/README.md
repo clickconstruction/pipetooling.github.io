@@ -2,20 +2,21 @@
 name: "The estimator's word on money: the leftovers"
 number: 129
 group: close
-status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: Messages' *Write down their word* on a real inbound line (BP166 read as the estimator 2026-11-09 through the dev seat), the heard-day offer in Messages; the five untyped calls were typed 2026-11-21 (v2.8214)
-ver: v2.6694 · v2.6695 · v2.8214
+status: BUILT 2026-11-21 — every leftover is built or walked: the five untyped calls typed (v2.8214), the heard-day offer under a customer's own text or voicemail in Messages (v2.8255), and Messages' *Write down their word* walked on a real inbound line on the dev server the same day (under *Where it stands*); before that, the owner's three calls of 2026-11-08 built or held (#7316 v2.6694 with its migration pushed, #7317 v2.6695) and the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) live; left: the owner's look at a day beside the press on a real text, one small call (under *The owner's calls*), and his word to retire
+ver: v2.6694 · v2.6695 · v2.8214 · v2.8255
 summary: >
   The estimator who sold a job can now see its money and write down the customer's word on
   paying, from the won bid, the Money lens, the Dashboard and the customer's line in Messages.
   A word that they paid meets the deposit at allocation, or comes back to whoever heard it after
   a week. A primary's paid verbs hold to their own jobs. Since 2026-11-08 the estimator who wrote
   a signed estimate is one of the job's people too, with a red E beside their name, and the office
-  sees a paid claim on the Pipeline's Billed row. This to-do keeps what is left: the live checks
-  and the heard-day offer in Messages.
-next: Nothing left to land. BP166 was read as the estimator role's sample account through the dev seat on 2026-11-09 (under *Where it stands*). The one live check left waits on a real row: *Write down their word* under a customer's line in Messages once a customer writes in. The heard-day offer in Messages is a small build of its own when wanted.
+  sees a paid claim on the Pipeline's Billed row. Since 2026-11-21 a day the customer names in a
+  text or a voicemail is filled in when their word is written down from Messages. This to-do keeps
+  what is left: the owner's look at that, one small call, and his word to retire.
+next: The owner's look, then his word to retire. In Messages, open a customer's thread where their own text or voicemail names a day still ahead: *They said* and the day sit beside **Write down their word**, and the press opens the sheet with the day in **Pay by**. No real line named a day still ahead on 2026-11-21, so the look waits on one; the render tests prove the drawing until then. One call is open under *The owner's calls*.
 size: XS each
-blocker: none — the owner's three calls are answered (2026-11-08)
-opinion: the heard-day offer in Messages is a small build of its own; no call of the train is untyped any more (`list_paid_claims` in PR 2, the other five in v2.8214)
+blocker: the owner's look and his word to retire; one small call is open since 2026-11-21 (whether a word written from a line also marks the line's promise for Follow up)
+opinion: retire after the look; the open call is its own small card if it is wanted, since it wires cut 2's `message_promises` row and not this card's sheet
 mockup: not required — the leftovers are owner calls and small follow-ups to screens that shipped; the train's mock-up is in git history at the retiring commit
 ---
 
@@ -62,8 +63,18 @@ The two walks ran on the dev server as the dev the same day:
   The words themselves were not rendered, since rendering them means pressing Imitate in the owner's Chrome; the row the
   chip reads is visible to the estimator, which is what the check asked.
 
-Left on the card: Messages' *Write down their word* on a real inbound line, and the heard-day offer in
-Messages. The five calls still untyped were typed on 2026-11-21 (v2.8214, under *The follow-ups*).
+- **Write down their word on a real inbound line** (2026-11-21, the dev server as the dev, prod data): a
+  customer's thread in Messages with four lines of their own, two texts and two missed calls. Each carries
+  **Write down their word** under it. The press under the newest text read the customer's jobs and opened
+  the sheet on their one job with money open, a ZZ TEST job, with the customer's name in *Who said it* and
+  **Text** picked. A promise for Nov 27 saved (*Promise saved.*); the sheet opened again read *Nov 27 · on
+  the board* with who said it, by text and who heard it. **Never said that** took it off the record and off
+  the board, and the sheet read empty again. What stays is the voided row, which no press deletes. An
+  October text of theirs names a weekday that has gone by, and draws no day beside the press, as built.
+
+Left on the card: the owner's look at a day beside the press on a real text, one small call, and his word
+to retire. The five calls still untyped were typed on 2026-11-21 (v2.8214), and the heard-day offer was
+built the same day (v2.8255), both under *The follow-ups*.
 
 ## The owner's calls
 
@@ -85,6 +96,15 @@ Answered 2026-11-08.
 - **The stale day — seven days stays.** A paid claim with nothing landed comes back after seven
   days (`STALE_AFTER_DAYS` in `src/lib/jobs/paidClaims.ts`).
 
+Open since 2026-11-21.
+
+- **Does a word written from a line also mark the line's promise?** A promise saved through the sheet
+  is the Pipeline's (`job_payment_promises`), as since v2.5649. Cut 2 planned more: the line's own
+  `message_promises` row written as a payment (`write_down`), so Follow up's move line reads *Their move ·
+  until Fri · payment* and the thread summary names the day. Nothing writes that row today, from this press
+  or any other. Yes means wiring cut 2's row for the payment kind, a build of its own; no leaves the
+  Pipeline as the one record of a payment promise.
+
 ## The follow-ups
 
 - **The Pipeline row's chip for a paid claim.** Built as PR 2 (v2.6695): the Billed row's dates
@@ -100,13 +120,18 @@ Answered 2026-11-08.
   estimator *Open the job* on a bid with a job while Save was refused by the insert policy. On the
   owner's call that last one became **Send to Dispatch**, a draft of the job the inbox opens as
   New Job (v2.5659, `20261020090000_job_draft.sql`, pushed; types v2.5668; the inbox's Open the job
-  for the office alone since v2.5670). Left: check BP166 reads *J878 opened from this bid* as an
-  estimator. No customer has written in yet,
-  so *Write down their word* under a customer's line in Messages waits for a real inbound line. No
+  for the office alone since v2.5670). BP166 was read as an estimator on 2026-11-09, and *Write down
+  their word* under a customer's line in Messages was walked on a real inbound line on 2026-11-21
+  (both under *Where it stands*). No
   surface opens the read-only Job Detail pane for an estimator.
-- **The heard-day offer in Messages.** Cut 2's offer under a line (`message_promises`,
-  `write_down`) was never drawn; a voicemail's *Keep the day* writes an offered row nobody reads
-  back. When it is drawn, its press should open the same sheet with the day filled in.
+- **The heard-day offer in Messages.** Built 2026-11-21 (v2.8255). When a customer's own text or
+  voicemail names a day that has not gone by, *They said* and the day sit beside **Write down their
+  word**, and the press opens the same sheet on *They'll pay by…* with the day in **Pay by** and a
+  line saying where the day was read from (`heardDayOnLine` in `messages/wordFromLine.ts`, over the
+  voicemail reader's `daySaidIn`). A call's summary and an email draw no day, since their words are
+  not the customer's alone. The day is an offer and writes nothing. Cut 2's own row
+  (`message_promises`, `write_down`, a voicemail's *Keep the day*) is still on no screen, which is
+  the open call above.
 - **The untyped calls.** Done 2026-11-21 (v2.8214). The seven new functions are in
   `src/types/database.ts` since v2.5656; the client called them `as never`. `list_paid_claims` is
   typed since PR 2 (v2.6695), and `is_job_people` has no caller in the client. The other five are
@@ -119,6 +144,8 @@ Answered 2026-11-08.
 
 The three calls are answered and built or declined (done 2026-11-08), and the four follow-ups are
 shipped or moved to their own to-dos: the Pipeline chip shipped (#7317) and the live check of the E chip
-ran (see *Where it stands*), BP166 was read as an estimator on 2026-11-09 and the five untyped calls
-were typed on 2026-11-21 (v2.8214); left are Messages' *Write down their word* on a real inbound line
-and the heard-day offer in Messages.
+ran (see *Where it stands*), BP166 was read as an estimator on 2026-11-09, the five untyped calls
+were typed on 2026-11-21 (v2.8214), Messages' *Write down their word* was walked on a real inbound
+line the same day, and the heard-day offer in Messages was built (v2.8255). Every condition is met.
+What is left is the owner's: his look at a day beside the press on a real text, the one open call,
+and his word to retire.

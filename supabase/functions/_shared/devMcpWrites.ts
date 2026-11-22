@@ -60,6 +60,7 @@ import { isLienReceiptOffVerb, lienReceiptOffApplyInput, lienReceiptOffPlanInput
 import { isNoticeNumbersVerb, noticeNumbersApplyInput, noticeNumbersPlanInput } from './devMcpNoticeNumbers.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
+import { isPaperWordsVerb, paperWordsInput } from './devMcpPaperWords.ts'
 import { isTaskVerb, taskInput } from './devMcpTasks.ts'
 import { isTaskPlaceVerb, taskPlaceInput } from './devMcpTaskPlace.ts'
 import { isTaskPhotoVerb, taskPhotoInput } from './devMcpTaskPhoto.ts'
@@ -372,6 +373,13 @@ export const WRITE_VERBS = {
   // (devMcpActivityNote.ts). It tells nobody.
   plan_activity_note: { rpc: null, step: 'plan' },
   apply_activity_note: { rpc: null, step: 'apply' },
+  // v2.8257 / 0.125.0: a paper's words loaded as a draft — a builder's draft (document_builders.draft, whole, guarded by
+  // its draft number as the tab's own save is) or one new Contract Book entry (contract_template_documents, as the
+  // Book's Add writes it), the rows the app writes under RLS; no RPC, so rpc is null — the dry run is the server's read
+  // of the builder or the packet (devMcpPaperWords.ts). It never publishes, never changes an entry that exists, and
+  // refuses the one entry name that switches GC mode's send on.
+  plan_paper_words: { rpc: null, step: 'plan' },
+  apply_paper_words: { rpc: null, step: 'apply' },
   // v2.6940 / 0.65.0: a payment on a job — removed through the Job window's own remove_jobs_ledger_payment_and_reconcile
   // with the reason left on the job's activity, recorded as the payments table's own row under RLS, or tied to its bank
   // row through Accounts Receivable's apply_mercury_bank_payment_allocations; rpc is null, the dry run the server's read
@@ -770,6 +778,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = activityNoteInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isPaperWordsVerb(verb)) {
+    // v2.8257: the shape check is devMcpPaperWords'; the dry run is the server's read of the builder or the packet.
+    const built = paperWordsInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash: built.planHash }
   }
   if (isJobPaymentVerb(verb)) {
     // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
@@ -1799,6 +1813,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
 
+  if (verb === 'apply_paper_words') return `Nothing written: this plan was already applied${when}. The words are where the plan said: read_rows on document_builders by key, or on contract_template_documents by document_name, reads them back. To load other words, plan again.`
   if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`

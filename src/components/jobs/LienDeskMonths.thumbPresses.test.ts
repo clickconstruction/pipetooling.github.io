@@ -20,7 +20,11 @@ describe('the Months card’s presses on a narrow card (v2.8119)', () => {
 
   it('lets a press of words keep its line, and a press with an edge stand at its own height', () => {
     expect(block).toMatch(/\.lienLedger button:not\(\.lienLedgerNoteMissed\), \.lienLedger a \{ margin-block: -13px; margin-block: calc\(\(1lh - 44px\) \/ 2\); \}/)
-    expect(block).toMatch(/\.lienLedger \[data-lien-claim-editor\] button, \.lienLedger \[data-testid='lien-last-work-editor'\] button \{ margin-block: 0; \}/)
+    expect(block).toMatch(/\.lienLedger \[data-lien-claim-editor\] button, \.lienLedger button\.vipKeep \{ margin-block: 0; \}/)
+  })
+
+  it('leaves the last day of work’s tinted value the height of its words (punch list #399)', () => {
+    expect(block).toMatch(/\.lienLedger button\.vipChange \{ display: inline-block; min-height: 0; margin-block: 0; \}/)
   })
 
   it('gives a quiet row with a press the room of a 44 px row, so two such rows do not overlap', () => {

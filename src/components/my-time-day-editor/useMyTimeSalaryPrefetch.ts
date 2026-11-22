@@ -8,7 +8,7 @@ import {
   type MyTimeEmptyDayHint,
 } from '../../lib/myTimeSalaryPrefetch'
 import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../../lib/resolveCalendarWorkday'
-import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
+import { syncSalaryClockSessionsUnasked } from '../../lib/salaryScheduleSync'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -142,10 +142,16 @@ export function useMyTimeSalaryPrefetch({
           return
         }
 
-        const { error } = await syncSalaryClockSessionsForUserDay(effectiveSubjectUserId, dateStr)
+        // Nobody pressed for this sync, so it is held while View as is on (the server's schedule fills the day).
+        const { error, held } = await syncSalaryClockSessionsUnasked(effectiveSubjectUserId, {}, dateStr)
         if (cancelled) return
         if (error) {
           showToast(error, 'error')
+          setBusy(false)
+          return
+        }
+        if (held) {
+          // Nothing was made, so there is nothing new to read.
           setBusy(false)
           return
         }

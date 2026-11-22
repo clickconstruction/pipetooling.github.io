@@ -34,6 +34,8 @@ After the tag comes the paper's name. Under it you see who it is with, then the 
 
 A paper with a company also says who signs. It reads *Lena Park signs, Branch manager*. Once signed it reads *signed by Lena Park, Branch manager*.
 
+Sometimes a paper names one company and its line names another. Adding someone to a list under a second company does this. The line then also reads *signing for Haddad Engineering*, the company the paper names.
+
 On the right is where it stands, in the words its own window uses. Then comes the day it was signed, sent or ended.
 
 :::example Three lines of the list
@@ -155,6 +157,10 @@ The next window shows what the paper will say. It reads *Lena Park, Branch manag
 One tick keeps a new signer with their company. The next paper then offers them by name.
 
 The app tells you when it already keeps an address you type. The paper then goes to that record.
+
+**Send email** waits for that check. If the app keeps the address, the window names who holds it. Press **Send email** again to send the paper to them.
+
+Someone on your roster is not sent a paper this way. Close the window and pick them from the list.
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 

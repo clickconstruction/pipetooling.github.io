@@ -193,6 +193,18 @@ describe('DocumentsAgreementsTab', () => {
     expect(screen.getByTestId('documents-agreements-doors').textContent).toBe('A job with no contract is in the Contract sweep, under Tools on the Pipeline. An accepted estimate is on the Estimates tab.')
   })
 
+  it('says the business a paper names when its party is another: someone added to a list under a second company', async () => {
+    io.rows = [
+      row({ id: 'customer_agreement:d9', kind: 'customer_agreement', source_id: 'd9', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Ridgeway Builders', job_id: null, job_hcp_number: null, job_name: null, job_address: null, at_day: '2026-11-18', facts: { status: 'sent', party_kind: 'customer', signer_name: 'Noor Haddad', signing_for: 'Haddad Engineering' } }),
+      row({ id: 'customer_agreement:d8', kind: 'customer_agreement', source_id: 'd8', state: 'waiting', paper_name: 'Site secrecy agreement', with_name: 'Ridgeway Builders', job_id: null, job_hcp_number: null, job_name: null, job_address: null, at_day: '2026-11-17', facts: { status: 'sent', party_kind: 'customer', signer_name: 'Dana Ruiz', signer_title: 'Project manager', signing_for: 'Ridgeway Builders' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const words = (await lines()).map((r) => r.textContent ?? '')
+    expect(words[0]).toContain('With Ridgeway Builders · Noor Haddad signs · signing for Haddad Engineering')
+    expect(words[1]).toContain('With Ridgeway Builders · Dana Ruiz signs, Project manager')
+    expect(words[1]).not.toContain('signing for')
+  })
+
   it('asks again for a chip at once, and for typed words once the typing rests', async () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     await screen.findByTestId('documents-agreements-empty')

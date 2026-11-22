@@ -361,12 +361,73 @@ describe('SubPapersWindowView: the send step', () => {
     const sheets = paperSheetsFor('id:harlan', many, new Map(many.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]])), NAMES, ROSTER)
     const props = sending({ sheets })
     fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
-    expect(screen.getByTestId('sub-papers-held').textContent).toBe('3 more papers do not fit, since one email carries 12. Send them next: the work statement for #3012 Cedar Hollow Clinic, the work statement for #3013 Cedar Hollow Clinic, the work statement for #3014 Cedar Hollow Clinic.')
+    expect(screen.getByTestId('sub-papers-held').textContent).toContain('3 more papers do not fit, since one email carries 12. Send them next: the work statement for #3012 Cedar Hollow Clinic of Oct 12, 2026, the work statement for #3013 Cedar Hollow Clinic of Oct 13, 2026, the work statement for #3014 Cedar Hollow Clinic of Oct 14, 2026.')
     fireEvent.click(screen.getByRole('button', { name: 'Send 12 papers by email' }))
     const sent = (props.onSend as ReturnType<typeof vi.fn>).mock.calls[0]![1] as Array<{ kind: string; job?: { label: string } }>
     expect(sent).toHaveLength(12)
     expect(sent[0]!.kind).toBe('statement_of_account')
     expect(sent[11]!.job!.label).toBe('#3011 Cedar Hollow Clinic')
+  })
+
+  /** Fourteen open sheets and the statement of account: fifteen papers, so two emails. */
+  const fifteen = (over: Partial<SubPapersWindowViewProps> = {}) => {
+    const many: LaborJob[] = Array.from({ length: 14 }, (_, i) => sheet(`s${i + 1}`, 'cedar', String(3001 + i), `2026-10-${String(i + 1).padStart(2, '0')}`, [['Rough-in', 100]]))
+    const sheets = paperSheetsFor('id:harlan', many, new Map(many.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]])), NAMES, ROSTER)
+    const props = sending({ sheets, ...over })
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    return props
+  }
+  const labels = (call: unknown[]) => (call[1] as Array<{ kind: string; job?: { label: string } }>).map((p) => p.job?.label ?? p.kind)
+
+  it('once the first email went, the held papers have a press of their own and go in the next email', async () => {
+    const onSend = vi.fn().mockResolvedValue(true)
+    const props = fifteen({ onSend, said: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Send 12 papers by email' }))
+    // The next email leads once this one went, and Done is still there for an office that stops here.
+    await screen.findByRole('button', { name: 'Done' })
+    const next = screen.getByRole('button', { name: 'Open the next email, 3 papers' })
+    expect(screen.queryByRole('button', { name: 'Send 12 papers by email' })).toBeNull()
+    expect(screen.getByTestId('sub-papers-held').textContent).not.toContain('This email is not sent by that press.')
+    fireEvent.click(next)
+    expect(screen.getByRole('heading').textContent).toBe('Send more papers · email 2 of 2')
+    expect(screen.queryByTestId('sub-papers-held')).toBeNull()
+    const message = screen.getByTestId('sub-papers-message').textContent ?? ''
+    expect(message).toContain('More papers from Made-up Plumbing Co., email 2 of 2')
+    expect(message).toContain('Here are 3 more papers from us. They did not fit in our last email.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(2))
+    expect(labels(onSend.mock.calls[1]!)).toEqual(['#3012 Cedar Hollow Clinic', '#3013 Cedar Hollow Clinic', '#3014 Cedar Hollow Clinic'])
+    expect((onSend.mock.calls[1]![0] as { part: unknown }).part).toEqual({ n: 2, of: 2 })
+    // Nothing is held after the last email, so the step offers Done alone.
+    expect(await screen.findByRole('button', { name: 'Done' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Open the next email/ })).toBeNull()
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
+  it('the held papers can be reached without sending the first email again, and the press says it sends nothing', () => {
+    const props = fifteen()
+    expect(screen.getByTestId('sub-papers-held').textContent).toContain('Open the next email, 3 papers This email is not sent by that press.')
+    fireEvent.click(screen.getByTestId('sub-papers-next-email'))
+    expect(props.onSend).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+    // Back to the paper starts the send over at its first email.
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the paper' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('button', { name: 'Send 12 papers by email' })).toBeTruthy()
+  })
+
+  it('what the first email said does not stand over the next one', () => {
+    const SENT = { tone: 'ok' as const, words: 'Sent 12 papers to Harlan Mechanical at harlan@example.com. The copies are under Documents → Sent copies.' }
+    const many: LaborJob[] = Array.from({ length: 14 }, (_, i) => sheet(`s${i + 1}`, 'cedar', String(3001 + i), `2026-10-${String(i + 1).padStart(2, '0')}`, [['Rough-in', 100]]))
+    const sheets = paperSheetsFor('id:harlan', many, new Map(many.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]])), NAMES, ROSTER)
+    const props: SubPapersWindowViewProps = { open: { kind: 'statement' }, sheets, ctx: CTX, contact: { email: 'harlan@example.com', phone: null, portalUrl: null }, lastStatement: null, canSend: true, onSend: vi.fn(), onDownload: vi.fn(), onPrint: vi.fn(), onClose: vi.fn() }
+    const view = render(<SubPapersWindowView {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    // The line arrives on the first email, as the send's answer does.
+    view.rerender(<SubPapersWindowView {...props} said={SENT} />)
+    expect(screen.getByRole('status').textContent).toBe(SENT.words)
+    fireEvent.click(screen.getByTestId('sub-papers-next-email'))
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('a paper made in the window does not move the window’s own period', () => {
@@ -382,6 +443,29 @@ describe('SubPapersWindowView: the send step', () => {
   it('a period never starts after it ends: a last statement that ended today leaves the statement to date', () => {
     render(<SubPapersWindowView open={{ kind: 'statement' }} sheets={SHEETS} ctx={CTX} contact={{ email: null, phone: null, portalUrl: null }} canSend={false} lastStatement={{ number: 'SA-0009', endedOn: CTX.today }} onDownload={vi.fn()} onPrint={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByTestId('sub-paper-preview').textContent).toContain(`To date, ${paperDay(CTX.today)}`)
+  })
+})
+
+describe('SubPapersWindowView on a phone', () => {
+  const onPhone = (narrow: boolean) => vi.stubGlobal('matchMedia', (q: string) => ({ matches: narrow, media: q, addEventListener: () => {}, removeEventListener: () => {} }))
+  afterEach(() => vi.unstubAllGlobals())
+  const tall = (el: HTMLElement) => el.style.minHeight
+
+  it('every press in the window stands a fingertip tall, on the paper and on the send step', () => {
+    onPhone(true)
+    mountView({ canSend: true, onSend: vi.fn(), paymentRecords: true, lastStatement: null, contact: { email: 'harlan@example.com', phone: null, portalUrl: null } })
+    const paperStep = [...screen.getAllByRole('button'), ...screen.getAllByRole('combobox')]
+    expect(paperStep.length).toBeGreaterThan(8)
+    expect(paperStep.filter((el) => tall(el) !== '44px').map((el) => el.textContent ?? el.getAttribute('aria-label'))).toEqual([])
+    for (const tick of screen.getAllByRole('checkbox')) expect(tall(tick.closest('label')!)).toBe('44px')
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getAllByRole('button').filter((el) => tall(el) !== '44px').map((el) => el.textContent)).toEqual([])
+  })
+
+  it('at a desk the presses keep the sizes they had', () => {
+    onPhone(false)
+    mountView({ canSend: true, onSend: vi.fn(), lastStatement: null, contact: { email: 'harlan@example.com', phone: null, portalUrl: null } })
+    expect(screen.getAllByRole('button').filter((el) => tall(el) !== '').map((el) => el.textContent)).toEqual([])
   })
 })
 
@@ -684,6 +768,26 @@ describe('SubPapersWindow: Send', () => {
     const [, opts] = db.invoke.mock.calls[0] as [string, { body: { subject: string; papers: Array<{ number: string; file_name: string }> } }]
     expect(opts.body.subject).toBe('Work statement WS-2057-1 from Made-up Plumbing Co.')
     expect(opts.body.papers.map((p) => [p.number, p.file_name])).toEqual([['WS-2057-1', 'WS-2057-1.pdf']])
+  })
+
+  it('papers past twelve go in a second email, under a subject of its own, each under its number', async () => {
+    const many: LaborJob[] = Array.from({ length: 14 }, (_, i) => sheet(`s${i + 1}`, 'cedar', String(3001 + i), `2026-10-${String(i + 1).padStart(2, '0')}`, [['Rough-in', 100]]))
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 12 }, error: null })
+    render(<SubPapersWindow open={{ kind: 'statement' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={many} assigneesByJobId={new Map(many.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]]))} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 12 papers by email' }))
+    // The first email is out before the next is opened: Done stands beside the press.
+    await screen.findByRole('button', { name: 'Done' })
+    fireEvent.click(screen.getByRole('button', { name: 'Open the next email, 3 papers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledTimes(2))
+    const bodies = db.invoke.mock.calls.map((c) => (c as [string, { body: { subject: string; papers: Array<{ number: string }> } }])[1].body)
+    expect(bodies[0]!.subject).toBe('Your statement of account from Made-up Plumbing Co.')
+    expect(bodies[0]!.papers).toHaveLength(12)
+    expect(bodies[1]!.subject).toBe('More papers from Made-up Plumbing Co., email 2 of 2')
+    expect(bodies[1]!.papers.map((p) => p.number)).toEqual(['WS-3012-1', 'WS-3013-1', 'WS-3014-1'])
   })
 
   it('a second click before the press goes dead sends nothing more: one email, one statement number', async () => {

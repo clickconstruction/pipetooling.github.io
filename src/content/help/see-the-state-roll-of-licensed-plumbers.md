@@ -2,7 +2,7 @@
 title: see the state roll of licensed plumbers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: state roll, license roll, licensed plumbers, plumbing board, journeyman, master, tradesman, responsible master, lapsed license, hiring, recruit, pulls, pull, counties, state file, last read
+keywords: state roll, license roll, licensed plumbers, plumbing board, journeyman, master, tradesman, responsible master, lapsed license, hiring, recruit, pulls, pull, counties, state file, last read, our own, our licenses, check a license, use the state's date, license expired, insurance
 where: /prospects?tab=roll
 order: 127
 ---
@@ -63,6 +63,58 @@ A card shows red words when its newest read did not finish. The words give the r
 
 Press {{button:outline|Pull 4 files}} to try again.
 
+## Check our own licenses
+
+The tab can check our own plumbing licenses against the state. You see this view when you can also open People → Licenses.
+
+Press **Our own** at the top of the tab. Each plumbing license we hold has a card. The card shows what we hold and what the state says.
+
+:::example One license's card
+**Silas Okafor** {{chip:yellow|The state has a later date}}
+
+We hold: **Journeyman Plumber** number **J-000277**
+
+Our date: **Jan 31, 2026**
+
+The state says: Current until **Jan 31, 2027**
+
+Listed as: **Okafor, Silas · Bexar**
+:::
+
+The app matches a license by its number and its rank. The app never matches by a name. Nobody is contacted from this view.
+
+The chip on a card says how the license reads.
+
+- {{chip:green|Matches}} means our date and the state's date agree.
+- {{chip:yellow|The state has a later date}} means the person renewed and our date is old.
+- {{chip:yellow|Lapses in 23 days}} means the license ends within 60 days.
+- {{chip:red|Lapsed}} means the state says the license has ended.
+- {{chip:yellow|Not on the roll}} means the state's file has no license with that number.
+- {{chip:yellow|Another name}} means the state lists the number under a different person. Check the number we hold.
+- {{chip:yellow|No number}} and {{chip:yellow|No rank}} mean the license cannot be looked up. Fix the license in [People → Licenses](/people?tab=licenses).
+
+A master who contracts with the public has insurance on file with the board. The card says when that insurance ends.
+
+### Fix our date
+
+Press {{button:outline|Use the state's date}} to save the state's date on our license.
+
+You can also press our date on the card. The date turns into a field. Type the day, then press **Keep**.
+
+Either way the date changes in People → Licenses too. The two pages hold the same license.
+
+### See only what needs a look
+
+Two chips sit above the cards. **Needs a look** shows the licenses with something to fix. **Matches** shows the rest.
+
+The view opens on **Needs a look** when a license needs one.
+
+### Why a license may be missing
+
+A license shows here when the license names plumbing. Electrical and A/C licenses are not checked yet.
+
+A new license shows **Not on the roll** until the next pull. Press **Pulls**, then {{button:outline|Pull 4 files}}, to read the state's files now. An apprentice's license is read on Monday morning only.
+
 ## What comes next
 
-This page does not name who to call yet. A list of who to call comes later. So does a check of our own team's licenses.
+This page does not name who to call yet. A list of who to call comes later.

@@ -23,11 +23,12 @@
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { usePhoneKind } from '../../hooks/usePreciseLocation'
+import { usePlaceMorePhotos } from '../../hooks/usePlaceMorePhotos'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { MyFixFailure } from '../../lib/materials/myLocation'
 import { handHeld } from '../../lib/paintedMap/handHeld'
-import { PAINTED_PLACE_NAME_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
+import { PAINTED_PLACE_NAME_MAX, type PaintedPlace, type PlacePhoto } from '../../lib/paintedMap/paintedMap'
 import { BURIED_KIND_TILES, PLACE_KIND_HINT_WORDS, PLACE_KIND_TILES, PLACE_KIND_WORDS, PLACE_WARN_COLOR, isBuriedKind, pressBuriedAnswer, pressBuriedTile, pressPlaceKindChip, pressSomethingElse, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PAINTED_PLACE_WORDS_MAX, PLACE_WORDS_HINT, PLACE_WORDS_LABEL, PLACE_WORDS_PLACEHOLDER } from '../../lib/paintedMap/paintedPlaceWords'
 import { PLACE_DOT_WEAK_NOTE_WORDS, placeDotNoFixWords, placeDotRoughNoteWords } from '../../lib/paintedMap/paintedPlaceDot'
@@ -37,6 +38,8 @@ import { PreciseLocationLine } from './PreciseLocationLine'
 
 /** The photo as the panel hands it over: a new picture, the one the place already has, or none. */
 export type PaintedPlacePhotoChoice = { kind: 'new'; id: string; blob: Blob } | { kind: 'keep' } | { kind: 'none' }
+/** A place's photos after its first (#413, step 7), as the panel hands them over: the saved ones still kept, and the new ones to send. */
+export type PaintedPlaceMorePhotos = { keep: PlacePhoto[]; add: Array<{ id: string; blob: Blob }> }
 
 type Props = {
   /** The place being changed, or null for a new one. */
@@ -62,8 +65,11 @@ type Props = {
   startShot?: File | null
   /** A line for the top of the sheet: why the dot is not where the person stands. */
   note?: string | null
+  /** The saved other photos, by path, to look at. */
+  morePhotoUrls?: ReadonlyMap<string, string>
   onUseWhereIAm: () => void
-  onSave: (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice }) => void
+  /** `more` is handed over only when the place's other photos changed, so a place whose photos a newer app keeps is not rewritten by an older one. */
+  onSave: (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice; more?: PaintedPlaceMorePhotos }) => void
   onRemove: () => void
   onCancel: () => void
 }
@@ -83,9 +89,11 @@ const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize
 const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }
 /** The amber box of the Precise Location line, for the press's own answer when there is no reading to draw a line for. */
 const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
+/** A place's other photo, small beside the first. */
+const moreThumb: CSSProperties = { width: 72, height: 54, objectFit: 'cover', borderRadius: 6, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-muted)', display: 'block' }
 const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32 }
 
-export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, startShot = null, note = null, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
+export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, startShot = null, note = null, morePhotoUrls, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
@@ -111,7 +119,12 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
   // The saved photo stays until the painter takes it off or takes another.
   const [keepSaved, setKeepSaved] = useState(Boolean(place?.photoPath))
   const inputRef = useRef<HTMLInputElement>(null)
+  const moreRef = useRef<HTMLInputElement>(null)
   const { shot, shrinking, error: shotError, pick, clear } = useTaskShot()
+  // The place's photos after its first (#413, step 7): open and covered, before and after.
+  const more = usePlaceMorePhotos(place?.morePhotos)
+  const savedMore = place?.morePhotos ?? []
+  const moreChanged = more.added.length > 0 || more.kept.length !== savedMore.length
 
   useEffect(() => {
     if (shot) setKeepSaved(false)
@@ -139,11 +152,11 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
   }, [noFix, finding])
   const preview = shot?.previewUrl ?? (keepSaved ? photoUrl : null)
   const hasPhoto = Boolean(shot) || keepSaved
-  const waiting = busy || shrinking
+  const waiting = busy || shrinking || more.shrinking
 
   const save = () => {
     if (waiting) return
-    onSave({ name, words, kind, photo: shot ? { kind: 'new', id: shot.id, blob: shot.blob } : keepSaved ? { kind: 'keep' } : { kind: 'none' } })
+    onSave({ name, words, kind, photo: shot ? { kind: 'new', id: shot.id, blob: shot.blob } : keepSaved ? { kind: 'keep' } : { kind: 'none' }, ...(moreChanged ? { more: { keep: more.kept, add: more.added.map((p) => ({ id: p.id, blob: p.blob })) } } : null) })
   }
 
   const photoBlock = (
@@ -195,6 +208,56 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM =
           <p role="alert" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
             {shotError}
           </p>
+        ) : null}
+        {hasPhoto || more.kept.length + more.added.length > 0 ? (
+          // More than one photo (#413, step 7): the trench open and the trench filled, the valve and the wall it is in.
+          <div data-place-more-photos style={{ display: 'grid', gap: '0.4rem' }}>
+            <input
+              ref={moreRef}
+              type="file"
+              accept="image/*"
+              capture={handHeld() ? 'environment' : undefined}
+              aria-label="Another photo of the place"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void more.pick(file)
+              }}
+            />
+            {more.kept.length + more.added.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {more.kept.map((p, i) => (
+                  <span key={p.path} data-place-more-photo="kept" style={{ display: 'grid', gap: '0.15rem', justifyItems: 'center' }}>
+                    {morePhotoUrls?.get(p.path) ? <img src={morePhotoUrls.get(p.path)} alt={`Photo ${i + 2} of the place`} style={moreThumb} /> : <span style={{ ...moreThumb, display: 'grid', placeItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saved</span>}
+                    <button type="button" style={quiet} disabled={waiting} aria-label={`Remove photo ${i + 2}`} onClick={() => more.removeKept(p.path)}>
+                      Remove
+                    </button>
+                  </span>
+                ))}
+                {more.added.map((p, i) => (
+                  <span key={p.id} data-place-more-photo="new" style={{ display: 'grid', gap: '0.15rem', justifyItems: 'center' }}>
+                    <img src={p.previewUrl} alt={`Photo ${more.kept.length + i + 2} of the place`} style={moreThumb} />
+                    <button type="button" style={quiet} disabled={waiting} aria-label={`Remove photo ${more.kept.length + i + 2}`} onClick={() => more.removeAdded(p.id)}>
+                      Remove
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {more.canAdd ? (
+              <button type="button" data-place-more-add disabled={waiting} onClick={() => moreRef.current?.click()} style={waiting ? { ...deadPress, minHeight: 48 } : { ...press, minHeight: 48 }}>
+                {more.shrinking ? 'Reading the photo…' : '＋ Another photo'}
+              </button>
+            ) : (
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>A place holds twelve more photos. Take one off to add another.</span>
+            )}
+            {more.error ? (
+              <p role="alert" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+                {more.error}
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
   )
