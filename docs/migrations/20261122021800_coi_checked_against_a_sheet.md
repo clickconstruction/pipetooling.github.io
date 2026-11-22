@@ -21,4 +21,6 @@ Not changed here, and still true: the trade's upload files one waiting certifica
 
 Checked before the push: `supabase/tests/coi_checked_against_a_sheet/20_scenario.sql`, in the bed `coi-checked-against-a-sheet`. Docker is down on this Mac, so the bed's first run is CI's.
 
-Apply: `supabase db push` after the merge. No client calls either function yet.
+Apply: `supabase db push` after the merge.
+
+**Applied** to prod on 2026-11-22, by `scripts/db-push.sh` from a checkout at `origin/main`, this migration alone: the dry-run listed no other file. The bed passed on CI's second run, after a fix to its own last step (the job was deleted while the training user's claims were still set). Read back through the Management API: the ledger row, the seven `sheet_*` columns, the check validated, the index, and both functions as the caller's own (not security definer), runnable by a signed-in person and not by `anon`. No certificate has a job yet. The drift check read 1443 local files against 1443 remote versions. The push script's type step failed for lack of `node_modules` in that checkout, so `src/types/database.ts` and the dev seat's catalog do not name the columns yet; the client casts, and the seat reads them once its catalog is regenerated.
