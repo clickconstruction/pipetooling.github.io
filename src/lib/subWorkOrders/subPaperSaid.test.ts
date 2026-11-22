@@ -27,6 +27,13 @@ describe('subPaperPlace: where the window is', () => {
   it('a sheet and a sending that share an id are still two places', () => {
     expect(subPaperPlace({ kind: 'work', sheetId: 'x1' }, 'paper')).not.toBe(subPaperPlace({ kind: 'payment', sendingKey: 'x1' }, 'paper'))
   })
+
+  it('each email of a send in several is a place of its own, and the first is the step itself', () => {
+    const first = subPaperPlace({ kind: 'statement' }, 'send')
+    expect(subPaperPlace({ kind: 'statement' }, 'send', 0)).toBe(first)
+    expect(subPaperPlace({ kind: 'statement' }, 'send', 1)).not.toBe(first)
+    expect(subPaperPlace({ kind: 'statement' }, 'send', 2)).not.toBe(subPaperPlace({ kind: 'statement' }, 'send', 1))
+  })
 })
 
 describe('subPaperSaidHeld: how long the last press’s line stays', () => {

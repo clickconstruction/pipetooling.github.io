@@ -40,11 +40,13 @@ import {
   type PaperSheet,
   type StatementRange,
 } from '../../../supabase/functions/_shared/subPapers'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { paymentRecordReceived, type SubPaperAnswers } from '../../lib/subWorkOrders/subPaperAnswers'
 import { subPaperPlace, subPaperSaidHeld, subPaperSaidShown } from '../../lib/subWorkOrders/subPaperSaid'
 import { paymentRecordHtml, statementOfAccountHtml, SUB_PAPER_CSS, workStatementHtml } from '../../lib/subWorkOrders/subPapersHtml'
-import { subPaperSendPlan, subPaperSendSet, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
+import { subPaperSendParts, subPaperSendPlan, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
 import { ledgerPeriodRange } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { SCHEDULE_SHEET_Z } from '../schedule/ScheduleBlockSheet'
 
@@ -93,18 +95,30 @@ export type SubPapersWindowViewProps = {
   onClose: () => void
 }
 
-const quiet: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
-const press = (live: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.8125rem', fontWeight: 650, padding: '0.35rem 0.9rem', borderRadius: 6, border: 'none', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? 'white' : DEAD_PRESS_TEXT, cursor: live ? 'pointer' : 'default', whiteSpace: 'nowrap' })
-const seg = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.22rem 0.7rem', borderRadius: 999, border: `1px solid ${on ? 'var(--border-blue)' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', cursor: 'pointer' })
+const quietAtDesk: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
+const pressAtDesk = (live: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.8125rem', fontWeight: 650, padding: '0.35rem 0.9rem', borderRadius: 6, border: 'none', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? 'white' : DEAD_PRESS_TEXT, cursor: live ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+const segAtDesk = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.22rem 0.7rem', borderRadius: 999, border: `1px solid ${on ? 'var(--border-blue)' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', cursor: 'pointer' })
 const k: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', marginBottom: 3 }
 const field: CSSProperties = { marginTop: 10 }
+/** On a phone every press in the window stands a fingertip tall, its words in the middle. The desk keeps its sizes. */
+const thumb: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }
+/** A tick box's row on a phone: the whole line is the press, a fingertip tall. */
+const thumbTick: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, display: 'flex', alignItems: 'center', gap: 6 }
 
 export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, answers, marksUnread = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
+  const phone = useNarrowViewport640()
+  const quiet: CSSProperties = phone ? { ...quietAtDesk, ...thumb } : quietAtDesk
+  const press = (live: boolean): CSSProperties => (phone ? { ...pressAtDesk(live), ...thumb } : pressAtDesk(live))
+  const seg = (on: boolean): CSSProperties => (phone ? { ...segAtDesk(on), ...thumb } : segAtDesk(on))
+  /** A list to pick from keeps its own box: it is a fingertip tall on a phone and is not laid out as a row. */
+  const pick = (on: boolean): CSSProperties => ({ ...segAtDesk(on), paddingRight: '0.4rem', maxWidth: '100%', ...(phone ? { minHeight: PHONE_PRESS_MIN_HEIGHT, boxSizing: 'border-box' } : {}) })
   const [view, setView] = useState<SubPapersOpen>(open)
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
   /** The papers went on this visit to the send step: it offers Done, never a second Send by mistake. */
   const [went, setWent] = useState(false)
+  /** Which email of the send is open, from 0. A pick past one email's limit goes in several, and each has its own send. */
+  const [email, setEmail] = useState(0)
   // The last statement as it stood when the window opened. A paper made here is registered at once, and it must
   // not move this window's own period under the person: a second press sends the period they are looking at.
   const [lastStatement] = useState(lastStatementNow)
@@ -116,7 +130,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const ways = SUB_PAPER_SEND_BY.filter((o) => sendBy.includes(o.key))
   const [by, setBy] = useState<SubPaperSendBy>(ways[0]?.key ?? 'email')
   // The last press's line belongs to the paper and the step it arrived on, so it goes when either changes.
-  const place = subPaperPlace(view, step)
+  const place = subPaperPlace(view, step, email)
   const [saidHeld, setSaidHeld] = useState(() => subPaperSaidHeld(null, said, place))
   const saidNow = subPaperSaidHeld(saidHeld, said, place)
   if (saidNow !== saidHeld) setSaidHeld(saidNow)
@@ -148,15 +162,26 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
 
   const openWork = built.work.filter((w) => w.stillOpen > 0)
   const periodPayments = built.payments.filter((p) => statement.lastPayments.some((l) => l.key === p.key))
-  // One email carries so many papers. The oldest ride first, and what does not fit is held and named.
+  // One email carries so many papers. The oldest ride first, and what does not fit is held, named and given the
+  // next email: the step sends one email at a time, and a held paper has a press of its own.
   const picked: SubPaper[] = view.kind === 'statement' ? [...(attachOpen ? openWork : []), ...(attachPayments ? periodPayments : [])] : []
-  const { attached, held } = by === 'email' ? subPaperSendSet(picked) : { attached: picked, held: [] }
+  const parts = !paper ? [] : by === 'email' ? subPaperSendParts(paper, picked) : [[paper, ...picked]]
+  const emailAt = Math.min(email, Math.max(0, parts.length - 1))
+  const sending = parts[emailAt] ?? []
+  const lead = sending[0] ?? null
+  const attached = sending.slice(1)
+  const held = parts.slice(emailAt + 1).flat()
   const last = built.sendings[built.sendings.length - 1]
-  const plan = paper ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead: paper, attached, held, by, email: contact.email, emailUnread: contact.emailUnread, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
+  const plan = lead ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead, attached, held, part: { n: emailAt + 1, of: parts.length }, by, email: contact.email, emailUnread: contact.emailUnread, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
   const texts = ways.some((o) => o.key === 'text')
   // A press under way keeps the window: its answer is said here, and a window closed and opened again could send twice.
   const closeUnlessBusy = () => {
     if (!busy) onClose()
+  }
+  /** The held papers' email: the step moves on to it, and what went or did not stays with the email before. */
+  const openNextEmail = () => {
+    setWent(false)
+    setEmail(emailAt + 1)
   }
   const ok = built.check.ok && !!paper
   const unnumbered = sheets.filter((s) => !s.number).length
@@ -168,7 +193,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
       <div role="dialog" aria-modal="true" aria-label={`Papers for ${ctx.sub.name}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1rem 1.1rem', width: 'min(820px, 100%)', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.8rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>
-            {step === 'send' ? `Send ${paper?.kind === 'statement_of_account' ? 'the statement of account' : paper?.kind === 'payment_record' ? 'the payment record' : 'the work statement'}` : `${paper?.title ?? 'Papers'} · ${ctx.sub.name}`}
+            {step === 'send' ? (emailAt > 0 ? `Send more papers · email ${emailAt + 1} of ${parts.length}` : `Send ${paper?.kind === 'statement_of_account' ? 'the statement of account' : paper?.kind === 'payment_record' ? 'the payment record' : 'the work statement'}`) : `${paper?.title ?? 'Papers'} · ${ctx.sub.name}`}
           </h3>
           <button type="button" disabled={!!busy} onClick={closeUnlessBusy} style={{ ...quiet, marginLeft: 'auto', opacity: busy ? 0.55 : 1 }}>
             Close
@@ -180,7 +205,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
             <button type="button" aria-pressed={view.kind === 'statement'} style={seg(view.kind === 'statement')} onClick={() => setView({ kind: 'statement' })}>
               Statement of account
             </button>
-            <select aria-label="A work statement" value={view.kind === 'work' ? view.sheetId : ''} onChange={(e) => e.target.value && setView({ kind: 'work', sheetId: e.target.value })} style={{ ...seg(view.kind === 'work'), paddingRight: '0.4rem', maxWidth: '100%' }}>
+            <select aria-label="A work statement" value={view.kind === 'work' ? view.sheetId : ''} onChange={(e) => e.target.value && setView({ kind: 'work', sheetId: e.target.value })} style={pick(view.kind === 'work')}>
               <option value="">Work statements · {built.work.length}</option>
               {sheets.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -189,7 +214,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
               ))}
             </select>
 {paymentRecords ? (
-                          <select aria-label="A payment record" value={view.kind === 'payment' ? view.sendingKey : ''} onChange={(e) => e.target.value && setView({ kind: 'payment', sendingKey: e.target.value })} style={{ ...seg(view.kind === 'payment'), paddingRight: '0.4rem', maxWidth: '100%' }}>
+                          <select aria-label="A payment record" value={view.kind === 'payment' ? view.sendingKey : ''} onChange={(e) => e.target.value && setView({ kind: 'payment', sendingKey: e.target.value })} style={pick(view.kind === 'payment')}>
                 <option value="">Payment records · {built.payments.length}</option>
                 {built.payments
                   .slice()
@@ -275,10 +300,10 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
 {canSend ? (
                         <div style={field}>
                 <div style={k}>Attach</div>
-                <label style={{ fontSize: '0.8125rem', marginRight: 14 }}>
+                <label style={{ fontSize: '0.8125rem', marginRight: 14, ...(phone ? thumbTick : {}) }}>
                   <input type="checkbox" checked={attachOpen} onChange={(e) => setAttachOpen(e.target.checked)} /> Each open work statement ({openWork.length})
                 </label>
-                <label style={{ fontSize: '0.8125rem' }}>
+                <label style={{ fontSize: '0.8125rem', ...(phone ? thumbTick : {}) }}>
                   <input type="checkbox" checked={attachPayments} onChange={(e) => setAttachPayments(e.target.checked)} /> Payment records in the period ({periodPayments.length})
                 </label>
               </div>
@@ -300,7 +325,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
           </div>
         ) : null}
 
-        {step === 'send' && plan && paper ? (
+        {step === 'send' && plan && lead ? (
           <>
             <div style={field}>
               <div style={k}>To</div>
@@ -334,7 +359,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                       ))}
                     </div>
                     {/* Where the register is live, a paper with no number yet takes one as it is made, and its file is named for it. */}
-                    {lastStatement !== undefined && [paper, ...attached].some((p) => !p.number && p.kind !== 'payment_record') ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>A paper with no number yet takes one as it is made, and its file is named for it.{paper.kind === 'work_statement' && !paper.number ? ' The subject names it too.' : ''}</div> : null}
+                    {lastStatement !== undefined && sending.some((p) => !p.number && p.kind !== 'payment_record') ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>A paper with no number yet takes one as it is made, and its file is named for it.{emailAt === 0 && lead.kind === 'work_statement' && !lead.number ? ' The subject names it too.' : ''}</div> : null}
                   </>
                 ) : (
                   plan.text
@@ -355,6 +380,15 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
             {plan.held ? (
               <div data-testid="sub-papers-held" style={{ ...field, fontSize: '0.8125rem', color: 'var(--text-amber-900)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.65rem' }}>
                 {plan.held}
+                {/* The held papers' own door before this email went: nothing sends them otherwise. Once it went, the press below leads. */}
+                {plan.next && !went ? (
+                  <div style={{ marginTop: 4 }}>
+                    <button type="button" data-testid="sub-papers-next-email" disabled={!!busy} onClick={openNextEmail} style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'inherit', textDecoration: 'underline', cursor: busy ? 'default' : 'pointer', ...(phone ? { minHeight: PHONE_PRESS_MIN_HEIGHT } : {}) }}>
+                      {plan.next}
+                    </button>
+                    {' This email is not sent by that press.'}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {plan.blocked ? (
@@ -367,7 +401,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                     {emailDoor.press ? (
                       <>
                         {' '}
-                        <button type="button" onClick={emailDoor.press.onPress} style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                        <button type="button" onClick={emailDoor.press.onPress} style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', ...(phone ? { minHeight: PHONE_PRESS_MIN_HEIGHT } : {}) }}>
                           {emailDoor.press.label}
                         </button>
                       </>
@@ -393,12 +427,23 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                 style={quiet}
                 onClick={() => {
                   setWent(false)
+                  setEmail(0)
                   setStep('paper')
                 }}
               >
                 Back to the paper
               </button>
-              {went ? (
+              {went && plan?.next ? (
+                // More is held: the next email leads, and Done is still there for an office that stops here.
+                <>
+                  <button type="button" style={quiet} onClick={onClose}>
+                    Done
+                  </button>
+                  <button type="button" style={press(true)} onClick={openNextEmail}>
+                    {plan.next}
+                  </button>
+                </>
+              ) : went ? (
                 <button type="button" style={press(true)} onClick={onClose}>
                   Done
                 </button>
@@ -408,8 +453,8 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
                   disabled={!ok || !plan?.confirmLabel || !canSend || !!busy}
                   style={press(ok && !!plan?.confirmLabel && canSend && !busy)}
                   onClick={() => {
-                    if (!plan || !paper) return
-                    void Promise.resolve(onSend?.(plan, [paper, ...attached], by, range)).then((sent) => {
+                    if (!plan || !lead) return
+                    void Promise.resolve(onSend?.(plan, sending, by, range)).then((sent) => {
                       if (sent === true) setWent(true)
                     })
                   }}
@@ -450,6 +495,8 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
  * Until this the press drew nothing for as long as the reads took, and looked dead on a slow line.
  */
 export function SubPapersWaiting({ name, onClose }: { name: string; onClose: () => void }) {
+  const phone = useNarrowViewport640()
+  const quiet: CSSProperties = phone ? { ...quietAtDesk, ...thumb } : quietAtDesk
   return (
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: SCHEDULE_SHEET_Z + 1, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.75rem 1rem', overflowY: 'auto' }}>
       <div role="dialog" aria-modal="true" aria-busy="true" aria-label={`Papers for ${name}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 10, padding: '1rem 1.1rem', width: 'min(820px, 100%)', boxSizing: 'border-box' }}>

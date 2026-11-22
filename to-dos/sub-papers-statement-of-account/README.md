@@ -205,7 +205,7 @@ Cut each PR from fresh `origin/main`, in this order:
    - *A real door for a sub with no email.* The press is dead for such a sub and the line says so, with Print and Download as the way out. Read on prod on 2026-11-19, counts only: 24 active subs, 13 with no email on the roster row, 2 of those with an address on the login tied to the row. **Only a dev can add one today.** Every one is tied to a login row, so the office's roster edit does not reach them, and the desk's email change does not copy onto an empty roster row. A dev edits a row another account made in Settings → People; a row the dev made has no edit there. My pick: the function falls back to the login's address, the rule the work order send already uses, and the window's door opens the sub's desk. That changes the function and means a redeploy, so it was asked of Grace on 2026-11-19. She has not said yes, and the lead session's advice was to keep it out of the press's own change, so the press shipped on the function as it is.
    - *The Pay view's three presses for a superintendent, done 2026-11-20 (v2.8025).* A superintendent reaches the Pay view and was shown *Statement of account…*, *Work statement…* and *Payment record…*, which the register refused. The presses now show only for the office roles who see sub pay, on the Pay view and on People → Subs, and a superintendent keeps Print.
    - *The first email of a work statement had no number in its subject, fixed 2026-11-21 (v2.8217).* The send step builds the subject from the paper as previewed, and the register numbers the paper only when Send is pressed. So a sheet's first work statement went out as *Work statement from <company>*, while its file was `WS-1113-1.pdf`. The walk's own email read so. The connected window's send now builds the subject again from the lead paper as numbered (`subPaperSendSubject`), and the step says the subject will name the number. A statement of account still names no number in its subject, and a payment record already carried its sending's. Not pressed on a live build: a send needs an address on the test sub's row.
-   - *Papers past 12 have no press of their own.* One email carries 12 papers, the function's limit (`SUB_PAPER_SEND_MAX`). A statement of account sends the first 11 that ride along, oldest first, and a yellow line names the rest. Nothing sends the rest: another statement attaches the same first 11 again, so the office opens each held sheet's work statement and sends it alone. It takes a sub with more than 11 open sheets, and that is close: on 2026-11-20 one sub had 10. A fix would be a press under the yellow line that opens the send step on the held papers. Noted 2026-11-20, from the press's own review.
+   - *Papers past 12 had no press of their own. Built 2026-11-21, v2.8262*: the send step sends one email at a time, and *Open the next email, <n> papers* opens the one the held papers go in, before or after the first went (`subPaperSendParts`). A later email reads *More papers from <company>, email 2 of 3*. What follows is the fault as it was noted. One email carries 12 papers, the function's limit (`SUB_PAPER_SEND_MAX`). A statement of account sends the first 11 that ride along, oldest first, and a yellow line names the rest. Nothing sends the rest: another statement attaches the same first 11 again, so the office opens each held sheet's work statement and sends it alone. It takes a sub with more than 11 open sheets, and that is close: on 2026-11-20 one sub had 10. A fix would be a press under the yellow line that opens the send step on the held papers. Noted 2026-11-20, from the press's own review.
 6. **The portal tab** (PR 6, with PR 7's confirm left behind its switch, off). **Moved to card #371**, with a mock-up and calls of its own. **Built and live 2026-11-17** as the sub's *Statements* view (v2.7569, v2.7597, v2.7609), walked on the test sub, and #371 retired the same day; its record is the #371 paragraph under *Closed* in `to-dos/README.md`. The confirm stays off.
 
 Hard lines:
@@ -258,8 +258,8 @@ edge function was current. The walk's sent copy and register row are as *Where i
   statement*, as call 5 now says.
 
 **The two rough edges.** The subject with no number was small, as the card says, and is fixed in v2.8217. Papers past 12 is closer than it looked,
-as step 5 now says. The card missed one more: held papers and files not yet numbered are named by their job, so several
-sheets of one job read alike.
+as step 5 now says, and has its press since v2.8262. The card missed one more: held papers and files not yet numbered are named by their job, so several
+sheets of one job read alike. Since v2.8262 a held work statement names its sheet's day too. A file is still named by its job until its paper is made and numbered.
 
 **Still open.**
 
@@ -273,10 +273,12 @@ sheets of one job read alike.
   *Not marked yet* and the window says it could not tell.
 - *The last press's line stayed* when the paper or the step changed. *Built 2026-11-21, v2.8217*: it goes on either move, and
   stays gone on the way back. A statement's period is not a move, since the line names its file.
-- *The Pay view's ledger ignores a failed read* of lines or payments, and the papers stand on it. One failed payments read
+- *The Pay view's ledger ignored a failed read* of lines or payments, and the papers stand on it. One failed payments read
   would draw every sheet unpaid, and a statement made then would say so under a number. Seen in the code, not on prod.
-- *On a phone* every press in the window is 26 to 33 px tall, and the phone's Pay view has no paper press. The door on a
-  phone is People → Subs. A matter of taste.
+  *Built 2026-11-21, v2.8262*: a read that fails is not drawn. The ledger keeps what it last read whole and the page says
+  why (`subLedgerReadFailure`), on the Pay view and on People → Subs.
+- *On a phone* every press in the window was 26 to 33 px tall. *Built 2026-11-21, v2.8262*: each stands 44 px tall at 640 px
+  and under. The phone's Pay view still has no paper press: the door on a phone is People → Subs. A matter of taste.
 - *The dev seat and the window differ* after a statement made today. The seat refuses *since_last* and asks for
   *to_date*. The window runs from the last statement before today.
 - Lower: the letterhead reads *Our company* when Settings cannot be read on a browser that never loaded it. The window says
