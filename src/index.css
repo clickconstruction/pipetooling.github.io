@@ -6600,6 +6600,12 @@ tr[data-stages-row-stamped] {
 
 /* The column beside a thread's lines on a short, wide window (v2.6478): the sort card whole at the right. It takes no
    room when the cuts draw nothing there, which an inline style cannot say. */
+/* A thread on a phone in the room the keyboard leaves (punch list #348, `threadWindowFrame.ts`): the header's rows
+   under its first and the flow strip wait until the room is back. One that holds the field being typed in stays. */
+[data-thread-tight-fold]:not(:focus-within) {
+  display: none !important;
+}
+
 .thread-beside {
   flex: 0 0 min(360px, 38%);
   min-height: 0;
