@@ -2324,7 +2324,7 @@ ten more drawings v2.5619), how water comes in under pressure and leaves by grav
 the third is **Intro to electrical** (v2.5614–v2.5618, punch list #120;
 four more drawings v2.5620), how a house's electrical system works for the plumbers who work beside it, understanding and not doing, offered to every role and required of nobody, with a content rule that no lesson instructs.
 The fourth is **Intro to HVAC** (v2.8158–v2.8169), how a house is cooled and heated, written as the company's own trade so its lessons instruct, offered to every role and required of nobody, with a content rule that work on a refrigerant loop names the carded technician (`cardWorkFailures`).
-Its `from:` lines say which facts were read at a 2024 code section or an agency's page and which are trade knowledge still to be checked, and it stays off until a licensed HVAC reader has read it.
+Its `from:` lines say which facts were read at a 2024 code section or an agency's page and which are trade knowledge still to be checked, and Taunya switched it on for every role on 2026-11-21, before a licensed HVAC reader had read it, so that read is still owed.
 Every course is held to **plain words a fourteen-year-old reads** (v2.5621 the plumbing course;
 v2.5622 the electrical, its fifty-five words on its own list since v2.5623;
 v2.5624 the OSHA refresher, seventy-seven of OSHA's own words in `COURSE_TRADE_TERMS`): a **trade word** on the short list in `src/lib/training/tradeTerms.ts` is first met in a Must know or Why it matters sentence that says what it is, never first in a Traps item, a Numbers label, a caption or a Check yourself ask or option, and `courseContent.test.ts` holds every course on disk to it;
