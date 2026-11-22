@@ -61,7 +61,7 @@ The gear menu reads in groups. Each group has a small label.
 
 Sign out and Hard Reload sit last, under a grey band.
 
-On a phone, leaders and devs also find **New phone layout** under **Show**. It is a trial. The guide [try the new phone layout](/help/try-the-new-phone-layout) says what it changes.
+On a phone, leaders and devs also find **New phone layout** under **Show**. The layout is a trial. The guide [try the new phone layout](/help/try-the-new-phone-layout) says what it changes.
 
 - **Dashboard**: your day at a glance. Assigned jobs, clock, inboxes, and billing queues for office roles.
 - **Jobs**: the job ledger and its Pipeline board. Jobs open in two modals that link to each other. **Job Detail** is the read-only view with the activity history. It has an Edit affordance. **Edit Job** is the form. Its {{button:outline-blue|Job Detail}} button at the top closes the form and opens the detail view. Edit Job has no Save button. Changes save automatically as you make them. See the "know when Edit Job saves my changes" guide.

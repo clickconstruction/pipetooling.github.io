@@ -5,7 +5,7 @@ roles: dev, master_technician
 keywords: new phone layout, phone layout, trial, top bar, one row, page name, gear menu, show, bars, tabs, press bar, turnaway, leave report, clock out, home screen, add task, small screen, more room, where did it go, missing icon
 order: 128
 ---
-The new phone layout gives the page more of your phone. It is a trial, and you switch it on yourself.
+The new phone layout gives the page more of your phone. The layout is a trial, and you switch it on yourself.
 
 The bars at the top and the foot of the screen get smaller. No press is taken away. Each one is still on the screen, and this guide says where.
 
@@ -23,12 +23,12 @@ Leaders and devs see the row for now. A phone with the layout on shows the row t
 
 ## The top bar
 
-The top bar is one row. It says the name of the page you are on.
+The top bar is one row. The bar says the name of the page you are on.
 
 These stay in the bar:
 
 - The menu, at the left, for the roles that have one.
-- The house that opens the Dashboard. It leaves the bar when a **Dashboard** tab is at the foot.
+- The house that opens the Dashboard. The house leaves the bar when a **Dashboard** tab is at the foot.
 - **Search**.
 - The green phone that calls the office, in Job Mode.
 - The {{icon:gear}} gear.
@@ -37,7 +37,7 @@ On the Bids page the **Bid** press stays in the bar too.
 
 ## The rows that moved into the gear menu
 
-Every other press of the old bar is a named row at the top of the gear menu. The rows keep the order the icons had. Each opens what its icon opened.
+Every other press of the old bar is a named row at the top of the gear menu. The rows keep the order the icons had. Each row opens what its icon opened.
 
 - **Tell the dev**
 - **Task Dispatch**
@@ -56,17 +56,17 @@ Gear menu, at the top: Tell the dev, Task Dispatch, Ask estimating, Task.
 
 ## The day's presses in Job Mode
 
-The day's presses share one row above the tabs. **Turnaway** and **Leave report** are small presses at the left. The main press takes the rest of the row. That is the press that reads **Clock In** or **On my way**.
+The day's presses share one row above the tabs. **Turnaway** and **Leave report** are small presses at the left. The main press takes the rest of the row. The main press is the one that reads **Clock In** or **On my way**.
 
 **% done** and **Clock out** join the row when you are clocked in on a job. On a small phone a label of two words folds onto two lines.
 
 ## The tabs
 
-The tabs keep their words and their order. They stand a little shorter.
+The tabs keep their words and their order. The tabs stand a little shorter.
 
 ## The Home Screen offer
 
-The offer to add an **Add Task** icon no longer sits above every page. It is one quiet row at the top of the Dashboard. **Add** and **Dismiss** do what they did. An offer you dismissed stays dismissed.
+The offer to add an **Add Task** icon no longer sits above every page. The offer is one quiet row at the top of the Dashboard. **Add** and **Dismiss** do what they did. An offer you dismissed stays dismissed.
 
 ## Tell us how it goes
 
