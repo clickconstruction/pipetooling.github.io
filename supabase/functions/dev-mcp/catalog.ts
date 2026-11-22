@@ -1989,6 +1989,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "start_check_arrive": [{"args":{"p_fixture_id":"string","p_not_as_told?":"string[]"},"returns":"Json"}],
   "start_check_decide": [{"args":{"p_fixture_id":"string","p_hold_until?":"string","p_kind":"string","p_open_then?":"Json"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
   "start_check_take_back": [{"args":{"p_decision_id":"string"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
+  "start_check_to_look": [{"args":{"p_fixture_id":"string"},"returns":"string[]"}],
   "start_check_windows": [{"args":{"p_job_ids":"string[]"},"returns":"{ fixture_id: string job_id: string window_end: string window_start: string }[]"}],
   "start_checks_crew": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "start_checks_desk": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
