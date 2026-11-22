@@ -914,6 +914,8 @@ A gone row is taken off 28 days later.
 **Left off** means a person asked not to be listed, and no pull keeps them.
 The roll holds no phone, street address or email, since the state gives none for a person.
 It is not People → Licenses, which holds our own team's licenses.
+**Our own** (v2.8233) is the tab's view that lays each plumbing license we hold beside the state's row of the same number and rank, for a person who may also open People → Licenses.
+**Use the state's date** saves the state's expiry on that license's `person_licenses` row.
 
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
@@ -1357,7 +1359,7 @@ Guide: *combine two duplicate jobs into one*.
 ### Job window (Job · Edit · Bill)
 One modal per job (v2.1675;
 since v2.6539 760px wide on a computer, where a title row comes first — the number chip, the name, the status chip, then a quiet line with the development, the customer, the prior numbers and the kind chip — and the tabs follow as an underlined strip that scrolls sideways;
-on a phone since v2.7271, punch list #355, the name comes first too with ⋯ over ✕ stacked at its right, the seven pill tabs on one line that scrolls, the header scrolling away with the page and, since v2.7300, coming back on a scroll up with a 44 px ✕ at the tab strip's right (until then a ✕ floated over the page and took taps meant for what had scrolled under it), and every door of the icon row a row of the ⋯ sheet, `lib/jobs/jobWindowPhone.ts`;
+on a phone since v2.7271, punch list #355, the name comes first too with ⋯ over ✕ stacked at its right, the pill tabs on one line that scrolls (eight since v2.8204, with **Map** last), the header scrolling away with the page and, since v2.7300, coming back on a scroll up with a 44 px ✕ at the tab strip's right (until then a ✕ floated over the page and took taps meant for what had scrolled under it), and every door of the icon row a row of the ⋯ sheet, `lib/jobs/jobWindowPhone.ts`;
 since v2.7278 the Job tab under it reads Where · Photos · Who · What's happening · the thread · More on this job in titled sections, each row ending in its act as blue words, the rest in folds the phone remembers, `lib/jobs/jobWindowPhoneSections.ts`;
 the other tabs on a phone and the field roles' window are under *Job window on a phone*;
 on a computer since v2.7326 each icon of the head row carries its word under the glyph (`data-word`, drawn by the window's stylesheet above 640 px), **＋ Paint a map** is an ordinary press at the strip's left, the Where it stands card's empty line is plain muted words and, with nothing asked, the questions head's *none yet* and its two presses are the whole empty) with a single ✕ (and since v2.5908 a **?** before it that opens the card of what each tab holds, `lib/jobs/jobWindowLegend.ts`, punch list #187) — three tabs at first, seven now (Costs v2.3182, History, **Documents** v2.4491: the job's pay applications — since v2.4710 each with the workbooks that went out and who saved it — the job's folders;
@@ -1373,6 +1375,7 @@ Shell: [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx), owned 
 `openEditJob` delegates in via the opener bridge.
 Subcontractor-like roles keep the plain read-only Job Detail;
 **New Job** keeps the standalone form.
+The **Map** tab (v2.8204, punch list #413, `JobWindowMapTab`, `paintedJobMap.ts`) draws the lines of the job's painted maps, the places of its own list and the places an earlier job kept at its address on the old map, read only, and a press on a dot opens its place.
 
 ### Tell the customer
 The sheet that opens before a text goes to a customer, and the receipt after (punch list #115, v2.5593 on the schedule;
@@ -3240,8 +3243,8 @@ never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
 Drawing a line, placing a dot, a walk, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
-The public page `/way`, the picture and the printed page are not on Google.
-Since v2.8208 the page is one word from it: it hands the rule its own ask (`screen: 'way'`), Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`) and stays light on the page's paper, and `PAINTED_GOOGLE_REACH` still answers Leaflet for the page until the look at Google's billing says yes.
+The picture and the printed page are not on Google.
+The public page `/way` is on Google for its reader since v2.8210, on Taunya's yes of 2026-11-21: it hands the rule its own ask (`screen: 'way'`), and Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`, v2.8208) and stays light on the page's paper.
 It has no page of its own and no header button: it is one line wherever the app shows an address.
 The header's search is its door with no job open (since v2.7227): **Paint a map** starts one, on a job picked in the sheet or on no job, and every map the reader can open is found by its name under *Painted maps* (`paintedMapSearch.ts`).
 A map on no job is its maker's and the office's until **Put it on a job…**.
@@ -3289,6 +3292,14 @@ It sits under the job's address with the painted maps (`JobPaintedMapsStrip`: a 
 **Photo of a spot** (since v2.8191, punch list #413, `paintedSpot.ts`) is that press with the camera first: one press opens the camera and reads the phone once (`readSpotNow`), and the place sheet then opens with the photo in it and the dot on that reading.
 A rough reading or none moves no dot, and a photo more than five minutes old takes no reading at all, since it is not of where the person stands (`spotStart`, `spotPhotoIsFresh`).
 Since v2.8193 a photo being added anyway has the same door: **＋ Keep this spot on the job** under each new photo in the Job photos window and **Keep this spot** under a photo on Leave Report (`KeepSpotPress`, `openSpotOnJob`), which reads *Kept on this job* once the place is saved.
+Since v2.8200 (punch list #413, steps 4 and 5) a job reads the lists of places earlier jobs kept at the same customer address (`job_address_place_lists`, `loadAddressPlaceLists`, `paintedAddressPlaces.ts`), each under a dashed line **Kept at this address** that says how many places and when, and for a reader who may read that job, which job.
+With `rows`, as the crew's plain job window passes it (the office's tabbed window does not, since its band sits over every tab), the strip draws each place of the job's list and of those lists as a row with its photo, four to a list, and a press opens the list on that place (`pickPlace`) and counts an open (`note_painted_place_opened`).
+Since v2.8201 (step 3) a job photo and a report photo keep where the phone was when they were taken, in `taken_lat`, `taken_lng` and `taken_accuracy_m` (`takenPointOf`).
+The phone is read once on the pick by the shot-tile engine's `keepPoint`, the reading is carried through the waiting queue, and an opened photo offers **Taken here** (`PhotoTakenHere`).
+Since v2.8203 (steps 6 and 7) a place holds up to twelve more photos after its first (`more_photos`, `PlacePhoto`, `usePlaceMorePhotos`, **＋ Another photo** on the place sheet), drawn under its words in the list.
+A buried place may run along a line (`line_id`): **＋ Walk this line** or **＋ Draw this line** paints a map of its own named for the place, its first line is tied to the place when that map closes (`paintLineForPlace`, `tiePlaceToNewLine`), the place's row then says the line's length, and the line draws in the place's locator color (`PaintedCanvasLine.color`).
+Since v2.8204 (step 8) the office's job window has a **Map** tab that draws all of it on one map → *Job window*.
+Since v2.8205 (step 2b) a new place whose save loses the signal is kept on the phone, its record in the phone's storage and its photos' bytes in `keptPhotos` (`paintedKeptSpot.ts`, `keepSpot`), and `PaintedMapHost` sends what waits when the app opens, when the phone is back online and when a map's window closes (`sendKeptSpots`), each write under ids made on the phone so a second try makes nothing twice.
 A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
 A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
 **Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
@@ -5606,6 +5617,7 @@ since v2.6127 the rule lives in `supabase/functions/_shared/zzTestJob.ts`, which
 `isZzSinkJob`), never by number — through `migrate_job_ledger_costs_and_delete`.
 Since v2.6127 the same rule holds a saved report's two sends: a report on a ZZ job, a ZZ project or a ZZ bid is emailed to no subscriber and pushed to no phone (`send-report-email` and `send-report-notification` read the subject first, `_shared/reportSubject.ts`, and answer `skipped: 'zz_test_job'`;
 **Send now** leaves such reports out and says how many), so a session's walk on a test row reaches no one.
+Since v2.8237 the rule holds a new Dispatch request's push as well: a request on a ZZ job or a ZZ bid rings no dispatcher's phone and its line stays in the inbox (`notify-dispatch-request` asks `dispatchRequestPushSkip` in `_shared/reportSubject.ts`).
 Since v2.5116 (punch list #61, PR 1 of 3) the same rule hides ZZ test jobs from every role but dev on the Pipeline and wherever its jobs cache is read (`/accounts-receivable`, two Quickfill sections), and from the Pipeline strip's and Quickfill's money (`hidesZzTestJobs`, `withoutZzTestJobMoney`, `src/lib/jobs/zzTestJobVisibility.ts`).
 Since v2.5120 (PR 2a) the Dashboard's Billed pin, AR / Unbilled card and Ready to bill / Billed lists leave them out too, by a shared read of every ZZ job id (`src/lib/jobs/zzTestJobRows.ts`: a name starting with ZZ, or one character then ZZ, re-checked;
 one answer a minute per signed-in user, cleared by the sweep;
@@ -6123,6 +6135,7 @@ The office's Needs You line *Ray owes us 6 answers on 2 stages* (`start-answers-
 **Go** and **Hold** (v2.8012) are the decision to send the crew, a press with a name on it, for the office and the job's superintendent through `start_check_decide`: a Go with something open is a **go on their promise** that comes back for a **last check** the day before the crew leaves, and a Hold moves our window to the day picked and writes a note the office sends.
 **Is it as told?**, the crew's look on arrival (v2.8110), is a card at the head of the job's details in Job Mode ([`JobModeArrivalCheck.tsx`](../src/components/jobMode/JobModeArrivalCheck.tsx)): it lists the bullets on them that nobody of ours has seen, from the first of our days for the stage, and is asked once a stage.
 **Yes, all as told** turns each into a yes we saw in that person's name, and a **No** takes their word back, leaves the bullet open, turns the stage red (`saidNo`) and sends Dispatch one line, all through `start_check_arrive`.
+Since v2.8238 a bullet with a No is asked about again once the office or the customer gives a new yes on it, and a No sent after someone else's yes is kept as an arrival of its own.
 That line is a **Stage check (to Dispatch)** with no check behind it: `notAsToldFrom` in [`arrival.ts`](../src/lib/startChecks/arrival.ts) reads it, and its door is **Open the list**.
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
@@ -6774,6 +6787,7 @@ Since v2.7938 **Contract library**, beside it, opens the library People → Cont
 Nothing left People → Contracts: both pages keep a door.
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
+Since v2.8244 a line whose paper names another business than the party beside it also says *signing for* that business, on the tab and on the party's own page (`signingForBeside`, [`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.

@@ -20,6 +20,8 @@ export const ARRIVAL_WORDS = {
   saidNo: (n: number) => `Dispatch has it: ${countWords(n, 'thing', 'things')} not as told.`,
   either: 'Keep working either way.',
   notKept: 'That was not kept',
+  /** The fallback when a refused read carries no reason of its own. */
+  notRead: 'The app could not read what to look at here',
 } as const
 
 /** What a No on arrival carries to Dispatch, off the request's payload. */

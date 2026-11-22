@@ -7,8 +7,8 @@
  * and no failure on this page, Leaflet otherwise. A painted map asks four things more.
  *
  * - **The screen.** Google bills by the map opened. The painting window is staff only. The public
- *   page is opened by every outside reader a link reaches, so it waits for the owner's look at the
- *   billing console.
+ *   page is opened by every outside reader a link reaches, so it waited for a yes. Taunya gave it
+ *   on 2026-11-21 (v2.8210), with no link yet made and the month's count far under the free 10,000.
  * - **The use.** The Google canvas is built a step at a time, looking first. A use it does not carry
  *   yet draws on Leaflet however good the key is.
  * - **Esri's photograph on the screen.** Time's archive is Esri's, and so is a picture of the map.
@@ -45,18 +45,18 @@ export type PaintedGoogleReach = {
 }
 
 /**
- * How far it has come today: the painting window, for looking. A saved map opened to be read draws
- * on Google, and so does a kept walk opened to be looked over.
+ * How far it has come today: the painting window and the public page, for looking. A saved map
+ * opened to be read draws on Google, and so does a kept walk opened to be looked over, and so does
+ * the map a link opens for a reader.
  *
  * Each step of the train adds its own word here, in the change that builds the part.
  * - Drawing on Google adds `drawing`, `placing` and `walking`. A line drawn by hand over Google's
  *   photograph also waits on a reading of Google's terms on content made from its imagery (3.2.3 (c)).
- * - The public page adds `way`, and never before the billing look says yes. Everything else it
- *   needs is in place since v2.8208: the page hands its ask, and the Google canvas keeps a reader
- *   and the line in the picture together (`frameMe.ts`) and stays light on the page's paper. So the
- *   yes is this one word, with the test's line that holds it.
+ * - The public page added `way` in v2.8210. What it needed came in v2.8208: the page hands its ask,
+ *   and the Google canvas keeps a reader and the line in the picture together (`frameMe.ts`) and
+ *   stays light on the page's paper.
  */
-export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window'], uses: ['looking'] }
+export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window', 'way'], uses: ['looking'] }
 
 export type PaintedMapProviderAsk = {
   /** The browser key (`googleMapsBrowserKey()`). Empty when the build has none. */

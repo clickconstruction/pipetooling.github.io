@@ -94,7 +94,7 @@ The top row (1290–1311) draws six pills: **Customers**, **Jobs to GC** and **S
 | Activity | every lane, dev and assistant-like | the week report, Source success on a lane, Marked / Updated by day |
 | Hiring (`team`) | — | `TeamProspectsTab`: the five-stage hiring board |
 | Permits (`permits`) | — | `ProspectsResearchTab`: the cities' permit feeds, the skim, Investigate / Pursue / Pass / Has a plumber, Builders, Market, Find |
-| State roll (`roll`) | — | `StateRollTab`: the state's licensed plumbers kept for our counties and our own numbers, the Pulls view |
+| State roll (`roll`) | `?roll=own` · `?roll=pulls` | `StateRollTabForUser` → `StateRollTab`: the state's licensed plumbers kept for our counties and our own numbers. Our own (`StateRollOwn`, for `canAccessLicenses`) and Pulls |
 
 One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` selects the lane (`gc-leads` or `subs`; the customer deck keeps its bare URL). See [URL / navigation router](#url--navigation-router-parent-permanent).
 

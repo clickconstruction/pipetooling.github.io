@@ -24,6 +24,8 @@ Then you go to the page you wanted to check. That role may not be able to open i
 
 The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to your own account **and to the page you left**. On a phone it is a thin amber bar across the top of the screen. A press anywhere along the bar works. Settings → *Back to my account* does the same.
 
+Sometimes the app cannot put your own sign-in back. Then the app signs this browser out and shows the sign-in page. You sign in again as yourself.
+
 ## Sample accounts
 
 They live under Settings → System → **Digital twins & samples**. They are hidden from every roster, picker, Person rail and notification, the way digital twins are. They are fixtures, never people. So they never get a roster row or pay. {{button:gray|Create the missing samples}} makes one per role that has none. {{button:gray|Manage accounts…}} beside it sets a sample's switches like anyone's. You turn on Hiring for *Sample assistant*, then View as it. The board shows exactly what an assistant with that switch gets.
@@ -32,12 +34,13 @@ They are not read-only. A sample can press a button, save a note or advance a ca
 
 ## What View as holds back
 
-Looking is not using. The app saves some things by itself while a page is open, with no press from anyone. View as holds two of them back.
+Looking is not using. The app saves some things by itself while a page is open, with no press from anyone. View as holds these back.
 
 - The person's **last seen** time and their time in the app stay as their own use made them. People → Activity does not count your look.
 - A salaried person's clock is not synced from your browser. The server fills their day by its own schedule.
+- What is new for the person stays new. Your look does not mark an answer to their note or plan question as seen. The same holds for a bid request, a bid's notes, a first look and a law firm's answers.
 
-Some pages still save small things by themselves. Opening a note or a bid request can mark it as seen for that person. So you open only the pages you came to check.
+A few pages still save small things by themselves, such as a count of the pages opened. So you open only the pages you came to check.
 
 Everything you press still saves as that person. A press saves for a real teammate just as it does for a sample. So you look, and you press nothing you would not want under their name.
 

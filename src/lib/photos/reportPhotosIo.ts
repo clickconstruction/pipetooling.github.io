@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { takenPointColumns, type TakenPoint } from '../paintedMap/paintedSpot'
 import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath, type ReportPhotoRow } from './reportPhotos'
 import { chunkIds, countPhotosByReport } from './reportPhotoCounts'
@@ -51,6 +52,8 @@ export type SendReportPhotoInput = {
   originalBytes: number
   width: number
   height: number
+  /** Where the phone was when the shot was taken (punch list #413). Left out or null, the row keeps no point. */
+  takenPoint?: TakenPoint | null
 }
 
 /**
@@ -76,6 +79,7 @@ export async function sendReportPhoto(input: SendReportPhotoInput): Promise<{ st
       width: input.width,
       height: input.height,
       storage_path: storagePath,
+      ...takenPointColumns(input.takenPoint),
     },
     { onConflict: 'id' },
   )

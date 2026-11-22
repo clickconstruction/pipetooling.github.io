@@ -123,6 +123,8 @@ describe('JobDocumentsRequiredPapers', () => {
     expect(settingsIo.readSettingsPapers).toHaveBeenCalledWith('job-1')
     // The plain paper beside it has no Settings press.
     expect(screen.getAllByRole('button', { name: /^Settings of / })).toHaveLength(1)
+    // Settings and Take off are words that are presses: each takes a finger, 44 px tall.
+    for (const name of ['Settings of Sample secrecy paper', 'Take Sample secrecy paper off']) expect(screen.getByRole('button', { name }).style.minHeight).toBe('44px')
     fireEvent.click(screen.getByRole('button', { name: 'Settings of Sample secrecy paper' }))
     const page = await screen.findByRole('dialog', { name: 'Sample secrecy paper, job J2391' })
     await within(page).findByText('Nothing is changed yet.')

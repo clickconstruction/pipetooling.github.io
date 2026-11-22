@@ -21,7 +21,7 @@ import { jobContractChips } from '../jobs/jobContractLifecycle'
 import { theirPaperFromRow, theirPaperLine } from '../jobs/theirPaper'
 import { buildJobWorkOrderCoverage, workOrderChipLabel } from '../subWorkOrders/workOrderCoverage'
 import { weekdayDate } from '../gc/words'
-import { isPartyAgreementKind, paperPartyKind, paperSignerFromFacts, paperSignerLine, partyAgreementTag, partyNeedsAList } from '../contracts/paperParty'
+import { isPartyAgreementKind, paperPartyKind, paperSignerFromFacts, paperSignerLine, partyAgreementTag, partyNeedsAList, signingForBeside } from '../contracts/paperParty'
 
 /** The kinds the view answers. A kind the kernel does not know still draws, as a plain agreement. */
 export type AgreementKind =
@@ -363,6 +363,18 @@ export function agreementSignerWords(row: Pick<AgreementRow, 'kind' | 'state' | 
   if (!name) return ''
   if (!signer.title && name.toLowerCase() === str(row.with_name).toLowerCase()) return ''
   return paperSignerLine(signer, signed)
+}
+
+/**
+ * *signing for Haddad Engineering*, after who signs on a line: the business the paper itself names, said when it is not
+ * the party named beside it. Someone typed in for one company and added to a list under another keeps the company
+ * their paper says. '' when the paper kept no business, when the line's party is that business, and for every kind
+ * that keeps no signer.
+ */
+export function agreementSigningForWords(row: Pick<AgreementRow, 'kind' | 'with_name' | 'facts'>): string {
+  if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement' && row.kind !== 'company_agreement' && !isPartyAgreementKind(row.kind)) return ''
+  const signer = paperSignerFromFacts(row.facts)
+  return signingForBeside(signer.signingFor, [row.with_name, signer.name, signer.printedName])
 }
 
 /** Whether a line carries **Add to a list**: an outside party's paper whose party has no record yet, signed or not. */

@@ -22,7 +22,7 @@ import {
   type HistoryCard,
   type HistoryState,
 } from './punchListHistory'
-import { isTodoDocPath, parseBatch, parseRawLog, statesFromCommits } from '../../../scripts/todos/readTodoHistory'
+import { isTodoDocPath, parseBatch, parseRawLog, slugOfTodoPath, statesFromCommits, touchedFromRawLog } from '../../../scripts/todos/readTodoHistory'
 
 const HOUR = 3600
 /** 2026-11-02 06:00 UTC, midnight on the app calendar. */
@@ -212,6 +212,44 @@ describe('the git replay', () => {
       { t: 200, cards: [{ n: 1, g: 'ready', p: 2 }, { n: 2, g: 'gated', p: 8 }] },
       { t: 300, cards: [{ n: 1, g: 'close', p: 4 }] },
     ])
+  })
+
+  it('names the card a path belongs to: its file, or anything in its folder', () => {
+    expect(slugOfTodoPath('to-dos/a.md')).toBe('a')
+    expect(slugOfTodoPath('to-dos/b/README.md')).toBe('b')
+    expect(slugOfTodoPath('to-dos/b/mockup.html')).toBe('b')
+    expect(slugOfTodoPath('to-dos/b/notes/more.md')).toBe('b')
+    expect(slugOfTodoPath('to-dos/README.md')).toBeNull()
+    expect(slugOfTodoPath('to-dos/a-before-after.html')).toBeNull()
+    expect(slugOfTodoPath('docs/a.md')).toBeNull()
+  })
+
+  it('reads when each card last changed: the newest commit that touched its file or its folder', () => {
+    const zero = '0'.repeat(40)
+    const log = [
+      `\0${'1'.repeat(40)} 100\n`,
+      `:000000 100644 ${zero} ${OLD} A\tto-dos/a.md`,
+      `:000000 100644 ${zero} ${B} A\tto-dos/README.md`,
+      `\0${'2'.repeat(40)} 200\n`,
+      `:000000 100644 ${zero} ${B} A\tto-dos/b/README.md`,
+      `\0${'3'.repeat(40)} 300\n`,
+      `:000000 100644 ${zero} ${B} A\tto-dos/b/mockup.html`,
+      `:000000 100644 ${zero} ${B} A\tsrc/elsewhere.ts`,
+      `\0${'4'.repeat(40)} 250\n`,
+      `:100644 100644 ${OLD} ${A} M\tto-dos/b/README.md`,
+    ].join('\n')
+    // A mock-up counts as a change of its card, and an older commit read later never wins.
+    expect(touchedFromRawLog(log)).toEqual(new Map([['a', 100], ['b', 300]]))
+    expect(touchedFromRawLog('')).toEqual(new Map())
+  })
+
+  it('carries the cards\' last changes through the packed history, and a history with none stays as it was', () => {
+    const history = { shallow: false, events: [], touched: { b: 300, a: 100 } }
+    const packed = packHistory(history)
+    expect(packed.touched).toEqual([['a', 100], ['b', 300]])
+    expect(unpackHistory(packed)).toEqual(history)
+    expect('touched' in packHistory({ shallow: false, events: [] })).toBe(false)
+    expect('touched' in unpackHistory({ shallow: false, rows: [] })).toBe(false)
   })
 
   it('reads a batch of blobs back by id', () => {

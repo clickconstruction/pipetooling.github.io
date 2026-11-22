@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ComponentProps } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY } from '../../../lib/impersonationSession'
 import LegalFirmWindow, { LEGAL_FIRM_SETTINGS_HREF } from './LegalFirmWindow'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
@@ -293,6 +294,25 @@ describe('LegalFirmWindow', () => {
     expect(box.textContent).toContain('Holidays.')
     await waitFor(() => expect(db.rpcs).toEqual([{ name: 'legal_firm_intake_seen', args: { p_firm_id: 'firm-1' } }]))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  })
+
+  it('while View as is on new answers are shown as new and are not stamped read', async () => {
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
+    try {
+      db.rpcs.length = 0
+      const answered = { ...firm, intake: { needs: 'The W-9.', fileWhere: 'Hays County', efile: 'yes', constable: 'depends', rules: 'changes', rulesNote: 'Holidays.' }, intake_sent_at: '2026-10-07T15:00:00Z', intake_sent_by: 'Ann Sample', intake_seen_at: null } as LegalFirmRow
+      const { onSaved } = renderWindow({ canEdit: false, firm: answered })
+      await settle()
+      const box = document.querySelector('[data-legal-firm-intake]') as HTMLElement
+      expect(box.getAttribute('data-legal-firm-intake')).toBe('new')
+      expect(box.textContent).toContain('Hays County')
+      // The dot on the desk's firm door stays for the person whose desk it is.
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      expect(db.rpcs).toEqual([])
+      expect(onSaved).not.toHaveBeenCalled()
+    } finally {
+      localStorage.removeItem(IMPERSONATION_ORIGINAL_STORAGE_KEY)
+    }
   })
 
   it('a firm that has not answered says so, and nothing is stamped', async () => {

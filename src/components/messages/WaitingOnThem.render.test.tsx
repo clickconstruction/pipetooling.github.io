@@ -129,4 +129,16 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     cleanup()
     expect(write).toHaveBeenCalledWith('c-kim', 'text')
   })
+  it('fits a phone: the list is one column that cannot outgrow the page, and a row wraps so the chip and the presses go under the name (the walk of 2026-11-21)', async () => {
+    renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => LINES)} now={() => NOW} />)
+    const [row] = await screen.findAllByTestId('waiting-row')
+    expect(row!.parentElement?.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    expect([row!.style.display, row!.style.flexWrap]).toEqual(['flex', 'wrap'])
+    const [name, acts] = Array.from(row!.children) as HTMLElement[]
+    // The name keeps 11 rem before it gives room up; the right side is 264 px of presses that cannot give.
+    expect([name!.style.flexGrow, name!.style.flexBasis, name!.style.minWidth]).toEqual(['1', '11rem', '0'])
+    expect([acts!.style.marginLeft, acts!.style.maxWidth]).toEqual(['auto', '100%'])
+    // A name with no space in it, an address nobody has named yet, may break inside its column.
+    expect(screen.getAllByTestId('waiting-name')[0]!.style.overflowWrap).toBe('anywhere')
+  })
 })

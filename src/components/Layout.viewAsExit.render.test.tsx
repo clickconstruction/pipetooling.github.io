@@ -63,14 +63,26 @@ async function renderShell() {
 
 const exitButtons = () => screen.queryAllByRole('button', { name: IMPERSONATION_EXIT_ARIA_LABEL })
 
+/** The two auth calls Exit makes, which the shared stub does not carry. */
+type ExitAuth = {
+  setSession?: (tokens: { access_token: string; refresh_token: string }) => Promise<unknown>
+  signOut?: (options?: { scope?: string }) => Promise<unknown>
+}
+const auth = supabase.auth as unknown as ExitAuth
+const SWAPPED = { data: { session: null }, error: null }
+
 describe('Layout: the way back from View as', () => {
   beforeEach(() => {
     localStorage.clear()
     window.location.hash = ''
+    auth.setSession = vi.fn(async () => SWAPPED)
+    auth.signOut = vi.fn(async () => ({ error: null }))
   })
   afterEach(() => {
     cleanup()
     localStorage.clear()
+    delete auth.setSession
+    delete auth.signOut
   })
 
   it('on a phone sits on its own line above the header, outside the icon row, with its whole name', async () => {
@@ -133,7 +145,7 @@ describe('Layout: the way back from View as', () => {
 
   it('one press on the strip clears the stash and returns to the page left', async () => {
     setScreen(true)
-    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ returnTo: '/#left' }))
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r', returnTo: '/#left' }))
     const { container } = await renderShell()
 
     fireEvent.click(exitButtons()[0]!)
@@ -148,22 +160,41 @@ describe('Layout: the way back from View as', () => {
     localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r', returnTo: '/#back' }))
     // The session swap is a network call: hold it open and read the flag while it is.
     let swapped: () => void = () => {}
-    const auth = supabase.auth as unknown as { setSession?: (tokens: { access_token: string; refresh_token: string }) => Promise<unknown> }
-    const setSession = vi.fn(() => new Promise<unknown>((resolve) => (swapped = () => resolve({ data: { session: null }, error: null }))))
+    const setSession = vi.fn(() => new Promise<unknown>((resolve) => (swapped = () => resolve(SWAPPED))))
     auth.setSession = setSession
-    try {
-      await renderShell()
+    await renderShell()
 
-      fireEvent.click(exitButtons()[0]!)
-      await waitFor(() => expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' }), { timeout: 15_000 })
-      // Still signed in as the person: the background saves held while View as is on stay held.
-      expect(isImpersonationSessionActive()).toBe(true)
+    fireEvent.click(exitButtons()[0]!)
+    await waitFor(() => expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' }), { timeout: 15_000 })
+    // Still signed in as the person: the background saves held while View as is on stay held.
+    expect(isImpersonationSessionActive()).toBe(true)
 
-      swapped()
-      await waitFor(() => expect(window.location.hash).toBe('#back'), { timeout: 15_000 })
-      expect(isImpersonationSessionActive()).toBe(false)
-    } finally {
-      delete auth.setSession
-    }
+    swapped()
+    await waitFor(() => expect(window.location.hash).toBe('#back'), { timeout: 15_000 })
+    expect(isImpersonationSessionActive()).toBe(false)
+    expect(auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it('signs this browser out when the swap is refused, and never returns to the page left as the person', async () => {
+    setScreen(true)
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r', returnTo: '/#back' }))
+    localStorage.setItem('sb-test-auth-token', '{"the":"person"}')
+    // A refusal is an answer, not a throw: `{ error }` comes back and the session is unchanged.
+    auth.setSession = vi.fn(async () => ({ data: { session: null }, error: { message: 'Invalid Refresh Token: Already Used' } }))
+    // The flag is still on at the moment the sign-out is asked for.
+    let flaggedAtSignOut: boolean | null = null
+    const signOut = vi.fn(async () => {
+      flaggedAtSignOut = isImpersonationSessionActive()
+      return { error: null }
+    })
+    auth.signOut = signOut
+    await renderShell()
+
+    fireEvent.click(exitButtons()[0]!)
+    await waitFor(() => expect(isImpersonationSessionActive()).toBe(false), { timeout: 15_000 })
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(flaggedAtSignOut).toBe(true)
+    expect(localStorage.getItem('sb-test-auth-token')).toBeNull()
+    expect(window.location.hash).toBe('')
   })
 })

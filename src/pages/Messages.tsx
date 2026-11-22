@@ -44,6 +44,7 @@ import { needsYouCount } from '../lib/followUp/queue'
 import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
 import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
+import { ONE_COLUMN } from '../lib/messages/pageFit'
 import { QUEUES_FOLD_WORDS, queuesFolded } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
@@ -230,7 +231,7 @@ export default function Messages() {
   if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   return (
-    <div data-messages-page style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
+    <div data-messages-page style={{ padding: '1rem', display: 'grid', gridTemplateColumns: ONE_COLUMN, gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
       <MessagesTopBar
         pill={pill}
         onPick={pick}

@@ -26,6 +26,7 @@ import {
 } from './paintedLine'
 import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
 import { PAINTED_PLACE_WORDS_MAX, cleanPlaceWords } from './paintedPlaceWords'
+import { isPaintedPlacePhotoPath } from './paintedPlacePhoto'
 
 export type PaintedLineHow = 'walked' | 'driven' | 'drawn'
 export type PaintedMeasuredHow = 'wheel' | 'tape' | 'other'
@@ -79,13 +80,19 @@ export type PaintedMapPlaceRow = {
   photo_path: string | null
   /** What kind of thing the place is (#393), as stored: any short lowercase word, or none. */
   kind?: string | null
+  /** The line the place runs along (#413), or none. */
+  line_id?: string | null
+  /** The place's photos after its first (#413), as stored: a list of {path, at, by}. */
+  more_photos?: unknown
+  /** How many times someone other than its setter opened the place (#413). */
+  opened_count?: number | null
   set_by: string | null
   set_at: string
 }
 
 export const PAINTED_MAP_SELECT = 'id,name,words,job_id,development_id,job_list,created_by,created_at'
 export const PAINTED_MAP_LINE_SELECT = 'id,map_id,label,how,points,poor_parts,fixed_by_hand,length_m,margin_m,measured_ft,measured_how,made_by,made_at'
-export const PAINTED_MAP_PLACE_SELECT = 'id,map_id,name,words,lat,lng,accuracy_m,photo_path,kind,set_by,set_at'
+export const PAINTED_MAP_PLACE_SELECT = 'id,map_id,name,words,lat,lng,accuracy_m,photo_path,kind,line_id,more_photos,opened_count,set_by,set_at'
 
 export type PaintedMap = {
   id: string
@@ -123,8 +130,44 @@ export type PaintedPlace = PaintedPoint & {
   photoPath: string | null
   /** What kind of thing it is, which gives its dot a mark of its own (`paintedPlaceKind.ts`). None for a plain numbered dot. */
   kind?: PaintedPlaceKind | null
+  /** The line the place runs along (#413): a buried line walked before backfill gives its place a length. It may be on another painted map of the job. */
+  lineId?: string | null
+  /** The place's photos after its first (#413), oldest first. */
+  morePhotos?: PlacePhoto[]
+  /** How many times someone other than its setter opened the place (#413). */
+  openedCount?: number
   setBy: string | null
   setAt: string
+}
+
+/** A photo of a place after its first (#413): where its bytes are, when it was added and by whom. */
+export type PlacePhoto = { path: string; at: string | null; by: string | null }
+/** The most photos a place holds after its first: the table's own cap. */
+export const PLACE_MORE_PHOTOS_MAX = 12
+
+/** A place's other photos as stored, read with care: a list of things with a path of the one shape. Anything else is left out, never guessed at. */
+export function placePhotosFromJson(raw: unknown): PlacePhoto[] {
+  if (!Array.isArray(raw)) return []
+  const out: PlacePhoto[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const o = item as { path?: unknown; at?: unknown; by?: unknown }
+    if (!isPaintedPlacePhotoPath(typeof o.path === 'string' ? o.path : null)) continue
+    if (out.some((p) => p.path === o.path)) continue
+    out.push({ path: o.path as string, at: typeof o.at === 'string' && o.at ? o.at : null, by: typeof o.by === 'string' && o.by ? o.by : null })
+    if (out.length >= PLACE_MORE_PHOTOS_MAX) break
+  }
+  return out
+}
+
+/** A place's other photos as the row keeps them. */
+export function placePhotosToJson(photos: ReadonlyArray<PlacePhoto>): Array<{ path: string; at: string | null; by: string | null }> {
+  return placePhotosFromJson(photos).map((p) => ({ path: p.path, at: p.at, by: p.by }))
+}
+
+/** Every photo path of some places, the first photos and the rest: what a list asks signed addresses for. */
+export function placePhotoPaths(places: ReadonlyArray<{ photoPath?: string | null; morePhotos?: ReadonlyArray<PlacePhoto> }>): string[] {
+  return places.flatMap((p) => [p.photoPath ?? null, ...(p.morePhotos ?? []).map((m) => m.path)]).filter((x): x is string => !!x)
 }
 
 /** One line, trimmed, inner spaces collapsed, cut at the cap. */
@@ -188,6 +231,9 @@ export function paintedPlaceFromRow(row: PaintedMapPlaceRow): PaintedPlace | nul
     accuracyM: finite(row.accuracy_m) && row.accuracy_m >= 0 ? row.accuracy_m : null,
     photoPath: row.photo_path || null,
     kind: paintedPlaceKindFrom(row.kind),
+    lineId: typeof row.line_id === 'string' && row.line_id ? row.line_id : null,
+    morePhotos: placePhotosFromJson(row.more_photos),
+    openedCount: finite(row.opened_count) && row.opened_count > 0 ? Math.floor(row.opened_count) : 0,
     setBy: row.set_by ?? null,
     setAt: row.set_at,
   }

@@ -49,3 +49,23 @@ export async function spotFileFromPreview(previewUrl: string, takenAt: string | 
   const taken = takenAt ? Date.parse(takenAt) : Number.NaN
   return new File([blob], 'spot.jpg', { type: blob.type || 'image/jpeg', lastModified: Number.isFinite(taken) ? taken : Date.now() })
 }
+
+/**
+ * A reading already asked for, waited on for a short while: the reading, or null when the phone
+ * has not answered in time. A photo's send is never held for a point (`TAKEN_POINT_WAIT_MS`).
+ */
+export function readSpotSoon(reading: Promise<SpotReading>, waitMs: number): Promise<SpotReading | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), waitMs)
+    void reading.then(
+      (r) => {
+        clearTimeout(timer)
+        resolve(r)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(null)
+      },
+    )
+  })
+}

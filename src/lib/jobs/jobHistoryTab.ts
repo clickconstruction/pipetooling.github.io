@@ -12,15 +12,16 @@ import { ymdAddDays } from '../../utils/dateUtils'
 /**
  * Job · Edit · Bill · Costs · History · Documents (Costs split out of Bill — owner call, v2.3182: Bill is
  * money in, Costs is money out; Documents after History — owner call, 2026-10-04: the job's pay
- * applications and the files behind them show on the job).
+ * applications and the files behind them show on the job). Map is last (punch list #413, Taunya's ask of
+ * 2026-11-21): everything painted or kept for the job, on one map.
  */
-export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history', 'documents', 'materials'] as const
+export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history', 'documents', 'materials', 'map'] as const
 export type JobWindowTabKey = (typeof JOB_WINDOW_TABS)[number]
-export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History', documents: 'Documents', materials: 'Materials' }
+export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History', documents: 'Documents', materials: 'Materials', map: 'Map' }
 
 /** The embedded form pane shows on Edit / Bill / Costs (one region at a time); the Job pane's body only on Job. */
 export function jobWindowFormPaneHidden(tab: JobWindowTabKey): boolean {
-  return tab === 'job' || tab === 'history' || tab === 'documents' || tab === 'materials'
+  return tab === 'job' || tab === 'history' || tab === 'documents' || tab === 'materials' || tab === 'map'
 }
 
 /** The form region a window tab shows; the form pane is hidden on the others. */

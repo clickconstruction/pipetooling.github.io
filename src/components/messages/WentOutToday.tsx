@@ -9,6 +9,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { wentOutDays, WENT_OUT_FILTERS, WENT_OUT_WORDS, type WentOutFilter, type WentOutLine, type WentOutRow } from '../../lib/messages/wentOut'
 import { JUMP_LANE_COLOR, JUMP_LANE_LABEL } from '../../lib/messages/jumpStrip'
+import { LANE_LIST, LONG_NAME_FIT, WENT_OUT_NAME_FIT, WENT_OUT_ROW_FIT, WENT_OUT_WHEN_FIT } from '../../lib/messages/pageFit'
 import { loadWentOut } from '../../lib/messages/wentOutIo'
 import type { KindPill } from '../../lib/messages/kindPills'
 
@@ -27,7 +28,7 @@ export interface WentOutTodayProps {
 const answer: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.9rem' }
 const rowStyle: CSSProperties = {
   display: 'flex',
-  gap: '0.6rem',
+  ...WENT_OUT_ROW_FIT,
   alignItems: 'baseline',
   border: '1px solid var(--border)',
   borderRadius: 10,
@@ -59,8 +60,8 @@ function Row({ r, onOpenThread }: { r: WentOutRow; onOpenThread: (contactId: str
       <span aria-hidden style={{ fontSize: '0.9rem' }}>
         {r.channel === 'email' ? '📧' : '💬'}
       </span>
-      <span style={{ display: 'grid', gap: '0.05rem', minWidth: 0 }}>
-        <span style={{ fontWeight: 600 }}>
+      <span style={WENT_OUT_NAME_FIT}>
+        <span style={{ fontWeight: 600, ...LONG_NAME_FIT }}>
           {r.name}
           {r.chip ? (
             <span style={didChip} data-testid="went-out-did">
@@ -76,7 +77,7 @@ function Row({ r, onOpenThread }: { r: WentOutRow; onOpenThread: (contactId: str
           </a>
         ) : null}
       </span>
-      <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'grid', justifyItems: 'end', gap: '0.1rem' }}>
+      <span data-testid="went-out-when" style={{ ...WENT_OUT_WHEN_FIT, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
         <span>{r.when}</span>
         {r.mark ? (
           <span title={r.mark.title} style={{ fontWeight: 700, color: r.mark.bad ? 'var(--text-red-700)' : '#16a34a' }} data-testid="went-out-mark">
@@ -131,7 +132,7 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
           ))}
         </span>
       </div>
-      <div style={{ display: 'grid', gap: '0.5rem' }}>
+      <div style={LANE_LIST}>
         {lines === undefined ? null : lines === null ? (
           <div style={answer}>{WENT_OUT_WORDS.problem}</div>
         ) : total === 0 ? (
@@ -140,7 +141,7 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
           </div>
         ) : (
           days.map((day) => (
-            <div key={day.ymd} style={{ display: 'grid', gap: '0.5rem' }} data-testid="went-out-day">
+            <div key={day.ymd} style={LANE_LIST} data-testid="went-out-day">
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '0.2rem' }} data-testid="went-out-day-label">
                 {day.label}
               </div>

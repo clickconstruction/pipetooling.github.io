@@ -2,7 +2,7 @@
 name: "Lien desk: MONTHS ON THIS JOB as one card, the ledger"
 number: 361
 group: close
-status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day built as v2.8115 (#9134), v2.8116 (#9130) and v2.8119 (#9133), live 2026-11-21 and walked read-only · the walk's one more dead tick column, on a missed notice with nothing due, fixed as v2.8125 (#9148) · the walk's two older oddities, a sent notice with no month in its strip and a late missed notice that said the lien right was gone, fixed 2026-11-21 as v2.8167 (#9211) and v2.8170 (#9215), live and read the same day
+status: written 2026-11-15 from the lien-months-refresh spike · the owner saw the before and after shots and asked for the card · Grace's go 2026-11-19 · built 2026-11-19 as v2.7989, one PR (#8990), from the card's words, because the spike's branch was gone · live 2026-11-20 and walked read-only the same night · the walk's Record it… gaps built 2026-11-20 as v2.8026 on Grace's pick, and a missed notice's closed months offered to tick as v2.8027 on her yes · audited 2026-11-20 by a Fable 5.2 session, with three faults fixed as v2.8063, v2.8064 and v2.8074 · the owner's five answers of the same day built as v2.8115 (#9134), v2.8116 (#9130) and v2.8119 (#9133), live 2026-11-21 and walked read-only · the walk's one more dead tick column, on a missed notice with nothing due, fixed as v2.8125 (#9148) · the walk's two older oddities, a sent notice with no month in its strip and a late missed notice that said the lien right was gone, fixed 2026-11-21 as v2.8167 (#9211) and v2.8170 (#9215), live and read the same day · Taunya's answers of 2026-11-21: the gates on a missed notice that can no longer go fold to one line (v2.8206, live and read), the late footer's send stays, the look is done and reads right, and the notice's column head carries the claim small under its name (v2.8234)
 summary: >
   The Lien desk's MONTHS ON THIS JOB section reads as five boxes with four type systems: a bordered
   last-day bar, a half-width grid with a tinted notice column floating right, an indented claim block,
@@ -10,10 +10,10 @@ summary: >
   and recommends B, the ledger: one card, one rhythm, the grid full width, and the money as one block
   under it with the claim as the total line and the bills as the lines that make it up. On a phone the
   claim block breaks today, and the fix for that goes in whichever direction is built.
-next: The office looks at Months on this job on the live desk, at a desk and on a phone, and says what reads wrong. One open choice for Grace rides with that look, the figure in the head of the notice's column, under Built below. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (v2.8170). The gates on a missed notice that can no longer go fold to one line since v2.8206, Taunya's pick of 2026-11-21, and the late footer's send stays on her word of the same day.
-size: M, built as one client-only PR · left, the office's look (XS)
+next: Nothing is owed but the close, once v2.8234 is read on the live desk. The look is done: Taunya's word of 2026-11-21, it reads right. The figure in the head of the notice's column is settled too, small under the name since v2.8234, her pick of the same day from three mock-ups. Grace should also hear that Record it… on a missed notice now opens with no paper picked and no month ticked, the owner's answer of 2026-11-20, since it changes how her v2.8027 opens. Grace and the owner should hear too that a missed notice whose affidavit can still be filed now has the send in its footer, where the footer said the lien right was gone (v2.8170). The gates on a missed notice that can no longer go fold to one line since v2.8206, Taunya's pick of 2026-11-21, and the late footer's send stays on her word of the same day.
+size: M, built as one client-only PR · left, nothing
 ver: v2.7989
-blocker: None. The card is built. The office's look is all that is left.
+blocker: None. The card is built and the look is done.
 ---
 
 # Lien desk: MONTHS ON THIS JOB as one card, the ledger (#361)
@@ -118,6 +118,10 @@ One PR, client only. The fragment is `docs/recent-features/v2.7989.md`.
   put to her through the lead session on 2026-11-19, and she had not answered when the PR merged. It
   is built with the head as the name alone, because that is what is on the live desk. The head is one
   line to change if her answer is the figure.
+  **Answered 2026-11-21.** Taunya was shown three heads on the real card, at the pane's width and on a
+  phone: the name alone, the figure beside the name, the figure small under the name. She picked the
+  third. Beside the name the figure widened the column, cut the window's words and ran off a phone's
+  card. Built as v2.8234.
 - **The phone.** The grid no longer slides. Each month sits over its window, an earlier paper is a
   mark like A ✓, and the tick has a column of its own at the right edge.
 
@@ -211,7 +215,8 @@ noted line only on made-up names. The same walk found one more dead tick column.
 *This notice* over empty locked boxes, and v2.8125 (#9148) draws that column only where a month can be ticked or one is
 ticked already.
 
-**Still open.** The figure in the head of the notice's column is Grace's choice, as above. The claim drops cents and its
+**Still open.** The figure in the head of the notice's column is settled: small under the name since v2.8234, Taunya's
+pick of 2026-11-21. The claim drops cents and its
 lines keep them, as before this card. The empty card names no next press. The audit read the affidavit's side of
 question 1 in the code and did not walk it.
 

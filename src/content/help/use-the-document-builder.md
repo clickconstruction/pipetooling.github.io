@@ -2,7 +2,7 @@
 title: use the document builder
 category: Office
 roles: dev
-keywords: document builder, link, share, copy the link, switch the link on, switch the link off, make a new link, look only, secrecy on your jobs, map, publish, publish revision, changed, changed somewhere else, load the newer one, save mine over it, two tabs, someone else, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job
+keywords: document builder, link, share, copy the link, switch the link on, switch the link off, make a new link, look only, secrecy on your jobs, map, publish, publish revision, changed, changed somewhere else, load the newer one, save mine over it, two tabs, someone else, back to revision, marks, type on the words, edit, builder, builders, first draft, load the first draft, not loaded yet, draft, published, revision, sub nda, nda, secrecy, secrecy paper, non disclosure, confidentiality, levels, standard, elevated, aggressive, strict, basis, slider, breach, site, disclaimer, review, documents tab, dev only, placeholder, made-up job, send it to a gc, send to a gc, gc, general contractor, find a gc, what it is about, their page, send it again, tell them it changed, take it off their page, opened
 where: /documents?tab=builder
 ---
 The Document builder is a tab on Documents that holds builders. A builder makes one kind of paper from a few settings.

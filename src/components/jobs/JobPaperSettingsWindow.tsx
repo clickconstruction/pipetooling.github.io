@@ -106,9 +106,22 @@ const DEAD: CSSProperties = {
   cursor: 'not-allowed',
 }
 // Every press and field here is at least a finger tall (Taunya, 2026-11-21: the buttons easy to press).
-const CLOSE: CSSProperties = { ...clauseButtonStyle, minHeight: 44, minWidth: 64 }
-const PRIMARY: CSSProperties = { ...clausePrimaryStyle, minHeight: 44, padding: '0.5rem 1.1rem', fontSize: '0.95rem' }
-const FIELD: CSSProperties = { ...clauseInputStyle, minHeight: 44, fontSize: '1rem' }
+const CLOSE: CSSProperties = {
+  ...clauseButtonStyle,
+  minHeight: 44,
+  minWidth: 64,
+}
+const PRIMARY: CSSProperties = {
+  ...clausePrimaryStyle,
+  minHeight: 44,
+  padding: '0.5rem 1.1rem',
+  fontSize: '0.95rem',
+}
+const FIELD: CSSProperties = {
+  ...clauseInputStyle,
+  minHeight: 44,
+  fontSize: '1rem',
+}
 const tidy = (
   typed: Record<string, string>,
   keys: readonly string[],
@@ -430,6 +443,15 @@ function FirstByFlow({
   const note =
     held ??
     (missing.length > 0 ? `Type ${missing.join(' and ')} first.` : undefined)
+  // The blanks sit under the review, below the fold on most screens: the note is a press that goes to the first empty one.
+  const blanksRef = useRef<HTMLDivElement>(null)
+  const toBlank = () => {
+    const empty = [
+      ...(blanksRef.current?.querySelectorAll('input') ?? []),
+    ].find((i) => i.value.trim() === '')
+    empty?.scrollIntoView?.({ block: 'center' })
+    empty?.focus()
+  }
   return (
     <DocumentBuilderFlow
       def={def}
@@ -442,9 +464,10 @@ function FirstByFlow({
           ...(busy ? { label: 'Requiring…' } : {}),
           ...(busy || held || missing.length > 0 ? { dead: true } : {}),
           ...(note ? { note } : {}),
+          ...(!held && missing.length > 0 ? { onNote: toBlank } : {}),
         },
         reviewExtra: (
-          <>
+          <div ref={blanksRef} style={{ display: 'grid', gap: 12 }}>
             <Blanks
               book={book}
               picks={picks}
@@ -459,7 +482,7 @@ function FirstByFlow({
                 {error}
               </div>
             ) : null}
-          </>
+          </div>
         ),
       }}
     />
@@ -728,9 +751,7 @@ function OnePage({
             type="button"
             disabled={dead}
             onClick={() => void save()}
-            style={
-              dead ? { ...PRIMARY, ...DEAD } : PRIMARY
-            }
+            style={dead ? { ...PRIMARY, ...DEAD } : PRIMARY}
           >
             {press}
           </button>
