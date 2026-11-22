@@ -51,4 +51,4 @@ export function lienPileReached(rowsOffsetTop: number, scrollTop: number, i: num
  * row is short, its words wrapping onto a second line in balance, so no row of tabs slides sideways: not four views
  * at 320 wide, and not the longer names of the kinds of paper.
  */
-export const LIEN_PHONE_TAB: CSSProperties = { flex: '1 1 auto', minWidth: 0, minHeight: 44, padding: '2px 4px', whiteSpace: 'normal', textWrap: 'balance', lineHeight: 1.15, textAlign: 'center' }
+export const LIEN_PHONE_TAB: CSSProperties = { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, minHeight: 44, padding: '2px 4px', whiteSpace: 'normal', textWrap: 'balance', lineHeight: 1.15, textAlign: 'center' }

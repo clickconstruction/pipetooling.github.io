@@ -2,7 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { lienHoursAfterHandDayValues, lienLastWorkSourceValues } from '../../lib/jobs/lienDayValues'
 import { lienHoursAfterHandDay, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
-import { LIEN_LAST_WORK_KEEP_HINT, LIEN_LAST_WORK_SET_BY_HAND_WORDS, LIEN_LAST_WORK_VALUE_LABEL, lienLastWorkBackWords, lienLastWorkClearedWords, lienLastWorkOpeningDay } from '../../lib/jobs/lienLastWorkDoor'
+import { LIEN_LAST_WORK_KEEP_HINT, LIEN_LAST_WORK_SET_BY_HAND_WORDS, LIEN_LAST_WORK_VALUE_LABEL, lienLastWorkBackTo, lienLastWorkBackWords, lienLastWorkClearedWords, lienLastWorkOpeningDay } from '../../lib/jobs/lienLastWorkDoor'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
@@ -104,8 +104,10 @@ export function LienLastWorkDayLine({
   const saved = useRef(false)
   // Back to the clock hours writes through the same door as the window's Set the day (`useLienLastWorkDayWrite`).
   const { write } = useLienLastWorkDayWrite(jobId, onSaved)
+  // Where a day set by hand goes back to: clock hours, the bill's day, or the job's creation day.
+  const backTo = lienLastWorkBackTo(job)
   const clear = async () => {
-    await write(LIEN_LAST_WORK_CLEAR, lienLastWorkClearedWords(Boolean(job?.last_work_date)))
+    await write(LIEN_LAST_WORK_CLEAR, lienLastWorkClearedWords(backTo))
   }
 
   const dayText = d.day ? formatYmdMonthDay(d.day) : 'none yet'
@@ -123,7 +125,8 @@ export function LienLastWorkDayLine({
         <ValueLines>
           <ValueLine label="Last day of work">
             <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem 0.5rem', flexWrap: 'wrap' }}>
-              <span data-testid="lien-last-work-day" style={{ minWidth: 0, maxWidth: '100%' }}>
+              {/* `lienLastWorkDay` gives the open field the row (`index.css`), so the line under it reads at the row's width. */}
+              <span data-testid="lien-last-work-day" className="lienLastWorkDay" style={{ minWidth: 0, maxWidth: '100%' }}>
                 {canEdit ? (
                   <ChangeableValue
                     text={dayText}
@@ -139,7 +142,7 @@ export function LienLastWorkDayLine({
                     }}
                     fromDefault={asDefault ? source : undefined}
                     setOwnLabel={LIEN_LAST_WORK_SET_BY_HAND_WORDS}
-                    backToDefault={d.source === 'hand' ? { label: lienLastWorkBackWords(Boolean(job?.last_work_date)), onPress: clear } : undefined}
+                    backToDefault={d.source === 'hand' ? { label: lienLastWorkBackWords(backTo), onPress: clear } : undefined}
                   />
                 ) : d.day ? (
                   // A role that cannot set the day reads it: worked out, so bold with no press.
