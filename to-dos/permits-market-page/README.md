@@ -2,7 +2,7 @@
 name: "Permits: a Market page — who builds, and who to call"
 number: 405
 group: ready
-status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20, built in v2.8112, v2.8114 and v2.8121 · step three built in its smallest form, v2.8118 and v2.8121, with the first 25 San Antonio companies looked up · the audit's three lines built 2026-11-20, v2.8134, v2.8138 with v2.8147, and v2.8149 · the skim card's word and the Answered line fixed, v2.8181 and v2.8207 · Austin's clock runs to a job's first plumbing permit, v2.8252 and v2.8254 · San Antonio's applications read again by issued day, v2.8256, `permit-pull` deployed 2026-11-22 · San Antonio's clock says how many still wait, #9375 · walks owed, see Left to do and to walk · the owner makes the calls
+status: Go 2026-11-19 · steps one and two built, v2.7978, v2.7982 and v2.7993 (the page's five parts) · the owner answered the four calls 2026-11-20, built in v2.8112, v2.8114 and v2.8121 · step three built in its smallest form, v2.8118 and v2.8121, with the first 25 San Antonio companies looked up · the audit's three lines built 2026-11-20, v2.8134, v2.8138 with v2.8147, and v2.8149 · the skim card's word and the Answered line fixed, v2.8181 and v2.8207 · Austin's clock runs to a job's first plumbing permit, v2.8252 and v2.8254 · San Antonio's applications read again by issued day, v2.8256, `permit-pull` deployed 2026-11-22 · San Antonio's clock says how many still wait, v2.8260 · walks owed, see Left to do and to walk · the owner makes the calls
 summary: >
   The only way into commercial work today is to ask a company to let us bid. A Market view on
   Prospects → Permits says which companies to ask, why now and who to ask for, and whether the
@@ -11,7 +11,7 @@ summary: >
   the day the city first shows a job), who holds the work where a city names the plumber, and how
   much is being built. Each row gives its reasons as tags and there is no score.
 next: >
-  Walk the live Market page as the section Left to do and to walk lists, once #9375 merges. The
+  Walk the live Market page as the section Left to do and to walk lists. The
   owner calls from the list and checks the looked-up facts as he goes. Then his word on whether
   the lookups go past the first 25 names and past San Antonio, and the Monday note.
 size: L as a train of three (M · M · L)
@@ -238,14 +238,14 @@ Written for someone on another computer who has not seen the build. Every line o
 Each walk is on the live site, signed in as a dev or an estimator, at `/prospects?tab=permits&view=market` unless it says otherwise. The rows are real companies, so read only: press no Pursue, no answer, no **Checked** and no save. Look at 1100 px and 375 px, light and dark.
 
 - **Austin's clock runs to the first plumbing permit (v2.8254).** Pick Austin. The clock reads *Austin · building permit to the plumber's permit*. Its middle is one day shorter than before the change, 6 days on 2026-11-22's read, and its middle half 1 to 15 days. The tests and a read of the database agree. Not walked by a person yet.
-- **San Antonio's clock says how many still wait (PR #9375).** Pick San Antonio. The clock's note reads *Half of the applications that have a permit waited … or more for it.* A second line under it reads *… of the … applications filed in twelve months still wait for a permit*, says the clock reads short, and says how many were filed over six months ago. Its three counts are bold and none is underlined. Seen on the dev server from the branch at 1100 px and 375 px, dark only. Not walked live: the PR is not merged.
-- **San Antonio's waiting count falls once the pull catches up (v2.8256).** `permit-pull` was deployed on 2026-11-22, and a dry run that day read the applications a second time by issued day. Its first real run is the nightly one at 11:30 UTC. After it, the second line's waiting count should drop by about thirty. A read of the database should find as many San Antonio applications with a permit as the city's own feed lists. Not walked: the run had not happened when this was written.
+- **San Antonio's clock says how many still wait (v2.8260).** Pick San Antonio. The clock's note reads *Half of the applications that have a permit waited … or more for it.* A second line under it reads *… of the … applications filed in twelve months still wait for a permit*, says the clock reads short, and says how many were filed over six months ago. Its three counts are bold and none is underlined. Seen on the dev server from the branch at 1100 px and 375 px, dark only. Live since 2026-11-22. Not walked by a person yet.
+- **San Antonio's waiting count falls once the pull catches up (v2.8256).** The first nightly run with the second reading, 2026-11-22 at 11:30 UTC, gave 77 applications filed before November their permit. After it, all but 4 of the applications the city's own feed lists with a permit read so in the app. Those 4 are a loose end below. On the page, the second line's waiting count should be about the city's own count of applications still waiting. Not walked by a person yet.
 - **An answered name's line ends with one full stop (v2.8207).** Under **Answered**. One name is answered on the live database today, and its reason has no full stop of its own, so the old fault cannot show there. Walk it the next time someone pursues a name from the list, since a pursue's reason carries its own full stop. The render test draws the line.
 - **The skim card's word (v2.8181).** At `/prospects?tab=permits`, Skim, San Antonio. A card whose name we never bid in two years reads **new name**. Hovering it says *no bid to this name in the last two years*. Proved on the database and in the live bundle on 2026-11-21. Not looked at on the page.
 
 ### Loose ends
 
-- **PR #9375 is not merged** (San Antonio's waiting line). It is the last PR of this card's open work.
+- **The pull's second reading starts too late after a jump.** It looks back ten days from the newest issued day held, and counts that day after the first reading has written. On 2026-11-22 the first reading moved that day forward by a week. The city had posted 4 permits dated just before the new start, and the second reading skipped them. Nothing reads them again, so the 4 read as waiting. The fix would count the start before either reading and look back 30 days. It is not built and asks a deploy of `permit-pull`, Taunya's call, asked on 2026-11-22.
 - **`permit-lookup` reads as behind on the edge drift check.** It bundles the same shared file as `permit-pull`. Deploying it changes nothing it does.
 - **The dev seat does not know `research_permits_v4` yet.** Its catalog and the app's generated types gain the name the next time someone regenerates them. Nothing needs it.
 - **The Ask for block is not on the builder's sheet.** Step three left it. The looked-up facts show on the call list only.
