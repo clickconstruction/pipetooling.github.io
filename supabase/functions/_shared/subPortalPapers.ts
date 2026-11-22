@@ -32,6 +32,7 @@ import {
   subPapersAddUp,
   SUB_PAPER_CONFIRM_LIVE,
   type PaperCompany,
+  type PaperConfirm,
   type PaperContext,
   type PaperMoneyLine,
   type PaperSending,
