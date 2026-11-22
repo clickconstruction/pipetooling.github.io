@@ -121,6 +121,8 @@ A session started the sweep and was closed before it built anything. It read pro
 
 The lien months and deadlines stay as they are, on the desk and in counsel's lien book. v2.6834 decided that: a credit does not move a deadline.
 
+**Found on the senders' walk (2026-11-21), built in v2.8277.** Both senders ran clean in their no-send modes against prod: the report's preview matched the tables bill for bill, and the reminder's dry run planned nothing for the deal's jobs. What v2.8219 left behind was the pay reminders the run had already prepared: two were still open on Today's sends, and nothing held one once its job went on a deal. The window now holds the app's own Paid reminder on such a job with its reason and its door (`withInKindHolds` in `src/lib/offers/offers.ts`), so **Send all** skips it. A real send and the first morning run after the deploy were not seen.
+
 **A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state. The office's statement week and GC Review's statements read the same rows, so they follow the same answer.
 
 **The screens, traced 2026-11-21.** Three loaders feed them. The Dashboard's own read (`loadDashboardFinancials`) did not select the column. The Pipeline's full board read selects `*`, so its rows had the column and no kernel read it. The Pipeline's lean read (`LEAN_STATS_JOB_COLUMNS`) did not select it, so even the chase queue's own skip could never fire on lean rows.
