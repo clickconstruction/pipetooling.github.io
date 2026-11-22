@@ -270,7 +270,8 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held
         </>
       ) : (
         <>
-          <div style={smallRow}>{rows.top.map(small)}</div>
+          {/* The small row is drawn only when it holds a button: before the clock it holds none (`turnawayOffered`), and an empty row would leave the bar's gap over Leave report. */}
+          {rows.top.length > 0 ? <div style={smallRow}>{rows.top.map(small)}</div> : null}
           <div style={bigRow}>{rows.bottom.map(big)}</div>
         </>
       )}

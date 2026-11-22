@@ -2,7 +2,7 @@
 title: try the new phone layout
 category: Getting Started
 roles: dev, master_technician
-keywords: new phone layout, phone layout, trial, top bar, one row, page name, gear menu, show, bars, tabs, press bar, turnaway, leave report, clock out, home screen, add task, small screen, more room, where did it go, missing icon
+keywords: new phone layout, phone layout, trial, top bar, one row, page name, gear menu, show, bars, tabs, press bar, turnaway, leave report, clock out, home screen, add task, small screen, more room, where did it go, missing icon, job card, call the customer, directions, text the customer, phone number, copy email, job updates, job details, job calendar, materials on site, photos, paint a map, my spend, squares
 order: 128
 ---
 The new phone layout gives the page more of your phone. The layout is a trial, and you switch it on yourself.
@@ -60,9 +60,55 @@ The day's presses share one row above the tabs. **Turnaway** and **Leave report*
 
 **% done** and **Clock out** join the row when you are clocked in on a job. On a small phone a label of two words folds onto two lines.
 
+## The job card in Job Mode
+
+The job card is laid out for your thumb. Each thing is on the card once.
+
+Three presses sit first, under the job's name and address.
+
+- **Call** rings the customer.
+- **Directions** opens your phone's maps at the job's address.
+- **Text** opens **Message the customer**. You see **Text** only where you see **Message the customer** today.
+
+The customer's name and number are under those presses. The number is written as a phone number.
+
+Five rows come next. Each row opens what it opened before.
+
+- **Materials on site** says how many boxes are on the site. The row also says how many are due a count.
+- **Photos** says how many photos the job has.
+- **Job updates** says how many updates there are. Tap the row to read them and to write a note.
+- **Job details** opens the job's window.
+- **Job calendar** shows the days the job is on people's calendars.
+
+The **Job updates** row also says the newest note. You read who wrote the note, the day and the first words.
+
+The row says **New** when someone else wrote a note after you last opened the row. Tap the row and the mark goes away.
+
+Your last look is kept on the phone you used. A note from today counts as new on a phone that has no look yet.
+
+**Paint a map**, **Place on this job** and **My spend** share one row under the rows. **Photo of a spot** keeps a press of its own.
+
+The four squares that sat above the card are inside the card now. On a day with no job the squares stay where they were.
+
+A day with one stop shows the stop as one line. A day with more stops keeps the list.
+
+The press that shows the customer's email copies the address.
+
 ## The tabs
 
 The tabs keep their words and their order. The tabs stand a little shorter.
+
+## The tabs on Jobs and People
+
+The **Jobs** page keeps its tabs on one row. Slide the row sideways to reach the rest.
+
+A small arrow at an edge of the row means more tabs are that way. The tab you have open is always whole on the screen.
+
+The **People** page has the same row for its sections. The pills under the sections are one row too. Slide that row the same way.
+
+Every tab and pill keeps its words and its order. Each one opens what it opened before.
+
+The page's own title is gone from the row. The top bar already says **Jobs** or **People**.
 
 ## The Home Screen offer
 

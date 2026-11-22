@@ -1685,8 +1685,27 @@ Dispatch Mode's first tab opens the Dispatch home, so there home stays.
 **The moved rows** are the other presses of the old row as named rows at the top of the gear menu, in the row's order: Statement, Tell the dev, Task Dispatch, Ask estimating, Task, Customers, People (`phoneBarPlan`, `PhoneBarGearRows`).
 The Bids page's **Bid** press stays in the bar.
 The role dock's row has no gear, so it keeps every press it has.
+**The one-line tab rows** are the Jobs page's tabs and the People page's sections and pills under the tick, since v2.8288 (`lib/phoneLayout/phoneTabRows.ts`): each row is one line in `ScrollableTabStrip` and never folds.
+The open tab is kept whole in view with the start of the next tab beside it (`activePeek`), and an edge with more past it carries a small arrow (`edgeMarks`), drawn only once a letter is hidden.
+The page's own title is left undrawn only while the one-row bar names the page (`PhoneBarPageNameContext`), so under the role dock's row, which names no page, the title stays.
 Under the tick Needs you is a one-line door on the Dashboard and opens on Walk the list where it is worked, since v2.8289 (→ *Needs You card*).
 Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
+**The phone job card** is the Job Mode card under the tick, since v2.8286 (`lib/phoneLayout/jobCard.ts`, `phoneJobCardOn`): the same pieces, each once, in a thumb's order.
+It opens on **Call**, **Directions** and **Text**, 44 px each, under the job's name and address.
+**Text** is the card's own Message the customer door in that shape, drawn only where the door is offered today (`jobModeMessagesOffered`, on the job the person is clocked onto).
+The customer's name and number share one quiet line, the number as a phone number (`phoneAsWritten`, over `phoneContact`) and never cut, and the email is a 44 px press that copies it.
+Five full-width rows follow: Materials on site, Photos, Job updates, Job details, Job calendar (`CardRow`, `CardFold`).
+Job updates opens in place and is shut until pressed.
+Shut, the row says **the newest note** on one quiet line: who wrote it, its day and its first words (`lib/phoneLayout/jobUpdatesNewest.ts`).
+The newest note is the newest entry the thread's Notes filter lists, never a line the app wrote.
+The row is marked **New** while that note is another person's and newer than the viewer's **last look**, and a new note reads in strong words.
+A look is recorded when the row is pressed, kept in browser storage per person and per job (`pt_job_updates_look_<user>_<job>`).
+With no look kept, another person's note written today is new and an older one is not.
+Paint a map, Place on this job and My spend share one row of presses, and Photo of a spot keeps a press of its own.
+A day with one stop is one line, the time and *1 of 1 today*, and that line is still the stop's press.
+**The folded squares** are Job Mode's top row drawn as the card's own presses and rows: the row leaves only for the job the card says it holds (`foldedJob.ts`, `jobSquaresFolded`).
+A day with no job, the short Job Mode page, a job closed by its papers and a card with no details keep the old card and the squares.
+**The card's floor** is `.jobModeCardPhone` in `index.css`: no press under 40 px and no words under 12 px on the card, whichever piece draws them, and it stops at every dialog.
 
 ### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).

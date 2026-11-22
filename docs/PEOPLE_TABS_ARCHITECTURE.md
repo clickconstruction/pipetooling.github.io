@@ -40,7 +40,7 @@ Tabs switch on a single `activeTab` state (330, `useState<PeopleTab>`). The `Peo
 ```
 
 ### Six top-level groups (v2.2811)
-The strip shows **six group tabs** and a **second row** listing the active group's views. On a phone the group row scrolls sideways beside the page title, and `useLitPillInView` (with `LIT_SELECTED`) keeps the lit group whole on load, on a change of group and on a resize (v2.8130). Every view keeps its own render gate and its own `?tab=<view key>` URL. The map is `PEOPLE_TAB_GROUPS` in the kernel above, which is pure and tested in `peopleTabGroups.test.ts`. The gates come from `visiblePeopleTabs` (3138–3159):
+The strip shows **six group tabs** and a **second row** listing the active group's views, both drawn by [`PeoplePageTabRows`](../src/components/people/PeoplePageTabRows.tsx) since v2.8288. On a phone the group row scrolls sideways beside the page title, and `useLitPillInView` (with `LIT_SELECTED`) keeps the lit group whole on load, on a change of group and on a resize (v2.8130). Under the new phone layout each row is one line in `ScrollableTabStrip` with the open tab whole in view and an arrow at an edge that has more past it, a pill's press is 44 px tall, and the title is left to the top bar while it names the page (`lib/phoneLayout/phoneTabRows.ts`, v2.8288). Every view keeps its own render gate and its own `?tab=<view key>` URL. The map is `PEOPLE_TAB_GROUPS` in the kernel above, which is pure and tested in `peopleTabGroups.test.ts`. The gates come from `visiblePeopleTabs` (3138–3159):
 
 | Group | Views (row order) | Shows when |
 |---|---|---|

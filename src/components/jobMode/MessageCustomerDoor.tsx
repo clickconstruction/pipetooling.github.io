@@ -22,6 +22,11 @@ export interface MessageCustomerDoorProps {
   onDone?: () => void
   /** Goes up when another press on the card asks the sheet to open (#125 PR 7: the details section's Message the customer). */
   openRev?: number
+  /**
+   * The door's words where the card draws it as a short press: **Text**, in the first row under the new phone
+   * layout (`lib/phoneLayout/jobCard.ts`). The same door, sheet and read. A screen reader still hears the whole name.
+   */
+  words?: string
   /** For a smoke. */
   io?: JobModeMessageIo
   today?: string
@@ -29,7 +34,7 @@ export interface MessageCustomerDoorProps {
 
 const dot: CSSProperties = { display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: 'var(--border-orange)' }
 
-export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, onDone, openRev = 0, io: ioProp, today }: MessageCustomerDoorProps) {
+export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, onDone, openRev = 0, words, io: ioProp, today }: MessageCustomerDoorProps) {
   const io = useMemo(() => ioProp ?? supabaseJobModeMessageIo(), [ioProp])
   const [read, setRead] = useState<{ jobId: string; customer: JobModeCustomer | null; problem: string | null } | null>(null)
   const [open, setOpen] = useState(false)
@@ -66,7 +71,7 @@ export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, st
         data-testid="job-mode-message-door"
       >
         <span aria-hidden>💬</span>
-        {SHEET_WORDS.door}
+        {words ?? SHEET_WORDS.door}
         {waiting ? <span style={dot} aria-hidden data-testid="job-mode-message-dot" /> : null}
       </button>
       {open && got?.customer ? (
