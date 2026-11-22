@@ -8,6 +8,7 @@
  */
 import { useId, useState, type CSSProperties } from 'react'
 import { ESIGN_DISCLOSURE_PATH, type EsignConsentText } from '../lib/esignConsent'
+import { INLINE_THUMB_PAD, SIGN_TICK_BOX, SIGN_TICK_ROW } from './contracts/signatureFormStyles'
 
 export type EsignConsentLineProps = {
   text: EsignConsentText
@@ -43,6 +44,7 @@ export function EsignConsentLine({ text, checkbox, checkboxAlign = 'center', dis
             background: 'none',
             border: 0,
             padding: 0,
+            ...INLINE_THUMB_PAD,
             cursor: disabled ? 'default' : 'pointer',
             textDecoration: 'underline',
             textUnderlineOffset: 2,
@@ -62,13 +64,14 @@ export function EsignConsentLine({ text, checkbox, checkboxAlign = 'center', dis
         </p>
       </div>
       {checkbox ? (
-        <div style={{ display: 'flex', justifyContent: checkboxAlign === 'start' ? 'flex-start' : 'center', width: '100%', marginTop: '0.6rem' }}>
-          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', textAlign: 'left' }}>
+        <div style={{ display: 'flex', justifyContent: checkboxAlign === 'start' ? 'flex-start' : 'center', width: '100%', marginTop: '0.2rem' }}>
+          <label style={SIGN_TICK_ROW} data-sign-tick="consent">
             <input
               type="checkbox"
               checked={checkbox.checked}
               onChange={(e) => checkbox.onChange(e.target.checked)}
               disabled={disabled || checkbox.disabled}
+              style={SIGN_TICK_BOX}
             />
             <span>{text.checkbox}</span>
           </label>

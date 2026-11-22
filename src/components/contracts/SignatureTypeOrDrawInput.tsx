@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { SIGN_PRESS_MIN_HEIGHT } from './signatureFormStyles'
 import SignaturePad from 'signature_pad'
 import { EstimateAcceptTypedSignatureLine } from '../estimates/EstimateAcceptTypedSignatureLine'
 import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatureFormStrings'
@@ -59,8 +60,9 @@ const CANVAS_W = 400
 const CANVAS_H = 160
 
 const segmentBtnStyle = (active: boolean): CSSProperties => ({
-  padding: '0.4rem 0.85rem',
-  fontSize: '0.85rem',
+  minHeight: SIGN_PRESS_MIN_HEIGHT,
+  padding: '0 1.1rem',
+  fontSize: '0.9rem',
   fontWeight: 600,
   border: '1px solid var(--border-strong)',
   borderRadius: 6,
@@ -175,7 +177,8 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
               disabled={disabled}
               style={{
                 marginTop: '0.5rem',
-                padding: '0.35rem 0.65rem',
+                minHeight: 40,
+                padding: '0 0.85rem',
                 fontSize: '0.85rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,

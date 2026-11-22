@@ -455,7 +455,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 color: INK,
                 fontSize: 12,
                 fontWeight: 600,
-                padding: '6px 14px',
+                minHeight: 40,
+                padding: '0 14px',
                 letterSpacing: '0.02em',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -1083,12 +1084,16 @@ function firstWord(name: string): string | null {
   return w ? w : null
 }
 
+// A thumb's height, and 16 px words (v2.8294): a phone zooms the whole page when a box with smaller words is
+// pressed. The boxes stood 29 px with 13 px words.
 const fieldStyle: CSSProperties = {
   border: 'none',
   borderBottom: '1px solid #b9c2cc',
   background: 'transparent',
-  padding: '4px 1px',
-  fontSize: 13,
+  minHeight: 44,
+  boxSizing: 'border-box',
+  padding: '10px 1px',
+  fontSize: 16,
   color: INK,
   fontFamily: 'inherit',
   outline: 'none',
@@ -1276,7 +1281,7 @@ function RequestCard({
             <button
               type="button"
               onClick={() => setShowAllProperties(true)}
-              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '9px 2px 0', textAlign: 'left' }}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: '0 2px', textAlign: 'left' }}
             >
               Show all {properties.length} properties
             </button>
@@ -1316,7 +1321,7 @@ function RequestCard({
                 setPhone(phoneOnFile)
                 setUseOtherNumber(false)
               }}
-              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '4px 0 0' }}
+              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: 0 }}
             >
               Use {displayPhone(phoneOnFile)} instead
             </button>
@@ -1325,7 +1330,7 @@ function RequestCard({
       ) : (
         <div style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
           We&#8217;ll call you at
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}`, padding: '6px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}` }}>
             <b style={{ color: INK, fontSize: 14 }}>{displayPhone(phone)}</b>
             <button
               type="button"
@@ -1333,7 +1338,7 @@ function RequestCard({
                 setPhone('')
                 setUseOtherNumber(true)
               }}
-              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: 0 }}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: '0 0 0 12px' }}
             >
               use a different number
             </button>
@@ -1364,8 +1369,9 @@ function RequestCard({
           background: COPPER,
           color: CARD,
           border: 'none',
-          padding: '8px 20px',
-          fontSize: 12.5,
+          minHeight: 44,
+          padding: '0 22px',
+          fontSize: 13,
           fontWeight: 700,
           letterSpacing: '0.03em',
           textTransform: 'uppercase',
