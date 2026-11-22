@@ -64,11 +64,10 @@ export function CustomerPermitsTab({ customerId, customerName }: { customerId: s
 export function CustomerPermitsDoor({ onOpen }: { onOpen: () => void }) {
   return (
     <div
-      style={{ display: 'flex', alignItems: 'center', gap: '4px 10px', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '4px 13px', marginBottom: 16, minWidth: 0 }}
+      style={{ display: 'flex', alignItems: 'center', columnGap: 10, flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '3px 13px 9px', marginBottom: 16, minWidth: 0 }}
       data-testid="customer-permit-names"
     >
       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>Names on permits</span>
-      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>the names a city lists for them, and the jobs you priced for them</span>
       <button
         type="button"
         onClick={onOpen}
@@ -76,6 +75,8 @@ export function CustomerPermitsDoor({ onOpen }: { onOpen: () => void }) {
       >
         Open Permits →
       </button>
+      {/* Its own row at every width: the name and the press share the first, as a phone would otherwise stack all three. */}
+      <span style={{ flex: '1 0 100%', fontSize: '0.8rem', color: 'var(--text-muted)' }}>The names a city lists for them, and the jobs you priced for them.</span>
     </div>
   )
 }

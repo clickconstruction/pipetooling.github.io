@@ -447,9 +447,10 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {/* tab strip: one row that slides once the tabs are wider than a phone (v2.8302, with the fifth tab). Each tab and the rest of the row carry the rule under them. */}
+      {/* tab strip: one row that slides once the tabs are wider than a phone (v2.8302, with the fifth tab). The rule under the tabs is the row's own, as wide as the strip or the tabs, whichever is wider, and the open tab's line sits on it as before. */}
       <div style={{ margin: '10px 0 16px', minWidth: 0 }} data-testid="customer-tabs">
         <ScrollableTabStrip activeKey={activeTab} activePeek={PHONE_PILL_PEEK_PX} fadeSlack={PHONE_PILL_FADE_SLACK_PX} edgeMarks fill gap="0" align="start" ariaLabel="Customer tabs">
+        <div style={{ flex: '1 0 auto', display: 'flex', gap: 4, borderBottom: '2px solid var(--border)' }}>
         {tabs.map((tab) => {
           const on = tab === activeTab
           const count =
@@ -471,10 +472,11 @@ export default function CustomerDetail() {
                 flex: '0 0 auto',
                 fontSize: '0.87rem',
                 fontWeight: 600,
-                padding: '6px 16px 8px',
+                padding: '6px 14px 8px',
                 color: on ? 'var(--text-link)' : 'var(--text-muted)',
                 border: 'none',
-                borderBottom: on ? '2px solid var(--text-link)' : '2px solid var(--border)',
+                borderBottom: on ? '2px solid var(--text-link)' : '2px solid transparent',
+                marginBottom: -2,
                 background: 'none',
                 cursor: 'pointer',
               }}
@@ -486,7 +488,7 @@ export default function CustomerDetail() {
             </button>
           )
         })}
-        <span aria-hidden style={{ flex: '1 0 0', alignSelf: 'stretch', borderBottom: '2px solid var(--border)' }} />
+        </div>
         </ScrollableTabStrip>
       </div>
 
