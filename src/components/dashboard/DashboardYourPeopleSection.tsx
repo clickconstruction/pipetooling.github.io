@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useDashboardYourPeople } from '../../hooks/useDashboardYourPeople'
 import { reminderBody, type YourPersonRow } from '../../lib/dashboardYourPeople'
+import { YOUR_PEOPLE_ACTS, YOUR_PEOPLE_NAME, YOUR_PEOPLE_ROW } from '../../lib/dashboardYourPeopleRow'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { TaskRing } from '../checklist/TaskRing'
 import { PeopleWeekSheet } from '../checklist/PeopleWeekSheet'
@@ -80,9 +81,9 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
       {error ? <div style={{ fontSize: '0.875rem', color: 'var(--text-red-700)', marginBottom: '0.5rem' }}>{error}</div> : null}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         {rows.map((row) => (
-          <li key={row.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', border: '1px solid var(--border)', borderRadius: 10, padding: '0.45rem 0.6rem' }} data-testid="your-people-row">
+          <li key={row.userId} style={YOUR_PEOPLE_ROW} data-testid="your-people-row">
             {row.card ? <TaskRing state={row.card.ring} size={36} title={row.card.title} /> : <span style={{ width: 36, height: 36, flexShrink: 0 }} aria-hidden="true" />}
-            <Link to="/checklist?tab=review" style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+            <Link to="/checklist?tab=review" style={YOUR_PEOPLE_NAME}>
               <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>
                 {row.name} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {row.openCount} open</span>
               </div>
@@ -93,7 +94,7 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
                 </div>
               ) : null}
             </Link>
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div data-testid="your-people-acts" style={YOUR_PEOPLE_ACTS}>
               {chip(row)}
               <button
                 type="button"
