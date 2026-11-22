@@ -17,8 +17,12 @@ describe('DevelopmentHistoryChips', () => {
     const onChip = vi.fn()
     render(<DevelopmentHistoryChips chip="all" onChip={onChip} piece={PIECE} onClearPiece={() => {}} phone />)
     const strip = screen.getByTestId('history-chips-strip')
-    expect(strip.style.overflowX).toBe('auto')
-    expect(strip.style.flexWrap).toBe('')
+    // The row that slides is the shared strip inside the box (v2.8293), which marks an edge with more past it.
+    const row = strip.querySelector('.tab-strip-scroll') as HTMLElement
+    expect(row.style.overflowX).toBe('auto')
+    expect(row.textContent).toContain('Show')
+    // The box may be narrower than its chips: left at its automatic minimum it widened the page at 393.
+    expect(strip.style.minWidth).toBe('0')
     const chips = HISTORY_CHIPS.map((c) => screen.getByTestId(`history-chip-${c.key}`))
     expect(chips).toHaveLength(8)
     for (const chip of chips) {
