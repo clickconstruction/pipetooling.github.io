@@ -3,6 +3,8 @@ import type { BidMoneyLine } from '../bids/bidMoneyLine'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
 import {
+  dayKeptWords,
+  dayStillPromised,
   heardDayOnLine,
   heardDaySheetLine,
   heardDayTip,
@@ -136,6 +138,18 @@ describe('the mark on the line', () => {
     expect(linesMarkedFor(promises, '2026-10-09')).toEqual(['m1', 'm2'])
     expect(linesMarkedFor(promises, '2026-10-10')).toEqual([])
     expect(linesMarkedFor([], '2026-10-09')).toEqual([])
+  })
+  it('the day stays on the thread while another promise of theirs still names it (v2.8307)', () => {
+    const word = (kind: 'promise' | 'paid_claim', promisedYmd: string) => ({ kind, promisedYmd }) as BidMoneyLine['words'][number]
+    const other = { ...line('j2', 900, '1040'), words: [word('promise', '2026-10-16'), word('promise', '2026-10-09')] }
+    expect(dayStillPromised([line('j1', 4200), other], '2026-10-09')).toBe(true)
+    expect(dayStillPromised([line('j1', 4200), other], '2026-10-10')).toBe(false)
+    // A paid claim names the day they say they paid: nothing to wait for.
+    expect(dayStillPromised([{ ...line('j2', 900), words: [word('paid_claim', '2026-10-09')] }], '2026-10-09')).toBe(false)
+    expect(dayStillPromised([line('j1', 4200)], '2026-10-09')).toBe(false)
+    expect(dayStillPromised([], '2026-10-09')).toBe(false)
+    expect(dayKeptWords('2026-10-09')).toBe('Their line still shows Fri Oct 9. Another promise of theirs names that day.')
+    expect(plainWordsFailures(dayKeptWords('2026-10-09'))).toEqual([])
   })
   it('a client ahead of the push skips the mark without a word', () => {
     expect(markNotThereYet('Could not find the function public.write_down_payment(p_day, p_message_id) in the schema cache')).toBe(true)
