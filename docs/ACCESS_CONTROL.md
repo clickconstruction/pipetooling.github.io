@@ -1560,6 +1560,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.7983 the papers window sends a paper by email: its **Send to** press shows for the same office roles (`isOfficeRole`) and not for an account in training, so a superintendent gets none.
   Since v2.8025 the Pay view's and People → Subs' paper presses (*Statement of account…*, *Work statement…*, *Payment record…*) show for the same office roles only, so a superintendent who reaches the Pay view keeps **Print**.
   `send-sub-paper-email` holds the gate itself (the office roles, no training account, no archived account) and sends only to the roster's own address for the person, read under the caller's policies.
+  Since v2.8265 the same office roles add or change that address on the send step's To line, a write to `people.email` under the standing *Users can update own people* policy (`is_office_staff()`), so no policy changed.
+  A sub's sign-in address stays a dev's on the desk: the To line offers it and never changes it.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;

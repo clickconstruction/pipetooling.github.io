@@ -41,6 +41,7 @@ import { subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPap
 import type { TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob } from '../../types/laborJob'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { ROSTER_EMAIL_NOT_KEPT } from '../../lib/subWorkOrders/subPaperRosterEmail'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { SubPapersWaiting, SubPapersWindowView, type SubPaperContact, type SubPapersOpen } from './SubPapersWindow'
@@ -101,11 +102,16 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       // The letterhead is the bill's own block from Settings. A read that fails leaves the draft's defaults.
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole: role }).catch(() => null)
       // The roster's own address: the send step shows where a paper will go, and the function reads it again itself.
-      const person = personId ? await supabase.from('people').select('email, phone').eq('id', personId).maybeSingle() : { data: null, error: null }
+      const person = personId ? await supabase.from('people').select('email, phone, account_user_id').eq('id', personId).maybeSingle() : { data: null, error: null }
       if (cancelled) return
-      const p = (person.data ?? null) as { email: string | null; phone: string | null } | null
+      const p = (person.data ?? null) as { email: string | null; phone: string | null; account_user_id: string | null } | null
+      // A sub with no address on the roster may sign in with one. It is offered on the To line, never sent to unasked,
+      // so a read that fails only leaves the offer out.
+      const login = p && !p.email?.trim() && p.account_user_id ? await supabase.from('users').select('email').eq('id', p.account_user_id).maybeSingle() : { data: null }
+      if (cancelled) return
+      const loginEmail = ((login.data ?? null) as { email: string | null } | null)?.email?.trim() || null
       // A read that failed is not a sub with no email: the step then names the roster's address without quoting it.
-      setContact({ email: p?.email?.trim() || null, phone: p?.phone?.trim() || null, portalUrl: null, emailUnread: !!person.error })
+      setContact({ email: p?.email?.trim() || null, phone: p?.phone?.trim() || null, portalUrl: null, emailUnread: !!person.error, loginEmail })
       const issuer = getPhysicalInvoiceIssuerForDocument()
       setCompany({ name: issuer.companyName || 'Our company', lines: [issuer.addressText.replace(/\n+/g, ', '), issuer.phone, issuer.email].map((l) => (l ?? '').trim()).filter(Boolean) })
     })()
@@ -175,6 +181,18 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
   }
   const make = async (paper: SubPaper, range: StatementRange): Promise<SubPaper> => (await makeSet([paper], range))[0] ?? paper
   const maySend = !readOnly && isOfficeRole(role) && !!personId
+  /**
+   * The To line's save: the address goes onto the person's roster row, where the function reads it. The office
+   * roles who send may write that row. A save that comes back with no row changed nothing, and says so.
+   */
+  const keepEmail = async (email: string): Promise<void> => {
+    if (!personId) throw new Error(ROSTER_EMAIL_NOT_KEPT)
+    const { data, error } = await supabase.from('people').update({ email }).eq('id', personId).select('email').maybeSingle()
+    if (error) throw new Error(formatErrorMessage(error))
+    const kept = ((data ?? null) as { email: string | null } | null)?.email?.trim()
+    if (!kept) throw new Error(ROSTER_EMAIL_NOT_KEPT)
+    setContact((c) => ({ ...c, email: kept, emailUnread: false }))
+  }
   return (
     <SubPapersWindowView
       open={open}
@@ -188,7 +206,8 @@ export function SubPapersWindow({ open, subKey, name, laborJobs, assigneesByJobI
       marksUnread={acks === null}
       canSend={maySend}
       sendBy={SEND_BY}
-      emailDoor={subPaperEmailDoor()}
+      emailDoor={subPaperEmailDoor(maySend)}
+      onKeepEmail={keepEmail}
       startOnSend={startOnSend}
       onSend={async (plan, papers, by, sendRange) => {
         if (by !== 'email' || !personId || sending.current) return false

@@ -4901,6 +4901,8 @@ A held work statement with no number names its sheet's day beside its job, so tw
 Since v2.8262 every press in the window stands 44 px tall at 640 px and under (`PHONE_PRESS_MIN_HEIGHT`).
 Since v2.8262 the ledger the papers stand on (`useSubLaborLedger`) draws nothing from a read of lines or payments that failed (`subLedgerReadFailure`): it keeps what it last read whole and the page says why.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
+Since v2.8265 the send step's To line takes the address in place (`ChangeableValue` over `subPaperRosterEmail.ts`): it is saved on the person's roster row, `people.email`, where the function reads it, and the press goes live.
+A sub's sign-in address is offered under the To line and goes on the roster row only on its press (`rosterEmailOffer`).
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
 Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
 Since v2.8217 the last press's line goes when the window moves to another paper or another step, and a new line always shows (`subPaperSaid.ts`).
