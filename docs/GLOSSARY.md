@@ -4894,6 +4894,10 @@ The function mails them to the roster's own address for the person and files eac
 Email is the one way built, and the press shows only for the office roles who see sub pay (`isOfficeRole`), never for an account in training.
 The papers of one email are registered as one set (`registerSubPaperSet`), every work statement first and the statement of account last, so the statement names each work statement by the number on the file beside it.
 One email carries 12 papers (`subPaperSendSet`, the function's own limit), and what does not fit is held and named.
+Since v2.8262 the held papers go in the next email: `subPaperSendParts` cuts the pick into emails of 12, *Open the next email, <n> papers* moves the send step on to it, and a later email reads *More papers from <company>, email 2 of 3*.
+A held work statement with no number names its sheet's day beside its job, so two sheets of one job read apart.
+Since v2.8262 every press in the window stands 44 px tall at 640 px and under (`PHONE_PRESS_MIN_HEIGHT`).
+Since v2.8262 the ledger the papers stand on (`useSubLaborLedger`) draws nothing from a read of lines or payments that failed (`subLedgerReadFailure`): it keeps what it last read whole and the page says why.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
 Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
