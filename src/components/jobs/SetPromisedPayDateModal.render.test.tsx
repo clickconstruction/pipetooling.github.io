@@ -6,7 +6,7 @@
  * claim in its own words.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import SetPromisedPayDateModal, { parseClaimAmount } from './SetPromisedPayDateModal'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
@@ -92,6 +92,46 @@ describe('SetPromisedPayDateModal — Write down their word', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(rpc.mock.calls.find((c) => c[0] === 'add_job_payment_promise')![1]).toMatchObject({ p_job_id: 'j1', p_date: '2026-11-06' })
+  })
+  it('says what it wrote: a saved promise’s day and a word taken off, and nothing for Clear date or a paid claim', async () => {
+    rpc.mockImplementation(async (name: string) => (name === 'list_job_payment_promises_for' ? { data: onRecord, error: null } : { data: null, error: null }))
+    const onWord = vi.fn()
+    const sheet = () => renderWithProviders(<SetPromisedPayDateModal jobId="j1" jobLabel="#1032 · Whitfield repipe" initialYmd="2026-10-25" onClose={vi.fn()} onSaved={vi.fn()} onWord={onWord} />)
+    // Never said that, on the claim and then on the promise.
+    sheet()
+    await waitFor(() => expect(screen.getAllByTestId('promise-record-row')).toHaveLength(2))
+    for (const row of [0, 1]) {
+      fireEvent.click(within(screen.getAllByTestId('promise-record-row')[row]!).getByRole('button', { name: /^They never said / }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Never said that' }))
+      await waitFor(() => expect(onWord).toHaveBeenCalledTimes(row + 1))
+    }
+    expect(onWord.mock.calls.map((c) => c[0])).toEqual([
+      { kind: 'never', ymd: '2026-10-20', claim: true },
+      { kind: 'never', ymd: '2026-10-25', claim: false },
+    ])
+    cleanup()
+    onWord.mockClear()
+    // Clear date leaves the promise on record, and a paid claim names no day they owe by.
+    sheet()
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear date' }))
+    await settle()
+    cleanup()
+    sheet()
+    await settle()
+    fireEvent.click(screen.getByRole('radio', { name: 'They say they paid…' }))
+    fireEvent.change(screen.getByLabelText('The day they say they paid'), { target: { value: '2026-10-20' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Write it down' }))
+    await settle()
+    expect(onWord).not.toHaveBeenCalled()
+    cleanup()
+    // A saved promise says its day.
+    sheet()
+    await settle()
+    fireEvent.change(screen.getByLabelText('Promised payment date'), { target: { value: '2026-11-06' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(onWord).toHaveBeenCalledWith({ kind: 'promise', ymd: '2026-11-06' }))
   })
   it('parseClaimAmount: blank is all of it, a figure is a figure, anything else holds', () => {
     expect(parseClaimAmount('')).toBeNull()

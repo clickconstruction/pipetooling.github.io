@@ -4668,6 +4668,7 @@ What of it is on main, one line a piece:
   guide *edit the quick replies* → The lines the app ships with.
   Since v2.5649 (punch list #129) a customer's own line in the thread carries **Write down their word** under it (`useFollowUpThreadSlots`' `underLine`, `messages/wordFromLine.ts` over `list_customer_money_strip`): the Pipeline's promise sheet on the job the line is tied to, else the customer's one job with money open, else a pick, with the customer's name and the line's channel filled in.
   Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
+  Since v2.8271 a promise saved from a line also marks that line's own promise as a payment by the day (`write_down_payment`), so the job's *They promised* row names it and the thread reads *Their move · until Fri Nov 27 · payment* once our word is the newest, and *Never said that* takes the mark back off.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
   *Flow · step*).

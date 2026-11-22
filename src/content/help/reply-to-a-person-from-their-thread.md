@@ -86,6 +86,8 @@ A customer's own text, email or call carries {{button:outline|Write down their w
 
 When their text or voicemail names a day, the day shows beside the button. It reads **They said Fri Nov 27.** Press the button and the sheet opens on **They'll pay by…** with that day in **Pay by**. A line under the job says the day was read from their text. Change the day when they meant another one. Nothing is saved until you press {{button:green|Save promise}}. A call or an email shows no day, and neither does a day that has passed.
 
+A saved promise marks the line it was written from. The job's **They promised** row then names the day. Once we have answered them, the thread's **Their move** chip runs until that day and says it is a payment. When you take the word off with **Never said that**, the mark comes off the line too.
+
 ## Find a reply
 
 Press **⤢ Find** in the quick replies. A window opens with their last message on top. It also says where they are in the flow, and what finishes that step. Press **the step’s card ›** to open the step itself.
