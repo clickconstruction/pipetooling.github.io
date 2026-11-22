@@ -305,10 +305,12 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
         </span>
       )
     },
-    headerRight: (c) =>
+    // A folded header draws the pill as a face alone (punch list #348): the name beside it needs the room.
+    headerRight: (c, look) =>
       mine(c.id) ? (
         <WhoHasItPill
           bare
+          face={look?.folded}
           contact={followUpContactOf(c, rows.contact, userNames)}
           me={me}
           team={team}
