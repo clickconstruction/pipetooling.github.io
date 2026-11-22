@@ -13,9 +13,12 @@
  * `isZzBidName`: a project name that starts with the word ZZ, the robots' shadow and backtest bids and the office's
  * test bids; the rule sits beside the jobs' in `_shared/zzTestJob.ts`), so a robot's bid is no ask on Market, no bid sent, won or awaiting on Sales, nobody's on Vectors and no
  * bid due; the shared ids stand for the viewer's switch, null keeping them. Since v2.7119 the estimates behind the won
- * rate follow the same switch (`isZzEstimate` in `loadEstimateWins.ts`); the count of asks still reads every estimate.
+ * rate follow the same switch (`isZzEstimate`, read by `loadEstimateWins.ts`). Since v2.8280 so does every other
+ * estimates read on the page (`withoutZzBridgeEstimates`): the count of asks, the estimates sent, won, lost and still
+ * out, and the Market and Sales windows' own lists. Those reads take the switch by itself (`hideZzEstimates`), since
+ * their `zzTestJobIds` also carries the jobs the Bridge leaves out and is a set for a dev who shows ZZ tests.
  */
-import { isZzBidName } from '../jobs/zzTestJobSweep.ts'
+import { isZzBidName, isZzTestName } from '../jobs/zzTestJobSweep.ts'
 import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility.ts'
 
 /** The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). */
@@ -75,6 +78,33 @@ export function withoutZzBridgeBids<T extends { project_name?: string | null }>(
   if (!zzTestJobIds) return rows
   const isZz = (b: T) => isZzBidName(b.project_name)
   return rows.some(isZz) ? rows.filter((b) => !isZz(b)) : rows
+}
+
+/**
+ * A test estimate by the convention (punch list #334, PR 3): its customer's name is a ZZ name, or its title is once
+ * the usual opening *Estimate for* is taken off. The title alone would miss one whose title was typed over; the
+ * customer alone would miss one sent to an email with no customer row.
+ */
+export function isZzEstimate(row: { title?: string | null; customerName?: string | null }): boolean {
+  return isZzTestName(row.customerName) || isZzTestName((row.title ?? '').replace(/^\s*estimate\s+for\s+/i, ''))
+}
+
+/** What an estimates read asks for beside its own fields, so the rule can read each row. */
+export const ZZ_ESTIMATE_FIELDS = 'title, customers(name)'
+
+/** An estimate row as a read that asks for `ZZ_ESTIMATE_FIELDS` gets it. */
+export type ZzEstimateRow = { title?: string | null; customers?: { name: string | null } | null }
+
+/**
+ * Estimate rows without the ZZ test estimates (`isZzEstimate`), for the viewer who leaves ZZ tests out (v2.8280).
+ * `hideZzEstimates` is that viewer's switch by itself: false keeps every estimate, for a dev who shows ZZ tests,
+ * whatever the Bridge's left-out list names. No other row leaves: an estimate that is not a test is kept, with every
+ * field it came with. The same array when none is dropped.
+ */
+export function withoutZzBridgeEstimates<T extends ZzEstimateRow>(rows: T[], hideZzEstimates: boolean): T[] {
+  if (!hideZzEstimates) return rows
+  const isZz = (e: T) => isZzEstimate({ title: e.title, customerName: e.customers?.name ?? null })
+  return rows.some(isZz) ? rows.filter((e) => !isZz(e)) : rows
 }
 
 /** Field sessions without the ones clocked on a ZZ test job, so it is no job worked and earns nothing. */
