@@ -8,6 +8,7 @@
  * Drive-folder backfill to Jobs.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -54,7 +55,14 @@ import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import TakesPanel from '../materials/TakesPanel'
 import { takesBefore, takesBeforeLabel, takesOf } from '../../lib/materials/takes'
-import { FlowRow } from '../materials/FlowRow'
+import { FlowRow, FlowTiles, type FlowPill } from '../materials/FlowRow'
+import MaterialsPrintSheet from '../materials/MaterialsPrintSheet'
+import { jobPrintSheet } from '../../lib/materials/printSheet'
+import { notPrintedRunToPrint, reservedRunToPrint } from '../../lib/materials/reservedPrint'
+import { Sheet } from '../tally/OnSiteSheet'
+import { AddPartSheet } from '../tally/AddPartSheet'
+import { ADD_PART_FAILED, ADD_PART_PRESS, addPartDoneWords, addPartMovement, addPartPressLabel } from '../../lib/materials/addPart'
+import { searchPartsBook } from '../../lib/materials/addPartIo'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
@@ -77,12 +85,15 @@ import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdi
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { useJobStickers } from '../../hooks/useJobStickers'
-import { reservedLineWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
+import { reservedLineWords, reservedShortWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
 export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
+
+/** The Materials page's Print sheet as a job's section takes it (v2.8282): the page says when it is open, the section draws it on the job. */
+export type MaterialsPrintSheetDoor = { open: boolean; onClose: () => void; /** Print for another job: the page opens what its Print labels press opens. */ onAnotherJob: () => void }
 
 type Props = {
   jobs: MaterialsJob[]
@@ -95,9 +106,14 @@ type Props = {
   rowDoors?: { onLabels: (jobId: string) => void }
   /** The signed-in role (punch list #329, v2.7272): Print future stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
+  /** A phone on the Materials page (v2.8282): a job's section is drawn for one, and its print presses live in the page's Print sheet. Off on Jobs → Materials, which has no such sheet. */
+  phone?: boolean
+  printSheet?: MaterialsPrintSheetDoor
 }
 
 const BLUE = '#2563eb'
+/** The green pill's views: the list of boxes, the parts across them, the map. */
+const ON_SITE_VIEWS = ['list', 'parts', 'map'] as const
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
@@ -179,7 +195,7 @@ function BookPricesLine() {
   )
 }
 
-export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
+export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null, phone = false, printSheet }: Props) {
   /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
   const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -397,7 +413,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     )
   }
 
-  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} phone={phone} printSheet={printSheet} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -478,7 +494,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob, phone, printSheet }: { phone: boolean; printSheet: MaterialsPrintSheetDoor | undefined; jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -697,6 +713,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   useEffect(() => { if (runsKey > 0) refreshStickers() }, [runsKey, refreshStickers])
   /** Ticks when the *not yet on a box* line is pressed: the Runs fold opens and comes into view. */
   const [runsOpenKey, setRunsOpenKey] = useState(0)
+  /** The phone's reserved line (v2.8282): one press over the boxes, opening a sheet with the whole of it. */
+  const [reservedOpen, setReservedOpen] = useState(false)
   const nameVerdict = boxNameVerdict(newTyped ?? '', siteBoxes)
   const newShown = newTyped ?? nextFreeName(siteBoxes) ?? ''
   const [newWhere, setNewWhere] = useState('')
@@ -709,6 +727,18 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [newPlaceName, setNewPlaceName] = useState('')
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
   const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
+  /** Add a part (v2.8282): the box whose sheet is open, from its card's press or the Edit window's empty Contents tab. */
+  const [addPartBoxId, setAddPartBoxId] = useState<string | null>(null)
+  /** A box just added here: its card is brought into view once it is drawn, wherever its place puts it in the list. */
+  const [newBoxId, setNewBoxId] = useState<string | null>(null)
+  const boxIdsKey = containers.map((c) => c.id).join('|')
+  useEffect(() => {
+    if (!newBoxId) return
+    const card = document.querySelector(`[data-box-card="${newBoxId}"]`)
+    if (!card) return
+    card.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    setNewBoxId(null)
+  }, [newBoxId, boxIdsKey])
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const takes = takesOf(movements, photos)
   const people = [...new Set(movements.map((m) => m.byName))].sort()
@@ -717,6 +747,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
 
   const head = onSiteJobHead(job, jobLabel(job, jobId))
+  /** The flow row's four figures, as the desk's pills and the phone's tiles both draw them. */
+  const flowPills: FlowPill[] = [
+          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
+          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
+          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
+          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
+        ]
+  const viewWords = (v: (typeof ON_SITE_VIEWS)[number]) => (v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map')
+  const dayWords = (iso: string) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso))
+  /**
+   * The job's reserved stickers in full: the sentence, These are on boxes, Runs and the presses that print them. The
+   * desk draws it over the boxes; the phone draws it in a sheet, and `done` closes that sheet as a press is taken.
+   */
+  const reservedBlock = (done: () => void) => (
+            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? dayWords(jobStickers.reserved.printedAt) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
+              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
+              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => { done(); setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) }) }} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
+              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { done(); setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
+            </p>
+            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
+            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => { done(); setStickersOpen({ run }) }} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
+            </div>
+  )
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -742,19 +797,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */
         <p style={{ ...muted, margin: 0 }} data-testid="materials-capped">This job has more than {MOVEMENTS_LIMIT.toLocaleString('en-US')} ledger rows. History and the boxes show the newest {MOVEMENTS_LIMIT.toLocaleString('en-US')}; the totals come from the database.</p>
       ) : null}
+      {phone ? (
+        <>
+          {/* A phone (v2.8282): the four figures as equal tiles, then the view switch and Add on one row. */}
+          <FlowTiles label="Materials on site" pills={flowPills} />
+          {section === 'onsite' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }} data-testid="materials-phone-view-row">
+              <div role="group" aria-label="How the boxes are shown" style={{ display: 'inline-flex', flex: '0 1 auto', minWidth: 0, borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', overflow: 'hidden' }}>
+                {ON_SITE_VIEWS.map((v, i) => (
+                  <button key={v} type="button" aria-pressed={onSiteView === v} style={{ minHeight: 36, padding: '0 0.7rem', borderWidth: 0, borderRadius: 0, boxShadow: i > 0 ? 'inset 1px 0 0 var(--border-strong)' : 'none', background: onSiteView === v ? 'var(--text-strong)' : 'var(--surface)', color: onSiteView === v ? 'var(--bg-page)' : 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
+                ))}
+              </div>
+              {onSiteView === 'list' ? <button type="button" aria-label="Add a container" aria-expanded={adding} style={{ ...materialsPressStyle(36), marginLeft: 'auto' }} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container">+ Container</button> : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
       <FlowRow
         role="tabs"
         label="Materials on site"
-        pills={[
-          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
-          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
-          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
-          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
-        ]}
-        trailing={section === 'onsite' ? (['list', 'parts', 'map'] as const).map((v) => (
-          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map'}</button>
+        pills={flowPills}
+        trailing={section === 'onsite' ? ON_SITE_VIEWS.map((v) => (
+          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
         )) : null}
       />
+      )}
 
       {section === 'onsite' && onSiteView === 'list' ? (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -765,6 +832,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             ))}
             </div>
             {/* What the desk does to this site's boxes (v2.6890): pills at the filter chips' height, each with a glyph, as the Materials strip draws Scan a label and Print labels. A chip filters; a glyph acts. */}
+            {phone ? null : (
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
@@ -772,19 +840,17 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'Print stickers before their boxes are in the app. Each one reserves a name and its own link.' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
+            )}
           </div>
           {/* The job's reserved stickers (punch list #329, PR 3; v2.7487 the names, who and when, and the press that fills them in; v2.7567 what printed, punch list #373): on no box yet, with the Runs fold one press away. */}
           {jobStickers.blank > 0 ? (
-            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
-            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(jobStickers.reserved.printedAt)) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
-              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
-              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) })} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
-              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
-            </p>
-            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
-            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => setStickersOpen({ run })} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
-            </div>
+            phone ? (
+              /* A phone (v2.8282): one line that opens the whole of it, where the sentence and its presses took five rows. */
+              <button type="button" aria-haspopup="dialog" style={{ ...btn, width: '100%', minHeight: 44, justifyContent: 'space-between', textAlign: 'left', fontWeight: 600 }} onClick={() => setReservedOpen(true)} data-testid="materials-stickers-reserved-line">
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{reservedShortWords(jobStickers.reserved)}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block', flex: '0 0 auto', color: 'var(--text-muted)' }}><path d="M4 1.5 8.5 6 4 10.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            ) : reservedBlock(() => {})
           ) : null}
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>
@@ -794,7 +860,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input value={lineFieldValue(newLineTyped, nameVerdict.words)} onChange={(e) => setNewLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 220, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid="materials-add-line" /></label>
-          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} onClick={() => { if (!nameVerdict.ok || !newLine.ok) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewPlaceName(''); setAdding(false); showToast(`${nameVerdict.name} added.`, 'success') }}>{addPressLabel(nameVerdict)}</button>
+          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} onClick={() => { if (!nameVerdict.ok || !newLine.ok) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); const made = addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); /* The new box stays in sight (v2.8282): every box is listed again, and its card is scrolled to. */ setOnSiteFilter('all'); setNewBoxId(made.id); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewPlaceName(''); setAdding(false); showToast(`${nameVerdict.name} added.`, 'success') }}>{addPressLabel(nameVerdict)}</button>
           <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{newWordsNote ? ` ${newWordsNote}` : ''}{newLine.ok ? '' : ` ${newLine.words}`}</span>
         </div>
       ) : null}
@@ -816,8 +882,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts. The name opens Edit, which holds the same line.
               const boxLineNow = c.kind === 'unsorted' ? null : boxLineOf(c, lines)
               return (
-                <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
+                <div key={c.id} data-box-card={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{/* Add a part (v2.8282): the sheet the phone's box screen opens, so the desk is not a dead end for whoever stands at the box. */}{c.kind !== 'unsorted' ? <button type="button" aria-label={addPartPressLabel(c.label)} title={`${addPartPressLabel(c.label)}: pick it from this job, the parts book or type its name`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setAddPartBoxId(c.id)} data-testid="materials-box-add-part">{ADD_PART_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -1177,11 +1243,57 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
         </div>
       ) : null}
+      {phone && reservedOpen && jobStickers.blank > 0 ? createPortal(<Sheet title="Reserved stickers" onClose={() => setReservedOpen(false)}>{reservedBlock(() => setReservedOpen(false))}</Sheet>, document.body) : null}
+      {/* The page's Print sheet on this job (v2.8282): a door to the windows below, and to another job's labels. */}
+      {printSheet?.open ? (
+        <MaterialsPrintSheet
+          sheet={jobPrintSheet({ job, boxCount, runs: jobStickers.toPrint, role, dayWords })}
+          onClose={printSheet.onClose}
+          onRow={(row) => {
+            const act = row.act
+            if (act.kind === 'another-job') {
+              printSheet.onAnotherJob()
+              return
+            }
+            printSheet.onClose()
+            if (act.kind === 'labels') setLabelsOpen({ only: null })
+            else if (act.kind === 'manifest') setManifestOpen({ only: null })
+            else if (act.kind === 'stickers') setStickersOpen({ run: null })
+            else if (act.kind === 'reserved') {
+              const r = jobStickers.toPrint.find((x) => x.run.id === act.runId)
+              if (r) setStickersOpen({ run: act.waiting ? notPrintedRunToPrint(r) : reservedRunToPrint(r) })
+            }
+          }}
+        />
+      ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} onPrinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onAddPart={() => { setEditingBoxId(null); setWhereBoxId(null); setAddPartBoxId(box.id) }} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => {
+        const box = addPartBoxId ? containers.find((c) => c.id === addPartBoxId) : null
+        if (!box) return null
+        // The same sheet and the same row as the phone's box screen: delivered into the box, added on site, in this person's name.
+        return createPortal(
+          <AddPartSheet
+            container={box}
+            names={knownNames}
+            searchParts={searchPartsBook}
+            onClose={() => setAddPartBoxId(null)}
+            onAdd={(part, n) => {
+              try {
+                addMovement(addPartMovement({ jobId, containerId: box.id, part, quantity: n, byUserId, byName }))
+                setAddPartBoxId(null)
+                showToast(addPartDoneWords(n, part.partName, box.label), 'success')
+              } catch (e) {
+                showToast(formatErrorMessage(e, ADD_PART_FAILED), 'error')
+              }
+            }}
+          />,
+          document.body,
+        )
+      })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

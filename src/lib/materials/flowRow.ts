@@ -116,3 +116,8 @@ export function phoneFlow(containers: ReadonlyArray<Container>, movements: Reado
 export function flowFigure(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
+
+/** A figure's word on the phone's tiles (v2.8282), where it sits alone under its number: *Came in*, *On site*. */
+export function flowTileWord(word: string): string {
+  return word ? word.charAt(0).toUpperCase() + word.slice(1) : ''
+}

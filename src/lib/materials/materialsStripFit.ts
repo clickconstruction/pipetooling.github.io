@@ -26,6 +26,8 @@ export type StripFitInput = {
   gap: number
   /** The row's width. Zero means not measured yet, which reads as everything fits. */
   available: number
+  /** A phone (v2.8282): the names take a row of their own whatever fits, so the phone's presses are always there. */
+  rows?: boolean
 }
 
 export type StripFit = {
@@ -44,6 +46,7 @@ export function stripFit(input: StripFitInput): StripFit {
   const { groups, available } = input
   const all = new Set(groups)
   if (groups.length === 0) return { shape: 'row', open: [] }
+  if (input.rows) return { shape: 'rows', open: [input.opened && all.has(input.opened) ? input.opened : all.has(input.here) ? input.here : groups[0]!] }
   if (available <= 0 || rowWidth(input, all) <= available) return { shape: 'row', open: [...groups] }
   const first = input.opened && all.has(input.opened) ? input.opened : all.has(input.here) ? input.here : groups[0]!
   const open = new Set<MaterialsGroupKey>([first])
@@ -63,4 +66,13 @@ export function stripFit(input: StripFitInput): StripFit {
 export function foldedGroupLabel(word: string, hereTab: string | null, badges: ReadonlyArray<string>, folded = true): string {
   const parts = [hereTab ? `${word}, on ${hereTab}` : word, ...badges]
   return folded ? `${parts.join(', ')}. Show its tabs.` : parts.join(', ')
+}
+
+/**
+ * What the name of a one-tab group says on the phone's row of names (v2.8282), where the press opens its tab: its name
+ * and its badges, and while the page is elsewhere what the press does. *Track, 3 due a count. Open On site.*
+ */
+export function oneTabGroupLabel(word: string, tabLabel: string, badges: ReadonlyArray<string>, here: boolean): string {
+  const parts = [word, ...badges].join(', ')
+  return here ? parts : `${parts}. Open ${tabLabel}.`
 }

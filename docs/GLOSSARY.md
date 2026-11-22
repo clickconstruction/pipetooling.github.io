@@ -5053,6 +5053,7 @@ the strip's groups are **Plan**, **Purchase** and **Track**): **Materials → On
 For the office it is the Materials desk, the component Jobs → Materials mounts ([`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md));
 for an estimator, a primary and a superintendent it lists their jobs with boxes as doors to the Tally's On site tab.
 **Scan a label**, **Print labels** and, since v2.7272 for the office, a primary and a superintendent, **Print future stickers** are presses at the right end of the tab's row.
+On a phone (v2.8282) **Track** opens On site in one press, and the presses are two icons beside the group names: **Scan a label**, and **Print**, which opens the **Print sheet** (`lib/materials/printSheet.ts`) on the open job or, with none open, on what the strip offers.
 
 ### Supply house bill lines — every line on a bill as a row, counted only when it adds up (punch list #298, v2.6817 · v2.6819 · v2.6882 · v2.6897)
 A bill was its total, its job and a link to its PDF;

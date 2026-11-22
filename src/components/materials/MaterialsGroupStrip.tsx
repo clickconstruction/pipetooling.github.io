@@ -10,11 +10,16 @@
  * name and their badge. A folded group's press opens it and does not change the page. Where even one open group is too
  * wide beside the names (a phone), the names take a row and the open group's tabs sit under them. Which groups fold is
  * `lib/materials/materialsStripFit.ts`; before v2.6871 the last group wrapped under the others.
+ *
+ * The row of names since v2.8282 (the owner's approved phone design): a group that holds one tab (Track, On site) is
+ * opened by its name at once and draws no tab row, and while Track is open the presses are two square icons at the
+ * right end of the names, scan and print, where three worded pills ran off a phone. Print opens the page's Print
+ * sheet (`onPrint`). A phone always draws this shape (`phone`).
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { pageTabStyle } from '../../lib/pageTabStyle'
-import { MATERIALS_PRESS_LABELS, MATERIALS_TAB_LABELS, materialsGroupOf, type MaterialsBadge, type MaterialsGroup, type MaterialsGroupKey, type MaterialsPress } from '../../lib/materials/materialsGroups'
-import { foldedGroupLabel, stripFit } from '../../lib/materials/materialsStripFit'
+import { MATERIALS_PHONE_PRESS_LABELS, MATERIALS_PRESS_LABELS, MATERIALS_TAB_LABELS, groupOnlyTab, materialsGroupOf, materialsPhonePresses, type MaterialsBadge, type MaterialsGroup, type MaterialsGroupKey, type MaterialsPress } from '../../lib/materials/materialsGroups'
+import { foldedGroupLabel, oneTabGroupLabel, stripFit } from '../../lib/materials/materialsStripFit'
 import type { MaterialsTab } from '../../lib/materials/materialsTabs'
 import { materialsPressStyle } from '../../lib/materials/materialsPressStyle'
 import { MaterialsPressGlyph } from './MaterialsPress'
@@ -29,6 +34,10 @@ type Props = {
   /** The presses at the right end of On site's row, in order. */
   presses: ReadonlyArray<MaterialsPress>
   onPress: (press: MaterialsPress) => void
+  /** The print icon on the row of names: the page opens its Print sheet. */
+  onPrint?: () => void
+  /** A phone: the names always take a row of their own, so the icon presses are always there. */
+  phone?: boolean
   /** What a caption wears, by group; a group with nothing to say wears nothing. */
   badges?: Partial<Record<MaterialsGroupKey, ReadonlyArray<MaterialsBadge>>>
   /** The widths, handed in where there is no layout to measure (a test's DOM). The strip measures itself otherwise. */
@@ -46,7 +55,10 @@ const tabStyle = (on: boolean): CSSProperties => ({ ...pageTabStyle(on), padding
 const foldStyle = (here: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: 32, margin: '0 0 6px', padding: '0 0.6rem 0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: here ? '#2563eb' : 'var(--border-strong)', background: here ? 'var(--bg-blue-tint)' : 'var(--surface)', color: here ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', cursor: 'pointer', flex: '0 0 auto', whiteSpace: 'nowrap' })
 const plainWords: CSSProperties = { letterSpacing: 0, textTransform: 'none', fontWeight: 600 }
 
-export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses, onPress, badges = {}, measured }: Props) {
+/** An icon press on the row of names: a square as tall as the name pills, the glyph alone. */
+const iconPress: CSSProperties = { flex: '0 0 auto', width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
+
+export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses, onPress, onPrint, phone = false, badges = {}, measured }: Props) {
   const hereKey = materialsGroupOf(activeTab)
   const hereLabel = MATERIALS_TAB_LABELS[activeTab]
   /** A folded group the person pressed open. It changes what is drawn, never the page. */
@@ -86,7 +98,7 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
   // A window resized, or a phone turned, is a new row to fit: the strip folds around the open tab again.
   useEffect(() => { setOpened(null) }, [room])
 
-  const fit = stripFit({ groups: groups.map((g) => g.key), here: hereKey, opened, gap: GAP, ...(measured ?? sizes) })
+  const fit = stripFit({ groups: groups.map((g) => g.key), here: hereKey, opened, gap: GAP, rows: phone, ...(measured ?? sizes) })
   const isOpen = (key: MaterialsGroupKey) => fit.open.includes(key)
 
   // A press on a folded group puts the keyboard on that group's first tab, where the next press is.
@@ -107,8 +119,8 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
       {MATERIALS_TAB_LABELS[tab]}
     </button>
   )
-  const pressButtons = (group: MaterialsGroup, live: boolean): ReactNode =>
-    group.key === 'track' && presses.length > 0 ? (
+  const pressButtons = (group: MaterialsGroup, live: boolean, worded = true): ReactNode =>
+    worded && group.key === 'track' && presses.length > 0 ? (
       // Pushed to the row's right end: the tab is the place, the presses are what you do there.
       <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: 'auto', paddingLeft: '0.5rem' }}>
         {presses.map((p) => (
@@ -125,12 +137,12 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
    * A group drawn open: its caption, its tabs, its presses. `live` is false for the copy the strip measures. `grow`
    * lets the last group take the rest of the row, so its presses reach the right edge.
    */
-  const openGroup = (g: MaterialsGroup, live: boolean, withCaption = true, grow = false): ReactNode => (
+  const openGroup = (g: MaterialsGroup, live: boolean, withCaption = true, grow = false, wordedPresses = true): ReactNode => (
     <div style={{ display: 'grid', gap: 2, flex: grow ? '1 1 auto' : '0 0 auto' }} {...(live ? { role: 'group', 'aria-label': g.word, 'data-strip-group': g.key } : { 'data-rule': `open:${g.key}` })}>
       {withCaption ? <div style={caption(g.key === hereKey)}>{g.word}{badgeChips(g.key)}</div> : null}
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
         {g.tabs.map((t) => tabButton(t, live))}
-        {pressButtons(g, live)}
+        {pressButtons(g, live, wordedPresses)}
       </div>
     </div>
   )
@@ -162,33 +174,50 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
 
   if (fit.shape === 'rows') {
     const open = groups.find((g) => g.key === fit.open[0]) ?? groups[0]
+    // While Track is open its presses are icons at the right end of the names (v2.8282).
+    const icons = open?.key === 'track' ? materialsPhonePresses(presses) : []
     return (
       <div ref={rootRef} style={{ position: 'relative', display: 'grid', gap: '0.5rem', marginBottom: '1.25rem' }} data-testid="materials-group-strip" data-strip-shape="rows">
         {ruler}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', minWidth: 0 }}>
           {groups.map((g) => {
             const on = g.key === open?.key
             const here = g.key === hereKey
             const marks = (badges[g.key] ?? []).map((b) => b.text)
+            // A group with one tab is that tab: its name opens the page, and there is no row of tabs to show.
+            const only = groupOnlyTab(g)
             return (
               <button
                 key={g.key}
                 type="button"
-                aria-expanded={on}
-                aria-label={foldedGroupLabel(g.word, here && !on ? hereLabel : null, marks, !on)}
-                onClick={() => { if (!on) openFolded(g.key) }}
+                {...(only ? { 'aria-current': here ? ('page' as const) : undefined, 'aria-label': oneTabGroupLabel(g.word, MATERIALS_TAB_LABELS[only], marks, here) } : { 'aria-expanded': on, 'aria-label': foldedGroupLabel(g.word, here && !on ? hereLabel : null, marks, !on) })}
+                onClick={() => {
+                  if (only) {
+                    setOpened(null)
+                    onTab(only)
+                  } else if (!on) openFolded(g.key)
+                }}
                 data-testid={`materials-group-name-${g.key}`}
-                style={{ flex: '1 1 0', minWidth: 0, maxWidth: '11rem', minHeight: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: on ? 'var(--text-strong)' : here ? '#2563eb' : 'var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : here ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                style={{ flex: '1 1 0', minWidth: 0, maxWidth: '11rem', minHeight: 40, padding: '0 0.25rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: on ? 'var(--text-strong)' : here ? '#2563eb' : 'var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : here ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
               >
-                {g.word}
-                {marks.length > 0 ? <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: '#d97706', display: 'inline-block' }} /> : null}
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.word}</span>
+                {marks.length > 0 ? <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: '#d97706', display: 'inline-block', flex: '0 0 auto' }} /> : null}
               </button>
             )
           })}
+          {icons.length > 0 ? (
+            <span style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto', flex: '0 0 auto' }}>
+              {icons.map((p) => (
+                <button key={p} type="button" aria-label={MATERIALS_PHONE_PRESS_LABELS[p]} title={MATERIALS_PHONE_PRESS_LABELS[p]} style={iconPress} onClick={() => (p === 'scan' ? onPress('scan-label') : onPrint?.())} data-testid={`materials-phone-press-${p}`}>
+                  <MaterialsPressGlyph kind={p === 'scan' ? 'scan-label' : 'print-labels'} size={18} />
+                </button>
+              ))}
+            </span>
+          ) : null}
         </div>
-        {open ? (
+        {open && !groupOnlyTab(open) ? (
           <div style={{ borderBottom: '2px solid var(--border)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <div style={{ display: 'flex', width: 'max-content', minWidth: '100%' }}>{openGroup(open, true, false, true)}</div>
+            <div style={{ display: 'flex', width: 'max-content', minWidth: '100%' }}>{openGroup(open, true, false, true, false)}</div>
           </div>
         ) : null}
       </div>

@@ -26,6 +26,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
+import { AddPartSheet, Stepper, type OnSitePart } from './AddPartSheet'
 import OnSiteBoxScreen from './OnSiteBoxScreen'
 import { moreRows, moreTitle, type MoreKey } from '../../lib/materials/boxScreen'
 import StickerNewSheet from './StickerNewSheet'
@@ -72,13 +73,12 @@ import BoxTakes from '../materials/BoxTakes'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
-import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox } from '../../lib/materials/boxName'
 import { BOX_LINE_FIELD_LABEL, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
-import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
+import { onHandNames } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, newId, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { noteBoxOpen } from '../../lib/people/personWatchIo'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
@@ -100,7 +100,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
 
 export type OnSiteJob = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string | null; customer_name?: string | null; service_type_id?: string | null }
-export type OnSitePart = { id: string; name: string; manufacturer: string | null }
+export type { OnSitePart } from './AddPartSheet'
 
 type Props = {
   jobs: OnSiteJob[]
@@ -1041,21 +1041,6 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 
 // ── the sheets ────────────────────────────────────────────────────────────────────────────────
 
-function Stepper({ n, max, onChange }: { n: number; max: number; onChange: (n: number) => void }) {
-  const stepBtn: CSSProperties = { ...btn, width: 56, height: 56, padding: 0, fontSize: '1.5rem', borderRadius: 12 }
-  // What is in the field while it is typed in; null when it shows `n`. Clearing the field used to put the 1 back at
-  // once (v2.7252), so 25 could not be typed over it. A press of − or +, a quick number or leaving the field shows `n`.
-  const [typed, setTyped] = useState<string | null>(null)
-  useEffect(() => { setTyped(null) }, [n])
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.9rem' }}>
-      <button type="button" aria-label="One fewer" style={{ ...stepBtn, ...dis(n <= 1) }} disabled={n <= 1} onClick={() => onChange(Math.max(1, n - 1))}>−</button>
-      <input type="number" inputMode="numeric" value={typed ?? n} min={1} max={max} aria-label="How many" onChange={(e) => { setTyped(stepperKeeps(e.target.value, max)); const v = stepperTyped(e.target.value, max); if (v != null) onChange(v) }} onBlur={() => setTyped(null)} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56 }} />
-      <button type="button" aria-label="One more" style={{ ...stepBtn, ...dis(n >= max) }} disabled={n >= max} onClick={() => onChange(Math.min(max, n + 1))}>+</button>
-    </div>
-  )
-}
-
 /**
  * Take from a box: what was taken, between the two photos (`lib/materials/takeRun.ts`). A box with one kind of part
  * asks only how many, on the number sheet's own stepper, opened on 1. A box with more lists what it holds: a tap takes
@@ -1212,71 +1197,6 @@ function MoveSheet({ line, from, others, onClose, onMove, onTaken, onReturned, o
         <button type="button" style={dest} onClick={() => onDamaged(n)}>Damaged, scrap</button>
         <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => onNewContainer(n)}>A new container…</button>
       </div>
-    </Sheet>
-  )
-}
-
-function AddPartSheet({ container, names, searchParts, words, onClose, onAdd }: { container: Container; /** Other words for the sheet, when the part is not being added to the box (Take from a box). */ words?: { title: string; sub: string; press: (n: number) => string }; /** The names this job already holds (punch list #330): offered first, so a part is not typed a second way. */ names: ReadonlyArray<OnHandName>; searchParts: (term: string) => Promise<OnSitePart[]>; onClose: () => void; onAdd: (part: { partId: string | null; partName: string; manufacturer: string | null }, n: number) => void }) {
-  const [term, setTerm] = useState('')
-  const [results, setResults] = useState<OnSitePart[]>([])
-  const [searching, setSearching] = useState(false)
-  const [picked, setPicked] = useState<{ partId: string | null; partName: string; manufacturer: string | null } | null>(null)
-  const [n, setN] = useState(1)
-  useEffect(() => {
-    if (!term.trim() || picked) {
-      setResults([])
-      return
-    }
-    let live = true
-    setSearching(true)
-    const t = setTimeout(() => {
-      searchParts(term).then((r) => { if (live) { setResults(r); setSearching(false) } }).catch(() => { if (live) setSearching(false) })
-    }, 250)
-    return () => { live = false; clearTimeout(t) }
-  }, [term, picked, searchParts])
-  const already = picked ? [] : matchOnHandNames(names, term)
-  return (
-    <Sheet title={words?.title ?? `Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : (words?.sub ?? 'Pick a name this job already has, find it in the parts book, or type its name.')} onClose={onClose}>
-      {!picked ? (
-        <>
-          <input type="search" autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Part name or manufacturer" aria-label="Search the parts book" style={input} />
-          {already.length > 0 ? (
-            <div style={{ display: 'grid', gap: '0.3rem' }} data-testid="add-part-already">
-              <span style={{ ...muted, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Already on this job</span>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, border: '1px solid var(--border)', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
-                {already.map((a) => (
-                  <li key={a.key}>
-                    <button type="button" onClick={() => setPicked({ partId: a.partId, partName: a.partName, manufacturer: a.manufacturer })} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit', minHeight: TOUCH_MIN }}>
-                      <span style={{ minWidth: 0, overflowWrap: 'anywhere', fontWeight: 600 }}>{a.partName}{a.manufacturer ? <span style={{ ...muted, marginLeft: '0.5rem', fontWeight: 400 }}>· {a.manufacturer}</span> : null}</span>
-                      <span style={{ ...muted, whiteSpace: 'nowrap' }}>{onHandNameWords(a)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {searching ? <p style={{ ...muted, margin: 0 }}>Searching…</p> : null}
-          {already.length > 0 && results.length > 0 ? <span style={{ ...muted, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>In the parts book</span> : null}
-          {results.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, border: '1px solid var(--border)', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
-              {results.map((p) => (
-                <li key={p.id}>
-                  <button type="button" onClick={() => setPicked({ partId: p.id, partName: p.name, manufacturer: p.manufacturer })} style={{ display: 'block', width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit', minHeight: TOUCH_MIN }}>
-                    {p.name}{p.manufacturer ? <span style={{ ...muted, marginLeft: '0.5rem' }}>· {p.manufacturer}</span> : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {term.trim() ? <button type="button" style={{ ...btn, ...btnBlock, fontWeight: 500 }} onClick={() => setPicked({ partId: null, partName: term.trim(), manufacturer: null })}>Use “{term.trim()}” as typed</button> : null}
-        </>
-      ) : (
-        <>
-          <Stepper n={n} max={9999} onChange={setN} />
-          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>{words ? words.press(n) : `Add ${n} to ${container.label}`}</button>
-          <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => setPicked(null)}>Pick a different part</button>
-        </>
-      )}
     </Sheet>
   )
 }
