@@ -46,6 +46,7 @@ const TEAMMATES_JOB: JobSheet = { ...CEDAR_OWN(), place: '414 Sample Street, Ced
 const newerSheet = () => sheetRow({ draft: TEAMMATES_JOB, draftNo: 3 })
 
 const SENDS = { readParties: vi.fn(async () => []), send: vi.fn(), takeOff: vi.fn(), turnPageOn: vi.fn() }
+const CERTS = { readParties: vi.fn(async () => []), readCertificates: vi.fn(async () => []), markGood: vi.fn(), sendBack: vi.fn() }
 const LINK = { read: vi.fn(async () => ({ ok: true as const, value: { on: false as const } })), make: vi.fn(), end: vi.fn(), copy: vi.fn(async () => true) }
 
 function open(over: Partial<FilledBuilderIo> = {}) {
@@ -62,6 +63,7 @@ function open(over: Partial<FilledBuilderIo> = {}) {
     print: vi.fn(() => true),
     link: LINK,
     sends: SENDS,
+    certificates: CERTS,
     ...over,
   }
   const onRecord = vi.fn()
