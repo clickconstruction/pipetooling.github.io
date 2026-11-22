@@ -1476,6 +1476,11 @@ button:focus-visible {
   }
 }
 
+/* A thumb's floor for a press drawn from a fixed style object (the phone walk of 2026-11-21, punch list #369): unset
+   at a desk, 44 px on a phone. A style reads it through `phoneTall` and `phoneGiveBack` in src/lib/phonePressFloor.ts,
+   whose test holds this rule: one line, set nowhere else. */
+@media (max-width: 640px) { :root { --phone-press-min: 44px; } }
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {

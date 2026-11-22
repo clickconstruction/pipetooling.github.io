@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · left: a walk on a real phone
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · left: a walk on a real phone
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -133,3 +133,19 @@ phone and desk width, and the rest stand on their tests. The first walk is on th
 Two things fall short of the mock-up, and each fragment says so. A roadmap task and a vehicle task cannot be
 closed as no longer applying, since a close is a completion (v2.7545). And the finish offers the photo and
 the note in words beside their presses, with no sheet on every Mark done (v2.7539).
+
+### The walk of 2026-11-21
+
+The owner's main session walked Task Mode at 375 px in a browser, signed in as the dev, looking only. It was the first time the train was seen drawn in the app. The screens read as designed and no page slid sideways. Eight presses were under a thumb's 44 px, and v2.8230 grew each on a phone without moving the lines three of them sit in:
+
+| Press | Was | Now |
+|---|---|---|
+| **＋ Note**, **📷 Photo**, **🗺 Map**, **⋯ More** on the Next card | 32 tall | 44 |
+| **Exit** on the Task Mode strip | 28 | 44, the pill inside it still 28 and the strip still 39 |
+| **Go through them** | 20 | 44 |
+| **Fold ▴** on Tagged notes | 34 × 18 | 44 × 44 |
+| **Today** and **History** | 38 | 44 |
+
+Left as read: the task ring on a Still open row is 36 × 36 and **▶ Upcoming** is 36 px tall. The walk did not name them.
+
+A browser at phone width is not a phone. This card still waits on a walk with a real phone in a hand.

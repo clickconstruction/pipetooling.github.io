@@ -7,6 +7,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { formatDispatchNoteWeekdayShortTimeChicago } from '../../utils/dispatchNoteDisplay'
 import { NAV_BADGE_STYLE, navBadgeWords } from '../../lib/navBadgeStyle'
 import { emptyWords } from '../../lib/emptyWords'
+import { phoneGiveBack, phoneTall } from '../../lib/phonePressFloor'
 import { EmptyState } from '../EmptyState'
 import {
   askedLineWords,
@@ -59,6 +60,11 @@ const myChip: CSSProperties = { ...chip, background: 'var(--bg-amber-tint)', col
 const theirChip: CSSProperties = { ...chip, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', border: '1px solid var(--border-blue)' }
 const linkLook: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }
 const meta: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+/**
+ * The section's *Fold ▴* is 34 by 18 in the title row. On a phone it is a thumb's square (the phone walk of
+ * 2026-11-21): the margin gives the row back what the press grew by, and its words keep to the row's right edge.
+ */
+const FOLD_THUMB: CSSProperties = { minHeight: phoneTall(18), minWidth: phoneTall(34), marginTop: phoneGiveBack(18), marginBottom: phoneGiveBack(18), textAlign: 'right' }
 
 function firstWord(name: string): string {
   return name.trim().split(/\s+/)[0] ?? ''
@@ -341,7 +347,7 @@ export function TaggedJobNotesSection({
         <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.78rem' }}>
           {view.waiting.length > 0 ? 'waiting on you, oldest first · an answer or No reply needed clears one' : emptyWords({ kind: 'waiting', who: 'you' }).main}
         </span>
-        <button type="button" onClick={toggleFold} aria-expanded={open} style={{ ...linkLook, marginLeft: 'auto', textDecoration: 'none', fontSize: '0.75rem' }}>
+        <button type="button" data-tagged-notes-fold onClick={toggleFold} aria-expanded={open} style={{ ...linkLook, marginLeft: 'auto', textDecoration: 'none', fontSize: '0.75rem', ...FOLD_THUMB }}>
           {open ? 'Fold ▴' : 'Open ▾'}
         </button>
       </h3>

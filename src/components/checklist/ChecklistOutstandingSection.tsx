@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { stuckReason, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { phoneGiveBack, phoneTall } from '../../lib/phonePressFloor'
 import { type LedgerInstance } from '../../lib/checklistHistoryLedger'
 import { PASS_MIN_TASKS, PASS_PRESS_LABEL, movedTimesWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
 import { showMoreLabel, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, type StillOpenTone } from '../../lib/tasks/todayPage'
@@ -16,6 +17,12 @@ import { TaskMapBlock, TaskMapLine } from './TaskMapBlock'
 import { useTaskMapWhole } from '../../hooks/useTaskMapWhole'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
+
+/**
+ * *Go through them* is a press of words, 20 px tall in the section's title line. On a phone it stands a thumb's 44 px
+ * (the phone walk of 2026-11-21), and the margin gives the line back what it grew by, so the list under it stays put.
+ */
+const GO_THROUGH_THUMB: CSSProperties = { minHeight: phoneTall(20), marginTop: phoneGiveBack(20), marginBottom: phoneGiveBack(20) }
 
 /**
  * The Outstanding section at the bottom of the Today tab (v2.1864): overdue
@@ -129,7 +136,7 @@ export function ChecklistOutstandingSection({
         <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{stillOpenOrderWords(instances.some((i) => stillOpenIsLate(i.checklist_items?.due_date ?? null, todayStr)))}</span>
           {onGoThrough && instances.length >= PASS_MIN_TASKS ? (
-            <button type="button" data-go-through onClick={onGoThrough} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer' }}>
+            <button type="button" data-go-through onClick={onGoThrough} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer', ...GO_THROUGH_THUMB }}>
               {PASS_PRESS_LABEL}
             </button>
           ) : null}

@@ -1,3 +1,4 @@
+import { phoneGiveBack, phoneTall } from '../lib/phonePressFloor'
 import { TASK_MODE_CHIP_EXIT_LABEL, TASK_MODE_CHIP_LABEL, TASK_MODE_CHIP_TITLE } from '../lib/taskModeToggle'
 
 /**
@@ -8,6 +9,11 @@ import { TASK_MODE_CHIP_EXIT_LABEL, TASK_MODE_CHIP_LABEL, TASK_MODE_CHIP_TITLE }
  * person. Layout renders this at the top of the page content whenever the
  * mode is active; Exit turns it off (same write as the gear toggle) and
  * records one `farm_mode_exit` nav-click row.
+ *
+ * Exit is a 28 px pill. On a phone the press around the pill is a thumb's 44 px
+ * (the phone walk of 2026-11-21) and the pill is drawn inside it at the size it
+ * had; the margin gives the strip back what the press grew by, so the strip is
+ * as tall as it was.
  */
 export function TaskModeChip({ onExit }: { onExit: () => void }) {
   return (
@@ -37,17 +43,34 @@ export function TaskModeChip({ onExit }: { onExit: () => void }) {
         aria-label="Exit Task Mode"
         style={{
           font: 'inherit',
-          fontWeight: 700,
-          color: 'var(--text-green-800)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border-green)',
-          borderRadius: 999,
-          padding: '0.1rem 0.7rem',
-          minHeight: 28,
+          display: 'inline-flex',
+          alignItems: 'center',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          minHeight: phoneTall(28),
+          marginTop: phoneGiveBack(28),
+          marginBottom: phoneGiveBack(28),
           cursor: 'pointer',
         }}
       >
-        {TASK_MODE_CHIP_EXIT_LABEL}
+        <span
+          data-task-mode-exit-pill
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            boxSizing: 'border-box',
+            fontWeight: 700,
+            color: 'var(--text-green-800)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-green)',
+            borderRadius: 999,
+            padding: '0.1rem 0.7rem',
+            minHeight: 28,
+          }}
+        >
+          {TASK_MODE_CHIP_EXIT_LABEL}
+        </span>
       </button>
     </div>
   )
