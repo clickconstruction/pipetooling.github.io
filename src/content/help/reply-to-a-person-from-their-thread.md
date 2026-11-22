@@ -16,6 +16,8 @@ The reply box sits at the foot of every thread in Messages. Write a text, an ema
 
 On a laptop or a phone, the box folds to one row until you need it. Press into it to open it whole. Press anywhere else in the thread and the box folds again. Your words stay in the row. Press the row to keep writing. On a tall screen the box starts whole, and a press anywhere else folds it the same way. The box folds back after the message goes.
 
+On a phone, the keyboard takes about half the screen. While it is up, the top of the thread keeps one row. That row holds the way back, the person's name and **⋯**. The chips and the jobs come back when the keyboard goes. The reply box always shows whole. On a small phone, scroll the thread to reach the bottom of the box.
+
 To find a person first, see [find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place).
 
 ## Choose what to write
