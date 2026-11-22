@@ -68,6 +68,14 @@ A card that is already up stays up when the signal drops. Your **No** presses st
 
 A send with no signal says the answer was not kept. Press the send again when the signal is back.
 
+## When the card cannot read the list
+
+The app can fail to read the list for a reason of its own. The signal is not the cause.
+
+The card then says so and gives the reason. Tell the office what the card says.
+
+Nothing stops you. Keep working either way.
+
 ## When the send is refused
 
 The office can change the list while your card is open. Your send is then refused, and the app says why.

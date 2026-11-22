@@ -14,6 +14,11 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The refused read is drawn on OfflineRetryPanel, which reads who is signed in for its telemetry.
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'helpers' })
+})
 
 const ASK: ArrivalAsk = { fixtureId: 'fx-1', name: 'Rough In', bullets: [{ id: 'b1', words: 'The slab is poured.' }, { id: 'b2', words: 'The trench is open.' }] }
 function io(first: ArrivalAsk | null, fail = false) {
@@ -165,5 +170,56 @@ describe('JobModeArrivalCheck', () => {
     })
     expect(await screen.findByRole('region', { name: 'Is it as told?' })).toBeTruthy()
     expect(readArrival).toHaveBeenCalledTimes(2)
+  })
+
+  it('a first read the app refuses says so with its reason and no Retry, and a read that lands takes it away', async () => {
+    let refuse = true
+    const readArrival = vi.fn(async () => {
+      // A refusal as the database gives it: a code and its words, never a lost signal.
+      if (refuse) throw { code: 'P0001', message: 'The stage line has no days.' }
+      return ASK
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    const card = await screen.findByRole('region', { name: 'Is it as told?' })
+    expect(card.getAttribute('data-arrival-refused')).toBe('yes')
+    expect(card.textContent).toContain('The app could not read what to look at here: The stage line has no days.')
+    expect(card.textContent).toContain('Keep working either way.')
+    // A refusal is ours to mend: no press on the card would change the answer, so it offers none.
+    expect(screen.queryByRole('button', { name: /retry/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Yes, all as told' })).toBeNull()
+    refuse = false
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    expect(await screen.findByRole('button', { name: 'Yes, all as told' })).toBeTruthy()
+    expect(document.querySelector('[data-arrival-refused]')).toBeNull()
+  })
+
+  it('a first read lost to the signal stays silent, as a fetch that never left', async () => {
+    const readArrival = vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    await settle()
+    expect(readArrival).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull()
+  })
+
+  it('a later read the app refuses keeps the card that is up', async () => {
+    let refuse = false
+    const readArrival = vi.fn(async () => {
+      if (refuse) throw { code: 'P0001', message: 'The stage line has no days.' }
+      return ASK
+    })
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    await screen.findByRole('button', { name: 'Yes, all as told' })
+    refuse = true
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    await waitFor(() => expect(readArrival).toHaveBeenCalledTimes(2))
+    await settle()
+    expect(screen.getByRole('button', { name: 'Yes, all as told' })).toBeTruthy()
+    expect(document.querySelector('[data-arrival-refused]')).toBeNull()
   })
 })
