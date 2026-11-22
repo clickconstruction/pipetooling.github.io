@@ -132,6 +132,10 @@ SELECT sca.same('and it kept nothing: one arrival, and the No stands with no yes
 -- 3c · A later No is kept (migration *_start_check_arrive_again). Hector saw the trench open. Dana gets there after
 -- him and says No to it: a No is the dearer answer, so it is its own arrival, with its line to Dispatch. A No that
 -- already stands and a later Yes, all as told are still refused by name.
+-- The bed is one transaction, so now() is the same for every row: two arrivals would tie on created_at and the door's
+-- "who answered first" would fall to the random ids. On prod each send is its own transaction. Hector's arrival is
+-- put a minute back, so he is first here as he would be there.
+UPDATE public.start_check_arrivals SET created_at = created_at - interval '1 minute' WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1';
 SET LOCAL ROLE authenticated;
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
 CREATE TEMP TABLE sca_later ON COMMIT DROP AS SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1', ARRAY['00000000-0000-0000-0000-000000382103']::uuid[]) AS r;
