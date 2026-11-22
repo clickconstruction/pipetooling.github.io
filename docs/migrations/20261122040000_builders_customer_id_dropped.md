@@ -55,7 +55,7 @@ A later file that rewrites `research_builders` starts from this body.
 
 ## Release order
 
-Either side of the merge. `npm run check:calls-ahead` labels the PR *push right after the merge*, since the file replaces a function the client calls.
+Either side of the merge. `npm run check:calls-ahead` finds no call ahead of the migration, so the deploy is not held on the push. The push follows the merge all the same, so the function and the client's row read alike.
 
 ```bash
 supabase db push
