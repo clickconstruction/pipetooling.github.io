@@ -120,7 +120,13 @@ The same press sits in the yellow line before you send. There it opens the next 
 
 A sub with no email on their roster row cannot be sent a paper. The press goes grey, and a yellow line says so.
 
-Press {{button:outline|Back to the paper}}, then print or download the paper for them. A dev can add an email to the sub's roster row.
+Add their email right there. On the **To** line, press the underlined words **no email on the roster**. Type their email, then press {{button:blue|Keep}}. The address is saved on their roster row, and the send press comes back.
+
+Some subs sign in with an email. A line under **To** then shows that address. The press beside it puts the address on their roster row.
+
+A wrong address is put right the same way. Press the address on the **To** line and type the right one.
+
+You can also press {{button:outline|Back to the paper}}, then print or download the paper for them.
 
 ### Who can send
 

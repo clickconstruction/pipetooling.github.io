@@ -42,6 +42,7 @@ describe('subPaperSendPlan: by email', () => {
     expect(three.blocked).toBe('Harlan Mechanical has no email on the roster, so there is nowhere to send them.')
     // The window draws the door after the reason. The paper itself is not held up.
     expect(subPaperEmailDoor().words).toBe('Print or download the paper for now. A dev can add an email to their roster row.')
+    expect(subPaperEmailDoor(true).words).toBe('Press the To line above and type their email. You can also print or download the paper.')
   })
 
   it('an address the window could not read is not a missing one: the press stays live', () => {
