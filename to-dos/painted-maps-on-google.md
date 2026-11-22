@@ -198,6 +198,16 @@ Mended on Taunya's word, 2026-11-21:
 
 - **Google's own place labels are off** (v2.8211). Taunya was shown three choices as before and after pictures of the live site's own map: as today, shops and restaurants off, or every place label off. Taunya picked every one off. It is one list for every Google map in the app, read by the painted map's canvas and by the canvas every map of dots draws on, so the two cannot drift. Street names, road numbers and the names of towns and neighbourhoods stay, and Google fits more street names in the room. It is Google's own `styles` option, which needs no Map ID, and it makes no map sooner, later or more often. Google's script with no key ignores the option, so it cannot be seen on a local page.
 
+Both mends walked on clicktooling.com on 2026-11-21, after their merges, on the shipped build under the deploy's own key:
+
+- **The task map, labels off.** Two made-up tasks on public ground downtown, at 390 px and 1280 px, light and dark, on the photograph and on **Streets**: eight looks, no place label in any, street names in all, and the road map still dark in dark. The map itself answers with the list it was made with. Before the change the same ground carried about ten labels at 390 px and about sixteen at 1280 px.
+- **A painted map, labels off.** A made-up map on no job, one line drawn by hand on public ground, opened to be read at 1280 px in light and at 390 px in dark: Google's photograph with street names and no place label.
+- **A painted map, the wait.** Opened on a page with no Google map yet, with Google's script held back seven and a half seconds in the walk's own browser. The line showed at 0.3 to 0.4 s on a blank ground with *Loading the map…* under it. Google's map came in at 7.9 s and 8.2 s and the drawing left in the same moment. At 390 px the two ends of the line were measured in the drawing and then asked of Google's own map: the same pixels to a tenth.
+- **The count.** Nine Google map loads for the whole of the two calls: three before the merges for the pictures of the choices, four for the task map and two for the painted map. Changing the labels on a live map made none.
+- **Not seen.** A real weak signal on a phone in a hand, and a painted map with places on the live site. The places were measured on a scratch page, within one pixel.
+
+Every row the walks made was deleted after: four tasks named `ZZ Test walk 387 …` and the map `ZZ Test walk 387 lines`.
+
 ## How to verify
 
 - The key is a deploy secret, so Google's tiles cannot be seen before a merge. Locally, a one-screen
@@ -208,6 +218,9 @@ Mended on Taunya's word, 2026-11-21:
   corner under the glass, save, open the link, then throw the map away.
 - Before step 3 merges, one walk on a real phone outside. The held press and the glass have only
   ever been walked in a headless browser.
+- A change to the look of Google's own map cannot be seen on a local page at all. Google's script
+  with no key ignores the `styles` option, so every label stays. Picture such a change on the live
+  site, by `setOptions` on the live map, and walk the shipped build after the merge.
 
 ## Out of scope
 

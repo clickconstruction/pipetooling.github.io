@@ -16,6 +16,7 @@ import { PUT_BACK, setAsideLines, setAsideTitle, type SetAsideRow } from '../../
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
 import { boxForNew } from '../../lib/messages/boxes'
+import { LONG_NAME_FIT, ONE_COLUMN } from '../../lib/messages/pageFit'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
 import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
@@ -275,10 +276,10 @@ function Row<C, N extends { contactId: string }>({
           >
             {initials(contact)}
           </span>
-          <span style={{ display: 'grid', flex: 1, minWidth: 180 }}>
+          <span style={{ display: 'grid', gridTemplateColumns: ONE_COLUMN, flex: 1, minWidth: 180 }}>
             <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {lead}
-              <strong>{contact.name}</strong>
+              <strong style={LONG_NAME_FIT}>{contact.name}</strong>
               {beside}
               {pill}
             </span>

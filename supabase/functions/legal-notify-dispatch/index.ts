@@ -8,6 +8,7 @@ import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo, legalDigestShows, legalDigestSince, legalDigestSourceIds, type LegalDigestSources } from '../_shared/legalNotifyLedger.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
+import { LEGAL_NOTIFY_CLAIM_LIMIT, LEGAL_NOTIFY_LEASE_SECONDS, legalClaimAnswer, legalClaimLeftovers, legalClaimedInOrder, legalDigestReleasePatch, legalDigestSentPatch, legalEventLedgerPatch, legalEventStampPatch } from '../_shared/legalNotifyClaim.ts'
 
 /**
  * The firm's emails (Legal portal train, PR 5). Two doors:
@@ -27,6 +28,12 @@ import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
  *        every open matter for the firm plus the events since their last digest;
  *        stamps last_digest_at and the events' digested_at.
  *     A paused firm (legal_firms.paused_at) sends nothing; the queue waits.
+ *     v2.8228: a run claims before it sends (`_shared/legalNotifyClaim.ts`), so two runs that overlap
+ *     cannot send the same email twice. The events come from legal_notify_claim_events (FOR UPDATE
+ *     SKIP LOCKED, a ten-minute lease) and each digest from legal_notify_claim_digest; the claim is let
+ *     go in the write that marks the row, so a failed send is tried by the next tick, and a run that
+ *     died holds its rows only until the lease is past. Before the migration is pushed the claim
+ *     functions are missing and the run reads and sends as it did before.
  *
  *   GET ?confirm=<token> / ?unsubscribe=<token> — the two links every email carries.
  *     Confirm activates a recipient (nothing is sent to an address before this);
@@ -179,7 +186,12 @@ serve(async (req) => {
   const resendKey = Deno.env.get('RESEND_API_KEY')
   if (!resendKey) return json({ error: 'RESEND_API_KEY missing' }, 500)
 
-  const result = { now: 0, digests: 0, skipped: 0, retrying: 0, gaveUp: 0, errors: [] as string[] }
+  const result = { now: 0, digests: 0, skipped: 0, retrying: 0, gaveUp: 0, elsewhere: 0, errors: [] as string[] }
+  // v2.8228: what this run claimed, and which of those it has written back (the write lets the claim go).
+  const claimedEvents: string[] = []
+  const writtenEvents: string[] = []
+  const claimedDigests: string[] = []
+  const writtenDigests: string[] = []
   try {
     const { data: firmRows } = await admin.from('legal_firms').select('id, name, paused_at').eq('active', true)
     const firms = (firmRows ?? []) as Array<{ id: string; name: string; paused_at: string | null }>
@@ -216,9 +228,24 @@ serve(async (req) => {
       const matterById = new Map(matters.map((m) => [m.id, m] as const))
       const canSee = (r: Recipient, matterId: string | null) => r.scope === 'all' || !matterId || (matterById.get(matterId)?.handling_name ?? '').trim().toLowerCase() === r.name.trim().toLowerCase()
 
-      // 1. "Now" recipients drain the queue.
-      const { data: openRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('sent_now_at', null).order('created_at').limit(50)
-      for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; sent_to?: unknown }>) {
+      // 1. "Now" recipients drain the queue. v2.8228: the run claims its events first, so a run that overlaps this
+      // one is handed other rows or none. Each row comes back as it stands now, with the ledger the last run left.
+      type QueueRow = { id: string; matter_id: string | null; trigger: string; payload: Row; sent_to?: unknown; created_at?: string | null }
+      const claim = await admin.rpc('legal_notify_claim_events', { p_firm_id: firm.id, p_limit: LEGAL_NOTIFY_CLAIM_LIMIT, p_lease_seconds: LEGAL_NOTIFY_LEASE_SECONDS })
+      const claimAnswer = legalClaimAnswer(claim.error)
+      const claimed = claimAnswer === 'claimed'
+      let openRows: QueueRow[] = []
+      if (claimed) {
+        openRows = legalClaimedInOrder((claim.data ?? []) as QueueRow[])
+        for (const ev of openRows) claimedEvents.push(ev.id)
+      } else if (claimAnswer === 'missing') {
+        // Before the migration is pushed there is nothing to claim with: read as the run did before the claim.
+        openRows = ((await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('sent_now_at', null).order('created_at').limit(LEGAL_NOTIFY_CLAIM_LIMIT)).data ?? []) as QueueRow[]
+      } else {
+        // The claim could not be asked: no email goes out unclaimed. The rows wait for the next tick.
+        result.errors.push(`${firm.name}: could not claim the queue (${claim.error?.message ?? 'no reason given'}); nothing sent, tried again next tick`)
+      }
+      for (const ev of openRows) {
         // v2.4662: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
         // event is stamped after one pass, as before, so a deploy ahead of the push never re-sends.
         const hasLedger = ev.sent_to !== undefined
@@ -260,8 +287,10 @@ serve(async (req) => {
         }
         // The ledger and the stamp are separate writes. A ledger that cannot be kept falls back to the old
         // rule (stamp after one pass): better one missed retry than re-sending to everyone each tick.
-        const kept = hasLedger ? !(await admin.from('legal_notification_queue').update({ sent_to: sentTo }).eq('id', ev.id)).error : false
-        if (!kept || legalNotifyDone(sentTo)) await admin.from('legal_notification_queue').update({ sent_now_at: new Date().toISOString() }).eq('id', ev.id)
+        // v2.8228: each write lets the claim go with it, so a person whose send failed is tried by the next tick.
+        const kept = hasLedger ? !(await admin.from('legal_notification_queue').update(legalEventLedgerPatch(sentTo, claimed)).eq('id', ev.id)).error : false
+        if (!kept || legalNotifyDone(sentTo)) await admin.from('legal_notification_queue').update(legalEventStampPatch(new Date().toISOString(), claimed)).eq('id', ev.id)
+        writtenEvents.push(ev.id)
       }
 
       // 2. Digests on each recipient's weekday, once the time has arrived, once per day.
@@ -270,6 +299,27 @@ serve(async (req) => {
       for (const r of recipients.filter((x) => x.mode === 'digest')) {
         if (r.digest_weekday !== weekday || hhmm < r.digest_time) continue
         if (ymdInAppTz(r.last_digest_at) === today) continue
+        // v2.8228: the run claims this person's digest before it builds it. The claim is refused when another run
+        // holds it, or when their last digest is no longer the one this run read: another run sent it meanwhile.
+        const digestClaim = await admin.rpc('legal_notify_claim_digest', { p_recipient_id: r.id, p_last_digest_at: r.last_digest_at, p_lease_seconds: LEGAL_NOTIFY_LEASE_SECONDS })
+        const digestAnswer = legalClaimAnswer(digestClaim.error)
+        if (digestAnswer === 'failed') {
+          result.errors.push(`${r.email}: could not claim the digest (${digestClaim.error?.message ?? 'no reason given'}); nothing sent, tried again next tick`)
+          continue
+        }
+        // 'missing' is the time before the migration is pushed: the digest goes as it did before the claim.
+        const digestClaimed = digestAnswer === 'claimed'
+        if (digestClaimed && digestClaim.data !== true) {
+          result.elsewhere++
+          continue
+        }
+        if (digestClaimed) claimedDigests.push(r.id)
+        // A digest that does not go lets its claim go, so the next tick tries it.
+        const letDigestGo = async () => {
+          const patch = legalDigestReleasePatch(digestClaimed)
+          if (patch) await admin.from('legal_firm_recipients').update(patch).eq('id', r.id)
+          writtenDigests.push(r.id)
+        }
         // v2.6283 (punch list #233): each digest reads back to this person's own last digest (or their confirmation,
         // at most eight days), so two people on different weekdays no longer split the week. The window closes at
         // `readAt`, which becomes the person's last_digest_at, so a line queued while this one sends lands in the
@@ -281,6 +331,7 @@ serve(async (req) => {
         const sources = await readDigestSources(admin, legalDigestSourceIds(known))
         if (!sources) {
           result.errors.push(`${r.email}: could not read what the digest's lines came from; tried again next tick`)
+          await letDigestGo()
           continue
         }
         const events = known.filter((e) => legalDigestShows(e, sources))
@@ -299,10 +350,12 @@ serve(async (req) => {
         await noteSend(admin, r, res)
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
+          await letDigestGo()
           continue
         }
         result.digests++
-        await admin.from('legal_firm_recipients').update({ last_digest_at: readAt, updated_at: new Date().toISOString() }).eq('id', r.id)
+        await admin.from('legal_firm_recipients').update(legalDigestSentPatch(readAt, new Date().toISOString(), digestClaimed)).eq('id', r.id)
+        writtenDigests.push(r.id)
         // An event is "digested" once every digest recipient who could see it has had it — approximate with the last digest recipient of the firm.
         if (digestRecipients.every((x) => x.id === r.id || ymdInAppTz(x.last_digest_at) === today || x.digest_weekday !== weekday)) {
           const ids = events.map((e) => e.id)
@@ -313,5 +366,16 @@ serve(async (req) => {
     return json({ ok: true, ...result })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unknown error', ...result }, 500)
+  } finally {
+    // v2.8228: a run that stops part way lets go of what it still holds, so the next tick takes those rows and
+    // not the tick after the lease. If this cannot be written either, the lease ends by itself.
+    try {
+      const events = legalClaimLeftovers(claimedEvents, writtenEvents)
+      if (events.length) await admin.from('legal_notification_queue').update({ claimed_until: null }).in('id', events)
+      const digests = legalClaimLeftovers(claimedDigests, writtenDigests)
+      if (digests.length) await admin.from('legal_firm_recipients').update({ digest_claimed_until: null }).in('id', digests)
+    } catch (e) {
+      console.error('legal-notify-dispatch: could not let go of the claims a stopped run held', e)
+    }
   }
 })
