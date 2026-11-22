@@ -45,6 +45,21 @@ describe('DashboardYourPeopleSection', () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('send-checklist-notification', expect.objectContaining({ body: expect.objectContaining({ recipient_user_id: 'u2', push_body: 'You have 1 outstanding task: Clear the floor' }) })))
   })
 
+  it('lays a row out to fit a phone: it wraps, the name keeps its room, and the chip with Remind can shrink (the walk of 2026-11-21)', () => {
+    // A long chip beside the press was 284 px in a row with 247 to give, and Remind hung out of the card.
+    hookState.rows = [row({ state: 'quiet', words: 'nothing moved · oldest 1 days' })]
+    hookState.headline = ''
+    renderWithProviders(<DashboardYourPeopleSection authUserId="me" enabled />)
+    const li = screen.getByTestId('your-people-row')
+    expect(li.style.flexWrap).toBe('wrap')
+    const name = li.querySelector<HTMLElement>('a')!
+    expect([name.style.flexGrow, name.style.flexShrink, name.style.flexBasis, name.style.minWidth]).toEqual(['1', '1', '9rem', '0'])
+    const acts = screen.getByTestId('your-people-acts')
+    expect([acts.style.flexShrink, acts.style.maxWidth, acts.style.marginLeft, acts.style.flexWrap]).toEqual(['1', '100%', 'auto', 'wrap'])
+    expect(acts.textContent).toContain('nothing moved · oldest 1 days')
+    expect(acts.querySelector('button')?.getAttribute('aria-label')).toBe('Remind Mateo')
+  })
+
   it('draws nothing while nobody has an open card, and nothing when not enabled', () => {
     hookState.rows = []
     hookState.headline = ''
