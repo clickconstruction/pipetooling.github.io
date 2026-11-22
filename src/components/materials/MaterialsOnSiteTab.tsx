@@ -30,7 +30,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import OnSiteJobsNotLoaded from './OnSiteJobsNotLoaded'
-import JobsMaterialsTab, { type MaterialsJob } from '../jobs/JobsMaterialsTab'
+import JobsMaterialsTab, { type MaterialsJob, type MaterialsPrintSheetDoor } from '../jobs/JobsMaterialsTab'
 
 type Props = {
   active: boolean
@@ -39,6 +39,10 @@ type Props = {
   userName: string
   /** A row's Labels press: the page opens the labels window on that job. */
   onLabels: (jobId: string) => void
+  /** A phone (v2.8282): the office's job section is drawn for one. */
+  phone?: boolean
+  /** The page's Print sheet, which the office's job section draws while a job is open. */
+  printSheet?: MaterialsPrintSheetDoor
 }
 
 const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflowX: 'auto', overflowY: 'hidden', minWidth: 0 }
@@ -55,7 +59,7 @@ function dueBoxes(job: OnSiteFindJob, now: Date): number {
   return job.containers.filter((c) => !c.retiredAt && c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now)).length
 }
 
-export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels }: Props) {
+export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels, phone = false, printSheet }: Props) {
   const office = isMaterialsOfficeRole(role)
   const [params, setParams] = useSearchParams()
   const jobId = params.get('job')
@@ -174,6 +178,8 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           driveBackfill={false}
           rowDoors={{ onLabels }}
           role={role}
+          phone={phone}
+          printSheet={printSheet}
         />
       ) : (
         <div style={sec}>

@@ -333,6 +333,17 @@ export function reservedLineWords(of: ReservedOfJob, day: string): string {
   return [`${head}.`, reservedMarkWords(of), reservedByWords(of, day)].filter(Boolean).join(' ')
 }
 
+/**
+ * The phone's one line for a job's reserved stickers (v2.8282), the press that opens the whole of it: *58 stickers
+ * reserved, G93 to G150*, or *40 stickers reserved, in 2 runs*. Empty at none.
+ */
+export function reservedShortWords(of: Pick<ReservedOfJob, 'count' | 'span' | 'runs'>): string {
+  if (of.count <= 0) return ''
+  const head = of.count === 1 ? '1 sticker reserved' : `${of.count} stickers reserved`
+  if (of.span) return `${head}, ${of.span}`
+  return of.runs > 1 ? `${head}, in ${of.runs} runs` : head
+}
+
 /** The Print future stickers window's line, before a new run: *This job has 12 stickers reserved and not on a box yet. None printed yet.* Empty at none. */
 export function jobBlankWords(n: number, mark: ReservedMark = NO_MARK): string {
   const head = notYetOnBoxWords(n)

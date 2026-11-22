@@ -158,7 +158,7 @@ A label printed before November 11, 2026 can open a web search on an iPhone. Pri
 
 A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job. A sticker's code works the same way. The sticker's box opens, or a reserved sticker opens the sheet that puts it on a box.
 
-To print one box's label, open the box, tap **More** and tap **Print the label**. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
+To print one box's label, open the box, tap **More** and tap **Print the label**. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. On a phone, press the **Print** icon beside **Track** there. The office, an estimator, a primary and a superintendent have that press.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 

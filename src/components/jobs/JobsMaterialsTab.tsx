@@ -8,6 +8,7 @@
  * Drive-folder backfill to Jobs.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -54,7 +55,11 @@ import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import TakesPanel from '../materials/TakesPanel'
 import { takesBefore, takesBeforeLabel, takesOf } from '../../lib/materials/takes'
-import { FlowRow } from '../materials/FlowRow'
+import { FlowRow, FlowTiles, type FlowPill } from '../materials/FlowRow'
+import MaterialsPrintSheet from '../materials/MaterialsPrintSheet'
+import { jobPrintSheet } from '../../lib/materials/printSheet'
+import { notPrintedRunToPrint, reservedRunToPrint } from '../../lib/materials/reservedPrint'
+import { Sheet } from '../tally/OnSiteSheet'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
@@ -77,12 +82,15 @@ import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdi
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { useJobStickers } from '../../hooks/useJobStickers'
-import { reservedLineWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
+import { reservedLineWords, reservedShortWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
 export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
+
+/** The Materials page's Print sheet as a job's section takes it (v2.8282): the page says when it is open, the section draws it on the job. */
+export type MaterialsPrintSheetDoor = { open: boolean; onClose: () => void; /** Print for another job: the page opens what its Print labels press opens. */ onAnotherJob: () => void }
 
 type Props = {
   jobs: MaterialsJob[]
@@ -95,9 +103,14 @@ type Props = {
   rowDoors?: { onLabels: (jobId: string) => void }
   /** The signed-in role (punch list #329, v2.7272): Print future stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
+  /** A phone on the Materials page (v2.8282): a job's section is drawn for one, and its print presses live in the page's Print sheet. Off on Jobs → Materials, which has no such sheet. */
+  phone?: boolean
+  printSheet?: MaterialsPrintSheetDoor
 }
 
 const BLUE = '#2563eb'
+/** The green pill's views: the list of boxes, the parts across them, the map. */
+const ON_SITE_VIEWS = ['list', 'parts', 'map'] as const
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
@@ -179,7 +192,7 @@ function BookPricesLine() {
   )
 }
 
-export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
+export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null, phone = false, printSheet }: Props) {
   /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
   const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -397,7 +410,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     )
   }
 
-  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} phone={phone} printSheet={printSheet} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -478,7 +491,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob, phone, printSheet }: { phone: boolean; printSheet: MaterialsPrintSheetDoor | undefined; jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -697,6 +710,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   useEffect(() => { if (runsKey > 0) refreshStickers() }, [runsKey, refreshStickers])
   /** Ticks when the *not yet on a box* line is pressed: the Runs fold opens and comes into view. */
   const [runsOpenKey, setRunsOpenKey] = useState(0)
+  /** The phone's reserved line (v2.8282): one press over the boxes, opening a sheet with the whole of it. */
+  const [reservedOpen, setReservedOpen] = useState(false)
   const nameVerdict = boxNameVerdict(newTyped ?? '', siteBoxes)
   const newShown = newTyped ?? nextFreeName(siteBoxes) ?? ''
   const [newWhere, setNewWhere] = useState('')
@@ -717,6 +732,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
 
   const head = onSiteJobHead(job, jobLabel(job, jobId))
+  /** The flow row's four figures, as the desk's pills and the phone's tiles both draw them. */
+  const flowPills: FlowPill[] = [
+          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
+          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
+          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
+          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
+        ]
+  const viewWords = (v: (typeof ON_SITE_VIEWS)[number]) => (v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map')
+  const dayWords = (iso: string) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso))
+  /**
+   * The job's reserved stickers in full: the sentence, These are on boxes, Runs and the presses that print them. The
+   * desk draws it over the boxes; the phone draws it in a sheet, and `done` closes that sheet as a press is taken.
+   */
+  const reservedBlock = (done: () => void) => (
+            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? dayWords(jobStickers.reserved.printedAt) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
+              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
+              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => { done(); setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) }) }} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
+              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { done(); setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
+            </p>
+            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
+            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => { done(); setStickersOpen({ run }) }} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
+            </div>
+  )
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -742,19 +782,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */
         <p style={{ ...muted, margin: 0 }} data-testid="materials-capped">This job has more than {MOVEMENTS_LIMIT.toLocaleString('en-US')} ledger rows. History and the boxes show the newest {MOVEMENTS_LIMIT.toLocaleString('en-US')}; the totals come from the database.</p>
       ) : null}
+      {phone ? (
+        <>
+          {/* A phone (v2.8282): the four figures as equal tiles, then the view switch and Add on one row. */}
+          <FlowTiles label="Materials on site" pills={flowPills} />
+          {section === 'onsite' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }} data-testid="materials-phone-view-row">
+              <div role="group" aria-label="How the boxes are shown" style={{ display: 'inline-flex', flex: '0 1 auto', minWidth: 0, borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', overflow: 'hidden' }}>
+                {ON_SITE_VIEWS.map((v, i) => (
+                  <button key={v} type="button" aria-pressed={onSiteView === v} style={{ minHeight: 36, padding: '0 0.7rem', borderWidth: 0, borderRadius: 0, boxShadow: i > 0 ? 'inset 1px 0 0 var(--border-strong)' : 'none', background: onSiteView === v ? 'var(--text-strong)' : 'var(--surface)', color: onSiteView === v ? 'var(--bg-page)' : 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
+                ))}
+              </div>
+              {onSiteView === 'list' ? <button type="button" aria-label="Add a container" aria-expanded={adding} style={{ ...materialsPressStyle(36), marginLeft: 'auto' }} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container">+ Container</button> : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
       <FlowRow
         role="tabs"
         label="Materials on site"
-        pills={[
-          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
-          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
-          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
-          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
-        ]}
-        trailing={section === 'onsite' ? (['list', 'parts', 'map'] as const).map((v) => (
-          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map'}</button>
+        pills={flowPills}
+        trailing={section === 'onsite' ? ON_SITE_VIEWS.map((v) => (
+          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
         )) : null}
       />
+      )}
 
       {section === 'onsite' && onSiteView === 'list' ? (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -765,6 +817,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             ))}
             </div>
             {/* What the desk does to this site's boxes (v2.6890): pills at the filter chips' height, each with a glyph, as the Materials strip draws Scan a label and Print labels. A chip filters; a glyph acts. */}
+            {phone ? null : (
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
@@ -772,19 +825,17 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'Print stickers before their boxes are in the app. Each one reserves a name and its own link.' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
+            )}
           </div>
           {/* The job's reserved stickers (punch list #329, PR 3; v2.7487 the names, who and when, and the press that fills them in; v2.7567 what printed, punch list #373): on no box yet, with the Runs fold one press away. */}
           {jobStickers.blank > 0 ? (
-            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
-            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(jobStickers.reserved.printedAt)) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
-              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
-              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) })} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
-              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
-            </p>
-            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
-            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => setStickersOpen({ run })} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
-            </div>
+            phone ? (
+              /* A phone (v2.8282): one line that opens the whole of it, where the sentence and its presses took five rows. */
+              <button type="button" aria-haspopup="dialog" style={{ ...btn, width: '100%', minHeight: 44, justifyContent: 'space-between', textAlign: 'left', fontWeight: 600 }} onClick={() => setReservedOpen(true)} data-testid="materials-stickers-reserved-line">
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{reservedShortWords(jobStickers.reserved)}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block', flex: '0 0 auto', color: 'var(--text-muted)' }}><path d="M4 1.5 8.5 6 4 10.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            ) : reservedBlock(() => {})
           ) : null}
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>
@@ -1176,6 +1227,29 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <button type="button" style={{ ...btn, justifySelf: 'end' }} onClick={() => setAgentOpen(false)}>Close</button>
           </div>
         </div>
+      ) : null}
+      {phone && reservedOpen && jobStickers.blank > 0 ? createPortal(<Sheet title="Reserved stickers" onClose={() => setReservedOpen(false)}>{reservedBlock(() => setReservedOpen(false))}</Sheet>, document.body) : null}
+      {/* The page's Print sheet on this job (v2.8282): a door to the windows below, and to another job's labels. */}
+      {printSheet?.open ? (
+        <MaterialsPrintSheet
+          sheet={jobPrintSheet({ job, boxCount, runs: jobStickers.toPrint, role, dayWords })}
+          onClose={printSheet.onClose}
+          onRow={(row) => {
+            const act = row.act
+            if (act.kind === 'another-job') {
+              printSheet.onAnotherJob()
+              return
+            }
+            printSheet.onClose()
+            if (act.kind === 'labels') setLabelsOpen({ only: null })
+            else if (act.kind === 'manifest') setManifestOpen({ only: null })
+            else if (act.kind === 'stickers') setStickersOpen({ run: null })
+            else if (act.kind === 'reserved') {
+              const r = jobStickers.toPrint.find((x) => x.run.id === act.runId)
+              if (r) setStickersOpen({ run: act.waiting ? notPrintedRunToPrint(r) : reservedRunToPrint(r) })
+            }
+          }}
+        />
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}

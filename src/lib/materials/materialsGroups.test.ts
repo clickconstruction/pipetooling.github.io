@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MATERIALS_TABS } from './materialsTabs'
-import { MATERIALS_GROUP_WORDS, MATERIALS_TAB_LABELS, materialsGroupOf, materialsGroupsFor, materialsPressesFor, onSiteJobHref, trackBadges } from './materialsGroups'
+import { MATERIALS_GROUP_WORDS, MATERIALS_PHONE_PRESS_LABELS, MATERIALS_TAB_LABELS, groupOnlyTab, materialsGroupOf, materialsGroupsFor, materialsPhonePresses, materialsPressesFor, onSiteJobHref, trackBadges } from './materialsGroups'
 
 describe('materialsGroupsFor', () => {
   it('gives the office three groups in the order a part lives', () => {
@@ -55,6 +55,25 @@ describe('materialsPressesFor', () => {
     // An estimator opens On site and prints labels, and prints no run (the card's call 6: the office, a primary, a superintendent).
     expect(materialsPressesFor('estimator')).toEqual(['scan-label', 'print-labels'])
     expect(materialsPressesFor('helpers')).toEqual([])
+  })
+})
+
+describe('the phone’s row of names (v2.8282)', () => {
+  it('a group with one tab is that tab, and a group with several is not', () => {
+    const [plan, purchase, track] = materialsGroupsFor('dev')
+    expect(groupOnlyTab(track!)).toBe('on-site')
+    expect(groupOnlyTab(plan!)).toBeNull()
+    expect(groupOnlyTab(purchase!)).toBeNull()
+    expect(groupOnlyTab({ tabs: [] })).toBeNull()
+  })
+
+  it('draws scan then print for a role with the presses, and nothing for a role without', () => {
+    expect(materialsPhonePresses(materialsPressesFor('dev'))).toEqual(['scan', 'print'])
+    // an estimator prints labels, so the one print press is still there
+    expect(materialsPhonePresses(materialsPressesFor('estimator'))).toEqual(['scan', 'print'])
+    expect(materialsPhonePresses(materialsPressesFor('helpers'))).toEqual([])
+    expect(materialsPhonePresses(['scan-label'])).toEqual(['scan'])
+    expect(MATERIALS_PHONE_PRESS_LABELS).toEqual({ scan: 'Scan a label', print: 'Print' })
   })
 })
 

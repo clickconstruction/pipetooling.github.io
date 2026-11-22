@@ -15,7 +15,7 @@ Under the money, a job that came up short this week reads how many lines were sh
 
 A job whose boxes did not load says so in its row, with the reason. The row's figures are left blank, never drawn as zero. Press **Read again** on that row. A site's screen says the same at its top when one of its jobs did not load.
 
-The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open.
+The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open. On a phone, press **Track** and On site opens at once. [On a phone](#on-a-phone) says what else changes there.
 
 The Pipeline's tools menu has a **Materials desk** row with the count of jobs that lost something this week. A job's window has a **Materials** tab with the same facts and **Open the materials page**. A bid's Procure step has the same door once the bid is a job. The line under its four steps reads **Materials on site**.
 
@@ -137,6 +137,18 @@ Beside a place's name above its boxes, press **＋ Paint the way here**. The pai
 
 On the **Where is it?** tab, press **Send someone to it** to make a task for the box. The New task window opens with the words, the box's pin as the task's place and the painted way. Pick the person and send it.
 
+## On a phone
+
+The Materials page fits a phone. Press **Track** and On site opens at once. Two icons sit beside **Track**. The first is **Scan a label**. The second is **Print**.
+
+Press **Print** with a job open. A sheet opens with that job's number and its name. **Labels for its boxes** opens the labels window. **The manifest** opens the manifest window. A run of reserved stickers has its own row, and that row reserves nothing new. **Future stickers** starts a new run. **Print for another job** lists every job that holds a box. A row you cannot press is grey and says why.
+
+Press **Print** with no job open. The sheet offers **Print labels** and **Print future stickers**.
+
+On a job's page the four figures sit in one row of tiles. They read *Came in*, *On site*, *Used* and *Missing*. Press a tile to open its section. Under the tiles, **List**, **By part** and **Map** sit on the left. Press **+ Container** on the right to add a cage or box.
+
+Reserved stickers show as one line, such as *58 stickers reserved, G93 to G150*. Press the line. A sheet opens with the full count, **These are on boxes**, **Runs** and the press that prints them.
+
 ## Move everything on site to another job
 
 A crew can start a count under the wrong job. The boxes then sit on a job that is not theirs. This press moves them to the right job in one go.
@@ -199,7 +211,7 @@ A line the app cannot save stays on the table with its reason under it. The line
 
 Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. A job's row on the Materials page has **Labels** too. A paper label carries the stencil, the job, the place, a small code and ruled lines to write on. A tape label carries the stencil and the code alone. The crew's camera opens the box from the code.
 
-On the Materials page, press **Print labels** at the right end of the tabs. A window lists every job that holds a cage or a box. The band on top shows what this computer prints on, with one label drawn at its printed size. Press **Change to paper** or **Change to Brother tape** to switch.
+On the Materials page, press **Print labels** at the right end of the tabs. A window lists every job that holds a cage or a box. The band on top shows what this computer prints on, with one label drawn at its printed size. Press **Change to paper** or **Change to Brother tape** to switch. On a phone, press the **Print** icon beside **Track** first.
 
 Each job is a card. It says how many boxes and cages the job has, their names, and how many stand in each place. An amber chip counts the boxes whose label has not printed yet. A green chip says every box is labelled. A blue chip counts the boxes that already wear a sticker. A line says how much tape the job takes, or how many pages.
 
@@ -211,7 +223,7 @@ The app marks a box as labelled when its label prints. On paper, the mark is mad
 
 A future sticker is a label printed before its box. Printing a sticker reserves its place. The sticker gets its own link, such as prts.co/b/4F2A-9C18. The sticker also gets the box's name to read, such as G78. The link and the name are held for a box that is filled in later. No sticker prints without a link of its own. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
 
-On a job's page, press **Print future stickers** beside **Print labels**. On the Materials page, press **Print future stickers** at the right end of the tabs and pick the job. Until November 2026 the press read *Print blank stickers*. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why.
+On a job's page, press **Print future stickers** beside **Print labels**. On the Materials page, press **Print future stickers** at the right end of the tabs and pick the job. Until November 2026 the press read *Print blank stickers*. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why. On a phone, press the **Print** icon beside **Track** and then **Future stickers**.
 
 On the Materials page the window lists each job as a card. A card says how many boxes the job holds and how many runs were printed for it. An amber line counts the stickers reserved and not on a box yet. The line names them and says who reserved them and when. It also says what printed, such as 40 printed, 18 not printed yet. Under those words, press **Print the 58 reserved stickers, G93 to G150** to print them. The press prints the same stickers with the same links. Nothing new is reserved. A run that printed in part has a second press before it. Press **Print the 18 not printed yet, G133 to G150** to print only the stickers that never came out. A job with more than one run has one press for each run. **Print future stickers** on the card is the other press, and it reserves new stickers. **Open the job's boxes** goes to the job's page, where you put them on their boxes. A card also says the name a new run opens on. The band on top shows one sticker with that name at its printed size.
 
@@ -231,7 +243,7 @@ A roll of named stickers needs no scan to go on its boxes. In the **Runs** fold,
 
 ## Print a manifest
 
-A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **Every box** picks them all again and **None** clears them. The press names its count, such as {{button:blue|Print 2 manifests}}.
+A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. On a phone, press the **Print** icon beside **Track** and then **The manifest**. The window opens on every box. Press a stencil to leave that box out. **Every box** picks them all again and **None** clears them. The press names its count, such as {{button:blue|Print 2 manifests}}.
 
 Each box prints on its own Letter page in large plain type. The page carries the stencil, the job and the site. It carries the same code the label has, so the crew's camera opens the box from the manifest. The page shows the day the manifest was printed. The page also shows the day something was last recorded in the box, and by whom. Under the dates it lists what is in the box with each number. Ruled lines at the foot take what is added on site by hand. Each line has room for the item, the quantity, who added it and the day.
 
@@ -259,4 +271,4 @@ Open the search box at the top of the app and type a stencil, a part or a place.
 
 Open **Materials** and press **On site**. Type a part, its maker or a stencil in **Find a part or a box on any job**. Each row names the box, its job and how many are on hand. Press **Open the job** to go to that job's page.
 
-A label the camera cannot read has a code printed under it. Press **Scan a label** at the right end of the tabs and type the eight characters. Press {{button:blue|Open the box}} and the box opens on the phone screen.
+A label the camera cannot read has a code printed under it. Press **Scan a label** at the right end of the tabs and type the eight characters. On a phone it is the first icon beside **Track**. Press {{button:blue|Open the box}} and the box opens on the phone screen.
