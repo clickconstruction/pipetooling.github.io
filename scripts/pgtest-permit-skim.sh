@@ -15,7 +15,8 @@
 # uncounted; v4 says a job's first plumbing day beside its newest (migration *_permit_first_plumbing_day); Builders lists each name with its permits, its
 # plumber and its mark, and counts our bids with it by the one rule (no practice bid, two years, once a bid; migration
 # *_research_builders_our_bids), and neither it nor the table carries a customer (migration
-# *_builders_customer_id_dropped); the count adds up; a helper reads and marks nothing; the fences reached both tables and anon
+# *_builders_customer_id_dropped); only the building's own plumbing permit closes a job, on every read (migration
+# *_permit_building_plumbing_only, which runs last and twice: the two files before it pair any plumbing permit); the count adds up; a helper reads and marks nothing; the fences reached both tables and anon
 # runs none of the new functions. It raises on its first failed assertion and ends with "permit_skim PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt. Never
 # touches prod.
@@ -27,6 +28,7 @@ NAME="pgtest-permit-skim"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_builders_customer_id_dropped.sql)"
 LATER="$(ls supabase/migrations/*_permit_first_plumbing_day.sql)"
+RULE="$(ls supabase/migrations/*_permit_building_plumbing_only.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -50,6 +52,11 @@ psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-apply
 # reads the functions prod runs.
 for later in $LATER; do
   psql_as postgres -f - < "$later" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $later"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
+# The two files above wrote research_builders and research_permits_v4 as they stood, pairing any plumbing permit. The
+# rule's own file puts every read back as prod runs it, and its second run must change nothing.
+for _ in 1 2; do
+  psql_as postgres -f - < "$RULE" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $RULE"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/permit_skim/20_scenario.sql 2>&1 || true)"
 if ! grep -q "permit_skim PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi

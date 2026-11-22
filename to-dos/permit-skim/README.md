@@ -350,3 +350,9 @@ phone width. His holistic look cut the plan to eight PRs and re-aimed it, and hi
 drawn in (frames A, B2, G1, H and M). The same night he said build it all on the picks drawn, to
 be live by morning. PR 1 and 2 were built together as v2.6830 and walked live with Undo, so
 nothing was written: the deck opened on 340 permits, every one the feed has brought.
+
+2026-11-22: the plumber pairing counts the building's own plumbing permit only (v2.8295, migration
+`20261122230500_permit_building_plumbing_only`). #307 found, in passing, that a lawn sprinkler permit
+read as *Has a plumber*: a city files irrigation, gas and sewer under plumbing, and the reads paired any
+of them. The rule is the one a bid's window reads by. In San Antonio eight buildings of the last 180 days
+went back to waiting, seven of them paired by an irrigation permit alone.

@@ -334,6 +334,10 @@ export type PlumbingType = 'general' | 'gas' | 'irrigation' | 'sewer' | 'other'
  * the other cities have one plumbing type with no qualifier ("Plumbing Permit", "Plumbing",
  * "Commercial Plumbing"), and their pull already leaves the irrigation and fire-line ones out:
  * a plumbing type with no qualifier is the building's plumbing.
+ *
+ * The skim, the ledger, Builders and Market read by the same rule in SQL: `permit_is_building_plumbing`
+ * (migration `20261122230500`, v2.8295) is true exactly where this answers 'general'. The two are copies.
+ * `bidSite.test.ts` and the bed `permit-skim` hold the same list of types, so change both together.
  */
 export function plumbingTypeOf(permitType: string | null | undefined): PlumbingType | null {
   const t = (permitType ?? '').toLowerCase()
