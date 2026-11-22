@@ -90,18 +90,22 @@ export function FlowRow({ pills, trailing, role, label, size = 'desk', wordFirst
  * The same figures as tiles (v2.8282): the Materials page's phone screen, where four pills and their arrows wrapped
  * to two rows. One row of equal columns, the number on top in its colour and its word under it, no arrows. A tile
  * keeps its pill's badge at its top corner, its outline when it is the open section, its sentence and its press.
+ * As `filters` (v2.8291, the Materials desk on a phone) the tiles narrow a list: a group of pressed presses, where
+ * the job page's are tabs.
  */
-export function FlowTiles({ pills, label }: { pills: FlowPill[]; label: string }) {
+export function FlowTiles({ pills, label, role = 'tabs' }: { pills: FlowPill[]; label: string; role?: 'tabs' | 'filters' }) {
+  const tabs = role === 'tabs'
   return (
-    <div role="tablist" aria-label={label} style={{ display: 'grid', gridTemplateColumns: `repeat(${pills.length}, minmax(0, 1fr))`, gap: 6, minWidth: 0, paddingTop: 6 }} data-testid="flow-tiles">
+    <div role={tabs ? 'tablist' : 'group'} aria-label={label} style={{ display: 'grid', gridTemplateColumns: `repeat(${pills.length}, minmax(0, 1fr))`, gap: 6, minWidth: 0, paddingTop: 6 }} data-testid="flow-tiles">
       {pills.map((p) => {
         const tone = TONE[p.tone]
         return (
           <button
             key={p.key}
             type="button"
-            role="tab"
-            aria-selected={Boolean(p.on)}
+            role={tabs ? 'tab' : undefined}
+            aria-selected={tabs ? Boolean(p.on) : undefined}
+            aria-pressed={tabs ? undefined : Boolean(p.on)}
             aria-disabled={p.off || undefined}
             aria-label={p.title}
             title={p.title}

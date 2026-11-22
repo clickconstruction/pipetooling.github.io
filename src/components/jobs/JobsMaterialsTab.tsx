@@ -39,7 +39,9 @@ import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHea
 import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
-import { onSiteJobHead, onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { onSiteJobHead, onSiteJobNumber, onSiteJobWords, type OnSiteJobNamed } from '../../lib/materials/onSiteJobWords'
+import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
+import MaterialsDeskPhone from '../materials/MaterialsDeskPhone'
 import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
 import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -248,6 +250,8 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const [madeLinks, setMadeLinks] = useState<Record<string, JobDriveLinksPatch>>({})
   /** The desk's whole-job move (v2.7305): opened from a site row that holds more than one job with boxes, the source picked from that site's jobs. */
   const [deskMove, setDeskMove] = useState<{ sources: MoveJobChoice[] } | null>(null)
+  /** The phone's desk (v2.8291): which of its three figures is narrowing the list. A visit's state, never kept. */
+  const [deskFilter, setDeskFilter] = useState<DeskPhoneFilter>('all')
   const canMove = canMoveOnSite(role)
   const onFoldersMade = (id: string, patch: JobDriveLinksPatch) => setMadeLinks((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   const withLinks = (j: MaterialsJob): MaterialsJob => (madeLinks[j.id] ? { ...j, ...madeLinks[j.id] } : j)
@@ -303,6 +307,63 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     const anySite = groups.some((g) => g.kind === 'site')
     const rowOf = (id: string) => rows.find((r) => r.id === id)!
     const cols = rowDoors ? 7 : 6
+    /** Open a job (v2.7310): the searchable list, the jobs with a box first. On a phone it is a full-width press that says its own name. */
+    const openJobPick = (
+      <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: phone ? '100%' : 'min(100%, 420px)' }}>
+        <SearchableSelect
+          value=""
+          onChange={(v) => { if (v) setJob(v) }}
+          options={deskPickOptions(jobs, rows.map((r) => r.id))}
+          placeholder={phone ? 'Open a job' : 'Choose…'}
+          listAriaLabel="Open a job"
+          searchPlaceholder={DESK_PICK_PLACEHOLDER}
+          listMaxHeightPx={360}
+          fillViewportHeight
+          listMinWidthPx={320}
+          listOptionPadding={phone ? '0.6rem 0.7rem' : '0.4rem 0.6rem'}
+          listOptionFontSize={phone ? '0.9rem' : '0.85rem'}
+          triggerMinHeightPx={phone ? 44 : 36}
+          triggerStyle={phone ? { font: 'inherit', padding: '0 0.75rem', fontWeight: 600, color: 'var(--text-link)', borderRadius: 10 } : { font: 'inherit', padding: '0 0.5rem' }}
+        />
+      </div>
+    )
+    if (phone) {
+      // A phone (v2.8291): the desk's own figures, laid out for a thumb by `buildDeskPhone`. Three tiles stand where
+      // the heading's sentence was, and a row is one press that opens its job. A row's Labels press is in the job's
+      // Print sheet, and the whole-job move is under the job's boxes, so neither is drawn here.
+      const model = buildDeskPhone({
+        jobs: rows.map((r) => {
+          const named: OnSiteJobNamed | undefined = r.job
+          return {
+            id: r.id,
+            number: onSiteJobNumber(r.job),
+            name: r.job ? (named?.job_name ?? '').trim() || (named?.customer_name ?? '').trim() : `job ${r.id.slice(0, 8)}`,
+            boxes: r.sum.containers,
+            places: listPlaces(r.id).length,
+            due: r.sum.stale.length,
+            dueWords: staleWords(r.sum.stale),
+            missingLines: r.sum.missingLines,
+            missingUnpricedLines: r.sum.missingUnpricedLines,
+            missingMoney: r.sum.missingMoneyWeek,
+            credits: r.sum.credits,
+            failed: r.failed,
+          }
+        }),
+        groups,
+        filter: deskFilter,
+      })
+      return (
+        <div style={{ display: 'grid', gap: '0.9rem', minWidth: 0 }} aria-label="Materials desk">
+          {desk.loading && !desk.loaded ? <span style={muted}>Loading…</span> : null}
+          <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-desk" idempotent />
+          <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITES_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-desk-sites" offlineMessage={SITES_NOT_LOADED_WORDS} idempotent />
+          {rows.length === 0
+            ? <EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.querySelector('button')?.focus() }} tail="below, then add its first container." />
+            : <MaterialsDeskPhone model={model} onFilter={setDeskFilter} onOpenJob={setJob} onOpenSite={setSite} onReadAgain={(id) => void loadJob(id, { force: true })} />}
+          {openJobPick}
+        </div>
+      )
+    }
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -395,23 +456,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* v2.7310: a searchable list in place of the native select, which could only scroll; the jobs with a box first. */}
           <span style={muted}>Open a job</span>
-          <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: 'min(100%, 420px)' }}>
-            <SearchableSelect
-              value=""
-              onChange={(v) => { if (v) setJob(v) }}
-              options={deskPickOptions(jobs, rows.map((r) => r.id))}
-              placeholder="Choose…"
-              listAriaLabel="Open a job"
-              searchPlaceholder={DESK_PICK_PLACEHOLDER}
-              listMaxHeightPx={360}
-              fillViewportHeight
-              listMinWidthPx={320}
-              listOptionPadding="0.4rem 0.6rem"
-              listOptionFontSize="0.85rem"
-              triggerMinHeightPx={36}
-              triggerStyle={{ font: 'inherit', padding: '0 0.5rem' }}
-            />
-          </div>
+          {openJobPick}
         </div>
       </div>
     )
