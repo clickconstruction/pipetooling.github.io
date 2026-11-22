@@ -11,6 +11,7 @@ import {
   buildSubPortalPapers,
   planPortalAnswer,
   portalAnswers,
+  portalConfirmKept,
   portalConfirms,
   portalOwnSheetIds,
   portalPaperSet,
@@ -310,6 +311,17 @@ describe('confirming a work statement (the card’s PR 7), built and switched of
     const confirms = portalConfirms([confirmedAck({ revision: 1, created_at: '2026-10-30T18:00:00Z', amount: 4000 }), confirmedAck(), confirmedAck({ labor_job_id: CEDAR_2, revision: null }), { ...confirmedAck(), kind: 'received' }])
     expect([...confirms]).toEqual([[CEDAR_1, { revision: 2, amount: comesTo, at: 'Nov 14, 2026', from: '203.0.113.7' }]])
     expect(portalConfirms([confirmedAck({ said_from: null })]).get(CEDAR_1)!.from).toBe('their page')
+  })
+
+  it('two presses of one copy at one moment: the second reads back the confirm the table kept', () => {
+    const row = { labor_job_id: CEDAR_1, paper_id: PAPER_CEDAR_1_REV_2, revision: 2, amount: comesTo }
+    // The first press's row, read after the second was refused by the table.
+    expect([...portalConfirmKept(row, [confirmedAck()], '2026-11-20T18:00:00Z')]).toEqual([[CEDAR_1, { revision: 2, amount: comesTo, at: 'Nov 14, 2026', from: '203.0.113.7' }]])
+    // Another copy's confirm, or another kind of answer, does not stand for this copy.
+    const other = [confirmedAck({ paper_id: 'paper-of-revision-1', revision: 1 }), { ...confirmedAck(), kind: 'something_wrong' }]
+    expect([...portalConfirmKept(row, other, '2026-11-20T18:00:00Z')]).toEqual([[CEDAR_1, { revision: 2, amount: comesTo, at: 'Nov 20, 2026', from: 'their page' }]])
+    // The read after the refusal handed back nothing: the copy is confirmed all the same, and the day is today.
+    expect(portalConfirmKept(row, [], '2026-11-20T18:00:00Z').get(CEDAR_1)).toMatchObject({ revision: 2, at: 'Nov 20, 2026' })
   })
 
   it('a confirm on record prints on the work statement, with counsel’s sentence, and says so once the statement has changed', () => {
