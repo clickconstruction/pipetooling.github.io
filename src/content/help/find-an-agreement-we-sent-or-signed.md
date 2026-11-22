@@ -156,6 +156,10 @@ One tick keeps a new signer with their company. The next paper then offers them 
 
 The app tells you when it already keeps an address you type. The paper then goes to that record.
 
+**Send email** waits for that check. If the app keeps the address, the window names who holds it. Press **Send email** again to send the paper to them.
+
+Someone on your roster is not sent a paper this way. Close the window and pick them from the list.
+
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
 ## Add someone to a list
