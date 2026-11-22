@@ -5,10 +5,10 @@ import { supabase } from '../supabase'
 export async function loadCustomerMoneyLines(customerId: string, client: unknown = supabase): Promise<BidMoneyLine[]> {
   try {
     const db = client as typeof supabase
-    const res = await db.rpc('list_customer_money_strip' as never, { p_customer_id: customerId } as never)
+    const res = await db.rpc('list_customer_money_strip', { p_customer_id: customerId })
     if (res.error) return []
     const today = todayYmd()
-    return parseBidMoneyStrip(res.data as unknown).map((e) => bidMoneyLine(e, today))
+    return parseBidMoneyStrip(res.data).map((e) => bidMoneyLine(e, today))
   } catch {
     return []
   }

@@ -162,7 +162,7 @@ Tap a dot, then tap **Time** on the map to see that place on earlier days. [See 
 
 **Satellite** shows the ground from above. **Streets** shows roads. Tap **Hide map** to fold the map away. Your phone remembers, and **Show map** brings it back.
 
-The map is Google Maps. Tap the stack of sheets at the bottom right to switch to the OpenStreetMap map. Tap it again to come back. Your phone remembers which map you picked. Every press on the map works on either map.
+The map is Google Maps. Google's own shop and landmark labels are off, so nothing sits under a dot. Tap the stack of sheets at the bottom right to switch to the OpenStreetMap map. Tap it again to come back. Your phone remembers which map you picked. Every press on the map works on either map.
 
 ## Notes are a conversation
 

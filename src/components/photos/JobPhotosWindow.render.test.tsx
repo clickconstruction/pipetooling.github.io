@@ -149,6 +149,11 @@ describe('JobPhotosWindow', () => {
     expect(await screen.findByText(/2 new photos · shrunk to 1600 px/)).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Add 2 photos to the job')).toBeTruthy())
     const boxes = document.querySelectorAll<HTMLTextAreaElement>('textarea[data-shot-words]')
+    // Each new photo offers to keep its spot on the job (punch list #413): one press, full words, 48 px tall.
+    const keeps = [...document.querySelectorAll<HTMLButtonElement>('[data-shot-tile] [data-keep-spot] button')]
+    expect(keeps).toHaveLength(boxes.length)
+    expect(keeps[0]!.textContent).toBe('＋ Keep this spot on the job')
+    expect(keeps[0]!.style.minHeight).toBe('48px')
     expect(boxes).toHaveLength(2)
     fireEvent.change(boxes[0]!, { target: { value: 'Meter location, behind the east fence gate' } })
     fireEvent.click(screen.getByText('Use these words for the rest'))

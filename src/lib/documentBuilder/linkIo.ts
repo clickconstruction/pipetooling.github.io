@@ -6,7 +6,7 @@
 import { staffAwarePublicHeaders } from '../publicFunctionStaffHeaders'
 import { supabase } from '../supabase'
 import type { Landed } from './documentBuildersIo'
-import { DOCUMENT_BUILDER_LINK_WORDS, type DocumentBuilderLinkState } from './link'
+import { DOCUMENT_BUILDER_LINK_WORDS, documentBuilderLinkDevice, documentBuilderLinkEndedWhy, type DocumentBuilderLinkOpen, type DocumentBuilderLinkState } from './link'
 import { parseResolvedSheet, type ResolvedSheet } from './sheet'
 
 // The deployed build's address ends in a slash, the local one does not: both read the same here.
@@ -29,11 +29,40 @@ const wordsOf = (body: unknown, fallback: string): string => {
   return typeof body.error === 'string' && body.error && !/^[a-z_]+$/.test(body.error) ? body.error : fallback
 }
 
-/** Open a link by its code, as whoever holds it. A teammate's session rides along so their look is not counted. */
+/**
+ * What the page reports about its device with an open: the browser's language, time zone, screen and platform, and
+ * whether it is a touch screen. Each is something the browser tells every site. Nothing is drawn, measured or stored
+ * to tell one device from another. A browser that hides one leaves it out.
+ */
+export function linkDeviceOf(env: { language?: unknown; timeZone?: unknown; screenWidth?: unknown; screenHeight?: unknown; platform?: unknown; touchPoints?: unknown }): Record<string, string> {
+  const screen = typeof env.screenWidth === 'number' && typeof env.screenHeight === 'number' && env.screenWidth > 0 && env.screenHeight > 0 ? `${Math.round(env.screenWidth)}x${Math.round(env.screenHeight)}` : undefined
+  const touch = typeof env.touchPoints === 'number' ? (env.touchPoints > 0 ? 'yes' : 'no') : undefined
+  return documentBuilderLinkDevice({ language: env.language, timeZone: env.timeZone, screen, platform: env.platform, touch })
+}
+
+function deviceNow(): Record<string, string> {
+  try {
+    return linkDeviceOf({
+      language: navigator.language,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screenWidth: window.screen?.width,
+      screenHeight: window.screen?.height,
+      platform: navigator.platform,
+      touchPoints: navigator.maxTouchPoints,
+    })
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Open a link by its code, as whoever holds it. A teammate's session rides along so their look is not counted, and
+ * so the open is kept under their account. The device's few details ride along for someone with no account.
+ */
 export async function openBuilderLink(code: string): Promise<BuilderLinkView> {
   let res: Response
   try {
-    res = await fetch(FUNCTION_URL, { method: 'POST', headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'open', code }) })
+    res = await fetch(FUNCTION_URL, { method: 'POST', headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'open', code, device: deviceNow() }) })
   } catch {
     return { kind: 'signal' }
   }
@@ -49,11 +78,25 @@ export async function openBuilderLink(code: string): Promise<BuilderLinkView> {
   return { kind: 'failed', words: DOCUMENT_BUILDER_LINK_WORDS.failed }
 }
 
-function stateFrom(raw: unknown): DocumentBuilderLinkState | null {
+/** One open as the function hands it. A row that is not one is left out. */
+function openFrom(raw: unknown): DocumentBuilderLinkOpen | null {
+  if (!isRecord(raw) || typeof raw.at !== 'string' || !raw.at) return null
+  const text = (v: unknown) => (typeof v === 'string' && v ? v : null)
+  return { at: raw.at, viewer: raw.viewer === 'staff' || raw.viewer === 'preview' ? raw.viewer : 'outside', name: text(raw.name), ip: text(raw.ip), agent: text(raw.agent), device: documentBuilderLinkDevice(raw.device) }
+}
+
+/** Who opened the link, when the function says: an older function says nothing, and the card then shows no list. */
+function historyFrom(raw: Record<string, unknown>): { opens?: DocumentBuilderLinkOpen[]; opensTotal?: number } {
+  if (!Array.isArray(raw.opens)) return {}
+  const opens = raw.opens.map(openFrom).filter((o): o is DocumentBuilderLinkOpen => o != null)
+  return { opens, opensTotal: typeof raw.opensTotal === 'number' && raw.opensTotal >= opens.length ? raw.opensTotal : opens.length }
+}
+
+export function stateFrom(raw: unknown): DocumentBuilderLinkState | null {
   if (!isRecord(raw)) return null
-  if (raw.on === false) return { on: false }
+  if (raw.on === false) return { on: false, endedAt: typeof raw.endedAt === 'string' ? raw.endedAt : null, endedWhy: documentBuilderLinkEndedWhy(raw.endedWhy), ...historyFrom(raw) }
   if (raw.on === true && (typeof raw.code === 'string' || raw.code === null) && typeof raw.madeAt === 'string') {
-    return { on: true, code: raw.code, madeAt: raw.madeAt, opened: typeof raw.opened === 'number' ? raw.opened : 0, lastOpenedAt: typeof raw.lastOpenedAt === 'string' ? raw.lastOpenedAt : null }
+    return { on: true, code: raw.code, madeAt: raw.madeAt, opened: typeof raw.opened === 'number' ? raw.opened : 0, lastOpenedAt: typeof raw.lastOpenedAt === 'string' ? raw.lastOpenedAt : null, ...historyFrom(raw) }
   }
   return null
 }

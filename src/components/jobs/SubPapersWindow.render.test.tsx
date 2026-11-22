@@ -6,7 +6,8 @@ const io = vi.hoisted(() => ({ fileSentCopy: vi.fn(), printPdfAndFile: vi.fn(), 
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: io.fileSentCopy, printPdfAndFile: io.printPdfAndFile }))
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: io.saveBlobAs }))
 // The register and the roster. `rows: null` is a database the migration has not reached: the read is refused and the mint is not found.
-const db = vi.hoisted(() => ({ rows: null as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null }, personError: null as { message: string } | null }))
+// `acks` is the sub's Got it marks (`sub_paper_acks`); null is a read that failed.
+const db = vi.hoisted(() => ({ rows: null as unknown[] | null, acks: [] as unknown[] | null, reads: 0, mint: vi.fn(), invoke: vi.fn(), person: { email: 'harlan@harlanmechanical.example', phone: null } as { email: string | null; phone: string | null }, personError: null as { message: string } | null }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => ({
@@ -14,6 +15,8 @@ vi.mock('../../lib/supabase', () => ({
         eq: () =>
           table === 'people'
             ? { maybeSingle: async () => (db.personError ? { data: null, error: db.personError } : { data: db.person, error: null }) }
+            : table === 'sub_paper_acks'
+              ? (async () => (db.acks === null ? { data: null, error: { code: '42501', message: 'permission denied for table sub_paper_acks' } } : { data: db.acks, error: null }))()
             : (async () => {
                 db.reads += 1
                 return db.rows === null ? { data: null, error: { code: '42P01', message: 'relation "sub_papers" does not exist' } } : { data: db.rows, error: null }
@@ -41,6 +44,7 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, readO
 
 import { paperDay, type PaperContext } from '../../../supabase/functions/_shared/subPapers'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
+import { subPaperAnswers } from '../../lib/subWorkOrders/subPaperAnswers'
 import { paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { SubPapersWindowView, type SubPapersWindowViewProps } from './SubPapersWindow'
@@ -85,6 +89,11 @@ const ASSIGNEES = new Map(JOBS.map((j) => [j.id, [{ personId: 'harlan', personNa
 const SHEETS = paperSheetsFor('id:harlan', JOBS, ASSIGNEES, NAMES, ROSTER)
 const CTX: PaperContext = { company: { name: 'Made-up Plumbing Co.', lines: ['1 Made-up Way, Austin, TX'] }, sub: { name: 'Harlan Mechanical', lines: [] }, today: '2026-11-16', preparedAt: 'Nov 16, 2026 at 9:30 am', zone: 'Central time' }
 
+/** The sub pressed Got it on sending 226, on Nov 2 in Central time. */
+const GOT_IT = { id: 'ack1', kind: 'received', person_id: 'harlan', labor_job_id: null, sending_id: 'snd226', payment_id: null, note: null, said_by_name: 'Harlan Mechanical', created_at: '2026-11-02T18:00:00Z' }
+const MARKED = 'Harlan Mechanical marked this received on Nov 2, 2026.'
+const NOT_MARKED = 'Not marked yet. Harlan Mechanical can press Got it on their page.'
+
 function mountView(over: Partial<SubPapersWindowViewProps> = {}) {
   const props: SubPapersWindowViewProps = { open: { kind: 'statement' }, sheets: SHEETS, ctx: CTX, contact: { email: null, phone: null, portalUrl: null }, canSend: false, onDownload: vi.fn(), onPrint: vi.fn(), onClose: vi.fn(), ...over }
   render(<SubPapersWindowView {...props} />)
@@ -94,6 +103,7 @@ function mountView(over: Partial<SubPapersWindowViewProps> = {}) {
 beforeEach(() => {
   check.refuse = false
   db.rows = null
+  db.acks = []
   db.reads = 0
   db.mint.mockReset()
   db.invoke.mockReset()
@@ -202,6 +212,77 @@ describe('SubPapersWindowView, with what its caller has not handed in left out',
     fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
     expect(onSend).toHaveBeenCalledTimes(1)
     expect(onSend.mock.calls[0]![1]).toHaveLength(3)
+  })
+})
+
+describe('SubPapersWindowView: a payment record and the sub’s Got it', () => {
+  const record = (over: Partial<SubPapersWindowViewProps> = {}) => mountView({ open: { kind: 'payment', sendingKey: 'snd226' }, paymentRecords: true, ...over })
+
+  it('says Not marked yet until its caller hands in the marks, then says the day the sub pressed Got it', () => {
+    record()
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(NOT_MARKED)
+    cleanup()
+    const onDownload = vi.fn()
+    record({ answers: subPaperAnswers([GOT_IT], (iso) => iso.slice(0, 10)), onDownload })
+    const paper = screen.getByTestId('sub-paper-preview').textContent ?? ''
+    expect(paper).toContain(MARKED)
+    expect(paper).not.toContain('Not marked yet')
+    // The paper handed to Download is the one on the screen, mark and all.
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    expect(onDownload.mock.calls[0]![0]).toMatchObject({ kind: 'payment_record', number: 'PR-0226', received: MARKED })
+    expect(screen.queryByTestId('sub-papers-marks-unread')).toBeNull()
+  })
+
+  it('marks that could not be read are said so under a payment record, and under no other paper', () => {
+    record({ marksUnread: true })
+    expect(screen.getByTestId('sub-paper-preview').textContent).toContain(NOT_MARKED)
+    expect(screen.getByTestId('sub-papers-marks-unread').textContent).toBe('Whether Harlan Mechanical pressed Got it could not be read just now. This paper says Not marked yet either way.')
+    fireEvent.click(screen.getByRole('button', { name: 'Statement of account' }))
+    expect(screen.queryByTestId('sub-papers-marks-unread')).toBeNull()
+  })
+})
+
+describe('SubPapersWindowView: the last press’s line', () => {
+  const DOWNLOADED = { tone: 'ok' as const, words: 'Work statement 2057 Ridgeway Builders, Lot 12.pdf is downloaded, and a copy is filed under Documents → Sent copies.' }
+
+  it('goes when the window moves to another paper, and stays gone on the way back', () => {
+    mountView({ open: { kind: 'work', sheetId: 'ridge-1' }, said: DOWNLOADED })
+    expect(screen.getByRole('status').textContent).toBe(DOWNLOADED.words)
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'cedar-1' } })
+    expect(screen.queryByRole('status')).toBeNull()
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'ridge-1' } })
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('goes when the step changes: a send step opened again does not read as sent', async () => {
+    const SENT = { tone: 'ok' as const, words: 'Sent 3 papers to Harlan Mechanical at harlan@example.com. The copies are under Documents → Sent copies.' }
+    const props: SubPapersWindowViewProps = { open: { kind: 'statement' }, sheets: SHEETS, ctx: CTX, contact: { email: 'harlan@example.com', phone: null, portalUrl: null }, canSend: true, lastStatement: null, onSend: vi.fn().mockResolvedValue(true), onDownload: vi.fn(), onPrint: vi.fn(), onClose: vi.fn() }
+    const view = render(<SubPapersWindowView {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 papers by email' }))
+    await screen.findByRole('button', { name: 'Done' })
+    // The caller says what went, as the connected window does.
+    view.rerender(<SubPapersWindowView {...props} said={SENT} />)
+    expect(screen.getByRole('status').textContent).toBe(SENT.words)
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the paper' }))
+    expect(screen.queryByRole('status')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    expect(screen.getByRole('button', { name: 'Send 3 papers by email' })).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('stays while only the period changes, and a new line shows wherever the window is', () => {
+    const SAVED = { tone: 'ok' as const, words: 'SA-0007 Statement of account.pdf is downloaded, and a copy is filed under Documents → Sent copies.' }
+    const props: SubPapersWindowViewProps = { open: { kind: 'statement' }, sheets: SHEETS, ctx: CTX, contact: { email: null, phone: null, portalUrl: null }, canSend: false, onDownload: vi.fn(), onPrint: vi.fn(), onClose: vi.fn() }
+    const view = render(<SubPapersWindowView {...props} said={SAVED} />)
+    fireEvent.click(screen.getByRole('button', { name: 'This month' }))
+    expect(screen.getByRole('status').textContent).toBe(SAVED.words)
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'cedar-1' } })
+    expect(screen.queryByRole('status')).toBeNull()
+    // A press whose answer lands after the move is still said.
+    const FAILED = { tone: 'bad' as const, words: 'The PDF could not be made: no reason was given' }
+    view.rerender(<SubPapersWindowView {...props} said={FAILED} />)
+    expect(screen.getByRole('alert').textContent).toBe(FAILED.words)
   })
 })
 
@@ -359,6 +440,43 @@ describe('SubPapersWindow, on real rows', () => {
     expect((screen.getByRole('combobox', { name: 'A payment record' }) as HTMLSelectElement).options[1]!.textContent).toBe('PR-0226 · Oct 31, 2026 · $1,500.00')
     fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
     await waitFor(() => expect(io.fileSentCopy).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sub_payment_record', how: 'download', personId: 'harlan', jobIds: ['cedar'] }), expect.anything()))
+  })
+
+  it('a payment record reads the sub’s Got it from their page, on the screen and on the paper as made', async () => {
+    db.acks = [GOT_IT]
+    io.fileSentCopy.mockResolvedValue(true)
+    mount('payment')
+    const paper = (await screen.findByTestId('sub-paper-preview')).textContent ?? ''
+    expect(paper).toContain(MARKED)
+    expect(paper).not.toContain('Not marked yet')
+    expect(screen.queryByTestId('sub-papers-marks-unread')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(io.fileSentCopy).toHaveBeenCalledTimes(1))
+    // The paper is built again as it is made, and what the register is handed still carries the mark.
+    expect(db.mint).toHaveBeenCalledWith('mint_sub_paper', expect.objectContaining({ p_kind: 'payment_record', p_sending_id: 'snd226', p_snapshot: expect.objectContaining({ received: MARKED }) }))
+  })
+
+  it('a payment nobody marked reads Not marked yet, and marks that could not be read are said so', async () => {
+    mount('payment')
+    expect((await screen.findByTestId('sub-paper-preview')).textContent).toContain(NOT_MARKED)
+    expect(screen.queryByTestId('sub-papers-marks-unread')).toBeNull()
+    cleanup()
+    db.acks = null
+    mount('payment')
+    expect((await screen.findByTestId('sub-paper-preview')).textContent).toContain(NOT_MARKED)
+    expect(screen.getByTestId('sub-papers-marks-unread').textContent).toContain('could not be read just now')
+  })
+
+  it('the last press’s line goes when another paper is picked', async () => {
+    io.fileSentCopy.mockResolvedValue(true)
+    mount('work')
+    fireEvent.click(await screen.findByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('is downloaded'))
+    fireEvent.change(screen.getByRole('combobox', { name: 'A work statement' }), { target: { value: 'cedar-1' } })
+    expect(screen.queryByRole('status')).toBeNull()
+    // The next press says its own line.
+    fireEvent.click(screen.getByRole('button', { name: 'Download the PDF' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Work statement 2041 Cedar Hollow Clinic.pdf is downloaded, and a copy is filed under Documents → Sent copies.'))
   })
 
   it('a work statement names the payment record each payment is on', async () => {
@@ -549,6 +667,23 @@ describe('SubPapersWindow: Send', () => {
     // It went, so the step offers Done and no second Send.
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Send 3 papers by email' })).toBeNull()
+  })
+
+  it('a sheet’s first work statement goes out under a subject that names the number on its file', async () => {
+    db.rows = []
+    mintAll()
+    db.invoke.mockResolvedValue({ data: { ok: true, to: 'harlan@harlanmechanical.example', papers: 1 }, error: null })
+    render(<SubPapersWindow open={{ kind: 'work', sheetId: 'ridge-1' }} subKey="id:harlan" name="Harlan Mechanical" laborJobs={JOBS} assigneesByJobId={ASSIGNEES} namesByJobId={NAMES} roster={ROSTER} rule="owed" onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to Harlan Mechanical…' }))
+    // The step is drawn before the press numbers the paper, and says the subject will name the number.
+    const message = screen.getByTestId('sub-papers-message').textContent ?? ''
+    expect(message).toContain('Work statement from Made-up Plumbing Co.')
+    expect(message).toContain('A paper with no number yet takes one as it is made, and its file is named for it. The subject names it too.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 paper by email' }))
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledTimes(1))
+    const [, opts] = db.invoke.mock.calls[0] as [string, { body: { subject: string; papers: Array<{ number: string; file_name: string }> } }]
+    expect(opts.body.subject).toBe('Work statement WS-2057-1 from Made-up Plumbing Co.')
+    expect(opts.body.papers.map((p) => [p.number, p.file_name])).toEqual([['WS-2057-1', 'WS-2057-1.pdf']])
   })
 
   it('a second click before the press goes dead sends nothing more: one email, one statement number', async () => {

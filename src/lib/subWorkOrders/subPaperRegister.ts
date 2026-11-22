@@ -120,10 +120,13 @@ export function numberedSheet(sheet: PaperSheet, minted: MintedSubPaper, registe
  * `mint` registers one paper and answers what the register said. It answers null where the register is not on the
  * database yet, and the paper then goes as it is. It throws the register's reason when the register refuses, and
  * then nothing comes back. The papers come back in the order they were given.
+ *
+ * `received` answers whether the sub marked a payment received, by the record's key. A payment record is built
+ * again here, so without it the paper as made would read *Not marked yet* under a preview that said otherwise.
  */
 export async function registerSubPaperSet(
   papers: readonly SubPaper[],
-  io: { mint: (p: SubPaper) => Promise<MintedSubPaper | null>; sheets: readonly PaperSheet[]; ctx: PaperContext; range: StatementRange; register: SubPaperRegister },
+  io: { mint: (p: SubPaper) => Promise<MintedSubPaper | null>; sheets: readonly PaperSheet[]; ctx: PaperContext; range: StatementRange; register: SubPaperRegister; received?: (key: string) => { at: string } | null },
 ): Promise<SubPaper[]> {
   let sheets = io.sheets
   const made = new Map<number, SubPaper>()
@@ -144,7 +147,7 @@ export async function registerSubPaperSet(
     if (p.kind !== 'payment_record') continue
     const sending = sendings.find((s) => s.key === p.key)
     // Its number is its sending's own, so the register only records that the paper was made.
-    const fresh = sending ? buildPaymentRecord(sending, sheets, io.ctx) : p
+    const fresh = sending ? buildPaymentRecord(sending, sheets, io.ctx, io.received?.(sending.key) ?? null) : p
     await io.mint(fresh)
     made.set(i, fresh)
   }

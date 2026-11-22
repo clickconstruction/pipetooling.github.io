@@ -71,6 +71,8 @@ export type DashboardFinancials = {
   arCollections: FinancialBucket
   /** Collections money the office marked Uncollectible (v2.4784): shown, never owed. */
   arUncollectible: FinancialBucket
+  /** Bills an in kind deal pays (punch list #301): scheduled, shown and never in `ar` or `arCollections`. */
+  arInKind: FinancialBucket
   /** Billed rows the kernel kept out of AR — on a paid or missing job (journey J4-2's "$488 Unknown job"). */
   arExcluded: ArExcluded
   /** Includes the estimated upcoming payroll (mergeUpcomingIntoAp) — all team labor owed, not just stubbed weeks. */
@@ -116,7 +118,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
         async () =>
           await db
             .from('jobs_ledger')
-            .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_work_date, collections_at, uncollectible_at, pct_complete, customer_id, customer_name, gc_customer_id, bill_to_party, gcCustomer:customers!jobs_ledger_gc_customer_id_fkey(name)')
+            .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_work_date, collections_at, uncollectible_at, pct_complete, customer_id, customer_name, gc_customer_id, bill_to_party, in_kind_arrangement_id, gcCustomer:customers!jobs_ledger_gc_customer_id_fkey(name)')
             // The bill-truth spine's cohort (waiting / working / RTB / billed + NULL): a billed
             // invoice on a waiting job is owed like one on a working job; paid jobs never ship,
             // so their leftover bills read as excluded (see buildArBuckets).
@@ -391,6 +393,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
       ar: arBuckets.ar,
       arCollections: arBuckets.collections,
       arUncollectible: arBuckets.uncollectible,
+      arInKind: arBuckets.inKind,
       arExcluded: arBuckets.excluded,
       // All team labor owed counts toward AP — stubbed weeks at net-pay remainder plus the
       // estimated upcoming weeks (the drill-down still breaks the estimate out on its own line).

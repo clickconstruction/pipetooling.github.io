@@ -156,6 +156,18 @@ describe('buildMoneyWaiting', () => {
 })
 
 describe('openBillsForCustomers', () => {
+  it('leaves out a bill an in kind deal pays, so no row colours it late (punch list #301)', () => {
+    const onDeal = (r: StageRow): StageRow => ({ ...r, job: { ...r.job, in_kind_arrangement_id: 'deal-a' } }) as StageRow
+    const late = invRow('rlc', 'RLC', 13700, '2026-03-15', 'Ph 2 rough')
+    const fresh = invRow('rlc', 'RLC', 2750, '2026-08-20', 'Fresh bill')
+    // A covered bill alone: the payer has no open bill here.
+    expect(openBillsForCustomers([onDeal(late)], speeds(), TODAY).has('rlc')).toBe(false)
+    // A payer part covered: the bill off the deal is listed and toned as before.
+    expect(openBillsForCustomers([onDeal(late), fresh], speeds(), TODAY).get('rlc')!.map((b) => [b.jobName, b.tone])).toEqual([['Fresh bill', 'ok']])
+    // An ordinary late bill is still late.
+    expect(openBillsForCustomers([late], speeds(), TODAY).get('rlc')!.map((b) => [b.jobName, b.tone])).toEqual([['Ph 2 rough', 'late']])
+  })
+
   it('lists bills for every customer with open money, tones vs their own baseline', () => {
     const map = openBillsForCustomers(
       [

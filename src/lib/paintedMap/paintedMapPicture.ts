@@ -6,6 +6,7 @@
  */
 import { boundsOfPoints, type PaintedPoint } from './paintedLine'
 import { PLACE_GLYPH_SHARE, placeKindInfo, type PlaceGlyph } from './paintedPlaceKind'
+import { shortPlaceWords } from './paintedPlaceWords'
 
 export const PICTURE_TILE = 256
 /** The deepest tiles asked for. The view from above has this zoom nearly everywhere; deeper, a rural tile is a grey card. */
@@ -130,6 +131,8 @@ export function copyMadeWords(ymd: string | null | undefined): string {
 export type PictureKindMark = {
   /** A warning: its ring and its drawing are red. */
   warns: boolean
+  /** A color of the kind's own, in place of ink: what a locator paints for a buried line. Null for ink, or red for a warning. */
+  color: string | null
   glyph: PlaceGlyph
   /** The square the drawing fills, in picture pixels. Its own grid is 24 by 24. */
   box: { left: number; top: number; size: number }
@@ -150,16 +153,17 @@ export function pictureKindMark(place: { kind?: string | null }, at: { x: number
   const off = Math.round(r * 0.78)
   return {
     warns: info.warns,
+    color: info.color ?? null,
     glyph: info.glyph,
     box: { left: at.x - size / 2, top: at.y - size / 2, size },
     badge: { x: at.x + off, y: at.y - off, r: badgeR, font: Math.round(badgeR * 1.3) },
   }
 }
 
-/** A place as the key under a picture reads it: `Truck gate. Close it behind you.` */
+/** A place as the key under a picture reads it: `Truck gate. Close it behind you.` A long description is its short form (#413). */
 export function pictureKeyLine(place: { name: string; words: string }): string {
   const name = place.name.trim()
-  const words = place.words.trim()
+  const words = shortPlaceWords(place.words)
   if (!words) return name
   return /[.!?]$/.test(name) ? `${name} ${words}` : `${name}. ${words}`
 }

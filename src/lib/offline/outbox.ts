@@ -300,6 +300,8 @@ export interface OnSitePressPayload {
  */
 export interface PersonReportPayload {
   fields: Record<string, unknown>
+  /** The photos taken for it (PR 5): sent to their bucket under the press's own id before the write-up lands. */
+  photos?: KeptShot[]
 }
 
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
@@ -762,9 +764,9 @@ export function outboxHoldsEverything(presses: readonly OutboxPress[], now: numb
 }
 
 /** The kinds whose press carries photos kept on the phone: `payload.photos`, each a `KeptShot`. */
-export const PHOTO_CARRYING_KINDS: readonly OutboxKind[] = ['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos']
+export const PHOTO_CARRYING_KINDS: readonly OutboxKind[] = ['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos', 'person-report']
 
-export type PhotoCarryingPayload = FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload | BidPhotosPayload
+export type PhotoCarryingPayload = FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload | BidPhotosPayload | PersonReportPayload
 
 /** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, since #273 of a task photo press, since #295 every page of a counter ticket, and since #306 of a bid photos press. */
 export function keptPhotoCount(presses: readonly OutboxPress[]): number {

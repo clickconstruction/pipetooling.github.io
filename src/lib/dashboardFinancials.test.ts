@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   apBillPartPaidWords,
+  arFooterTotalLabel,
+  arInKindLine,
   buildApBucket,
   buildApBucketFromAggregates,
   buildArBucket,
@@ -12,6 +14,7 @@ import {
   financialJobLabel,
   redactApPayrollItems,
   redactUpcomingApSection,
+  AR_IN_KIND_SUBLABEL,
   AR_SETTLED_SUBLABEL,
   type FinancialInvoiceRow,
   type FinancialJobRow,
@@ -611,5 +614,72 @@ describe('buildArBuckets — Uncollectible (punch list #94, v2.4784)', () => {
     expect(uncollectible).toMatchObject({ count: 1, total: 400 })
     expect(uncollectible.items[0]?.key).toBe('inv:i1')
     expect(buildArBucket(jobs, [invoice({ id: 'i1', job_id: 'j1', amount: 400 }), invoice({ id: 'i2', job_id: 'j2', amount: 300 })], []).total).toBe(300)
+  })
+})
+
+describe('buildArBuckets — a bill an in kind deal pays (punch list #301)', () => {
+  const dated = (id: string, job_id: string, amount: number) => invoice({ id, job_id, amount, billed_at: '2026-04-01T12:00:00Z' })
+
+  it('a covered bill is its own bucket: out of ar, with no date for any reader to age', () => {
+    const { ar, collections, inKind } = buildArBuckets([job({ id: 'j1', in_kind_arrangement_id: 'deal-1' })], [dated('i1', 'j1', 4200)], [{ invoice_id: 'i1', amount: 1000 }])
+    expect(ar).toMatchObject({ count: 0, total: 0, oldestDateYmd: null })
+    expect(collections.count).toBe(0)
+    expect(inKind).toMatchObject({ count: 1, total: 3200, oldestDateYmd: null })
+    expect(inKind.items[0]).toMatchObject({ key: 'inv:i1', dateYmd: null, sublabel: `Billed invoice · ${AR_IN_KIND_SUBLABEL}` })
+  })
+
+  it('a payer part covered keeps the bill off the deal as money owed, aged as before', () => {
+    const jobs = [job({ id: 'j1', customer_id: 'c1', in_kind_arrangement_id: 'deal-1' }), job({ id: 'j2', hcp_number: '502', customer_id: 'c1' })]
+    const { ar, inKind } = buildArBuckets(jobs, [dated('i1', 'j1', 4200), dated('i2', 'j2', 900)], [])
+    expect(ar).toMatchObject({ count: 1, total: 900, oldestDateYmd: '2026-04-01' })
+    expect(ar.items[0]?.key).toBe('inv:i2')
+    expect(inKind).toMatchObject({ count: 1, total: 4200 })
+    // The merged AR is the money alone.
+    expect(buildArBucket(jobs, [dated('i1', 'j1', 4200), dated('i2', 'j2', 900)], []).total).toBe(900)
+  })
+
+  it('an ordinary late bill is untouched', () => {
+    const { ar, inKind } = buildArBuckets([job({ id: 'j1', in_kind_arrangement_id: null })], [dated('i1', 'j1', 1800)], [])
+    expect(ar).toMatchObject({ count: 1, total: 1800, oldestDateYmd: '2026-04-01' })
+    expect(inKind).toMatchObject({ count: 0, total: 0 })
+  })
+
+  it('a deal’s bill parked in Collections leaves Collections too, and one given up on stays Uncollectible', () => {
+    const jobs = [
+      job({ id: 'j1', collections_at: '2026-08-01', in_kind_arrangement_id: 'deal-1' }),
+      job({ id: 'j2', hcp_number: '502', collections_at: '2026-08-01', uncollectible_at: '2026-10-07', in_kind_arrangement_id: 'deal-1' }),
+    ]
+    const { collections, uncollectible, inKind } = buildArBuckets(jobs, [dated('i1', 'j1', 400), dated('i2', 'j2', 300)], [])
+    expect(collections.count).toBe(0)
+    expect(inKind).toMatchObject({ count: 1, total: 400 })
+    expect(uncollectible).toMatchObject({ count: 1, total: 300 })
+  })
+
+  it('a deal’s bill paid off and not yet marked Paid stays a Mark Paid to-do', () => {
+    const { ar, inKind } = buildArBuckets([job({ id: 'j1', in_kind_arrangement_id: 'deal-1' })], [dated('i1', 'j1', 400)], [{ invoice_id: 'i1', amount: 400 }])
+    expect(inKind.count).toBe(0)
+    expect(ar).toMatchObject({ count: 1, total: 0 })
+    expect(ar.items[0]?.sublabel).toContain(AR_SETTLED_SUBLABEL)
+  })
+
+  it('a billed job with no bill rows on a deal is set apart by its shell remainder', () => {
+    const { ar, inKind } = buildArBuckets([job({ id: 'j1', revenue: 1000, payments_made: 250, in_kind_arrangement_id: 'deal-1' })], [], [])
+    expect(ar.count).toBe(0)
+    expect(inKind).toMatchObject({ count: 1, total: 750 })
+    expect(inKind.items[0]?.sublabel).toBe(`Billed job · ${AR_IN_KIND_SUBLABEL}`)
+  })
+})
+
+describe('the receivables card’s words on in kind (punch list #301)', () => {
+  it('one line names what the total leaves out, and nothing when no bill is on a deal', () => {
+    expect(arInKindLine({ count: 8, total: 14643.46 })).toBe('$14,643 on 8 bills is scheduled in kind, not money owed')
+    expect(arInKindLine({ count: 0, total: 0 })).toBeNull()
+    expect(arInKindLine(null)).toBeNull()
+  })
+  it('the drill-down’s footer says what its total leaves out', () => {
+    expect(arFooterTotalLabel({ collections: false, inKind: false })).toBe('Total')
+    expect(arFooterTotalLabel({ collections: true, inKind: false })).toBe('Total (excl. Collections)')
+    expect(arFooterTotalLabel({ collections: false, inKind: true })).toBe('Total (excl. in kind)')
+    expect(arFooterTotalLabel({ collections: true, inKind: true })).toBe('Total (excl. Collections and in kind)')
   })
 })

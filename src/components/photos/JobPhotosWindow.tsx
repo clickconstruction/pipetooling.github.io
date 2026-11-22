@@ -42,6 +42,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { JobPhotosRead } from '../../lib/photos/jobPhotos'
 import { captionWords, dayGroups, jobWindowPath, threadPath, timeWords, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
 import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
+import { KeepSpotPress } from '../paintedMap/KeepSpotPress'
 import { supabaseJobPhotosWindowIo, type JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 import {
   JOB_PHOTO_DESCRIPTION_MAX,
@@ -320,6 +321,8 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
                     </span>
                     <textarea value={t.description} maxLength={JOB_PHOTO_DESCRIPTION_MAX} onChange={(e) => host.setDescription(t.id, e.target.value)} style={box} rows={2} data-shot-words={t.id} />
                   </label>
+                  {/* One press keeps this photo's spot on the job (punch list #413). A plain photo skips it. */}
+                  <KeepSpotPress job={{ jobId: job.id, label: jobShortLabel(job), address: job.job_address ?? null }} previewUrl={t.previewUrl} takenAt={t.takenAt} waiting={t.status === 'shrinking'} />
                   {offersWordsForTheRest(host.tiles, t.id) ? (
                     <button type="button" style={quiet} onClick={() => host.useWordsForTheRest(t.id)}>
                       {JOB_PHOTO_WORDS.useForRest}

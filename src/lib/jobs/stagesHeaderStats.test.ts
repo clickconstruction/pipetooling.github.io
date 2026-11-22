@@ -5,6 +5,7 @@ import {
   COLLECTED_DAYS,
   collectedByDayFromPayments,
   computeStagesHeaderStats,
+  LEAN_STATS_JOB_COLUMNS,
   type LeanStatsInvoiceRow,
   type LeanStatsJobRow,
   type LeanStatsPaymentRow,
@@ -296,5 +297,11 @@ describe('collectedByDayFromPayments · the window ends today on the company cal
     expect(days.length).toBe(30)
     expect(days[0]!.dayYmd).toBe('2026-09-03')
     expect(days[days.length - 1]).toEqual({ dayYmd: '2026-10-02', total: 50 })
+  })
+})
+
+describe('the lean read carries the in kind column (punch list #301)', () => {
+  it('selects in_kind_arrangement_id, which jobIsScheduledInKind reads on the cached chips, Quickfill and Call mode’s count', () => {
+    expect(LEAN_STATS_JOB_COLUMNS.split(', ')).toContain('in_kind_arrangement_id')
   })
 })

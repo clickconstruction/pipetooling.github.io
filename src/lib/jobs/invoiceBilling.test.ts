@@ -21,6 +21,8 @@ import {
   billedStageRowAgingBucket,
   billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
+  buildBilledInKindBucket,
+  billedStageRowIsInKind,
   buildBilledNoLineBucket,
 } from './invoiceBilling'
 
@@ -394,5 +396,46 @@ describe('stageRowBilledAgeDays · the evening reads today on the company calend
     expect(stageRowBilledAgeDays(row, new Date('2026-06-01T00:30:00Z'))).toBe(10)
     expect(printBilledRowReferenceDate(row, new Date('2026-06-01T00:30:00Z')).ageDays).toBe(10)
     expect(stageRowBilledAgeDays(row, new Date('2026-06-01T12:00:00Z'))).toBe(11)
+  })
+})
+
+describe('a bill an in kind deal pays never ages on the board (punch list #301)', () => {
+  const NOW = new Date('2026-11-21T12:00:00Z')
+  const billed = (id: string, deal: string | null, amount: number, paid = 0) =>
+    job({
+      id,
+      status: 'billed',
+      revenue: amount,
+      payments_made: paid,
+      in_kind_arrangement_id: deal,
+      invoices: [inv({ id: `${id}-inv`, job_id: id, status: 'billed', billed_at: '2026-04-01T15:00:00Z', amount })],
+      payments: paid > 0 ? [{ id: `${id}-pay`, job_id: id, invoice_id: `${id}-inv`, amount: paid, paid_on: '2026-04-01' }] : [],
+    })
+  const rowOf = (j: JobWithDetails): StageRow => ({ kind: 'invoice', inv: j.invoices![0]!, job: j })
+
+  it('a covered bill has no clock, so it is in neither chip, and the In kind bucket counts what is open on it', () => {
+    const covered = billed('k', 'deal-1', 4200, 1000)
+    expect(stageRowBilledAgeReference(rowOf(covered))).toBeNull()
+    expect(stageRowBilledAgeDays(rowOf(covered), NOW)).toBeNull()
+    expect(billedStageRowAgingBucket(rowOf(covered), NOW)).toBeNull()
+    expect(buildBilledAgingBuckets([covered], NOW)).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 })
+    expect(billedStageRowIsInKind(rowOf(covered))).toBe(true)
+    expect(buildBilledInKindBucket([rowOf(covered)])).toEqual({ count: 1, sum: 3200 })
+  })
+
+  it('a payer part covered: the bill off the deal still lands in 90+, the covered one in the In kind bucket', () => {
+    const covered = billed('k', 'deal-1', 4200)
+    const money = billed('m', null, 900)
+    expect(buildBilledAgingBuckets([covered, money], NOW)).toEqual({ count30_90: 0, sum30_90: 0, count90: 1, sum90: 900 })
+    expect(buildBilledInKindBucket([rowOf(covered), rowOf(money)])).toEqual({ count: 1, sum: 4200 })
+  })
+
+  it('an ordinary late bill is aged as before, and a paid-off bill on a deal is not counted as in kind', () => {
+    const late = billed('m', null, 1800)
+    expect(billedStageRowAgingBucket(rowOf(late), NOW)).toBe('90')
+    expect(billedStageRowIsInKind(rowOf(late))).toBe(false)
+    const settled = billed('s', 'deal-1', 400, 400)
+    expect(billedStageRowIsInKind(rowOf(settled))).toBe(false)
+    expect(buildBilledInKindBucket([rowOf(settled)])).toEqual({ count: 0, sum: 0 })
   })
 })

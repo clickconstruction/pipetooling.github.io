@@ -2,7 +2,7 @@
 name: "A photo keeps its spot on the job"
 number: 413
 group: ready
-status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186
+status: asked by Taunya 2026-11-21 as an idea to explore · read from the code, counted through the dev seat and drawn the same day · gone over a second time on her word *is this the best we can do?* · her word to card it the same day · three changes of hers drawn in the same day · her word the same day to build it all in the session that carded it, *Please build it all here* · building on claude/413-*, step 0 is v2.8186, the new place sheet is v2.8188, Photo of a spot is v2.8191 and Keep this spot on the job is v2.8193
 summary: >
   Taunya asked whether photos should be tied to places on a map, perhaps on a Map tab of the job
   window. Half of it is in the app and unused: a job can keep named places with a mark, a line of
@@ -241,27 +241,35 @@ is never read when the photo sends. Setting a place must not need the map's pict
    called. It starts with the lock timeout, gets its page in `docs/migrations/`, and is pushed with
    `supabase db push` after its merge and before PR 1 is armed. The table held no row on
    2026-11-21. Read the constraint's real name on prod before writing the drop.
-1. **Photo of a spot, from the job (S).** A press beside **＋ Place on this job** in
+1. **The new place sheet (S). Built in v2.8188.** Taunya's three changes, on the sheet every place
+   is set from: the kinds as presses two to a row and 56 px tall with **＋ Something else** under
+   them, **What is buried?** under **Buried line** with each answer a kind in its locator's color,
+   and **Describe it** at any length with a short form for a row, a picture's key and a text. It was
+   split from the photo press so each could ship alone.
+1b. **Photo of a spot, from the job (S). Built in v2.8191.** A press beside **＋ Place on this job** in
    `src/components/paintedMap/JobPaintedMapsStrip.tsx`. The camera opens at once. The place sheet
    (`src/components/paintedMap/PaintedPlacePanel.tsx`) then opens with the photo in it and the dot
    where the person stands, read once through `requestMyFix` in `src/lib/materials/myLocation.ts`
-   and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, puts the dot on
-   the job's address. The sheet's kinds become presses two to a row and 56 px tall, with
-   **＋ Something else** under them. **Buried line** opens **What is buried?**, and each answer is a
-   kind with its color (`src/lib/paintedMap/paintedPlaceKind.ts`, whose rule that every mark is ink
-   but a hazard changes with this). **Describe it** takes the place's words at any length up to the
-   new cap, and one kernel gives every other surface its short form: the rows, the mark's label, the
-   printed page (`src/lib/paintedMap/paintedMapPrint.ts`), the picture
-   (`src/lib/paintedMap/paintedMapPicture.ts`), the copied text
-   (`src/lib/paintedMap/paintedMapText.ts`) and the public page (`src/pages/PaintedWay.tsx`). An
-   older build of the app draws a kind it does not know as the plain dot, which is the file's own
-   rule. The list of places draws each photo beside its name.
-   A place set with no signal has to wait on the phone as a photo does: read what the sheet does
-   today before building. The guide `src/content/help/paint-a-map.md` gains a section.
-2. **Keep this spot on the job, from a photo (S).** The same sheet from one press on
+   and judged by `src/lib/paintedMap/preciseLocation.ts`. A rough reading, or none, moves no dot:
+   it starts on the job's address or where the map is looking, and the sheet says why. A weak
+   reading still sets the dot, with an amber line that says to drag it, which is the place sheet's
+   own rule and not the mock-up's *On the house*. A photo more than five minutes old takes no
+   reading. The list of places already draws each photo beside its name.
+   **Not built:** a place set with no signal. Today the sheet says the save failed and keeps the
+   photo and the words while it stays open. A place that waits on the phone as a photo does is its
+   own step, 2b below. The guide `src/content/help/paint-a-map.md` gains a section.
+2. **Keep this spot on the job, from a photo (S). Built in v2.8193.** The same sheet from one press on
    a photo in the Job photos window (`src/components/photos/JobPhotosWindow.tsx`) and on a report's
-   photo (`src/hooks/useReportPhotos.ts`). A plain photo is one press to skip. A photo whose own
-   time is more than a few minutes old does not take the phone's spot.
+   photo (`src/components/reports/ReportPhotoTiles.tsx`), through one small press,
+   `src/components/paintedMap/KeepSpotPress.tsx`. A plain photo is one press to skip. A photo whose
+   own time is more than five minutes old does not take the phone's spot. The phone is read on this
+   press and not when the camera opened, since the photo is already on the screen. Of the report
+   forms, Leave Report alone has the press: New report, Turnaway and the edit of a saved report do
+   not.
+
+2b. **A spot set with no signal waits on the phone (S).** A new kind of waiting press, with the
+   photo's bytes kept as a job photo's are (`src/lib/offline/outbox.ts`,
+   `src/lib/offline/keptPhotos.ts`).
 
 The card's first pick was to stop here and watch for three or four weeks. Taunya's word of
 2026-11-21 is to build the later steps too.

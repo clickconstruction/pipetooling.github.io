@@ -14,7 +14,7 @@ import { levelInk, levelTone } from './levelTone'
 import { PAPER_OFF, paperStops, stopAt, stopPercent, stopRank, stopShortName, type PaperDef, type PaperStop } from '../../lib/documentBuilder/documentBuilder'
 
 /** The handle is this wide, so a stop's centre sits a little inside the track's ends. */
-const HANDLE_PX = 22
+const HANDLE_PX = 30
 /** The track's units between two stops: enough for the handle to glide. */
 const UNIT = 100
 
@@ -202,6 +202,8 @@ export function DocumentBuilderSlider({
                 background: 'none',
                 padding: '4px 0',
                 minHeight: 44,
+                // A stop's name can be as short as *Off*: the press is at least a finger wide, and the name keeps its place.
+                minWidth: i === 0 || i === last ? 44 : 56,
                 fontFamily: 'inherit',
                 fontSize: '0.78rem',
                 lineHeight: 1.3,

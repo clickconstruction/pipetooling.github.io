@@ -19,6 +19,10 @@ mockup: not required — a count line and a door that exist, a dev-only form of 
 
 # Every People record has a users row, and the drafted days have a door
 
+## Where it stands
+
+**Read 2026-11-21**, through the dev seat on production, read-only. `people` rows with `account_user_id` null: 2, unchanged. One record is archived since 2026-08-01. The other is an active placeholder record since 2026-09-06. The gate, 0, is not met. It still waits on the owner's word about the two records.
+
 ## The ask
 
 The dev, 2026-11-04, after the users-without-login train shipped: "is there anything else we should do to make it clean and robust and more useful for the future?" — "Yes, make cards" — "do them all here".

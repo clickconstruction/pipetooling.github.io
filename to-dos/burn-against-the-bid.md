@@ -3,21 +3,25 @@ name: "Burn against the bid: the priced footing"
 number: 102
 mockup: not required — a budget footing that waits on priced-margin stamps; no decision pending
 group: waiting
-status: pieces 1 and 2 shipped (v2.5043 the priced margin, v2.5046 the dollar burn and earned value by stage) · left — the fourth footing, once stamps exist
+status: pieces 1 and 2 shipped (v2.5043 the priced margin, v2.5046 the dollar burn and earned value by stage) · left — the fourth footing, once a job sits on a stamped bid whose stamp is costed (read 2026-11-21: 28 real bids carry a stamp, none is on a job and every one reads high)
 summary: >
   The two pieces the Burn train (v2.3297–v2.3306) deferred, approved by the owner on 2026-10-09.
   Piece 1 keeps the margin a bid was priced at on the bid and reads it beside the job's burn.
   Piece 2 is earned value by stage and per-component burn beyond hours on Bids → Bid Costs → Bid
   vs actual. Last, a fourth budget footing: a job whose bid has no usable estimate budgets at
   price × (1 − priced margin) instead of the 35 % assumption.
-next: When real bids carry priced-margin stamps, the fourth budget footing — a job whose bid has no usable estimate budgets at price × (1 − priced margin).
+next: When a job sits on a stamped bid whose stamp is costed (real bids carry priced-margin stamps on 2026-11-21, so the old gate is met in letter only; build nothing until then), the fourth budget footing — a job whose bid has no usable estimate budgets at price × (1 − priced margin).
 size: S
-blocker: Stamps on real bids (the first priced bid after the v2.5043 push); stage-mode field reports for earned value by stage to light up.
+blocker: A job on a stamped bid whose stamp is costed (stamps on real bids, the old gate, is met in letter only on 2026-11-21: 28 carry one, none is linked to a job and every one reads high); stage-mode field reports for earned value by stage to light up.
 ver: v2.5043 · 5046
 opinion: later — both pieces are built; the footing needs real stamps to test against, and earned value by stage needs crews reporting stage progress.
 ---
 
 # Burn against the bid: what the train deferred
+
+## Where it stands
+
+**Read 2026-11-21**, through the dev seat on production, read-only, from `bids.priced_*`, `jobs_ledger.bid_id` and `job_budgets`. The fourth footing's gate was that real bids carry stamps. 28 of the 392 bids that are not ZZ test bids carry a priced stamp, stamped from 2026-10-12 to 2026-11-20 (the 96 ZZ bids are left out). So the gate is met in letter only. No job is linked to a stamped bid, so the priced-margin footing would give a budget to no job today. One of the 28 stamps has a labor rate and all 28 carry uncosted revenue, so every stamp reads high, 63 to 100%. That is the stamp this card says must not become a budget. Build nothing until a job sits on a stamped bid whose stamp is costed.
 
 ## The ask
 

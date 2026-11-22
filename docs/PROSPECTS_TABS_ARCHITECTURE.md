@@ -93,7 +93,8 @@ The top row (1290–1311) draws six pills: **Customers**, **Jobs to GC** and **S
 | Convert | Customers | prospect → customer with contact persons and first bids, on one form |
 | Activity | every lane, dev and assistant-like | the week report, Source success on a lane, Marked / Updated by day |
 | Hiring (`team`) | — | `TeamProspectsTab`: the five-stage hiring board |
-| Permits (`permits`) | — | `ProspectsResearchTab`: the cities' permit feeds, the skim, Investigate / Pursue / Pass / Has a plumber, Builders, Find |
+| Permits (`permits`) | — | `ProspectsResearchTab`: the cities' permit feeds, the skim, Investigate / Pursue / Pass / Has a plumber, Builders, Market, Find |
+| State roll (`roll`) | — | `StateRollTab`: the state's licensed plumbers kept for our counties and our own numbers, the Pulls view |
 
 One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` selects the lane (`gc-leads` or `subs`; the customer deck keeps its bare URL). See [URL / navigation router](#url--navigation-router-parent-permanent).
 
@@ -103,6 +104,7 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 - **`canAccessActivityTab`** (244): `authRole === 'dev' || isAssistantLike(authRole)`.
 - **`canOpenHiring`** (108): `teamProspectsAccess || myHiringShares.length > 0`. `useMyHiringShares` (107) reads the viewer's own `team_prospect_role_shares` rows. A share holder without the switch gets the trimmed board, because the page passes `shared={!teamProspectsAccess}`.
 - **`canResearch`** (110): `canResearchPermits(authRole)`, the office and every estimator, flagged or not.
+- **`canReadRoll`**: `teamProspectsAccess`, the Hiring switch itself, the gate the roll's tables keep (`user_can_read_license_roll()`). A shared Hiring column does not open State roll.
 - **Lane rules, in the router (299) and in `setKindTab` (412):** `board` needs `kind === 'sub'`, `convert` needs `kind === 'customer'`. Either falls back to Follow Up.
 - **The GC tables are read fail-soft.** A role they refuse sees the Subs and Jobs to GC lanes without their strips.
 
@@ -363,8 +365,8 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 - **Render location:** page 1372: `<ProspectsResearchTab authUserId={authUser.id} />`. The key was `research` until v2.6787, and the old key still opens the tab and is rewritten.
 - **In the parent:** `canResearch` (110), the `?tab=` branch 278–295, `openResearchTab` 429–438 (it drops the tab's own address keys through `permitsLinkCleared`, so the tab's name opens on Skim), and the estimator's landing (322).
-- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (814 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitMarket` with `PermitCallList` and `PermitMarketShape`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
-  - Its views: Skim, Investigating, Pursuing, Closed, the second look, Find, Builders, the ledger and the map. On a phone their strip scrolls sideways, and `useLitPillInView` keeps the lit step in view by its `aria-pressed`.
+- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (814 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitMarket` with `PermitCallList` (its rows' `PermitAskFor`) and `PermitMarketShape`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
+  - Its views: Skim, Investigating, Pursuing, Closed, the second look, Find, Builders, Market, the ledger and the map. On a phone their strip scrolls sideways, and `useLitPillInView` keeps the lit step in view by its `aria-pressed`.
   - Its four verdicts (`VERDICT_WORDS`): **Pursue**, **Investigate**, **Pass**, **Has a plumber**. Pursue makes a lead on the Customers deck or on Jobs to GC (`approachFromPermit`: a `prospects` row, and a `prospect_jobs` row for a lead), which is the tab's one write into this page's tables.
   - Its cities come from `RESEARCH_CITIES`; the feeds are read by the edge functions `permit-pull` and `permit-lookup`. The city picker's rows come from `usePermitCityQuiet` over `permitQuiet.ts`: each city's newest permit day, or *quiet since* that day.
   - Its address keys (`view=builders` or `view=market`, `looks=1`, `city=`) are read and written through `src/lib/research/permitsLink.ts`.
@@ -478,6 +480,7 @@ All of it is in the page.
   - `subs` and `gc-leads` are doors, not tabs (252–261): each is rewritten to `tab=follow-up` with `kind=`.
   - `team` requires `canOpenHiring` (265–277); otherwise it rewrites to `follow-up` (`replace: true`).
   - `permits` (or the older `research`, rewritten to `permits`) requires `canResearch` (278–295); otherwise it rewrites.
+  - `roll` requires `canReadRoll`; otherwise it rewrites to `follow-up` (`replace: true`) and lands on the calling deck.
   - `activity` requires `canAccessActivityTab`, `convert` the Customers lane, `board` the Subs lane (299); otherwise it rewrites.
   - A missing tab resolves through [`resolveProspectsLanding`](../src/lib/prospects/prospectsLanding.ts) and is written into the URL (314–327). An estimator with no Prospects flag lands on `permits` (322).
   - `setTab`, `setKindTab`, `openTeamTab` and `openDoubleProspect` remember the clicked top tab in localStorage (`prospects:lastTopTab`); `openResearchTab` and URL-driven landings never write it. Each also sets `?tab=` and deletes `prospect_id`.

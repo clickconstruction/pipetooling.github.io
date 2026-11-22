@@ -84,7 +84,7 @@ describe('fetchStagesHeaderStats', () => {
     expect(r.ok).toBe(true)
     const jobs = q('jobs_ledger')
     expect(argsOf(jobs.steps, 'select')[0]![0]).toBe(
-      'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, job_name, customer_name',
+      'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, job_name, customer_name, in_kind_arrangement_id',
     )
     expect(argsOf(jobs.steps, 'or')).toEqual([[`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`]])
     expect(argsOf(jobs.steps, 'order')).toEqual([['id']])
