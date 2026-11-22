@@ -23,6 +23,7 @@ import {
   keptPlanPersonOfArgs,
   keptPlanStoredArgs,
   keptPlanVerbOfApply,
+  keptPlanWhyTail,
   keptPlanWholeQuery,
   keptPlanWholeReply,
   keptPlansInput,
@@ -239,6 +240,22 @@ describe('v2.8102: a plan taken off is not applied, a replaced document is commi
     expect(dropped).toBe('Nothing written: this plan was kept for a yes and dropped by Dev One: Not this week. A dropped plan is never applied. If it is wanted after all, plan it again with keep: true and wait for the yes.')
     const stale = keptPlanOffWords([{ args: { entry: ENTRY }, state: 'stale', decided_why: 'The narrative was saved since.' }], sent)
     expect(stale).toBe('Nothing written: this plan was kept for a yes and went stale: The narrative was saved since. Plan again, and keep the new plan if it still needs a yes.')
+  })
+
+  it('ends the reason with one stop, whatever the reason was written with', () => {
+    expect(keptPlanWhyTail('Not this week')).toBe(': Not this week.')
+    expect(keptPlanWhyTail('Not this week.')).toBe(': Not this week.')
+    expect(keptPlanWhyTail('  Not this week. . ')).toBe(': Not this week.')
+    expect(keptPlanWhyTail('Why this one?')).toBe(': Why this one?')
+    expect(keptPlanWhyTail('')).toBe('.')
+    expect(keptPlanWhyTail(null)).toBe('.')
+    // A person's reason that ends in a stop read with two, and the stale check's with none read as one run.
+    const dropped = keptPlanOffWords([{ args: { entry: ENTRY }, state: 'dropped', decided_label: 'Dev One', decided_why: 'It failed the list check.' }], sent)
+    expect(dropped).toContain('dropped by Dev One: It failed the list check. A dropped plan is never applied.')
+    expect(dropped).not.toContain('..')
+    const stale = keptPlanOffWords([{ args: { entry: ENTRY }, state: 'stale', decided_why: 'The narrative was saved since' }], sent)
+    expect(stale).toContain('went stale: The narrative was saved since. Plan again,')
+    expect(keptPlanOffWords([{ args: { entry: ENTRY }, state: 'stale' }], sent)).toContain('went stale. Plan again,')
   })
 
   it('lets through a plan never kept, one that still waits, one kept again after a drop, and another plan under the same hash', () => {

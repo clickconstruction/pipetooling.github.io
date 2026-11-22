@@ -209,9 +209,19 @@ export function keptPlanOffWords(rows: ReadonlyArray<{ args?: unknown; state: st
   if (mine.some((r) => r.state === 'waiting')) return null
   const off = mine.find((r) => r.state === 'dropped' || r.state === 'stale')
   if (!off) return null
-  const why = off.decided_why?.trim() ? `: ${off.decided_why.trim()}` : ''
+  const why = keptPlanWhyTail(off.decided_why)
   if (off.state === 'stale') return `Nothing written: this plan was kept for a yes and went stale${why} Plan again, and keep the new plan if it still needs a yes.`
-  return `Nothing written: this plan was kept for a yes and dropped${off.decided_label?.trim() ? ` by ${off.decided_label.trim()}` : ''}${why}. A dropped plan is never applied. If it is wanted after all, plan it again with keep: true and wait for the yes.`
+  return `Nothing written: this plan was kept for a yes and dropped${off.decided_label?.trim() ? ` by ${off.decided_label.trim()}` : ''}${why} A dropped plan is never applied. If it is wanted after all, plan it again with keep: true and wait for the yes.`
+}
+
+/**
+ * v2.8242: the reason as the end of a sentence, with one stop whatever the reason was written with. A person's reason
+ * may end in a full stop and the stale check's may not, and the off words read either with two stops or with none.
+ */
+export function keptPlanWhyTail(why: string | null | undefined): string {
+  const said = (why ?? '').trim().replace(/[.\s]+$/, '')
+  if (!said) return '.'
+  return /[!?]$/.test(said) ? `: ${said}` : `: ${said}.`
 }
 
 /** v2.8102: the fixed documents an HR entry plan replaces or adds to. The plan commits to when each last changed. */
