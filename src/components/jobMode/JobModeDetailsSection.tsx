@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
@@ -26,6 +26,8 @@ import { JobFirstLookStrip } from '../firstLook/JobFirstLookStrip'
 import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
+import { JOB_CARD_FIRST_ROW_WORDS, JOB_CARD_ROW_WORDS, phoneAsWritten, rowCountWords } from '../../lib/phoneLayout/jobCard'
+import { CARD_PRESS, CardFold, CardRow } from './JobModePhoneCardParts'
 
 type CustomerContact = {
   customer_name: string | null
@@ -97,6 +99,35 @@ function googleMapsSearchUrlForAddress(address: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}`
 }
 
+/** What the card hands the section under the new phone layout: its own pieces, drawn in the section's new order. */
+export type JobModeDetailsPhone = {
+  /** Opens directions to the job's address. Null with no address to route to, and then no Directions press. */
+  onDirections: (() => void) | null
+  /**
+   * Text: the card's own Message the customer door in the first row's shape, where the role and the day already
+   * offer it. Null where they do not, and then the row has no Text press. Never a new way to text a customer.
+   */
+  textPress: ReactNode | null
+  /** Today's stops, the trip and a failed read of the day: drawn under the contact lines. */
+  day: ReactNode
+  /** The card's own doors, as rows: Materials on site first, Job calendar last. */
+  materialsRow: ReactNode
+  calendarRow: ReactNode
+  /** My spend: the last press of the row Paint a map and Place on this job share. */
+  pressRowEnd: ReactNode
+  /** The card's quiet presses: Make change order, Hand the phone, My statement. */
+  links: ReactNode
+  /** Tells the press record that Job details was opened from the card, where the square's presses were counted. */
+  onJobDetailsPressed?: () => void
+}
+
+/** The first row's presses share the width equally: one, two or three of them. */
+const firstRow: CSSProperties = { display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(0, 1fr)', gap: 6 }
+/** The quiet line under the first row: whose number, and the number as a phone number. */
+const phoneLine: CSSProperties = { margin: 0, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.35 }
+/** The customer's address as a 44 px press that copies it: the words at the left, what the press does at the end. */
+const emailPress: CSSProperties = { ...CARD_PRESS, width: '100%', justifyContent: 'flex-start', padding: '0 0.7rem', fontWeight: 600 }
+
 /**
  * Job Mode card tail for the CURRENT job: customer contact (tap-to-call /
  * tap-to-email), a Job Detail opener, the address Street View photo, and the
@@ -113,6 +144,7 @@ export default function JobModeDetailsSection({
   updatesRev = 0,
   onMessageCustomer,
   arrivalAbove = false,
+  phone: phoneCard,
 }: {
   jobId: string
   jobAddress: string
@@ -133,6 +165,12 @@ export default function JobModeDetailsSection({
    * is text with a copy press, not a `mailto:`.
    */
   onMessageCustomer?: () => void
+  /**
+   * The new phone layout (`lib/phoneLayout/jobCard.ts`): the same pieces in the card's new order. Call, Directions
+   * and Text first, the number as a phone number under them, then the card's rows. The card hands over the pieces
+   * it owns, to be drawn in their place. Left out, the section is the section it was.
+   */
+  phone?: JobModeDetailsPhone
 }) {
   const { user: authUser, profileName, role } = useAuth()
   const { showToast } = useToastContext()
@@ -265,6 +303,8 @@ export default function JobModeDetailsSection({
   const jobLead = useJobLeadContact(jobId, forSub)
   const officePhone = useFirstAssistantDispatchPhone(forSub)
   const ourLead = forSub && jobLead.loaded ? ourLeadWords(jobLead.lead, officePhone?.display ?? null) : null
+  /** Job updates is one of the card's rows under the new phone layout, opening in place. Shut until pressed. */
+  const [updatesOpen, setUpdatesOpen] = useState(false)
   const name = contact?.customer_name?.trim() ?? ''
   const phone = forSub ? '' : (contact?.customer_phone?.trim() ?? '')
   const email = forSub ? '' : (contact?.customer_email?.trim() ?? '')
@@ -279,6 +319,139 @@ export default function JobModeDetailsSection({
     } catch {
       await promptDialog({ title: 'Copy the email address', message: 'The app could not reach the clipboard. Select the address below and copy it.', defaultValue: email, confirmLabel: 'I copied it' })
     }
+  }
+
+  // The new phone layout: the same pieces, each once, in the order a thumb needs them. Every press opens what it
+  // opens in the layout under this one, and nothing here reads or writes anything the old layout does not.
+  if (phoneCard) {
+    const callNumber = phone || ourLead?.phone || ''
+    const callAria = phone ? `Call customer at ${phone}` : ourLead?.phone ? `Call ${ourLead.name} at ${ourLead.phone}` : undefined
+    const updatesCount = threadNotes.loading ? null : threadNotes.activity.length + (customerLines?.length ?? 0)
+    const hasFirstRow = Boolean(callNumber || phoneCard.onDirections || phoneCard.textPress)
+    return (
+      <div data-job-mode-details="phone" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', minWidth: 0 }}>
+        {hasFirstRow ? (
+          <div style={firstRow} data-testid="job-card-first-row">
+            {callNumber ? (
+              // The same call the number's link made: the number as it is kept, handed to the phone.
+              <button type="button" style={CARD_PRESS} aria-label={callAria} onClick={() => openInExternalBrowser(`tel:${callNumber}`)} data-job-card-press="call">
+                <span aria-hidden>📞</span>
+                {JOB_CARD_FIRST_ROW_WORDS.call}
+              </button>
+            ) : null}
+            {phoneCard.onDirections ? (
+              <button type="button" style={CARD_PRESS} aria-label="Directions to the job’s address" onClick={phoneCard.onDirections} data-job-card-press="directions">
+                <svg width={18} height={18} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flex: 'none' }}>
+                  <path d="M12 2 22 12 12 22 2 12Z" />
+                  <path d="M9 14v-2a2 2 0 0 1 2-2h4" />
+                  <path d="m13 8 2 2-2 2" />
+                </svg>
+                {JOB_CARD_FIRST_ROW_WORDS.directions}
+              </button>
+            ) : null}
+            {phoneCard.textPress}
+          </div>
+        ) : null}
+        <p style={phoneLine} data-testid="job-card-phone-line">
+          {contact == null && contactWhyNone ? (
+            contactWhyNone
+          ) : !hasContact ? (
+            contact == null ? 'Loading…' : 'No customer contact on file'
+          ) : phone ? (
+            <>
+              Customer <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(phone)}</b>
+            </>
+          ) : ourLead?.phone ? (
+            <>
+              {ourLead.name} {ourLead.note} <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{phoneAsWritten(ourLead.phone)}</b>
+            </>
+          ) : (
+            'No phone number on file'
+          )}
+        </p>
+        {phoneCard.day}
+        <JobModeArrivalCheck jobId={jobId} />
+        <div data-job-card-rows style={{ display: 'grid', gap: 6 }}>
+          {phoneCard.materialsRow}
+          <JobModePhotosLine row jobId={jobId} hcpNumber={hcpNumber} jobName={jobName} jobAddress={jobAddress} />
+          <CardFold row="updates" title={JOB_CARD_ROW_WORDS.updates} count={rowCountWords(updatesCount)} open={updatesOpen} onToggle={() => setUpdatesOpen((o) => !o)} testId="job-card-updates">
+            <JobThreadNotesPanel
+              activity={threadNotes.activity}
+              loading={threadNotes.loading}
+              canPost={threadNotes.canPost}
+              draft={threadNotes.draft}
+              onDraftChange={threadNotes.setDraft}
+              onSubmit={() => void threadNotes.submitNote()}
+              tagJobId={jobId}
+              tagViewerId={authUser?.id ?? null}
+              onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
+              submitting={threadNotes.submitting}
+              sectionTitle="Job updates"
+              showSectionTitle={false}
+              // The row's own box is the one box: the panel and its note box are flat inside it.
+              hostCard
+              showEmptyPlaceholder={false}
+              viewerRole={role}
+              customerLines={customerLines}
+            />
+          </CardFold>
+          {jobDetailModal ? (
+            <CardRow
+              row="details"
+              title={JOB_CARD_ROW_WORDS.details}
+              ariaLabel="Open job detail"
+              onPress={() => {
+                phoneCard.onJobDetailsPressed?.()
+                jobDetailModal.openJobDetail({ jobId })
+              }}
+            />
+          ) : null}
+          {phoneCard.calendarRow}
+        </div>
+        <JobPaintedMapsStrip jobId={jobId} developmentId={contact?.development_id ?? null} jobLabel={[hcpNumber, jobName].filter(Boolean).join(' · ') || null} address={jobAddress} card={{ end: phoneCard.pressRowEnd }} />
+        {phoneCard.links}
+        <JobFirstLookStrip jobId={jobId} />
+        <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} hideWhileEmpty />
+        <JobModeMachinesLine jobId={jobId} jobWords={[hcpNumber, jobName].filter(Boolean).join(' · ')} />
+        {authUser?.id ? <TicketPress variant="line" jobId={jobId} userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
+        {name || ourLead || email ? (
+          <div data-testid="job-card-customer" style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+            <span style={sectionLabel}>Customer</span>
+            {name ? <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-gray-800)' }}>{name}</span> : null}
+            {ourLead ? (
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="job-mode-our-lead">
+                <span style={{ fontWeight: 600, color: 'var(--text-gray-800)' }}>{ourLead.name}</span> {ourLead.note}
+              </span>
+            ) : null}
+            {email ? (
+              // A tech never emails the customer from Job Mode: the address is copied, as before, by a press a thumb can hit.
+              <button type="button" style={emailPress} aria-label="Copy the customer’s email address" title="Copy the email address" onClick={() => void copyEmail()} data-testid="job-mode-customer-email-copy">
+                <span aria-hidden>✉</span>
+                <span data-testid="job-mode-customer-email" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {email}
+                </span>
+                <span style={{ marginLeft: 'auto', flex: 'none', paddingLeft: 8, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>COPY</span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {streetViewLoading || streetViewImgUrl ? (
+          <button
+            type="button"
+            onClick={openStreetView}
+            aria-label="Open Street View for the job address"
+            title="Open Street View"
+            style={{ padding: 0, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--bg-subtle)', cursor: streetViewImgUrl ? 'pointer' : 'default', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {streetViewImgUrl ? (
+              <img src={streetViewImgUrl} alt={`Street View of ${jobAddress}`} style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 200 }} />
+            ) : (
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Loading Street View…</span>
+            )}
+          </button>
+        ) : null}
+      </div>
+    )
   }
 
   return (

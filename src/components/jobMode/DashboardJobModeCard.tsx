@@ -48,6 +48,11 @@ import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
 import { MessageCustomerDoor } from './MessageCustomerDoor'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
+import { JOB_CARD_FIRST_ROW_WORDS, JOB_CARD_ROW_WORDS, oneStopLineWords, oneStopToday, phoneJobCardOn } from '../../lib/phoneLayout/jobCard'
+import { setFoldedJobId } from '../../lib/phoneLayout/foldedJob'
+import { directionsUrlForAddress } from '../../lib/directionsUrl'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { CARD_PRESS, CardRow, MySpendPress, recordCardPress } from './JobModePhoneCardParts'
 import FieldPctUpdateModal from '../dashboard/FieldPctUpdateModal'
 import {
   buildJobModePressBar,
@@ -392,6 +397,11 @@ const railFlagStyle: CSSProperties = {
   flexShrink: 0,
 }
 
+/** The rail under the new phone layout: a row a thumb can hit, and no words under 12 px. */
+const railRowRoomy: CSSProperties = { ...railRowBase, minHeight: 44, fontSize: '0.875rem' }
+const railTitleRoomy: CSSProperties = { ...railTitle, fontSize: '0.75rem' }
+const railFlagRoomy: CSSProperties = { ...railFlagStyle, fontSize: '0.75rem' }
+
 const errorRow: CSSProperties = {
   fontSize: '0.8125rem',
   textAlign: 'center',
@@ -410,7 +420,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const { showToast } = useToastContext()
   /** A phone (punch list #189, PR 2): the day's press leaves the card for the bar pinned above the tab bar. */
   const phone = useNarrowViewport640()
-  /** The new phone layout's switch (`lib/phoneLayout`): on, the press bar's buttons share one row. */
+  /** The new phone layout's switch (`lib/phoneLayout`): on, the press bar's buttons share one row and the card is laid out for a thumb. */
   const newPhoneLayout = useNewPhoneLayout()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
@@ -1174,6 +1184,335 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   )
   const jobDoor = phone ? jobDoorPressPhone : jobDoorPress
 
+  /**
+   * Today's stops. `roomy` is the new phone layout's card (`lib/phoneLayout/jobCard.ts`): the same rows and the same
+   * presses at a thumb's size, and a day that holds one stop is one line, the time and where it stands in the day.
+   * The job's name is in the card's title then, so the line does not say it again.
+   */
+  function renderRail(roomy: boolean) {
+    if (!dayOnScreen || dayRail.rows.length === 0) return null
+    const oneLine = roomy && oneStopToday(dayRail.rows.length)
+    return (
+      <div style={railWrap} data-job-mode-rail={oneLine ? 'one' : undefined}>
+        {oneLine ? null : (
+          <div style={roomy ? railTitleRoomy : railTitle}>
+            Today · {dayRail.doneCount} of {dayRail.totalCount} done
+          </div>
+        )}
+        {dayRail.rows.map((row) => {
+          const closedRow = closedJobs.has(row.block.job_id)
+          const locked = maskedJobs.has(row.block.job_id)
+          const tappable = closedRow || row.status === 'still-open' || row.status === 'upcoming'
+          const dot =
+            row.status === 'done' ? (
+              <span style={{ ...railDotBase, background: '#16a34a', color: 'white' }} aria-hidden="true">✓</span>
+            ) : row.status === 'current' ? (
+              <span style={{ ...railDotBase, border: '5px solid #16a34a', background: 'var(--surface)' }} aria-hidden="true" />
+            ) : row.status === 'still-open' ? (
+              <span style={{ ...railDotBase, border: '2px solid #d97706', color: '#d97706' }} aria-hidden="true">!</span>
+            ) : (
+              <span style={{ ...railDotBase, border: '2px solid var(--text-faint)' }} aria-hidden="true" />
+            )
+          const num = jobNumberLabel(row.block.service_type_id, row.block.hcp_number, row.block.click_number)
+          const name = safeTrim(row.block.job_name) || '—'
+          // The row's words: a date typed into the name reads as the day and the month and day. `name` stays for what a window saves.
+          const shownName = jobNameWithPlainDates(name)
+          return (
+            <Fragment key={row.block.job_id}>
+            <button
+              type="button"
+              disabled={!tappable || held}
+              className={held && tappable ? 'keptPress' : undefined}
+              title={held && tappable ? READING_AGAIN_WORDS : undefined}
+              aria-label={
+                locked
+                  ? `Sign the papers for ${num}`
+                  : tappable
+                  ? `Go to ${num} ${shownName}`
+                  : `${num} ${shownName} — ${row.status === 'current' ? 'current job' : 'done'}`
+              }
+              style={{
+                ...(roomy ? railRowRoomy : railRowBase),
+                cursor: tappable ? 'pointer' : 'default',
+                ...(row.status === 'current'
+                  ? { background: 'var(--bg-green-tint)', outline: '1.5px solid #16a34a' }
+                  : null),
+                ...(row.status === 'done' ? { color: 'var(--text-muted)' } : null),
+              }}
+              onClick={() => handleRailRowTap(row)}
+            >
+              {dot}
+              {oneLine ? null : <span style={railTimeStyle}>{formatBlockTime(row.block.time_start)}</span>}
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontWeight: 600,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {locked ? <LockedJobLine jobId={row.block.job_id} /> : oneLine ? oneStopLineWords(formatBlockTime(row.block.time_start)) : `${num} · ${shownName}`}
+              </span>
+              {row.status === 'current' ? (
+                <span style={{ ...(roomy ? railFlagRoomy : railFlagStyle), color: '#16a34a' }}>NOW</span>
+              ) : row.status === 'still-open' ? (
+                <span style={{ ...(roomy ? railFlagRoomy : railFlagStyle), color: '#d97706' }}>STILL OPEN</span>
+              ) : null}
+            </button>
+            {/* Equipment pre-use check (punch list #270, SPIKE): the machine stops under the job's row */}
+            {locked ? null : <RailMachineStops jobId={row.block.job_id} jobWords={`${num} · ${name}`} day={workDateYmd} userId={authUser?.id ?? null} byName={profileName} />}
+            </Fragment>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // The card's pieces that both layouts draw: each is written once here and placed by the layout.
+  const calendarWindow = jobCalendarOpen && jobCalendarTarget ? (
+    <JobCalendarModal
+      job={jobCalendarTarget}
+      onClose={() => setJobCalendarOpen(false)}
+      canOpenJobScheduleModal={false}
+      canOpenWeekDispatch={canOpenWeekDispatch}
+      onOpenSchedule={() => {}}
+      onOpenWeekDispatch={(selectedYmd) => {
+        const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
+        setJobCalendarOpen(false)
+        navigate(scheduleDispatchWeekUrl(jobCalendarTarget.id, week))
+      }}
+    />
+  ) : null
+  // The trip (punch list #379, PR 7b). Clocked in on a job, with the session landed: the question and the banner, after the clock in.
+  // Ready to start a job: the banner alone (no session, so nothing is asked). No job, no trip.
+  const tripBlock = held || sessionPending ? null : openSession?.jobLedgerId && leaveReportTarget?.id === openSession.jobLedgerId ? (
+    <JobModeTrip key={openSession.jobLedgerId} jobId={openSession.jobLedgerId} sessionId={openSession.id} travel={loading ? undefined : travelFacts} jobLabel={leavingLabel ?? leaveReportTarget.jobName} jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress} />
+  ) : !openSession && picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? (
+    <JobModeTrip key={picked.nextBlock.job_id} jobId={picked.nextBlock.job_id} sessionId={null} travel={null} jobLabel={safeTrim(picked.nextBlock.job_name) || '—'} jobAddress={safeTrim(picked.nextBlock.job_address) || null} />
+  ) : null
+  const errorPanel = error && !held ? (
+    // A read is safe to repeat: when the signal returns the card reads the day again by itself.
+    <OfflineRetryPanel failure={error} onRetry={reload} surface="job-mode-card" idempotent busy={loading} style={{ justifyContent: 'center' }} messageStyle={errorRow} />
+  ) : null
+  const myStatementLink = myStatement.url ? (
+    <div style={{ margin: '0 0 0.5rem', textAlign: 'center' }}>
+      <a
+        href={myStatement.url}
+        target="_blank"
+        rel="noopener"
+        aria-label="My statement — opens your work and pay portal"
+        style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
+      >
+        My statement ↗
+      </a>
+    </div>
+  ) : null
+  const changeOrderLink = dayOnScreen && writeUpChangeDoor && writeUpChangeJobId ? (
+    <button
+      type="button"
+      style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+      aria-label="Make change order"
+      title={held ? READING_AGAIN_WORDS : 'Make change order on this job — extra work the customer asked for'}
+      disabled={held}
+      className={held ? 'keptPress' : undefined}
+      onClick={() => setWriteUpChangeOpen(true)}
+    >
+      <WriteUpChangeGlyph size={16} />
+      Make change order
+    </button>
+  ) : null
+  const handPhoneLink = dayOnScreen && handPhoneDoor ? (
+    <button
+      type="button"
+      style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+      aria-label="Hand the phone to the customer to sign"
+      title={held ? READING_AGAIN_WORDS : handPhoneDoor.title}
+      disabled={handPhoneBusy || held}
+      className={held ? 'keptPress' : undefined}
+      onClick={() => void handThePhone()}
+      data-testid="job-mode-hand-phone"
+    >
+      <span aria-hidden>✍</span>
+      {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
+    </button>
+  ) : null
+  const writeUpWizard = writeUpChangeOpen && writeUpChangeJobId ? (
+    <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
+  ) : null
+  const pctWindow = pctJob ? (
+    <FieldPctUpdateModal
+      job={pctJob}
+      onClose={() => setPctJob(null)}
+      onSaved={() => setJobUpdatesRev((n) => n + 1)}
+    />
+  ) : null
+  const papersWindow = papersJob ? (
+    <JobPapersGateModal
+      jobId={papersJob}
+      role={role}
+      onClose={() => setPapersJob(null)}
+      onOpenJob={() => {
+        void rereadJobsClosedToMe().then(() => setPapersJob(null))
+      }}
+    />
+  ) : null
+  const onMyWaySheet = onMyWay ? (
+    <OnMyWaySheet
+      userId={userId}
+      me={profileName}
+      role={role}
+      destinations={advanceDestinations}
+      initialJobId={onMyWay.initialJobId ?? picked.nextBlock?.job_id ?? null}
+      leaving={leavingLabel}
+      canFinishDay={Boolean(openSession && canClockOut)}
+      apply={applyUpdateFocusDirect}
+      onFinishDay={() => {
+        setOnMyWay(null)
+        requestClockOut()
+      }}
+      io={onMyWayIo}
+      onDone={() => setJobUpdatesRev((n) => n + 1)}
+      onClose={() => setOnMyWay(null)}
+    />
+  ) : null
+  const imHereSheet = imHere && openSession && leaveReportTarget ? (
+    <ImHereSheet
+      sessionId={openSession.id}
+      jobId={leaveReportTarget.id}
+      jobLabel={leavingLabel ?? leaveReportTarget.jobName}
+      jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
+      jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
+      userId={userId}
+      me={profileName}
+      role={role}
+      travelFacts={travelFacts}
+      io={onMyWayIo}
+      onDone={() => {
+        setJobUpdatesRev((n) => n + 1)
+        void reload()
+      }}
+      onClose={() => setImHere(false)}
+    />
+  ) : null
+  const pressBarEl = pressBar ? (
+    <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} held={held} oneRow={newPhoneLayout.on} />
+  ) : null
+
+  // ── The new phone layout (`lib/phoneLayout/jobCard.ts`) ──
+  // The same day, the same job, the same presses and sheets: only where each piece is drawn changes. Off, at a
+  // desk, on the short page, with no job or with a job its papers close, the card below is the card it was.
+  const phoneCard = phoneJobCardOn({ on: newPhoneLayout.on, short, dayOnScreen, hasJob: detailsTarget != null, closedByPapers: detailsTarget != null && closedJobs.has(detailsTarget.id) })
+  // The squares above the card fold into it for this job, and for no other (`foldedJob.ts`).
+  const phoneCardJobId = phoneCard && detailsTarget ? detailsTarget.id : null
+  useEffect(() => {
+    setFoldedJobId(phoneCardJobId)
+  }, [phoneCardJobId])
+  useEffect(() => () => setFoldedJobId(null), [])
+
+  if (phoneCard && detailsTarget) {
+    const address = detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress
+    const directionsUrl = directionsUrlForAddress(address)
+    // Text is offered exactly where Message the customer is today: on the job the person is clocked onto, to the roles the door is for.
+    const textDoor =
+      !loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? (
+        <MessageCustomerDoor
+          jobId={leaveReportTarget.id}
+          jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
+          jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
+          userId={userId}
+          me={profileName}
+          style={CARD_PRESS}
+          words={JOB_CARD_FIRST_ROW_WORDS.text}
+          onDone={() => setJobUpdatesRev((n) => n + 1)}
+        />
+      ) : null
+    // The superintendent's line (punch list #242, PR 4), as on the card below.
+    const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} onAsked={() => setJobUpdatesRev((n) => n + 1)} /> : null
+    // What on the site wants a hand, under the row's name: the same two facts the line under the old press said.
+    const materialsNote = siteNews ? (
+      <span aria-label={`Materials on site: ${siteNews.plain}`} data-testid="job-mode-materials-news">
+        {siteNews.due ? (
+          <span style={jobDoorNewsDue} data-testid="job-mode-materials-due">
+            <ValueSentence text={siteNews.due} />
+          </span>
+        ) : null}
+        {siteNews.due && siteNews.stickers ? <span aria-hidden> · </span> : null}
+        {siteNews.stickers ? (
+          <span data-testid="job-mode-materials-stickers">
+            <ValueSentence text={siteNews.stickers} />
+          </span>
+        ) : null}
+      </span>
+    ) : null
+    return (
+      <div style={cardWrap} className="jobModeCardPhone" data-phone-card="" data-kept-read={held ? '' : undefined} data-testid="job-mode-card">
+        {held ? (
+          <KeptReadStamp className="keptReadStampTight" lead={PHONE_DAY_KEPT_LEAD} readAt={kept.readAt ?? 0} failed={kept.failed} onRetry={() => void reload()} />
+        ) : null}
+        {loading && !held ? <div style={{ ...headerStatusLine, textAlign: 'center' }}>Loading Job Mode…</div> : null}
+        {renderHeader()}
+        {calendarWindow}
+        <JobModeDetailsSection
+          key={detailsTarget.id}
+          jobId={detailsTarget.id}
+          jobAddress={address}
+          hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
+          jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
+          updatesRev={jobUpdatesRev}
+          phone={{
+            onDirections: directionsUrl
+              ? () => {
+                  recordCardPress(userId, role, 'directions')
+                  openInExternalBrowser(directionsUrl)
+                }
+              : null,
+            textPress: textDoor,
+            day: (
+              <>
+                {tripBlock}
+                {errorPanel}
+                {renderRail(true)}
+                {paceCard}
+              </>
+            ),
+            materialsRow: (
+              <CardRow
+                row="materials"
+                title={JOB_CARD_ROW_WORDS.materials}
+                count={siteBoxWords.count ? <span data-testid="job-mode-materials-count">{siteBoxWords.count}</span> : null}
+                note={materialsNote}
+                onPress={openMaterialsOnSite}
+                ariaLabel={siteBoxWords.aria}
+                tip={siteBoxWords.title}
+                testId="job-mode-materials-on-site"
+              />
+            ),
+            calendarRow: jobCalendarTarget ? (
+              <CardRow row="calendar" title={JOB_CARD_ROW_WORDS.calendar} onPress={() => setJobCalendarOpen(true)} ariaLabel="Open the job calendar" tip="See what days this job is on people's calendars" />
+            ) : null,
+            pressRowEnd: <MySpendPress userId={userId} role={role} />,
+            links: (
+              <>
+                {changeOrderLink}
+                {handPhoneLink}
+                {myStatementLink}
+              </>
+            ),
+            onJobDetailsPressed: () => recordCardPress(userId, role, 'job-details'),
+          }}
+        />
+        {writeUpWizard}
+        {pctWindow}
+        {papersWindow}
+        {onMyWaySheet}
+        {imHereSheet}
+        {pressBarEl}
+      </div>
+    )
+  }
+
   return (
     <div style={cardWrap} data-kept-read={held ? '' : undefined} data-testid="job-mode-card">
       {held ? (
@@ -1217,118 +1556,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           ) : null}
         </div>
       ) : null}
-      {jobCalendarOpen && jobCalendarTarget ? (
-        <JobCalendarModal
-          job={jobCalendarTarget}
-          onClose={() => setJobCalendarOpen(false)}
-          canOpenJobScheduleModal={false}
-          canOpenWeekDispatch={canOpenWeekDispatch}
-          onOpenSchedule={() => {}}
-          onOpenWeekDispatch={(selectedYmd) => {
-            const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
-            setJobCalendarOpen(false)
-            navigate(scheduleDispatchWeekUrl(jobCalendarTarget.id, week))
-          }}
-        />
-      ) : null}
-      {/* The trip (punch list #379, PR 7b). Clocked in on a job, with the session landed: the question and the banner, after the clock in.
-          Ready to start a job: the banner alone (no session, so nothing is asked). No job, no trip. */}
-      {held || sessionPending ? null : openSession?.jobLedgerId && leaveReportTarget?.id === openSession.jobLedgerId ? (
-        <JobModeTrip key={openSession.jobLedgerId} jobId={openSession.jobLedgerId} sessionId={openSession.id} travel={loading ? undefined : travelFacts} jobLabel={leavingLabel ?? leaveReportTarget.jobName} jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress} />
-      ) : !openSession && picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? (
-        <JobModeTrip key={picked.nextBlock.job_id} jobId={picked.nextBlock.job_id} sessionId={null} travel={null} jobLabel={safeTrim(picked.nextBlock.job_name) || '—'} jobAddress={safeTrim(picked.nextBlock.job_address) || null} />
-      ) : null}
-      {error && !held ? (
-        // A read is safe to repeat: when the signal returns the card reads the day again by itself.
-        <OfflineRetryPanel failure={error} onRetry={reload} surface="job-mode-card" idempotent busy={loading} style={{ justifyContent: 'center' }} messageStyle={errorRow} />
-      ) : null}
-      {dayOnScreen && dayRail.rows.length > 0 ? (
-        <div style={railWrap}>
-          <div style={railTitle}>
-            Today · {dayRail.doneCount} of {dayRail.totalCount} done
-          </div>
-          {dayRail.rows.map((row) => {
-            const closedRow = closedJobs.has(row.block.job_id)
-            const locked = maskedJobs.has(row.block.job_id)
-            const tappable = closedRow || row.status === 'still-open' || row.status === 'upcoming'
-            const dot =
-              row.status === 'done' ? (
-                <span style={{ ...railDotBase, background: '#16a34a', color: 'white' }} aria-hidden="true">✓</span>
-              ) : row.status === 'current' ? (
-                <span style={{ ...railDotBase, border: '5px solid #16a34a', background: 'var(--surface)' }} aria-hidden="true" />
-              ) : row.status === 'still-open' ? (
-                <span style={{ ...railDotBase, border: '2px solid #d97706', color: '#d97706' }} aria-hidden="true">!</span>
-              ) : (
-                <span style={{ ...railDotBase, border: '2px solid var(--text-faint)' }} aria-hidden="true" />
-              )
-            const num = jobNumberLabel(row.block.service_type_id, row.block.hcp_number, row.block.click_number)
-            const name = safeTrim(row.block.job_name) || '—'
-            // The row's words: a date typed into the name reads as the day and the month and day. `name` stays for what a window saves.
-            const shownName = jobNameWithPlainDates(name)
-            return (
-              <Fragment key={row.block.job_id}>
-              <button
-                type="button"
-                disabled={!tappable || held}
-                className={held && tappable ? 'keptPress' : undefined}
-                title={held && tappable ? READING_AGAIN_WORDS : undefined}
-                aria-label={
-                  locked
-                    ? `Sign the papers for ${num}`
-                    : tappable
-                    ? `Go to ${num} ${shownName}`
-                    : `${num} ${shownName} — ${row.status === 'current' ? 'current job' : 'done'}`
-                }
-                style={{
-                  ...railRowBase,
-                  cursor: tappable ? 'pointer' : 'default',
-                  ...(row.status === 'current'
-                    ? { background: 'var(--bg-green-tint)', outline: '1.5px solid #16a34a' }
-                    : null),
-                  ...(row.status === 'done' ? { color: 'var(--text-muted)' } : null),
-                }}
-                onClick={() => handleRailRowTap(row)}
-              >
-                {dot}
-                <span style={railTimeStyle}>{formatBlockTime(row.block.time_start)}</span>
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    fontWeight: 600,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {locked ? <LockedJobLine jobId={row.block.job_id} /> : `${num} · ${shownName}`}
-                </span>
-                {row.status === 'current' ? (
-                  <span style={{ ...railFlagStyle, color: '#16a34a' }}>NOW</span>
-                ) : row.status === 'still-open' ? (
-                  <span style={{ ...railFlagStyle, color: '#d97706' }}>STILL OPEN</span>
-                ) : null}
-              </button>
-              {/* Equipment pre-use check (punch list #270, SPIKE): the machine stops under the job's row */}
-              {locked ? null : <RailMachineStops jobId={row.block.job_id} jobWords={`${num} · ${name}`} day={workDateYmd} userId={authUser?.id ?? null} byName={profileName} />}
-              </Fragment>
-            )
-          })}
-        </div>
-      ) : null}
-      {myStatement.url ? (
-        <div style={{ margin: '0 0 0.5rem', textAlign: 'center' }}>
-          <a
-            href={myStatement.url}
-            target="_blank"
-            rel="noopener"
-            aria-label="My statement — opens your work and pay portal"
-            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
-          >
-            My statement ↗
-          </a>
-        </div>
-      ) : null}
+      {calendarWindow}
+      {tripBlock}
+      {errorPanel}
+      {renderRail(false)}
+      {myStatementLink}
       {/* On a phone these three presses live on the press bar at the foot of the screen (punch list #189, PR 2). */}
       {phone ? null : (
         <div style={buttonRow}>
@@ -1383,35 +1615,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           </button>
         </div>
       )}
-      {dayOnScreen && writeUpChangeDoor && writeUpChangeJobId ? (
-        <button
-          type="button"
-          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-          aria-label="Make change order"
-          title={held ? READING_AGAIN_WORDS : 'Make change order on this job — extra work the customer asked for'}
-          disabled={held}
-          className={held ? 'keptPress' : undefined}
-          onClick={() => setWriteUpChangeOpen(true)}
-        >
-          <WriteUpChangeGlyph size={16} />
-          Make change order
-        </button>
-      ) : null}
-      {dayOnScreen && handPhoneDoor ? (
-        <button
-          type="button"
-          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-          aria-label="Hand the phone to the customer to sign"
-          title={held ? READING_AGAIN_WORDS : handPhoneDoor.title}
-          disabled={handPhoneBusy || held}
-          className={held ? 'keptPress' : undefined}
-          onClick={() => void handThePhone()}
-          data-testid="job-mode-hand-phone"
-        >
-          <span aria-hidden>✍</span>
-          {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
-        </button>
-      ) : null}
+      {changeOrderLink}
+      {handPhoneLink}
       {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
         <MessageCustomerDoor
           jobId={leaveReportTarget.id}
@@ -1424,9 +1629,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           openRev={messageDoorRev}
         />
       ) : null}
-      {writeUpChangeOpen && writeUpChangeJobId ? (
-        <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
-      ) : null}
+      {writeUpWizard}
       {clockOutShown && !phone ? (
         <button
           type="button"
@@ -1440,13 +1643,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           {JOB_MODE_PRESS_WORDS.clockOut}
         </button>
       ) : null}
-      {pctJob ? (
-        <FieldPctUpdateModal
-          job={pctJob}
-          onClose={() => setPctJob(null)}
-          onSaved={() => setJobUpdatesRev((n) => n + 1)}
-        />
-      ) : null}
+      {pctWindow}
       {(() => {
         if (detailsTarget && closedJobs.has(detailsTarget.id)) {
           return (
@@ -1504,57 +1701,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           </>
         )
       })()}
-      {papersJob ? (
-        <JobPapersGateModal
-          jobId={papersJob}
-          role={role}
-          onClose={() => setPapersJob(null)}
-          onOpenJob={() => {
-            void rereadJobsClosedToMe().then(() => setPapersJob(null))
-          }}
-        />
-      ) : null}
-      {onMyWay ? (
-        <OnMyWaySheet
-          userId={userId}
-          me={profileName}
-          role={role}
-          destinations={advanceDestinations}
-          initialJobId={onMyWay.initialJobId ?? picked.nextBlock?.job_id ?? null}
-          leaving={leavingLabel}
-          canFinishDay={Boolean(openSession && canClockOut)}
-          apply={applyUpdateFocusDirect}
-          onFinishDay={() => {
-            setOnMyWay(null)
-            requestClockOut()
-          }}
-          io={onMyWayIo}
-          onDone={() => setJobUpdatesRev((n) => n + 1)}
-          onClose={() => setOnMyWay(null)}
-        />
-      ) : null}
-      {imHere && openSession && leaveReportTarget ? (
-        <ImHereSheet
-          sessionId={openSession.id}
-          jobId={leaveReportTarget.id}
-          jobLabel={leavingLabel ?? leaveReportTarget.jobName}
-          jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
-          jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
-          userId={userId}
-          me={profileName}
-          role={role}
-          travelFacts={travelFacts}
-          io={onMyWayIo}
-          onDone={() => {
-            setJobUpdatesRev((n) => n + 1)
-            void reload()
-          }}
-          onClose={() => setImHere(false)}
-        />
-      ) : null}
-      {pressBar ? (
-        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} held={held} oneRow={newPhoneLayout.on} />
-      ) : null}
+      {papersWindow}
+      {onMyWaySheet}
+      {imHereSheet}
+      {pressBarEl}
     </div>
   )
 }

@@ -1494,6 +1494,27 @@ button:focus-visible {
   }
 }
 
+/* The Job Mode card under the new phone layout (`lib/phoneLayout/jobCard.ts`): a floor under everything drawn on
+   it. No press under 40 px tall and no words under 12 px, whichever piece of the card draws them and in whichever
+   state. The card is many pieces, each with its own inline sizes, so the floor is held here, once, and reads the
+   size a piece wrote: a press with no height of its own stands 40 px, a height written under 40 px is raised to it,
+   and words written from 0.6rem to under 0.75rem, or at 10 or 11 px, read at 0.75rem. A tagged name is written at
+   0.92em, 11.96 px in a note, so it is held to 12 px too. A size at or over the floor is left as written.
+   A window a press on the card opens is not the card. Every window is a dialog (`check:dialog-role`), and the
+   floor stops at it. The class is on the card only while the switch is on, so nothing here reaches any other screen. */
+.jobModeCardPhone :is(button, a[href], summary):not([role='dialog'] *) {
+  min-height: 40px;
+}
+.jobModeCardPhone :is([style*='min-height: 30px'], [style*='min-height: 32px'], [style*='min-height: 34px'], [style*='min-height: 36px']):not([role='dialog'] *) {
+  min-height: 40px !important;
+}
+.jobModeCardPhone :is([style*='font-size: 0.6'], [style*='font-size: 0.7rem'], [style*='font-size: 0.70'], [style*='font-size: 0.71'], [style*='font-size: 0.72'], [style*='font-size: 0.73'], [style*='font-size: 0.74'], [style*='font-size: 10px'], [style*='font-size: 11px']):not([role='dialog'] *) {
+  font-size: 0.75rem !important;
+}
+.jobModeCardPhone [style*='font-size: 0.92em']:not([role='dialog'] *) {
+  font-size: max(0.92em, 0.75rem) !important;
+}
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {
