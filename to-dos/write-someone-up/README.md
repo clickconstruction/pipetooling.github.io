@@ -2,7 +2,7 @@
 name: "Write someone up, from the Dashboard, on a phone"
 number: 410
 group: close
-status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · left: a look on a leader's and a superintendent's own phone, and one send with no signal
+status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · walked again at an iPhone's size as a leader, as a superintendent and with the signal cut · the person's side dropped on Taunya's word 2026-11-21 · left: a look on a leader's and a superintendent's own phone
 summary: >
   Taunya said writing someone up was not made easy enough for a leader or a superintendent from
   their Dashboard. A leader's only door was the HR Report card, 8.7 phone screens down the full
@@ -14,7 +14,7 @@ summary: >
 next: A leader and a superintendent each write one up on their own phone, with a photo, once with no signal and once from the short Dashboard. Then the card closes on Taunya's word.
 size: L as a train of seven (S · M · S · M · M · S · S); left: a look on a real phone (XS)
 ver: v2.8157, v2.8160, v2.8172, v2.8174
-blocker: A leader's and a superintendent's own phone. The person's side and a kept voice recording are set aside, see *Set aside*.
+blocker: A leader's and a superintendent's own phone. A kept voice recording is set aside and the person's side is dropped, see *Set aside*.
 opinion: your call — the train is built and live, and what is left is watching a leader use it once
 ---
 
@@ -110,8 +110,9 @@ alone to any use.
 
 ## Set aside
 
-- **The person's side.** The office presses *Show it to them* on one write-up, and the person reads it and
-  writes their side. It is Taunya's call. Frame 10 of the mock-up draws it.
+- **The person's side. Dropped.** The office would press *Show it to them* on one write-up, and the person
+  would read it and write their side. Taunya, 2026-11-21: *It doesn't really matter if the person who's written
+  up reads it. What matters is that the company records it.* Frame 10 of the mock-up draws what is not built.
 - **A kept voice recording.** It needs storage, a rule for who may play it, and a lawyer's answer before the
   app keeps sound of another person.
 
@@ -135,8 +136,23 @@ Walked on clicktooling.com on 2026-11-21, on the roster's `ZZ Test Hand`, at pho
   photo on the read-back and on the office's card, and **File**, which put the entry on the file with the photo
   as its evidence record.
 
-Not walked: a superintendent's account, the short Dashboard and Job Mode, a send with no signal, and a real
-phone's camera. Those are the look that is left.
+Walked again the same day at an iPhone's size, with touch and a phone's user agent, by a script on the live
+site:
+
+- As the leader's and the superintendent's sample accounts: the press, the search, the form with a photo, the
+  read-back and the send. Each was taken back.
+- As a dev seat with the signal cut: the write-up and its photo were kept on the phone, and went to HR by
+  themselves when the signal came back. The app keeps nothing on the phone while View as is on, so this part
+  cannot be walked as a sample account.
+- In an iPhone simulator's Safari: the press on a leader's first screen, and the sheet.
+
+Found on that walk: the *Kept on this phone* note stays on **Your write-ups** after the write-up has gone.
+
+What the company keeps: a write-up is on the person's file from the moment it is sent, with its writer and its
+day. One that is taken back stays there too, marked dismissed with the reason.
+
+Not walked: the short Dashboard and Job Mode, and a real phone's camera and microphone in a real hand. Those
+are the look that is left.
 
 Left on that test person's file, where entries append and never change: one filed field report with its
-photo, one waiting to be filed and one taken back. All three say they are tests.
+photo, one waiting to be filed and four taken back. All say they are tests.
