@@ -104,7 +104,7 @@ Work queues clear themselves when the work is done. The red **alert** items do n
 
 ## Where the card lives
 
-The Dashboard is where the office lands on sign-in. That is the owner, the assistant and the controller alike. So the card is the first thing you see. Estimators land on Bids, and their items show there under the same name. Quickfill carries the same card for people who work from that page. On a phone with the new phone layout on, the Dashboard shows the list as one line. Tap the line to open the list in the **Inbox** tab.
+The Dashboard is where the office lands on sign-in. The office is the owner, the assistant and the controller alike. So the card is the first thing you see. Estimators land on Bids, and their items show there under the same name. Quickfill carries the same card for people who work from that page. On a phone with the new phone layout on, the Dashboard shows the list as one line. Tap the line to open the list in the **Inbox** tab.
 
 ## Submittals
 
