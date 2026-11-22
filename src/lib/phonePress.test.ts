@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, activityPillStyle, activityPillsOnOneRow } from './phonePress'
+import { ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, activityPillStyle, activityPillsOnOneRow, thumbInLine } from './phonePress'
 
 describe('phonePress', () => {
   it('holds the two heights the walk asked for', () => {
@@ -28,5 +28,18 @@ describe('phonePress', () => {
     expect(ONE_ROW_PILLS.word.split(' ')[0]).toBe(tall)
     // A dim word's side padding and border are what the fade lets hide.
     expect(ONE_ROW_PILLS.fadeSlack).toBeGreaterThanOrEqual(5)
+  })
+
+  it('stands a press in a line a fingertip tall and gives the line back what the press grew by', () => {
+    // A 28 px press grows by 16, so 8 comes off over it and 8 under it: the line stays 28.
+    expect(thumbInLine(28)).toEqual({ minHeight: 44, marginTop: -8, marginBottom: -8 })
+    expect(thumbInLine(27)).toEqual({ minHeight: 44, marginTop: -8.5, marginBottom: -8.5 })
+    const { minHeight, marginTop, marginBottom } = thumbInLine(32)
+    expect(minHeight + marginTop + marginBottom).toBe(32)
+  })
+
+  it('takes no margin from a press that is a fingertip tall already', () => {
+    expect(thumbInLine(44)).toEqual({ minHeight: 44, marginTop: 0, marginBottom: 0 })
+    expect(thumbInLine(60)).toEqual({ minHeight: 44, marginTop: 0, marginBottom: 0 })
   })
 })

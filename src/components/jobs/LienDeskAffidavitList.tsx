@@ -16,7 +16,7 @@ import { EmptyState } from '../EmptyState'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { lienBtnStyle as btn } from './lienDeskButtonStyles'
-import { lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
+import { LIEN_PHONE_LIST_PRESS, lienRowChipStyle as chip, lienSeverityColors as severityColors } from './lienDeskRowStyles'
 import { LienGateMarkStrip } from './LienGateMarkStrip'
 import { LienSupplierMarkLine } from './LienJobSuppliers'
 import { LienPileHead, lienPileHeadCount, type LienPileHeads } from './LienPileHeads'
@@ -91,7 +91,7 @@ export function LienDeskAffidavitList({
           {redrawPlan.ready.length > 0 ? (
             <>
               <span>{redrawPlan.ready.length === 1 ? '1 ready affidavit is on the earlier form.' : `${redrawPlan.ready.length} ready affidavits are on the earlier form.`}</span>
-              <button type="button" onClick={() => void redrawReady()} disabled={redrawBusy} style={{ ...btn('plain', redrawBusy), justifySelf: 'start' }}>
+              <button type="button" onClick={() => void redrawReady()} disabled={redrawBusy} style={{ ...btn('plain', redrawBusy), justifySelf: 'start', ...(isMobile ? LIEN_PHONE_LIST_PRESS : null) }}>
                 {redrawBusy ? 'Redrawing…' : redrawWords.button}
               </button>
               {redrawWords.foot ? <span data-lien-affidavit-redraw-foot>{redrawWords.foot}</span> : null}
@@ -118,7 +118,7 @@ export function LienDeskAffidavitList({
           {affSendPlan.ready.length > 0 ? (
             <>
               <span>{affSendWords.lead}</span>
-              <button type="button" onClick={() => void sendDraftedAffidavits()} disabled={affSendBusy} style={{ ...btn('plain', affSendBusy), justifySelf: 'start' }}>
+              <button type="button" onClick={() => void sendDraftedAffidavits()} disabled={affSendBusy} style={{ ...btn('plain', affSendBusy), justifySelf: 'start', ...(isMobile ? LIEN_PHONE_LIST_PRESS : null) }}>
                 {affSendBusy ? 'Sending…' : affSendWords.button}
               </button>
               {affSendWords.foot ? <span data-lien-affidavit-send-all-foot>{affSendWords.foot}</span> : null}

@@ -2,7 +2,7 @@
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
 group: close
-status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15), and the Steps and Windows switch in v2.7392 · left: the owner's look on his own phone
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15), and the Steps and Windows switch in v2.7392 · seven small presses from the walk of 2026-11-21 in v2.8221 · left: the owner's look on his own phone
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -191,3 +191,25 @@ Three things the train taught:
 - **A thumb-tall row makes a pinned header taller.** Whatever wraps goes into the list's own scroller. Measure the header after every change.
 - **A stack of pinned titles is a table of contents on a computer and a wall on a phone.** The pile titles, the section titles and the footer each took the list's whole window on a small phone. One pins; the rest scroll.
 - **The computer check that works** is to read the same boxes on the dev server and on the live desk at 1,400 × 900 and compare them. All eight PRs matched to the pixel.
+
+### The walk of 2026-11-21
+
+The owner's main session walked the desk at 375 px in a browser and in the iOS Simulator's Safari, signed in as the dev, looking only. The desk passed: one page that scrolls, one header row, no page that slides sideways. It read seven presses under 40 px, and v2.8221 grew each to 44 px on a phone without moving what is around it:
+
+| Press | Was | Now |
+|---|---|---|
+| The More sheet's × | 25 × 27 | 44 × 44 |
+| **Send 1 for approval…** over the affidavits | 28 tall | 44 |
+| A job's number on a By date row | 28 tall, 29 to 40 wide | 44 × 44 |
+| **Worked later? ›** | 28 tall | 44 |
+| **Print and mail N** in a pile's pinned title | 30 tall | 44, the pill inside it still 30 and the title still 40 |
+| **N are past their day. Show them ›** on the Board | 32 tall | 44 |
+| The find box's field | 34 in a 57 px line | 44 in a 57 px line |
+
+Read by the walk and left as they are, for the owner's look:
+
+- **The bucket chips on By date and the pile chips on Lien affidavits slide sideways** inside their own strip. The page does not slide. Each chip is 40 px tall. Wrapping them would put two or three rows of chips over the list.
+- **The More sheet did not list *Put a GC on notice*.** That is as built: the row shows on By paper → Monthly notices only, for an office seat, when a GC has unpaid work to put on notice. It was read there the same day, second in the sheet.
+- A pile's title and an open paper's section titles are presses 38 px tall in a 40 px bar. The walk did not name them.
+
+This card still waits on the desk in the owner's hand.

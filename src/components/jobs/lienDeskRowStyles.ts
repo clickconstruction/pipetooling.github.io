@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { LienDeskSeverity } from '../../lib/jobs/lienDesk'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 
 /** A row's deadline chip by how close its day is: red, amber, or quiet. Shared by the Lien desk's lists (out of `LienDesk.tsx`). */
 export function lienSeverityColors(sev: LienDeskSeverity): { bg: string; fg: string } {
@@ -25,5 +26,14 @@ export const lienRowChipStyle = (bg: string, fg: string): CSSProperties => ({
 /** The small capitals over a box or a menu on the desk. */
 export const lienBoxHeadStyle: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
-/** A press inside a pile's title on a phone: taller and in a size a thumb reads (punch list #352, PR 5). */
+/**
+ * The pill a press inside a pile's title wears on a phone: taller and in a size a thumb reads (punch list #352, PR 5).
+ * The press around it is a thumb tall (`LienPilePress`); the pill keeps this size so the title bar reads as it did.
+ */
 export const LIEN_PHONE_PILE_PRESS: CSSProperties = { minHeight: 30, padding: '0 10px', fontSize: '0.8125rem' }
+
+/**
+ * A batch press over a list on a phone, *Send 1 for approval…* and *Redraw…* over the affidavits (the phone walk of
+ * 2026-11-21 read the first at 28 px): a thumb tall, in words a thumb reads.
+ */
+export const LIEN_PHONE_LIST_PRESS: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 14px', fontSize: '0.875rem' }

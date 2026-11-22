@@ -45,12 +45,17 @@ describe('LienDeskFindBox (v2.4721)', () => {
     const view = render(<LienDeskFindBox value="dud" onChange={() => {}} matched={2} isMobile />)
     expect(screen.getByTestId('lien-desk-find').style.minHeight).toBe('44px')
     expect(screen.getByTestId('lien-desk-find-input').style.fontSize).toBe('1rem')
-    expect(screen.getByTestId('lien-desk-find-clear').style.width).toBe('34px')
+    // The field and its × are a thumb's 44 px themselves, and the line keeps its 56 px (the phone walk of 2026-11-21 read the field at 34).
+    expect(screen.getByTestId('lien-desk-find-input').style.minHeight).toBe('44px')
+    expect(screen.getByTestId('lien-desk-find').style.paddingTop).toBe('6px')
+    expect(screen.getByTestId('lien-desk-find-clear').style.width).toBe('44px')
+    expect(screen.getByTestId('lien-desk-find-clear').style.height).toBe('44px')
     view.unmount()
     // A computer keeps the small box.
     render(<LienDeskFindBox value="dud" onChange={() => {}} matched={2} isMobile={false} />)
     expect(screen.getByTestId('lien-desk-find').style.minHeight).toBe('')
     expect(screen.getByTestId('lien-desk-find-input').style.fontSize).toBe('0.8125rem')
+    expect(screen.getByTestId('lien-desk-find-input').style.minHeight).toBe('')
     expect(screen.getByTestId('lien-desk-find-clear').style.width).toBe('20px')
   })
 })

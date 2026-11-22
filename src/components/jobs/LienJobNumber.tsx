@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { PHONE_PRESS_MIN_HEIGHT, thumbInLine } from '../../lib/phonePress'
 
 /** The blue chip a job number wears on the Lien desk. */
 const LIEN_JOB_NUMBER_STYLE: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, padding: '0 5px', borderRadius: 3, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', whiteSpace: 'nowrap' }
@@ -8,6 +9,12 @@ export const LIEN_JOB_DOOR_TITLE = 'Open the job: its history, its bills and Edi
 
 /** A job door is text in the row's own size and color that underlines on hover (`.lienJobDoor`, v2.4628); it was a blue chip from v2.4531. */
 const LIEN_JOB_DOOR_STYLE: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 700, color: 'inherit', cursor: 'pointer', flex: 'none', textAlign: 'left', borderRadius: 3, whiteSpace: 'nowrap' }
+
+/**
+ * The door on a phone's By date row (the phone walk of 2026-11-21 read it at 28 px tall and 29 to 40 wide): a thumb's
+ * square, with the margin that leaves the row's first line the 28 px it was. The number stays at the row's left edge.
+ */
+const LIEN_JOB_DOOR_PHONE: CSSProperties = { ...thumbInLine(28), minWidth: PHONE_PRESS_MIN_HEIGHT }
 
 /**
  * A job's number on the Lien desk (v2.4531 the Calendar, v2.4535 the Timeline and the panes).
@@ -31,7 +38,7 @@ export function LienJobNumber({ number, muted, onOpen, phone, style }: { number:
         e.stopPropagation()
         onOpen()
       }}
-      style={{ ...LIEN_JOB_DOOR_STYLE, ...(muted ? { color: 'var(--text-muted)', fontWeight: 600 } : null), ...(phone ? { minHeight: 28 } : null), ...style }}
+      style={{ ...LIEN_JOB_DOOR_STYLE, ...(muted ? { color: 'var(--text-muted)', fontWeight: 600 } : null), ...(phone ? LIEN_JOB_DOOR_PHONE : null), ...style }}
     >
       {number}
     </button>
