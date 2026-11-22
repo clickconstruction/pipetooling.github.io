@@ -57,4 +57,9 @@ grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/30_log_call.sql 2>&1 || true)"
 if ! grep -q "messages_log_call PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
+# Punch list #129, the leftovers (*_write_down_payment): a payment word marks its line through write_down_payment, a new
+# day replaces the earlier one, no day takes the mark back off as just talk; who may, and on which lines, in words.
+out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/40_payment_word.sql 2>&1 || true)"
+if ! grep -q "messages_payment_word PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
 echo "messages-follow-up bed ok"
