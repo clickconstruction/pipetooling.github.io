@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-11-20
+last_updated: 2026-11-22
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -98,7 +98,7 @@ FATAL: (ECIRCUITBREAKER) failed to retrieve database credentials after multiple 
 `EAUTHQUERY` comes first; after a few attempts Supavisor trips its breaker and
 returns `ECIRCUITBREAKER` until it cools down. In a stall's first minutes a
 connect can also time out before either comes back: the pooler then says `FATAL: Failed to connect to database:
-{:error, :timeout}`, and a CLI run with no `SUPABASE_DB_PASSWORD` says
+{:error, :timeout}`, a CLI run with the password says `failed to receive message (timeout: context deadline exceeded)`, and a CLI run with no `SUPABASE_DB_PASSWORD` says
 `unexpected login role status 544 … Connection terminated due to connection
 timeout`, because the Management API cannot reach Postgres to make its login
 role. When Postgres cannot answer a single-row credential lookup, you are in
@@ -250,6 +250,10 @@ outage.
   Mode A/B discriminator on its own.
 - Every migration starts with `SET lock_timeout = '3s'` (CI-enforced) so DDL
   fails fast instead of queueing the whole app behind it.
+- An agent's live look at production is capped (2026-11-22): one page at a
+  time, by hand, at least 15 seconds apart, never a scripted capture, never two
+  browsers, never two agents at once, and the tab closed after. There is no
+  staging, so a dev server and `/dev-login` read the database the crews are on.
 
 ## Incident log
 
@@ -639,6 +643,60 @@ work (14:05 CST). The second-longest stall on record, after 08-19.
   now with today's `last known up` → `starting PostgreSQL` pairs: 14:35:08 →
   14:38:34, 16:04:44 → 16:07:42, 16:21:27 → 16:25:24, 19:50:55 → 19:55:02,
   20:01:13 → 20:28:33.
+
+### 2026-11-22 — Mode B (25-minute stall 18:24–18:49 UTC, ended by an instance restart nobody pressed; a 3-minute one at 18:15 first)
+
+Found by two agent builders whose dev tabs read *The app is slow right now.* at
+about 18:16 and again from 18:26 (12:26 CST, a Sunday). One said so at once and
+stopped loading pages.
+
+- **Step 0** (18:32–18:47, one session): `http-only` **401 in 0.16–0.25s**,
+  `db-touching` **000 at 20s** on every probe, and `/auth/v1/health` 000 at
+  20s. A 45-second probe loop got its first HTTP answer, a Cloudflare **522**,
+  at **18:48:40**, and a 401 in 0.34s at 18:48:53.
+- **The CLI could not connect**: at 18:33 the three `supabase inspect db`
+  commands each failed on the session pooler with `failed to receive message
+  (timeout: context deadline exceeded)`, the wording the 08-11 and 09-07 entries
+  saw. No pooler connection was opened after that (the 11-20 entry's lesson 6). The dev seat's `check_locks` and
+  `check_connections` had timed out at about 18:30.
+  status.supabase.com showed no incident.
+- **Step 2**: two `monitoring.health_checks` gaps, the only two in the eight
+  hours before: **18:15:00 → 18:18:00 (180s)** and **18:24:00 → 18:49:00
+  (1,500s)**. One cron row failed `job startup timeout` at **18:25:00** (job
+  5), with no other slow or failed row since 17:30. No `Lock` rows from 18:13
+  to 18:24. The 18:20 sample: 47 `active` (38 with no wait event, 7 on
+  `LWLock`, 2 on `IO`), 7 `idle in transaction`, sampler 118.7ms. The
+  18:24:00 sample, the last before the gap: 15 `active`, 66.5ms. 74 to 83
+  conns throughout.
+- **The checkpoints mark both gaps**: `checkpoint starting: time` at 18:10:20
+  completed in 25s. The ones that began at **18:15:20** and **18:22:01** have no
+  `complete` line. The 11-20 stall carries the same mark.
+- **Ended by a restart nobody pressed**: `pg_postmaster_start_time()` read
+  **18:48:40.756**, and the owner did not restart. 17 conns at 18:49, the
+  sampler at 6–23ms in the minutes after, the start time unchanged at 18:52.
+  The log held no `starting PostgreSQL` line minutes later (11-20 found the
+  log misses some).
+- **What was in flight**: two agent builders taking screenshots through dev
+  servers pointed at production. One ran a scripted headless-Chrome capture
+  from 18:04 to 18:25: about 95 full Dashboard or Inbox loads as the dev and
+  the sample roles through View as, 5 to 9 a minute from 18:20, two browsers at
+  once until 18:21. Its last load to complete was at 18:24:59. The other loaded
+  a page about every 10 to 20 seconds. Each Dashboard load fires that page's
+  whole read set, and writes the activity heartbeat, telemetry rows and, on the
+  dev's Dashboard, the Day book's queue snapshot. Both gaps fall inside that
+  run. **Not proof**: three earlier minutes that day read 38 to 43 `active`
+  with the sampler at 272–490ms (12:07, 16:21, 16:22) and no stall followed,
+  and 11-20 stalled with no such load.
+- **Nothing was written by hand during it**, so nothing was re-sent.
+- **Lessons**: (1) there is no staging, so an agent's capture loop is
+  production load, and the cap is now a standing protection above; (2) *The app
+  is slow right now.* on a builder's dev tab is Step 0's cue, and the builder
+  stops loading before it probes; (3) the playbook's list of blind-pooler
+  wordings now names `failed to receive message`, which three entries had
+  met; (4) an open app tab keeps retrying and holds a live socket, so
+  the tabs are closed during a stall; (5) a `checkpoint starting` with no
+  `complete` beside a sampler gap belongs in the support ticket the 09-06
+  entry asks for.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
