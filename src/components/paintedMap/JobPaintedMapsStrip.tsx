@@ -18,7 +18,7 @@
  * different job. With `rows`, each place of the job's list and of those lists is drawn as a row
  * with its photo (step 5), so the crew's window shows what is where without opening a map.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { handHeld } from '../../lib/paintedMap/handHeld'
 import { mapSummaryWords, mapsForDevelopment, mapsForJob } from '../../lib/paintedMap/paintedMap'
 import { JOB_LIST_WORDS, jobListCountWords, jobListPlaces, jobListsOf, type JobPlace } from '../../lib/paintedMap/paintedJobList'
@@ -53,6 +53,12 @@ type Props = {
   only?: 'maps'
   /** Draw each place as a row with its photo, under its list's line (#413, step 5): the job's own window. */
   rows?: boolean
+  /**
+   * The Job Mode card under the new phone layout (`lib/phoneLayout/jobCard.ts`): the same three presses at a thumb's
+   * size. Photo of a spot is the full width, and Paint a map and Place on this job share one row of 44 px presses
+   * with `end`, the card's own press (My spend). Each does what it did.
+   */
+  card?: { end?: ReactNode }
 }
 
 const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 40, padding: '0.35rem 0.6rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
@@ -62,6 +68,9 @@ const add: CSSProperties = { ...row, width: 'auto', justifySelf: 'start', minHei
 const addWords: CSSProperties = { ...add, width: '100%', justifySelf: 'stretch', minHeight: 40, fontSize: '0.875rem', borderStyle: 'none', justifyContent: 'center', textAlign: 'center', padding: '0.2rem 0.6rem', fontWeight: 700 }
 /** The phone's Photo of a spot (#413): the full width and 56 px tall, since it is pressed standing in a yard. */
 const spotPress: CSSProperties = { ...row, minHeight: 56, justifyContent: 'center', gap: '0.55rem', fontSize: '1rem', fontWeight: 700, borderWidth: 1.5, borderColor: 'var(--border-strong)', background: 'var(--surface)' }
+/** The Job Mode card's presses under the new phone layout: 44 px, their words whole on one or two lines. */
+const cardPress: CSSProperties = { ...row, width: 'auto', minWidth: 0, minHeight: 44, justifyContent: 'center', textAlign: 'center', padding: '0 0.4rem', borderRadius: 10, borderColor: 'var(--border-strong)', background: 'var(--surface)', fontSize: '0.875rem', fontWeight: 700, lineHeight: 1.15 }
+const cardSpotPress: CSSProperties = { ...cardPress, width: '100%', gap: '0.5rem', fontSize: '0.9375rem' }
 
 /** A place as a row (#413, step 5): its photo, its mark and name, and the start of its words. 64 px for a thumb. */
 const placeRow: CSSProperties = { display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) auto', gap: '0.6rem', alignItems: 'center', width: '100%', minHeight: 64, padding: '0.3rem 0.6rem 0.3rem 0.3rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
@@ -94,7 +103,7 @@ function CameraGlyph({ size }: { size: number }) {
   )
 }
 
-export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false, rows = false }: Props) {
+export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false, rows = false, card }: Props) {
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
   // The lists of places earlier jobs kept at this job's customer address (#413). A read that fails shows none: the job's own maps still stand.
   const [addressLists, setAddressLists] = useState<AddressList[]>([])
@@ -249,13 +258,31 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
           }}
         />
       )}
-      {only === 'maps' || !addCentred ? null : (
+      {only === 'maps' || !card ? null : (
+        <>
+          <button type="button" data-job-spot style={cardSpotPress} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
+            <CameraGlyph size={20} />
+            {SPOT_WORDS.press}
+          </button>
+          <div data-job-card-press-row style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(0, 1fr)', gap: 6 }}>
+            {/* The row is three presses wide, so each says its name without the plus the wider presses carry. */}
+            <button type="button" data-paint-a-map style={cardPress} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
+              Paint a map
+            </button>
+            <button type="button" data-job-place-add style={cardPress} onClick={(e) => { e.stopPropagation(); addJobPlace() }}>
+              {JOB_LIST_WORDS.add.replace(/^＋\s*/, '')}
+            </button>
+            {card.end}
+          </div>
+        </>
+      )}
+      {only === 'maps' || card || !addCentred ? null : (
         <button type="button" data-job-spot style={spotPress} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
           <CameraGlyph size={22} />
           {SPOT_WORDS.press}
         </button>
       )}
-      {only === 'maps' ? null : (
+      {only === 'maps' || card ? null : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem' }}>
           {addCentred ? null : (
             <button type="button" data-job-spot style={{ ...add, gap: '0.4rem' }} onClick={(e) => { e.stopPropagation(); pressSpot() }}>

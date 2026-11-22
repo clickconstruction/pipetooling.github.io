@@ -40,6 +40,9 @@ import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 import { CameraGlyph } from '../materials/PhotoPress'
 import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
 import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
+import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
+import { useFoldedJobId } from '../../hooks/useFoldedJobId'
+import { jobSquaresFolded, jobSquaresHiddenWhileReading } from '../../lib/phoneLayout/jobCard'
 
 /** The anchor the hours card carries in Job Mode, where the This week square lands. */
 export const JOB_MODE_HOURS_ANCHOR = 'dash-my-hours'
@@ -128,6 +131,10 @@ export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs
   const [boxes, setBoxes] = useState<{ jobId: string; count: number } | null>(null)
   const [photoJobId, setPhotoJobId] = useState<string | null>(null)
   const gen = useRef(0)
+  // The new phone layout (`lib/phoneLayout/jobCard.ts`): the card draws this job's squares as its own presses and rows,
+  // and says which job it holds. Off, or for any other day, the row is the row it was.
+  const newPhoneLayout = useNewPhoneLayout()
+  const foldedJob = useFoldedJobId()
 
   useEffect(() => {
     if (!userId) return
@@ -176,6 +183,10 @@ export function JobModeTopRow({ userId, role, hoursThisWeek = null, tomorrowJobs
   }, [loadHours, noJobLeft, day])
 
   if (!userId) return null
+  // Folded into the card: Directions is its first row, Job details, Photos and Materials on site are its rows, and
+  // Paint a map and My spend share its row of presses. A day with no job keeps This week and Tomorrow here.
+  if (jobSquaresFolded({ on: newPhoneLayout.on, squaresJobId: state && state.kind !== 'none' ? state.job.id : null, foldedJobId: foldedJob })) return null
+  if (!state && jobSquaresHiddenWhileReading({ on: newPhoneLayout.on, foldedJobId: foldedJob })) return null
 
   const siteBoxes = boxes && boxes.jobId === onSiteJobId ? boxes.count : null
   const squares: TopRowSquareId[] = state ? topRowSquares(state, siteBoxes) : ['paint', 'spend']
