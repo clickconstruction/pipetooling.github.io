@@ -80,6 +80,19 @@ describe('SetPromisedPayDateModal — Write down their word', () => {
     // What goes over the wire: the request's JSON drops an undefined, and never carries a null the types refuse.
     expect(JSON.parse(JSON.stringify(call[1]))).toEqual({ p_job_id: 'j1', p_date: '2026-10-20', p_method: 'bank_transfer', p_channel: 'text' })
   })
+  it('a day read from their line fills the date box, while the board’s own date still answers Clear date (v2.8255)', async () => {
+    rpc.mockImplementation(async (name: string) => (name === 'list_job_payment_promises_for' ? { data: onRecord, error: null } : { data: null, error: null }))
+    const onSaved = vi.fn()
+    renderWithProviders(<SetPromisedPayDateModal jobId="j1" jobLabel="#1032 · Whitfield repipe" initialYmd="2026-10-25" heardYmd="2026-11-06" contextLine="Fri Nov 6 is read from their text. Change it if they meant another day." onClose={vi.fn()} onSaved={onSaved} />)
+    await settle()
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('2026-11-06')
+    expect(screen.getByText('Fri Nov 6 is read from their text. Change it if they meant another day.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Clear date' })).toBeTruthy()
+    expect(screen.getByText(/a new date counts the earlier one as broken/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(rpc.mock.calls.find((c) => c[0] === 'add_job_payment_promise')![1]).toMatchObject({ p_job_id: 'j1', p_date: '2026-11-06' })
+  })
   it('parseClaimAmount: blank is all of it, a figure is a figure, anything else holds', () => {
     expect(parseClaimAmount('')).toBeNull()
     expect(parseClaimAmount('  ')).toBeNull()

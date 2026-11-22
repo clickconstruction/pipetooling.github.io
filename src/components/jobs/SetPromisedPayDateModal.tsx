@@ -50,6 +50,7 @@ export default function SetPromisedPayDateModal({
   jobId,
   jobLabel,
   initialYmd,
+  heardYmd,
   initialMode = 'promise',
   initialSaidBy,
   initialChannel,
@@ -62,6 +63,11 @@ export default function SetPromisedPayDateModal({
   jobLabel: string
   /** Existing promise to edit, or null when marking fresh. */
   initialYmd: string | null
+  /**
+   * A day read from the customer's own line (v2.8255): the date box opens on it, while `initialYmd` stays what the
+   * board shows, so Clear date and the words about an earlier date still speak of the board's.
+   */
+  heardYmd?: string | null
   /** Which side the sheet opens on (v2.5648); the Pipeline's chip opens on the promise. */
   initialMode?: PromiseSheetMode
   /** From a line in the thread (v2.5649): who the line is from, and how it came. */
@@ -77,7 +83,7 @@ export default function SetPromisedPayDateModal({
 }) {
   const { showToast } = useToastContext()
   const [mode, setMode] = useState<PromiseSheetMode>(initialMode)
-  const [ymd, setYmd] = useState(initialYmd ?? '')
+  const [ymd, setYmd] = useState(heardYmd ?? initialYmd ?? '')
   const [saidBy, setSaidBy] = useState(initialSaidBy ?? '')
   const [channel, setChannel] = useState<PromiseChannel>(initialChannel ?? 'phone')
   const [method, setMethod] = useState<PaidMethod>('check_mailed')
