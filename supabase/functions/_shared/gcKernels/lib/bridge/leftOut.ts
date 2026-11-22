@@ -22,6 +22,7 @@
  */
 
 import { isZzTestName } from '../jobs/zzTestJobSweep.ts'
+import { jobIdsAlone } from '../jobs/zzTestJobVisibility.ts'
 
 export const BRIDGE_LEFT_OUT_SETTING_KEY = 'bridge_left_out_v1'
 /** An address rule shorter than this would match half the town. */
@@ -115,11 +116,16 @@ export function isLeftOut(facts: LeftOutFacts, rules: ReadonlyArray<LeftOutRule>
 /**
  * The ids every job-keyed Bridge read takes: the ZZ test jobs the reader leaves out, and the jobs the list names.
  * Null keeps every job. With nothing left out it is the ZZ set itself, so a read under an empty list is the read
- * there was before the list. The page and the Monday email (`sheetReads.ts`) both make their set here.
+ * there was before the list. The page, its money read (`useDashboardFinancials.ts`) and the Monday email
+ * (`sheetReads.ts`) all make their set here.
+ *
+ * For a reader who keeps the ZZ tests (`zzTestJobIds` null) the list's jobs come back as ids alone (`jobIdsAlone`,
+ * v2.8281). Every read takes a plain set to mean *leave the ZZ tests out too*, so until then a dev who shows ZZ tests
+ * lost every ZZ job and ZZ bid on the page the moment the list named anything.
  */
 export function withLeftOutJobIds(zzTestJobIds: ReadonlySet<string> | null, leftOutJobIds: ReadonlySet<string> | null | undefined): ReadonlySet<string> | null {
   if (!leftOutJobIds || leftOutJobIds.size === 0) return zzTestJobIds
-  return zzTestJobIds ? new Set([...zzTestJobIds, ...leftOutJobIds]) : leftOutJobIds
+  return zzTestJobIds ? new Set([...zzTestJobIds, ...leftOutJobIds]) : jobIdsAlone(leftOutJobIds)
 }
 
 /** A short key for the list, so a read made under one list is not reused under another. */
