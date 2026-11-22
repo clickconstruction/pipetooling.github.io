@@ -8,6 +8,7 @@ import {
   BID_COMPANY_SHOWING_WORDS,
   aboutWeeksWords,
   applicationClockDays,
+  applicationsWaiting,
   bidCompanies,
   bidCompaniesShowing,
   bidCompanyChipCounts,
@@ -16,6 +17,7 @@ import {
   clockMiddleNearStart,
   clockDaysWords,
   clockNote,
+  clockWaitingNote,
   clockScaleDays,
   clockSpread,
   clockTile,
@@ -221,6 +223,24 @@ describe('the clock', () => {
     expect(applicationClockDays(rows, TODAY)).toEqual([45, 30])
   })
 
+  it('counts the applications of twelve months that still wait for a permit, and the ones filed over six months ago', () => {
+    const rows = [
+      // On the clock: filed in the window, with its permit.
+      { stage: 'applied', submitted_on: '2026-09-01', issued_on: '2026-10-16' },
+      // Still waiting: one filed last month, one filed 181 days ago, one filed exactly 180 days ago.
+      { stage: 'applied', submitted_on: '2026-10-20', issued_on: null },
+      { stage: 'applied', submitted_on: '2026-05-22', issued_on: null },
+      { stage: 'applied', submitted_on: '2026-05-23', issued_on: null },
+      // Not an application, filed before the twelve months, filed after today, or with no filing day: none is counted.
+      { stage: 'issued', submitted_on: '2026-09-01', issued_on: null },
+      { stage: 'applied', submitted_on: '2025-11-18', issued_on: null },
+      { stage: 'applied', submitted_on: '2026-11-20', issued_on: null },
+      { stage: 'applied', submitted_on: null, issued_on: null },
+    ]
+    expect(applicationsWaiting(rows, TODAY)).toEqual({ filed: 4, waiting: 3, longWaiting: 1 })
+    expect(applicationsWaiting([], TODAY)).toEqual({ filed: 0, waiting: 0, longWaiting: 0 })
+  })
+
   it('reads a building permit to the plumber’s permit, and a permit pulled first as none', () => {
     const rows = [
       { filed_on: '2026-09-01', plumber_permit_on: '2026-09-06' },
@@ -254,6 +274,8 @@ describe('the clock', () => {
     const rows = [1, 3, 5, 7, 9].map((d) => ({ filed_on: '2026-09-01', plumber_permit_on: `2026-09-${String(1 + d).padStart(2, '0')}` }))
     const unnamed = marketClocks({ city: 'San Antonio', applications, rows, namesPlumbers: false, todayYmd: TODAY })
     expect(unnamed.map((c) => c.kind)).toEqual(['application'])
+    // The application clock carries the count of who still waits, off the same list.
+    expect(unnamed[0]?.waiting).toEqual({ filed: 5, waiting: 0, longWaiting: 0 })
     const named = marketClocks({ city: 'Austin', applications: [], rows, namesPlumbers: true, todayYmd: TODAY })
     expect(named).toEqual([{ kind: 'plumber', city: 'Austin', spread: { n: 5, q1: 3, median: 5, q3: 7 } }])
     expect(marketClocks({ city: 'Seguin', applications: [], rows: [], namesPlumbers: false, todayYmd: TODAY })).toEqual([])
@@ -269,7 +291,19 @@ describe('the clock', () => {
     const plumber = { kind: 'plumber' as const, city: 'Austin', spread: { n: 80, q1: 1, median: 5, q3: 9 } }
     expect(clockTitle(application)).toBe('San Antonio · application to permit')
     expect(clockTitle(plumber)).toBe('Austin · building permit to the plumber’s permit')
-    expect(plainSentence(clockNote(application))).toBe('Half of the applications wait 45 days or more for the permit. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
+    expect(plainSentence(clockNote(application))).toBe('Half of the applications that have a permit waited 45 days or more for it. That is the time to call in. The middle half took 25 to 80 days, over 1,200 applications.')
+    // What the clock leaves out is said under it: who still waits, and who has waited long. Neither a slow review nor a dead job is claimed.
+    expect(plainSentence(clockWaitingNote({ ...application, waiting: { filed: 2100, waiting: 900, longWaiting: 250 } }) ?? '')).toBe(
+      '900 of the 2,100 applications filed in twelve months still wait for a permit. The clock counts only the ones that have their permit, so it reads short. 250 of them were filed over six months ago. The city does not say whether a long wait is a slow review or a job that stopped.',
+    )
+    expect(plainSentence(clockWaitingNote({ ...application, waiting: { filed: 6, waiting: 1, longWaiting: 1 } }) ?? '')).toBe(
+      '1 of the 6 applications filed in twelve months still waits for a permit. The clock counts only the ones that have their permit, so it reads short. 1 of them was filed over six months ago. The city does not say whether a long wait is a slow review or a job that stopped.',
+    )
+    expect(plainSentence(clockWaitingNote({ ...application, waiting: { filed: 40, waiting: 3, longWaiting: 0 } }) ?? '')).toBe('3 of the 40 applications filed in twelve months still wait for a permit. The clock counts only the ones that have their permit, so it reads short.')
+    // Nothing waits, a clock with no count, and a plumber clock: no line.
+    expect(clockWaitingNote({ ...application, waiting: { filed: 40, waiting: 0, longWaiting: 0 } })).toBeNull()
+    expect(clockWaitingNote(application)).toBeNull()
+    expect(clockWaitingNote({ ...plumber, waiting: { filed: 40, waiting: 3, longWaiting: 0 } })).toBeNull()
     // The middle wait, the middle half and how many it is over are the note's values.
     expect(sentenceParts(clockNote(application)).filter((p) => typeof p !== 'string')).toEqual([
       { kind: 'median', text: '45 days' },

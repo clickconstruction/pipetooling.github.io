@@ -346,7 +346,8 @@ export function marketJobs(permits: readonly MarketPermit[]): MarketPermit[] {
 /**
  * Application to permit: the applications submitted in twelve months that carry an issued day,
  * and the days between the two. An application still waiting has no second day and is left out,
- * so the newest months read a little short.
+ * so the clock reads short: the longest waits are the ones missing. `applicationsWaiting` counts
+ * them, and the clock says the count under its bar.
  */
 export function applicationClockDays(rows: readonly ClockPermit[], todayYmd: string): number[] {
   const since = marketPermitsSince(todayYmd)
@@ -355,6 +356,30 @@ export function applicationClockDays(rows: readonly ClockPermit[], todayYmd: str
     if (r.stage !== 'applied' || !r.submitted_on || !r.issued_on || r.submitted_on < since || r.submitted_on > todayYmd) continue
     const days = daysBetween(r.submitted_on, r.issued_on)
     if (days != null && days >= 0) out.push(days)
+  }
+  return out
+}
+
+/** Past this many days an application that still waits has waited long: six months. */
+export const LONG_WAIT_DAYS = 180
+
+/**
+ * The applications of twelve months, how many of them still wait for a permit, and how many of
+ * those were filed over `LONG_WAIT_DAYS` ago. The same applications the clock reads, so the
+ * count and the clock stand on one list.
+ */
+export type ApplicationsWaiting = { filed: number; waiting: number; longWaiting: number }
+
+export function applicationsWaiting(rows: readonly ClockPermit[], todayYmd: string): ApplicationsWaiting {
+  const since = marketPermitsSince(todayYmd)
+  const out: ApplicationsWaiting = { filed: 0, waiting: 0, longWaiting: 0 }
+  for (const r of rows) {
+    if (r.stage !== 'applied' || !r.submitted_on || r.submitted_on < since || r.submitted_on > todayYmd) continue
+    out.filed++
+    if (r.issued_on) continue
+    out.waiting++
+    const days = daysBetween(r.submitted_on, todayYmd)
+    if (days != null && days > LONG_WAIT_DAYS) out.longWaiting++
   }
   return out
 }
@@ -386,8 +411,8 @@ export function plumberClockDays(rows: ReadonlyArray<ClockRow>, todayYmd: string
 /** Which two dates a clock runs between. */
 export type ClockKind = 'application' | 'plumber'
 
-/** One clock as the screen draws it. */
-export type MarketClock = { kind: ClockKind; city: string; spread: ClockSpread }
+/** One clock as the screen draws it. An application clock carries how many applications still wait, off its bar. */
+export type MarketClock = { kind: ClockKind; city: string; spread: ClockSpread; waiting?: ApplicationsWaiting }
 
 /** "45 days", "1 day", "the same day". */
 export function clockDaysWords(days: number): string {
@@ -413,11 +438,29 @@ export function clockNote(clock: MarketClock): string {
   const jobs = val('over', `${n.toLocaleString('en-US')} ${clock.kind === 'application' ? 'applications' : 'jobs'}`)
   const middle = `The middle half took ${val('middle', `${q1} to ${q3} days`)}, over ${jobs}.`
   if (clock.kind === 'application') {
-    const wait = median <= 0 ? 'Half of the applications get their permit the same day.' : `Half of the applications wait ${val('median', clockDaysWords(median))} or more for the permit.`
+    // The clock holds only applications that have their permit: the words say so, and `clockWaitingNote` counts the rest.
+    const wait = median <= 0 ? 'Half of the applications that have a permit got it the same day.' : `Half of the applications that have a permit waited ${val('median', clockDaysWords(median))} or more for it.`
     return `${wait} That is the time to call in. ${middle}`
   }
   const taken = median <= 0 ? 'Half of the jobs have a plumber’s permit by the day of the building permit.' : `Half of the jobs have a plumber’s permit within ${val('median', clockDaysWords(median))} of the building permit.`
   return `${taken} The job is taken by the time the city shows it. Read ${clock.city} for who builds. ${middle}`
+}
+
+/**
+ * The line under an application clock's note: how many applications still wait, so are not on
+ * the clock, and how many of those were filed over six months ago. Null on a plumber clock and
+ * where nothing waits. The feed cannot tell a slow review from a job that stopped, and the line
+ * says so without claiming either.
+ */
+export function clockWaitingNote(clock: MarketClock): string | null {
+  const w = clock.waiting
+  if (clock.kind !== 'application' || !w || w.waiting <= 0) return null
+  const n = (count: number) => count.toLocaleString('en-US')
+  const still = `${val('waiting', n(w.waiting))} of the ${val('filed', `${n(w.filed)} applications`)} filed in twelve months still ${w.waiting === 1 ? 'waits' : 'wait'} for a permit.`
+  const short = 'The clock counts only the ones that have their permit, so it reads short.'
+  if (w.longWaiting <= 0) return `${still} ${short}`
+  const long = `${val('long', n(w.longWaiting))} of them ${w.longWaiting === 1 ? 'was' : 'were'} filed over six months ago.`
+  return `${still} ${short} ${long} The city does not say whether a long wait is a slow review or a job that stopped.`
 }
 
 /** How far the clock's bar reaches: 120 days, or past the widest third quarter in steps of 30. */
@@ -452,7 +495,7 @@ export function clockMiddleNearStart(at: number): boolean {
 export function marketClocks(input: { city: string; applications: readonly ClockPermit[]; rows: ReadonlyArray<ClockRow>; namesPlumbers: boolean; todayYmd: string }): MarketClock[] {
   const out: MarketClock[] = []
   const application = clockSpread(applicationClockDays(input.applications, input.todayYmd))
-  if (application) out.push({ kind: 'application', city: input.city, spread: application })
+  if (application) out.push({ kind: 'application', city: input.city, spread: application, waiting: applicationsWaiting(input.applications, input.todayYmd) })
   const plumber = input.namesPlumbers ? clockSpread(plumberClockDays(input.rows, input.todayYmd)) : null
   if (plumber) out.push({ kind: 'plumber', city: input.city, spread: plumber })
   return out
