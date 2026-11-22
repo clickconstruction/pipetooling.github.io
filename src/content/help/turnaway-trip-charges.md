@@ -11,7 +11,7 @@ Maybe the client isn't home, or the site isn't ready. A trip charge is a fee for
 
 ## For technicians: filing a Turnaway
 
-On the Job Mode card, you tap {{button:amber|Turnaway — not ready / not home}}. A small form opens:
+On the Job Mode card, you tap {{button:amber|Turnaway — not ready / not home}}. The press shows once you are on the clock for the job. A small form opens:
 
 :::example The Turnaway form
 **J512** &nbsp; Smith House Repipe

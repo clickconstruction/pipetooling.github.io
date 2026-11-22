@@ -227,14 +227,14 @@ describe('DashboardJobModeCard — the press bar on a phone', { timeout: 15_000 
     expect(onLeaveReport).toHaveBeenCalledWith(expect.objectContaining({ id: JOB_C, hcpNumber: '—' }))
   })
 
-  it('not clocked in: Turnaway and Leave report are dead, % done and Clock out hidden, On my way stands', async () => {
+  it('not clocked in: Turnaway is not drawn, Leave report is dead, % done and Clock out hidden, On my way stands', async () => {
     phone()
     Object.assign(scenario, { blocks: makeBlocks(), openSession: null, visited: [], role: 'helpers' })
     renderCard()
     await screen.findByText('Ready to start')
-    const turnaway = screen.getByTestId('job-mode-press-turnaway') as HTMLButtonElement
     const leave = screen.getByTestId('job-mode-press-leave-report') as HTMLButtonElement
-    expect(turnaway.disabled).toBe(true)
+    // Turnaway waits for the clock (`turnawayOffered`): it is not drawn dead, it is not drawn.
+    expect(screen.queryByTestId('job-mode-press-turnaway')).toBeNull()
     expect(leave.disabled).toBe(true)
     expect(leave.title).toBe('Start a job first.')
     expect(screen.queryByTestId('job-mode-press-pct-done')).toBeNull()
