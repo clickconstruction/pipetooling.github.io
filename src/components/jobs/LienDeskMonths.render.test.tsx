@@ -104,7 +104,9 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect(line.getAttribute('data-flat')).toBe('yes')
     expect((line.firstElementChild as HTMLElement).style.border).toBe('')
     expect((line.firstElementChild as HTMLElement).style.background).toBe('')
-    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Sep 8')
+    // A day from clock hours is a default: the value bold, its source chip and Set by hand after it (punch list #399).
+    expect(screen.getByTestId('lien-last-work-day').querySelector('[data-value]')?.textContent).toBe('Sep 8')
+    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Sep 8 from clock hours Set by hand')
     // One lead line where the paragraph was; the second sentence only because an earlier paper is on the job.
     expect((card.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('Tick a month to put it on this notice. A check is a paper that already names the month.')
     expect(card.textContent).not.toContain('Every month worked, oldest first.')
@@ -177,11 +179,12 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     // Bill it from here ›
     fireEvent.click(card.querySelector('[data-lien-bill-from-here]') as HTMLButtonElement)
     expect(doors.onBill).toHaveBeenCalledTimes(1)
-    // Change › opens the day's editor in the row; Cancel closes it.
-    fireEvent.click(screen.getByTestId('lien-last-work-change'))
-    const editor = screen.getByTestId('lien-last-work-editor')
-    fireEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
-    expect(screen.queryByTestId('lien-last-work-editor')).toBeNull()
+    // Set by hand opens the day's own field in the row; Cancel closes it (punch list #399: no Change › and no editor box).
+    fireEvent.click(screen.getByRole('button', { name: 'Set by hand, last day of work' }))
+    const field = screen.getByTestId('lien-last-work-day').querySelector('[data-value="field"]') as HTMLElement
+    expect(within(field).getByLabelText('last day of work')).toBeTruthy()
+    fireEvent.click(within(field).getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByTestId('lien-last-work-day').querySelector('[data-value="field"]')).toBeNull()
     // Correct the claim › opens the claim's editor in the money block; Cancel closes it.
     fireEvent.click(screen.getByRole('button', { name: 'Correct the claim ›' }))
     const claimEditor = card.querySelector('[data-lien-claim-editor]') as HTMLElement
@@ -236,8 +239,8 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet.')
     expect(card.querySelector('table')).toBeNull()
     expect(card.querySelector('[data-lien-ledger-lead]')).toBeNull()
-    // The row above the empty words is the next step: the last day of work and its Change ›.
+    // The row above the empty words is the next step: the last day of work and the press that sets it.
     expect(card.firstElementChild?.matches('[data-lien-ledger-last-work]')).toBe(true)
-    expect(screen.getByTestId('lien-last-work-change')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Set by hand, last day of work' })).toBeTruthy()
   })
 })

@@ -4535,7 +4535,9 @@ body.my-time-boundary-dragging {
      with an edge (Note it as missed, the two editors' own) is that tall itself. */
   .lienLedger button, .lienLedger a { display: inline-flex; align-items: center; min-height: 44px; vertical-align: baseline; }
   .lienLedger button:not(.lienLedgerNoteMissed), .lienLedger a { margin-block: -13px; margin-block: calc((1lh - 44px) / 2); }
-  .lienLedger [data-lien-claim-editor] button, .lienLedger [data-testid='lien-last-work-editor'] button { margin-block: 0; }
+  .lienLedger [data-lien-claim-editor] button, .lienLedger button.vipKeep { margin-block: 0; }
+  /* The last day of work's value (punch list #399) is tinted, so it stays the height of its words; its touch area is the value piece's own. */
+  .lienLedger button.vipChange { display: inline-block; min-height: 0; margin-block: 0; }
   /* Two quiet rows, each with a press in its sentence, sit one under the other: a one-line row is 44 px itself, so the
      two touch areas do not overlap. */
   .lienLedgerQuiet:has(button, a) { padding-top: 13px; padding-bottom: 13px; }
