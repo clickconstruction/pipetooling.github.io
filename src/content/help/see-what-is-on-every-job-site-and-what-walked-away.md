@@ -129,7 +129,7 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
-Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. The new box scrolls into view. Press **Add a part** on a box to put a part in it. The sheet is the one the crew has on the phone. An empty box's **Contents** tab has the same press. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
+Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. The new box scrolls into view. Press **Add a part** on a box to put a part in it. The sheet is the one the crew has on the phone. An empty box's **Contents** tab has the same press. On a line, **Correct…** sets the count the crew should have found. That press writes a count row in your name.
 
 Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's window opens on its **Where is it?** tab. The tab says the place, the note, and who pinned the box and on what day. Under the words is the site from above with the box's pin. The tab is the same sheet the crew has on the phone. [Find a box on the site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#find-a-box-on-the-site) says what each press does.
 
