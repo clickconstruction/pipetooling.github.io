@@ -82,6 +82,8 @@ Dana texts that a bill went missing. Type **/bill** and light the open bill. Pre
 
 A customer's own text, email or call carries {{button:outline|Write down their word}} under it. Press it when the customer says when they will pay, or that they already paid. The sheet opens on the job the line is about. The customer's name and how they said it are filled in. When the line is on no job, the word goes on their one job with money open. With more than one, pick the job. The word shows on the job as **They said**. Read [see where a job you bid stands on money](/help/see-where-a-job-you-bid-stands-on-money#write-down-their-word) for the sheet.
 
+When their text or voicemail names a day, the day shows beside the button. It reads **They said Fri Nov 27.** Press the button and the sheet opens on **They'll pay by…** with that day in **Pay by**. A line under the job says the day was read from their text. Change the day when they meant another one. Nothing is saved until you press {{button:green|Save promise}}. A call or an email shows no day, and neither does a day that has passed.
+
 ## Find a reply
 
 Press **⤢ Find** in the quick replies. A window opens with their last message on top. It also says where they are in the flow, and what finishes that step. Press **the step’s card ›** to open the step itself.
