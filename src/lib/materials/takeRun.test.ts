@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ContainerLine } from './onSite'
-import { TAKE_FOUND_NOTE, TAKE_OPEN_MS, newTakeRun, takeAddExtra, takeDoneWords, takeIdOf, takeIsOnePart, takeIsStale, takeLeftWords, takeLineCount, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal } from './takeRun'
+import { TAKE_FOUND_NOTE, TAKE_OPEN_MS, newTakeRun, takeAddExtra, takeDoneWords, takeDoor, takeIdOf, takeIsOnePart, takeIsStale, takeLeftWords, takeLineCount, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeQuietLabel, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal } from './takeRun'
 
 const line = (partKey: string, partName: string, onHand: number, partId: string | null = null): ContainerLine => ({ containerId: 'box', partKey, partId, partName, manufacturer: null, onHand, lastTouchedAt: null, lastTouchedBy: null, lastCountAt: null, lastCountBy: null, lastCountDiff: null, cannotFindSinceCount: 0 })
 const toilets = [line('text:kohler toilet', 'Kohler toilet', 24)]
@@ -39,6 +39,23 @@ describe('marking', () => {
     expect(takeAddExtra(run, { partId: null, partName: 'x', manufacturer: null, n: 0 }).extras).toHaveLength(1)
     run = takeRemoveExtra(run, 0)
     expect(run.extras).toEqual([])
+  })
+})
+
+describe('the door at the foot of a box', () => {
+  it('is the blue press while the box has a part on hand', () => {
+    expect(takeDoor(toilets)).toBe('press')
+    expect(takeDoor([line('text:elbow', 'Elbow', 0), line('text:hanger', 'Hanger', 1)])).toBe('press')
+  })
+
+  it('is a quiet link on a box with no line, and on one whose every line reads none', () => {
+    expect(takeDoor([])).toBe('quiet')
+    expect(takeDoor([line('text:elbow', 'Elbow', 0)])).toBe('quiet')
+    expect(takeDoor([line('text:elbow', 'Elbow', -2)])).toBe('quiet')
+  })
+
+  it('asks in the link what the press would have asked for', () => {
+    expect(takeQuietLabel('G12')).toBe('Took something out of G12? Say what ›')
   })
 })
 
