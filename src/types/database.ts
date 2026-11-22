@@ -53325,6 +53325,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_check_to_look: { Args: { p_fixture_id: string }; Returns: string[] }
       start_check_windows: {
         Args: { p_job_ids: string[] }
         Returns: {
