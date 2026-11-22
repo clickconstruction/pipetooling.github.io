@@ -8,6 +8,7 @@ import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGues
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './building'
 import { missingLogs, missingLogsWords } from './buildingLog'
 import { drawPayDays } from './buildingPay'
+import { drawDueWords } from './drawPayClock'
 import { punchCounts } from './buildingPunch'
 import { submittalRows } from './buildingSubmittals'
 import { changeRequestLinesFor } from './changeRequestsWaiting'
@@ -278,7 +279,7 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
       if (days.daysLate > 0) {
         latePay.push(`${what} is ${days.daysLate} ${days.daysLate === 1 ? 'day' : 'days'} late to pay. It was due ${shortDate(days.payBy)}.`)
       } else {
-        also.push(`${what} is approved. Pay it${days.payBy ? (days.payBy === state.today ? ' today' : ` by ${shortDate(days.payBy)}`) : ''}.`)
+        also.push(days.payBy || !days.waitsOn ? `${what} is approved. Pay it${days.payBy ? (days.payBy === state.today ? ' today' : ` by ${shortDate(days.payBy)}`) : ''}.` : `${what} is approved. It is ${drawDueWords(days.waitsOn)}.`)
       }
     }
     for (const d of pkg.sow?.draws ?? []) {

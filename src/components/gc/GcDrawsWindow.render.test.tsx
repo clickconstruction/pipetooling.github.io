@@ -119,6 +119,11 @@ describe('GcDrawsWindow', () => {
   it('marks an approved draw paid, and records the unconditional waiver on a paid one', () => {
     const { writes } = setup({ project: drawAt('fsteel', 'fsteel-draw-2', 'approved') })
     expect(document.querySelector('[data-draws-to-pay]')!.textContent).toContain('Iron Horse Fabrication, Structural steel draw 2')
+    // Approved Oct 1, with no bill to the customer since: no pay-by day, and both places say what it waits on.
+    expect(document.querySelector('[data-draws-to-pay]')!.textContent).toContain('due 10 days after the customer pays our next bill')
+    expect(document.querySelector('[data-draws-to-pay]')!.textContent).not.toContain('pay by')
+    expect(draw('fsteel-draw-2').textContent).toContain('approved Oct 1, due 10 days after the customer pays our next bill')
+    expect(document.querySelector('[data-draws-to-pay-rule]')!.textContent).toBe('We pay an approved draw within 10 days after the customer pays us for it. A retainage release is paid on the day it opens.')
     fireEvent.click(within(draw('fsteel-draw-2')).getByRole('button', { name: 'Mark paid' }))
     expect(writes.onPay).toHaveBeenCalledWith('fsteel', 'fsteel-draw-2')
     fireEvent.click(within(draw('felec-draw-1')).getByRole('button', { name: 'Their unconditional waiver came in' }))

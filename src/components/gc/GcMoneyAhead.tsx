@@ -115,7 +115,7 @@ export function GcMoneyAhead({ state }: { state: GcState }) {
           <div>
             The bills we send {shortDate(a.nextBills.on)} come to {money(a.nextBills.amount)} on {a.nextBills.jobs === 1 ? '1 job' : `${a.nextBills.jobs} jobs`}.
             {countExpected
-              ? ` Each counts on the day that customer usually pays. The trades' next draws for the same work, ${money(a.expected.out)}, count ${PAY_WITHIN_WORDS} after we send them.`
+              ? ` Each counts on the day that customer usually pays. The trades' next draws for the same work, ${money(a.expected.out)}, count ${PAY_WITHIN_WORDS} after the customer should pay.`
               : ' They are not counted until they go. Neither are the trades\u2019 next draws.'}
           </div>
         )}
@@ -124,7 +124,7 @@ export function GcMoneyAhead({ state }: { state: GcState }) {
   )
 }
 
-/** How long after the bill day the trades' next draws are paid: the pay terms we give them. */
+/** How long after the customer pays the trades' next draws are paid: the pay terms we give them. */
 const PAY_WITHIN_WORDS = '10 days'
 
 function standingWords(n: number): string {
@@ -258,7 +258,8 @@ function MoveLine({ move: m }: { move: CashMove }) {
     atTheEnd: 'at the end',
     payBy: `pay by ${shortDate(m.on)}`,
     weAreLate: 'past its pay-by day, counted now',
-    ifApprovedToday: `asked ${shortDate(m.askedOn)}, counted as if we approve it today`,
+    afterCustomer: `due ${PAY_WITHIN_WORDS} after the customer pays, counted ${shortDate(m.on)}`,
+    ifApprovedToday: `asked ${shortDate(m.askedOn)}, counted as if we approve it today and the customer pays on time`,
     retainage: `from ${shortDate(m.on)}`,
     nextBill: m.fromBars ? `the ${billDayWords(m)} bill as the schedule has it, expected ${shortDate(m.on)}` : `the ${billDayWords(m)} bill for the work reported so far, expected ${shortDate(m.on)}`,
     nextDraw: m.fromBars ? `for the work the schedule has done by ${billDayWords(m)}, paid by ${shortDate(m.on)}` : `for the work they reported, paid by ${shortDate(m.on)} if they ask by ${billDayWords(m)}`,

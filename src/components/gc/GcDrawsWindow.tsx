@@ -15,7 +15,8 @@ import type { SignedFile } from '../../lib/gc/closeoutRows'
 import type { CrewJobRead } from '../../lib/gc/crewJobRows'
 import { drawCameInDraft, type DrawCameIn, type DrawExtra } from '../../lib/gc/drawRows'
 import { partnerById } from '../../lib/gc/lookups'
-import { backChargesToAct, PAY_WITHIN_DAYS } from '../../lib/gc/portal'
+import { backChargesToAct } from '../../lib/gc/portal'
+import { DRAW_PAY_RULE, drawDueWords } from '../../lib/gc/drawPayClock'
 import type { WaiverFile } from '../../lib/gc/tradeFiles'
 import type { Draw, GcProject, GcState, Partner, TradePackage } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
@@ -201,7 +202,7 @@ function ToPay({ state, project }: { state: GcState; project: GcProject }) {
           </span>
           {lateCount > 0 && <Chip tone="red">{lateCount} late</Chip>}
         </div>
-        {list.map(({ pkg, company, draw, payBy, daysLate }) => (
+        {list.map(({ pkg, company, draw, payBy, waitsOn, daysLate }) => (
           <div key={draw.id}>
             {company}, {pkg.trade} {draw.final ? 'retainage release' : `draw ${draw.number}`}: <strong>{money(draw.net)}</strong>
             {payBy && (
@@ -210,10 +211,11 @@ function ToPay({ state, project }: { state: GcState; project: GcProject }) {
                 {daysLate > 0 ? `, ${late(daysLate)}` : payBy === state.today ? ', today' : ''}
               </span>
             )}
+            {!payBy && waitsOn && <span style={{ color: 'var(--text-muted)' }}>, {drawDueWords(waitsOn)}</span>}
           </div>
         ))}
         <div data-draws-to-pay-rule style={{ marginTop: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          We pay an approved draw within {PAY_WITHIN_DAYS} days. A retainage release is paid on the day it opens.
+          {DRAW_PAY_RULE} A retainage release is paid on the day it opens.
         </div>
       </div>
     </Card>
@@ -240,6 +242,8 @@ function DrawDays({ project, pkg, draw, today }: { project: GcProject; pkg: Trad
             {days.daysLate > 0 ? `, ${late(days.daysLate)}` : days.payBy === today ? ', today' : ''}
           </strong>
         </>
+      ) : days.waitsOn ? (
+        <>, {drawDueWords(days.waitsOn)}</>
       ) : null}
     </span>
   )

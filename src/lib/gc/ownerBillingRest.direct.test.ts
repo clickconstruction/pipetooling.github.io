@@ -131,7 +131,7 @@ describe('Billing the customer, the rest, on the made-up jobs, Fri Oct 2', () =>
           who: 'Hill Country Interiors',
           number: 2,
           amount: 14688,
-          on: '2026-11-04',
+          on: '2026-11-25',
           why: 'nextDraw',
           billOn: '2026-10-25',
         },
@@ -248,7 +248,7 @@ describe('Billing the customer, the rest, on the made-up jobs, Fri Oct 2', () =>
         who: 'Summit Roofing',
         number: 1,
         amount: 54000,
-        on: '2026-11-04',
+        on: '2026-12-12',
         why: 'nextDraw',
         billOn: '2026-10-25',
       },
@@ -262,7 +262,7 @@ describe('Billing the customer, the rest, on the made-up jobs, Fri Oct 2', () =>
         who: 'Cool Breeze Mechanical',
         number: 2,
         amount: 9720,
-        on: '2026-11-04',
+        on: '2026-12-12',
         why: 'nextDraw',
         billOn: '2026-10-25',
       },
@@ -274,11 +274,9 @@ describe('Billing the customer, the rest, on the made-up jobs, Fri Oct 2', () =>
     const schedule = cashAhead(s, { bars: 'schedule' })
     const reported = cashAhead(s, { bars: 'reported' })
     expect(pin([barsChangeWords(schedule, reported), lowestWeekWords(schedule), expectedThrough(schedule)])).toEqual([
-      [
-        'As the schedule stands, $205,920 more goes to the trades in these weeks.',
-        'The bills it expects bring $380,624 more, all of it after these weeks.',
-      ],
-      'Summit Roofing $118,800 and Cool Breeze Mechanical $84,240 are most of it.',
+      // The trades' next draws are due after each customer pays, so none of them falls in these weeks any more.
+      ['The bills it expects bring $380,624 more, all of it after these weeks.'],
+      null,
       '2026-12-25',
     ])
   })
