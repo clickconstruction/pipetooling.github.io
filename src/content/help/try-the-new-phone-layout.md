@@ -88,7 +88,7 @@ With no **Inbox** tab, the list stays on your Dashboard. The list opens on **Wal
 
 The count on the line is your own lines. Lines that wait on other people are in the list, under their name.
 
-Nothing else on your Dashboard moved. **The office's round** is where it was, under the line.
+Nothing else on your Dashboard moved. The **Lien desk** numbers sit right under the line. Tap them to open **The Board**. **The office's round** is where it was, under both.
 
 The guide [work the Needs you list on the dashboard](/help/needs-you-card) says what each line means.
 

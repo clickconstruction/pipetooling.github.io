@@ -3,12 +3,13 @@ import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
-import { DISPATCH_MODE_INBOX_PATH, needsYouDoorLine } from '../../lib/phoneLayout/needsYouPlace'
+import { DISPATCH_MODE_INBOX_PATH, needsYouDoorLine, needsYouLienStripUnderDoor } from '../../lib/phoneLayout/needsYouPlace'
 import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
 import { JobModeTopRow } from '../jobMode/JobModeTopRow'
 import { canSeeWaitingOnLeader } from '../../lib/dashboard/waitingOnLeader'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
+import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
 import DashboardWaitingOnLeaderCard from './DashboardWaitingOnLeaderCard'
 import { DashboardOfficeRoundCard } from './DashboardOfficeRoundCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
@@ -105,9 +106,10 @@ export interface DashboardPinnedQuickRowProps {
   /** The Inbox tab the door opens. Dispatch Mode's unless said: Job Mode's Dashboard hands its own. */
   needsYouDoorTo?: string
   /**
-   * The door stands in for the Needs you card alone, so the two cards under the list stay on the page: the office's
-   * round and, for the office, what waits on the leader. Unset, the door takes both to the Inbox tab, as the office
-   * person's phone has had it since v2.3883.
+   * The door stands in for the Needs you list alone, so the rest of the card's neighbourhood stays on the page: the
+   * Lien desk's strip, drawn under the door as a card of its own, and the two cards under the list, the office's
+   * round and, for the office, what waits on the leader. Unset, the door takes all three to the Inbox tab, as the
+   * office person's phone has had it since v2.3883.
    */
   needsYouDoorKeepsCards?: boolean
   /** The office person's phone (v2.3891, the owner's pick 2026-09-27): no Tally and Job Report squares beside the clock — two quiet links under it instead, so both stay one tap away. */
@@ -378,6 +380,8 @@ export function DashboardPinnedQuickRow({
 
   // The two cards under the list: drawn with the banners, and left off a page whose door takes them to the Inbox tab.
   const cardsUnderTheList = !hideBanners && (!needsYouDoor || needsYouDoorKeepsCards)
+  // The Lien desk's strip on its own: under a door that keeps the cards, while the list has a line, as the card shows it.
+  const lienStripUnderDoor = needsYouLienStripUnderDoor({ door: doorLine != null, cardsStay: needsYouDoorKeepsCards, bannersHidden: hideBanners })
 
   const pinsToShow = filterPinsToShow(visiblePins)
 
@@ -485,6 +489,7 @@ export function DashboardPinnedQuickRow({
           <span style={{ color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Inbox ›</span>
         </button>
       ) : null}
+      {lienStripUnderDoor ? <NeedsYouLienBoardStrip standalone strip={needsYou.lienBoardStrip} userId={authUserId} role={role} onOpenBoard={() => navigate(LIEN_DESK_PATH)} /> : null}
       {!hideBanners && !needsYouDoor && (
         <DashboardNeedsYouCard
           userId={authUserId}

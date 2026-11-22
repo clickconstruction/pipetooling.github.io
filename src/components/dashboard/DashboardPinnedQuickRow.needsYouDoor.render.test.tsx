@@ -9,7 +9,9 @@ import { cleanup, fireEvent } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { DashboardPinnedQuickRow } from './DashboardPinnedQuickRow'
 
-const scenario = { phoneLayout: false }
+import type { LienBoardDot } from '../../lib/jobs/lienBoard'
+
+const scenario: { phoneLayout: boolean; strip: LienBoardDot[] | null } = { phoneLayout: false, strip: null }
 const navigate = vi.fn()
 
 vi.mock('../../lib/supabase', async () => {
@@ -25,6 +27,11 @@ vi.mock('../../hooks/useNewPhoneLayout', () => ({ useNewPhoneLayout: () => ({ on
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => navigate }
+})
+// The Lien desk's strip is built from the desk's own read. Here the test hands it over, so the wiring is what is held.
+vi.mock('../../hooks/useNeedsYouInputs', async () => {
+  const actual = await vi.importActual<typeof import('../../hooks/useNeedsYouInputs')>('../../hooks/useNeedsYouInputs')
+  return { ...actual, useNeedsYouInputs: (args: Parameters<typeof actual.useNeedsYouInputs>[0]) => ({ ...actual.useNeedsYouInputs(args), lienBoardStrip: scenario.strip }) }
 })
 // Three lines, worst first as the builder ranks them: the office's, then the leader's own two.
 vi.mock('../../lib/dashboardNeedsYou', async () => {
@@ -42,6 +49,7 @@ vi.mock('../../lib/dashboardNeedsYou', async () => {
 beforeAll(installDomShims)
 beforeEach(() => {
   scenario.phoneLayout = false
+  scenario.strip = null
   navigate.mockClear()
 })
 afterEach(cleanup)
@@ -105,6 +113,69 @@ describe('the Needs you door · the cards under the list', () => {
     await settle()
     expect(card()).toBeNull()
     expect(door()!.compareDocumentPosition(round()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+describe('the Needs you door · the Lien desk’s strip', () => {
+  const DOTS: LienBoardDot[] = [
+    { key: 'by_day', figure: '17', words: 'by Dec 15', tone: 'red' },
+    { key: 'waiting', figure: '7', words: 'waiting on the leader', tone: 'violet' },
+    { key: 'in_mail', figure: '7', words: 'to print and mail', tone: 'amber' },
+    { key: 'unpaid', figure: '$111,623', words: 'unpaid on the desk', tone: 'quiet' },
+  ]
+  const strips = () => Array.from(document.querySelectorAll('[data-needs-you-lien-board]')) as HTMLElement[]
+
+  it('the card draws the strip inside itself', async () => {
+    scenario.strip = DOTS
+    renderWithProviders(<DashboardPinnedQuickRow {...props} />)
+    await settle()
+    expect(strips()).toHaveLength(1)
+    expect(card()!.contains(strips()[0]!)).toBe(true)
+    expect(strips()[0]!.hasAttribute('data-standalone')).toBe(false)
+  })
+
+  it('a door that keeps the cards keeps the strip on the page, under the door, and it opens the Lien desk', async () => {
+    scenario.phoneLayout = true
+    scenario.strip = DOTS
+    renderWithProviders(<DashboardPinnedQuickRow {...props} needsYouDoor needsYouDoorKeepsCards />)
+    await settle()
+    expect(card()).toBeNull()
+    expect(strips()).toHaveLength(1)
+    const strip = strips()[0]!
+    expect(strip.hasAttribute('data-standalone')).toBe(true)
+    // On its own the strip is a card: the label and The Board on a head row, the four dots under it.
+    expect(strip.textContent).toBe('Lien deskThe Board ›17by Dec 157waiting on the leader7to print and mail$111,623unpaid on the desk')
+    expect(strip.querySelectorAll('[data-needs-you-lien-dot]')).toHaveLength(4)
+    expect(door()!.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const round = document.querySelector('section[aria-label="The office\'s round"]')!
+    expect(strip.compareDocumentPosition(round) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(strip)
+    expect(navigate).toHaveBeenCalledWith('/lien-desk')
+  })
+
+  it('the office person’s older door takes the strip to the Inbox tab with the list', async () => {
+    scenario.strip = DOTS
+    renderWithProviders(<DashboardPinnedQuickRow {...props} needsYouDoor />)
+    await settle()
+    expect(door()).toBeTruthy()
+    expect(strips()).toHaveLength(0)
+  })
+
+  it('Job Mode’s own Dashboard draws the door and no strip', async () => {
+    scenario.phoneLayout = true
+    scenario.strip = DOTS
+    renderWithProviders(<DashboardPinnedQuickRow {...props} bannersOnly={false} hideBanners hideJobReport needsYouDoor needsYouDoorTo="/job-mode/inbox" />)
+    await settle()
+    expect(door()).toBeTruthy()
+    expect(strips()).toHaveLength(0)
+  })
+
+  it('a desk with nothing on it draws no strip under the door', async () => {
+    scenario.phoneLayout = true
+    renderWithProviders(<DashboardPinnedQuickRow {...props} needsYouDoor needsYouDoorKeepsCards />)
+    await settle()
+    expect(door()).toBeTruthy()
+    expect(strips()).toHaveLength(0)
   })
 })
 

@@ -18,6 +18,7 @@ import { EmptyState } from '../EmptyState'
 import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
+import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -326,28 +327,7 @@ export function DashboardNeedsYouCard({
         boxSizing: 'border-box',
       }}
     >
-      {lienBoardStrip && lienBoardStrip.length ? (
-        <button
-          type="button"
-          data-needs-you-lien-board
-          onClick={() => {
-            recordNavClick(userId, role, 'needs-you', '#lien-board')
-            onOpenBoard?.()
-          }}
-          title="Open the Lien desk at the Board"
-          style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', width: '100%', margin: '0 0 0.75rem', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
-        >
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Lien desk</span>
-          {lienBoardStrip.map((d) => (
-            <span key={d.key} data-needs-you-lien-dot={d.key} data-tone={d.tone} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, fontSize: '0.8125rem' }}>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', alignSelf: 'center', background: d.tone === 'red' ? 'var(--text-red-700)' : d.tone === 'amber' ? 'var(--text-amber-800)' : d.tone === 'violet' ? 'var(--text-violet-700)' : 'var(--border-strong)' }} />
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{d.figure}</strong>
-              <span style={{ color: 'var(--text-muted)' }}>{d.words}</span>
-            </span>
-          ))}
-          <span style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>The Board ›</span>
-        </button>
-      ) : null}
+      <NeedsYouLienBoardStrip strip={lienBoardStrip} userId={userId} role={role} onOpenBoard={onOpenBoard} />
       <DashboardCardHead card={{ top: lienBoardStrip && lienBoardStrip.length ? null : '1rem', side: '1.25rem', radius: 10 }} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
         <DashboardCardTitle>Needs you</DashboardCardTitle>
         <span
