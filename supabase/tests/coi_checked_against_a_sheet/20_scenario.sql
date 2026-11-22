@@ -158,7 +158,9 @@ RESET ROLE;
 SELECT cob.same('the paper is as Dana left it', cob.past($q$SELECT expires_at::text || ' ' || cardinality(sheet_asks)::text || ' ' || sheet_checked_by::text || ' ' || (sheet_sent_back_at IS NOT NULL)::text FROM person_contract_documents WHERE id = '00000000-0000-0000-0000-0000004046f1'$q$),
   '2099-06-30 2 00000000-0000-0000-0000-0000004046a1 true');
 
--- 7 · A job that goes leaves the company's certificate, with no job on it.
+-- 7 · A job that goes leaves the company's certificate, with no job on it. The claims go back to Dana first: the
+--     training fence reads who is signed in, and RESET ROLE leaves Tara's claims in place.
+SELECT cob.as_user('00000000-0000-0000-0000-0000004046a1');
 DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000004046d1';
 SELECT cob.same('the certificate outlives the job', cob.past($q$SELECT status || ' ' || coalesce(sheet_project_id::text, 'null') FROM person_contract_documents WHERE id = '00000000-0000-0000-0000-0000004046f1'$q$), 'signed null');
 
