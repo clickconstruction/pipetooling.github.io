@@ -87,6 +87,8 @@ describe('JobPaperSettingsWindow, the first time', () => {
     fireEvent.change(screen.getByLabelText('The protected party'), { target: { value: ' Ridgeway Sample Holdings ' } })
     // With every blank typed the note is words again, and no press.
     expect(screen.queryByRole('button', { name: /first\.$/ })).toBeNull()
+    // The words keep the press's room, so Require this paper does not move as the blank is typed.
+    expect(screen.getByText('Nothing reaches a signer until this press.').style.minHeight).toBe('44px')
     expect(require().disabled).toBe(false)
     fireEvent.click(require())
     await waitFor(() => expect(io.requireWithSettings).toHaveBeenCalledTimes(1))

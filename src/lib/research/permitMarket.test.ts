@@ -232,6 +232,23 @@ describe('the clock', () => {
     expect(plumberClockDays(rows, TODAY)).toEqual([5, 0])
   })
 
+  it('runs the plumber clock to a job’s first plumbing permit, and to the newest on a row from an older read', () => {
+    const rows = [
+      // Two plumbing permits: taken on the first, five days in, not on the later one.
+      { filed_on: '2026-09-01', plumber_permit_on: '2026-09-21', plumber_first_permit_on: '2026-09-06' },
+      // One plumbing permit: the same day both ways.
+      { filed_on: '2026-09-01', plumber_permit_on: '2026-09-04', plumber_first_permit_on: '2026-09-04' },
+      // The first was pulled before the building permit, the later one after: taken the day the city showed it.
+      { filed_on: '2026-09-10', plumber_permit_on: '2026-09-15', plumber_first_permit_on: '2026-09-02' },
+      // An older read: only the newest day is known.
+      { filed_on: '2026-09-01', plumber_permit_on: '2026-09-09' },
+      { filed_on: '2026-09-01', plumber_permit_on: '2026-09-12', plumber_first_permit_on: null },
+      // Open: no plumbing permit of either kind.
+      { filed_on: '2026-09-01', plumber_permit_on: null, plumber_first_permit_on: null },
+    ]
+    expect(plumberClockDays(rows, TODAY)).toEqual([5, 3, 0, 8, 11])
+  })
+
   it('draws the application clock where applications carry both days, and the plumber clock only where plumbers are named', () => {
     const applications = [30, 40, 45, 50, 80].map((d, i) => ({ stage: 'applied', submitted_on: '2026-06-01', issued_on: `2026-0${d >= 61 ? 8 : d >= 30 ? 7 : 6}-${String(i + 10).padStart(2, '0')}` }))
     const rows = [1, 3, 5, 7, 9].map((d) => ({ filed_on: '2026-09-01', plumber_permit_on: `2026-09-${String(1 + d).padStart(2, '0')}` }))

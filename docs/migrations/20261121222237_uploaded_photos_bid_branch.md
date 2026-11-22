@@ -19,3 +19,5 @@ A photo added to a bid from the Bid Board's photos icon (`bid_photos`, `20261110
 **No table is made**, so the fence calls are not needed; nothing here writes. `CREATE OR REPLACE VIEW` with the same thirty columns in the same order, so the file is safe to run twice.
 
 Apply order: the client reads only columns the view already has, so a client ahead of the push lists no bid photos and breaks nothing; push after the merge. No types regen and no dev-mcp catalog rebuild: the view's columns are unchanged.
+
+**Applied** to prod on 2026-11-22 at 01:43 UTC with `supabase db push` from a checkout at `origin/main`, right after #9279 merged. The migration drift check then read 1,438 versions applied against 1,438 files. Read back the same hour: the ledger lists this version, and the view has seven branches, thirty columns and `security_invoker`, with no `anon` select. Six `bid` rows read as a dev and as the sample estimator, and none as the sample superintendent, helper or subcontractor. The `bid` branch alone reads in 8 ms under a dev's policies.

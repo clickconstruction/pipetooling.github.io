@@ -347,6 +347,9 @@ paper until an entry has a settings list, and the first one is a test entry.
    - **Tested live, 2026-11-21.** A `ZZ Test` paper on a `ZZ Test` job on prod, at phone and desktop
      width: the flow, the one page and three saves passed. The small presses it found were on the way
      in, on the papers section, and are fixed in v2.8229.
+   - **Measured again on the live build, 2026-11-21.** v2.8229's presses read 44 px on prod at both
+     widths. A job with no paper showed one more small press, the empty section's own **Add a paper**,
+     fixed in v2.8275 with the door on the Papers to sign window.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.

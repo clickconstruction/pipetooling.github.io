@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { goesLine, HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { goesLine, HELD_IN_KIND, HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, payJobsOf, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withInKindHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -86,6 +86,51 @@ describe('withAnsweredHolds: a review offer on a job answered already', () => {
     const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW, channelId: null, heldWhy: HELD_NO_NUMBER }), offer({ id: 'r2', stepKey: 'review', body: REVIEW.replace('{rate}', 'https://clicktooling.com/rate?t=ab12') })], new Set(['job-1312']))
     expect(rows.map((r) => r.heldWhy)).toEqual([OFFER_HELD.answered, null])
     expect(withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW })], new Set())).toEqual([offer({ id: 'r1', stepKey: 'review', body: REVIEW })])
+  })
+})
+
+// Work paid in kind (v2.8277, punch list #301): the app's pay reminder on a job an arrangement pays is held, never pressed.
+describe('withInKindHolds: the app’s pay reminder on a job an in kind arrangement pays', () => {
+  const PAY = 'Dana, a reminder that $1,700.00 is open on bill 1. Thank you.'
+  const pay = (over: Partial<OfferRow> = {}) => offer({ stepKey: 'paid', body: PAY, ...over })
+
+  it('names the Pipeline jobs of the app’s pay reminders, once each, and no other offer’s job', () => {
+    expect(
+      payJobsOf([
+        pay(),
+        pay({ id: 'o2' }),
+        pay({ id: 'o3', jobKey: 'pipeline:job-2' }),
+        pay({ id: 'o4', jobKey: 'project:p-1' }),
+        pay({ id: 'o5', jobKey: null }),
+        pay({ id: 'o6', jobKey: 'pipeline:job-3', preparedBy: 'office' }),
+        offer({ id: 'o7', jobKey: 'pipeline:job-4' }),
+      ]),
+    ).toEqual(['job-1312', 'job-2'])
+    expect(payJobsOf([])).toEqual([])
+  })
+
+  it('holds the covered job’s reminder with the door, leaves a bill paid with money, and Send all skips it', () => {
+    const rows = withInKindHolds([pay({ id: 'covered' }), pay({ id: 'money', jobKey: 'pipeline:job-2' }), offer({ id: 'other step' })], new Set(['job-1312']))
+    expect(rows.map((r) => [r.id, r.heldWhy])).toEqual([
+      ['covered', HELD_IN_KIND],
+      ['money', null],
+      ['other step', null],
+    ])
+    const sends = todaysSends(input(rows))
+    expect(sends.find((r) => r.id === 'covered')?.held).toBe(HELD_IN_KIND)
+    expect(readyRows(sends).map((r) => r.id)).toEqual(['money', 'other step'])
+    expect(plainWordsFailures(HELD_IN_KIND)).toEqual([])
+  })
+
+  it('wins over the run’s own hold, since a number on file is not the fix', () => {
+    const rows = withInKindHolds([pay({ channelId: null, heldWhy: HELD_NO_NUMBER })], new Set(['job-1312']))
+    expect(rows.map((r) => r.heldWhy)).toEqual([HELD_IN_KIND])
+  })
+
+  it('leaves a text a person wrote for the Paid step, another step on the same job, and every row when no job is on a deal', () => {
+    const rows = [pay({ id: 'office', preparedBy: 'office', sendOn: '2026-11-23' }), offer({ id: 'booked', stepKey: 'booked' })]
+    expect(withInKindHolds(rows, new Set(['job-1312']))).toEqual(rows)
+    expect(withInKindHolds([pay()], new Set())).toEqual([pay()])
   })
 })
 

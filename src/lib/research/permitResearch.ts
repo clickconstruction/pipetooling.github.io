@@ -91,6 +91,12 @@ export type ResearchPermitRow = {
   plumbing_nearby_on?: string | null
   plumbing_nearby_by?: string | null
   plumbing_nearby_what?: string | null
+  /**
+   * From `research_permits_v4` (migration *_permit_first_plumbing_day); absent on a row an older read
+   * returned. The day of the job's first plumbing permit. `plumber_permit_on` is its newest, and the
+   * two are the same day on a job with one. Market's clock runs to this one.
+   */
+  plumber_first_permit_on?: string | null
 }
 
 /** What the list shows: the rows waiting on a look are the default; the rest are lenses on the same rows. */

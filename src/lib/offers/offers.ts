@@ -96,6 +96,38 @@ export function withAnsweredHolds(offers: readonly OfferRow[], answered: Readonl
   })
 }
 
+/** The step whose reminder asks for money: Paid, in every flow that has one. */
+export const PAY_STEP_KEY = 'paid'
+
+/** Why a pay reminder waits when an in kind arrangement pays its job's bills (v2.8277, punch list #301): the reason, and the door. */
+export const HELD_IN_KIND = 'An in kind arrangement pays this job’s bills. Put this one away with Not this one.'
+
+/** The Pipeline job the app's own pay reminder asks about. Null for any other step, and for a text the office wrote itself. */
+const payJobOf = (o: OfferRow): string | null => {
+  if (o.preparedBy !== 'app' || o.stepKey !== PAY_STEP_KEY) return null
+  const ref = jobRefOf(o.jobKey)
+  return ref?.kind === 'pipeline' ? ref.id : null
+}
+
+/** The Pipeline jobs of the app's open pay reminders, once each: the jobs whose arrangement the window reads (v2.8277). */
+export function payJobsOf(offers: readonly OfferRow[]): string[] {
+  return [...new Set(offers.flatMap((o) => (payJobOf(o) ? [payJobOf(o)!] : [])))]
+}
+
+/**
+ * Work paid in kind (v2.8277, punch list #301): since v2.8219 the morning run prepares no pay reminder for a job an in
+ * kind arrangement pays, since its bill has no due day. One prepared before the job went on the arrangement stayed open
+ * and, with a number on file, ready: Send all would have texted a customer to pay a bill a credit pays down. The window
+ * holds it with its door, over any hold the run gave it, since adding a number is not the fix. Only the app's own
+ * reminder is held. A text a person wrote for the Paid step is their call, as Remind now is on the step's card.
+ */
+export function withInKindHolds(offers: readonly OfferRow[], onDeal: ReadonlySet<string>): OfferRow[] {
+  return offers.map((o) => {
+    const jobId = payJobOf(o)
+    return jobId && onDeal.has(jobId) ? { ...o, heldWhy: HELD_IN_KIND } : o
+  })
+}
+
 /** A reminder that went on a step (`nudge_sent`), as the window reads it: whose, the step, the job and when. */
 export interface SentRow {
   contactId: string

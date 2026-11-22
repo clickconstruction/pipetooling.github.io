@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hidesZzTestJobs, withoutZzTestJobs } from '../jobs/zzTestJobVisibility'
-import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, withoutZzBillDeskRows, withoutZzBridgeBids, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions, withoutZzJobKeyedRows } from './zzTestJobs'
+import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, isZzEstimate, withoutZzBillDeskRows, withoutZzBridgeBids, withoutZzBridgeEstimates, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions, withoutZzJobKeyedRows } from './zzTestJobs'
 
 /**
  * v2.6807: the Bridge's own reads leave ZZ test jobs out by the Pipeline's rule. The office saw a count read one over
@@ -200,5 +200,44 @@ describe('the ZZ bids', () => {
     expect(withoutZzBridgeBids(bids, null)).toBe(bids)
     const clean = bids.filter((b) => b.id === 'b1' || b.id === 'b5')
     expect(withoutZzBridgeBids(clean, sharedIds)).toBe(clean)
+  })
+})
+
+/**
+ * v2.8280 (punch list #334, a fault found while building): a ZZ test estimate left the won rate in v2.7119 and stayed
+ * in the count of asks and in the Market and Sales windows' lists. Every estimates read on the page now drops it by
+ * this one rule, for the viewer who hides ZZ tests and for nobody else. Made-up customers and dollars.
+ */
+describe('the ZZ estimates', () => {
+  const estimates = [
+    { id: 'real', title: 'Estimate for Maple Homes', customers: { name: 'Maple Homes' }, total_cents: 240_000 },
+    { id: 'zzCustomer', title: 'Kitchen repipe', customers: { name: 'ZZ Test Walk' }, total_cents: 500_000 },
+    { id: 'zzTitle', title: 'Estimate for ZZ Walk Press', customers: null, total_cents: 700_000 },
+    { id: 'pizza', title: 'Estimate for Pizza Plaza', customers: { name: 'Pizza Plaza' }, total_cents: 90_000 },
+    { id: 'bare', title: null, customers: null, total_cents: 10_000 },
+    { id: 'noJoin', title: 'Water heater swap', total_cents: 60_000 },
+  ]
+  it('a test estimate leaves by its customer’s name or by its title, for the viewer who hides ZZ tests', () => {
+    expect(withoutZzBridgeEstimates(estimates, true).map((e) => e.id)).toEqual(['real', 'pizza', 'bare', 'noJoin'])
+  })
+  it('an estimate that is no test is kept as it came, the same object with every field', () => {
+    const kept = withoutZzBridgeEstimates(estimates, true)
+    for (const e of kept) expect(e).toBe(estimates.find((x) => x.id === e.id))
+    expect(kept.reduce((sum, e) => sum + e.total_cents, 0)).toBe(240_000 + 90_000 + 10_000 + 60_000)
+  })
+  it('keeps every estimate for a dev who shows ZZ tests, as the same array', () => {
+    expect(withoutZzBridgeEstimates(estimates, false)).toBe(estimates)
+  })
+  it('is the same array when no estimate is a test', () => {
+    const clean = estimates.filter((e) => e.id === 'real' || e.id === 'pizza')
+    expect(withoutZzBridgeEstimates(clean, true)).toBe(clean)
+    const none: typeof estimates = []
+    expect(withoutZzBridgeEstimates(none, true)).toBe(none)
+  })
+  it('reads a test by the rule the won rate reads it by', () => {
+    for (const e of estimates) {
+      const zz = isZzEstimate({ title: e.title, customerName: e.customers?.name ?? null })
+      expect([e.id, withoutZzBridgeEstimates([e], true).length === 0]).toEqual([e.id, zz])
+    }
   })
 })
