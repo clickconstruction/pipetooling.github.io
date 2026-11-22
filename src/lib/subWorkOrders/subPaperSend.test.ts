@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildPaymentRecord, buildStatementOfAccount, buildWorkStatement, paperSendings, type PaperContext, type PaperMoneyLine, type PaperSheet } from '../../../supabase/functions/_shared/subPapers'
-import { SUB_PAPER_SEND_BY, SUB_PAPER_SEND_MAX, subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendPlan, subPaperSendSet, subPaperSentWords, type SubPaper } from './subPaperSend'
+import { SUB_PAPER_SEND_BY, SUB_PAPER_SEND_MAX, subPaperAttachmentName, subPaperEmailDoor, subPaperNotSentWords, subPaperSendPlan, subPaperSendSet, subPaperSendSubject, subPaperSentWords, type SubPaper } from './subPaperSend'
 
 // Made-up people, jobs and money.
 const CTX: PaperContext = { company: { name: 'Made-up Plumbing Co.', lines: [] }, sub: { name: 'Harlan Mechanical', lines: [] }, today: '2026-11-16', preparedAt: 'Nov 16, 2026 at 9:30 am', zone: 'Central time' }
@@ -54,6 +54,36 @@ describe('subPaperSendPlan: by email', () => {
     for (const lead of [STATEMENT, WORK[0]!, RECORD] as SubPaper[]) {
       const plan = subPaperSendPlan({ ...base, lead, attached: [], by: 'email', email: 'harlan@harlanmechanical.example' })
       expect(`${plan.subject} ${plan.body} ${plan.files.join(' ')} ${plan.steps.join(' ')}`).not.toMatch(/\binvoice\b|\breceipt\b|\bowed\b/i)
+    }
+  })
+})
+
+describe('subPaperSendSubject: the subject names the number on the file', () => {
+  const COMPANY = 'Made-up Plumbing Co.'
+
+  it('a sheet’s first work statement has no number in the step, and names it once the press has numbered it', () => {
+    // As previewed: the sheet has no work statement yet.
+    expect(subPaperSendSubject(WORK[1]!, COMPANY)).toBe('Work statement from Made-up Plumbing Co.')
+    // As made: the same sheet under the number the register answered. Its file is `WS-2057-1.pdf`.
+    const numbered = buildWorkStatement({ ...SHEETS[1]!, number: 'WS-2057-1' }, CTX)
+    expect(subPaperSendSubject(numbered, COMPANY)).toBe('Work statement WS-2057-1 from Made-up Plumbing Co.')
+    expect(subPaperAttachmentName(numbered)).toBe('WS-2057-1.pdf')
+  })
+
+  it('a payment record carries its sending’s number from the start, and one from before sendings has none', () => {
+    expect(subPaperSendSubject(RECORD, COMPANY)).toBe('Payment record PR-0226 from Made-up Plumbing Co.')
+    expect(subPaperSendSubject({ ...RECORD, number: '' }, COMPANY)).toBe('Payment record from Made-up Plumbing Co.')
+  })
+
+  it('a statement of account reads the same before and after its number', () => {
+    const numbered = buildStatementOfAccount(SHEETS, { from: null, to: null }, CTX, { number: 'SA-0007' })
+    expect(subPaperSendSubject(STATEMENT, COMPANY)).toBe('Your statement of account from Made-up Plumbing Co.')
+    expect(subPaperSendSubject(numbered, COMPANY)).toBe('Your statement of account from Made-up Plumbing Co.')
+  })
+
+  it('the step shows the same words for the paper it was handed', () => {
+    for (const lead of [STATEMENT, WORK[0]!, WORK[1]!, RECORD] as SubPaper[]) {
+      expect(subPaperSendPlan({ ...base, lead, attached: [], by: 'email', email: 'harlan@harlanmechanical.example' }).subject).toBe(subPaperSendSubject(lead, COMPANY))
     }
   })
 })

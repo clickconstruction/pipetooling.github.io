@@ -211,8 +211,8 @@ export function useJobThreadNotes(
           // the migration is pushed (PostgREST's "could not find the function").
           (async (): Promise<unknown> => {
             try {
-              const r = await supabase.rpc('list_job_payment_promises_for' as never, { p_job_id: jobId } as never)
-              if (!r.error) return r.data as unknown
+              const r = await supabase.rpc('list_job_payment_promises_for', { p_job_id: jobId })
+              if (!r.error) return r.data
               if (!/could not find the function|PGRST202/i.test(r.error.message ?? '')) return null
               const old = await supabase.rpc('list_job_payment_promises' as never)
               return old.error ? null : (old.data as unknown)

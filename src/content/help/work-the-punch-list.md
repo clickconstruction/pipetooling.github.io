@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, working on it, tick a card, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -90,6 +90,22 @@ Standing lists like *Next up* and *Owner decisions pending* show under All but t
 ## Do, Later, Drop
 
 You tap {{button:green|Do}}, {{button:amber|Later}} or {{button:red|Drop}} on a row to sort it. You tap again to clear. The counts at the top and the **Show** filters follow. A note box under the buttons is for the session that picks the row up. Picks are shared. Everyone who opens the board sees the same ones. The name of whoever last changed a row sits under it, with the day.
+
+## Tick the cards you are working on
+
+Every card has a checkbox beside its number. You tick the box when you are working on that card. You untick it when you stop.
+
+- A tick is yours alone. Nobody else sees it.
+- A tick is kept with your account. The tick is there after a reload, and on your phone and your computer.
+- A tick stays while its card stays in the same group.
+- A card that moves to another group loses its tick. A card that leaves the board loses its tick too.
+- A flag does not move a card, so a flagged card keeps its tick.
+
+**Working on** in the filter row counts your ticks. You press it to see only the cards you ticked. You press it again to see every card.
+
+A tick is not a pick. {{button:green|Do}}, {{button:amber|Later}} and {{button:red|Drop}} are shared with everyone, and a tick is not.
+
+When a tick does not save, the box goes back and a line says why. When your ticks cannot be read, the page says so and still shows every card.
 
 ## Changing what is on the board
 

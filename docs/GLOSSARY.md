@@ -1054,6 +1054,7 @@ That row is **locked** at its first signature: any change after it, tighter or l
 Until v2.8182 such a change could only make the paper stricter.
 The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
 A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
+The **job's settings page** (v2.8184) is `JobPaperSettingsWindow` on a job's Documents tab: the Document builder's walked flow the first time, fed from the Book entry's settings list (`jobPaperFlow.ts`), and one page of sliders for a later change.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -2424,6 +2425,8 @@ The third is **Read it back**, and the fourth is **Your write-ups**.
 Nothing is saved until **Send write-up to HR** on the read-back, which lands a `person_reports` row through `land_person_report` with a press id minted on the phone.
 The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
+Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
+The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
 guide `write-someone-up`.
@@ -3230,6 +3233,7 @@ gate `painted_map_can_touch` (→ `ACCESS_CONTROL.md`, *Painted maps*).
 The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
+Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
 Drawing a line, placing a dot, a walk, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
 The public page `/way`, the picture and the printed page are not on Google.
 Since v2.8208 the page is one word from it: it hands the rule its own ask (`screen: 'way'`), Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`) and stays light on the page's paper, and `PAINTED_GOOGLE_REACH` still answers Leaflet for the page until the look at Google's billing says yes.
@@ -3265,14 +3269,21 @@ The Documents page's **Painted maps** tab (`/documents?tab=painted-maps`, since 
 One host in the Layout opens it (`PaintedMapHost` over `paintedMapDoor`), and the window looks the address up only for a map with nothing on it yet.
 Drawing by hand: a press adds a corner, a drag moves one, and on a phone **the magnifying glass** rides above a dragging finger (a second small map two zoom steps in, `PaintedMapCanvas`).
 Since v2.7814 (punch list #395) the painting window hands the canvas `time` while a saved map is only being read, and the canvas then wears **Time** beside **From above** and **Streets**: it swaps the photograph under the lines, is gone while a line or a place is being drawn, and is never handed by the public `/way` page.
-**A place** is a named dot with a word and one photo (`PaintedPlacePanel`;
+**A place** is a named dot with its words and one photo (`PaintedPlacePanel`;
 the photo in the private `painted-map-photos` bucket, read by a signed address), numbered in the order it was set, the same word as a task's place.
-A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the column `painted_map_places.kind` from v2.7775): gate, parking, door, meter, shutoff, cleanout or hazard, picked by a chip on the place panel.
-A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard alone in red, and a kind the app does not know draws the plain numbered dot.
+Since v2.8188 (punch list #413, Taunya's ask for an open-ended description) a place's words run to a whole description of up to 4,000 characters (`paintedPlaceWords.ts`, over the check `painted_map_places_words_room` from v2.8186), written under **Describe it** in a box that grows.
+A list, a picture's key and a text show its short form (`shortPlaceWords`, with **Read it all** in a list, `PaintedPlaceWords`), and a printed page, a shared link and a file for another map show it whole.
+A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the column `painted_map_places.kind` from v2.7775): gate, parking, door, meter, shutoff, cleanout, a buried line (since v2.8188) or hazard, picked by a press on the place panel.
+Since v2.8188 (punch list #413) the presses are two to a row and 56 px tall, and **Buried line** asks **What is buried?**: water, sewer, gas, electric, irrigation or cable, each a kind of its own such as `buried_sewer`, drawn in the color a locator paints for it (`BURIED_COLORS`).
+**＋ Something else**, the full width of the sheet, is for a place on no list: it takes the mark off and hands the name box the keyboard (`pressSomethingElse`).
+A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard in red and a buried line in its locator's color (`placeKindColor`), and a kind the app does not know draws the plain numbered dot.
 The mark is drawn in the picture and on the printed page since v2.7777 (`pictureKindMark` in `paintedMapPicture.ts`, `placeMarkHtml`), and a file for another map says the kind in the place's name (`placeSaysWords`: *Hazard: Open trench*).
 A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands on each place's `kind` as the table keeps it, and the page draws it.
 **Places on this job** (since v2.7795, `paintedJobList.ts`, over the column `painted_maps.job_list` from v2.7792): a job's own list of places, kept as a painted map that holds places only, so a place on it has its kind, its photo and the map's own link.
 It sits under the job's address with the painted maps (`JobPaintedMapsStrip`: a line when it holds a place, and **＋ Place on this job**, which sets one with no map to paint first), and its window has no line to draw or walk.
+**Photo of a spot** (since v2.8191, punch list #413, `paintedSpot.ts`) is that press with the camera first: one press opens the camera and reads the phone once (`readSpotNow`), and the place sheet then opens with the photo in it and the dot on that reading.
+A rough reading or none moves no dot, and a photo more than five minutes old takes no reading at all, since it is not of where the person stands (`spotStart`, `spotPhotoIsFresh`).
+Since v2.8193 a photo being added anyway has the same door: **＋ Keep this spot on the job** under each new photo in the Job photos window and **Keep this spot** under a photo on Leave Report (`KeepSpotPress`, `openSpotOnJob`), which reads *Kept on this job* once the place is saved.
 A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
 A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
 **Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
@@ -4865,6 +4876,8 @@ The papers of one email are registered as one set (`registerSubPaperSet`), every
 One email carries 12 papers (`subPaperSendSet`, the function's own limit), and what does not fit is held and named.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
+Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
+Since v2.8217 the last press's line goes when the window moves to another paper or another step, and a new line always shows (`subPaperSaid.ts`).
 Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
@@ -4875,6 +4888,8 @@ Print on the sub's page still prints the Today paper, whichever view shows.
 Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
 The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
 A note also lands in the dispatch inbox with a push, and a payment nobody marked says nothing.
+Since v2.8217 the office's payment record reads the same marks (`paymentRecordReceived`): the window reads the person's `sub_paper_acks` before it draws, and the *Received* box says the day the sub pressed Got it, on the preview and on the paper as made.
+Marks that could not be read leave the record at *Not marked yet*, and the window says it could not tell.
 
 ### Sub payment trace (move / remove / undo)
 

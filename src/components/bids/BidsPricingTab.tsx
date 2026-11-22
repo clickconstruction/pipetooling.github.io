@@ -27,7 +27,7 @@ import { setPricingTapeSink, usePricingTapeOpen, type TapeAnswer, type TapeSendT
 import { tapeLineForGroup, tapeLineForRow } from '../../lib/bids/tapeDrag'
 import { COMPOSITION_LABELS } from '../../lib/bids/pricingComposition'
 import { TapeDragGrip } from './TapeDragGrip'
-import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
+import { kindCardRows, priceCardInput, tagCardRows } from '../../lib/bids/breakdownCardInputs'
 import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
@@ -3920,29 +3920,7 @@ export function BidsPricingTab({
                       ))}
                     </datalist>
                     <PriceBreakdownCard
-                      input={{
-                        rows: eff.map((r) => ({
-                          id: r.countRow.id,
-                          name: r.countRow.fixture ?? '',
-                          count: r.count,
-                          revenue: r.effRevenue,
-                          materialsBeforeTax: r.materialsBeforeTax,
-                          hours: r.laborRow ? costEstimateLaborRowHours(r.laborRow) : 0,
-                          isEquipment: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind === 'equipment',
-                          split: (() => {
-                            const s = splitOf(r)
-                            return { material: s.material, tax: s.tax, equipment: s.equipment, labor: s.labor }
-                          })(),
-                        })),
-                        materialTotal: derived.totalMaterials,
-                        hoursTotal: derived.totalLaborHours,
-                        markup: materialMarkup,
-                        taxPercent: derived.taxPercent,
-                        laborRate: pricingLaborRate,
-                        laborRateSource: pricingLaborRateSource,
-                        equipmentCost: derived.equipmentRentalCost,
-                        smallCosts: derived.drivingCost + derived.travelCost + derived.permitCost + derived.subcontractorCost + derived.wasteCost + derived.otherCost,
-                      }}
+                      input={priceCardInput({ rows: eff, marks: rowMarks, splitOf, totals: derived, markup: materialMarkup, laborRate: pricingLaborRate, laborRateSource: pricingLaborRateSource })}
                       companyMarkup={sovFactorDefault - 1}
                       onMarkupChange={previewBidMarkup}
                       onMarkupCommit={(m) => void commitBidMarkup(m)}
@@ -3951,7 +3929,7 @@ export function BidsPricingTab({
                     />
                     {/* #128: the same card by the row's kind (the composition bar's arithmetic, in the cards' shape). */}
                     <KindBreakdownCard
-                      rows={eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue, kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind }))}
+                      rows={kindCardRows(eff, rowMarks)}
                       marginColor={mColor}
                       gripFor={
                         tapeOpen && percentRows.gridRows
@@ -3966,10 +3944,7 @@ export function BidsPricingTab({
                     />
                     {/* #128: the same card by the estimator's own tags. */}
                     <TagBreakdownCard
-                      rows={eff.map((r) => {
-                        const s = splitOf(r)
-                        return { id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue, tags: rowMarks[r.countRow.id]?.tags ?? [], materialCost: s.materialSource === 'none' ? 0 : r.materialsBeforeTax, materialPrice: s.material }
-                      })}
+                      rows={tagCardRows(eff, rowMarks, splitOf)}
                       marginColor={mColor}
                     />
 

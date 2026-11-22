@@ -116,7 +116,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 - **Google's own labels.** Seen on the live walk of step 2: Google's photograph with street names also carries Google's own place labels, such as rooms, shops and an ATM.
   At the zoom a site is read at there can be a dozen of them around a line.
   They cannot be pressed, and the road map carries them too.
-  Google's map can be told to hide them, and whether it should is the owner's call.
+  Off since v2.8211, on Taunya's word of 2026-11-21: every one of them, on a painted map and on every map of dots, with the street names kept (`googleMapLook.ts`).
 - **Cost.** #345 read Google's free count as 10,000 opens of the basic map a month since March 2025,
   billed past it. Read again on Google's pricing page on 2026-11-19: 10,000 free a month for Dynamic Maps,
   then $7.00 for each 1,000 up to 100,000, with or without a Map ID. The app's seven Google maps already
@@ -186,14 +186,17 @@ Two mends, each its own pull request, both merged the same day:
 - **A key refused earlier on the page** (v2.8076, #9089). Google says no once for a page. A painted map opened after a page's own map had fallen back waited eight seconds on an empty frame.
 - **A blank frame while Google loads** (v2.8078, #9090). With the script slow, the frame was a white box with no word for up to ten seconds. It now says *Loading the map…*.
 
-Left for the owner:
+Left for the owner at the audit, and mended since on Taunya's word of 2026-11-21 (v2.8213). Of four choices, shown with a timing table and pictures, Taunya picked *lines at once*: while Google's script is on its way the lines and the numbered places are drawn as a plain drawing, each on the pixel Google's map will put it, and the photograph comes in under them. It makes no map and fetches nothing, so Google's count is untouched. The ten seconds itself is unchanged, for this canvas and for every map of dots. With the script held back on a scratch page the lines showed at 0.1 s whether the script took half a second, eight seconds or never came. The call as the audit wrote it:
 
 - **The ten seconds.** A painted map is read in the field. On a slow signal the reader now waits up to ten seconds for a map that used to show its lines at once. A shorter wait for this canvas, or the lines drawn on the Leaflet canvas while Google loads, would mend it.
-- **Google's own place labels**, as the risk above says. In the walk a park's name and its one-line description sat beside the line.
 
 Settled, and not to be asked again:
 
 - **A map that is not Google's on the page behind the window stays as it is.** Taunya's word on 2026-11-21: leave it up. At a desk the window is 1,080 px wide over a dimmed page. Opened from the Map page or from Materials on site, that page's Leaflet map shows beside Google's map, at the window's edge. The rule takes Google down for Time and for a picture because of the terms' clause on maps that are not Google's (3.2.3 (e)), and by that same reading this is the one place the two still share a screen. A page that cannot be seen behind the window while Google is up would end it. This is a reading and not legal advice.
+
+Mended on Taunya's word, 2026-11-21:
+
+- **Google's own place labels are off** (v2.8211). Taunya was shown three choices as before and after pictures of the live site's own map: as today, shops and restaurants off, or every place label off. Taunya picked every one off. It is one list for every Google map in the app, read by the painted map's canvas and by the canvas every map of dots draws on, so the two cannot drift. Street names, road numbers and the names of towns and neighbourhoods stay, and Google fits more street names in the room. It is Google's own `styles` option, which needs no Map ID, and it makes no map sooner, later or more often. Google's script with no key ignores the option, so it cannot be seen on a local page.
 
 ## How to verify
 

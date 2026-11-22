@@ -23,10 +23,10 @@ export function useBidBoardMoneyStrips(bidIds: readonly string[], enabled = true
       return
     }
     let cancelled = false
-    void supabase.rpc('list_bid_money_strip' as never, { p_bid_ids: key.split(',') } as never).then(({ data, error }) => {
+    void supabase.rpc('list_bid_money_strip', { p_bid_ids: key.split(',') }).then(({ data, error }) => {
       if (cancelled) return
       const today = todayYmd()
-      setLines(error ? [] : parseBidMoneyStrip(data as unknown).map((e) => bidMoneyLine(e, today)))
+      setLines(error ? [] : parseBidMoneyStrip(data).map((e) => bidMoneyLine(e, today)))
       setLoaded(true)
     })
     return () => {

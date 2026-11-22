@@ -9,6 +9,8 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type BookPaperRow, type JobPapersRoster, parseJobPapersRoster } from '../../lib/jobs/jobPapers'
 import type { JobPapersIo } from '../../lib/jobs/jobPapersIo'
+import type { JobPaperSettingsIo } from '../../lib/jobs/jobPaperSettingsIo'
+import { parseSettingsDef, type SettingsDef } from '../../lib/contracts/paperSettings'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { JobDocumentsRequiredPapers } from './JobDocumentsRequiredPapers'
 
@@ -61,9 +63,72 @@ function fakeIo(over: Partial<JobPapersIo> = {}): JobPapersIo {
   }
 }
 
+// A paper built from settings (punch list #389 step 4). Every word is a placeholder.
+const SETTINGS_DEF = parseSettingsDef({
+  settings: [{ key: 'photos', label: 'Photos and video', choices: [{ key: 'ask', label: 'Ask first', says: 'Ask before a photo.' }, { key: 'none', label: 'None', says: 'No photos at all.' }] }],
+  fields: [],
+  levels: [{ key: 'standard', label: 'Standard', alignedWith: 'Aligned with a placeholder place', picks: { photos: 'ask' } }, { key: 'strict', label: 'Strict', alignedWith: 'Aligned with another placeholder place', picks: { photos: 'none' } }],
+}) as SettingsDef
+const builtBook: BookPaperRow[] = [...book, { id: 'book-set', document_name: 'Sample secrecy paper', book_body_html: null, book_body_format: 'html', audience: 'sub', settings_def: SETTINGS_DEF }]
+const withBuilt: JobPapersRoster = parseJobPapersRoster({
+  job_number: 'J2391',
+  papers: [{ id: 'row-set', paper_name: 'Sample secrecy paper', is_form: false, book_document_id: 'book-set' }, { id: 'site', paper_name: 'Site rules and photo policy', is_form: false, book_document_id: 'book-site' }],
+  people: people.map((p) => ({ ...p, papers: [] })),
+})
+function fakeSettingsIo(over: Partial<JobPaperSettingsIo> = {}): JobPaperSettingsIo {
+  return {
+    readJob: vi.fn(async () => ({ number: 'J2391', job_name: 'ZZ Test job', customer_name: null })),
+    readBookPaper: vi.fn(async () => ({ id: 'book-set', name: 'Sample secrecy paper', def: SETTINGS_DEF, revision: 2, readRevision: null })),
+    readSettingsPapers: vi.fn(async () => []),
+    requireWithSettings: vi.fn(async () => undefined),
+    setSettings: vi.fn(async (id: string) => ({ state: 'saved' as const, requiredPaperId: id, signAgain: 0 })),
+    setBasis: vi.fn(async () => undefined),
+    ...over,
+  }
+}
+
 afterEach(() => cleanup())
 
 describe('JobDocumentsRequiredPapers', () => {
+  it('a paper built from settings opens the settings page when it is picked, and is required from there', async () => {
+    const readRoster = vi.fn<JobPapersIo['readRoster']>().mockResolvedValueOnce(empty).mockResolvedValue(withBuilt)
+    const io = fakeIo({ readRoster, readBook: vi.fn(async () => builtBook) })
+    const settingsIo = fakeSettingsIo()
+    const overlay = vi.fn()
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} onOverlayOpenChange={overlay} />)
+    await screen.findByText('Nothing has to be signed before this job opens.')
+    // A job with no papers takes no second read.
+    expect(settingsIo.readSettingsPapers).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a paper' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Sample secrecy paper/ }))
+    const page = await screen.findByRole('dialog', { name: 'Sample secrecy paper, job J2391' })
+    expect(overlay).toHaveBeenLastCalledWith(true)
+    // It is not a pending pick: nothing is saved by the section's own press.
+    expect(screen.queryByText('not saved yet')).toBeNull()
+    await within(page).findByText("Pick the level this job's paper should express.")
+    for (let i = 0; i < 3; i++) fireEvent.click(within(page).getByRole('button', { name: /^Next/ }))
+    fireEvent.click(within(page).getByRole('button', { name: 'Require this paper' }))
+    await waitFor(() => expect(settingsIo.requireWithSettings).toHaveBeenCalledWith('job-1', 'book-set', { picks: { photos: 'ask' }, typed: null, basis: 'standard', noticeRead: false }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sample secrecy paper, job J2391' })).toBeNull())
+    expect(overlay).toHaveBeenLastCalledWith(false)
+    expect(io.requirePapers).not.toHaveBeenCalled()
+    await screen.findByTestId('job-papers-summary')
+  })
+
+  it('a required paper built from settings says so, and its Settings press opens the one page', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
+    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => [{ requiredPaperId: 'row-set', bookDocumentId: 'book-set', picks: { photos: 'ask' }, typed: null, basis: 'standard', settingsRevision: 1, bookRevision: 2, signed: 0 }]) })
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} />)
+    await screen.findByText('Built from this job’s settings')
+    expect(settingsIo.readSettingsPapers).toHaveBeenCalledWith('job-1')
+    // The plain paper beside it has no Settings press.
+    expect(screen.getAllByRole('button', { name: /^Settings of / })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Settings of Sample secrecy paper' }))
+    const page = await screen.findByRole('dialog', { name: 'Sample secrecy paper, job J2391' })
+    await within(page).findByText('Nothing is changed yet.')
+    expect((within(page).getByLabelText('The basis') as HTMLSelectElement).value).toBe('standard')
+  })
+
   it('a job with no papers names the next press, and the save counts the papers and the people', async () => {
     const readRoster = vi.fn<JobPapersIo['readRoster']>().mockResolvedValueOnce(empty).mockResolvedValue(saved)
     const io = fakeIo({ readRoster })

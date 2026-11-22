@@ -25,6 +25,7 @@ import {
   type PaintedPoint,
 } from './paintedLine'
 import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
+import { PAINTED_PLACE_WORDS_MAX, cleanPlaceWords } from './paintedPlaceWords'
 
 export type PaintedLineHow = 'walked' | 'driven' | 'drawn'
 export type PaintedMeasuredHow = 'wheel' | 'tape' | 'other'
@@ -32,7 +33,8 @@ export type PaintedMeasuredHow = 'wheel' | 'tape' | 'other'
 export const PAINTED_MAP_NAME_MAX = 60
 export const PAINTED_MAP_WORDS_MAX = 160
 export const PAINTED_PLACE_NAME_MAX = 40
-export const PAINTED_PLACE_WORDS_MAX = 160
+/** A place's words run to a whole description (#413): the cap and the cleaning are `paintedPlaceWords.ts`'s. */
+export { PAINTED_PLACE_WORDS_MAX }
 /** A map with no name of its own. A name is asked for, and this stands in when nobody gave one. */
 export const PAINTED_MAP_UNNAMED = 'A painted map'
 export const PAINTED_PLACE_UNNAMED = 'A place'
@@ -180,7 +182,7 @@ export function paintedPlaceFromRow(row: PaintedMapPlaceRow): PaintedPlace | nul
     id: row.id,
     mapId: row.map_id,
     name: cleanPaintedText(row.name, PAINTED_PLACE_NAME_MAX) || PAINTED_PLACE_UNNAMED,
-    words: cleanPaintedText(row.words, PAINTED_PLACE_WORDS_MAX),
+    words: cleanPlaceWords(row.words),
     lat: row.lat,
     lng: row.lng,
     accuracyM: finite(row.accuracy_m) && row.accuracy_m >= 0 ? row.accuracy_m : null,
@@ -233,7 +235,7 @@ export function paintedPlaceColumns(
   return {
     map_id: mapId,
     name: cleanPaintedText(place.name, PAINTED_PLACE_NAME_MAX) || PAINTED_PLACE_UNNAMED,
-    words: cleanPaintedText(place.words, PAINTED_PLACE_WORDS_MAX),
+    words: cleanPlaceWords(place.words),
     lat: place.lat,
     lng: place.lng,
     accuracy_m: finite(place.accuracyM) && place.accuracyM >= 0 ? Math.round(place.accuracyM) : null,

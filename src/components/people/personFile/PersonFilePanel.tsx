@@ -19,7 +19,7 @@ import { loadExhibitNumbers, loadPersonCase, runExhibitBackfill } from '../../..
 import { PersonCaseView } from './PersonCaseView'
 import { standingWords, type PersonEngagementRow } from '../../../lib/people/personEngagements'
 import { loadPersonEngagements } from '../../../lib/people/personEngagementsIo'
-import { filePersonReport } from '../../../lib/people/hrPendingReportsIo'
+import { filedWords, filePersonReport } from '../../../lib/people/hrPendingReportsIo'
 import { PersonStandingWindow } from './PersonStandingWindow'
 import { sectionChangedWords, sectionFreshness, sectionFreshnessHeadWords, sectionNeedsALook, sectionNewerWords, type DocRevision } from '../../../lib/people/sectionFreshness'
 import { loadDocRevisions } from '../../../lib/people/sectionFreshnessIo'
@@ -652,16 +652,16 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     async (reportId: string) => {
       setReportBusyId(reportId)
       // The queue's own call (punch list #410): a write-up from the Dashboard's sheet is filed with its facts.
-      const { error } = await filePersonReport(reportId, personName)
-      if (error) showToast(formatErrorMessage(error, 'The report was not filed.'), 'error')
+      const filed = await filePersonReport(reportId, personName, undefined, authUser?.id ?? null)
+      if (filed.error) showToast(formatErrorMessage(filed.error, 'The report was not filed.'), 'error')
       else {
-        showToast('Filed as a dated entry on the line.', 'success')
+        showToast(filedWords(filed, 'Filed as a dated entry on the line.'), filed.photos.kind === 'failed' ? 'error' : 'success')
         await load()
         onChanged?.()
       }
       setReportBusyId(null)
     },
-    [showToast, load, onChanged, personName],
+    [showToast, load, onChanged, personName, authUser?.id],
   )
 
   const dismissReport = useCallback(

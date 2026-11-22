@@ -63,6 +63,7 @@ vi.mock('@vis.gl/react-google-maps', async () => {
 
 import type { PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import PaintedMapGoogleCanvas, { type PaintedMapGoogleCanvasProps } from './PaintedMapGoogleCanvas'
+import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 
 class PolylineStub {
   static made: PolylineStub[] = []
@@ -226,6 +227,13 @@ describe('the map it asks Google for', () => {
     expect(lib.mapProps?.clickableIcons).toBe(false)
     expect(lib.mapProps?.disableDefaultUI).toBe(true)
     expect(lib.mapProps?.zoomControl).toBe(true)
+  })
+
+  it('wears the app’s one look for a Google map: none of Google’s own place labels beside a line', () => {
+    mount()
+    expect(lib.mapProps?.styles).toEqual(GOOGLE_MAP_STYLES)
+    mount({ mapTypeId: 'roadmap' })
+    expect(lib.mapProps?.styles).toEqual(GOOGLE_MAP_STYLES)
   })
 })
 
@@ -525,6 +533,20 @@ describe('while Google’s script is on its way', () => {
   it('a script that is already in says nothing', () => {
     mount()
     expect(words()).toBeNull()
+  })
+
+  it('draws the lines and the places for the wait, and says it is loading under them (punch list #387)', () => {
+    lib.loads = false
+    mount({ lines: [DRAWN], places: [PLAIN], framed: DRAWN.points })
+    expect(document.querySelector('[data-painted-wait-sketch]')).not.toBeNull()
+    // At the bottom, in the room the first view keeps clear, so the words never sit on a line.
+    expect((words() as HTMLElement).style.alignItems).toBe('flex-end')
+  })
+
+  it('an empty map keeps the words in the middle of its frame', () => {
+    lib.loads = false
+    mount()
+    expect((words() as HTMLElement).style.alignItems).toBe('center')
   })
 })
 

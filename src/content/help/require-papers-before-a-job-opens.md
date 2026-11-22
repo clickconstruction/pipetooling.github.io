@@ -2,7 +2,7 @@
 title: require papers before a job opens
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: papers before a job opens, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed
+keywords: papers before a job opens, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
 order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
@@ -29,9 +29,38 @@ The line under the button counts the people who can open the job today. That is 
 
 :::example A paper that cannot be picked
 A paper with no words is grey in the list. Write it in the Contract Book first. A third-party PDF becomes a form in the Form Studio.
-
-A paper built from settings is grey too. A job takes it with its settings. The page that sets them is not built yet.
 :::
+
+## Set a job's settings for a paper
+
+Some papers are built from settings. Such a paper changes with the job. The list says *Built from settings* beside its name.
+
+1. Press the paper in the **Add a paper** list. The settings page opens.
+2. Read the notice and tick its box.
+3. Pick the basis. That is the level the whole paper should express.
+4. Read the note on the real site.
+5. Go through the topics, one page each. Drag a topic's slider to move it off the basis.
+6. On **Review**, type the words that are for this job only.
+7. Press {{button:blue|Require this paper}}.
+
+Each topic's page says what puts a person in breach. It says what the site must have too. A level the site cannot enforce protects nothing.
+
+The paper joins the job at once. It does not wait for the blue count button.
+
+:::example A paper no attorney has read
+A real job takes such a paper only after an attorney has read it. The page says so at the top and holds the last press. A ZZ Test job takes any version.
+:::
+
+## Change a job's settings
+
+Press **Settings** on the paper's row. One page shows every topic's slider, the basis and the words typed for this job.
+
+The button says what it will do before you press it.
+
+- While nobody has signed, the change is saved in place.
+- After someone has signed, the change makes a new version. Everyone signs the new version again. The job stays closed to each person until then.
+
+The change can make the paper stricter or looser. Moving the basis alone asks nobody to sign again.
 
 ## Sign your own
 
@@ -77,6 +106,8 @@ Press **Take off** on the paper's row and confirm. Nobody is asked to sign it fo
 ## Change a paper's words
 
 The job keeps the words the paper had on the day you required it. Editing the Contract Book later does not change them. To use new words, take the paper off and add it again. Everyone then signs the new words.
+
+A paper built from settings is different. Its words are read from the Contract Book each time someone opens it to sign. Each signed copy keeps the words that person signed.
 
 ## What the job's head shows
 

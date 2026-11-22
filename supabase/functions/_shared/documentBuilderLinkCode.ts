@@ -8,7 +8,7 @@
  * key stands in. A link that exists is made again under whichever of the two its own hash answers to
  * (`documentBuilderLinkCodeAgain`), so setting the secret, or its being set after the first links, loses no address.
  */
-import { documentBuilderHexOf, documentBuilderLinkCodeAgain, documentBuilderLinkCodeUnder, documentBuilderLinkHash, documentBuilderLinkSecrets } from './documentBuilderLink.ts'
+import { documentBuilderHexOf, documentBuilderLinkCodeAgain, documentBuilderLinkCodeUnder, documentBuilderLinkHash, documentBuilderLinkSecrets, documentBuilderLinkSendRemakes } from './documentBuilderLink.ts'
 
 // deno-lint-ignore no-explicit-any
 type Admin = any
@@ -33,13 +33,13 @@ export async function documentBuilderLinkCodeOfRow(row: { id: string; nonce: str
   return code
 }
 
-export type DocumentBuilderLinkRow = { id: string; builder_key: string; sheet_id: string | null; nonce: string; code_hash: string; made_at: string; ended_at: string | null; opened_at: string | null; last_opened_at: string | null; open_count: number }
-export const DOCUMENT_BUILDER_LINK_COLUMNS = 'id, builder_key, sheet_id, nonce, code_hash, made_at, ended_at, opened_at, last_opened_at, open_count'
+export type DocumentBuilderLinkRow = { id: string; builder_key: string; sheet_id: string | null; nonce: string; code_hash: string; made_at: string; ended_at: string | null; ended_why: string | null; opened_at: string | null; last_opened_at: string | null; open_count: number }
+export const DOCUMENT_BUILDER_LINK_COLUMNS = 'id, builder_key, sheet_id, nonce, code_hash, made_at, ended_at, ended_why, opened_at, last_opened_at, open_count'
 
 /** A new link's row, with the old live one ended first: a new link stops the old one. */
 export async function mintDocumentBuilderLink(admin: Admin, target: { builderKey: string; sheetId: string | null }, by: string | null): Promise<{ row: DocumentBuilderLinkRow; code: string }> {
   const nowIso = new Date().toISOString()
-  let stop = admin.from('document_builder_links').update({ ended_at: nowIso, ended_by: by }).eq('builder_key', target.builderKey).is('ended_at', null)
+  let stop = admin.from('document_builder_links').update({ ended_at: nowIso, ended_by: by, ended_why: 'replaced' }).eq('builder_key', target.builderKey).is('ended_at', null)
   stop = target.sheetId ? stop.eq('sheet_id', target.sheetId) : stop.is('sheet_id', null)
   const { error: stopError } = await stop
   if (stopError) throw new Error(`stopping the old link: ${stopError.message}`)
@@ -57,7 +57,8 @@ export async function mintDocumentBuilderLink(admin: Admin, target: { builderKey
 
 /**
  * The code of a sheet's live link, for a page that hands the link on. A sheet that never had a link gets one here.
- * A sheet whose link a dev switched off gets none: switching it on again is the dev's own press. Neither does a live
+ * A sheet whose link a dev switched off gets none: switching it on again is the dev's own press. A sheet whose link
+ * closed when it came off the last trade's page gets a new one: the sheet is going to a trade again. Neither does a live
  * link whose code cannot be made again: making a new one would stop the address people already hold.
  */
 export async function sheetLinkCodeFor(admin: Admin, builderKey: string, sheetId: string, by: string | null, opts: { mintIfNone: boolean }): Promise<string | null> {
@@ -66,6 +67,8 @@ export async function sheetLinkCodeFor(admin: Admin, builderKey: string, sheetId
   const rows = (data ?? []) as DocumentBuilderLinkRow[]
   const live = rows.find((r) => r.ended_at == null)
   if (live) return await documentBuilderLinkCodeOfRow(live)
-  if (rows.length > 0 || !opts.mintIfNone) return null
+  if (!opts.mintIfNone) return null
+  // Every link ended. A send makes one again only when the last one closed with the last trade.
+  if (rows.length > 0 && !documentBuilderLinkSendRemakes(rows)) return null
   return (await mintDocumentBuilderLink(admin, { builderKey, sheetId }, by)).code
 }

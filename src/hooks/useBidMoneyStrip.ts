@@ -22,9 +22,9 @@ export function useBidMoneyStrip(bidId: string | null, enabled = true): { line: 
       return
     }
     let cancelled = false
-    void supabase.rpc('list_bid_money_strip' as never, { p_bid_ids: [bidId] } as never).then(({ data, error }) => {
+    void supabase.rpc('list_bid_money_strip', { p_bid_ids: [bidId] }).then(({ data, error }) => {
       if (cancelled) return
-      const entry = error ? null : (parseBidMoneyStrip(data as unknown).find((e) => e.bidId === bidId) ?? null)
+      const entry = error ? null : (parseBidMoneyStrip(data).find((e) => e.bidId === bidId) ?? null)
       setLine(entry ? bidMoneyLine(entry, todayYmd()) : null)
       setLoaded(true)
     })

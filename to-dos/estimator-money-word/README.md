@@ -2,8 +2,8 @@
 name: "The estimator's word on money: the leftovers"
 number: 129
 group: close
-status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: Messages' *Write down their word* on a real inbound line (BP166 read as the estimator 2026-11-09 through the dev seat), the heard-day offer in Messages, the five untyped calls
-ver: v2.6694 · v2.6695
+status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: Messages' *Write down their word* on a real inbound line (BP166 read as the estimator 2026-11-09 through the dev seat), the heard-day offer in Messages; the five untyped calls were typed 2026-11-21 (v2.8214)
+ver: v2.6694 · v2.6695 · v2.8214
 summary: >
   The estimator who sold a job can now see its money and write down the customer's word on
   paying, from the won bid, the Money lens, the Dashboard and the customer's line in Messages.
@@ -15,7 +15,7 @@ summary: >
 next: Nothing left to land. BP166 was read as the estimator role's sample account through the dev seat on 2026-11-09 (under *Where it stands*). The one live check left waits on a real row: *Write down their word* under a customer's line in Messages once a customer writes in. The heard-day offer in Messages is a small build of its own when wanted.
 size: XS each
 blocker: none — the owner's three calls are answered (2026-11-08)
-opinion: the heard-day offer in Messages is a small build of its own; the untyped calls are typed as each is touched (`list_paid_claims` typed in PR 2)
+opinion: the heard-day offer in Messages is a small build of its own; no call of the train is untyped any more (`list_paid_claims` in PR 2, the other five in v2.8214)
 mockup: not required — the leftovers are owner calls and small follow-ups to screens that shipped; the train's mock-up is in git history at the retiring commit
 ---
 
@@ -62,8 +62,8 @@ The two walks ran on the dev server as the dev the same day:
   The words themselves were not rendered, since rendering them means pressing Imitate in the owner's Chrome; the row the
   chip reads is visible to the estimator, which is what the check asked.
 
-Left on the card: Messages' *Write down their word* on a real inbound line, the heard-day offer in
-Messages, and the five calls still untyped.
+Left on the card: Messages' *Write down their word* on a real inbound line, and the heard-day offer in
+Messages. The five calls still untyped were typed on 2026-11-21 (v2.8214, under *The follow-ups*).
 
 ## The owner's calls
 
@@ -107,13 +107,18 @@ Answered 2026-11-08.
 - **The heard-day offer in Messages.** Cut 2's offer under a line (`message_promises`,
   `write_down`) was never drawn; a voicemail's *Keep the day* writes an offered row nobody reads
   back. When it is drawn, its press should open the same sheet with the day filled in.
-- **The untyped calls.** The seven new functions are in `src/types/database.ts` since v2.5656; the
-  client called them `as never`. Type each on the next change that touches it: `list_paid_claims`
-  is typed since PR 2 (v2.6695); the other six wait.
+- **The untyped calls.** Done 2026-11-21 (v2.8214). The seven new functions are in
+  `src/types/database.ts` since v2.5656; the client called them `as never`. `list_paid_claims` is
+  typed since PR 2 (v2.6695), and `is_job_people` has no caller in the client. The other five are
+  typed at every call: `list_bid_money_strip`, `list_my_money_strip`, `list_customer_money_strip`,
+  `list_job_payment_promises_for` and `add_job_payment_claim`. The one call the real type disagreed
+  with was the claim's: the sheet sent `null` for an amount, a name or a note left empty, and now
+  leaves them off, so the function's own `DEFAULT NULL` writes the same row.
 
 ## Retire when
 
 The three calls are answered and built or declined (done 2026-11-08), and the four follow-ups are
 shipped or moved to their own to-dos: the Pipeline chip shipped (#7317) and the live check of the E chip
-ran (see *Where it stands*); left are BP166 as an estimator, Messages' *Write down their word* on a real
-inbound line, the heard-day offer in Messages, and the five calls still untyped.
+ran (see *Where it stands*), BP166 was read as an estimator on 2026-11-09 and the five untyped calls
+were typed on 2026-11-21 (v2.8214); left are Messages' *Write down their word* on a real inbound line
+and the heard-day offer in Messages.

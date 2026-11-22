@@ -4,7 +4,7 @@
  * row's mark is the mark on the map. The drawing itself is `paintedPlaceKind.ts`'s path data.
  */
 import type { CSSProperties } from 'react'
-import { PLACE_GLYPH_SHARE, PLACE_WARN_COLOR, placeBadgeSize, placeKindInfo, type PlaceGlyph } from '../../lib/paintedMap/paintedPlaceKind'
+import { PLACE_GLYPH_SHARE, placeBadgeSize, placeKindColor, placeKindInfo, type PlaceGlyph } from '../../lib/paintedMap/paintedPlaceKind'
 
 /** A kind's drawing alone, in the colour of the words around it unless told another. */
 export function PlaceGlyphDrawing({ glyph, size, color = 'currentColor' }: { glyph: PlaceGlyph; size: number; color?: string }) {
@@ -42,7 +42,7 @@ export function PaintedPlaceMark({ number, kind, size = 28, ink = 'var(--text-st
       </span>
     )
   }
-  const color = info.warns ? PLACE_WARN_COLOR : ink
+  const color = placeKindColor(info, ink)
   const badge = placeBadgeSize(size)
   const lift = Math.round(badge.size * 0.36)
   return (

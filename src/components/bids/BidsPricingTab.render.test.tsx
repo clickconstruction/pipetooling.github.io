@@ -474,6 +474,19 @@ describe('BidsPricingTab render smoke', () => {
     expect(body).toContain('restrooms1 row')
     expect(body).toContain('Where the profit lives')
     expect((screen.getByLabelText("This bid's material markup, percent") as HTMLInputElement).value).toBe('50')
+    // The Traditional card is handed the rate the bid is costed at, and no row here is equipment.
+    expect(body).toContain('20 h × $50.00 typed rate')
+    expect(body).toContain("the Labor tab's rentals · 0 equipment rows")
+  })
+
+  it("the Traditional card reads a row's saved kind before its name", async () => {
+    // The lavatories are marked equipment; their name alone would say fixture.
+    const countRows = (COUNT_ROWS as unknown as Array<Record<string, unknown>>).map((r) => (r.id === 'cr-lav' ? { ...r, kind: 'equipment' } : r)) as unknown as Props['pricingCountRows']
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: countRows, pricingRowsForGrid: gridRows({ countRows }) })} />)
+    await settle()
+    const body = document.body.textContent ?? ''
+    expect(body).toContain("the Labor tab's rentals · 1 equipment row")
+    expect(body).toContain('Equipment1 row')
   })
 
   it("a row's ⓘ opens its margin breakdown", async () => {

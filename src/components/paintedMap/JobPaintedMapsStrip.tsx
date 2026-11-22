@@ -8,12 +8,19 @@
  *
  * The job's own list of places sits here too (punch list #393, `paintedJobList.ts`): one line when
  * it holds a place, and a press that sets one with no map to paint first.
+ *
+ * **Photo of a spot** (punch list #413) is that press with the camera first: it opens the camera
+ * and reads the phone once in the same press, and the place sheet then opens with the photo in it
+ * and the dot where the person stood.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { handHeld } from '../../lib/paintedMap/handHeld'
 import { mapSummaryWords, mapsForDevelopment, mapsForJob } from '../../lib/paintedMap/paintedMap'
 import { JOB_LIST_WORDS, jobListCountWords, jobListPlaces, jobListsOf } from '../../lib/paintedMap/paintedJobList'
 import { onPaintedMapsChanged, openPaintedMap, paintPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { loadPaintedMapsFor, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { SPOT_WORDS, type PaintedSpot, type SpotReading } from '../../lib/paintedMap/paintedSpot'
+import { readSpotNow } from '../../lib/paintedMap/paintedSpotIo'
 import { useTakenDown } from '../../hooks/useTakenDown'
 import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PAINT_SWATCH } from './paintedMapLook'
@@ -43,6 +50,18 @@ const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem
 const add: CSSProperties = { ...row, width: 'auto', justifySelf: 'start', minHeight: 34, padding: '0.3rem 0.75rem', fontSize: '0.8125rem', borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'transparent', color: 'var(--text-link)' }
 /** The phone's press (punch list #355, the owner's call): centred blue words with no box, the row still 40 px for a thumb. */
 const addWords: CSSProperties = { ...add, width: '100%', justifySelf: 'stretch', minHeight: 40, fontSize: '0.875rem', borderStyle: 'none', justifyContent: 'center', textAlign: 'center', padding: '0.2rem 0.6rem', fontWeight: 700 }
+/** The phone's Photo of a spot (#413): the full width and 56 px tall, since it is pressed standing in a yard. */
+const spotPress: CSSProperties = { ...row, minHeight: 56, justifyContent: 'center', gap: '0.55rem', fontSize: '1rem', fontWeight: 700, borderWidth: 1.5, borderColor: 'var(--border-strong)', background: 'var(--surface)' }
+
+/** A camera, drawn in the colour of the words beside it. */
+function CameraGlyph({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block', flex: 'none' }}>
+      <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+      <circle cx="12" cy="13.5" r="3" />
+    </svg>
+  )
+}
 
 export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false }: Props) {
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
@@ -82,6 +101,21 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
     else paintPaintedMap({ id: newId(), name: JOB_LIST_WORDS.name, words: '', home: { jobId, developmentId: null, label: jobLabel, address }, first: 'place', jobList: true })
   }
 
+  // Photo of a spot (#413): the camera opens on the press, and the phone is read once in that same press, so the
+  // reading is of the moment the photo was taken. The place sheet opens when the photo comes back.
+  const spotInput = useRef<HTMLInputElement>(null)
+  const spotReading = useRef<Promise<SpotReading> | null>(null)
+  const pressSpot = () => {
+    spotInput.current?.click()
+    spotReading.current = readSpotNow()
+  }
+  const takeSpot = (file: File) => {
+    const spot: PaintedSpot = { file, reading: spotReading.current ?? readSpotNow(), takenMs: file.lastModified > 0 ? file.lastModified : null }
+    spotReading.current = null
+    if (firstList) openPaintedMap(firstList.id, address, 'place', spot)
+    else paintPaintedMap({ id: newId(), name: JOB_LIST_WORDS.name, words: '', home: { jobId, developmentId: null, label: jobLabel, address }, first: 'place', jobList: true, spot })
+  }
+
   if (only === 'maps' && maps.length === 0 && listPlaces.length === 0) return null
 
   return (
@@ -116,7 +150,36 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
         </p>
       ) : null}
       {only === 'maps' ? null : (
+        <input
+          ref={spotInput}
+          type="file"
+          accept="image/*"
+          capture={handHeld() ? 'environment' : undefined}
+          aria-label="Photo of a spot on this job"
+          data-job-spot-input
+          style={{ display: 'none' }}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) takeSpot(file)
+          }}
+        />
+      )}
+      {only === 'maps' || !addCentred ? null : (
+        <button type="button" data-job-spot style={spotPress} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
+          <CameraGlyph size={22} />
+          {SPOT_WORDS.press}
+        </button>
+      )}
+      {only === 'maps' ? null : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem' }}>
+          {addCentred ? null : (
+            <button type="button" data-job-spot style={{ ...add, gap: '0.4rem' }} onClick={(e) => { e.stopPropagation(); pressSpot() }}>
+              <CameraGlyph size={16} />
+              {SPOT_WORDS.press}
+            </button>
+          )}
           <button type="button" data-paint-a-map style={addCentred ? { ...addWords, width: 'auto', flex: '1 1 0' } : add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
             ＋ Paint a map
           </button>
