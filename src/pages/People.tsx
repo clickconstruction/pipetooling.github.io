@@ -2,15 +2,16 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { CardAndFooterWindow } from '../components/people/CardAndFooterWindow'
 import { TeamCardsWindow } from '../components/people/TeamCardsWindow'
 import type { UserRole } from '../hooks/useAuth'
-import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
-import { LIT_SELECTED, useLitPillInView } from '../hooks/useLitPillInView'
+import { PeoplePageTabRows } from '../components/people/PeoplePageTabRows'
+import { phoneTabRows } from '../lib/phoneLayout/phoneTabRows'
+import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
+import { usePhoneBarNamesPage } from '../contexts/PhoneBarPageNameContext'
 import { canDeleteFromContractLibrary, canUseContractFormStudio } from '../lib/contracts/contractLibraryRoles'
 import { payReportPeriodWord, typedConfirmMessage, typedWordMatches } from '../lib/typedConfirm'
 import { isControllerOrDev } from '../lib/doorRoles'
 import { canManageActivityGrants, canPickOfficeJob, canSeePayrollViews, canSeeReviewTab, canSeeScoreboardTab, canUseUsersTags } from '../lib/people/peopleDoorGates'
 import {
   PEOPLE_TAB_GROUP_MEMORY_KEY,
-  PEOPLE_TAB_LABELS,
   groupOfTab,
   isPeopleTab,
   landingViewForGroup,
@@ -214,8 +215,6 @@ const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
   gap: HOURS_TAB_SECTIONS_STACK_GAP,
 }
 
-const tabStyle = pageTabStyle
-
 /** `PeopleTab` (the 22 view keys) and their six groups live in `src/lib/people/peopleTabGroups.ts` (v2.2811). */
 
 /** Users tab: email/phone on its own row below the name line at ≤640px. */
@@ -236,6 +235,9 @@ export default function People() {
   const prefixMap = useLedgerPrefixMap()
   const confirmDialog = useConfirmDialog()
   const narrowViewport = useNarrowViewport640()
+  // The new phone layout (`lib/phoneLayout/phoneTabRows.ts`): the rows of tabs are one scrolling line each and the top bar names the page.
+  const newPhoneLayout = useNewPhoneLayout()
+  const barNamesPage = usePhoneBarNamesPage()
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
   const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
   const rosterDepsRef = useRef(null as unknown as UsePeopleRosterDeps)
@@ -1908,12 +1910,9 @@ export default function People() {
   const activeGroup = tabGroups.find((g) => g.id === activeGroupId)
   /** The second row: only when the active group offers a choice. */
   const activeSubTabs = activeGroup && activeGroup.views.length > 1 ? activeGroup : null
-  /**
-   * The row of sections scrolls sideways on a phone, and the lit section is kept whole in view (v2.8130). It used to
-   * sit where the row left it: at 320 px Paperwork read "Pape" under the title, and Review or Feedback sat out of sight.
-   */
-  const groupStripRef = useRef<HTMLDivElement | null>(null)
-  useLitPillInView(groupStripRef, [activeGroupId, loading ? 'loading' : 'drawn', tabGroups.map((g) => g.id).join(',')].join(':'), LIT_SELECTED)
+  // The two rows are `PeoplePageTabRows`, which keeps the lit section in view (v2.8130). Under the new phone layout
+  // each row is one scrolling line, and the title is left to the top bar while it names the page.
+  const tabRows = phoneTabRows({ phoneLayoutOn: newPhoneLayout.on, barNamesPage })
   /** Where the Day book was left, for the next time its tab opens (its params leave the URL with it). */
   const dayBookMemoryRef = useRef<DayBookDoor | null>(null)
   function goToPeopleTab(tab: PeopleTab) {
@@ -1932,50 +1931,19 @@ export default function People() {
   return (
     <div>
       {hoursGridFirstColMeasurer}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: activeSubTabs ? 'none' : '1px solid var(--border)', marginBottom: activeSubTabs ? 0 : '1.5rem', overflow: 'hidden' }}>
-        <div ref={groupStripRef} style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div role="tablist" aria-label="People sections" style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
-            {tabGroups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                role="tab"
-                aria-selected={g.id === activeGroupId}
-                onClick={() => {
-                  const target = landingViewForGroup(g, tabGroupMemory)
-                  if (!target) return
-                  goToPeopleTab(target)
-                }}
-                style={tabStyle(g.id === activeGroupId)}
-              >
-                {g.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>People</h1>
-      </div>
-      {activeSubTabs ? (
-        <div
-          role="tablist"
-          aria-label={`${activeSubTabs.label} views`}
-          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0 0.75rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}
-        >
-          {activeSubTabs.views.map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={v === activeTab}
-              onClick={() => goToPeopleTab(v)}
-              style={pageSubTabStyle(v === activeTab)}
-              title={v === 'person' ? 'One person, every control — the Person Desk as a page' : undefined}
-            >
-              {PEOPLE_TAB_LABELS[v]}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <PeoplePageTabRows
+        groups={tabGroups}
+        activeGroupId={activeGroupId}
+        subTabs={activeSubTabs}
+        activeTab={activeTab}
+        rows={tabRows}
+        onGroup={(g) => {
+          const target = landingViewForGroup(g, tabGroupMemory)
+          if (!target) return
+          goToPeopleTab(target)
+        }}
+        onView={goToPeopleTab}
+      />
 
       {activeTab === 'subs' && <PeopleSubsTab onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => openHire('sub') : undefined} />}
 

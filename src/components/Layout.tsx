@@ -111,6 +111,7 @@ import { BookOpen, Smartphone, Wrench } from 'lucide-react'
 import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
 import { NEW_PHONE_LAYOUT_SWITCH_ARIA, NEW_PHONE_LAYOUT_SWITCH_LABEL, newPhoneLayoutSwitchTip, newPhoneLayoutTickShown } from '../lib/phoneLayout/newPhoneLayout'
 import { PHONE_BAR_PAD_Y_PX, PHONE_BAR_PRESS_PX, phoneBarPageName, phoneBarPlan, type PhoneBarPress } from '../lib/phoneLayout/phoneBar'
+import { PhoneBarPageNameContext } from '../contexts/PhoneBarPageNameContext'
 import { PhoneBarGearRows } from './layout/PhoneBarGearRows'
 import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
 import { GEAR_SECTION_LABELS, gearPagesInOrder } from '../lib/gearMenuSections'
@@ -2339,7 +2340,10 @@ export default function Layout() {
         >
           <RouteChunkBoundary resetKey={location.pathname}>
             <Suspense fallback={<RouteLoadingFallback />}>
-              <Outlet />
+              {/* The one-row bar names the page, so a page can leave its own title undrawn (`PhoneBarPageNameContext`). */}
+              <PhoneBarPageNameContext.Provider value={phoneBarOneRow}>
+                <Outlet />
+              </PhoneBarPageNameContext.Provider>
             </Suspense>
           </RouteChunkBoundary>
         </div>

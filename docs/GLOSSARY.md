@@ -1685,6 +1685,9 @@ Dispatch Mode's first tab opens the Dispatch home, so there home stays.
 **The moved rows** are the other presses of the old row as named rows at the top of the gear menu, in the row's order: Statement, Tell the dev, Task Dispatch, Ask estimating, Task, Customers, People (`phoneBarPlan`, `PhoneBarGearRows`).
 The Bids page's **Bid** press stays in the bar.
 The role dock's row has no gear, so it keeps every press it has.
+**The one-line tab rows** are the Jobs page's tabs and the People page's sections and pills under the tick, since v2.8288 (`lib/phoneLayout/phoneTabRows.ts`): each row is one line in `ScrollableTabStrip` and never folds.
+The open tab is kept whole in view with the start of the next tab beside it (`activePeek`), and an edge with more past it carries a small arrow (`edgeMarks`), drawn only once a letter is hidden.
+The page's own title is left undrawn only while the one-row bar names the page (`PhoneBarPageNameContext`), so under the role dock's row, which names no page, the title stays.
 Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
 **The phone job card** is the Job Mode card under the tick, since v2.8286 (`lib/phoneLayout/jobCard.ts`, `phoneJobCardOn`): the same pieces, each once, in a thumb's order.
 It opens on **Call**, **Directions** and **Text**, 44 px each, under the job's name and address.

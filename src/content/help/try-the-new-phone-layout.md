@@ -98,6 +98,18 @@ The press that shows the customer's email copies the address.
 
 The tabs keep their words and their order. The tabs stand a little shorter.
 
+## The tabs on Jobs and People
+
+The **Jobs** page keeps its tabs on one row. Slide the row sideways to reach the rest.
+
+A small arrow at an edge of the row means more tabs are that way. The tab you have open is always whole on the screen.
+
+The **People** page has the same row for its sections. The pills under the sections are one row too. Slide that row the same way.
+
+Every tab and pill keeps its words and its order. Each one opens what it opened before.
+
+The page's own title is gone from the row. The top bar already says **Jobs** or **People**.
+
 ## The Home Screen offer
 
 The offer to add an **Add Task** icon no longer sits above every page. The offer is one quiet row at the top of the Dashboard. **Add** and **Dismiss** do what they did. An offer you dismissed stays dismissed.
