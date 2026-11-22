@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · left of the sweep: the screens listed under *Traced, not built*, dev-mcp's two reads, and the statement week, which waits with the owner's call on a GC's statement
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · the customer's profile window, the Invoices tab and dev-mcp's two reads followed in v2.8266 · left of the sweep: the three screens still under *Traced, not built*, and the statement week, which waits with the owner's call on a GC's statement
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,9 +11,9 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: The screens under *Traced, not built*, each with its own small design, and dev-mcp's two reads. The owner's call on what a GC's statement says settles the statement week with it. December 2026's credit comes from its Needs you line.
+next: The three screens still under *Traced, not built* (the Pipeline's map, a development's Money look, the aging chart with the printed report). The owner's call on what a GC's statement says settles the statement week with it. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219 · 8266
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
@@ -115,9 +115,9 @@ A session started the sweep and was closed before it built anything. It read pro
 | `bridge-weekly-sheet` | `loadDashboardFinancials`; `buildReceipts` in `src/lib/bridge/sheetBuild.ts` | expected cash marked late, or on the doubtful list | the owner and devs |
 | `gc-statement-email-dispatch`, `send-gc-statement-email` | `get_gc_statement_email_payload` | listed as outstanding with its dollars, no late words | the GC |
 | `customer-portal` | the function's own job select | owed, with a pay link, no late words | the customer's page |
-| dev-mcp `get_customer`, `get_job` | `devMcpComposites.ts`: neither select carries the column | counted in the 90-day aging; *scheduled in kind* reads zero | devs |
+| dev-mcp `get_customer`, `get_job` | `devMcpComposites.ts`: both selects carry the column since v2.8266 | scheduled in kind, with no age | devs |
 
-**Where the senders stand (2026-11-21).** Built: `bridge-weekly-sheet` (v2.8218), `billed-report-email` and `messages-nudge-dispatch` (v2.8219). The statement week is not: `get_statement_week_for_office` hands back one line per GC, already summed, with no job to stamp. So it is a change to that RPC, and what it says follows the call below. The two dev-mcp reads need the column in their selects and a dev-mcp deploy. The GC's statement and the portal wait for the call.
+**Where the senders stand (2026-11-21).** Built: `bridge-weekly-sheet` (v2.8218), `billed-report-email` and `messages-nudge-dispatch` (v2.8219). The statement week is not: `get_statement_week_for_office` hands back one line per GC, already summed, with no job to stamp. So it is a change to that RPC, and what it says follows the call below. The two dev-mcp reads carry the column since v2.8266. The GC's statement and the portal wait for the call.
 
 The lien months and deadlines stay as they are, on the desk and in counsel's lien book. v2.6834 decided that: a credit does not move a deadline.
 
@@ -136,13 +136,13 @@ The lien months and deadlines stay as they are, on the desk and in counsel's lie
 | Call mode | the board read for the window, the lean read for its count | `buildPaymentChaseQueue`, which already skips | the count is right since v2.8218, by the lean read's column |
 | Accounts Receivable (`/accounts-receivable`) | the board read | none: it matches deposits and ages no bill | nothing to do; a deal's bill is still offered as a target for a deposit |
 | The Pipeline's map: the rail's *Billed 215 d*, its ask list and its to-collect dollars | the board read; the rewound view's own read has no column | `jobBilledAgeDays`, `jobsMapRail`, `jobsMapJobsAsOf` | traced, not built |
-| The customer's profile window: the job list's *billed · 215d* in red, and a strip with no in kind words | `fetchCustomerProfile`, which has the column | `profileJobRowMoney` (`_shared/customerProfileStats.ts`, so dev-mcp reads it too) | traced, not built |
-| The customer page's Invoices tab: *Billed · 215d* | `fetchCustomerInvoices`, no column | `buildCustomerInvoiceRows` | traced, not built |
+| The customer's profile window: the job list's *billed · 215d* in red, and a strip with no in kind words | `fetchCustomerProfile`, which has the column | `profileJobRowMoney` (`_shared/customerProfileStats.ts`, so dev-mcp reads it too) | built, v2.8266: *billed · scheduled in kind*, no day, no red, and the strip's chip says it |
+| The customer page's Invoices tab: *Billed · 215d* | `fetchCustomerInvoices`, no column | `buildCustomerInvoiceRows` | built, v2.8266: *Billed · in kind*, no days |
 | A development's Money look: *Nd past* in red | `fetchDevelopmentPage`, no column | `datesFor`, `moneyPastDays` (`siteMoney.ts`) | traced, not built |
 | The aging chart and the printed Billed awaiting payment report | the board read | `printBilledRowReferenceDate`, a second clock beside the board's | traced, not built |
 | GC Review's statements, its print and its call sheet | the board read, or the lean read | `buildGcReviewRollup` | waits for the owner's call below |
 
-**Traced, not built.** Each of the five needs more than a skip. The map's rail sums dollars to collect, so it needs its own line. The profile window's kernel is shared with dev-mcp, so it ships with a deploy. The printed report is the twin of the report email and should change with it.
+**Traced, not built.** Three are left, and each needs more than a skip. The map's rail sums dollars to collect, so it needs its own line. The printed report is the twin of the report email and should change with it. The profile window and the Invoices tab were built in v2.8266, with dev-mcp's two reads, since the window's kernel is the one dev-mcp reads.
 
 **Neighbours.** Pay calendar (#323) edits the Stages row, the chase and the Pipeline's money windows. The Bridge's train (#334) edits its Collect desk and money card, and redeploys `bridge-weekly-sheet`. Read main and the open PRs for a file before touching it. A reader held by an open PR is left and named.
 

@@ -3242,7 +3242,8 @@ The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
-Drawing a line, placing a dot, a walk, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
+Drawing a line, placing a dot, **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map to make something keeps the Leaflet map until it closes.
+A walk is painted on Google since v2.8212 (step 3 of #387): the canvas slides to the walker when they near its edge (`followMe.ts`) and draws again only the line that grew.
 The picture and the printed page are not on Google.
 The public page `/way` is on Google for its reader since v2.8210, on Taunya's yes of 2026-11-21: it hands the rule its own ask (`screen: 'way'`), and Google's canvas keeps a reader and the line in the picture together (`frameMe.ts`, v2.8208) and stays light on the page's paper.
 It has no page of its own and no header button: it is one line wherever the app shows an address.
@@ -4666,6 +4667,7 @@ What of it is on main, one line a piece:
   Since v2.6064 (punch list #126's last PR) the app ships eleven starter team lines for customers, each with its shortcut — eight on no step (`/gotit`, `/access`, `/photo`, `/late`, `/back`, `/bill`, `/thanks`, `/paid`) and three as a step's own message (`/found` on What we found, `/estimate` on Approved, `/remind` on Paid) — seeded once by `quick_replies_seed_starter()` (migration `20261029200000`, the database's own), which leaves a line out when the office already has its words on any line, its shortcut on a live team line, or a live customer team line on its step;
   guide *edit the quick replies* → The lines the app ships with.
   Since v2.5649 (punch list #129) a customer's own line in the thread carries **Write down their word** under it (`useFollowUpThreadSlots`' `underLine`, `messages/wordFromLine.ts` over `list_customer_money_strip`): the Pipeline's promise sheet on the job the line is tied to, else the customer's one job with money open, else a pick, with the customer's name and the line's channel filled in.
+  Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
   *Flow · step*).
@@ -4894,6 +4896,10 @@ The function mails them to the roster's own address for the person and files eac
 Email is the one way built, and the press shows only for the office roles who see sub pay (`isOfficeRole`), never for an account in training.
 The papers of one email are registered as one set (`registerSubPaperSet`), every work statement first and the statement of account last, so the statement names each work statement by the number on the file beside it.
 One email carries 12 papers (`subPaperSendSet`, the function's own limit), and what does not fit is held and named.
+Since v2.8262 the held papers go in the next email: `subPaperSendParts` cuts the pick into emails of 12, *Open the next email, <n> papers* moves the send step on to it, and a later email reads *More papers from <company>, email 2 of 3*.
+A held work statement with no number names its sheet's day beside its job, so two sheets of one job read apart.
+Since v2.8262 every press in the window stands 44 px tall at 640 px and under (`PHONE_PRESS_MIN_HEIGHT`).
+Since v2.8262 the ledger the papers stand on (`useSubLaborLedger`) draws nothing from a read of lines or payments that failed (`subLedgerReadFailure`): it keeps what it last read whole and the page says why.
 A sub with no email on the roster has a dead press with its reason, and the paper can still be printed.
 A statement of account that was numbered for a send that did not go keeps its number, and the window names it (`subPaperNotSentWords`).
 Since v2.8217 the send builds its subject again from the lead paper as numbered (`subPaperSendSubject`), so a sheet's first work statement goes out under a subject that names the number on its file.
@@ -5351,7 +5357,8 @@ The jobs a deal pays read as **scheduled in kind**, never late, on the customer'
 An In kind payment leaves pay speed.
 Since v2.8218 the Dashboard's receivables card, the Bridge's Collect pile and balances, the Pipeline's 30+ and 90+ chips, *Who owes what*, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list leave them out too, each naming them in one line (`splitInKind`, `supabase/functions/_shared/inKindApart.ts`), and the Pipeline's Billed header counts them on an **In kind** chip.
 Since v2.8219 the Billed awaiting payment email leaves them out of its rows, totals and chips with the same line, and a residential customer's Paid step gives such a bill no due day, so no pay reminder is due by itself.
-The Pipeline's map, the customer's profile window, a development's Money look, the printed Billed awaiting payment report and the office's statement week still age them.
+Since v2.8266 the customer's profile window reads such a bill as *billed · scheduled in kind* with no day and no red (`profileJobRowMoney`'s `scheduledInKind`, `profileJobRowMeta`), the customer page's Invoices tab reads *Billed · in kind* with no days, and the dev seat's `get_customer` and `get_job` carry the column.
+The Pipeline's map, a development's Money look, the printed Billed awaiting payment report and the office's statement week still age them.
 A deal with a **monthly credit** has months: each is settled by one line (a line of zero is *no credit this month*), a month with none is **due** once it is over or its bill has left the bank, and the card and the Dashboard's Needs you line (`in-kind-credit-due`, v2.6831) offer the press that enters it with the amount read from the bank.
 Nothing is entered by itself.
 A line's amount is a **cost**: overhead on the day it was given (the overhead pool's materials, source `in_kind`), or the material of the job it is put on (the Costs tab's 🤝 *Given in kind* stream and row, the profit band).
@@ -7120,6 +7127,7 @@ The money a shortfall is worth reads the parts book's price since v2.6673 (the o
 A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.6915 any change of job, v2.6927 the strip): when a combine or a move changes a photo's job the file is marked due and moved into the new job's photo folder by the photo sweep, and the job's screens show the count while it runs and name a **held** file, one that could not move, with its reason.
 **Take from a box** (v2.7824) is the run a person makes when they take parts out of a cage or box on site: a photo of the box as found, what they took, a photo of the box after.
 Its press, **Take from G12**, stays at the bottom of the phone's box screen, and its save press names its count, as **Take 3 from G12**.
+On a box with nothing on hand the press is a quiet link that asks whether something was taken out and opens the same run (`takeDoor` and `takeQuietLabel` in `src/lib/materials/takeRun.ts`).
 A **take** is not a row: it is an id minted on the phone and written on each ledger row and box photo the run makes (`take_id`, and `kind` on the photo, `docs/migrations/20261118130000_box_takes.md`).
 A take's photos are asked for and never required, and the take is saved before the photo after (`src/lib/materials/takeRun.ts`).
 **A box's own screen** on the phone (v2.7873, punch list #398) reads top to bottom: the box's name with **More**, its parts as closed rows with their numbers, four tiles, its photos and takes, and **Take from G12** (`OnSiteBoxScreen.tsx` over `boxScreen.ts`).

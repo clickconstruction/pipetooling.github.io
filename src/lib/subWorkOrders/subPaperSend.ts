@@ -10,6 +10,7 @@
  *
  * One email carries `SUB_PAPER_SEND_MAX` papers, the function's own limit. `subPaperSendSet` says which ride and
  * which are held, so the press sends what fits and names the rest: a send is never refused whole for one too many.
+ * `subPaperSendParts` cuts the whole pick into the emails it takes, so the held papers have an email of their own.
  *
  * Pure: no React, no Supabase.
  */
@@ -46,12 +47,31 @@ export function subPaperSendSet(attached: readonly SubPaper[], max: number = SUB
   return { attached: attached.slice(0, room), held: attached.slice(room) }
 }
 
-/** What a paper is called in a line of words: its number, else what it is. */
+/**
+ * A pick of papers as the emails it takes: the paper the window is on leads the first, and each email carries the
+ * limit at most, in the order given. The first is what `subPaperSendSet` says rides. Each later one holds papers
+ * that did not fit, and its first paper leads it. Nothing is in two emails and nothing is left out.
+ */
+export function subPaperSendParts(lead: SubPaper, attached: readonly SubPaper[], max: number = SUB_PAPER_SEND_MAX): SubPaper[][] {
+  const all = [lead, ...attached]
+  const size = Math.max(1, Math.floor(max))
+  const parts: SubPaper[][] = []
+  for (let i = 0; i < all.length; i += size) parts.push(all.slice(i, i + size))
+  return parts
+}
+
+/** Which email of how many this send is, counted from 1. Absent or `{ n: 1 }` is the first. */
+export type SubPaperSendPart = { n: number; of: number }
+
+/**
+ * What a paper is called in a line of words: its number, else what it is. A work statement with no number names
+ * its sheet's day too, since two sheets of one job would read alike without it.
+ */
 function paperName(p: SubPaper): string {
   if (p.number) return p.number
   if (p.kind === 'statement_of_account') return 'the statement of account'
   if (p.kind === 'payment_record') return `the payment record of ${p.sentOn}`
-  return `the work statement for ${p.job.label}`
+  return `the work statement for ${p.job.label}${p.job.day ? ` of ${p.job.day}` : ''}`
 }
 
 /** `WS-2041-1.pdf`, `PR-0231 Payment record.pdf`; a paper with no number yet is named for what it is. */
@@ -75,8 +95,11 @@ export function subPaperTitle(p: SubPaper): string {
  * The send step draws it from the paper as previewed, and a sheet's first work statement has no number until the
  * press registers it. So the send builds it again from the paper as numbered: the subject then names the number
  * on the file beside it.
+ *
+ * An email after the first carries only papers that did not fit, so it names itself and not its first paper.
  */
-export function subPaperSendSubject(lead: SubPaper, company: string): string {
+export function subPaperSendSubject(lead: SubPaper, company: string, part: SubPaperSendPart | null = null): string {
+  if (part && part.n > 1) return `More papers from ${company}, email ${part.n} of ${part.of}`
   if (lead.kind === 'statement_of_account') return `Your statement of account from ${company}`
   if (lead.kind === 'payment_record') return `Payment record${lead.number ? ` ${lead.number}` : ''} from ${company}`
   return `Work statement${lead.number ? ` ${lead.number}` : ''} from ${company}`
@@ -98,19 +121,26 @@ export type SubPaperSendPlan = {
   needs: 'email' | null
   /** The papers that do not fit in this email, in one line. Null when everything rides. */
   held: string | null
+  /** The press that opens the email the held papers go in, with its count. Null when nothing is held. */
+  next: string | null
+  /** Which email of how many this one is. Null when one email carries everything. */
+  part: SubPaperSendPart | null
 }
 
 /**
  * The plan for one send. `lead` is the paper the window was opened on; `attached` ride along. `portalUrl` is the
  * sub's own page, when they have one. `emailUnread` is a roster the window could not read just now.
  */
-export function subPaperSendPlan(i: { company: string; subName: string; lead: SubPaper; attached: readonly SubPaper[]; held?: readonly SubPaper[]; by: SubPaperSendBy; email: string | null; emailUnread?: boolean; phone: string | null; portalUrl: string | null; lastPayment: { amount: number; day: string } | null }): SubPaperSendPlan {
+export function subPaperSendPlan(i: { company: string; subName: string; lead: SubPaper; attached: readonly SubPaper[]; held?: readonly SubPaper[]; part?: SubPaperSendPart | null; by: SubPaperSendBy; email: string | null; emailUnread?: boolean; phone: string | null; portalUrl: string | null; lastPayment: { amount: number; day: string } | null }): SubPaperSendPlan {
   const papers = [i.lead, ...i.attached]
   const files = papers.map(subPaperAttachmentName)
   const page = i.portalUrl ? ` The same papers are on your page: ${i.portalUrl}` : ''
-  const subject = subPaperSendSubject(i.lead, i.company)
+  const part = i.part && i.part.of > 1 ? i.part : null
+  const subject = subPaperSendSubject(i.lead, i.company, part)
   let lines: string[]
-  if (i.lead.kind === 'statement_of_account') {
+  if (part && part.n > 1) {
+    lines = [`Here ${papers.length === 1 ? 'is 1 more paper' : `are ${papers.length} more papers`} from us.`, `${papers.length === 1 ? 'It' : 'They'} did not fit in our last email.`]
+  } else if (i.lead.kind === 'statement_of_account') {
     // `To date, Nov 19, 2026` and `To Nov 13, 2026` follow the word straight: *your statement to date, Nov 19, 2026*.
     const period = /^To /.test(i.lead.period) ? ` t${i.lead.period.slice(1)}` : ` for ${i.lead.period}`
     lines = [`Here is your statement${period}.`, `We still have ${paperMoney(i.lead.stillOpen)} open with you.`, i.lastPayment ? `Our last payment was ${paperMoney(i.lastPayment.amount)} on ${i.lastPayment.day}.` : '']
@@ -128,14 +158,16 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
     const left = i.held ?? []
     // The held papers are the email's alone: a link opens the sub's whole page, so nothing is left off one.
     const held = left.length === 0 ? null : `${plural(left.length, 'more paper does', 'more papers do')} not fit, since one email carries ${SUB_PAPER_SEND_MAX}. Send ${left.length === 1 ? 'it' : 'them'} next: ${left.map(paperName).join(', ')}.`
-    return { subject, body, text, files, steps: [`The ${papers.length === 1 ? 'PDF is' : 'PDFs are'} made${papers.some((p) => !p.number) ? ' and numbered' : ''}.`, `The email goes to ${i.email ?? (i.emailUnread ? 'the address on their roster row' : 'their address')} with ${plural(files.length, 'file', 'files')}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Send ${count} by email`, blocked, needs: blocked ? 'email' : null, held }
+    // The next email carries the limit at most, so its count is what that press opens, not all that is held.
+    const next = left.length === 0 ? null : `Open the next email, ${plural(Math.min(left.length, SUB_PAPER_SEND_MAX), 'paper', 'papers')}`
+    return { subject, body, text, files, next, part, steps: [`The ${papers.length === 1 ? 'PDF is' : 'PDFs are'} made${papers.some((p) => !p.number) ? ' and numbered' : ''}.`, `The email goes to ${i.email ?? (i.emailUnread ? 'the address on their roster row' : 'their address')} with ${plural(files.length, 'file', 'files')}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Send ${count} by email`, blocked, needs: blocked ? 'email' : null, held }
   }
   if (i.by === 'text') {
     const blocked = !i.portalUrl ? `${i.subName} has no page to link to yet. Open their portal link on People → Subs first.` : i.phone ? null : `${i.subName} has no phone on the roster. Add one on People → Subs, or send by email.`
-    return { subject, body, text, files: [], steps: [`The ${papers.length === 1 ? 'paper is' : 'papers are'} put on their page.`, `A text with the link goes to ${i.phone ?? 'their phone'}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Text a link to ${count}`, blocked, needs: null, held: null }
+    return { subject, body, text, files: [], steps: [`The ${papers.length === 1 ? 'paper is' : 'papers are'} put on their page.`, `A text with the link goes to ${i.phone ?? 'their phone'}.`, 'A copy is filed under Sent copies, on the sub and on each job.'], confirmLabel: blocked ? null : `Text a link to ${count}`, blocked, needs: null, held: null, next: null, part: null }
   }
   const blocked = i.portalUrl ? null : `${i.subName} has no page to link to yet. Open their portal link on People → Subs first.`
-  return { subject, body, text, files: [], steps: ['The link is copied. Nothing is sent, and nothing is filed.'], confirmLabel: blocked ? null : 'Copy the link', blocked, needs: null, held: null }
+  return { subject, body, text, files: [], steps: ['The link is copied. Nothing is sent, and nothing is filed.'], confirmLabel: blocked ? null : 'Copy the link', blocked, needs: null, held: null, next: null, part: null }
 }
 
 /**

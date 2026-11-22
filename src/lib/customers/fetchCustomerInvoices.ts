@@ -19,6 +19,7 @@ type JobRow = {
   job_name: string | null
   status: string | null
   revenue: number | null
+  in_kind_arrangement_id: string | null
 }
 
 export type CustomerInvoicesData = {
@@ -32,7 +33,7 @@ export async function fetchCustomerInvoices(customerId: string): Promise<Custome
     () =>
       supabase
         .from('jobs_ledger')
-        .select('id, hcp_number, click_number, job_name, status, revenue')
+        .select('id, hcp_number, click_number, job_name, status, revenue, in_kind_arrangement_id')
         .eq('customer_id', customerId),
     'customer invoices: jobs',
   )) as unknown as JobRow[]
@@ -42,6 +43,7 @@ export async function fetchCustomerInvoices(customerId: string): Promise<Custome
     label: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || (j.job_name ?? '').trim() || 'Job',
     status: j.status,
     revenue: j.revenue,
+    in_kind_arrangement_id: j.in_kind_arrangement_id,
   }))
   const jobIds = jobs.map((j) => j.id)
   if (jobIds.length === 0) return { invoices: [], payments: [], jobs }

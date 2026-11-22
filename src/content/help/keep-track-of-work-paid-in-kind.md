@@ -64,6 +64,10 @@ The email lists money owed only. Its totals and its aging chips leave the bill o
 A residential customer is not reminded to pay that bill. Their **Paid** step waits with no due day. **Remind now** still sends one if you want it.
 :::
 
+:::card A customer's profile and bills
+The job reads **billed · scheduled in kind** in the customer's profile window. It shows no day count and no red. The **Invoices** tab on the customer's page reads **Billed · in kind** for that bill.
+:::
+
 :::
 
 A customer can have some jobs on the arrangement and some off it. The bills off it still read as money owed, and they still age.
