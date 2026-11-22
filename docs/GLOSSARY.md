@@ -1688,6 +1688,7 @@ The role dock's row has no gear, so it keeps every press it has.
 **The one-line tab rows** are the Jobs page's tabs and the People page's sections and pills under the tick, since v2.8288 (`lib/phoneLayout/phoneTabRows.ts`): each row is one line in `ScrollableTabStrip` and never folds.
 The open tab is kept whole in view with the start of the next tab beside it (`activePeek`), and an edge with more past it carries a small arrow (`edgeMarks`), drawn only once a letter is hidden.
 The page's own title is left undrawn only while the one-row bar names the page (`PhoneBarPageNameContext`), so under the role dock's row, which names no page, the title stays.
+Under the tick Needs you is a one-line door on the Dashboard and opens on Walk the list where it is worked, since v2.8289 (→ *Needs You card*).
 Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
 **The phone job card** is the Job Mode card under the tick, since v2.8286 (`lib/phoneLayout/jobCard.ts`, `phoneJobCardOn`): the same pieces, each once, in a thumb's order.
 It opens on **Call**, **Directions** and **Text**, 44 px each, under the job's name and address.
@@ -7106,6 +7107,14 @@ Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
 Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
 *The Board* above).
+On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
+The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
+A door that is new under the tick stands in for the list alone, so the Lien desk's strip ([`NeedsYouLienBoardStrip`](../src/components/dashboard/NeedsYouLienBoardStrip.tsx), drawn on its own as a card, `needsYouLienStripUnderDoor`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
+Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
+With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
+Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.
+Under the tick the door says the viewer's own count and first line (`needsYouDoorLine`): the number in the card's pill and the line Walk the list opens on.
+With the tick off the door counts every line and the card opens as it did.
 
 ### Amber / red age (age state)
 The app's one convention for **how long a waiting item has waited** (v2.2895, journey-map #40).
