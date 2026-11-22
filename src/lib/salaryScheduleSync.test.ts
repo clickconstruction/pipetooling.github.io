@@ -60,6 +60,12 @@ describe('syncSalaryClockSessionsUnasked', () => {
     const sync = vi.fn(async () => ({ error: 'not authorized' }))
     expect(await syncSalaryClockSessionsUnasked('user-1', { viewingAs: () => false, sync })).toEqual({ error: 'not authorized', held: false })
     expect(sync).toHaveBeenCalledWith('user-1')
+    // The day editor names the day it opened on, and the hold comes first there too.
+    await syncSalaryClockSessionsUnasked('user-1', { viewingAs: () => false, sync }, '2026-01-05')
+    expect(sync).toHaveBeenLastCalledWith('user-1', '2026-01-05')
+    const calls = sync.mock.calls.length
+    expect(await syncSalaryClockSessionsUnasked('user-1', { viewingAs: () => true, sync }, '2026-01-05')).toEqual({ error: null, held: true })
+    expect(sync.mock.calls.length).toBe(calls)
   })
 
   it('leaves the sync a person presses for alone', async () => {

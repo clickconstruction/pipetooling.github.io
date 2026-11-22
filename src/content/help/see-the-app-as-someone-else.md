@@ -34,12 +34,13 @@ They are not read-only. A sample can press a button, save a note or advance a ca
 
 ## What View as holds back
 
-Looking is not using. The app saves some things by itself while a page is open, with no press from anyone. View as holds two of them back.
+Looking is not using. The app saves some things by itself while a page is open, with no press from anyone. View as holds these back.
 
 - The person's **last seen** time and their time in the app stay as their own use made them. People → Activity does not count your look.
 - A salaried person's clock is not synced from your browser. The server fills their day by its own schedule.
+- What is new for the person stays new. Your look does not mark an answer to their note or plan question as seen. The same holds for a bid request, a bid's notes, a first look and a law firm's answers.
 
-Some pages still save small things by themselves. Opening a note or a bid request can mark it as seen for that person. So you open only the pages you came to check.
+A few pages still save small things by themselves, such as a count of the pages opened. So you open only the pages you came to check.
 
 Everything you press still saves as that person. A press saves for a real teammate just as it does for a sample. So you look, and you press nothing you would not want under their name.
 
