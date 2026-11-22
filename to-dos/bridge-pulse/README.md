@@ -263,7 +263,9 @@ where its fault stands.
   ZZ jobs and bids leave the pipe, the step windows and the people tables. The won rates are already right.
   The fix gives each read two things in place of one: the ZZ switch, and the ids to leave out. It touches
   every loader the page has. A dev who hides ZZ jobs, the default, sees none of this. Nobody else does
-  either.
+  either. **Fixed in v2.8281**, another way: for this dev the list's jobs reach every read as ids alone, a
+  set that drops those jobs and reads no ZZ name. No loader changed, and a viewer who hides ZZ tests reads
+  through the same lines as before. A ZZ job on something the list names is still left out, by the list.
 - **ZZ test estimates still count in the asks and in the Market and Sales lists.** PR 3 took them out of the
   won rate alone, which was the ask. Market's count of asks and the two windows' own lists of estimates
   still count a test estimate for a viewer who hides tests. The bids follow the switch everywhere already.

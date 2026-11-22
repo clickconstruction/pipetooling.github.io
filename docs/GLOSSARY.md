@@ -5641,6 +5641,7 @@ and since v2.6823 the Bridge is the second surface to read **`isZzBidName`** (`w
 since v2.8280 `withoutZzBridgeEstimates` in `src/lib/bridge/zzTestJobs.ts` leaves it out of the count of asks, the estimates sent, won, lost and still out, and the Market and Sales windows' own lists too, by the viewer's switch alone and not by the set of ids the left-out list fills);
 and a dev sees them only while their per-device switch in Hide groups… shows them (hidden by default;
 `zzTestJobSwitch.ts`;
+on the Bridge the switch holds beside the left-out list since v2.8281, where the list's jobs reach the reads as ids alone (`jobIdsAlone`, `withLeftOutJobIds`) and take out no ZZ job or ZZ bid the list does not name;
 a chip on the Pipeline says how many are hidden).
 Since v2.5583 (punch list #113) a ZZ-named **prospect** follows the same switch: out of the three lanes' decks, queue rails, bench strip, Prospect Lists and Activity for every role but dev (`withoutZzProspects`, `src/lib/prospects/zzProspects.ts`).
 It is a view rule, not RLS: twins and live passes run as non-dev roles and must read the ZZ rows they make.

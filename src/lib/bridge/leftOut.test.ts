@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { addressRule, addressWords, isLeftOut, leftOutKey, leftOutPickerNames, leftOutText, leftOutWords, parseLeftOut, withLeftOutJobIds, withRule, withoutRule, type LeftOutRule } from './leftOut'
+import { leavesOutByIdAlone } from '../jobs/zzTestJobVisibility'
 
 const development: LeftOutRule = { kind: 'development', key: 'dev-1', label: 'Oak Hollow' }
 const customer: LeftOutRule = { kind: 'customer', key: 'cust-1', label: 'Ridgeway Builders' }
@@ -106,7 +107,16 @@ describe('the ids every job-keyed read takes', () => {
     expect([...(withLeftOutJobIds(zz, named) ?? [])].sort()).toEqual(['job-oak', 'job-zz'])
   })
 
-  it('is the list’s jobs alone for a reader who keeps the ZZ test jobs', () => {
-    expect(withLeftOutJobIds(null, named)).toBe(named)
+  it('is the list’s jobs, as ids alone, for a reader who keeps the ZZ test jobs (v2.8281)', () => {
+    const ids = withLeftOutJobIds(null, named)
+    expect([...(ids ?? [])].sort()).toEqual(['job-oak', 'job-zz'])
+    // Ids alone: the reads drop these jobs and read no ZZ name, so the ZZ tests this reader shows stay.
+    expect(leavesOutByIdAlone(ids)).toBe(true)
+  })
+
+  it('is a plain set for a reader who hides the ZZ test jobs, as it always was', () => {
+    expect(leavesOutByIdAlone(withLeftOutJobIds(zz, named))).toBe(false)
+    expect(leavesOutByIdAlone(withLeftOutJobIds(zz, new Set()))).toBe(false)
+    expect(leavesOutByIdAlone(withLeftOutJobIds(new Set(), named))).toBe(false)
   })
 })
