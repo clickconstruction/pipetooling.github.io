@@ -230,7 +230,7 @@ The clock sits under the table on **Market**. The clock's bar shows how long you
 
 In San Antonio the clock runs from an application to its permit. The wait is weeks long. Call while the application waits.
 
-In Austin the clock runs from the building permit to the plumber's permit. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
+In Austin the clock runs from the building permit to the plumber's permit. A job with two plumbing permits is measured to its first. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
 
 A city with too few dated permits draws no clock.
 
