@@ -61,7 +61,9 @@ import { jobPrintSheet } from '../../lib/materials/printSheet'
 import { notPrintedRunToPrint, reservedRunToPrint } from '../../lib/materials/reservedPrint'
 import { Sheet } from '../tally/OnSiteSheet'
 import { AddPartSheet } from '../tally/AddPartSheet'
-import { ADD_PART_FAILED, ADD_PART_PRESS, addPartDoneWords, addPartMovement, addPartPressLabel } from '../../lib/materials/addPart'
+import { ADD_PART_FAILED, ADD_PART_PRESS, FIRST_PART_COUNT_LABEL, FIRST_PART_NEEDS_WORDS, addBoxWithPartLabel, addPartDoneWords, addPartPressLabel, addPartRows, boxKeptPartHeldWords, boxWithPartDoneWords, firstPartCount, firstPartOf, type AddPartPick } from '../../lib/materials/addPart'
+import OnSiteBoxRow from '../tally/OnSiteBoxRow'
+import { boxScreenFromMaterials } from '../../lib/materials/boxRow'
 import { searchPartsBook } from '../../lib/materials/addPartIo'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
@@ -81,7 +83,7 @@ import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS, PLACE_WAY_TAKE_OFF_PRESS }
 import { openPlaceWay, paintPlaceWay, takeOffPlaceWay } from '../materials/placeWayPaint'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor } from '../../lib/materials/boxName'
-import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote } from '../../lib/materials/boxLine'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { useJobStickers } from '../../hooks/useJobStickers'
@@ -114,6 +116,8 @@ type Props = {
 const BLUE = '#2563eb'
 /** The green pill's views: the list of boxes, the parts across them, the map. */
 const ON_SITE_VIEWS = ['list', 'parts', 'map'] as const
+/** Unsorted has no line of its own: its row reads its parts. */
+const NO_BOX_LINE: BoxLine = { text: '', by: 'none' }
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
@@ -722,7 +726,14 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [newLineTyped, setNewLineTyped] = useState<string | null>(null)
   const newLine = addedLineVerdict(newLineTyped, nameVerdict.words)
   const newWordsNote = nameVerdict.ok ? nameWordsNote(nameVerdict.words, newLineTyped) : null
-  const addDead = !nameVerdict.ok || !newLine.ok
+  /** How many (v2.8284): empty is the box alone; filled, the new box takes that many of what **What is in it** names in the same press. */
+  const [newHowMany, setNewHowMany] = useState('')
+  const newCount = firstPartCount(newHowMany)
+  const newFirst = newLine.ok ? firstPartOf(knownNames, newLine.said, newCount) : null
+  const newNeedsWords = newCount.kind === 'count' && newLine.ok && !newLine.said
+  const addDead = !nameVerdict.ok || !newLine.ok || newCount.kind === 'bad' || newNeedsWords
+  /** Add a part's rows (v2.8284): the delivery into the box, and the line's count when the line held none (`addPartRows`). */
+  const addPartTo = (box: Pick<Container, 'id'>, part: AddPartPick, n: number) => { for (const row of addPartRows({ jobId, containerId: box.id, part, quantity: n, byUserId, byName, lines, now: new Date() })) addMovement(row) }
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
@@ -791,7 +802,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
       {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move, and any held with its reason. */}
-      <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} />
+      <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} fold={phone} />
       {/* The flow row (#209): the material's path left to right at the pills' height — came in → on site → used → missing — each figure in its colour, a badge where a hand is needed. */}
       {jobLedgerCapped(jobId) ? (
         /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */
@@ -860,8 +871,9 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input value={lineFieldValue(newLineTyped, nameVerdict.words)} onChange={(e) => setNewLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 220, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid="materials-add-line" /></label>
-          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} onClick={() => { if (!nameVerdict.ok || !newLine.ok) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); const made = addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); /* The new box stays in sight (v2.8282): every box is listed again, and its card is scrolled to. */ setOnSiteFilter('all'); setNewBoxId(made.id); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewPlaceName(''); setAdding(false); showToast(`${nameVerdict.name} added.`, 'success') }}>{addPressLabel(nameVerdict)}</button>
-          <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{newWordsNote ? ` ${newWordsNote}` : ''}{newLine.ok ? '' : ` ${newLine.words}`}</span>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>{FIRST_PART_COUNT_LABEL}<input value={newHowMany} onChange={(e) => setNewHowMany(e.target.value)} inputMode="numeric" placeholder="None yet" aria-label={FIRST_PART_COUNT_LABEL} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 96, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid="materials-add-how-many" /></label>
+          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} data-testid="materials-add-press" onClick={() => { if (!nameVerdict.ok || !newLine.ok || addDead) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); const made = addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); /* The new box stays in sight (v2.8282): every box is listed again, and its card is scrolled to. */ setOnSiteFilter('all'); setNewBoxId(made.id); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewHowMany(''); setNewPlaceName(''); setAdding(false); if (!newFirst) { showToast(`${nameVerdict.name} added.`, 'success'); return } /* The first part goes in with the same press (v2.8284). A part that fails leaves the box, with the reason. */ try { addPartTo(made, newFirst.part, newFirst.n); showToast(boxWithPartDoneWords(nameVerdict.name, newFirst.n, newFirst.part.partName), 'success') } catch (e) { showToast(boxKeptPartHeldWords(nameVerdict.name, newFirst.n, newFirst.part.partName, formatErrorMessage(e, 'It did not save.')), 'warning') } }}>{newFirst && nameVerdict.ok ? addBoxWithPartLabel(nameVerdict.name, newFirst.n, newFirst.part.partName) : addPressLabel(nameVerdict)}</button>
+          <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{newWordsNote ? ` ${newWordsNote}` : ''}{newLine.ok ? '' : ` ${newLine.words}`}{newCount.kind === 'bad' ? ` ${newCount.words}` : newNeedsWords ? ` ${FIRST_PART_NEEDS_WORDS}` : ''}</span>
         </div>
       ) : null}
           {(
@@ -874,13 +886,19 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             {groupByPlace(shownContainers, places).map((g) => (
               <div key={g.place?.id ?? (g.containers[0]?.kind === 'unsorted' ? 'unsorted' : 'none')} style={{ display: 'grid', gap: '0.5rem' }}>
                 {places.length > 0 && g.containers[0]?.kind !== 'unsorted' ? <h3 style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-strong)' }}>{g.place?.name ?? 'No place yet'} <span style={{ ...muted, fontWeight: 400 }}>· {g.containers.length} {g.containers.length === 1 ? 'container' : 'containers'}</span>{/* The way to a place (punch list #372, step 4): painted once, it serves every box that stands there. */}{g.place ? (() => { const place = g.place; return place.wayMapId ? <span style={{ marginLeft: '0.6rem', display: 'inline-flex', gap: '0.6rem', fontWeight: 400 }}><button type="button" style={quietPress} aria-label={`${PLACE_WAY_OPEN_PRESS} to ${place.name}`} onClick={() => openPlaceWay(place, addr || null, showToast)}>{PLACE_WAY_OPEN_PRESS}</button><button type="button" style={{ ...quietPress, color: 'var(--text-muted)' }} aria-label={`${PLACE_WAY_TAKE_OFF_PRESS} ${place.name}`} title="The place keeps no way. The map itself is kept." onClick={() => void takeOffPlaceWay(place, jobId, showToast)}>{PLACE_WAY_TAKE_OFF_PRESS}</button></span> : <button type="button" style={{ ...quietPress, marginLeft: '0.6rem' }} aria-label={`Paint the way to ${place.name}`} title="Draw the way from the gate to this place once. Anyone who looks for a box here can open it." onClick={() => paintPlaceWay(place, { jobId, label: jobLabel(job, jobId), address: addr || null, center: jobCenter }, showToast)}>{PLACE_WAY_PAINT_PRESS}</button> })() : null}</h3> : null}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(480px, 100%), 1fr))', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(480px, 100%), 1fr))', gap: phone ? '0.5rem' : '0.75rem' }}>
             {g.containers.map((c) => {
               const ls = linesOf(lines, c.id)
               const last = lastCountedAt(movements, c.id)
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts. The name opens Edit, which holds the same line.
               const boxLineNow = c.kind === 'unsorted' ? null : boxLineOf(c, lines)
+              if (phone) {
+                // A phone (v2.8284): one row a box, as the Tally lists them. The row opens the Tally's box screen, which comes back here; a box with no part is pressed to add its first.
+                const parts = ls.filter((l) => l.onHand > 0).length
+                const cannot = ls.reduce((n, l) => n + l.cannotFindSinceCount, 0)
+                return <OnSiteBoxRow key={c.id} box={c} line={boxLineNow ?? NO_BOX_LINE} parts={parts} cannot={cannot} last={last} now={now} stickers={stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])} testId="materials-box-row" {...(c.kind !== 'unsorted' && parts === 0 ? { onPress: () => setAddPartBoxId(c.id), action: ADD_PART_PRESS } : { to: boxScreenFromMaterials(jobId, c.id) })} />
+              }
               return (
                 <div key={c.id} data-box-card={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
                   <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{/* Add a part (v2.8282): the sheet the phone's box screen opens, so the desk is not a dead end for whoever stands at the box. */}{c.kind !== 'unsorted' ? <button type="button" aria-label={addPartPressLabel(c.label)} title={`${addPartPressLabel(c.label)}: pick it from this job, the parts book or type its name`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setAddPartBoxId(c.id)} data-testid="materials-box-add-part">{ADD_PART_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
@@ -1283,11 +1301,21 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             onClose={() => setAddPartBoxId(null)}
             onAdd={(part, n) => {
               try {
-                addMovement(addPartMovement({ jobId, containerId: box.id, part, quantity: n, byUserId, byName }))
+                addPartTo(box, part, n)
                 setAddPartBoxId(null)
                 showToast(addPartDoneWords(n, part.partName, box.label), 'success')
               } catch (e) {
                 showToast(formatErrorMessage(e, ADD_PART_FAILED), 'error')
+              }
+            }}
+            onAddAnother={(part, n) => {
+              // The sheet stays for the next part and says what went in; a write that fails says why and the part stays picked.
+              try {
+                addPartTo(box, part, n)
+                return true
+              } catch (e) {
+                showToast(formatErrorMessage(e, ADD_PART_FAILED), 'error')
+                return false
               }
             }}
           />,

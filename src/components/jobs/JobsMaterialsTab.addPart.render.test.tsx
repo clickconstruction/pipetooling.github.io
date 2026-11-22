@@ -11,14 +11,13 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 type Box = { id: string; jobId: string; label: string; kind: string; where: string; said?: string; locationId: null; lat: null; lng: null; retiredAt: string | null; createdAt: string }
 const box = (id: string, label: string, kind = 'cage'): Box => ({ id, jobId: 'ja', label, kind, where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' })
-const data = vi.hoisted(() => ({ boxes: [] as Box[], addMovement: vi.fn(), search: vi.fn(async () => [] as Array<{ id: string; name: string; manufacturer: string | null }>) }))
-const movements: never[] = []
+const data = vi.hoisted(() => ({ boxes: [] as Box[], movements: [] as Array<Record<string, unknown>>, addMovement: vi.fn(), search: vi.fn(async () => [] as Array<{ id: string; name: string; manufacturer: string | null }>) }))
 
 vi.mock('../../lib/materials/onSiteStore', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/materials/onSiteStore')>()),
   jobIdsWithData: () => ['ja'],
   listContainers: () => data.boxes,
-  listMovements: () => movements,
+  listMovements: () => data.movements,
   listPlaces: () => [],
   listPhotos: () => [],
   serverSummary: () => null,
@@ -65,18 +64,38 @@ const addTyped = (words: string, boxLabel: string) => {
 
 beforeEach(() => {
   data.addMovement.mockReset()
+  data.movements = []
   data.search.mockClear()
 })
 afterEach(cleanup)
 
 describe('Add a part on the office’s desk', () => {
-  it('every live box’s card has the press, on a desk and on a phone, and Unsorted has none', () => {
+  it('every live box’s card has the press on a desk, and Unsorted has none', () => {
     data.boxes = [box('zz1', 'ZZ1'), box('zz2', 'ZZ2', 'box'), box('un', 'Unsorted', 'unsorted')]
     open()
     expect(screen.getAllByTestId('materials-box-add-part').map((b) => [b.textContent, b.getAttribute('aria-label')])).toEqual([['Add a part', 'Add a part to ZZ1'], ['Add a part', 'Add a part to ZZ2']])
-    cleanup()
+  })
+
+  it('on a phone each box is one row: a box with parts opens the Tally’s box screen, an empty one is pressed to add its first part (v2.8284)', () => {
+    data.boxes = [box('zz1', 'ZZ1'), box('zz2', 'ZZ2', 'box'), box('un', 'Unsorted', 'unsorted')]
+    data.movements = [{ id: 'm1', jobId: 'ja', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity: 8, reason: 'delivered', fromContainerId: null, toContainerId: 'zz1', note: 'added on site', source: null, byUserId: 'u1', byName: 'Sam', at: '2026-11-10T15:00:00Z' }]
     open(true)
-    expect(screen.getAllByTestId('materials-box-add-part')).toHaveLength(2)
+    const rows = screen.getAllByTestId('materials-box-row')
+    expect(rows).toHaveLength(3)
+    // no card, no table of parts, no photo
+    expect(document.querySelector('[data-box-card] table')).toBeNull()
+    expect(screen.queryByTestId('materials-box-add-part')).toBeNull()
+    const zz1 = document.querySelector('[data-box-card="zz1"]') as HTMLElement
+    const zz2 = document.querySelector('[data-box-card="zz2"]') as HTMLElement
+    expect(zz1.tagName).toBe('A')
+    expect(zz1.getAttribute('href')).toBe('/tally?tab=on-site&job=ja&container=zz1&from=materials')
+    expect(zz1.textContent).toContain('ZZ test elbow · 8')
+    // the empty box reads Empty in plain words, and its press adds a part in place
+    expect(zz2.tagName).toBe('BUTTON')
+    expect(within(zz2).getByTestId('on-site-box-row-state').textContent).toBe('Empty')
+    expect(zz2.textContent).toContain('Add a part')
+    fireEvent.click(zz2)
+    expect(screen.getByRole('dialog', { name: 'Add a part to ZZ2' })).toBeTruthy()
   })
 
   it('the press opens the Tally’s sheet on that box, and its Add writes the Tally’s row as the signed-in person', async () => {
@@ -84,11 +103,59 @@ describe('Add a part on the office’s desk', () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Add a part to ZZ2' }))
     addTyped('ZZ test elbow', 'ZZ2')
-    expect(data.addMovement).toHaveBeenCalledTimes(1)
-    expect(data.addMovement).toHaveBeenCalledWith({ jobId: 'ja', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity: 1, reason: 'delivered', fromContainerId: null, toContainerId: 'zz2', note: 'added on site', byUserId: 'u1', byName: 'Sam' })
+    // ZZ2 held none of it, so the add is also that line's count (v2.8284): the delivery, then the count
+    expect(data.addMovement.mock.calls.map((c) => c[0])).toEqual([
+      expect.objectContaining({ jobId: 'ja', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity: 1, reason: 'delivered', fromContainerId: null, toContainerId: 'zz2', note: 'added on site', byUserId: 'u1', byName: 'Sam' }),
+      expect.objectContaining({ partName: 'ZZ test elbow', quantity: 1, reason: 'counted', fromContainerId: 'zz2', toContainerId: null, byUserId: 'u1', byName: 'Sam' }),
+    ])
     // the sheet closes and the toast says what went where
     expect(screen.queryByRole('dialog', { name: 'Add a part to ZZ2' })).toBeNull()
     expect(await screen.findByText('1 ZZ test elbow added to ZZ2.')).toBeTruthy()
+  })
+
+  it('into a box that already holds the part the add writes no count, and “and another part” keeps the sheet (v2.8284)', async () => {
+    data.boxes = [box('zz1', 'ZZ1')]
+    data.movements = [{ id: 'm1', jobId: 'ja', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity: 8, reason: 'delivered', fromContainerId: null, toContainerId: 'zz1', note: 'added on site', source: null, byUserId: 'u1', byName: 'Sam', at: '2026-11-10T15:00:00Z' }]
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a part to ZZ1' }))
+    const sheet = screen.getByRole('dialog', { name: 'Add a part to ZZ1' })
+    // the sheet opens on the job's names
+    fireEvent.click(within(within(sheet).getByTestId('add-part-already')).getByRole('button', { name: /ZZ test elbow/ }))
+    fireEvent.click(within(sheet).getByRole('button', { name: '+10' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add 10 and another part' }))
+    expect(data.addMovement.mock.calls.map((c) => [c[0].reason, c[0].quantity])).toEqual([['delivered', 10]])
+    expect(screen.getByRole('dialog', { name: 'Add a part to ZZ1' })).toBeTruthy()
+    expect(screen.getByTestId('add-part-note').textContent).toBe('10 ZZ test elbow added to ZZ1.')
+  })
+
+  it('a new box takes its first part in the same press, and the part is counted as it goes in (v2.8284)', async () => {
+    data.boxes = [box('zz1', 'ZZ1')]
+    open()
+    fireEvent.click(screen.getByTestId('materials-add-container'))
+    fireEvent.change(screen.getByLabelText('Its name'), { target: { value: 'ZZ9' } })
+    // a count with nothing said has no part to go on
+    fireEvent.change(screen.getByTestId('materials-add-how-many'), { target: { value: '40' } })
+    expect((screen.getByTestId('materials-add-press') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('materials-add-say').textContent).toContain('Say what is in it, so the count has a part to go on.')
+    fireEvent.change(screen.getByTestId('materials-add-line'), { target: { value: 'Hangers' } })
+    const press = screen.getByTestId('materials-add-press') as HTMLButtonElement
+    expect(press.textContent).toBe('Add ZZ9 with 40 Hangers')
+    fireEvent.click(press)
+    expect(data.addMovement.mock.calls.map((c) => [c[0].reason, c[0].partName, c[0].quantity, c[0].toContainerId ?? c[0].fromContainerId])).toEqual([['delivered', 'Hangers', 40, 'new-ZZ9'], ['counted', 'Hangers', 40, 'new-ZZ9']])
+    expect(await screen.findByText('ZZ9 added, with 40 Hangers in it.')).toBeTruthy()
+  })
+
+  it('when the box lands and its part does not, the box is kept and the reason is said (v2.8284)', async () => {
+    data.boxes = [box('zz1', 'ZZ1')]
+    data.addMovement.mockImplementation(() => { throw new Error('The office said no.') })
+    open()
+    fireEvent.click(screen.getByTestId('materials-add-container'))
+    fireEvent.change(screen.getByLabelText('Its name'), { target: { value: 'ZZ9' } })
+    fireEvent.change(screen.getByTestId('materials-add-line'), { target: { value: 'Hangers' } })
+    fireEvent.change(screen.getByTestId('materials-add-how-many'), { target: { value: '40' } })
+    fireEvent.click(screen.getByTestId('materials-add-press'))
+    expect(await screen.findByText('ZZ9 was added. Its 40 Hangers were not: The office said no. Add them from the box.')).toBeTruthy()
+    expect(document.querySelector('[data-box-card="new-ZZ9"]')).toBeTruthy()
   })
 
   it('a write that fails says its reason, and the sheet stays to try again', async () => {
