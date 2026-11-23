@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · left: a walk of two sheets on a phone, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · left: a walk of two sheets on a phone, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -14,7 +14,7 @@ summary: >
 next: Someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
-ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267
+ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300
 opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
 mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
@@ -149,7 +149,7 @@ Walked in the iOS Simulator (iPhone 17, iOS 26.2, Safari) on a ZZ Test person's 
 **Left from this walk.**
 
 - **A small phone in a hand**, in Text and in Email, to see the scroll reach the box's foot.
-- **At 320 px wide the header's first row is 37 px too wide**, keyboard or not: the name gets no width and ⋯ sits half off the right edge. The who-has-it words, call and ⋯ take the row. Which gives way is a pick: the who-has-it words could shorten at that width.
+- **At 320 px wide the header's first row was 37 px too wide**, keyboard or not: the name got no width and ⋯ sat half off the right edge. Fixed in v2.8300. It was not a 320 px fault alone: at 375 the name had 18 px and on an iPhone 17 it had 45, so it read as two letters. The who-has-it pill's words took 171 px of the row. The folded header was drawn on 2026-10-12 with that pill as a face alone, and the window has handed that look to the slot since, but the slot never read it. It reads it now: a face 28 px wide, with the words as its name to a screen reader, and its menu slid onto the screen from wherever the face sits. The name gets 106 px at 320, 161 of its 164 at 375 and all of it at 402. Measured in a browser at 320, 375, 402 and 1,400 wide, not in a simulator. One pick is left to the owner: nobody's face is a grey **?**, as the whole pill drew it beside its words.
 
 It changes nothing at a desk: every branch is behind the window's own phone flag.
 

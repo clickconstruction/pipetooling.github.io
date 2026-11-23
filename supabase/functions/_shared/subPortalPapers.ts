@@ -238,6 +238,18 @@ export function portalConfirms(acks: ReadonlyArray<Pick<PapersAckRow, 'kind' | '
   return out
 }
 
+/**
+ * The confirm the table kept when two presses of one copy arrive at the same moment. The table holds one confirm per
+ * copy (`sub_paper_acks_confirmed_paper_key`), so the second press's write is refused and the page reads the first
+ * one back. `kept` is the copy's confirmed rows as read after the refusal. When that read hands back nothing, the
+ * press's own row stands in at `nowIso`: the copy is confirmed either way, and the day is today.
+ */
+export function portalConfirmKept(row: Pick<PortalAnswerRow, 'labor_job_id' | 'paper_id' | 'revision' | 'amount'>, kept: ReadonlyArray<PapersAckRow>, nowIso: string): Map<string, PaperConfirm> {
+  const first = portalConfirms(kept.filter((a) => a.kind === 'confirmed' && a.paper_id === row.paper_id && a.labor_job_id === row.labor_job_id))
+  if (first.size > 0) return first
+  return portalConfirms([{ kind: 'confirmed', labor_job_id: row.labor_job_id, created_at: nowIso, revision: row.revision, amount: row.amount, said_from: null }])
+}
+
 export type PortalWrongNote = { about: 'statement' | 'payment'; key: string; day: string; note: string }
 
 /** The answers a sub gave, as the page reads them: each payment marked received with its day, and each note they sent. */

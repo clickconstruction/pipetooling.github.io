@@ -1292,6 +1292,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The desk **reads and writes** a job's bullets, yeses, asks and days, and reads its decisions and arrivals.
   A primary reads no job's list beyond `is_job_people`.
   The crew is **`start_checks_crew(job)`**: on the job's team, clocked in on it, or a sub who reads it, and never a primary.
+  Since v2.8243 a clock-in counts for 14 days, today and the fourteen before it by the session's work day (`docs/migrations/20261122031000_crew_days_start_checks.md`).
   The crew **reads** the bullets on them that are still on the list and their live yeses, and writes through one door alone, `start_check_arrive`.
   A helper on no job, a superintendent on no job, and an estimator or a primary with no claim read nothing.
   A job shut by its papers is shut here too (`job_shut_to_me` in each gate).
@@ -2662,7 +2663,8 @@ A training-mode account cannot sign, since starting a paper is a write.
   `permit_set_builder_keys` runs as the service role alone.
   Since v2.6866 (punch list #307) the same people see two blocks in a bid's Edit window, drawn only for `canResearchPermits` roles and read through `bid_site_permits` under the same row security: **This site** under the address and **What we can see about** the GC under its card.
   Since v2.6872 the same people may answer who a permit's name is, under a bid's site permit and since v2.6963 on a builder's sheet on Builders, where a take-back is one more insert: `builder_customer_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete.
-  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
+  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Permits** tab, with the **Names on permits** line on Profile that opens it (v2.8302, where the names were a card on Profile from v2.6886).
+  Any other role's strip has no such tab, and `?tab=permits` reads as Profile for it (`parseCustomerTab`).
   Since v2.7941 the same roles read the news on **Followup → Permit news** (`?tab=permit-news`), where the red count and the first list are the reader's own bids (`isMyBid`) and **Everyone's** lists the rest.
   A superintendent is turned away from that lens with the other office lenses, and a primary by its own allowlist.
   Since v2.7940 the same people may say whether a permit on a bid's address is that bid's job: `bid_permit_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and a take-back is one more insert.

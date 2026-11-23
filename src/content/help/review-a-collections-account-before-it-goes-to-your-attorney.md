@@ -173,6 +173,8 @@ Counsel is away, or not yet hired, and the office works the case itself? Press *
 
 On the Timeline's **Said** lane, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them. The firm's portal still shows these entries on its own **Record of contact** tab.
 
+One kind of contact stays home without a hold. A contact that names only another job of the same customer does not go to the firm. A contact that names no job is about the account, and it goes. A job is named by its number, such as *1042*, *#1042* or *job 1042*. The same digits in a phone number, a date or an amount are not read as a job. Neither is a street number. {{button:outline|Preview what the firm sees ↗}} shows exactly which contacts go.
+
 To keep one entry from the firm, press {{button:outline|Hold from counsel…}} on its row. Type why, then press {{button:dark|Hold back}}. The button stays off until you type a reason. The reason shows under the entry, for the office only.
 
 Held entries show struck through. They never reach the printed packet, and they never reach the firm. The firm sees how many were held, never what or why. {{button:outline|Share}} on a held row sends it again. {{button:outline|Share all ↗}} clears every hold.
