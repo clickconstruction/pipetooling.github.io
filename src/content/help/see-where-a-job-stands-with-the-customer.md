@@ -26,6 +26,8 @@ A job with nothing written down shows one quiet line instead. It says there are 
 
 **They promised** and **We owe them** read the customer's whole thread. A promise shows here even when no text is tied to this job.
 
+A payment promise written from their thread names its job. It shows on that job only. So a customer with two jobs promised sees each job's own day.
+
 ## Open the line it came from
 
 Press the small link at the end of a line. It reads **the text ›** or **their word ›**. The window closes and Messages opens on that line.

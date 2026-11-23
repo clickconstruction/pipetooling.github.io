@@ -19,6 +19,7 @@ import type { PromiseChannel } from '../jobs/paymentPromises'
 import type { BidMoneyLine } from '../bids/bidMoneyLine'
 import { val } from '../valuesInPlace'
 import { dayLabel } from './owed'
+import { jobRefOf } from './jobKeys'
 import { daySaidIn } from './voicemailRead'
 
 /** The channels a customer's own word comes on. A note or an event is ours. */
@@ -46,6 +47,20 @@ export type WordLanding =
 
 export const NO_JOB_WORDS = 'They have no bill open on a job of yours. Write it on the job once one is billed.'
 export const NO_STANDING_WORDS = 'None of their jobs is yours to write on.'
+
+/**
+ * The job a line is tied to, as the money lines name it (punch list #421 PR 5): a line names its job by key
+ * (`jobKeys.ts`: "pipeline:<id>" or "bid:<id>"), and a money line by its Pipeline job's id. A Pipeline key is that id; a
+ * bid's key is the job its bid became, when one of the customer's money lines carries that bid. Before this the key was
+ * handed in whole, so a line's own job never matched and the press fell back to the customer's one job with money open.
+ */
+export function tiedJobId(key: string | null | undefined, lines: readonly Pick<BidMoneyLine, 'job' | 'bidId'>[]): string | null {
+  const ref = jobRefOf(key)
+  if (!ref) return null
+  if (ref.kind === 'pipeline') return ref.id
+  if (ref.kind === 'bid') return lines.find((l) => l.bidId === ref.id)?.job.id ?? null
+  return null
+}
 
 /** Where the word lands. */
 export function wordLanding(lines: readonly BidMoneyLine[], tiedJobId: string | null): WordLanding {
@@ -120,15 +135,20 @@ export interface LinePromiseMark {
   kind: string | null
   state: string
   day: string | null
+  /** The Pipeline job a payment mark is for (punch list #421 PR 5); null for a mark from before, which speaks for every job. */
+  job_id?: string | null
 }
 
 /**
  * The lines to take a payment mark off when a promise of `ymd` is voided (*Never said that*): every line of the
  * thread whose written promise is a payment by that day. The sheet may be open under another line than the one the
- * word was written from, so the day is the tie, not the line.
+ * word was written from, so the day is the tie, not the line. Since #421 PR 5 a mark names its job, so a mark for
+ * another of the customer's jobs stays; a mark from before names none and comes off as it did.
  */
-export function linesMarkedFor(promises: readonly LinePromiseMark[], ymd: string): string[] {
-  return promises.filter((p) => p.state === 'written' && p.kind === 'payment' && p.day === ymd).map((p) => p.message_id)
+export function linesMarkedFor(promises: readonly LinePromiseMark[], ymd: string, jobId: string | null = null): string[] {
+  return promises
+    .filter((p) => p.state === 'written' && p.kind === 'payment' && p.day === ymd && (!jobId || !p.job_id || p.job_id === jobId))
+    .map((p) => p.message_id)
 }
 
 /**

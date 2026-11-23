@@ -460,7 +460,7 @@ describe('Write down their word under their line (v2.5649)', () => {
   it('opens the sheet on the line’s own job, with their name and the text filled in', async () => {
     open.contactId = 'dana'
     const loadLines = vi.fn(async () => [money('j1', '1032', 4200), money('j2', '1040', 900)])
-    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2' }), loadLines)
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'pipeline:j2' }), loadLines)
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     expect(loadLines).toHaveBeenCalledWith('c-dana')
@@ -495,7 +495,7 @@ describe('Write down their word under their line (v2.5649)', () => {
     const at = new Date().toISOString()
     const tomorrow = dayAfter(todayYmdInAppTz(new Date(at)))
     const standing = { ...money('j2', '1040', 900), promise: { kind: 'promise', promisedYmd: '2020-01-06' } } as unknown as BidMoneyLine
-    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', at, body: 'We will pay tomorrow.' }), async () => [standing])
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'pipeline:j2', at, body: 'We will pay tomorrow.' }), async () => [standing])
     const under = within(screen.getByTestId('under'))
     await under.findByRole('button', { name: 'Write down their word' })
     const heard = screen.getByTestId('under').querySelector('[data-heard-day]') as HTMLElement
@@ -513,12 +513,12 @@ describe('Write down their word under their line (v2.5649)', () => {
   it('no day is drawn under a call or an email, or under a text that names none, and the sheet opens as before', async () => {
     open.contactId = 'dana'
     for (const patch of [{ channel: 'call' as const, body: 'We will pay tomorrow.' }, { channel: 'email' as const, body: 'We will pay tomorrow.' }, { body: 'Thanks, got it.' }]) {
-      renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', ...patch }), async () => [money('j2', '1040', 900)])
+      renderThread(fakeIo(), DANA, false, theirText({ jobId: 'pipeline:j2', ...patch }), async () => [money('j2', '1040', 900)])
       await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' })
       expect(screen.getByTestId('under').querySelector('[data-heard-day]')).toBeNull()
       cleanup()
     }
-    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2', body: 'Thanks, got it.' }), async () => [money('j2', '1040', 900)])
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'pipeline:j2', body: 'Thanks, got it.' }), async () => [money('j2', '1040', 900)])
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('')
@@ -529,19 +529,19 @@ describe('Write down their word under their line (v2.5649)', () => {
   const openSheet = async (io: FollowUpThreadIo, body = 'We will pay tomorrow.', lines: BidMoneyLine[] = [money('j2', '1040', 900)]) => {
     open.contactId = 'dana'
     const at = new Date().toISOString()
-    renderThread(io, DANA, false, theirText({ jobId: 'j2', at, body }), async () => lines)
+    renderThread(io, DANA, false, theirText({ jobId: 'pipeline:j2', at, body }), async () => lines)
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     return dayAfter(todayYmdInAppTz(new Date(at)))
   }
-  const mark = (message_id: string, kind: string | null, day: string) => ({ id: `p-${message_id}`, message_id, kind, state: 'written', day, day_words: null, writes: null, decided_by: 'u-rosa', decided_at: '2026-10-01T15:00:00.000Z', message: { contact_id: 'dana', at: '2026-10-01T14:00:00.000Z' } })
+  const mark = (message_id: string, kind: string | null, day: string, job_id: string | null = null) => ({ id: `p-${message_id}`, message_id, kind, state: 'written', day, day_words: null, writes: null, job_id, decided_by: 'u-rosa', decided_at: '2026-10-01T15:00:00.000Z', message: { contact_id: 'dana', at: '2026-10-01T14:00:00.000Z' } })
 
   it('a promise saved from a line marks that line with the day saved, and reads the thread again', async () => {
     const io = fakeIo({ writeDownPayment: vi.fn(async () => undefined) })
     const tomorrow = await openSheet(io)
     const readsBefore = (io.loadThread as ReturnType<typeof vi.fn>).mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
-    await waitFor(() => expect(io.writeDownPayment).toHaveBeenCalledWith('m-in', tomorrow))
+    await waitFor(() => expect(io.writeDownPayment).toHaveBeenCalledWith('m-in', tomorrow, 'j2'))
     await waitFor(() => expect((io.loadThread as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(readsBefore))
     expect(await screen.findByText('Promise saved.')).toBeTruthy()
     expect(screen.queryByText(/Their line was not marked/)).toBeNull()
@@ -559,6 +559,26 @@ describe('Write down their word under their line (v2.5649)', () => {
     neverSaid.claim = false
     fireEvent.click(screen.getByTestId('say-never'))
     await waitFor(() => expect((io.writeDownPayment as ReturnType<typeof vi.fn>).mock.calls).toEqual([['m-in', null], ['m-older', null]]))
+  })
+
+  // A mark names its job (punch list #421 PR 5): the word came off job 1040, so a mark naming job 1032 stays.
+  it('Never said that leaves a mark that names another of their jobs, and takes off its own and one from before', async () => {
+    const read = { ...rows(), promises: [mark('m-in', 'payment', '2026-10-09', 'j2'), mark('m-old', 'payment', '2026-10-09'), mark('m-1032', 'payment', '2026-10-09', 'j1')] }
+    const io = fakeIo({ writeDownPayment: vi.fn(async () => undefined) }, read)
+    await openSheet(io, 'Thanks, got it.')
+    neverSaid.ymd = '2026-10-09'
+    neverSaid.claim = false
+    fireEvent.click(screen.getByTestId('say-never'))
+    await waitFor(() => expect((io.writeDownPayment as ReturnType<typeof vi.fn>).mock.calls).toEqual([['m-in', null], ['m-old', null]]))
+  })
+
+  it('a line tied to a Pipeline job opens on it, and one tied to a bid opens on the job that bid became', async () => {
+    open.contactId = 'dana'
+    const lines = [money('j1', '1032', 4200), { ...money('j2', '1040', 900), bidId: 'b9' }]
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'bid:b9', channel: 'call' }), async () => lines)
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    expect(screen.getByText('#1040 · Job 1040')).toBeTruthy()
   })
 
   // One thread, every job (v2.8307): the word came off job 1040, and job 1032 still has a promise for the same day.
@@ -579,7 +599,7 @@ describe('Write down their word under their line (v2.5649)', () => {
     const io = fakeIo({ writeDownPayment: vi.fn(async () => undefined) }, read)
     open.contactId = 'dana'
     const loadLines = vi.fn(async () => [money('j2', '1040', 900)])
-    renderThread(io, DANA, false, theirText({ jobId: 'j2', body: 'Thanks, got it.' }), loadLines)
+    renderThread(io, DANA, false, theirText({ jobId: 'pipeline:j2', body: 'Thanks, got it.' }), loadLines)
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     loadLines.mockRejectedValueOnce(new Error('The read timed out.'))
@@ -743,7 +763,7 @@ describe('A day was heard under their line (punch list #421)', () => {
       stage: 'Billed', open: 900, bills: [], payUrl: null, promise: null, pastDays: null, staleDays: null, payments: [], words: [], tone: 'quiet',
     }
     const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })
-    renderThread(io, DANA, false, theirs('dana', 'We will pay tomorrow.', { jobId: 'j2' }), async () => [money])
+    renderThread(io, DANA, false, theirs('dana', 'We will pay tomorrow.', { jobId: 'pipeline:j2' }), async () => [money])
     expect((await under().findAllByRole('button')).map((b) => b.textContent)).toEqual(['A payment', 'Their answer on our bid', 'A day we can be on site', 'just talk'])
     expect(under().queryByRole('button', { name: 'Write down their word' })).toBeNull()
     fireEvent.click(under().getByRole('button', { name: 'A payment' }))

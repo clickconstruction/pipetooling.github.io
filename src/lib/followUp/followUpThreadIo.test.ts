@@ -41,6 +41,19 @@ describe('writeDownPayment (v2.8271, punch list #129)', () => {
   })
 })
 
+describe('writeDownPayment with its job (punch list #421 PR 5)', () => {
+  it('names the job with a day, and never when the mark comes off', async () => {
+    const { client, calls } = fakeClient()
+    const io = supabaseFollowUpThreadIo(client)
+    await io.writeDownPayment!('m1', '2026-11-27', 'j2')
+    await io.writeDownPayment!('m1', null, 'j2')
+    expect(calls).toEqual([
+      { fn: 'write_down_payment', args: { p_message_id: 'm1', p_day: '2026-11-27', p_job_id: 'j2' } },
+      { fn: 'write_down_payment', args: { p_message_id: 'm1' } },
+    ])
+  })
+})
+
 describe('writeDownHeard (punch list #421)', () => {
   it('writes the day and its kind, a double kind with the one written, and just talk with no kind', async () => {
     const { client, calls } = fakeClient()
