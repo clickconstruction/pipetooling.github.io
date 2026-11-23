@@ -33143,6 +33143,7 @@ export type Database = {
           builder_key: string | null
           city: string
           contact: string | null
+          contact_phone: string | null
           declared_value: number | null
           first_seen_at: string
           id: string
@@ -33170,6 +33171,7 @@ export type Database = {
           builder_key?: string | null
           city: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -33197,6 +33199,7 @@ export type Database = {
           builder_key?: string | null
           city?: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -51699,10 +51702,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      permit_contact_domain: { Args: { p_value: string }; Returns: string }
       permit_funnel: {
         Args: { p_city: string; p_since: string }
         Returns: Json
       }
+      permit_is_building_plumbing: {
+        Args: { p_permit_type: string }
+        Returns: boolean
+      }
+      permit_name_contact_matches: {
+        Args: { p_customer_ids?: string[] }
+        Returns: {
+          builder_key: string
+          customer_id: string
+          heard_from: string
+          reason: string
+          value: string
+        }[]
+      }
+      permit_phone_digits: { Args: { p_value: string }; Returns: string }
       permit_set_builder_keys: { Args: { p_pairs: Json }; Returns: number }
       permit_skim_wait: {
         Args: { p_city: string; p_floor?: number }

@@ -103,6 +103,11 @@ export type LegalPortalPayload = {
   /** The firm's answers to Start here (v2.4821); undefined from a function that cannot take them yet. */
   intake?: LegalPortalIntake
   recipients: LegalPortalRecipient[]
+  /**
+   * Whose link this is (v2.8312): the person's name on one person's link, so *Recorded by* is shown and not
+   * picked. Null on the firm's shared link, on the office's preview and from an older function.
+   */
+  linkPerson: string | null
   firmPaused: boolean
   matters: LegalPortalMatter[]
   /** Matters the office pulled back (#85 item 16); [] from an older function. */
@@ -213,6 +218,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
     recipients: Array.isArray(raw.recipients)
       ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal), failingSince: typeof r.failingSince === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.failingSince) ? r.failingSince : null }))
       : [],
+    linkPerson: typeof raw.linkPerson === 'string' && raw.linkPerson.trim() ? raw.linkPerson.trim() : null,
     firmPaused: Boolean(raw.firmPaused),
     matters,
     pulledMatters: Array.isArray(raw.pulledMatters)

@@ -11,7 +11,8 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, P
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
-import { FIRM_EMAIL_MODE_WORDS, FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine, firmRecipientStatusWords, firmSavedWords, firmSendConfirmationLabel, legalFirmStageWords } from '../lib/legal/legalFirmWords'
+import { FIRM_EMAIL_MODE_WORDS, FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine, firmRecipientStatusWords, firmSavedWords, firmSendConfirmationLabel, legalFirmStageWords, RECORDED_BY_PINNED_WORDS } from '../lib/legal/legalFirmWords'
+import { WorkedOutValue } from '../components/valuesInPlace/ValuesInPlace'
 import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalPulledMatter, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
@@ -130,7 +131,9 @@ export default function LegalPortal() {
       const sig = JSON.stringify(payload)
       const clientId = typeof payload.matterId === 'string' ? (pendingKeys.current.get(sig) ?? newClientId()) : null
       if (clientId) pendingKeys.current.set(sig, clientId)
-      const extra = typeof payload.matterId === 'string' ? { ...(clientId ? { clientId } : {}), ...(recordedById ? { recordedById } : {}) } : {}
+      // On one person's link the server sets who recorded it from the link, so the page sends no pick (v2.8312).
+      const pick = state.kind === 'ready' && state.payload.linkPerson ? '' : recordedById
+      const extra = typeof payload.matterId === 'string' ? { ...(clientId ? { clientId } : {}), ...(pick ? { recordedById: pick } : {}) } : {}
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload, ...extra }) })
       const body = (await res.json().catch(() => null)) as LegalActAnswer | null
       if (!res.ok || !body?.ok) {
@@ -333,6 +336,7 @@ export default function LegalPortal() {
                 intake={payload.intake}
                 recipients={payload.recipients}
                 recordedById={recordedById}
+                linkPerson={payload.linkPerson}
                 busy={busy}
                 notice={notice}
                 onSend={(answers, by) => act({ kind: 'intake', answers, by })}
@@ -399,7 +403,7 @@ export default function LegalPortal() {
                 onOpenCoverage={payload.coverage ? (county) => { setCoverageOpenOn({ county, nonce: Date.now() }); setPanel('coverage') } : undefined}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
-                acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
+                acts={<>{payload.linkPerson ? <RecordedByPinned name={payload.linkPerson} /> : <RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} />}<FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative, themes: selected.themes }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
@@ -498,6 +502,20 @@ function RecordedByPicker({ recipients, value, onChange }: { recipients: Readonl
       </select>
       <span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{live.length ? 'Your pick is remembered on this browser.' : 'Add your people on the Notifications page to sign each act.'}</span>
     </label>
+  )
+}
+
+/**
+ * v2.8312: on one person's link *Recorded by* is that person. It is shown, not picked: the server sets it from
+ * the link, so nothing here can change it. The firm's shared link keeps the picker above.
+ */
+function RecordedByPinned({ name }: { name: string }) {
+  return (
+    <div data-legal-recorded-by="pinned" style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 12.5, color: MUTED, marginTop: 12 }}>
+      Recorded by
+      <span style={{ fontSize: 13, color: INK }}><WorkedOutValue>{name}</WorkedOutValue></span>
+      <span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{RECORDED_BY_PINNED_WORDS}</span>
+    </div>
   )
 }
 

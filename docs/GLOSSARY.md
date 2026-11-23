@@ -3280,6 +3280,7 @@ Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in
 **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map for a picture keeps the Leaflet map until it closes.
 A line is drawn by hand on Google since v2.8236, so the window is on Google from the moment it opens to Save: a press adds a corner, a press held still then slid places one under the glass, and the corners and the dots in the middle of the legs are Google's own markers a finger drags.
 A place's dot is put down on Google since v2.8235: one of Google's own markers a finger drags, with the magnifying glass above it, whose picture is a second small Google map made once for the page and kept (`paintedGoogleGlassMap.ts`).
+Since v2.8326 that map is drawn as close as Google has a picture of the spot, asked of Google once a held press (`askGlassDepth`), and drawn larger only by what is left (`glassPictureZoom`).
 The catch, the held press and the glass's place are one set of rules both canvases read (`handPlacing.ts`).
 A walk is painted on Google since v2.8212 (step 3 of #387): the canvas slides to the walker when they near its edge (`followMe.ts`) and draws again only the line that grew.
 The picture and the printed page are not on Google.
@@ -3805,6 +3806,7 @@ See **`BIDS_SYSTEM.md`** → Estimators Tab.
 Customer in the bids context.
 The entity requesting the bid (can be actual GC, homeowner, developer, etc.).
 Since v2.6872 (punch list #307) a name a city lists on permits can be **tied** to a customer: *Works for the GC* under a bid's site permit (the question reads *Same company?* since v2.6963 when one name begins the other, the **likely** grade), or **Same company** / **Works for them** in **Find their names on permits** (v2.6886), on Builders' **Looks like a customer** list, whose count the Dashboard's Needs you card carries while any name waits (v2.6962), and, since v2.6963, on a builder's sheet under **Our customer under this name**.
+Since v2.8308 **Find their names on permits** and **Looks like a customer** also offer a name that shares a phone or a web domain with the customer, graded as one name beginning the other is (`permit_name_contact_matches`), and nothing is tied by it.
 The answers are kept append-only in `builder_customer_answers` (newest decisive answer per name and customer stands;
 **Take back** undoes, on the bid or on the builder's sheet), Builders' **Our bids** counts a tied customer's bids beside a customer of the same name (v2.6963), and the app never ties a name on a likeness, only an exact same name.
 **Ours** (v2.6959) is the chip on a plumbing permit whose listed name is one of **our names on plumbing permits**: the short list on Settings → Company (`app_settings.permit_our_names_v1`, `src/lib/research/ourNames.ts`) plus the company name on paper bills, compared by the feed's own name key.
@@ -5406,6 +5408,7 @@ It lives on the customer's page as the card **Pays in kind**, with its **ledger*
 A line pays the deal's open bills oldest first as In kind payments.
 The jobs a deal pays read as **scheduled in kind**, never late, on the customer's page, the Pipeline's Billed row, the Payment Chase and the Payment forecast (v2.6834), and since v2.6931 in the forecast's email and on **Money waiting**, the Pay speeds window's list and its email.
 An In kind payment leaves pay speed.
+Since v2.8314 the customer's page keeps such a bill off its statement, its balance and every pay link, and lists it in its own card **Scheduled in kind** with what the credits have paid and what is still to come (`moneyJobsOf` and `buildPortalScheduledBills` in `_shared/portalScheduledBills.ts`, `scheduledBills` in the `customer-portal` answer, `PortalScheduledBillsCard`), the owner's call of 2026-11-22.
 Since v2.8218 the Dashboard's receivables card, the Bridge's Collect pile and balances, the Pipeline's 30+ and 90+ chips, *Who owes what*, Quickfill's Billed Awaiting Payment and the Pay speeds window's By customer list leave them out too, each naming them in one line (`splitInKind`, `supabase/functions/_shared/inKindApart.ts`), and the Pipeline's Billed header counts them on an **In kind** chip.
 Since v2.8219 the Billed awaiting payment email leaves them out of its rows, totals and chips with the same line, and a residential customer's Paid step gives such a bill no due day, so no pay reminder is due by itself.
 Since v2.8266 the customer's profile window reads such a bill as *billed · scheduled in kind* with no day and no red (`profileJobRowMoney`'s `scheduledInKind`, `profileJobRowMeta`), the customer page's Invoices tab reads *Billed · in kind* with no days, and the dev seat's `get_customer` and `get_job` carry the column.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pointInBox } from './followMe'
-import { GLASS_SIZE, GLASS_ZOOM_IN, SNAP_MAX_METERS, SNAP_PX, glassSpot, glassView, settlePoint, snapReachMeters, spotAtBox, withLive, type PaintedLive } from './handPlacing'
+import { GLASS_ROAD_MAP_DEPTH, GLASS_SIZE, GLASS_ZOOM_IN, SNAP_MAX_METERS, SNAP_PX, glassPictureScale, glassPictureZoom, glassSpot, glassView, settlePoint, snapReachMeters, spotAtBox, withLive, type PaintedLive } from './handPlacing'
 import { metersPerPixel, type SnapTarget } from './paintedLine'
 import { PAINTED_SNAP_METERS } from './paintedMap'
 import type { PaintedMapView } from './paintedMapView'
@@ -122,5 +122,61 @@ describe('spotAtBox and glassView', () => {
     const inGlass = pointInBox(neighbour, through, size)
     expect(inGlass.x - GLASS_SIZE / 2).toBeCloseTo(40, 3)
     expect(inGlass.y - GLASS_SIZE / 2).toBeCloseTo(0, 3)
+  })
+})
+
+describe('glassPictureZoom and glassPictureScale', () => {
+  it('draws the glass’s map two steps closer at its own size where Google’s photograph goes that deep', () => {
+    // A town: Google's photograph goes to zoom 21, and a line is drawn at 19.
+    expect(glassPictureZoom(19, 21)).toBe(19 + GLASS_ZOOM_IN)
+    expect(glassPictureScale(19, 21)).toBe(1)
+    // Deeper still changes nothing: the glass looks two steps in, no more.
+    expect(glassPictureZoom(19, 23)).toBe(21)
+  })
+
+  it('goes one step closer, drawn twice the size, where the photograph stops one step in', () => {
+    // Open country: Google's photograph goes to zoom 20.
+    expect(glassPictureZoom(19, 20)).toBe(20)
+    expect(glassPictureScale(19, 20)).toBe(2)
+  })
+
+  it('draws the big map’s own zoom four times the size where the photograph goes no deeper, or Google has not said', () => {
+    expect(glassPictureZoom(19, 19)).toBe(19)
+    expect(glassPictureScale(19, 19)).toBe(4)
+    expect(glassPictureZoom(19, null)).toBe(19)
+    expect(glassPictureZoom(19, Number.NaN)).toBe(19)
+    // A photograph that stops short of the big map's own zoom: the glass is as it always was, never further out.
+    expect(glassPictureZoom(20, 18)).toBe(20)
+  })
+
+  it('never asks for a zoom past the depth, where Google may draw nothing at all', () => {
+    for (const mapZoom of [15, 17, 18, 19, 20, 21]) {
+      for (const depth of [17, 18, 19, 20, 21, 22]) {
+        const zoom = glassPictureZoom(mapZoom, depth)
+        expect(zoom).toBeLessThanOrEqual(Math.max(mapZoom, depth))
+        expect(zoom).toBeGreaterThanOrEqual(mapZoom)
+        expect(zoom).toBeLessThanOrEqual(mapZoom + GLASS_ZOOM_IN)
+      }
+    }
+  })
+
+  it('always shows the same ground, whatever zoom the map is drawn at: the zoom closer, the size smaller', () => {
+    // The ground across the glass is the map's own pixels across the hole: GLASS_SIZE / scale at the picture's zoom,
+    // which is GLASS_SIZE at two steps in, every time.
+    for (const pictureZoom of [19, 20, 21]) {
+      const across = (GLASS_SIZE / glassPictureScale(19, pictureZoom)) * 2 ** (19 + GLASS_ZOOM_IN - pictureZoom)
+      expect(across).toBe(GLASS_SIZE)
+    }
+  })
+
+  it('follows a map Google held back below the zoom asked for, so the picture stays under the lines', () => {
+    expect(glassPictureScale(19, 19)).toBe(4)
+    expect(glassPictureScale(21, 19)).toBe(16)
+  })
+
+  it('takes Google’s road map, which it draws at every zoom, two steps closer without asking', () => {
+    expect(glassPictureZoom(19, GLASS_ROAD_MAP_DEPTH)).toBe(21)
+    expect(glassPictureZoom(21, GLASS_ROAD_MAP_DEPTH)).toBe(22)
+    expect(glassPictureScale(21, 22)).toBe(2)
   })
 })

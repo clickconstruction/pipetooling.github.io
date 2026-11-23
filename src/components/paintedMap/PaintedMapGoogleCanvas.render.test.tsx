@@ -168,16 +168,47 @@ class MarkerStub {
     this.on = map
   }
 }
-/** The glass's own map, stood in: the page makes one and a case counts them. */
+/**
+ * The glass's own map, stood in: the page makes one and a case counts them. It says the zoom it is at, and a case can
+ * hold it back from a closer zoom, as Google does for a moment on new ground.
+ */
 class GlassMapStub {
   static made: GlassMapStub[] = []
+  /** The zoom a map made from here on will not go past until a case lets it. */
+  static holdBack: number | null = null
   readonly moves: Array<{ center?: { lat: number; lng: number }; zoom?: number }> = []
+  readonly heard: Record<string, () => void> = {}
+  zoom: number
+  holdBackAt: number | null
   constructor(readonly host: HTMLElement, readonly opts: Record<string, unknown>) {
+    this.zoom = opts.zoom as number
+    this.holdBackAt = GlassMapStub.holdBack
     GlassMapStub.made.push(this)
   }
   setOptions() {}
+  getZoom() {
+    return this.zoom
+  }
+  addListener(name: string, fn: () => void) {
+    this.heard[name] = fn
+    return `glass ${name}`
+  }
   moveCamera(to: { center?: { lat: number; lng: number }; zoom?: number }) {
     this.moves.push(to)
+    if (to.zoom == null) return
+    const next = this.holdBackAt == null ? to.zoom : Math.min(to.zoom, this.holdBackAt)
+    if (next === this.zoom) return
+    this.zoom = next
+    this.heard.zoom_changed?.()
+  }
+}
+/** Google's answer to how deep its photograph goes at a spot, stood in: a case sets the answer and counts the asks. */
+class DepthStub {
+  static asks: Array<{ lat: number; lng: number }> = []
+  static answer: () => Promise<{ zoom: number }> = () => Promise.resolve({ zoom: 19 })
+  getMaxZoomAtLatLng(at: { lat: number; lng: number }) {
+    DepthStub.asks.push(at)
+    return DepthStub.answer()
   }
 }
 class SizeStub {
@@ -223,6 +254,9 @@ beforeEach(() => {
   Object.defineProperty(lib.div, 'clientHeight', { get: () => lib.box.height })
   MarkerStub.made = []
   GlassMapStub.made = []
+  GlassMapStub.holdBack = null
+  DepthStub.asks = []
+  DepthStub.answer = () => Promise.resolve({ zoom: 19 })
   forgetPaintedGlassForTests()
   PolylineStub.made = []
   CircleStub.made = []
@@ -657,6 +691,27 @@ describe('a line drawn by hand (step 3)', () => {
     expect(draft.onAdd).toHaveBeenCalledTimes(1)
   })
 
+  it('asks Google once for a held press how deep its photograph goes, and not again as the finger slides', async () => {
+    vi.useFakeTimers()
+    ;(globalThis as unknown as { google: { maps: Record<string, unknown> } }).google.maps.MaxZoomService = DepthStub
+    mount({ draft: draftOf([A, B]) })
+    pointer(lib.div, 'pointerdown', { x: 300, y: 200 })
+    act(() => vi.advanceTimersByTime(380))
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(DepthStub.asks).toHaveLength(1)
+    expect(DepthStub.asks[0]?.lat).toBeCloseTo(29.55, 6)
+    expect(DepthStub.asks[0]?.lng).toBeCloseTo(-98.3, 6)
+    expect(document.querySelector<HTMLElement>('[data-painted-glass-map]')?.style.transform).toBe('scale(1)')
+    pointer(window, 'pointermove', { x: 340, y: 200 })
+    pointer(window, 'pointermove', { x: 360, y: 210 })
+    expect(DepthStub.asks).toHaveLength(1)
+    pointer(window, 'pointerup', { x: 360, y: 210 })
+    expect(GlassMapStub.made).toHaveLength(1)
+  })
+
   it('takes a press that slides before the hold for a drag of the map, and a second finger for a pinch', () => {
     vi.useFakeTimers()
     const onLive = vi.fn()
@@ -952,6 +1007,164 @@ describe('a place’s dot, put down by hand (step 3)', () => {
     down('touch')
     act(() => marker().fire('drag', event(29.55002, -98.3)))
     expect(glass()?.getAttribute('data-painted-glass')).toBe('caught')
+  })
+})
+
+describe('the glass’s photograph, as close as Google has it (the owner’s choice of 2026-11-22)', () => {
+  const AT = { lat: 29.5505, lng: -98.2995 }
+  const dotAt = (point: { lat: number; lng: number }): PaintedCanvasDot => ({ point, label: 'the gate', onMove: vi.fn() })
+  const event = (lat: number, lng: number) => ({ latLng: { lat: () => lat, lng: () => lng } })
+  const marker = () => MarkerStub.made[MarkerStub.made.length - 1]!
+  const down = (pointerType = 'touch') => {
+    const e = new Event('pointerdown', { bubbles: true })
+    Object.defineProperty(e, 'pointerType', { value: pointerType })
+    act(() => void lib.div.dispatchEvent(e))
+  }
+  const picture = () => document.querySelector<HTMLElement>('[data-painted-glass-map]')
+  const glassMap = () => GlassMapStub.made[0]!
+  const lastMove = () => glassMap().moves[glassMap().moves.length - 1]
+  /** Google answers: the promise the ask is waiting on settles. */
+  const answered = () => act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+
+  beforeEach(() => {
+    const maps = (globalThis as unknown as { google: { maps: Record<string, unknown> } }).google.maps
+    maps.Map = GlassMapStub
+    maps.MaxZoomService = DepthStub
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // The big map is at zoom 17 in these cases, so the glass looks at 19.
+  it('asks once for the press, where it began, and draws the map two steps closer at its own size', async () => {
+    mount({ lines: [DRAWN], dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    // Until Google answers, the glass is drawn as it always was: the big map's zoom, four times the size.
+    expect(picture()?.style.transform).toBe('scale(4)')
+    await answered()
+    expect(DepthStub.asks).toEqual([{ lat: 29.5506, lng: -98.2994 }])
+    expect(lastMove()).toEqual({ center: { lat: 29.5506, lng: -98.2994 }, zoom: 19 })
+    expect(picture()?.style.transform).toBe('scale(1)')
+    expect(picture()?.style.width).toBe('132px')
+    expect(picture()?.getAttribute('data-glass-zoom')).toBe('19')
+    // The finger moves: the map follows at the same zoom, and nothing more is asked.
+    act(() => marker().fire('drag', event(29.5507, -98.2993)))
+    act(() => marker().fire('drag', event(29.5508, -98.2992)))
+    await answered()
+    expect(DepthStub.asks).toHaveLength(1)
+    expect(lastMove()).toEqual({ center: { lat: 29.5508, lng: -98.2992 }, zoom: 19 })
+    // The lines over the picture are drawn for the glass's own view, as before.
+    expect(document.querySelectorAll('[data-painted-glass] polyline')).toHaveLength(2)
+    // A new press asks again, on the same kept map: asking makes no map.
+    act(() => marker().fire('dragend', event(29.5508, -98.2992)))
+    act(() => marker().fire('drag', event(29.551, -98.299)))
+    await answered()
+    expect(DepthStub.asks).toHaveLength(2)
+    expect(GlassMapStub.made).toHaveLength(1)
+  })
+
+  it('goes one step closer at twice the size where the photograph stops there', async () => {
+    DepthStub.answer = () => Promise.resolve({ zoom: 18 })
+    mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    expect(lastMove()?.zoom).toBe(18)
+    expect(picture()?.style.transform).toBe('scale(2)')
+    expect(picture()?.style.width).toBe('66px')
+  })
+
+  it('stays as it was where the photograph goes no deeper than the big map, or Google cannot say', async () => {
+    DepthStub.answer = () => Promise.resolve({ zoom: 17 })
+    const first = mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    expect(glassMap().moves.every((m) => m.zoom === 17)).toBe(true)
+    expect(picture()?.style.transform).toBe('scale(4)')
+    act(() => marker().fire('dragend', event(29.5506, -98.2994)))
+    first.view.unmount()
+    DepthStub.answer = () => Promise.reject(new Error('Google could not say'))
+    mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    expect(DepthStub.asks).toHaveLength(2)
+    expect(glassMap().moves.every((m) => m.zoom === 17)).toBe(true)
+    expect(picture()?.style.transform).toBe('scale(4)')
+  })
+
+  it('draws the picture for the zoom Google’s map is at, and asks again while Google holds it back', async () => {
+    vi.useFakeTimers()
+    GlassMapStub.holdBack = 17
+    mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    // Asked for 19, Google's map stays at 17: the picture is drawn four times the size, under the lines.
+    expect(lastMove()?.zoom).toBe(19)
+    expect(glassMap().zoom).toBe(17)
+    expect(picture()?.style.transform).toBe('scale(4)')
+    expect(picture()?.getAttribute('data-glass-zoom')).toBe('17')
+    // Google comes to know the spot: the next ask is taken, and the picture is drawn at its own size.
+    glassMap().holdBackAt = null
+    act(() => vi.advanceTimersByTime(50))
+    expect(glassMap().zoom).toBe(19)
+    expect(picture()?.style.transform).toBe('scale(1)')
+    const moves = glassMap().moves.length
+    act(() => vi.advanceTimersByTime(1000))
+    expect(glassMap().moves).toHaveLength(moves)
+  })
+
+  it('stops asking again after two seconds, and leaves the picture drawn for the zoom the map is at', async () => {
+    vi.useFakeTimers()
+    GlassMapStub.holdBack = 17
+    mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    const before = glassMap().moves.length
+    act(() => vi.advanceTimersByTime(5000))
+    expect(glassMap().moves.length - before).toBe(40)
+    expect(picture()?.style.transform).toBe('scale(4)')
+  })
+
+  it('asks nothing on the road map, which Google draws at every zoom, and draws it two steps closer', async () => {
+    mount({ dot: dotAt(AT), mapTypeId: 'roadmap' })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    expect(DepthStub.asks).toHaveLength(0)
+    expect(lastMove()).toEqual({ center: { lat: 29.5506, lng: -98.2994 }, zoom: 19 })
+    expect(picture()?.style.transform).toBe('scale(1)')
+  })
+
+  it('asks nothing for a mouse, which gets no glass', async () => {
+    mount({ dot: dotAt(AT) })
+    down('mouse')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    await answered()
+    expect(DepthStub.asks).toHaveLength(0)
+    expect(GlassMapStub.made).toHaveLength(0)
+  })
+
+  it('lets go of the kept map’s listener when the finger lifts, and an answer that comes after changes nothing', async () => {
+    let answer: (found: { zoom: number }) => void = () => {}
+    DepthStub.answer = () => new Promise((resolve) => (answer = resolve))
+    mount({ dot: dotAt(AT) })
+    down()
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(glassMap().heard.zoom_changed).toBeDefined()
+    act(() => marker().fire('dragend', event(29.5506, -98.2994)))
+    expect(lib.removed).toContain('glass zoom_changed')
+    const moves = glassMap().moves.length
+    answer({ zoom: 19 })
+    await answered()
+    expect(glassMap().moves).toHaveLength(moves)
   })
 })
 

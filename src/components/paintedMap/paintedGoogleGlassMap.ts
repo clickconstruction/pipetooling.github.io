@@ -8,6 +8,9 @@
  *
  * Google takes its light or dark look when a map is made and not after, so there is one for each
  * look the page has placed in: two at the most, however often the theme is changed back and forth.
+ *
+ * How close the glass's map is drawn is asked of Google once a held press (`askGlassDepth`), the
+ * owner's choice of 2026-11-22. Asking makes no map.
  */
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import type { GoogleMapTypeId } from '../../lib/map/googleMapType'
@@ -48,8 +51,37 @@ export function keptPaintedGlassMap(scheme: 'DARK' | 'LIGHT'): KeptGlass | null 
   return kept[scheme] ?? null
 }
 
+let depths: google.maps.MaxZoomService | null = null
+
+/**
+ * How deep Google's photograph goes at a spot: the deepest zoom it has a picture for there. Asked once each time a
+ * finger is held to place, never as the finger moves. It is one small request to Google, and Google's own script
+ * keeps the answer for the same spot. Null when Google cannot say: the glass then draws as it did before.
+ */
+export async function askGlassDepth(at: PaintedPoint): Promise<number | null> {
+  const Service = google.maps.MaxZoomService
+  if (typeof Service !== 'function') return null
+  try {
+    if (!depths) depths = new Service()
+    const answer = await depths.getMaxZoomAtLatLng({ lat: at.lat, lng: at.lng })
+    return Number.isFinite(answer.zoom) ? answer.zoom : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * On new ground Google can turn a kept map's closer zoom down for a moment, until it knows how deep its own picture
+ * goes there. The glass asks again this often while the map is short of the zoom it wants. Seen 2026-11-22 on a page
+ * with Google's own script: a second ask about 30 ms after the first was taken every time.
+ */
+export const GLASS_ASK_AGAIN_MS = 50
+/** And gives up after this many tries, two seconds, leaving the glass drawn for the zoom the map is at. */
+export const GLASS_ASK_AGAIN_TRIES = 40
+
 /** A new page, for a test. */
 export function forgetPaintedGlassForTests(): void {
   delete kept.DARK
   delete kept.LIGHT
+  depths = null
 }

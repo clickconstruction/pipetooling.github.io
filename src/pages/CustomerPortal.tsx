@@ -6,6 +6,7 @@ import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalGcJobs } from '../components/portal/PortalGcJobs'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
+import { PortalScheduledBillsCard } from '../components/portal/PortalScheduledBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
 import { PortalOwnerRecordsCard } from '../components/portal/PortalOwnerRecordsCard'
 import { PortalCardBillPanel, PortalCardBillPress } from '../components/portal/PortalCardBill'
@@ -486,6 +487,12 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
               <b>Nothing is billed to you directly.</b>{' '}
               <span style={{ color: MUTED }}>Work on your property is billed to your builder — see below.</span>
             </>
+          ) : payload.scheduledBills.length > 0 ? (
+            // v2.8314: "no open bills" is wrong beside a card that lists bills an in kind arrangement pays.
+            <>
+              <b>Your open bills are scheduled in kind.</b>{' '}
+              <span style={{ color: MUTED }}>They are not money owed, and they are listed below.</span>
+            </>
           ) : (
             <>
               <b>You&#8217;re all paid up.</b>{' '}
@@ -546,6 +553,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       ))}
       {/* Records for an owner (punch list #86): sign for the records the office offered here; nothing shows until the office sends. */}
       {payload.ownerRecords ? <PortalOwnerRecordsCard records={payload.ownerRecords} token={requestToken} companyName={payload.company.name} phone={payload.company.phone} todayYmd={todayYmd} /> : null}
+      {/* Scheduled in kind (v2.8314): the viewer's bills an in kind arrangement pays. Never in the balance, never payable here. */}
+      <PortalScheduledBillsCard bills={payload.scheduledBills} />
       {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} phone={payload.company.phone} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire

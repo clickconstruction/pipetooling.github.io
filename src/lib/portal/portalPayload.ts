@@ -97,6 +97,27 @@ export type PortalSharedBill = {
   viewerRole: 'gc' | 'customer'
 }
 
+/**
+ * A bill an in kind arrangement pays (v2.8314, punch list #301; the owner's call of 2026-11-22). It stays
+ * on the page in its own card, read as scheduled: what was billed, what the credits have paid and what
+ * is still to come. It is not money owed, so it has no pay link and is in no balance.
+ */
+export type PortalScheduledBill = {
+  invoiceId: string | null
+  jobLabel: string
+  jobNumber: string
+  jobName: string | null
+  serviceTag: PortalTradeTag | null
+  jobAddress: string | null
+  /** Still to come in kind (dollars). */
+  amount: number
+  /** What was billed (dollars). */
+  billedAmount: number
+  /** What the credits have paid so far (dollars). */
+  totalPaid: number
+  billedOn: string | null
+}
+
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
@@ -106,6 +127,8 @@ export type PortalPayload = {
   bills: PortalBill[]
   /** Share this bill (v2.3375): what someone else pays and the office shared with this viewer. */
   sharedBills: PortalSharedBill[]
+  /** Scheduled in kind (v2.8314): the viewer's bills an in kind arrangement pays. Never in `bills`, the balance or a pay link. */
+  scheduledBills: PortalScheduledBill[]
   /** The notice on your property (v2.3825): recorded § 53.056 notices on the jobs this viewer owns — `_shared/portalPropertyNotices.ts`. */
   propertyNotices: PortalPropertyNotice[]
   totalDue: number
@@ -441,6 +464,27 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  // Scheduled in kind (v2.8314): tolerant of the field's absence (a function from before it).
+  const scheduledBills: PortalScheduledBill[] = []
+  if (Array.isArray(r.scheduledBills)) {
+    for (const b of r.scheduledBills as Array<Record<string, unknown>>) {
+      if (b == null || typeof b !== 'object') continue
+      const amount = num(b.amount)
+      if (amount <= 0) continue
+      scheduledBills.push({
+        invoiceId: typeof b.invoiceId === 'string' && b.invoiceId.trim() ? b.invoiceId : null,
+        jobLabel: str(b.jobLabel, 'Job'),
+        jobNumber: str(b.jobNumber),
+        jobName: typeof b.jobName === 'string' && b.jobName.trim() ? b.jobName : null,
+        serviceTag: b.serviceTag === 'plum' || b.serviceTag === 'elec' || b.serviceTag === 'hvac' ? b.serviceTag : null,
+        jobAddress: typeof b.jobAddress === 'string' && b.jobAddress.trim() ? b.jobAddress : null,
+        amount,
+        billedAmount: num(b.billedAmount) || amount,
+        totalPaid: num(b.totalPaid),
+        billedOn: typeof b.billedOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(b.billedOn) ? b.billedOn.slice(0, 10) : null,
+      })
+    }
+  }
   const requestableJobs: PortalPayload['requestableJobs'] = []
   if (Array.isArray(r.requestableJobs)) {
     for (const j of r.requestableJobs as Array<Record<string, unknown>>) {
@@ -546,6 +590,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     audience: r.audience === 'gc' ? 'gc' : r.audience === 'all' ? 'all' : 'customer',
     bills,
     sharedBills,
+    scheduledBills,
     propertyNotices,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
