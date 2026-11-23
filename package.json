@@ -201,6 +201,7 @@
     "test:pg:license-expiry-sweep": "bash scripts/pgtest-license-expiry-sweep.sh",
     "test:pg:pipeline-customer-lines": "bash scripts/pgtest-pipeline-customer-lines.sh",
     "test:pg:bill-lines-sweep": "bash scripts/pgtest-bill-lines-sweep.sh",
+    "test:pg:supply-bill-search": "bash scripts/pgtest-supply-bill-search.sh",
     "test:pg:price-sheets": "bash scripts/pgtest-price-sheets.sh",
     "test:pg:case-search-phrases": "bash scripts/pgtest-case-search-phrases.sh",
     "test:pg:person-matter-document-fence": "bash scripts/pgtest-person-matter-document-fence.sh",
