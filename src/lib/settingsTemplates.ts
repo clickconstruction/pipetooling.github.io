@@ -226,7 +226,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   },
   crew_day: {
     subject: '{{default_subject}}',
-    body: 'Your crew day summary is below.',
+    body: 'The Who worked summary is below.',
   },
   weekly_money: {
     subject: '{{default_subject}}',

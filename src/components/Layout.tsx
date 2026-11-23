@@ -91,6 +91,8 @@ import {
 import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
 import { AppTopBanner } from './layout/AppTopBanner'
+import { ModeRow } from './layout/ModeRow'
+import { modeRowOfferedToRole } from '../lib/modeRow'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
@@ -114,7 +116,7 @@ import { PHONE_BAR_PAD_Y_PX, PHONE_BAR_PRESS_PX, phoneBarPageName, phoneBarPlan,
 import { PhoneBarPageNameContext } from '../contexts/PhoneBarPageNameContext'
 import { PhoneBarGearRows } from './layout/PhoneBarGearRows'
 import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
-import { GEAR_SECTION_LABELS, gearPagesInOrder } from '../lib/gearMenuSections'
+import { GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder } from '../lib/gearMenuSections'
 import { GearSectionLabel } from './layout/GearSectionLabel'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
 import { GearAnswerDot, NavRowLinkMenuRows, PeopleNavIcon, TellTheDevMenuRow } from './layout/NavRowMenuRows'
@@ -217,6 +219,9 @@ export default function Layout() {
   // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
   // them the toggle rendered a footer of dead tabs (they keep /schedule-dispatch editing itself).
   const dispatchModeMenuEligible = dispatchModeEligibleForRole(role)
+  // The Modes rows this person's gear menu holds. A role with the mode row above the header switches Job Mode
+  // and Task Mode there, so the menu lists neither for it (`gearModesRows`).
+  const gearModes = gearModesRows({ modeRow: modeRowOfferedToRole(role), jobEligible: jobModeMenuEligible, dispatchEligible: dispatchModeMenuEligible })
   const dispatchModeActive = dispatchModeEnabled
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) and
@@ -370,7 +375,7 @@ export default function Layout() {
   const phoneDockModes: PhoneDockModeRow[] = !authUser?.id
     ? []
     : [
-        ...(jobModeMenuEligible
+        ...(gearModes.job
           ? [{
               key: 'job',
               label: 'Job Mode',
@@ -388,7 +393,7 @@ export default function Layout() {
         ...(dispatchModeActive && dispatchModePoRoleAllowed
           ? [{ key: 'po', label: 'PO tab', on: dispatchModePoEnabled, onToggle: () => writeDispatchModePoEnabled(authUser.id, !dispatchModePoEnabled) }]
           : []),
-        { key: 'task', label: 'Task Mode', on: taskModeEnabled, onToggle: () => setTaskModeEnabled(!taskModeEnabled) },
+        ...(gearModes.task ? [{ key: 'task', label: 'Task Mode', on: taskModeEnabled, onToggle: () => setTaskModeEnabled(!taskModeEnabled) }] : []),
         // Not modes: each shows or hides one thing, so the sheet lists them under Show and each wears its thing's icon.
         { key: 'pin', label: PIN_BAR_SWITCH_LABEL, group: 'show', icon: <PinIcon filled={false} size={18} />, on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
         { key: 'fix', label: TELL_THE_DEV_SWITCH_LABEL, group: 'show', icon: <Wrench size={18} strokeWidth={2.25} aria-hidden />, on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
@@ -1011,6 +1016,8 @@ export default function Layout() {
       {/* The lines above the header (v2.8053): each is an `AppTopBanner`, a direct child here. The first one showing
           pays the phone's status bar, and the lines, the View-as strip and the header under it pay none.
           Under the new phone layout the Add Task offer is a quiet row of the Dashboard instead, mounted in <main> below. */}
+      {/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode, the first line of all, tucked on a phone. */}
+      <ModeRow userId={authUser?.id ?? null} role={role} pathname={location.pathname} mode={pageMode.mode} setMode={setPageMode} onLand={(to) => navigate(to)} />
       {phoneBars ? null : <AddTaskShortcutBanner role={role} />}
       {isDigitalTwin && (
         <AppTopBanner
@@ -1549,8 +1556,8 @@ export default function Layout() {
                 ) : null}
                 <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {/* The menu reads in groups, each under its label (`gearMenuSections.ts`). Modes change the page. */}
-                {authUser?.id && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
-                {jobModeMenuEligible && authUser?.id && (
+                {authUser?.id && gearModes.label && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
+                {gearModes.job && authUser?.id && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1699,7 +1706,7 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
-                {authUser?.id && (
+                {authUser?.id && gearModes.task && (
                   <button
                     type="button"
                     onClick={() => {
@@ -2325,7 +2332,8 @@ export default function Layout() {
           paddingBottom: dispatchModeActive || jobModeFooterActive ? pageBottomPaddingCss() : undefined,
         }}
       >
-        {taskModeActive ? <TaskModeChip onExit={exitTaskMode} /> : null}
+        {/* The mode row is the way out of Task Mode for the roles it is drawn for; the estimator, who has no row, keeps the strip. */}
+        {taskModeActive && !modeRowOfferedToRole(role) ? <TaskModeChip onExit={exitTaskMode} /> : null}
         <AssistantReadyToBillBanner />
         {/* The new phone layout: the Add Task offer left the top of every page for one quiet row of the Dashboard.
             Keyed by the role, which lands after the first draw, so the offer is decided once the role is known. */}

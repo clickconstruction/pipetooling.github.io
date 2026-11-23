@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import type { NeedsYouItem, NeedsYouShown } from '../../lib/dashboardNeedsYou'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
@@ -16,6 +16,28 @@ const AMBER_CHIP: CSSProperties = { ...CHIP, background: 'var(--bg-amber-tint)',
 /** A value inside an amber chip keeps the chip's colour, so the whole chip reads as one caution. */
 const inChip = (text: string): ReactNode => <b data-value="worked-out">{text}</b>
 const AMBER_VALUES = { n: inChip, who: inChip, why: inChip, age: inChip, more: inChip }
+/**
+ * The names line, in pieces that each hold to one line while they fit the row: a name, with the dot after it. So a
+ * narrow row breaks after a dot and never inside a name (a phone drew a first name at the end of a line and its last
+ * name on the next). The kernel joins the count of the rest to the last name with spaces that do not break, so the two are one
+ * piece and *+2* never starts a line. A piece wider than the whole row still wraps inside itself.
+ */
+function Names({ text }: { text: string }) {
+  const pieces = text.split(' · ')
+  return (
+    <>
+      {pieces.map((piece, i) => (
+        <Fragment key={i}>
+          <span data-needs-you-piece style={{ display: 'inline-block', maxWidth: '100%' }}>
+            <ValueSentence text={piece} />
+            {i < pieces.length - 1 ? ' ·' : null}
+          </span>
+          {i < pieces.length - 1 ? ' ' : null}
+        </Fragment>
+      ))}
+    </>
+  )
+}
 
 function Clock() {
   return (
@@ -39,7 +61,7 @@ function Shown({ shown }: { shown: NeedsYouShown }) {
       ) : null}
       {shown.names ? (
         <div data-needs-you-names style={{ ...DETAIL, marginTop: shown.peek ? '0.3rem' : 2 }}>
-          <ValueSentence text={shown.names} />
+          <Names text={shown.names} />
         </div>
       ) : null}
       {shown.chips.length > 0 ? (

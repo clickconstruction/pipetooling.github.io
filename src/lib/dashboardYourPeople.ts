@@ -138,11 +138,11 @@ function ymdDaysAgo(todayYmd: string, n: number): string {
   return new Date(t - n * DAY_MS).toISOString().slice(0, 10)
 }
 
-/** *3 cards done this week · 2 moved · 1 stuck*, the card's headline. */
+/** *3 tasks done this week · 2 moved · 1 stuck*, the card's headline. */
 export function yourPeopleHeadline(rows: YourPersonRow[], doneThisWeek: number): string {
   const moved = rows.filter((r) => r.state === 'moved_today' || r.state === 'moved_week').length
   const stuck = rows.filter((r) => r.state === 'stuck').length
-  const parts = [`${doneThisWeek} card${doneThisWeek === 1 ? '' : 's'} done this week`, `${moved} moved`]
+  const parts = [`${doneThisWeek} task${doneThisWeek === 1 ? '' : 's'} done this week`, `${moved} moved`]
   if (stuck > 0) parts.push(`${stuck} stuck`)
   return parts.join(' · ')
 }

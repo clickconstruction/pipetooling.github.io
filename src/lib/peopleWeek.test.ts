@@ -31,7 +31,7 @@ describe('the words', () => {
     const p = samplePeopleWeekPayload('2026-11-09')
     expect(p.week_start).toBe('2026-11-02')
     expect(p.week_end).toBe('2026-11-08')
-    expect(peopleWeekSubject(p)).toBe('Your people’s week · Nov 2 to 8')
+    expect(peopleWeekSubject(p)).toBe('The team’s week · Nov 2 to 8')
     expect(peopleWeekHeadline(p)).toBe('3 people · 2 cards done · 2 moved · 1 stuck')
   })
   it('reads a person, a card, a job and a stuck line', () => {
@@ -51,7 +51,7 @@ describe('the words', () => {
     expect(text).toContain('Open Review: https://x/checklist?tab=review')
     const html = renderPeopleWeekHtml({ ...p, people: [{ ...p.people[0]!, name: 'A <b>' }] }, 'https://x')
     expect(html).toContain('A &lt;b&gt;')
-    expect(html).toContain('Your people’s week')
+    expect(html).toContain('The team’s week')
   })
   it('says the time plainly', () => {
     expect(timeWords('06:00')).toBe('6:00 AM')
@@ -88,7 +88,7 @@ describe('the chains', () => {
 describe('the sheet’s picture and words (v2.8041)', () => {
   it('draws the email’s own lines about one made-up person, for the week just finished', () => {
     const g = peopleWeekGlance('2026-11-20')
-    expect(g.subject).toBe('Your people’s week · Nov 9 to 15')
+    expect(g.subject).toBe('The team’s week · Nov 9 to 15')
     expect(g.name).toBe('Mateo')
     expect(g.line).toBe('2 cards done · 1 moved · 4 photos')
     expect(g.groups).toEqual([

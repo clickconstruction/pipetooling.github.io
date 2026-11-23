@@ -287,7 +287,21 @@ The office sees no press to approve. A dev sees one only on the jobs he leads. T
 
 ## On the Dashboard
 
-The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 to print and mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
+The Dashboard has a small **Lien desk** card beside the Needs you list. It shows three of the Board's counts side by side.
+
+:::example the Lien desk card on the Dashboard
+*Lien desk* **The Board ›**
+**14** by Dec 15 · **6** wait on you · **5** to print and mail
+*3 are past their day.*
+:::
+
+The first count is the papers due by the next lien day. The second is what waits on the leader. A leader reads *wait on you* there. The third is what waits to print and mail.
+
+A red line shows only while a paper is past its day or will not make it. The line uses the Board's own words.
+
+Press the card and the Lien desk opens at the Board. The unpaid amount is on the Board and not on the Dashboard.
+
+The card shows for the office while the desk holds a paper. It is never a line of the Needs you list. That list holds only things to press.
 
 ## The first tab is the way back
 

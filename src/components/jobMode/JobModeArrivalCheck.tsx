@@ -29,8 +29,8 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
   const [ask, setAsk] = useState<ArrivalAsk | null>(null)
   const [no, setNo] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
-  /** What this person just answered: the card says so in place of leaving. */
-  const [said, setSaid] = useState<{ no: number } | null>(null)
+  /** What this person just answered: the card says so in place of leaving. A No whose push failed is said too. */
+  const [said, setSaid] = useState<{ no: number; pushed: boolean } | null>(null)
   /** A read the app refused. A read lost to the signal is never kept here: that one stays silent. */
   const [refused, setRefused] = useState<OfflineRecoveryLastError | null>(null)
   const gen = useRef(0)
@@ -83,6 +83,12 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     return (
       <section data-testid="job-mode-arrival-check" data-arrival-said={said.no ? 'no' : 'yes'} aria-label={W.heading} role="status" style={{ border: `1px solid ${tone}`, borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.8rem' }}>
         <div style={{ fontWeight: 700, color: tone }}>{said.no ? W.saidNo(said.no) : W.saidYes}</div>
+        {/* The line is kept before the push, so a push that fails loses nothing but the ring: the crew is told, and a call stands in. */}
+        {said.no && !said.pushed ? (
+          <div data-arrival-not-pushed style={{ fontWeight: 600, color: 'var(--text-amber-800)' }}>
+            {W.notPushed}
+          </div>
+        ) : null}
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.either}</div>
       </section>
     )
@@ -104,9 +110,9 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     if (!ask) return
     setBusy(true)
     try {
-      await io.arrive(ask.fixtureId, nos)
+      const kept = await io.arrive(ask.fixtureId, nos)
       gen.current += 1
-      setSaid({ no: nos.length })
+      setSaid({ no: nos.length, pushed: kept.pushed })
       setNo({})
       setAsk(null)
     } catch (e) {

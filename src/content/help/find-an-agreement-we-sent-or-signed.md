@@ -2,7 +2,7 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer, w-9, certificate, papers section, papers with this customer, not sent, estimator, read only
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, take back, sent by mistake, delete a paper, signer, w-9, certificate, papers section, papers with this customer, not sent, estimator, read only
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders. It also holds a paper sent to a customer or a supply house.
@@ -182,6 +182,35 @@ If adding them fails, the window says why and stays open. Press the blue button 
 The line then reads **Customer** or **Supply house**. A signed paper's record carries the same press.
 
 A job's contract is not sent here. Send it from its job.
+
+## Take a paper back
+
+A paper sent to an outside company by mistake can be taken back. Its line carries **Take back** until the paper is signed.
+
+1. Find the paper under **Outside companies**.
+2. Press **Take back** on its line.
+3. Read the window. It names the paper and who holds its signing link.
+4. Press **Take back the paper**.
+
+The paper is deleted and its line leaves the list. The signing link stops working. Nobody is emailed.
+
+Someone who opens the old link reads that it no longer works. The page tells them to ask the office for a new link.
+
+:::example A waiting paper with an outside company
+{{chip:yellow|never opened}} Sent Nov 18 {{button:outline|Send again}} {{button:outline|Copy the signing link}} {{button:outline|Take back}}
+:::
+
+A signed paper has no **Take back**. It is the record of what was agreed, so it is kept.
+
+They may sign while the window is open. The paper is then kept, and the app tells you so.
+
+Taking a paper back cannot be undone. To send the paper again, press **Send a paper** and start over.
+
+The leader and a dev have **Take back**. They are the two who can delete a paper anywhere in the app. Anyone else in the office asks one of them.
+
+The email that went out stays under Sent copies. The record that they opened the paper goes with it.
+
+A teammate's or a sub's paper is not taken back here. It stays on People, under Contracts.
 
 ## Write or change a paper
 

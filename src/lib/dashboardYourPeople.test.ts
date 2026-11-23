@@ -61,8 +61,8 @@ describe('yourPeopleRows', () => {
 describe('the headline and the words', () => {
   it('counts done this week, moved and stuck', () => {
     const rows = yourPeopleRows({ open, moves, nameById: names, todayYmd: TODAY, dayOf, excludeUserId: 'me' })
-    expect(yourPeopleHeadline(rows, 3)).toBe('3 cards done this week · 2 moved · 1 stuck')
-    expect(yourPeopleHeadline([], 1)).toBe('1 card done this week · 0 moved')
+    expect(yourPeopleHeadline(rows, 3)).toBe('3 tasks done this week · 2 moved · 1 stuck')
+    expect(yourPeopleHeadline([], 1)).toBe('1 task done this week · 0 moved')
   })
   it('says the weekday for a move this week and nothing moved for none', () => {
     expect(movedWords('moved_week', '2026-11-04T18:00:00Z', 3)).toBe('moved Wed')
