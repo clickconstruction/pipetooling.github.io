@@ -428,7 +428,8 @@ Each lane adds to its own line below, never to the paragraph above, so two lanes
   Building's door widens it to the schedule's team;
   the board's loader reads it since v2.5192, so an estimator's board has the papers too);
   since v2.7977 an estimator also reads a company's agreement row itself, and still only the states of its W-9 and its certificate (punch list #403, under *Agreements* below);
-  `gc_paper_sends`, `gc_send_paper`, `gc_company_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
+  `gc_paper_sends`, `gc_send_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
+  Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) `gc_company_paper` is the office's four roles' (`is_office_staff()`: a dev, a leader, an assistant, the controller), where it was a dev's, so each of them makes a company's copy of a Contract Book entry, and an estimator is still refused.
   The company window's **Documents** tab (B6-b-ii) lists the papers for anyone who opens the window, under those policies, and its **Send a paper** and **Record their insurance** are the Board's writes (`canUseGcBoardWrites`, a dev today), as the four functions are.
   Start (B6-c-i, `20261010061000_gc_start_project.sql`): `gc_start_project` refuses anyone but a dev in words before any write until award's door, though `gc_projects` is the office's table, and refuses a training account and a digital twin first.
   Its window, **Get started** on a won job's card (B6-c-ii), shows to a dev only (`role === 'dev'` in `GcProjects.tsx`, as the schedule it reads is), and so does Start's email to each company awarded on the job (`canSendGcTradeEmail`);
@@ -965,6 +966,10 @@ Every function that reads a paper as its caller and then acts with the service r
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
 Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 Since v2.7998 **Add to a list** says what such a contact is through `name_contact`, as the caller: a new customer is made in the app's own New customer form, a new supply house and a person kept with a company are written under their own tables' policies, and the paper follows through `contacts_fold_papers` when the contact folds.
+Since v2.8313 (punch list #403, step 5, the owner's calls 3 and 7, `20261123020000_sub_company_ground.sql`) `person_trade_companies` says which trade company a roster person works for, and it is the four roles' to read and to write under one policy (`is_office_staff()`).
+Nobody else reads a row of it, an estimator and the person themself among them, and a training account, a digital twin and an archived account write nothing.
+Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
+A person's paper takes `signing_for` from that link through definer triggers, so no read policy on a paper changes: an estimator reads no person's paper, whether or not it names a company.
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
 `remind-person-papers` runs as the service role behind the cron secret and has no caller.
