@@ -2,7 +2,7 @@
 name: "Supply house invoices: flip through them in place, share one by a link, search them"
 number: 431
 group: ready
-status: asked 2026-11-23 · researched in the code and in prod the same day · the mock-up drawn and the owner said build it all the same day · building as a train of seven, one PR at a time
+status: asked 2026-11-23 · researched in the code and in prod the same day · the mock-up drawn and the owner said build it all the same day · all of it built the same day as a train of ten PRs · PR 1 (#9521), the bill door (#9522), the search function (#9537) and the sweep's words (#9542) are open and armed · the viewer (#9546) is open and waits on #9521 and #9522 · the lines search, the other lists, the search box and the header search are built on branches stacked behind it · left: each PR's merge, the drive-link and bill-lines-sweep deploys, the migration's push, and a walk on the live app
 mockup: to-dos/supply-invoice-viewer/mockup.html
 summary: >
   The Job Summary lists every supply house invoice on a job, and each invoice number opens its PDF
@@ -12,9 +12,9 @@ summary: >
   a share icon left of the invoice number that copies an app link, a search box on the list, and
   bills joining the search the app already has: the lines read from each bill, the file index, the
   search by meaning and the header search.
-next: PR 1, the search box and the share icon on the Job Summary list, with small cents and the short date.
-size: L as a train of seven (S · M · S · S · M · M · S)
-blocker: None for the build. Search by meaning turns on with the owner's key, the same key punch list #240 waits on.
+next: land the train in order (see Where it stands), deploying `drive-link` after #9522 and pushing the migration after #9537, then walk the list, the viewer, the link and both searches on the live app with a ZZ test bill.
+size: L as a train of ten (the seven of the plan, with the bill door and the search function each ahead of its screen, and the card); left: the merges and a live walk (S)
+blocker: The merge queue, and nothing else. Each stacked PR is armed once the one under it is on main.
 opinion: build — the PDF canvas, the Drive read, the lasting file link, the toast and the lines read from every bill all exist; this joins them
 ---
 
@@ -119,11 +119,21 @@ its left to copy a link, and type in the box.
 10. **Search, in three steps the owner took whole.**
     - On the list, by supply house, invoice number, date and amount, with no new index.
     - The lines already read: typing a part finds the invoices whose paper lists it.
-    - Every bill's whole text in the file index, so Documents → Search finds a bill, and the search
-      by meaning covers bills once the owner's key is set. Bills join the header search.
+    - Every bill's whole text, kept on the bill's own paper (`supply_papers.page_text`) and read by
+      one function, `search_supply_bills`, behind **Search every bill** on Materials → Supply houses
+      and behind the header search.
 11. **Questions in words are held.** "How much copper did we buy for this job in October" needs a
     model writing a query, and is only safe when every answer shows its rows and its sum. It waits
     until the Parts Book match of #298 covers most of the dollars, as a card of its own.
+12. **The words are kept on the paper, not in the file index.** The plan first said the file index.
+    Three things changed it while building. One PDF often holds several bills, and the index keeps one
+    row a file, so a search for one bill's ship-to would have found every bill scanned with it. Bills
+    are the office's to read, the index is read by the estimators too, and the papers table already
+    has the right policy. And the bill sweep already opens each PDF, so keeping the words costs no
+    model read. What that leaves out: Documents → Search and the search by meaning do not read bills.
+    Meaning is weak on bills, which are codes and numbers. Adding bills to the file index as well is
+    the owner's call, and is small now that the words are kept.
+13. **The search also reads the job a bill is on**, and the PO and order number its paper prints.
 
 ## How reliable each kind of search is
 
@@ -151,7 +161,9 @@ its left to copy a link, and type in the box.
 
 ## The plan
 
-One PR at a time, smallest first. Each ships its release note, its fragment and its guide.
+One PR at a time, smallest first. Each ships its release note, its fragment and its guide. As built,
+two of the seven were split so that a function is deployed, and a migration pushed, before any screen
+calls it: the bill door ahead of the viewer, and the search function ahead of the search box.
 
 | PR | What | Migration or function | Its check |
 | --- | --- | --- | --- |
@@ -159,8 +171,8 @@ One PR at a time, smallest first. Each ships its release note, its fragment and 
 | 2 | The viewer: opened from a row and from the link, Previous and Next, the keys, the facts, a bill's own pages, the no-PDF and cannot-open states. | A `drive-link` deploy | A ZZ test bill opened, flipped and shared; a bill inside a longer file opens on its own page. |
 | 3 | The list's search reaches the lines on the paper, and the viewer marks the line. | Neither | A part typed on a job finds its bills and no other. |
 | 4 | The viewer and the share icon on the other lists: Supply houses' bills, the bank link window, What we buy. | Neither | Each list opens the same viewer. |
-| 5 | One search across every bill, on Materials → Supply houses: number, house, PO, a part, a code. | A migration | A code typed finds every bill that prints it. |
-| 6 | Bills into the file index: the whole text, read by the office alone, filled as a bill is read and once for the bills on file. | A migration and the sweep | Documents → Search finds a bill by a word in its ship-to. |
+| 5 | One search across every bill, on Materials → Supply houses: number, house, PO, amount, job, a part, a code. | A migration | A code typed finds every bill that prints it. |
+| 6 | Every word of a bill kept on its paper by the bill sweep, as a bill is read and for the bills on file. | The sweep (the column is PR 5's migration) | **Search every bill** finds a bill by a word in its ship-to. |
 | 7 | Bills in the header search. | Neither | A bill's number typed in the header opens the viewer. |
 
 ## How to verify
@@ -174,5 +186,49 @@ One PR at a time, smallest first. Each ships its release note, its fragment and 
 
 ## Where it stands
 
-Designed and approved 2026-11-23. Nothing is built yet. The session that builds it could not drop a
-session card from its worktree, so the claims on GitHub are the record of who is in it.
+**All of it is built (2026-11-23). What is left is landing it and walking it live.**
+
+| Piece | PR | State on 2026-11-23 |
+| --- | --- | --- |
+| This card and its mock-up | #9505 | merged |
+| PR 1: the list's search box, share icon, small cents, short date | #9521 | armed, in the merge queue |
+| The bill door, `drive-link` → `read_bill` | #9522 | armed, in the merge queue. Deploy `drive-link` after it merges |
+| The search function and `supply_papers.page_text` | #9537 | armed, in checks. `supabase db push` after it merges, then the types |
+| PR 6: the sweep keeps each paper's words | #9542 | armed, in checks. Deploy `bill-lines-sweep` after it merges and the migration is pushed |
+| PR 2: the viewer and the bill's page | #9546 | open, not armed: waits on #9521 and #9522 |
+| PR 3: the list's search reaches the paper's lines | branch `claude/supply-invoice-lines-search` | built, pushed, no PR yet |
+| PR 4: the viewer on the supply house's bills, the aging window and Link invoices | branch `claude/supply-invoice-viewer-other-lists` | built, pushed, no PR yet |
+| PR 5, the screen: **Search every bill** | branch `claude/supply-bill-search-box` | built, pushed, no PR yet. Its migration must be pushed first |
+| PR 7: bills in the header search | branch `claude/supply-bill-header-search` | built, pushed, no PR yet |
+
+**The stack.** PRs 2, 3, 4, 5's screen and 7 are one stack in that order, each branch on the one
+before. The queue squashes, so a child edits files its parent added and conflicts once the parent
+lands. Open and arm one at a time: when the PR under it is on main, merge `origin/main` into the
+branch, take the branch's side in the parent's files, push, then arm.
+
+**What was looked at.** The list, the viewer, the search by a part and **Search every bill** were
+each driven in a headless browser on a throwaway page, with the real components, a stand-in for the
+reads and the repo's made-up fixture PDFs, at desk and phone widths in both themes. The search
+function ran its 36 assertions against a stub of the tables on a local Postgres 15.
+
+**What was not checked, and is the live walk.**
+
+- The bill door against the real Drive. The first bill a dev opens in the viewer says whether the
+  bills folder is found by its name; a refusal tells a dev the folders it saw.
+- The search function's bed on the real schema (CI's run is the first), and the function on real rows.
+- The sweep's fill of `page_text`: its answer's `pageText` after the first run.
+- The live Job Summary, the bill's link opened three ways, and both searches.
+
+**Calls built on a default, for the owner.**
+
+1. The viewer is the list beside the paper. Arrows alone was the other frame.
+2. The icon is a link glyph. A share glyph is one file, `CopyLinkIcon.tsx`.
+3. The viewer is the office's. A primary, a helper or a sub who sees the list keeps the Drive link.
+4. A date from another year shows four digits. The Supply houses bills card writes two.
+5. The bills folder is found by its name, `_Bills`. Setting the secret `BILLS_DRIVE_FOLDER_ID` holds
+   it by its id, so a rename does not close the viewer.
+6. Bills are not in the file index, so Documents → Search and the search by meaning do not read them.
+7. The bills still live in one office login's My Drive. A Shared Drive of their own is the durable move.
+
+No session card was dropped for this work: a hook refuses a worktree session's write into the main
+checkout's `.claude/`. The claims on GitHub are the record.

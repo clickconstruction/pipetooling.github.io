@@ -1561,7 +1561,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     onClick={() => void runSeparateSplit()}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: !separateCanSubmit ? DEAD_PRESS_FILL : '#16a34a',
+                      background: !separateCanSubmit ? DEAD_PRESS_FILL : '#15803d',
                       color: !separateCanSubmit ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 6,

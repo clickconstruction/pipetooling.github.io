@@ -10,6 +10,7 @@ import { formatEstimateMoney as formatMoney } from '../../lib/estimates/estimate
 import { estDangerOutlineButton, estInputBase, estPrimaryButton, estSecondaryButton, estSmallSecondaryButton } from './estimatesPageStyles'
 import { EmptyState } from '../EmptyState'
 import { estimateCatalogEmptyWords } from '../../lib/estimates/estimatesEmptyWords'
+import { MoneyText } from '../Money'
 
 /**
  * The line-item catalog modal — Pick a saved line into the draft, or (for the catalog's
@@ -249,7 +250,7 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
                           {c.line_item.trim() || c.description.trim() || '—'}
                         </span>
                         <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
-                          {c.quantity} × {formatMoney(c.unit_price_cents)}
+                          {c.quantity} × <MoneyText text={formatMoney(c.unit_price_cents)} />
                           {c.line_item.trim() && c.description.trim() ? ` · ${c.description.trim()}` : ''}
                         </span>
                       </button>

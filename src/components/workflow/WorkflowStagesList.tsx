@@ -55,6 +55,7 @@ import type { ConfirmDeleteLineItem } from './WorkflowLineItemModals'
 import { PersonDisplayWithContact, type PersonContactInfo } from './PersonDisplayWithContact'
 import { StepCommitmentPanel } from './StepCommitmentPanel'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
@@ -338,12 +339,12 @@ export function WorkflowStagesList({
               >
                 <span aria-hidden style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>$</span>
                 <span style={{ color: 'var(--text-muted)' }}>Projection · {p.memo}</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}><MoneyText text={formatAmount(p.amount)} /></span>
                 <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
-                  projected to here {formatAmount(m.runningProjected)}
+                  projected to here <MoneyText text={formatAmount(m.runningProjected)} />
                 </span>
                 <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
-                  spent {formatAmount(m.runningSpent)}
+                  spent <MoneyText text={formatAmount(m.runningSpent)} />
                 </span>
                 <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{expanded ? '▼' : '▶'}</span>
               </button>
@@ -351,7 +352,7 @@ export function WorkflowStagesList({
                 <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', maxWidth: 'min(100%, 480px)', width: '100%', boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontWeight: 600 }}>
                     <span>{p.stage_name}{p.memo ? ` — ${p.memo}` : ''}</span>
-                    <span style={{ color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                    <span style={{ color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}><MoneyText text={formatAmount(p.amount)} /></span>
                   </div>
                   <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
                     {p.placement === 'before' ? 'before' : 'after'} · {anchorStep?.name ?? 'step'}
@@ -519,7 +520,7 @@ export function WorkflowStagesList({
                           )}
                           {canManageStages && count > 0 && (
                             <span style={pillStyle}>
-                              {count} {count === 1 ? 'item' : 'items'} · {formatAmount(total)}
+                              {count} {count === 1 ? 'item' : 'items'} · <MoneyText text={formatAmount(total)} />
                             </span>
                           )}
                           {notesWords > 0 && (
@@ -945,8 +946,8 @@ export function WorkflowStagesList({
                         <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                         <span style={{ fontWeight: 500, color: 'var(--text-green-700)' }}>
                           Money
-                          {projectedTotal !== 0 && <> · {formatAmount(projectedTotal)} projected</>}
-                          {itemsTotal !== 0 && <> · {formatAmount(itemsTotal)} items</>}
+                          {projectedTotal !== 0 && <> · <MoneyText text={formatAmount(projectedTotal)} /> projected</>}
+                          {itemsTotal !== 0 && <> · <MoneyText text={formatAmount(itemsTotal)} /> items</>}
                         </span>
                       </div>
                     </div>
@@ -959,13 +960,13 @@ export function WorkflowStagesList({
                           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ color: 'var(--text-muted)', width: 42, flexShrink: 0 }}>{tag}</span>
                             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.memo}</span>
-                            <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}><MoneyText text={formatAmount(p.amount)} /></span>
                             <button type="button" onClick={() => openEditProjection(p)} className="wf-btn-ghost" style={{ fontSize: '0.75rem' }}>Edit</button>
                           </div>
                         ))}
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px dashed var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>
                           <span>Line items (actual)</span>
-                          <span>{formatAmount(itemsTotal)}</span>
+                          <span><MoneyText text={formatAmount(itemsTotal)} /></span>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                           <button
@@ -1025,7 +1026,7 @@ export function WorkflowStagesList({
                             <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
                               Line Items For Office
                               {!isExpanded && (
-                                <> | {formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))}</>
+                                <> | <MoneyText text={formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))} /></>
                               )}
                             </span>
                           </div>
@@ -1070,7 +1071,7 @@ export function WorkflowStagesList({
                                 {formatLineItemDate(item.item_date)}
                               </td>
                               <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? 'var(--text-red-700)' : 'var(--text-700)', fontWeight: 500, verticalAlign: 'middle' }}>
-                                {formatAmount(item.amount)}
+                                <MoneyText text={formatAmount(item.amount)} />
                               </td>
                               <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'flex-end' }}>

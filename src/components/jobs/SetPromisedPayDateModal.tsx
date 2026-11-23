@@ -353,7 +353,7 @@ export default function SetPromisedPayDateModal({
                   type="button"
                   onClick={() => void submit(ymd || null)}
                   disabled={saving || !ymd}
-                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, cursor: saving || !ymd ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 6, cursor: saving || !ymd ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   {saving ? '…' : 'Save promise'}
                 </button>
@@ -402,7 +402,7 @@ export default function SetPromisedPayDateModal({
                 type="button"
                 onClick={() => void submitClaim()}
                 disabled={saving || !claimReady}
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, cursor: saving || !claimReady ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 6, cursor: saving || !claimReady ? 'not-allowed' : 'pointer', fontWeight: 600 }}
               >
                 {saving ? '…' : 'Write it down'}
               </button>

@@ -69,7 +69,7 @@ export function SubmittalResubmitChooser({
           <button type="button" onClick={onCancel} disabled={busy} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, color: 'var(--text-700)', fontWeight: 500, fontSize: '0.875rem', cursor: 'pointer' }}>
             Cancel
           </button>
-          <button ref={confirmRef} type="button" onClick={onConfirm} disabled={busy} style={{ padding: '0.5rem 1rem', background: '#16a34a', border: 'none', borderRadius: 6, color: 'white', fontWeight: 600, fontSize: '0.875rem', cursor: busy ? 'wait' : 'pointer' }}>
+          <button ref={confirmRef} type="button" onClick={onConfirm} disabled={busy} style={{ padding: '0.5rem 1rem', background: '#15803d', border: 'none', borderRadius: 6, color: 'white', fontWeight: 600, fontSize: '0.875rem', cursor: busy ? 'wait' : 'pointer' }}>
             {words.confirmLabel[choice]}
           </button>
         </div>

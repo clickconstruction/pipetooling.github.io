@@ -308,7 +308,7 @@ export function PlugInScheduleModal({
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" disabled={saving} onClick={guard.requestClose} style={{ padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>Cancel</button>
-            <button type="button" onClick={() => void save()} disabled={saving || drafts.length === 0 || loading || loadError != null} style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: saving || drafts.length === 0 ? 0.6 : 1 }}>
+            <button type="button" onClick={() => void save()} disabled={saving || drafts.length === 0 || loading || loadError != null} style={{ padding: '0.4rem 0.85rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: saving || drafts.length === 0 ? 0.6 : 1 }}>
               {saving ? 'Saving…' : `Save ${drafts.filter((d) => d.tag).length} specified products`}
             </button>
           </div>

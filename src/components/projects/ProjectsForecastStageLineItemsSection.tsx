@@ -53,6 +53,7 @@ import {
   type LineItemRow,
   type PODetail,
 } from '../../lib/projectsForecastStageLineItems'
+import { MoneyText } from '../Money'
 
 const EDITOR_ROLES = new Set(['dev', 'master_technician', 'assistant', 'superintendent', 'controller'])
 const POPULATED_PICKER_ROLES = new Set(['dev', 'master_technician'])
@@ -271,7 +272,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
         <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{expanded ? '\u25BC' : '\u25B6'}</span>
         <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
           Line Items For Office
-          {!expanded ? <> | {formatAmount(total)}</> : null}
+          {!expanded ? <> | <MoneyText text={formatAmount(total)} /></> : null}
         </span>
       </button>
 
@@ -372,7 +373,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                               fontWeight: 500,
                             }}
                           >
-                            {formatAmount(item.amount)}
+                            <MoneyText text={formatAmount(item.amount)} />
                           </td>
                           <td
                             style={{
@@ -587,7 +588,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                 >
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>{po.name}</div>
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    ${po.total.toFixed(2)}
+                    <MoneyText text={`$${po.total.toFixed(2)}`} />
                   </div>
                 </button>
               ))}
@@ -654,7 +655,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                         {inv.supply_house_name}
                         <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                           {' '}
-                          · {formatShortIsoDate(inv.invoice_date)} · ${inv.amount.toFixed(2)}
+                          · {formatShortIsoDate(inv.invoice_date)} · <MoneyText text={`$${inv.amount.toFixed(2)}`} />
                         </span>
                         {inv.purchase_order_number ? (
                           <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
@@ -728,9 +729,9 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                     <td style={poBodyCell}>{item.part.name}</td>
                     <td style={poBodyCell}>{item.quantity}</td>
                     <td style={poBodyCell}>{item.supply_house?.name ?? '-'}</td>
-                    <td style={poBodyCell}>${item.price_at_time.toFixed(2)}</td>
+                    <td style={poBodyCell}><MoneyText text={`$${item.price_at_time.toFixed(2)}`} /></td>
                     <td style={{ ...poBodyCell, fontWeight: 600 }}>
-                      ${(item.price_at_time * item.quantity).toFixed(2)}
+                      <MoneyText text={`$${(item.price_at_time * item.quantity).toFixed(2)}`} />
                     </td>
                   </tr>
                 ))}
@@ -741,10 +742,9 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                     Grand Total:
                   </td>
                   <td style={{ ...poBodyCell, fontWeight: 600 }}>
-                    $
-                    {viewingPO.items
+                    <MoneyText text={`$${viewingPO.items
                       .reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
-                      .toFixed(2)}
+                      .toFixed(2)}`} />
                   </td>
                 </tr>
               </tfoot>
@@ -772,7 +772,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               <strong>Supply house:</strong> {viewingInvoice.supply_house_name}
             </div>
             <div>
-              <strong>Amount:</strong> {formatAmount(viewingInvoice.amount)}
+              <strong>Amount:</strong> <MoneyText text={formatAmount(viewingInvoice.amount)} />
             </div>
             {viewingInvoice.link ? (
               <div>

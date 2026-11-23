@@ -87,7 +87,7 @@ const inputStyle = { width: '100%', padding: '0.45rem 0.55rem', border: '1px sol
 const btn = (kind: 'primary' | 'ghost' | 'green', disabled = false) =>
   ({
     padding: '0.45rem 0.9rem',
-    background: disabled ? DEAD_PRESS_FILL : kind === 'primary' ? '#2563eb' : kind === 'green' ? '#16a34a' : 'var(--surface)',
+    background: disabled ? DEAD_PRESS_FILL : kind === 'primary' ? '#2563eb' : kind === 'green' ? '#15803d' : 'var(--surface)',
     color: disabled ? DEAD_PRESS_TEXT : kind === 'ghost' ? 'var(--text-700)' : 'white',
     border: kind === 'ghost' ? '1px solid var(--border-strong)' : 'none',
     borderRadius: 6,

@@ -20,6 +20,7 @@ import type {
 } from '../../types/settingsRows'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
+import { MoneyText } from '../Money'
 
 type SettingsCatalogsTabProps = {
   assemblyTypeAssemblyCounts: Record<string, number>
@@ -1336,7 +1337,7 @@ export default function SettingsCatalogsTab({
                         <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><MoneyText text={`$${row.price.toFixed(2)}`} /></td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{row.effectiveDate || '—'}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {row.reason === 'both'

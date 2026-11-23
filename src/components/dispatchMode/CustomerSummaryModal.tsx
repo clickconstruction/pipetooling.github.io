@@ -15,7 +15,6 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { summarizeCustomerJobsBilling } from '../../lib/customerSummaryBilling'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   ACTIVITY_FILTERS,
   countActivityByFilter,
@@ -36,6 +35,7 @@ import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 import ReportViewModal, { type ReportForView } from '../ReportViewModal'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { EmptyState } from '../EmptyState'
+import { Money } from '../Money'
 
 type CustomerHeaderRow = {
   name: string
@@ -565,9 +565,9 @@ export default function CustomerSummaryModal({
                 {billing.outstandingDollars > 0 ? (
                   <>
                     <strong style={{ color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(billing.outstandingDollars)} outstanding
+                      <Money amount={billing.outstandingDollars} /> outstanding
                     </strong>
-                    <span style={{ color: 'var(--text-muted)' }}> of ${formatCurrency(billing.totalDollars)}</span>
+                    <span style={{ color: 'var(--text-muted)' }}> of <Money amount={billing.totalDollars} /></span>
                   </>
                 ) : (
                   <strong style={{ color: 'var(--text-green-600)' }}>
@@ -610,7 +610,7 @@ export default function CustomerSummaryModal({
                       {j.jobAddress ? ` · ${j.jobAddress}` : ''}
                     </span>
                     <span style={{ flexShrink: 0, fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(j.outstandingDollars)}
+                      <Money amount={j.outstandingDollars} />
                     </span>
                   </div>
                 ))}

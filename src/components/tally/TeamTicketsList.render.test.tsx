@@ -9,6 +9,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { TeamTicketsList, type TeamTicketsListProps } from './TeamTicketsList'
 import type { OfficeTicketRow } from '../../lib/tickets/ticketOffice'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
+import { moneyText } from '../../test/moneyText'
 
 function ticket(over: Partial<TicketWithPages> = {}): TicketWithPages {
   return {
@@ -74,7 +75,7 @@ describe('TeamTicketsList', () => {
     const t = ticket()
     renderWithProviders(<TeamTicketsList {...props([{ ticket: t, why: 'asked', chargeId: 'c1', sortedJobIds: [], fitChargeIds: ['c1'] }], { onAnswer })} />)
     expect(screen.getByText('One charge fits. Is it this one?')).toBeTruthy()
-    expect(screen.getByText('$228.58 at Ridgeway Supply, Tue Nov 4')).toBeTruthy()
+    expect(screen.getByText(moneyText('$228.58 at Ridgeway Supply, Tue Nov 4'))).toBeTruthy()
     fireEvent.click(screen.getByText('It is'))
     expect(onAnswer).toHaveBeenCalledWith(t, 'c1', true)
     fireEvent.click(screen.getByText('It is not'))

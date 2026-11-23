@@ -559,7 +559,7 @@ function CallRowView<C, N extends { contactId: string }>({ row, contact, ...prop
               verb={CALL_WORDS.call}
               box={boxForNew(contact)}
               glyph="📞 "
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#15803d', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }}
               testId={`call-dial-${row.id}`}
             />
           ) : null}

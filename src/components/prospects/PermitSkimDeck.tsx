@@ -546,7 +546,7 @@ export function PermitSkimDeck({
           )}
           Pass
         </button>
-        <button type="button" onClick={() => answer(top, 'keep')} style={{ background: '#16a34a', color: '#ffffff', border: 0, borderRadius: 10, minHeight: 52, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <button type="button" onClick={() => answer(top, 'keep')} style={{ background: '#15803d', color: '#ffffff', border: 0, borderRadius: 10, minHeight: 52, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           Investigate
           {!isMobile && (
             <kbd aria-hidden="true" style={keyCap}>
