@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and five more on Taunya's word (v2.8237, v2.8238, v2.8245, v2.8247, v2.8248) · left: a live walk on the ZZ job, the push of #9313's migration, the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · left: a live walk on the ZZ job, the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -13,7 +13,7 @@ summary: >
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
 next: Walk Is it as told? on production as two people on the ZZ job, at phone width. The steps and what to see are under Left to do and to walk, in the Audited section.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
-blocker: none for the walk. #9313's migration waits for its merge, then a push. The dev seat's verb waits for room under the seat's upload limit and the owner's word on what it reads. The calls left each have a default.
+blocker: none for the walk. The dev seat's verb waits for room under the seat's upload limit and the owner's word on what it reads. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
 ---
 
@@ -454,12 +454,14 @@ and its findings 6 and 8.
   a new yes on it. A No sent after someone else's yes is kept as an arrival of its own. A second **Yes, all as
   told** is still refused. Migration `20261122030000_start_check_arrive_again.sql`, pushed on 2026-11-22. Its types
   are #9356.
+- **v2.8243 (#9313), call C.** A clock-in on a job makes its crew for 14 days, not for ever. It merged on
+  2026-11-22. Migration `20261122031000_crew_days_start_checks.sql`, pushed the same evening after a dry run that
+  listed it alone, and read back from production. It changes no types.
 - **v2.8245 (#9316), call D.** A first read the app refuses says so on the card. A lost signal still shows nothing.
 - **v2.8247 (#9319), call E.** The stage on the card, and who said No and the day on the office's line, are drawn
   as worked-out values.
 - **v2.8248 (#9320), finding 8.** On a 320 or 360 px phone the two word presses over the Schedule look's cards no
   longer share a tap. The line of time's rows have air between them at desk width.
-- **#9313, call C.** A clock-in on a job makes its crew for 14 days, not for ever. Not merged yet.
 
 ### Left to do and to walk (2026-11-22)
 
@@ -504,10 +506,6 @@ the proof.
 
 **Loose ends.**
 
-- **#9313 is not merged.** It was in the merge queue on 2026-11-22. Its migration,
-  `20261122031000_crew_days_start_checks.sql`, is pushed alone right after the merge, on Taunya's go of 2026-11-22.
-  Its SQL bed passed in CI.
-- **#9356, the types for `start_check_to_look`, is not merged.** It is armed.
 - **Two functions read as behind.** `npm run check:edge-drift` lists `send-report-email` and
   `send-report-notification`, since `_shared/reportSubject.ts` gained the push skip. They do not use it, so nothing
   changes for them. A redeploy clears the list, on a go that names them.
