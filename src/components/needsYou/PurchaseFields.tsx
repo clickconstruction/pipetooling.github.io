@@ -3,6 +3,7 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatTallyCurrency } from '../../lib/tally/formatTallyPosted'
 import { purchaseRemainder, purchaseSetAmount, purchaseToggleJob, type PurchaseDecision, type PurchaseFillInRow, type PurchaseJobOption } from '../../lib/needsYou/fillInPurchases'
 import type { PurchaseFillInIo } from '../../lib/needsYou/fillInPurchasesIo'
+import { MoneyText } from '../Money'
 
 /**
  * The purchases kind's fields on the Fill them in deck (v2.6071, punch list #178): the Sort
@@ -129,7 +130,7 @@ export function PurchaseFields({ row, userId, decision, onChange, disabled, io }
                 <button key={j.id} type="button" aria-pressed={on} disabled={disabled} onClick={() => toggle(j)} style={chipStyle(on)} data-purchase-chip={j.id}>
                   <span>
                     {j.main}
-                    {on && decision.lines.length > 1 && line ? <span style={{ marginLeft: 8, color: 'var(--text-blue-700)' }}>{formatTallyCurrency(Math.abs(line.amount))}</span> : null}
+                    {on && decision.lines.length > 1 && line ? <span style={{ marginLeft: 8, color: 'var(--text-blue-700)' }}><MoneyText text={formatTallyCurrency(Math.abs(line.amount))} /></span> : null}
                   </span>
                   {j.address ? <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>{j.address}</span> : null}
                 </button>
@@ -164,7 +165,7 @@ export function PurchaseFields({ row, userId, decision, onChange, disabled, io }
               </div>
             )
           })}
-          {remainder !== 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>{formatTallyCurrency(Math.abs(remainder))} unallocated. The amounts must add up to the charge.</div> : null}
+          {remainder !== 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}><MoneyText text={formatTallyCurrency(Math.abs(remainder))} /> unallocated. The amounts must add up to the charge.</div> : null}
         </div>
       ) : null}
       <label>

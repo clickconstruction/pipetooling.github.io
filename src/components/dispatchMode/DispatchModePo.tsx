@@ -456,7 +456,7 @@ export default function DispatchModePo() {
           {smsDigits ? (
             <a
               href={`sms:${smsDigits}?body=${encodeURIComponent(resultSummary(result))}`}
-              style={{ padding: '0.6rem 1.2rem', border: 'none', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 600, textDecoration: 'none' }}
+              style={{ padding: '0.6rem 1.2rem', border: 'none', borderRadius: 8, background: '#15803d', color: 'white', fontWeight: 600, textDecoration: 'none' }}
             >
               Text to {result.personName}
             </a>

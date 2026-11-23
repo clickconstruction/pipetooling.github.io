@@ -100,7 +100,7 @@ export function InvoicesSectionHeading({
             Pipeline board and moves by itself:
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>
+            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#15803d', border: '1px solid rgba(255,255,255,0.5)' }}>
               ${formatCurrency(sampleDollars ?? 1450)}
             </span>
             <span style={{ whiteSpace: 'nowrap' }}>→ Ready to Bill → Billed → Paid</span>

@@ -67,7 +67,7 @@ vi.mock('../supabase', () => {
 })
 
 import type { ContactRow } from '../contacts/load'
-import { addContactJob, answerPaper, contactForCustomer, findContactIdForPhone, findCustomerContactId, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import { addContactJob, answerPaper, contactForCustomer, findContactIdForPhone, findCustomerContactId, loadLineFiles, loadRecords, nameAsLead, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
@@ -139,6 +139,15 @@ describe('the presses (the spine’s functions)', () => {
   it('a refusal keeps its words', async () => {
     calls.next = { data: null, error: { code: 'P0001', message: 'namedAlready', details: 'This contact is named already.' } }
     await expect(nameContact('c-greg', { record: { table: 'customers', id: 'x' }, kind: 'customer' })).rejects.toThrow()
+  })
+
+  it('a contact that holds a paper is refused in the screen’s own words, named a record or a lead (punch list #403)', async () => {
+    const refusal = { code: '42501', message: 'officeNamesPaperHolder', details: 'They hold a paper, so only the office says who they are.' }
+    const words = 'They hold a paper, so only the office says who they are. Ask a leader, an assistant or the controller to name them.'
+    calls.next = { data: null, error: refusal }
+    await expect(nameContact('c-greg', { record: { table: 'customers', id: 'x' }, kind: 'customer' })).rejects.toThrow(new Error(words))
+    calls.next = { data: null, error: refusal }
+    await expect(nameAsLead('c-greg', 'Greg')).rejects.toThrow(new Error(words))
   })
 
   it('puts a job on the rail, a job already there is no error, and takes one off by its own column', async () => {

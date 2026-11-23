@@ -13,6 +13,7 @@ import type { PaperId } from '../../lib/journeys/paperSamples'
 import type { SampleEmailId } from '../../lib/customerJourneys'
 import { findWordingInDocument, readerSampleLine, revealHit, wordingNeedles, type ReaderSurface } from '../../lib/contracts/contractReader'
 import type { ContractCatalogEntry, ResolvedContractText } from '../../lib/contracts/customerContractCatalog'
+import { MoneyText } from '../Money'
 
 export type ContractReaderEditDoor = { label: string; onClick?: () => void; to?: string }
 
@@ -143,7 +144,7 @@ export default function ContractReaderModal({ entry, text, surfaces, editDoor, o
               : null}
             {surface ? (
               <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 999, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 600 }} data-testid="contract-reader-sample">
-                Sample · {readerSampleLine(surface)}
+                Sample · <MoneyText text={readerSampleLine(surface)} />
               </span>
             ) : null}
             {hit === true ? (

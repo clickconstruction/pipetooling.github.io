@@ -95,7 +95,7 @@ describe('helpGuideMarkdownToSafeHtml with illustrations', () => {
     expect(html).toContain('Example — The Job Mode card')
     expect(html).toContain('Leave Report')
     expect(html).toContain('background:#2563eb')
-    expect(html).toContain('background:#16a34a')
+    expect(html).toContain('background:#15803d')
     expect(html).toContain('#b91c1c')
     expect(html).not.toContain('[[[help-')
     expect(html).not.toContain('{{button')

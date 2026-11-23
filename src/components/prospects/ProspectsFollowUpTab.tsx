@@ -366,7 +366,7 @@ export function ProspectsFollowUpTab(props: ProspectsFollowUpTabProps) {
             const btnConverted = { ...btnBase, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', border: '1px solid #8b5cf6', boxShadow: '0 1px 2px rgba(139,92,246,0.2)' }
             const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
             const btnAmber = { ...btnBase, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber-soft)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
-            const btnAnswered = { ...btnBase, background: '#16a34a', color: 'white', boxShadow: '0 1px 2px rgba(22,163,74,0.3)' }
+            const btnAnswered = { ...btnBase, background: '#15803d', color: 'white', boxShadow: '0 1px 2px rgba(22,163,74,0.3)' }
             const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' } as const
             return (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.875rem 1rem', marginBottom: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>

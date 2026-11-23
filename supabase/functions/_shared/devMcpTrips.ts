@@ -228,7 +228,7 @@ export function tripInput(verb: TripVerb, input: Json): TripInput {
     if (seen.has(nameKey(name))) return no(`${name} is on this trip twice.`)
     seen.add(nameKey(name))
     const built: TripPersonPayload = { name, days: {} }
-    for (const [key, what] of [['person_id', 'a people.id (find_person); leave it out and the roster is searched by name'], ['user_id', 'a users.id (find_person)']] as const) {
+    for (const [key, what] of [['person_id', "the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses. Leave it out and the roster is searched by name"], ['user_id', 'a users.id (find_person)']] as const) {
       const v = person[key]
       if (v == null || v === '') continue
       if (typeof v !== 'string' || !UUID_RE.test(v.trim())) return no(`${name}’s ${key} is ${what}.`)
@@ -319,7 +319,7 @@ export function fillTripPeople(people: ReadonlyArray<TripPersonPayload>, roster:
   for (const person of people) {
     if (person.person_id) {
       const row = given.find((r) => r.id.toLowerCase() === person.person_id)
-      if (!row) return { refused: `${person.name}’s person_id names nobody on the roster. find_person gives a people.id; leave it out and the roster is searched by name.` }
+      if (!row) return { refused: `${person.name}’s person_id names nobody on the roster. It is the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses. Leave it out and the roster is searched by name.` }
       const userId = person.user_id ?? row.account_user_id?.toLowerCase() ?? null
       const sameName = nameKey(row.name) === nameKey(person.name)
       out.push({ name: person.name, person_id: person.person_id, ...(userId ? { user_id: userId } : {}), days: person.days })
@@ -572,7 +572,7 @@ export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: stri
   if (would === 'add' && prep.idWas === 'made') notes.push('No id came with the call, so the id is made from the trip’s own words: the same trip planned again lands on this id and reads change. To change a trip already kept, pass its id (read_trips lists them).')
   if (would === 'add' && prep.idWas === 'given') notes.push('No trip has this id, so one is made under it. That is how a deleted trip is put back.')
   const alone = prep.people.filter((x) => x.fit === 'unknown' || x.fit === 'several')
-  if (alone.length) notes.push(`${alone.map((x) => x.name).join(', ')} ${alone.length === 1 ? 'is a name alone' : 'are names alone'}: a name alone has no roster row and no login, so no hours can be laid over their days. Pass person_id (find_person) to tie one to the roster.`)
+  if (alone.length) notes.push(`${alone.map((x) => x.name).join(', ')} ${alone.length === 1 ? 'is a name alone' : 'are names alone'}: a name alone has no roster row and no login, so no hours can be laid over their days. Pass person_id (the people.id get_case_brief answers in person.id; not find_person's users.id) to tie one to the roster.`)
   for (const o of prep.overlaps) notes.push(`${o.name} already has ${o.days === 1 ? o.first_day : `${o.days} of these days (${o.first_day} to ${o.last_day})`} on another trip kept here, ${o.trip_number != null ? `Trip ${o.trip_number} (${o.trip_id})` : o.trip_id}. If this is that trip, pass its id; two trips should not claim one person’s day.`)
   if (kept != null) notes.push(`It is Trip ${kept} on its site, and a change keeps that number.`)
   else if (would === 'add') notes.push('The database hands the trip its number on its site when it is kept (Trip 1, Trip 2). Nobody types it, and the applied reply names it.')

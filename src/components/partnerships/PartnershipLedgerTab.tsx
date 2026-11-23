@@ -22,6 +22,7 @@ import { EmptyState } from '../EmptyState'
 import { partnershipLedgerEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
 import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { postingLabel, shortDate } from '../../lib/partnerLedger/partnerLedgerFormat'
+import { MoneyText } from '../Money'
 
 /**
  * Partnerships → Ledger tab (PARTNERSHIPS_PLAN.md PR 3): the append-only
@@ -42,7 +43,7 @@ function AmountText({ amount }: { amount: number }) {
   return (
     <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>
       {amount >= 0 ? '+' : '−'}
-      {money(amount)}
+      <MoneyText text={money(amount)} />
     </span>
   )
 }
@@ -406,7 +407,7 @@ export function PartnershipLedgerTab({
           title={balanceConventionTitle(personName)}
           style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: net < 0 ? 'var(--text-red-600)' : undefined }}
         >
-          {net < 0 ? '−' : ''}{money(net)}
+          {net < 0 ? '−' : ''}<MoneyText text={money(net)} />
         </span>
         <span style={{ fontSize: '0.8rem', fontWeight: 650, color: net < 0 ? 'var(--text-red-600)' : net > 0 ? '#16a34a' : 'var(--text-muted)' }}>
           {officeBalanceWords(net, personName)}
@@ -418,7 +419,7 @@ export function PartnershipLedgerTab({
         >
           {split.pendingCount === 0
             ? `settle-up balance · the same number ${personName}’s statement shows`
-            : balanceBridgeText(split, personName)}
+            : <MoneyText text={balanceBridgeText(split, personName)} />}
         </span>
         {!notesUnavailable ? (
           <button
@@ -584,10 +585,10 @@ export function PartnershipLedgerTab({
                 </span>
                 <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                   <span style={{ display: 'block', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', opacity: r.kind === 'pending' ? 0.85 : 1 }}>
-                    {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                    {r.amount >= 0 ? '+' : '−'}<MoneyText text={money(r.amount)} />
                   </span>
                   <span style={{ display: 'block', fontSize: '0.7rem', color: r.kind === 'pending' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>
-                    {r.kind === 'pending' ? 'pending' : `bal ${r.balance < 0 ? '−' : ''}${money(r.balance)}`}
+                    {r.kind === 'pending' ? 'pending' : <MoneyText text={`bal ${r.balance < 0 ? '−' : ''}${money(r.balance)}`} />}
                   </span>
                 </span>
                 {!noteDraft ? (
@@ -698,7 +699,7 @@ export function PartnershipLedgerTab({
                         {chevron}
                       </td>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap', opacity: 0.85 }}>
-                        {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                        {r.amount >= 0 ? '+' : '−'}<MoneyText text={money(r.amount)} />
                       </td>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>—</td>
                     </tr>
@@ -713,10 +714,10 @@ export function PartnershipLedgerTab({
                       {chevron}
                     </td>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
-                      {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                      {r.amount >= 0 ? '+' : '−'}<MoneyText text={money(r.amount)} />
                     </td>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {r.balance < 0 ? '−' : ''}{money(r.balance)}
+                      {r.balance < 0 ? '−' : ''}<MoneyText text={money(r.balance)} />
                     </td>
                   </tr>
                 )

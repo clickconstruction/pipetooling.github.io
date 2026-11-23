@@ -199,7 +199,7 @@ export function SpecSectionRuleForm({ editing, rules, names, sections, saving, e
           disabled={refused || saving}
           style={{
             padding: '0.35rem 0.8rem',
-            background: refused ? 'var(--bg-200)' : '#16a34a',
+            background: refused ? 'var(--bg-200)' : '#15803d',
             color: refused ? 'var(--text-faint)' : 'white',
             border: 'none',
             borderRadius: 4,

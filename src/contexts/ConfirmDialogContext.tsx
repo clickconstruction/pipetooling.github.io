@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { confirmPressSize } from '../lib/confirmDialogPress'
 
 /**
  * In-app replacement for window.confirm (owner request 2026-08-19: "all
@@ -87,6 +89,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [inputValue, setInputValue] = useState('')
+  const narrow = useNarrowViewport640()
 
   const confirm = useCallback<ConfirmFn>((options) => {
     return new Promise<boolean>((resolve) => {
@@ -140,6 +143,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   }, [pending, settleCancel])
 
   const safeCancel = pending?.kind === 'confirm' && pending.options.cancelIsSafe === true
+  /** 44 px presses at a phone's width, the desk look unchanged (`confirmPressSize`). */
+  const pressSize = confirmPressSize(narrow)
 
   return (
     <ConfirmDialogContext.Provider value={confirm}>
@@ -216,7 +221,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={settleCancel}
                   style={{
-                    padding: '0.5rem 1rem',
+                    ...pressSize,
                     background: safeCancel ? '#2563eb' : 'var(--bg-muted)',
                     border: safeCancel ? '1px solid #2563eb' : '1px solid var(--border-strong)',
                     borderRadius: 6,
@@ -233,7 +238,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={settleConfirm}
                   style={{
-                    padding: '0.5rem 1rem',
+                    ...pressSize,
                     background: pending.kind === 'confirm' && pending.options.danger ? '#dc2626' : '#2563eb',
                     border: 'none',
                     borderRadius: 6,

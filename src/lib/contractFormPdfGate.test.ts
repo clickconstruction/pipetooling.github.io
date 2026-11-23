@@ -26,6 +26,15 @@ describe('formPdfOpener', () => {
     expect(formPdfOpener({ role })).toBe('none')
   })
 
+  it('is none for an estimator in training, and leaves the other openers as they were (punch list #403, decision 2)', () => {
+    expect(formPdfOpener({ role: 'estimator', read_only: true })).toBe('none')
+    expect(formPdfOpener({ role: 'estimator', read_only: false })).toBe('estimator')
+    expect(formPdfOpener({ role: 'estimator', read_only: null })).toBe('estimator')
+    expect(formPdfOpener({ role: 'dev', read_only: true })).toBe('always')
+    expect(formPdfOpener({ role: 'controller', read_only: true })).toBe('always')
+    expect(formPdfOpener({ role: 'master_technician', read_only: true })).toBe('master')
+  })
+
   it('is none for a digital twin who is an estimator, and for no account row', () => {
     expect(formPdfOpener({ role: 'estimator', is_digital_twin: true })).toBe('none')
     expect(formPdfOpener(null)).toBe('none')
@@ -66,6 +75,22 @@ describe('formPdfRefusal', () => {
     expect(formPdfRefusal({ role: 'estimator', is_digital_twin: true }, EVERY_YES)).toEqual(refused(FORM_PDF_REFUSALS.twin))
   })
 
+  it('refuses an estimator in training the signed file, whatever the facts say, in its own words', () => {
+    expect(FORM_PDF_REFUSALS.training).toBe('A training account does not open a signed form.')
+    expect(formPdfRefusal({ role: 'estimator', read_only: true }, EVERY_YES)).toEqual(refused(FORM_PDF_REFUSALS.training))
+    expect(formPdfRefusal({ role: 'estimator', read_only: true }, {})).toEqual(refused(FORM_PDF_REFUSALS.training))
+    // A twin in training is told it is a twin: that refusal is the older and the wider.
+    expect(formPdfRefusal({ role: 'estimator', is_digital_twin: true, read_only: true }, EVERY_YES)).toEqual(refused(FORM_PDF_REFUSALS.twin))
+  })
+
+  it('opens for a training dev, controller and pay-approved leader as before: the refusal is the estimator’s', () => {
+    expect(formPdfRefusal({ role: 'dev', read_only: true }, {})).toBeNull()
+    expect(formPdfRefusal({ role: 'controller', read_only: true }, {})).toBeNull()
+    expect(formPdfRefusal({ role: 'master_technician', read_only: true }, { payApprovedMaster: true })).toBeNull()
+    // And a training assistant is refused as an assistant is, never as a training account.
+    expect(formPdfRefusal({ role: 'assistant', read_only: true }, EVERY_YES)).toEqual(refused(FORM_PDF_REFUSALS.role))
+  })
+
   it.each(['assistant', 'primary', 'superintendent', 'helpers', 'subcontractor', ''])('refuses the role %j whatever the facts say', (role) => {
     expect(formPdfRefusal({ role }, EVERY_YES)).toEqual(refused(FORM_PDF_REFUSALS.role))
   })
@@ -94,8 +119,8 @@ describe('open-contract-form-pdf, the handler', () => {
     expect(at('refuseArchivedCaller(')).toBeLessThan(at('formPdfRefusal(caller, facts)'))
   })
 
-  it('reads the caller with the service role, by the id the token named, a twin’s mark among the columns', () => {
-    expect(source).toMatch(/admin\.from\('users'\)\.select\('role, is_digital_twin'\)\.eq\('id', user\.id\)/)
+  it('reads the caller with the service role, by the id the token named, a twin’s mark and training mode among the columns', () => {
+    expect(source).toMatch(/admin\.from\('users'\)\.select\('role, is_digital_twin, read_only'\)\.eq\('id', user\.id\)/)
   })
 
   it('asks the database’s own rule for an estimator, as the caller, and takes only a plain yes', () => {

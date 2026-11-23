@@ -1207,7 +1207,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           const tappable = closedRow || row.status === 'still-open' || row.status === 'upcoming'
           const dot =
             row.status === 'done' ? (
-              <span style={{ ...railDotBase, background: '#16a34a', color: 'white' }} aria-hidden="true">✓</span>
+              <span style={{ ...railDotBase, background: '#15803d', color: 'white' }} aria-hidden="true">✓</span>
             ) : row.status === 'current' ? (
               <span style={{ ...railDotBase, border: '5px solid #16a34a', background: 'var(--surface)' }} aria-hidden="true" />
             ) : row.status === 'still-open' ? (

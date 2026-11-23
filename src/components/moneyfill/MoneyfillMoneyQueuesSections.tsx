@@ -11,6 +11,7 @@ import {
   type SupplyInvoiceCoverageRow,
   type UnappliedDepositRow,
 } from '../../lib/moneyfillWeekClose'
+import { MoneyText } from '../Money'
 
 /**
  * Moneyfill money queues (v2.1447 — WEEKLY_MONEY_PLAN.md Phase 3, queues
@@ -88,7 +89,7 @@ export function MoneyfillSupplyInvoicesSection({ weekMonday }: { weekMonday: str
         Invoices dated this week whose job allocations don’t cover the invoice amount.{' '}
         {rows !== 'loading' && rows != null && rows.length > 0 ? (
           <b style={{ color: 'var(--text-700)' }}>
-            {rows.length} invoice{rows.length === 1 ? '' : 's'} · {money(gap)} gap
+            {rows.length} invoice{rows.length === 1 ? '' : 's'} · <MoneyText text={money(gap)} /> gap
           </b>
         ) : null}
       </p>
@@ -120,14 +121,14 @@ export function MoneyfillSupplyInvoicesSection({ weekMonday }: { weekMonday: str
                   <td style={{ ...td(), color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {new Date(`${r.invoiceDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </td>
-                  <td style={{ ...td(true), fontWeight: 650 }}>{money(r.amount)}</td>
+                  <td style={{ ...td(true), fontWeight: 650 }}><MoneyText text={money(r.amount)} /></td>
                   <td style={td()}>
                     <span style={{ display: 'inline-block', width: 96, height: 7, borderRadius: 4, background: 'var(--bg-subtle)', verticalAlign: 'middle', overflow: 'hidden' }}>
                       <span style={{ display: 'block', height: '100%', width: `${Math.min(100, Math.round(r.allocatedPct))}%`, background: '#15803d' }} />
                     </span>{' '}
                     <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{Math.round(r.allocatedPct)}%</span>
                   </td>
-                  <td style={{ ...td(true), fontWeight: 700, color: 'var(--text-red-700)' }}>{money(r.gapDollars)}</td>
+                  <td style={{ ...td(true), fontWeight: 700, color: 'var(--text-red-700)' }}><MoneyText text={money(r.gapDollars)} /></td>
                   <td style={td(true)}>
                     <button type="button" style={primaryBtn} onClick={() => navigate('/materials?tab=supply-houses')} title="Allocate in Materials → Supply Houses">
                       Allocate to jobs…
@@ -165,7 +166,7 @@ export function MoneyfillDepositsSection({ weekMonday, authUserId }: { weekMonda
         it’s applied, the report can’t say which job got paid.{' '}
         {rows !== 'loading' && rows != null && rows.length > 0 ? (
           <b style={{ color: 'var(--text-700)' }}>
-            {money(dollars)} · {rows.length} deposit{rows.length === 1 ? '' : 's'}
+            <MoneyText text={money(dollars)} /> · {rows.length} deposit{rows.length === 1 ? '' : 's'}
           </b>
         ) : null}
       </p>
@@ -195,7 +196,7 @@ export function MoneyfillDepositsSection({ weekMonday, authUserId }: { weekMonda
                       : '—'}
                   </td>
                   <td style={td()}>{r.counterparty ?? '—'}</td>
-                  <td style={{ ...td(true), fontWeight: 650, color: 'var(--text-green-700)' }}>{money(r.amount)}</td>
+                  <td style={{ ...td(true), fontWeight: 650, color: 'var(--text-green-700)' }}><MoneyText text={money(r.amount)} /></td>
                   <td style={td(true)}>
                     <button
                       type="button"
@@ -240,7 +241,7 @@ export function MoneyfillJobFlagsSections({ weekMonday }: { weekMonday: string }
         <b>{r.display}</b>
         <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
           {r.address}
-          {r.moneyOut > 0 ? ` · ${money(r.moneyOut)} out this week` : ''}
+          {r.moneyOut > 0 ? <MoneyText text={` · ${money(r.moneyOut)} out this week`} /> : ''}
         </span>
       </div>
       <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{pill}</span>
