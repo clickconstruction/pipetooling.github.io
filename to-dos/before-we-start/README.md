@@ -506,9 +506,6 @@ the proof.
 
 **Loose ends.**
 
-- **Two functions read as behind.** `npm run check:edge-drift` lists `send-report-email` and
-  `send-report-notification`, since `_shared/reportSubject.ts` gained the push skip. They do not use it, so nothing
-  changes for them. A redeploy clears the list, on a go that names them.
 - **One test row on production.** Arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on the ZZ job, from the build's walk
   on 2026-11-20. It has no Dispatch line. A dev deletes it when the ZZ job is done with.
 - **Faults seen and not fixed.**
