@@ -49,8 +49,10 @@ The header is your map. On a phone, most of these live behind the {{icon:gear}} 
 The header stays on one line. On a small phone, **Tell the dev**, **People** and **Customers** move under the gear too.
 
 :::example Header icons (top-right)
-{{icon:gear}} **Gear menu** — Job Mode toggle, Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
+{{icon:gear}} **Gear menu** — Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
+
+The office also finds **Job Mode** and **Task Mode** in the gear menu. Leaders, superintendents, subs and helpers switch those two on [the row at the top](/help/job-mode-clocking#the-row-at-the-top) of the Dashboard.
 
 The gear menu reads in groups. Each group has a small label.
 

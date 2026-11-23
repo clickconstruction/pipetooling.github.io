@@ -26,7 +26,7 @@ Offer a sub a step for an agreed amount. The sub accepts from their phone. Once 
 
 ## Working in the field yourself
 
-The first time a leader opens the Dashboard, it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. {{button:outline|Not now}} keeps the full Dashboard. Job Mode takes the place of Dispatch Mode on that phone. Turn Job Mode off and Dispatch Mode is back. Either way, the {{icon:gear}} gear menu toggles Job Mode later. See [clocking in and out with Job Mode](/help/job-mode-clocking). Subs and helpers get Job Mode on by default.
+A row at the top of a leader's Dashboard reads **Task Mode**, **Dashboard** and **Job Mode**. Tap **Job Mode** for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. Tap **Dashboard** on the same row to come back. Job Mode takes the place of Dispatch Mode on that phone. Back on **Dashboard**, Dispatch Mode is back too. On a phone the row hides once you have used it. Pull the page down from its top to see the row again. See [the row at the top](/help/job-mode-clocking#the-row-at-the-top). Subs and helpers get Job Mode on by default.
 
 ## What each role sees below you
 

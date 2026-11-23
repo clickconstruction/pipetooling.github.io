@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { GEAR_PAGE_ORDER, GEAR_SECTION_LABELS, gearPagesInOrder, type GearPageKey } from './gearMenuSections'
+import { GEAR_PAGE_ORDER, GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder, type GearPageKey } from './gearMenuSections'
+import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
+import { modeRowOfferedToRole } from './modeRow'
+import { dispatchModeEligibleForRole } from './pageMode'
 
 const none = Object.fromEntries(GEAR_PAGE_ORDER.map((p) => [p, false])) as Record<GearPageKey, boolean>
 const all = Object.fromEntries(GEAR_PAGE_ORDER.map((p) => [p, true])) as Record<GearPageKey, boolean>
@@ -26,5 +29,33 @@ describe('the gear menu’s sections', () => {
 
   it('is empty when the menu holds no page, so no label is drawn over nothing', () => {
     expect(gearPagesInOrder(none)).toEqual([])
+  })
+
+  describe('the Modes rows (punch list #425)', () => {
+    const rowsFor = (role: string) =>
+      gearModesRows({ modeRow: modeRowOfferedToRole(role), jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
+
+    it('a role with the mode row lists neither Job Mode nor Task Mode', () => {
+      for (const role of ['master_technician', 'superintendent', 'subcontractor', 'helpers']) {
+        expect(rowsFor(role).job, role).toBe(false)
+        expect(rowsFor(role).task, role).toBe(false)
+      }
+    })
+
+    it('a leader keeps Dispatch Mode under the label, and the other three field roles have no Modes group at all', () => {
+      expect(rowsFor('master_technician')).toEqual({ job: false, dispatch: true, task: false, label: true })
+      for (const role of ['superintendent', 'subcontractor', 'helpers']) {
+        expect(rowsFor(role), role).toEqual({ job: false, dispatch: false, task: false, label: false })
+      }
+    })
+
+    it('every other role keeps the rows it had', () => {
+      for (const role of ['dev', 'assistant', 'controller']) {
+        expect(rowsFor(role), role).toEqual({ job: true, dispatch: true, task: true, label: true })
+      }
+      for (const role of ['estimator', 'primary']) {
+        expect(rowsFor(role), role).toEqual({ job: true, dispatch: false, task: true, label: true })
+      }
+    })
   })
 })
