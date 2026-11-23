@@ -11,6 +11,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { QuoteCompareModal } from './QuoteCompareModal'
+import { moneyText } from '../../test/moneyText'
 
 const state: { updates: Array<{ patch: Record<string, unknown>; where: string }>; corrections: Record<string, unknown>[]; noQuotes?: boolean } = { updates: [], corrections: [] }
 
@@ -108,7 +109,7 @@ describe('QuoteCompareModal with structured robot quotes', () => {
   it('shows the kit as one $/each, the incomplete house as incomplete, the robot reason, and the banner', async () => {
     state.updates = []
     mount()
-    expect(await screen.findByText('$1,348.41 ★')).toBeTruthy()
+    expect(await screen.findByText(moneyText('$1,348.41 ★'))).toBeTruthy()
     expect(screen.getByText('incomplete')).toBeTruthy()
     expect(screen.getByText('missing carrier')).toBeTruthy()
     expect(screen.getByText('cheapest complete kit')).toBeTruthy()
@@ -116,7 +117,7 @@ describe('QuoteCompareModal with structured robot quotes', () => {
     expect(screen.getByTestId('robot-banner').textContent).toMatch(/1 to settle/)
     // Expand the kit: the carrier sub-row names its price and the other house's gap.
     fireEvent.click(screen.getByRole('button', { name: 'Show the parts of WC1&2' }))
-    expect(screen.getByText('$338.41')).toBeTruthy()
+    expect(screen.getByText(moneyText('$338.41'))).toBeTruthy()
     expect(screen.getAllByText('not quoted').length).toBeGreaterThan(0)
     expect(screen.getAllByText('in kit').length).toBeGreaterThan(0)
   })
@@ -143,7 +144,7 @@ describe('QuoteCompareModal with structured robot quotes', () => {
     state.updates = []
     state.corrections = []
     mount()
-    const kitCell = await screen.findByText('$1,348.41 ★')
+    const kitCell = await screen.findByText(moneyText('$1,348.41 ★'))
     fireEvent.click(kitCell)
     await waitFor(() => expect(state.updates.length).toBeGreaterThan(0))
     const unpick = state.updates.find((u) => u.patch.picked === false)

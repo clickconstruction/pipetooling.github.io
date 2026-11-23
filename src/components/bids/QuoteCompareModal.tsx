@@ -35,6 +35,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 const MODAL_Z = 10050
 const KNOWN_KINDS = new Set<string>(['starts_with', 'contains', 'exact'])
@@ -609,8 +610,8 @@ export function QuoteCompareModal({
               {houseCols.map((h) => (
                 <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : 'var(--border-green)'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : 'var(--text-green-700)', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
                   {h.houseName} · {h.quotedLines} of {h.totalLines} lines{h.expired ? ' · expired' : ''}
-                  {h.commonLinesTotalCents != null ? ` · ${money(h.commonLinesTotalCents)}${comparison.commonLineCount > 0 ? ` on ${comparison.commonLineCount} common` : ''}` : ''}
-                  {h.freightCents != null && h.freightCents > 0 ? ` + ${money(h.freightCents)} freight${h.commonWithFreightCents != null ? ` = ${money(h.commonWithFreightCents)}` : ''}` : ''}
+                  {h.commonLinesTotalCents != null ? <MoneyText text={` · ${money(h.commonLinesTotalCents)}${comparison.commonLineCount > 0 ? ` on ${comparison.commonLineCount} common` : ''}`} /> : ''}
+                  {h.freightCents != null && h.freightCents > 0 ? <MoneyText text={` + ${money(h.freightCents)} freight${h.commonWithFreightCents != null ? ` = ${money(h.commonWithFreightCents)}` : ''}`} /> : ''}
                   {h.freightCents === 0 ? ' · free freight' : ''}
                   {h.freightCents == null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · freight not stated</span> : null}
                 </span>
@@ -711,7 +712,7 @@ export function QuoteCompareModal({
                           return <CellButton key={h.supplyHouseId} cell={cell} best={best} onPick={() => void pick(key, h.supplyHouseId)} onSettle={() => setSettling({ fixtureKey: key, houseId: h.supplyHouseId })} />
                         })}
                         <span style={{ ...smallMuted, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                          {r.baselineSource === 'last-quoted' ? money(r.baselineEachCents) : '—'}
+                          {r.baselineSource === 'last-quoted' ? <MoneyText text={money(r.baselineEachCents)} /> : '—'}
                         </span>
                         {showRobotCol ? (
                           <span style={{ fontSize: '0.7rem', lineHeight: 1.25, color: robotText?.startsWith('needs') ? 'var(--text-amber-700)' : robotText?.startsWith('you changed') ? 'var(--text-muted)' : 'var(--text-blue-800)', fontWeight: robotText?.startsWith('needs') ? 600 : 500 }}>
@@ -743,7 +744,7 @@ export function QuoteCompareModal({
                                   const comp = r.perHouse[h.supplyHouseId]?.kit?.components.find((x) => (rs.role ? x.role === rs.role : x.label === rs.label))
                                   return (
                                     <span key={h.supplyHouseId} style={{ textAlign: 'right', fontSize: '0.75rem', color: comp ? 'var(--text-base)' : 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums' }} title={comp?.pageRef ?? undefined}>
-                                      {!comp ? 'not quoted' : comp.inKit ? 'in kit' : comp.unitPriceEachCents != null ? money(comp.unitPriceEachCents) : '—'}
+                                      {!comp ? 'not quoted' : comp.inKit ? 'in kit' : comp.unitPriceEachCents != null ? <MoneyText text={money(comp.unitPriceEachCents)} /> : '—'}
                                       {comp?.pageRef ? <span style={{ ...smallMuted, fontSize: '0.65rem' }}> · {comp.pageRef}</span> : null}
                                     </span>
                                   )
@@ -773,19 +774,19 @@ export function QuoteCompareModal({
                 Picked total{' '}
                 {comparison.pickedFreight.length > 0 ? (
                   <>
-                    parts <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalCents)}</strong>
+                    parts <strong style={{ color: 'var(--text-strong)' }}><MoneyText text={money(comparison.pickedTotalCents)} /></strong>
                     {comparison.pickedFreight.map((f) => (
                       <span key={f.supplyHouseId}>
                         {' + '}
                         {f.houseName} freight{' '}
-                        {f.freightCents != null ? <strong style={{ color: 'var(--text-strong)' }}>{money(f.freightCents)}</strong> : <span style={{ color: 'var(--text-amber-700)' }}>not stated</span>}
+                        {f.freightCents != null ? <strong style={{ color: 'var(--text-strong)' }}><MoneyText text={money(f.freightCents)} /></strong> : <span style={{ color: 'var(--text-amber-700)' }}>not stated</span>}
                       </span>
                     ))}
                     {' = '}
-                    <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalWithFreightCents)}</strong>
+                    <strong style={{ color: 'var(--text-strong)' }}><MoneyText text={money(comparison.pickedTotalWithFreightCents)} /></strong>
                   </>
                 ) : (
-                  <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalCents)}</strong>
+                  <strong style={{ color: 'var(--text-strong)' }}><MoneyText text={money(comparison.pickedTotalCents)} /></strong>
                 )}{' '}
                 at today’s counts · picks are saved and ready for a future PO handoff.
                 {robot.hasRobotWork ? ` · robot picked ${robot.robotPicked}, you changed ${robot.humanChanged}.` : ''}
@@ -836,7 +837,7 @@ export function QuoteCompareModal({
                         style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
                       >
                         <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--text-strong)' }}>{o.label}</span>
-                        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{money(o.unitPriceEachCents)}</span>
+                        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}><MoneyText text={money(o.unitPriceEachCents)} /></span>
                       </button>
                     ))}
                   </div>
@@ -941,8 +942,8 @@ function CellButton({ cell, best, onPick, onSettle }: { cell: CompareRowCell; be
       {cell.cantSupply
         ? 'n/a'
         : cell.lotId != null && cell.lotTotalCents != null
-          ? `in lot · ${money(cell.lotTotalCents)}`
-          : money(cell.unitPriceEachCents)}
+          ? <MoneyText text={`in lot · ${money(cell.lotTotalCents)}`} />
+          : <MoneyText text={money(cell.unitPriceEachCents)} />}
       {best && !cell.expired ? ' ★' : ''}
     </button>
   )

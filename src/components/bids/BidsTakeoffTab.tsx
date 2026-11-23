@@ -107,6 +107,7 @@ import type {
   TakeoffRoughPartLineRow,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -1442,7 +1443,7 @@ export function BidsTakeoffTab({
                                         return offer ? (
                                           <span data-testid="takeoff-sheet-offer" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)' }}>
                                             <span>
-                                              <strong>{offer.houseName}&apos;s sheet:</strong> {offer.parts === 1 ? '1 part' : `${offer.parts} parts`} on file · ${offer.each.toFixed(2)} each
+                                              <strong>{offer.houseName}&apos;s sheet:</strong> {offer.parts === 1 ? '1 part' : `${offer.parts} parts`} on file · <MoneyText text={`$${offer.each.toFixed(2)}`} /> each
                                             </span>
                                             <button
                                               type="button"

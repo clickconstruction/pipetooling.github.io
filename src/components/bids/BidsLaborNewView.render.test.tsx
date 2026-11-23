@@ -19,6 +19,7 @@ import type { CostEstimateLaborRow } from '../../lib/bids/bidPricingEngineTypes'
 import { settle } from '../../test/renderSmokeMocks'
 import { BidCellHistoryProvider } from '../../hooks/useBidHistoryCells'
 import type { BidCellHistoryRpcRow } from '../../lib/bids/bidCellHistory'
+import { moneyText } from '../../test/moneyText'
 
 const row = (id: string, fixture: string, count: number, hrs: [number, number, number], extra: Partial<CostEstimateLaborRow> = {}): CostEstimateLaborRow =>
   ({ id, cost_estimate_id: 'ce-1', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed: false, kind: 'fixture', unit: 'each', source: null, source_note: null, sequence_order: 0, created_at: null, ...extra }) as CostEstimateLaborRow
@@ -60,7 +61,7 @@ describe('BidsLaborNewView', () => {
     expect(screen.getByText('rate set')).toBeTruthy()
     // 4 toilets × 3 h + 5 gas drops × 4 h = 32 h → 2 crew-days → $1,144.32
     expect(screen.getAllByText('32').length).toBeGreaterThanOrEqual(1) // the Field hours tile (and the totals row)
-    expect(screen.getAllByText('$1,144.32').length).toBeGreaterThanOrEqual(1) // the Labor $ tile and the bottom line
+    expect(screen.getAllByText(moneyText('$1,144.32')).length).toBeGreaterThanOrEqual(1) // the Labor $ tile and the bottom line
     expect(screen.getByText('$1,298')).toBeTruthy() // 41,550 ÷ 32
   })
 
@@ -130,28 +131,28 @@ describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () =
     renderView({ ratePerHour: null, crewRate, onUseCompanyRate, teamLabor: { hours: 12.5, cost: 446, people: ['Wendi'] }, materials: { rough: 40_000, top: 15_000, trim: 6_300 }, costEstimate: { driving_cost_rate: 0.7, hours_per_trip: 8 } as never, distanceFromOffice: '41', countRowsLength: 4, directCostTables: { sub: [{ rough_in: 6_500 }], permit: [{ rough_in: 1_240 }] } })
     await settle()
     const card = screen.getByTestId('labor-crew-rate')
-    expect(within(card).getByText('$35.76/h')).toBeTruthy()
-    expect(within(card).getByText('= $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden')).toBeTruthy()
+    expect(within(card).getByText(moneyText('$35.76/h'))).toBeTruthy()
+    expect(within(card).getByText(moneyText('= $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden'))).toBeTruthy()
     expect(within(card).getByText('company rate')).toBeTruthy()
     within(card).getByRole('button', { name: 'save it on the bid' }).click()
     expect(onUseCompanyRate).toHaveBeenCalledWith(35.76)
-    expect(within(screen.getByTestId('labor-bid-labor-recorded')).getByText('12.5 h · $446.00')).toBeTruthy()
+    expect(within(screen.getByTestId('labor-bid-labor-recorded')).getByText(moneyText('12.5 h · $446.00'))).toBeTruthy()
     expect(screen.getByText('rate set')).toBeTruthy() // completeness reads the effective rate
-    expect(within(screen.getByTestId('labor-overhead-per-hour')).getByText('$11.50')).toBeTruthy()
+    expect(within(screen.getByTestId('labor-overhead-per-hour')).getByText(moneyText('$11.50'))).toBeTruthy()
     // 32 h × $35.76 = $1,144.32 labor; driving 32/8 × 0.7 × 41 = $114.80; other direct $7,740; materials $61,300 → $70,299.12; margin at $41,550 is negative
     const line = screen.getByTestId('labor-bottom-line')
-    expect(within(line).getByText('$1,144.32')).toBeTruthy()
-    expect(within(line).getByText('$114.80')).toBeTruthy()
-    expect(within(line).getByText('$7,740.00')).toBeTruthy()
-    expect(within(line).getByText('$70,299.12')).toBeTruthy()
-    expect(within(line).getByText('-69% margin at $41,550.00')).toBeTruthy()
+    expect(within(line).getByText(moneyText('$1,144.32'))).toBeTruthy()
+    expect(within(line).getByText(moneyText('$114.80'))).toBeTruthy()
+    expect(within(line).getByText(moneyText('$7,740.00'))).toBeTruthy()
+    expect(within(line).getByText(moneyText('$70,299.12'))).toBeTruthy()
+    expect(within(line).getByText(moneyText('-69% margin at $41,550.00'))).toBeTruthy()
   })
   it('with a rate on the bid, the override wins and can be cleared back to the company rate', async () => {
     const onClearRate = vi.fn()
     renderView({ ratePerHour: 35, crewRate, onClearRate })
     await settle()
     const card = screen.getByTestId('labor-crew-rate')
-    expect(within(card).getByText('$35.00/h override')).toBeTruthy()
+    expect(within(card).getByText(moneyText('$35.00/h override'))).toBeTruthy()
     within(card).getByRole('button', { name: 'use company rate' }).click()
     expect(onClearRate).toHaveBeenCalled()
   })
@@ -165,12 +166,12 @@ describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () =
     renderView({ ratePerHour: null, crewRate, fleetTruckRate: { rate: 2.5, fixedUsd: 2996.28, fieldHours: 1199.6, trucks: 13, days: 90 }, countRowsLength: 4 })
     await settle()
     const trucks = within(screen.getByTestId('labor-crew-rate')).getByTestId('labor-fleet-truck-rate')
-    expect(within(trucks).getByText('$2.50/field h')).toBeTruthy()
-    expect(within(trucks).getByText('= $2,996.28 insurance, registration, service and wear on 13 trucks ÷ 1,200 field h (90 d) · shown, not added')).toBeTruthy()
+    expect(within(trucks).getByText(moneyText('$2.50/field h'))).toBeTruthy()
+    expect(within(trucks).getByText(moneyText('= $2,996.28 insurance, registration, service and wear on 13 trucks ÷ 1,200 field h (90 d) · shown, not added'))).toBeTruthy()
     // 32 h at the company rate, as without the trucks: $1,144.32, never 32 h × $38.26 = $1,224.32
     const line = screen.getByTestId('labor-bottom-line')
-    expect(within(line).getAllByText('$1,144.32').length).toBeGreaterThan(0)
-    expect(within(line).queryByText('$1,224.32')).toBeNull()
+    expect(within(line).getAllByText(moneyText('$1,144.32')).length).toBeGreaterThan(0)
+    expect(within(line).queryByText(moneyText('$1,224.32'))).toBeNull()
   })
   it('no truck line when the read failed or the crew logged no field hours', async () => {
     const { unmount } = renderView({ crewRate, fleetTruckRate: null })
@@ -256,8 +257,8 @@ describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () =>
     expect(within(split).getByText('+ Break room')).toBeTruthy()
     expect(within(split).getByText('29')).toBeTruthy()
     expect(within(split).getByText('3')).toBeTruthy()
-    expect(within(split).getByText('$107.28')).toBeTruthy() // 3 h × $35.76
-    expect(within(split).getByText('$1,037.04')).toBeTruthy() // 29 h × $35.76
+    expect(within(split).getByText(moneyText('$107.28'))).toBeTruthy() // 3 h × $35.76
+    expect(within(split).getByText(moneyText('$1,037.04'))).toBeTruthy() // 29 h × $35.76
   })
 
   it('v2.4202: with each count row\'s takeoff materials the card adds Materials and Direct cost by scope', async () => {
@@ -273,9 +274,9 @@ describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () =>
     await settle()
     const split = screen.getByTestId('labor-alt-split')
     expect(within(split).getByText('Materials')).toBeTruthy()
-    expect(within(split).getByText('$800.00')).toBeTruthy() // base: 300 + 500
-    expect(within(split).getByText('$100.00')).toBeTruthy() // the alternate
-    expect(within(split).getByText('$900.00')).toBeTruthy() // with it
+    expect(within(split).getByText(moneyText('$800.00'))).toBeTruthy() // base: 300 + 500
+    expect(within(split).getByText(moneyText('$100.00'))).toBeTruthy() // the alternate
+    expect(within(split).getByText(moneyText('$900.00'))).toBeTruthy() // with it
     expect(screen.getByTestId('labor-alt-direct')).toBeTruthy()
     expect(within(split).queryByText(/Materials split the same way/)).toBeNull()
   })

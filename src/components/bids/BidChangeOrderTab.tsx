@@ -24,6 +24,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { localCalendarDayKey } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 type BidChangeOrderTabProps = {
   bids: BidWithBuilder[]
@@ -317,7 +318,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                       style={{ marginTop: '0.35rem', fontSize: '0.8125rem', color: readout.cents === null ? 'var(--text-amber-800)' : 'var(--text-700)', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}
                     >
                       {readout.cents !== null ? (
-                        <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.9375rem' }}>{formatSignedDollars(readout.cents)}</strong>
+                        <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.9375rem' }}><MoneyText text={formatSignedDollars(readout.cents)} /></strong>
                       ) : null}
                       <span>{readout.sentence}</span>
                     </div>
@@ -424,7 +425,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                   ? 'Enter a number, or leave it blank for a $0 draft.'
                   : cents === 0
                     ? 'The draft is created at $0 with no cost lines — add them in Estimates if the price changes.'
-                    : `The draft is created with one line for ${formatSignedDollars(cents)}; the typed breakdown rides along as its description.`}
+                    : <MoneyText text={`The draft is created with one line for ${formatSignedDollars(cents)}; the typed breakdown rides along as its description.`} />}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.1rem' }}>
                 <button

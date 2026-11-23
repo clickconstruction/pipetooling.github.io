@@ -29,6 +29,7 @@ import { bookSummaryWords, calibrationNote, calibrationProposalWords, calibratio
 import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
 import { BidCellPast } from './BidCellPast'
 import { laborCellKeys } from '../../lib/bids/bidCellHistory'
+import { Money, MoneyText } from '../Money'
 
 /**
  * The New Labor view (the Labor refresh PR 1 — "Hours that learn"; PR 2 made
@@ -535,12 +536,12 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           </div>
           <div style={tile}>
             <div style={tileK}>Labor $</div>
-            <div style={tileV}>{summary.laborUsd != null ? `$${formatCurrency(summary.laborUsd)}` : '—'}</div>
+            <div style={tileV}>{summary.laborUsd != null ? <Money amount={summary.laborUsd} /> : '—'}</div>
             <div style={tileS}>
               {eff.source === 'override' && eff.rate != null ? (
-                <>at ${formatCurrency(eff.rate)}/h · this bid · <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-blue-700)')}>edit</button></>
+                <>at <Money amount={eff.rate} />/h · this bid · <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-blue-700)')}>edit</button></>
               ) : eff.source === 'company' && eff.rate != null ? (
-                <>at ${formatCurrency(eff.rate)}/h · company rate</>
+                <>at <Money amount={eff.rate} />/h · company rate</>
               ) : p.crewRateLoading ? (
                 <>reading the company rate…</>
               ) : (
@@ -560,7 +561,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           </div>
           <div style={tile} data-testid="labor-overhead-per-hour">
             <div style={tileK}>Overhead / field hour</div>
-            <div style={tileV}>{p.crewRate?.overheadPerFieldHour != null ? `$${formatCurrency(p.crewRate.overheadPerFieldHour)}` : '—'}</div>
+            <div style={tileV}>{p.crewRate?.overheadPerFieldHour != null ? <Money amount={p.crewRate.overheadPerFieldHour} /> : '—'}</div>
             <div style={tileS}>lens A · 90 d · shown, not added to the direct cost</div>
           </div>
           <div style={tile} data-testid="labor-book-vs-jobs">
@@ -599,7 +600,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           </div>
           <div style={tile} data-testid="labor-other-direct">
             <div style={tileK}>Other direct</div>
-            <div style={tileV}>{directCosts.total > 0 ? `$${formatCurrency(directCosts.total)}` : '—'}</div>
+            <div style={tileV}>{directCosts.total > 0 ? <Money amount={directCosts.total} /> : '—'}</div>
             <div style={tileS}>{directCosts.total > 0 ? directCostKindWords(directCosts, (n) => `$${formatCurrency(n)}`) : 'equipment · permits · subs · waste · other, below'}</div>
           </div>
         </div>
@@ -607,21 +608,21 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           <b>Crew rate</b>
           {p.crewRate?.companyRate != null ? (
             <span>
-              company <b>${formatCurrency(p.crewRate.companyRate)}/h</b> <span style={{ color: 'var(--text-muted)' }}>= {crewRateWords(p.crewRate, formatCurrency)}</span>
+              company <b><Money amount={p.crewRate.companyRate} />/h</b> <span style={{ color: 'var(--text-muted)' }}>= <MoneyText text={crewRateWords(p.crewRate, formatCurrency)} /></span>
             </span>
           ) : (
-            <span style={{ color: 'var(--text-muted)' }}>{p.crewRateLoading ? 'reading People…' : p.crewRate ? crewRateWords(p.crewRate, formatCurrency) : 'company rate unavailable'}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{p.crewRateLoading ? 'reading People…' : p.crewRate ? <MoneyText text={crewRateWords(p.crewRate, formatCurrency)} /> : 'company rate unavailable'}</span>
           )}
           {p.fleetTruckRate?.rate != null ? (
             <span data-testid="labor-fleet-truck-rate" title="The burden factor and the driving line already carry the trucks, so this is not added to the bid">
-              <span style={{ color: 'var(--text-muted)' }}>·</span> trucks <b>${formatCurrency(p.fleetTruckRate.rate)}/field h</b>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>·</span> trucks <b><Money amount={p.fleetTruckRate.rate} />/field h</b>{' '}
               <span style={{ color: 'var(--text-muted)' }}>= {fleetTruckRateWords(p.fleetTruckRate, formatCurrency)} · shown, not added</span>
             </span>
           ) : null}
           <span style={{ color: 'var(--text-muted)' }}>·</span>
           {eff.source === 'override' && eff.rate != null ? (
             <span>
-              this bid <span style={pill('blue')}>${formatCurrency(eff.rate)}/h override</span>
+              this bid <span style={pill('blue')}><Money amount={eff.rate} />/h override</span>
               {p.crewRate?.companyRate != null && p.onClearRate ? (
                 <>
                   {' '}
@@ -648,7 +649,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             bid labor recorded{' '}
             {p.teamLabor && p.teamLabor.hours > 0 ? (
               <>
-                <b>{p.teamLabor.hours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · ${formatCurrency(p.teamLabor.cost)}</b> · in the overhead pool, not in this bid's cost
+                <b>{p.teamLabor.hours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · <Money amount={p.teamLabor.cost} /></b> · in the overhead pool, not in this bid's cost
               </>
             ) : (
               <>none yet · sits in the overhead pool, not in this bid's cost</>
@@ -957,8 +958,8 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
               </thead>
               <tbody>
                 <tr><td style={{ ...cell, textAlign: 'left' }}>Field hours</td>{cols.map((c) => <td key={c.label} style={cell}>{fmtHours(c.hours)}</td>)}</tr>
-                <tr><td style={{ ...cell, textAlign: 'left' }}>Labor at the rate</td>{cols.map((c) => <td key={c.label} style={cell}>{money(c.hours)}</td>)}</tr>
-                {bottom.drivingCost > 0 ? <tr><td style={{ ...cell, textAlign: 'left' }}>Driving</td>{cols.map((c) => <td key={c.label} style={cell}>${formatCurrency(bottom.drivingCost * share(c.hours))}</td>)}</tr> : null}
+                <tr><td style={{ ...cell, textAlign: 'left' }}>Labor at the rate</td>{cols.map((c) => <td key={c.label} style={cell}><MoneyText text={money(c.hours)} /></td>)}</tr>
+                {bottom.drivingCost > 0 ? <tr><td style={{ ...cell, textAlign: 'left' }}>Driving</td>{cols.map((c) => <td key={c.label} style={cell}><Money amount={bottom.drivingCost * share(c.hours)} /></td>)}</tr> : null}
                 {altMaterials ? (() => {
                   // v2.4202: materials by the Count Sheet's scope, and the direct cost each column carries —
                   // labor at the rate, its share of driving and the other direct costs, plus its materials.
@@ -967,8 +968,8 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                   const direct = (c: { label: string; hours: number }) => (eff.rate != null ? c.hours * eff.rate : 0) + (bottom.drivingCost + otherDirect) * share(c.hours) + matOf(c.label)
                   return (
                     <>
-                      <tr><td style={{ ...cell, textAlign: 'left' }}>Materials</td>{cols.map((c) => <td key={c.label} style={cell}>${formatCurrency(matOf(c.label))}</td>)}</tr>
-                      <tr data-testid="labor-alt-direct"><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>Direct cost</td>{cols.map((c) => <td key={c.label} style={{ ...cell, fontWeight: 700 }}>${formatCurrency(direct(c))}</td>)}</tr>
+                      <tr><td style={{ ...cell, textAlign: 'left' }}>Materials</td>{cols.map((c) => <td key={c.label} style={cell}><Money amount={matOf(c.label)} /></td>)}</tr>
+                      <tr data-testid="labor-alt-direct"><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>Direct cost</td>{cols.map((c) => <td key={c.label} style={{ ...cell, fontWeight: 700 }}><Money amount={direct(c)} /></td>)}</tr>
                     </>
                   )
                 })() : null}
@@ -982,14 +983,14 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
       {p.rows.length > 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'baseline', gap: '0.4rem 0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem' }} data-testid="labor-bottom-line">
           <b style={{ fontSize: '0.875rem' }}>Direct cost of this bid</b>
-          <span>labor <b>{bottom.laborCost > 0 ? `$${formatCurrency(bottom.laborCost)}` : '—'}</b></span>
-          <span>materials <b>{bottom.totalMaterials > 0 ? `$${formatCurrency(bottom.totalMaterials)}` : '—'}</b>{p.materialsSource === 'takeoff' ? <span style={{ color: 'var(--text-muted)' }}> (takeoff)</span> : null}</span>
-          {bottom.drivingCost > 0 ? <span>driving <b>${formatCurrency(bottom.drivingCost)}</b></span> : null}
-          {bottom.travelCost > 0 ? <span>travel <b>${formatCurrency(bottom.travelCost)}</b></span> : null}
-          <span>other direct <b>{bottom.otherDirectCost > 0 ? `$${formatCurrency(bottom.otherDirectCost)}` : '—'}</b></span>
-          <span style={{ marginLeft: 'auto', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bottom.totalCost)}</span>
+          <span>labor <b>{bottom.laborCost > 0 ? <Money amount={bottom.laborCost} /> : '—'}</b></span>
+          <span>materials <b>{bottom.totalMaterials > 0 ? <Money amount={bottom.totalMaterials} /> : '—'}</b>{p.materialsSource === 'takeoff' ? <span style={{ color: 'var(--text-muted)' }}> (takeoff)</span> : null}</span>
+          {bottom.drivingCost > 0 ? <span>driving <b><Money amount={bottom.drivingCost} /></b></span> : null}
+          {bottom.travelCost > 0 ? <span>travel <b><Money amount={bottom.travelCost} /></b></span> : null}
+          <span>other direct <b>{bottom.otherDirectCost > 0 ? <Money amount={bottom.otherDirectCost} /> : '—'}</b></span>
+          <span style={{ marginLeft: 'auto', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={bottom.totalCost} /></span>
           {marginPct != null ? (
-            <span style={{ color: marginPct < 0.2 ? 'var(--text-amber-700)' : 'var(--text-green-700)', fontWeight: 600 }}>{Math.round(marginPct * 100)}% margin at ${formatCurrency(p.bidValue ?? 0)}</span>
+            <span style={{ color: marginPct < 0.2 ? 'var(--text-amber-700)' : 'var(--text-green-700)', fontWeight: 600 }}>{Math.round(marginPct * 100)}% margin at <Money amount={p.bidValue ?? 0} /></span>
           ) : (
             <span style={{ color: 'var(--text-muted)' }}>set a bid value for the margin</span>
           )}

@@ -15,6 +15,7 @@ import { GcOutcomePill, undoneToast } from './BidBoardGcRows'
 import { BidWonJobActions } from './BidWonJobActions'
 import { formatCurrency } from '../../lib/format'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 type VersionRow = { id: string; name: string; sort_order: number; include_in_submission: boolean; is_alternate?: boolean | null; customer_id: string | null; created_at?: string | null; outcome?: string | null }
 
@@ -83,7 +84,7 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
         <div key={p.key} style={{ padding: '0.2rem 0 0.35rem' }}>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600 }}>{p.name}</span>
-            <span style={{ fontSize: '0.75rem', color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{p.sentOn ? `sent ${fmtSent(p.sentOn)}` : 'not sent'}{p.sentValue != null ? ` · ★ $${formatCurrency(p.sentValue)}` : ''}</span>
+            <span style={{ fontSize: '0.75rem', color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{p.sentOn ? `sent ${fmtSent(p.sentOn)}` : 'not sent'}{p.sentValue != null ? <MoneyText text={` · ★ $${formatCurrency(p.sentValue)}`} /> : ''}</span>
             <GcOutcomePill value={p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null} gcName={p.name} onChange={(next) => void change(p.key, next)} />
             {/* Tier-1 #8: the per-GC Won moment offers the job right here. */}
             {p.outcome === 'won' ? <BidWonJobActions bidId={bidId} compact /> : null}

@@ -5,7 +5,6 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
-import { formatCurrency } from '../../lib/format'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { drivingSummaryFromInputs, laborTotalFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
@@ -72,6 +71,7 @@ import type {
   LaborBookEntryWithFixture,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 type BidsLaborTabProps = {
   /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
@@ -959,9 +959,9 @@ export function BidsLaborTab({
                   const { totalHours, rate, laborCost } = laborTotalFromInputs({ rowHours: costEstimateLaborRows.map((r) => laborRowHours(r)), laborRateInput })
                   return (
                     <p style={{ margin: '0.75rem 0 0', fontWeight: 600, textAlign: 'right' }}>
-                      Labor total: ${formatCurrency(laborCost)}
+                      Labor total: <Money amount={laborCost} />
                       <br />
-                      <span style={{ fontWeight: 400, fontSize: '0.875rem' }}>({totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × ${formatCurrency(rate)}/hr)</span>
+                      <span style={{ fontWeight: 400, fontSize: '0.875rem' }}>({totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × <Money amount={rate} />/hr)</span>
                     </p>
                   )
                 })()}
@@ -981,7 +981,7 @@ export function BidsLaborTab({
                       })
                       return (
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                          Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}>${formatCurrency(drivingCost)}</span>
+                          Driving cost: {numTrips.toFixed(1)} trips × <MoneyText text={`$${ratePerMile.toFixed(2)}`} />/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}><Money amount={drivingCost} /></span>
                         </span>
                       )
                     })()}
@@ -1066,7 +1066,7 @@ export function BidsLaborTab({
                           Distance to office: {distance > 0 ? `${distance.toFixed(1)} miles` : 'Not set'}
                         </p>
                         <p style={{ margin: 0, fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
-                          Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}>${formatCurrency(drivingCost)}</span>
+                          Driving cost: {numTrips.toFixed(1)} trips × <MoneyText text={`$${ratePerMile.toFixed(2)}`} />/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}><Money amount={drivingCost} /></span>
                         </p>
                       </>
                     )
@@ -1085,7 +1085,7 @@ export function BidsLaborTab({
                   {lodgingCollapsed && (() => {
                     const { travelCost } = travelSummaryFromInputs({ travelPeople, travelNights, travelMealsRate, travelHotelRate })
                     return (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span></span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Travel total: <span style={{ fontWeight: 700 }}><Money amount={travelCost} /></span></span>
                     )
                   })()}
                 </div>
@@ -1176,13 +1176,13 @@ export function BidsLaborTab({
                   return (
                     <>
                       <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
-                        Meals: {people} ppl × {nights} nights × ${mealsRate.toFixed(2)} = <span style={{ fontWeight: 700 }}>${formatCurrency(mealsCost)}</span>
+                        Meals: {people} ppl × {nights} nights × <MoneyText text={`$${mealsRate.toFixed(2)}`} /> = <span style={{ fontWeight: 700 }}><Money amount={mealsCost} /></span>
                       </p>
                       <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
-                        Hotels: {people} ppl × {nights} nights × ${hotelRate.toFixed(2)} = <span style={{ fontWeight: 700 }}>${formatCurrency(hotelCost)}</span>
+                        Hotels: {people} ppl × {nights} nights × <MoneyText text={`$${hotelRate.toFixed(2)}`} /> = <span style={{ fontWeight: 700 }}><Money amount={hotelCost} /></span>
                       </p>
                       <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
-                        Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span>
+                        Travel total: <span style={{ fontWeight: 700 }}><Money amount={travelCost} /></span>
                       </p>
                     </>
                   )
@@ -1196,7 +1196,7 @@ export function BidsLaborTab({
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                   {bidTeamLabor && bidTeamLabor.manHours > 0 ? (
                     <>
-                      {bidTeamLabor.manHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · <span style={{ fontWeight: 700 }}>${formatCurrency(bidTeamLabor.bidCost)}</span>
+                      {bidTeamLabor.manHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · <span style={{ fontWeight: 700 }}><Money amount={bidTeamLabor.bidCost} /></span>
                       {bidTeamLabor.people.length > 0 ? <span style={{ color: 'var(--text-muted)' }}> · {bidTeamLabor.people.join(', ')}</span> : null}
                       <span style={{ color: 'var(--text-muted)' }}> · clocked on this bid — already in the overhead pool, not in this bid's cost</span>
                     </>

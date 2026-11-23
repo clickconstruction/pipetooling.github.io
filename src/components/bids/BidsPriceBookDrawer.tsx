@@ -24,6 +24,7 @@ import type { BookEditBidOffer } from '../../lib/bids/bookEditBidOffer'
 import type { PriceBookEntryWithFixture, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { Money, MoneyText } from '../Money'
 
 export type PriceBookDrawerBooks = {
   /** The shared templates (the books the chips list). */
@@ -128,16 +129,14 @@ export function BidsPriceBookDrawer({
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', lineHeight: 1.4 }}>
             {pendingBookOffer.offer.kind === 'update' ? (
               <>
-                This bid still prices <strong>{pendingBookOffer.offer.fixtureName}</strong> at $
-                {formatCurrency(pendingBookOffer.offer.bidTotal)} — it holds its own copy of the book, taken when
+                This bid still prices <strong>{pendingBookOffer.offer.fixtureName}</strong> at <Money amount={pendingBookOffer.offer.bidTotal} /> — it holds its own copy of the book, taken when
                 it was first priced.
                 {pendingBookOffer.siblingPricingCount > 0 ? (
                   <>
                     {' '}
                     {pendingBookOffer.siblingPricingCount} more price option
                     {pendingBookOffer.siblingPricingCount === 1 ? '' : 's'} on this bid hold
-                    {pendingBookOffer.siblingPricingCount === 1 ? 's' : ''} the same $
-                    {formatCurrency(pendingBookOffer.offer.bidTotal)} and will update with it.
+                    {pendingBookOffer.siblingPricingCount === 1 ? 's' : ''} the same <Money amount={pendingBookOffer.offer.bidTotal} /> and will update with it.
                   </>
                 ) : null}
               </>
@@ -158,7 +157,7 @@ export function BidsPriceBookDrawer({
               {offer.applying
                 ? 'Working…'
                 : pendingBookOffer.offer.kind === 'update'
-                  ? `Use $${formatCurrency(pendingBookOffer.offer.bookTotal)} on this bid`
+                  ? <MoneyText text={`Use $${formatCurrency(pendingBookOffer.offer.bookTotal)} on this bid`} />
                   : 'Add it to this bid too'}
             </button>
             <button
@@ -313,12 +312,12 @@ export function BidsPriceBookDrawer({
                   {entry.fixture_types?.name ?? ''}
                 </td>
                 {displayMode === 'combined' ? (
-                  <td style={cell}>${formatCurrency(Number(entry.total_price))}</td>
+                  <td style={cell}><Money amount={Number(entry.total_price)} /></td>
                 ) : (
                   <>
-                    <td style={{ ...cell, color: Number(entry.rough_in_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.rough_in_price) === 0 ? '—' : `$${formatCurrency(Number(entry.rough_in_price))}`}</td>
-                    <td style={{ ...cell, color: Number(entry.top_out_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.top_out_price) === 0 ? '—' : `$${formatCurrency(Number(entry.top_out_price))}`}</td>
-                    <td style={{ ...cell, color: Number(entry.trim_set_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.trim_set_price) === 0 ? '—' : `$${formatCurrency(Number(entry.trim_set_price))}`}</td>
+                    <td style={{ ...cell, color: Number(entry.rough_in_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.rough_in_price) === 0 ? '—' : <Money amount={Number(entry.rough_in_price)} />}</td>
+                    <td style={{ ...cell, color: Number(entry.top_out_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.top_out_price) === 0 ? '—' : <Money amount={Number(entry.top_out_price)} />}</td>
+                    <td style={{ ...cell, color: Number(entry.trim_set_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.trim_set_price) === 0 ? '—' : <Money amount={Number(entry.trim_set_price)} />}</td>
                   </>
                 )}
                 <td style={cell}>
