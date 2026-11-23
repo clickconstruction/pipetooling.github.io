@@ -38,7 +38,7 @@ A missed call or a voicemail also shows {{button:outline|Call back}}. Press it t
 
 ## When they gave a day or asked about the plans
 
-A message may give a day, like a quote by Wednesday. The row then shows a button like {{button:outline|A day was heard: Wed Oct 7 · say what it is}}. Press it to open the message and write the day down.
+A customer's text or voicemail may name a day they will pay by. Open their thread. The day shows under their message, beside {{button:outline|Write down their word}}. [Write down their word](/help/reply-to-a-person-from-their-thread#write-down-their-word) shows the rest.
 
 A question about the plans shows {{button:outline|Ask the architect}}. The button shows only when the message is on a GC job. Press it to ask the job's architect.
 
