@@ -18,6 +18,7 @@ import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../../lib/workflow/unifiedFinancialRows'
 import { formatAmount } from '../../lib/workflow/workflowFormat'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 type Projection = Database['public']['Tables']['workflow_projections']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
@@ -54,14 +55,14 @@ export function WorkflowFinancialsPanel({
         {canEditProjections && (
           <>
             <span style={{ fontSize: '0.875rem', color: totals.projectionsTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-              Projections: {formatAmount(totals.projectionsTotal)}
+              Projections: <MoneyText text={formatAmount(totals.projectionsTotal)} />
             </span>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
           </>
         )}
         {canManageStages && (
           <span style={{ fontSize: '0.875rem', color: totals.ledgerTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-            Ledger: {formatAmount(totals.ledgerTotal)}
+            Ledger: <MoneyText text={formatAmount(totals.ledgerTotal)} />
           </span>
         )}
         {canEditProjections && (
@@ -77,7 +78,7 @@ export function WorkflowFinancialsPanel({
                 })(),
               }}
             >
-              Left: {formatAmount(totals.left)}
+              Left: <MoneyText text={formatAmount(totals.left)} />
             </span>
           </>
         )}
@@ -165,11 +166,11 @@ export function WorkflowFinancialsPanel({
                     </td>
                     {canEditProjections && (
                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                        {row.projectionAmount != null ? formatAmount(row.projectionAmount) : '\u2014'}
+                        {row.projectionAmount != null ? <MoneyText text={formatAmount(row.projectionAmount)} /> : '\u2014'}
                       </td>
                     )}
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                      {row.ledgerAmount != null ? formatAmount(row.ledgerAmount) : '\u2014'}
+                      {row.ledgerAmount != null ? <MoneyText text={formatAmount(row.ledgerAmount)} /> : '\u2014'}
                     </td>
                     {canEditProjections && (
                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center' }}>
@@ -205,11 +206,11 @@ export function WorkflowFinancialsPanel({
                   </td>
                   {canEditProjections && (
                     <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: totals.projectionsTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
-                      {formatAmount(totals.projectionsTotal)}
+                      <MoneyText text={formatAmount(totals.projectionsTotal)} />
                     </td>
                   )}
                   <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: totals.ledgerTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
-                    {formatAmount(totals.ledgerTotal)}
+                    <MoneyText text={formatAmount(totals.ledgerTotal)} />
                   </td>
                   {canEditProjections && <td style={{ padding: '0.5rem 0.5rem' }} />}
                 </tr>

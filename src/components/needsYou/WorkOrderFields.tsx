@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { WorkOrderDecision, WorkOrderFillInRow } from '../../lib/needsYou/fillInWorkOrders'
+import { MoneyText } from '../Money'
 
 /**
  * The work-order kind's fields on the Fill them in deck (v2.6094, punch list #178): the one
@@ -37,7 +38,7 @@ export function WorkOrderFields({ row, decision, onChange, disabled }: { row: Wo
           style={{ justifySelf: 'start', background: 'none', border: '1px dashed var(--text-link)', borderRadius: 6, color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.65rem', cursor: 'pointer' }}
           data-work-order-hint
         >
-          From the bid: {money(row.hint.total)} sub labor
+          From the bid: <MoneyText text={money(row.hint.total)} /> sub labor
         </button>
       ) : (
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No bid total to copy. Type the price the leader gave.</span>

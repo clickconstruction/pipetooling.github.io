@@ -11,6 +11,7 @@ import {
   type EstimateOptionKind,
 } from '../../lib/estimates/estimateOptions'
 import { estInputBase } from './estimatesPageStyles'
+import { MoneyText } from '../Money'
 
 export interface EstimateOptionsStripProps {
   /** The row's options as held; empty is a plain single-price estimate. */
@@ -87,7 +88,7 @@ export default function EstimateOptionsStrip({
                 {o.name.trim() || 'Option'}
               </span>
               <span style={{ display: 'block', fontWeight: 700, fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>
-                {o.kind === 'add_on' && syncedEstimateOptions.some((p) => p.kind === 'choice') ? `+ ${formatMoney(total)}` : formatMoney(total)}
+                {o.kind === 'add_on' && syncedEstimateOptions.some((p) => p.kind === 'choice') ? <MoneyText text={`+ ${formatMoney(total)}`} /> : <MoneyText text={formatMoney(total)} />}
               </span>
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 {(o.key === viewedOptionKey ? lines : o.line_items).length} line item{(o.key === viewedOptionKey ? lines : o.line_items).length === 1 ? '' : 's'}

@@ -28,6 +28,7 @@ import { fetchHideDevTallyTransactions, setHideDevTallyTransactions } from '../l
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
+import { MoneyText } from './Money'
 
 const EMPTY_JOB_LABEL_BY_ID: Record<string, string> = {}
 
@@ -527,7 +528,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                                 {r.counterparty_name ?? '—'}
                               </div>
                               <div style={{ fontWeight: 600, fontSize: '0.9375rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                                {formatCurrency(Number(r.amount))}
+                                <MoneyText text={formatCurrency(Number(r.amount))} />
                               </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.15rem' }}>
@@ -630,7 +631,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                             >
                             <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{formatPostedShort(r.posted_at)}</td>
                             <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                              {formatCurrency(Number(r.amount))}
+                              <MoneyText text={formatCurrency(Number(r.amount))} />
                             </td>
                             <td style={{ padding: '0.45rem 0.65rem', maxWidth: 200 }}>
                               <div

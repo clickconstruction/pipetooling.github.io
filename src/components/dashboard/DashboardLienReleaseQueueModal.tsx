@@ -24,6 +24,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import LienReleaseModal from '../jobs/LienReleaseModal'
 import { EmptyState } from '../EmptyState'
 import { LIEN_RELEASE_QUEUE_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import { MoneyText } from '../Money'
 
 /**
  * The cleared-releases queue (v2.2751): what the Needs You card's "Issue
@@ -306,7 +307,7 @@ export function DashboardLienReleaseQueueModal({
                       >
                         {lienReleaseFormLabel(row.release.form_type)}
                       </span>
-                      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(row.amount)}</span>
+                      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(row.amount)} /></span>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.1rem' }}>
                         Issued {shortDate(row.issuedOn)} · covers {lines} bill line{lines === 1 ? '' : 's'}
                       </div>
@@ -316,7 +317,7 @@ export function DashboardLienReleaseQueueModal({
                         Cleared {row.clearedOn ? shortDate(row.clearedOn) : '—'}
                       </div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.1rem' }}>
-                        {row.clearedBy} · {money(row.appliedTotal)} applied
+                        {row.clearedBy} · <MoneyText text={money(row.appliedTotal)} /> applied
                       </div>
                     </div>
                     <div
@@ -356,7 +357,7 @@ export function DashboardLienReleaseQueueModal({
               }}
             >
               <span>
-                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(total)}</strong> across {jobCount} job
+                <strong style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(total)} /></strong> across {jobCount} job
                 {jobCount === 1 ? '' : 's'} still owed the unconditional version
               </span>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Oldest cleared first</span>

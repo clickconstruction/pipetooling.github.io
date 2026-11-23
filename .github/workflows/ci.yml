@@ -153,6 +153,9 @@ jobs:
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
 
+      - name: An amount draws its cents smaller, through the one door (swept surfaces, added lines only)
+        run: npm run check:small-cents
+
       # Git merges by line, and an entry written as one line of several thousand characters conflicted whenever two
       # PRs amended it (2026-11-16: one PR dropped from the queue three times on docs/GLOSSARY.md alone).
       - name: The shared docs hold one sentence a line, so two amendments to one entry merge

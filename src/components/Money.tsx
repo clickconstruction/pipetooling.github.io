@@ -13,6 +13,13 @@ import { MONEY_CENTS_EM, moneyFigureParts, moneyParts, moneyTextParts, type Mone
  */
 
 const CENTS_SIZE = `${MONEY_CENTS_EM}em`
+/**
+ * The spans say `display: inline` out loud. A browser draws a span inline anyway, but the test DOM reads a span
+ * with no display as a block and puts a space into a button's name: *Keep $24 .00*. Said here, a name with an
+ * amount in it reads whole, on a screen reader and in a test that finds the press by its name.
+ */
+const WHOLE = { display: 'inline', whiteSpace: 'nowrap' } as const
+const CENTS = { display: 'inline', fontSize: CENTS_SIZE } as const
 
 export type MoneyProps = MoneyPartsOptions & {
   /** The figure. Null or undefined is a figure the app does not have, drawn as `empty`. */
@@ -32,11 +39,11 @@ export function Money({ amount, empty = '—', style, centsStyle, title, 'data-t
   if (amount == null) return <>{empty}</>
   const p = moneyParts(amount, options)
   return (
-    <span style={{ whiteSpace: 'nowrap', ...style }} title={title} data-testid={testId} aria-label={ariaLabel}>
+    <span style={{ ...WHOLE, ...style }} title={title} data-testid={testId} aria-label={ariaLabel}>
       {p.sign}
       {p.dollars}
       {p.cents ? (
-        <span data-cents style={{ fontSize: CENTS_SIZE, ...centsStyle }}>
+        <span data-cents style={{ ...CENTS, ...centsStyle }}>
           {p.cents}
         </span>
       ) : null}
@@ -62,9 +69,9 @@ export function MoneyText({ text, bare = false, centsStyle }: { text: string; ba
         typeof p === 'string' ? (
           p
         ) : (
-          <span key={i} style={{ whiteSpace: 'nowrap' }}>
+          <span key={i} style={WHOLE}>
             {p.dollars}
-            <span data-cents style={{ fontSize: CENTS_SIZE, ...centsStyle }}>
+            <span data-cents style={{ ...CENTS, ...centsStyle }}>
               {p.cents}
             </span>
           </span>

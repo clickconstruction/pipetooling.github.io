@@ -68,6 +68,7 @@ vi.mock('./PersonDeskWorkingHoursRow', async () => {
 })
 
 import { PersonDeskPaySection } from './PersonDeskPaySection'
+import { moneyText } from '../../../test/moneyText'
 
 // The controller: the role that may type a week's days and hours (punch list #429).
 const viewer = { role: 'controller', isDev: false, canAccessPay: true, canAccessHours: true, readOnly: false } as unknown as PersonDeskViewer
@@ -94,8 +95,8 @@ describe('PersonDeskPaySection', () => {
     h.dates = { start_date: '2026-11-16', end_date: null }
     show()
     expect(await screen.findByText('A set week')).toBeTruthy()
-    expect(screen.getByText('6 h Mon to Fri · $300.00 a week')).toBeTruthy()
-    expect(screen.getByText('$10.00 / h')).toBeTruthy()
+    expect(screen.getByText(moneyText('6 h Mon to Fri · $300.00 a week'))).toBeTruthy()
+    expect(screen.getByText(moneyText('$10.00 / h'))).toBeTruthy()
     expect(screen.getByText('Still clocks in and out')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Workday schedule…' })).toBeTruthy()
   })
@@ -114,9 +115,9 @@ describe('PersonDeskPaySection', () => {
     expect((screen.getByRole('button', { name: 'Save pay setup' }) as HTMLButtonElement).disabled).toBe(true)
 
     fireEvent.change(screen.getByLabelText('Weekly pay'), { target: { value: '300' } })
-    expect(screen.getByText('works out to $10.00 an hour')).toBeTruthy()
+    expect(screen.getByText(moneyText('works out to $10.00 an hour'))).toBeTruthy()
     expect(screen.getByText('30 h')).toBeTruthy()
-    expect(screen.getByText('$60.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$60.00'))).toBeTruthy()
     expect(document.querySelector('[data-pay-setup-summary]')?.textContent).toBe('Was by the hour at $10.00. Now $300.00 a week, 6 h Mon to Fri.')
     // No start date, and the last pay report ended Aug 15: thirteen weeks would show as owed.
     expect(screen.getByText('No start date. Payroll will show 13 earlier weeks with no pay report as owed. Set the day the set week starts.')).toBeTruthy()
@@ -154,7 +155,7 @@ describe('PersonDeskPaySection', () => {
     fireEvent.change(screen.getByLabelText('Friday hours'), { target: { value: '4' } })
     expect(screen.getByText('28 h')).toBeTruthy()
     expect(document.querySelector('[data-pay-setup-summary]')?.textContent).toBe('Was $300.00 a week, 6 h Mon to Fri. Now $299.88 a week, 6 h Mon to Thu, 4 h Fri.')
-    expect(screen.getByText('$10.71 an hour over 28 hours comes to $299.88 a week, not $300.00. A wage is kept to the cent.')).toBeTruthy()
+    expect(screen.getByText(moneyText('$10.71 an hour over 28 hours comes to $299.88 a week, not $300.00. A wage is kept to the cent.'))).toBeTruthy()
 
     for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) fireEvent.change(screen.getByLabelText(`${day} hours`), { target: { value: '0' } })
     expect(screen.getByRole('alert').textContent).toBe('Give at least one day its hours')
