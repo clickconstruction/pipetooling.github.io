@@ -43,6 +43,7 @@ import { DashboardUpcomingInspectionsSection } from '../components/dashboard/Das
 import { DashboardRecentReportsSection } from '../components/dashboard/DashboardRecentReportsSection'
 import { DashboardMyBidsSection } from '../components/dashboard/DashboardMyBidsSection'
 import { SectionDock } from '../components/SectionDock'
+import { BackToTop } from '../components/BackToTop'
 import {
   getPinnedForUserFromSupabase,
   type PinnedItem,
@@ -389,6 +390,8 @@ export default function Dashboard() {
   const [yourPeopleDockVisible, setYourPeopleDockVisible] = useState(false)
   // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
   const [trainingDockVisible, setTrainingDockVisible] = useState(false)
+  /** The page's top, where Back to top lands focus (v2.8334). */
+  const dashboardTopRef = useRef<HTMLDivElement>(null)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const {
     assignedJobs,
@@ -1597,7 +1600,8 @@ export default function Dashboard() {
     ) : null
 
   return (
-    <div style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0 }}>
+    // The page's top is where Back to top lands focus (v2.8334): it takes focus from a press, never from Tab, and draws no ring around the whole page.
+    <div ref={dashboardTopRef} tabIndex={-1} data-dashboard-top="" style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0, outline: 'none' }}>
       {dockSections.length > 1 && !phoneOffice ? (
         <SectionDock
           sections={dockSections}
@@ -2059,6 +2063,8 @@ export default function Dashboard() {
           Renders nothing while nothing is required of the role or the tables are not on prod yet. */}
       {authUser?.id && <div id="dash-training" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && <DashboardTrainingSection userId={authUser.id} role={role} onVisibility={setTrainingDockVisible} />}
+      {/* Back to top (v2.8334): a quiet press at the foot of the page, for every role, drawn only when the page is two screens or more. */}
+      <BackToTop topRef={dashboardTopRef} onPress={() => recordNavClick(authUser?.id, role, 'dashboard', '#back-to-top')} />
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 
