@@ -54,6 +54,7 @@ import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayro
 import { EmptyState } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
+import { MoneyText } from '../components/Money'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -1528,7 +1529,7 @@ export default function JobTally() {
                             fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          {formatTallyCurrency(Number(row.amount))}
+                          <MoneyText text={formatTallyCurrency(Number(row.amount))} />
                         </td>
                         <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top', maxWidth: 220 }}>
                           <>

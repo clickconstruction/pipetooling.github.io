@@ -85,7 +85,7 @@ const NEVER = new Set(['moneyParts', 'moneyTextParts', 'moneyFigureParts', 'Mone
 
 /** Public pages and the cards drawn on them: a customer's screen keeps its look (the owner's default, 2026-11-23). */
 const SKIP_PUBLIC = [
-  /^src\/pages\/(CustomerPortal|SubPortal|PayLink|BidRoom|JobContractSign|EstimateAccept|ContractAccept|GcWordAsk|SubmittalRoom|EstimatePublicTerms|HazmatNoticePublic|LegalPortal|LegalConfirm|CustomerRating|SupplyHouseQuotePage|FileOpen|ShowUs|PartnerStatement)\.tsx$/,
+  /^src\/pages\/(CustomerPortal|SubPortal|PayLink|BidRoom|JobContractSign|EstimateAccept|ContractAccept|GcWordAsk|SubmittalRoom|EstimatePublicTerms|HazmatNoticePublic|LegalPortal|LegalConfirm|CustomerRating|SupplyHouseQuotePage|FileOpen|ShowUs|PartnerStatement|ReceiptLink)\.tsx$/,
   // `partner` is the partner's statement as paper: its print is the page.
   /^src\/components\/(portal|subPortal|legalPortal|partner)\//,
 ]

@@ -23,6 +23,7 @@ import { PartnershipAgreementsTab } from '../components/partnerships/Partnership
 import { PartnershipTimelineTab } from '../components/partnerships/PartnershipTimelineTab'
 import { EmptyState } from '../components/EmptyState'
 import { partnershipsListEmptyWords } from '../lib/partnerLedger/partnershipsEmptyWords'
+import { MoneyText } from '../components/Money'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -798,8 +799,8 @@ export default function Partnerships() {
 
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.75rem 0 0' }}>
                 Every change is logged. Rate and split changes take effect from the next generated statement week — never
-                retroactively; each statement stamps the rates it was priced at. Current rates: {money(draft.field_rate)}
-                /hr field · {money(draft.estimating_rate)}/hr estimating.
+                retroactively; each statement stamps the rates it was priced at. Current rates: <MoneyText text={money(draft.field_rate)} />
+                /hr field · <MoneyText text={money(draft.estimating_rate)} />/hr estimating.
               </p>
 
               {validationErrors.length > 0 ? (

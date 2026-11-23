@@ -65,6 +65,7 @@ import { documentsBidCountLinesByBid, loadDocumentsBidCountRows } from '../lib/d
 import { DocumentsWhereFilesGo } from '../components/documents/DocumentsWhereFilesGo'
 import { DocumentsCompanyFolder } from '../components/documents/DocumentsCompanyFolder'
 import { canSetWhereFilesGo } from '../lib/documents/whereFilesGoTab'
+import { MoneyText } from '../components/Money'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -524,7 +525,7 @@ function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: Documents
                       })()}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {formatMoney(r.total_cents ?? 0)}
+                      <MoneyText text={formatMoney(r.total_cents ?? 0)} />
                     </td>
                   </tr>
                 )
@@ -1037,7 +1038,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                           )
                         })()}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}><MoneyText text={formatJobRevenueUsd(r.revenue)} /></td>
                     </tr>
                     {jobInvoices.map((inv) => {
                       const sent = calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? '').trim())
@@ -1061,7 +1062,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                               Invoice #{inv.sequence_order}
                             </button>
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{billingTypeLabel(inv)}</span>
-                            <span style={{ marginLeft: '0.5rem' }}>{formatJobRevenueUsd(inv.amount)}</span>
+                            <span style={{ marginLeft: '0.5rem' }}><MoneyText text={formatJobRevenueUsd(inv.amount)} /></span>
                             {sent ? (
                               <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {sent}</span>
                             ) : null}
@@ -1155,7 +1156,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                               Release of lien
                             </button>
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{lienReleaseFormLabel(rel.form_type)}</span>
-                            <span style={{ marginLeft: '0.5rem' }}>{formatJobRevenueUsd(rel.amount)}</span>
+                            <span style={{ marginLeft: '0.5rem' }}><MoneyText text={formatJobRevenueUsd(rel.amount)} /></span>
                             {lienReleaseChips(rel).map((c) => {
                               const colors = lienReleaseChipColors(c.tone)
                               return (
@@ -1700,7 +1701,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatSupplyInvoiceDateYmd(r.invoice_date)}</td>
                     <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {formatJobRevenueUsd(Number(r.amount))}
+                      <MoneyText text={formatJobRevenueUsd(Number(r.amount))} />
                     </td>
                   </tr>
                 )

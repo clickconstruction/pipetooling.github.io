@@ -28,6 +28,7 @@ import {
 import type { SearchableSelectOption } from '../SearchableSelect'
 import type { Database } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -526,7 +527,7 @@ export function UserMercuryWindowSection({
                 whiteSpace: 'nowrap',
               }}
             >
-              {formatUsd(breakdown.unallocated.totalAmount)}
+              <MoneyText text={formatUsd(breakdown.unallocated.totalAmount)} />
             </span>
           </button>
           {unallocatedOpen ? (
@@ -631,7 +632,7 @@ function TotalsBlock({
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {formatUsd(grand.totalAmount)}
+          <MoneyText text={formatUsd(grand.totalAmount)} />
         </span>{' '}
         <span style={{ color: 'var(--text-muted)' }}>· {grand.count.toLocaleString()} tx</span>
       </div>
@@ -641,7 +642,7 @@ function TotalsBlock({
         <div style={{ color: 'var(--text-700)', marginTop: '0.1rem' }}>
           Attributed to {displayName}:{' '}
           <span style={{ color: amountColor(byUser.totalAmount), fontVariantNumeric: 'tabular-nums' }}>
-            {formatUsd(byUser.totalAmount)}
+            <MoneyText text={formatUsd(byUser.totalAmount)} />
           </span>{' '}
           <span style={{ color: 'var(--text-faint)' }}>({byUser.count.toLocaleString()} tx)</span>
         </div>
@@ -650,7 +651,7 @@ function TotalsBlock({
         <div style={{ color: 'var(--text-700)', marginTop: '0.1rem' }}>
           Via person record:{' '}
           <span style={{ color: amountColor(byPerson.totalAmount), fontVariantNumeric: 'tabular-nums' }}>
-            {formatUsd(byPerson.totalAmount)}
+            <MoneyText text={formatUsd(byPerson.totalAmount)} />
           </span>{' '}
           <span style={{ color: 'var(--text-faint)' }}>({byPerson.count.toLocaleString()} tx)</span>
         </div>
@@ -755,7 +756,7 @@ function JobCard({
             whiteSpace: 'nowrap',
           }}
         >
-          {formatUsd(job.totalAmount)}
+          <MoneyText text={formatUsd(job.totalAmount)} />
         </span>
       </button>
       {expanded ? (
@@ -807,7 +808,7 @@ function JobCard({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {formatUsd(group.totalAmount)}
+                    <MoneyText text={formatUsd(group.totalAmount)} />
                   </span>
                 </button>
                 {isOpen ? (
@@ -897,7 +898,7 @@ function LabelCard({
             whiteSpace: 'nowrap',
           }}
         >
-          {formatUsd(bucket.totalAmount)}
+          <MoneyText text={formatUsd(bucket.totalAmount)} />
         </span>
       </button>
       {expanded ? (
@@ -974,10 +975,10 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {formatUsd(displayAmount)}
+                  <MoneyText text={formatUsd(displayAmount)} />
                   {amountField === 'allocation' && r.allocationAmount != null && r.allocationAmount !== r.amount ? (
                     <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)', fontWeight: 400 }}>
-                      of {formatUsd(r.amount)}
+                      of <MoneyText text={formatUsd(r.amount)} />
                     </span>
                   ) : null}
                 </td>
