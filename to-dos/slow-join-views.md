@@ -2,16 +2,16 @@
 name: "Two more views join through a COALESCE onto a table with row policies: agreements_on_file and people_hours_recorded"
 number: 430
 group: ready
-status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · neither view measured · the card written 2026-11-23 on the owner's word of 2026-11-23 to the overnight main session (the hand-off's permission 10, "writing the card", not the fix)
+status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · the card written 2026-11-23 on the owner's word of 2026-11-23 · 2026-11-23 no read-only path to a plan on prod, so both mended on the plan's shape: v2.8389 (agreements_on_file) and 20261123190100_people_hours_recorded_pay_join_by_key.sql (people_hours_recorded), each a migration PR left for the parent session to merge and push
 summary: >
   Documents → Photos timed out because its view found a job with a join written as an equality
   onto a COALESCE. Postgres will not use such a clause as an index condition on a table with row
   policies, so it walked the whole table under its policies once per outer row. That one was
   fixed. The thread that fixed it saw the same shape in two other security_invoker views and
   changed neither: agreements_on_file joins three party tables that way, and people_hours_recorded
-  joins the pay config that way. Neither has been measured. This card holds them so the measure
-  and the fix are done once, on purpose, and not found again by a timeout.
-next: Measure each view's plan on production as a dev, read only, with EXPLAIN (ANALYZE, BUFFERS) on the read the app makes. Then one migration each, only where the plan shows the whole-table walk.
+  joins the pay config that way. No read-only path to a plan on prod was open on 2026-11-23, so
+  both are mended on the plan's shape, with beds that hold every row the same (v2.8389 and the people_hours_recorded migration).
+next: After each PR merges, supabase db push, then read both views' plans on prod with the two EXPLAIN statements below whenever a read-only path to a plan is open, and run npm run check:migration-drift.
 size: S · S, after the measure
 blocker: none
 opinion: measure first — a view that reads in a few hundred milliseconds today is not worth a migration, and a view that walks a table under its policies will time out the day the table is big enough, as the Photos tab did
@@ -102,5 +102,30 @@ busiest account. Then `npm run check:migration-drift`.
 
 ## Where it stands
 
-Nothing is measured and nothing is built. The two views were seen on 2026-11-21 while the Photos
-view was fixed, and the card was written on 2026-11-23.
+**Measured on 2026-11-23, as far as a read-only path allowed.** No path to a plan on prod was open from the session
+that took the card: the Supabase CLI at 2.72.7 has no verb that runs a query, the session pooler needs a database
+password the machine does not hold, the Supabase MCP is off limits for this, and the dev seat reads through PostgREST,
+which hands back rows and no plan. Through the dev seat, as a dev, a one-line read of each view answered.
+
+The policies decide it, and they were read instead. `customers` has policies that read its own column
+(`master_user_id`), and `people_pay_config` has a self-read policy that reads `person_name`: on those two a `COALESCE`
+join cannot be an index condition. `supply_houses` has one policy, which reads no column of its own, so the walk may not
+happen there; the `CASE` costs nothing where it does not.
+
+The shape, on a local Postgres 15 as a role under a policy that reads a column, with 5,000 records and 200 lines:
+
+| Join | Plan with the walks priced out | Plan left free |
+|---|---|---|
+| `COALESCE` | `Join Filter` over a `Materialize` of the whole table | the whole table hashed under its policy, 5,000 rows |
+| `CASE` | `Index Cond` on the primary key | 200 lookups by key |
+
+**Both mended, since the rewrite keeps every row the same:**
+
+- `agreements_on_file`: `20261123190000_agreements_party_join_by_key.sql` (v2.8389), the three joins as a `CASE`. The
+  `paper-party` bed rebuilds the view as it stood and asserts five roles read the same lines from both, and that the
+  plan finds the customer and the supply house by key; the trade company's lookup is logged, not held.
+- `people_hours_recorded`: `20261123190100_people_hours_recorded_pay_join_by_key.sql` (its own PR), the pay config join as
+  a `CASE`. A new bed, `people-hours-recorded`, does the same over each side of the full join.
+
+**Left:** the push of each after its merge, and the plan read on prod with the two statements above once a read-only
+path to a plan is open.
