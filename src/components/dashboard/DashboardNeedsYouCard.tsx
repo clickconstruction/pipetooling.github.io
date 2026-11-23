@@ -13,6 +13,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
+import { NEEDS_YOU_PRESS_COLUMN, NEEDS_YOU_PRESS_MIN_HEIGHT, needsYouPhoneFigure } from '../../lib/dashboard/needsYouRow'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
 import { EmptyState } from '../EmptyState'
 import type { LienBoardDot } from '../../lib/jobs/lienBoard'
@@ -170,7 +171,7 @@ export function DashboardNeedsYouCard({
 
   const secondaryLinks = (item: NeedsYouItem) =>
     item.secondary && item.secondary.length > 0 ? (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.35rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem', marginTop: '0.35rem' }}>
         {item.secondary.map((sec) => (
           <button
             key={sec.key}
@@ -202,50 +203,83 @@ export function DashboardNeedsYouCard({
   const trail = needsYouTrailChips(handled, walkItems)
 
   // One line of the Cards view (the viewer's, or a fold's once opened). The leader's lien notices are a card of their own (v2.7435).
+  // On a phone every source draws the same two columns (v2.8329): the words on the left, the press on the right in a column of
+  // one width, the figure above it unless the title already says it. At a desk the row is as it was, the press last on the line.
+  const rowBox = (it: NeedsYouItem) => ({
+    background: 'var(--bg-subtle)',
+    border: '1px solid var(--border)',
+    borderLeft: `4px solid ${RAIL[it.severity]}`,
+    borderRadius: 8,
+    padding: '0.7rem 0.875rem',
+  })
+  const rowWords = (it: NeedsYouItem) => (
+    <>
+      <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
+      {secondaryLinks(it)}
+    </>
+  )
+  const rowPressTone = (it: NeedsYouItem) => ({
+    background: ACTION_BG[it.severity],
+    color: ACTION_FG[it.severity],
+    border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
+    borderRadius: 6,
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  })
+  const phoneRow = (it: NeedsYouItem) => {
+    const figure = needsYouPhoneFigure(it)
+    return (
+      <div
+        key={it.key}
+        data-needs-you-row={it.key}
+        data-needs-you-layout="phone"
+        style={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${NEEDS_YOU_PRESS_COLUMN}`, alignItems: 'center', columnGap: '0.75rem', ...rowBox(it) }}
+      >
+        <div data-needs-you-words style={{ minWidth: 0 }}>
+          {rowWords(it)}
+        </div>
+        <div data-needs-you-press-column style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, minWidth: 0 }}>
+          {figure ? (
+            <div data-needs-you-figure style={{ fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.15, fontVariantNumeric: 'tabular-nums', textAlign: 'center', overflowWrap: 'anywhere' }}>
+              {figure}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => act(it)}
+            style={{
+              ...rowPressTone(it),
+              width: '100%',
+              minHeight: NEEDS_YOU_PRESS_MIN_HEIGHT,
+              boxSizing: 'border-box',
+              padding: '0.3rem 0.45rem',
+              lineHeight: 1.2,
+              textAlign: 'center',
+              whiteSpace: 'normal',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {actionLabelOf(it)}
+          </button>
+        </div>
+      </div>
+    )
+  }
   const row = (it: NeedsYouItem) =>
     it.lienSign ? (
       <LienLeaderSignCardView key={it.key} card={it.lienSign} phone={isPhone} rail={RAIL[it.severity]} onOpen={(href, press) => openLienNotice(it, href, press)} />
+    ) : isPhone ? (
+      phoneRow(it)
     ) : (
-            <div
-              key={it.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.6rem 0.875rem',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border)',
-                borderLeft: `4px solid ${RAIL[it.severity]}`,
-                borderRadius: 8,
-                padding: '0.7rem 0.875rem',
-              }}
-            >
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
-                {secondaryLinks(it)}
-              </div>
-              <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                {it.figure}
-              </div>
-              <button
-                type="button"
-                onClick={() => act(it)}
-                style={{
-                  background: ACTION_BG[it.severity],
-                  color: ACTION_FG[it.severity],
-                  border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
-                  borderRadius: 6,
-                  padding: '0.45rem 0.9rem',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {actionLabelOf(it)}
-              </button>
-            </div>
+      <div key={it.key} data-needs-you-row={it.key} data-needs-you-layout="desk" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem 0.875rem', ...rowBox(it) }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>{rowWords(it)}</div>
+        <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{it.figure}</div>
+        <button type="button" onClick={() => act(it)} style={{ ...rowPressTone(it), padding: '0.45rem 0.9rem', flexShrink: 0 }}>
+          {actionLabelOf(it)}
+        </button>
+      </div>
     )
 
   const chip = (key: string, label: string, active: boolean, onClick: () => void) => (
@@ -406,6 +440,7 @@ export function DashboardNeedsYouCard({
                   border: 'none',
                   borderRadius: 6,
                   padding: '0.55rem 1.1rem',
+                  minHeight: isPhone ? NEEDS_YOU_PRESS_MIN_HEIGHT : undefined,
                   fontSize: '0.875rem',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -423,6 +458,7 @@ export function DashboardNeedsYouCard({
                     border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     padding: '0.55rem 1.1rem',
+                    minHeight: isPhone ? NEEDS_YOU_PRESS_MIN_HEIGHT : undefined,
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                   }}

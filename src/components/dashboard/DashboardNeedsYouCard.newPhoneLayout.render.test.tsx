@@ -66,6 +66,30 @@ describe('DashboardNeedsYouCard · the new phone layout', () => {
     expect(onWalk()).toBe(false)
   })
 
+  it('switch on or off, a phone\'s Cards rows are two columns: the words, then the press on the right (v2.8329)', () => {
+    for (const stored of [true, false]) {
+      scenario.stored = stored
+      localStorage.setItem(KEY, 'cards')
+      const { unmount } = draw('assistant')
+      const rows = Array.from(document.querySelectorAll('[data-needs-you-row]')) as HTMLElement[]
+      expect(rows.length, String(stored)).toBe(ITEMS.length)
+      for (const row of rows) {
+        expect(row.getAttribute('data-needs-you-layout'), String(stored)).toBe('phone')
+        const [words, pressColumn] = Array.from(row.children) as [HTMLElement, HTMLElement]
+        expect(words.hasAttribute('data-needs-you-words'), String(stored)).toBe(true)
+        expect(pressColumn.hasAttribute('data-needs-you-press-column'), String(stored)).toBe(true)
+        const press = pressColumn.querySelector('button') as HTMLElement
+        expect(press.style.width, String(stored)).toBe('100%')
+        expect(press.style.minHeight, String(stored)).toBe('44px')
+        // Each fixture's title says its own count, so no row draws it a second time.
+        expect(pressColumn.querySelector('[data-needs-you-figure]'), String(stored)).toBeNull()
+      }
+      expect(new Set(rows.map((r) => r.style.gridTemplateColumns)).size, String(stored)).toBe(1)
+      unmount()
+      localStorage.clear()
+    }
+  })
+
   it('switch on: a choice saved before the switch still wins', () => {
     scenario.stored = true
     localStorage.setItem(KEY, 'cards')

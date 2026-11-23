@@ -321,3 +321,131 @@ describe('DashboardNeedsYouCard: the leader’s lien notices as a card of their 
     expect(onAction.mock.calls[0]![0]).toMatchObject({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j891&pile=awaiting' })
   })
 })
+
+describe('DashboardNeedsYouCard: a phone row is words on the left and the press on the right (v2.8329)', () => {
+  // Invented rows: a short label, the longest label on the list, a figure the title does not say, and a second control.
+  const ROWS: NeedsYouItem[] = [
+    { key: 'tally-self', severity: 'amber', kicker: 'Your card purchases', title: '14 purchases need a job', detail: "Purchases over 2 days old aren't on a job yet.", figure: '14', actionLabel: 'Open tally' },
+    { key: 'todays-sends', severity: 'amber', kicker: 'Messages', title: 'Today’s sends', detail: '3 texts ready to send, 1 held', figure: '4', actionLabel: 'Open' },
+    { key: 'team-reviews', severity: 'gray', kicker: 'People', title: 'Team reviews due', detail: 'Two people are due a review this month.', figure: '2', actionLabel: 'Open Hiring → Review' },
+    {
+      key: 'ar-deposits',
+      severity: 'blue',
+      kicker: 'Money received',
+      title: 'Allocate 2 bank deposits',
+      detail: '2 transactions still have balance to apply.',
+      figure: '2',
+      actionLabel: 'Match deposits',
+      secondary: [{ key: 'why', label: 'Why these two?' }],
+    },
+  ]
+  const rowOf = (key: string) => document.querySelector(`[data-needs-you-row="${key}"]`) as HTMLElement
+  beforeEach(() => cleanup())
+  // The reviews line is the owner's, so the assistant opens its fold: a fold's lines are the same row.
+  const drawPhoneCards = () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const utils = renderCard(ROWS)
+    for (const show of screen.queryAllByText('Show')) fireEvent.click(show)
+    return utils
+  }
+
+  it('every source draws the same two columns, the words first and the press column second', () => {
+    drawPhoneCards()
+    const columns = new Set<string>()
+    for (const it of ROWS) {
+      const row = rowOf(it.key)
+      expect(row.getAttribute('data-needs-you-layout'), it.key).toBe('phone')
+      expect(row.style.display, it.key).toBe('grid')
+      columns.add(row.style.gridTemplateColumns)
+      const [words, pressColumn] = Array.from(row.children) as [HTMLElement, HTMLElement]
+      expect(row.children.length, it.key).toBe(2)
+      expect(words.hasAttribute('data-needs-you-words'), it.key).toBe(true)
+      expect(words.textContent, it.key).toContain(it.title)
+      expect(words.textContent, it.key).toContain(it.detail)
+      expect(pressColumn.hasAttribute('data-needs-you-press-column'), it.key).toBe(true)
+      // The press is in the right-hand column and nowhere under the words.
+      expect(words.querySelector('button[type="button"]:not([style*="underline"])'), it.key).toBeNull()
+      expect(pressColumn.querySelectorAll('button').length, it.key).toBe(1)
+      expect(pressColumn.querySelector('button')!.textContent, it.key).toBe(it.actionLabel)
+    }
+    // One column template for the whole list, with a fixed press column: no label widens it.
+    expect(columns.size).toBe(1)
+    expect([...columns][0]).toBe('minmax(0, 1fr) clamp(5.25rem, 27vw, 6.5rem)')
+  })
+
+  it('the presses are one size: the column’s width, a thumb tall, one type size, and a long label wraps inside its press', () => {
+    drawPhoneCards()
+    const presses = ROWS.map((it) => rowOf(it.key).querySelector('[data-needs-you-press-column] button') as HTMLElement)
+    for (const press of presses) {
+      expect(press.style.width).toBe('100%')
+      expect(press.style.minHeight).toBe('44px')
+      expect(press.style.fontSize).toBe('0.8125rem')
+      expect(press.style.whiteSpace).toBe('normal')
+    }
+    // Each press keeps its own words and its tone.
+    expect(presses.map((p) => p.textContent)).toEqual(['Open tally', 'Open', 'Open Hiring → Review', 'Match deposits'])
+    expect(new Set(presses.map((p) => p.style.background)).size).toBe(3)
+  })
+
+  it('the figure sits above the press, and a number the title already says is not drawn twice', () => {
+    drawPhoneCards()
+    // The title leads with 14, so the row draws no second 14.
+    expect(rowOf('tally-self').querySelector('[data-needs-you-figure]')).toBeNull()
+    expect(rowOf('ar-deposits').querySelector('[data-needs-you-figure]')).toBeNull()
+    // Today's sends and the reviews say no number in their titles: the figure is the first thing in the press column.
+    for (const [key, figure] of [['todays-sends', '4'], ['team-reviews', '2']] as const) {
+      const pressColumn = rowOf(key).querySelector('[data-needs-you-press-column]') as HTMLElement
+      const [first, second] = Array.from(pressColumn.children) as [HTMLElement, HTMLElement]
+      expect(first.hasAttribute('data-needs-you-figure'), key).toBe(true)
+      expect(first.textContent, key).toBe(figure)
+      expect(second.tagName, key).toBe('BUTTON')
+    }
+  })
+
+  it('a second control keeps its home under the words, and each press still does its own thing', () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const onAction = vi.fn()
+    const onSecondary = vi.fn()
+    render(<DashboardNeedsYouCard userId="u-1" role="assistant" items={ROWS} onAction={onAction} onSecondary={onSecondary} />)
+    const row = rowOf('ar-deposits')
+    const link = row.querySelector('[data-needs-you-words] button') as HTMLElement
+    expect(link.textContent).toBe('Why these two?')
+    fireEvent.click(link)
+    expect(onSecondary).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }), 'why')
+    expect(onAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Match deposits'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }))
+  })
+
+  it('a line opened from a fold draws the same phone row', () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    renderCard(ROWS, 'dev')
+    for (const show of screen.queryAllByText('Show')) fireEvent.click(show)
+    const rows = Array.from(document.querySelectorAll('[data-needs-you-fold] [data-needs-you-row]'))
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row.getAttribute('data-needs-you-layout')).toBe('phone')
+  })
+
+  it('Walk the list on a phone: the press and Skip for now are a thumb tall', () => {
+    phone.on = true
+    renderCard(ROWS)
+    expect(screen.getByText('Skip for now').style.minHeight).toBe('44px')
+    expect(screen.getByText('Open tally').style.minHeight).toBe('44px')
+  })
+
+  it('at a desk the row is as it was: one line, the figure drawn, the press last', () => {
+    renderCard(ROWS)
+    const row = rowOf('tally-self')
+    expect(row.getAttribute('data-needs-you-layout')).toBe('desk')
+    expect(row.style.display).toBe('flex')
+    expect(row.querySelector('[data-needs-you-press-column]')).toBeNull()
+    const [, figure, press] = Array.from(row.children) as [HTMLElement, HTMLElement, HTMLElement]
+    expect(figure.textContent).toBe('14')
+    expect(press.tagName).toBe('BUTTON')
+    expect(press.style.minHeight).toBe('')
+    expect(press.style.width).toBe('')
+  })
+})
