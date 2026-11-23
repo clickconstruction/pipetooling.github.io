@@ -9,8 +9,9 @@
 --     (the owner's first decision) it lists a party's paper of any kind and any state: a W-9 and a certificate say
 --     their kind, a copy nobody sent reads not_sent, and a person's or a trade company's own tax form is still no line;
 --   * Take back (v2.8348), the statement Documents → Agreements sends: it removes a party's paper that is out or was
---     never sent for the owner and a dev, never a signed one, nothing for an estimator, and for an assistant and the
---     controller exactly what the table's delete policy says; the copy under Sent copies stays;
+--     never sent, never a signed one, and nothing for an estimator; the table's delete policy answers the office's four
+--     roles, so the statement works for an assistant and the controller too, and the press being the owner's and a
+--     dev's is the app's own rule; the copy under Sent copies stays;
 --   * each role reads what it read before and no more, but the estimator, who reads every kind of an outside company's
 --     paper, a W-9 and a certificate among them (migration *_estimator_reads_outside_papers, the owner's call 9), and
 --     still no staff paper, no sub's own, no person's tax form and nobody on no list; a digital twin and an archived
@@ -167,10 +168,6 @@ CREATE FUNCTION pp.take_back(p_id uuid) RETURNS text LANGUAGE sql AS $$
     WHERE id = p_id AND party_contact_id IS NOT NULL AND job_id IS NULL AND status IN ('unsent', 'sent')
     RETURNING id)
   SELECT count(*)::text FROM gone
-$$;
--- What the table's delete policy says of the caller, from the policy's own four questions: '1' may delete, '0' may not.
-CREATE FUNCTION pp.may_delete() RETURNS text LANGUAGE sql AS $$
-  SELECT CASE WHEN public.is_dev() OR public.is_pay_approved_master() OR public.is_master_or_dev() OR public.is_assistant_of_pay_approved_master() THEN '1' ELSE '0' END
 $$;
 GRANT USAGE ON SCHEMA pp TO authenticated, anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pp TO authenticated, anon;
@@ -427,20 +424,20 @@ SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('an estimator reads the paper and takes nothing back', pp.take_back('00000000-0000-0000-0000-000004030141'), '0');
 RESET ROLE;
--- The delete policy is narrower than the write policy, so the press is the owner's and a dev's. What an assistant and
--- the controller are answered is whatever that policy says of them here, and never a refusal in words.
+-- The table's delete policy answers the office's four roles (is_assistant() covers the controller, since
+-- 20260714200000_dissolve_assistant_pay_linkage). So the statement works for the controller and an assistant too. The
+-- press is the owner's and a dev's by the app's own rule (canTakeBackPapers), which is narrower than this.
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d4');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the controller is answered what the delete policy says', pp.take_back('00000000-0000-0000-0000-000004030144'), pp.may_delete());
+SELECT pp.same('the database lets the controller take back a paper that is out', pp.take_back('00000000-0000-0000-0000-000004030144'), '1');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('and so is an assistant', pp.take_back('00000000-0000-0000-0000-000004030145'), pp.may_delete());
+SELECT pp.same('and an assistant', pp.take_back('00000000-0000-0000-0000-000004030145'), '1');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d2');
 SET LOCAL ROLE authenticated;
-SELECT pp.same('the owner may delete a paper', pp.may_delete(), '1');
-SELECT pp.same('and still takes back no signed paper: the statement asks for an unsigned one', pp.take_back('00000000-0000-0000-0000-000004030142'), '0');
+SELECT pp.same('the owner takes back no signed paper: the statement asks for an unsigned one', pp.take_back('00000000-0000-0000-0000-000004030142'), '0');
 SELECT pp.same('the owner takes back a paper that is out', pp.take_back('00000000-0000-0000-0000-000004030141'), '1');
 SELECT pp.same('and a second press finds nothing to take', pp.take_back('00000000-0000-0000-0000-000004030141'), '0');
 RESET ROLE;
@@ -455,7 +452,7 @@ SELECT pp.same('the copy of the email that went out stays under Sent copies',
   (SELECT count(*)::text FROM public.sent_documents WHERE source_table = 'person_contract_documents' AND source_id = '00000000-0000-0000-0000-000004030141'), '1');
 SELECT pp.same('and the contact the paper was with is still there', (pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2') IS NOT NULL)::text, 'true');
 -- The section's own rows go, so the rest of the scenario reads the papers it read before.
-DELETE FROM public.person_contract_documents WHERE id IN ('00000000-0000-0000-0000-000004030142', '00000000-0000-0000-0000-000004030144', '00000000-0000-0000-0000-000004030145');
+DELETE FROM public.person_contract_documents WHERE id = '00000000-0000-0000-0000-000004030142';
 
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d9');
 SET LOCAL ROLE authenticated;

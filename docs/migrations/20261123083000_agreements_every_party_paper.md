@@ -38,7 +38,7 @@ Nobody reads a row they could not read. The office and an estimator see on one m
 
 ## The beds
 
-- `supabase/tests/paper_party/20_scenario.sql` (`npm run test:pg:paper-party`). A supply house's W-9, a customer's certificate, the W-9 of someone on no list and a copy nobody sent are lines now, each with its state and kind. An estimator reads the outside companies' and none of a party on no list. A teammate's, a sub's and a trade company's own tax forms are still no lines. The find box finds each by its words. A new section plays **Take back**'s own statement as each role.
+- `supabase/tests/paper_party/20_scenario.sql` (`npm run test:pg:paper-party`). A supply house's W-9, a customer's certificate, the W-9 of someone on no list and a copy nobody sent are lines now, each with its state and kind. An estimator reads the outside companies' and none of a party on no list. A teammate's, a sub's and a trade company's own tax forms are still no lines. The find box finds each by its words. A new section plays **Take back**'s own statement as each role: an estimator takes nothing, nobody takes back a signed paper, and the table's delete policy answers the office's four roles, so the press being the leader's and a dev's is the app's own rule.
 - `supabase/tests/agreements_on_file/20_scenario.sql` (`npm run test:pg:agreements-on-file`) is unchanged and still passes: an unsent paper and a W-9 of a person are absent.
 - Both bed scripts re-apply the ground, which restates the view as it stood. They now re-apply this migration after it, as on prod.
 
