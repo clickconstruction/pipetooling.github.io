@@ -3476,6 +3476,14 @@ staff paths still use **`is_dev_or_master_or_assistant()`** unchanged.
 **Vehicles** left this bundle in v2.1650 (owner decision): the tab is gated by the new **`canAccessVehicles`** (dev / controller / Pay-Approved master / **assistant**), matching the `is_assistant()` table RLS that had been latent since v2.661.
 Master adoption confers nothing: `is_assistant_of_pay_approved_master()` was dropped in v2.661.
 
+**Working hours (v2.8345, punch list #429):** a person's working hours are a `set` row on `person_available_hours`, a week with a start and an end for each day in 15-minute blocks.
+`set_working_hours(user, days, from, reason, dry_run)` is the one door that writes one, a definer that refuses anyone who is not a **dev** or the **controller** (`is_dev()`, `is_controller()`).
+For a salaried person the door writes `people_pay_config.salaried_week_hours` in the same transaction and adds a `pay_admin_events` line, and a change to a day's length starts this week and needs a reason.
+The table's insert policy takes `kind = 'answer'` alone, so nobody signed in, a dev included, writes a set row straight to the table.
+An answer is written as before: by the person, or for anyone by a dev, an assistant, the controller or a pay-approved master.
+`working_hours_on(user, day)` is a security invoker, so it answers what the caller may already read.
+Migration `20261123075925_working_hours_door.sql`.
+
 **Vehicle holders (any role, v2.1648):** whoever currently holds a company vehicle (open `vehicle_possessions` row) gets scoped self-service via the `holds_vehicle()` policies (migration `20260814183650_vehicle_holder_access.sql`): SELECT on their vehicle + its readings/service events/problem reports + own possessions, INSERT odometer readings (`created_by = auth.uid()`), and INSERT problem reports (`reported_by = auth.uid()`).
 Surfaced as the Dashboard **My Vehicle** card (below My Time).
 No UPDATE/DELETE — office management stays with the office pool above.
