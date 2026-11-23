@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien To Do on a Phone</title>
+<style>
+/* The page: a reading column, with the app drawn inside phone frames. Each frame carries its own theme
+   (data-theme on .app), so dark and light sit side by side whatever the reader's own theme is. */
+:root{--pg:#f0f2f5;--pg-surface:#ffffff;--pg-text:#111827;--pg-muted:#4b5563;--pg-border:#cfd4db;--pg-frame:#1f2937;--pg-accent:#f97316}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;color-scheme:dark}}
+:root[data-theme="dark"]{--pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;
+  padding:28px max(16px,env(safe-area-inset-right,0px)) 72px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.15rem;margin:44px 0 6px;padding-top:18px;border-top:1px solid var(--pg-border)}
+p{margin:6px 0;max-width:70ch}
+.lede,.note{color:var(--pg-muted)} .note{font-size:13.5px}
+.three{margin:16px 0 0;padding:14px 18px;border:1px solid var(--pg-border);border-left:4px solid var(--pg-accent);border-radius:8px;background:var(--pg-surface);max-width:76ch}
+.three p{margin:4px 0}
+.pair{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:14px}
+.col{min-width:0;max-width:100%} .scroll{overflow-x:auto;max-width:100%}
+.cap{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted);margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.cap .tag{border-radius:999px;padding:1px 9px;border:1px solid var(--pg-border);color:var(--pg-text)}
+.cap .tag.pick{background:#15803d;border-color:#15803d;color:#fff}
+.faults{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px;max-width:78ch}
+.faults li{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start}
+.faults .n,.pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;font:700 12px/1 system-ui,sans-serif}
+.faults .n.ok{background:#15803d}
+table{border-collapse:collapse;margin-top:12px;font-size:14px;max-width:100%}
+th,td{text-align:left;padding:7px 14px 7px 0;border-bottom:1px solid var(--pg-border);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted)}
+td:first-child{font-weight:700}
+
+/* ---- the app's own tokens, from src/index.css ---- */
+.app[data-theme="light"]{
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;
+  --text-base:#1a1a1a;--text-strong:#111827;--text-700:#374151;--text-muted:#6b7280;
+  --border:#cfd4db;--border-strong:#aab2bd;--border-400:#9ca3af;
+  --text-link:#2563eb;--text-red-700:#b91c1c;--text-amber-800:#92400e;--text-violet-700:#6d28d9;--text-blue-700:#1d4ed8;--text-green-700:#15803d;
+  --bg-red-tint:#fef2f2;--bg-amber-tint:#fffbeb;--bg-blue-tint:#eff6ff;
+}
+.app[data-theme="dark"]{
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;--border-400:#6b7280;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;--text-violet-700:#c4b5fd;--text-blue-700:#93c5fd;--text-green-700:#4ade80;
+  --bg-red-tint:#3b1a1a;--bg-amber-tint:#3a2f11;--bg-blue-tint:#1e3358;
+}
+.app{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45;color:var(--text-base);background:var(--bg-page);text-align:left}
+.app button{font-family:inherit;cursor:pointer}
+
+.phone{border:9px solid var(--pg-frame);border-radius:30px;overflow:hidden;position:relative;flex:none}
+.phone.clip{height:880px}
+.nav{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg-page);border-bottom:1px solid var(--border)}
+.nav i{width:18px;height:16px;border-radius:4px;background:var(--text-700);opacity:.8}
+.nav i.sq{width:30px;height:30px;border-radius:6px;opacity:1} .nav .sp{flex:1}
+.desk{margin:8px 8px 0;background:var(--surface);border:1px solid var(--border);border-bottom:0}
+.dhead{display:flex;align-items:center;gap:14px;padding:8px 9px 4px}
+.back{min-height:44px;padding:0 12px;border:1px solid var(--border-strong);border-radius:9px;background:none;color:var(--text-700);font-size:13.5px;font-weight:600}
+.dhead b{font-size:18px;color:var(--text-strong);flex:1}
+.more{position:relative;font-weight:800;letter-spacing:2px;color:var(--text-700);padding:0 12px}
+.more u{position:absolute;top:-12px;right:0;min-width:20px;height:20px;border-radius:10px;background:#2563eb;color:#fff;font:700 11px/20px system-ui;text-align:center;text-decoration:none;letter-spacing:0}
+.tabs4{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;margin:4px 9px 12px;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden}
+.tabs4 span{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--text-700)}
+.tabs4 span.on{background:#2563eb;color:#fff;border-radius:8px}
+.board{display:grid;gap:10px;padding:10px 12px 6px;border-top:1px solid var(--border)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{position:relative;display:flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:9px 10px 10px;min-width:0}
+.tile .fig{font-size:20px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--c,var(--text-strong))}
+.tile .lab{font-size:11.8px;font-weight:600;color:var(--text-700);line-height:1.25}
+.tile .ln{font-size:11.5px;line-height:1.3;color:var(--text-muted)} .tile .ln.red{color:var(--text-red-700)}
+.tile .door{font-size:11.8px;font-weight:600;color:var(--text-link);white-space:nowrap}
+.tile .door.corner{position:absolute;top:9px;right:10px}
+.tile.red{--c:var(--text-red-700)} .tile.violet{--c:var(--text-violet-700)} .tile.amber{--c:var(--text-amber-800)}
+.wide{min-height:44px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600}
+.fold{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:14px;font-weight:600;color:var(--text-700)}
+.fold span{flex:1}
+.find{display:flex;align-items:center;min-height:52px;padding:0 16px;color:var(--text-muted);font-size:15px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-top:4px}
+.ghead{display:flex;align-items:baseline;gap:12px;padding:7px 12px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:var(--bg-subtle);color:var(--text-strong);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative}
+.ghead .sp{flex:1} .ghead.red{background:var(--bg-red-tint);color:var(--text-red-700)}
+.chip{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:5px;padding:0 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip.notice{background:var(--bg-blue-tint);color:var(--text-blue-700)} .chip.affidavit{background:var(--bg-red-tint);color:var(--text-red-700)} .chip.retainage,.chip.run{background:var(--bg-amber-tint);color:var(--text-amber-800)}
+.chip em{font-style:normal;color:var(--text-green-700)} .chip u{min-width:15px;height:15px;border-radius:8px;background:#dc2626;color:#fff;font:700 10px/15px system-ui;text-align:center;text-decoration:none}
+.dots{display:inline-flex;align-items:center;gap:4px;color:var(--k);font-weight:800}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--border-400)} .dots i.on{background:var(--k)}
+.k-notice{--k:var(--text-blue-700)} .k-affidavit{--k:var(--text-red-700)} .k-retainage,.k-run{--k:var(--text-amber-800)}
+.act{border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:600}
+.sec{border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text-700);font-weight:600}
+.jobs{color:var(--text-link);font-size:14px;font-weight:600;padding:6px 0}
+.pin{position:absolute;z-index:3;box-shadow:0 0 0 2px var(--surface)}
+
+/* BEFORE: a row as it is. The press is as wide as its words and sits on a line of its own under them. */
+.b-row{padding:11px 12px 10px;border-bottom:1px solid var(--border);position:relative}
+.b-row .top{display:flex;align-items:flex-end;gap:10px}
+.b-row .title{flex:1;min-width:0;font-size:15.5px;font-weight:700;color:var(--text-strong);line-height:1.3}
+.b-row .amt{font-size:15.5px;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums}
+.b-row .sub{font-size:13px;color:var(--text-muted);margin-top:3px}
+.b-row .foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:8px}
+.b-row .foot .chip{min-height:40px} .b-row .foot .sp{flex:1}
+.b-row .foot .act,.b-row .foot .sec{flex:none;min-height:40px;padding:0 12px;font-size:14px;white-space:nowrap}
+
+/* AFTER: words at the left, one press at the right, every press one size. The second way out is a quiet line under the words. */
+.a-row{display:grid;grid-template-columns:minmax(0,1fr) var(--press,116px);column-gap:12px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--border)}
+.a-row .title{font-size:15.5px;font-weight:700;color:var(--text-strong);line-height:1.3}
+.a-row .sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+.a-row .meta{display:flex;align-items:center;gap:8px;margin-top:6px}
+.a-row .meta .chip{min-height:26px} .a-row .meta .sp{flex:1}
+.a-row .amt{font-size:14px;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums}
+.a-row .act{width:100%;min-height:44px;padding:4px 6px;font-size:13.5px;line-height:1.2;text-align:center}
+.a-row .quiet{display:inline-flex;align-items:center;min-height:32px;border:0;background:none;padding:0;color:var(--text-link);font-size:13px;font-weight:600;margin-top:2px}
+.app[data-w="320"] .a-row{--press:100px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The Lien desk's To do on a phone: before and after</h1>
+  <p class="lede">This is the screen <b>The Board ›</b> opens from the Dashboard. Every job, name, count, date and amount here is made up. Nothing is copied from the live app.</p>
+  <div class="three">
+    <p><b>What it does well.</b> It opens cleanly: four tiles, the bins folded away, and one list by the day each paper is due, with the money on every day.</p>
+    <p><b>What I would change.</b> The rows. Give every row one press at the right, one size, as you asked for on Needs you. A computer's rows already work that way. Put the second way out under the words. Say <i>No day set</i> once.</p>
+    <p><b>What you pick.</b> Whether to build the rows this way, and whether three long presses may take shorter words.</p>
+  </div>
+
+  <h2>The first screen, dark</h2>
+  <p class="note">430 px wide, the width of your phone. The frame is cut where a phone's screen ends.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> today</p><div class="scroll"><div data-frame="before" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> recommended</p><div class="scroll"><div data-frame="after" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+
+  <h2>The whole list, top to bottom</h2>
+  <p class="note">Thirteen made-up rows, one of each kind the live list held. The numbers on the Before match the list under the frames.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> today</p><div class="scroll"><div data-frame="before" data-theme="dark" data-w="430" data-pins="1"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> recommended</p><div class="scroll"><div data-frame="after" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+
+  <ul class="faults">
+    <li><span class="n">1</span><span><b>The press is a different width on every row.</b> A phone sizes each press to its words, from 69 px for <i>Note it</i> to 241 px for <i>Answer the homestead question</i>. The eye has to find it again on each row.</span></li>
+    <li><span class="n">2</span><span><b>The press has a line to itself.</b> It sits under the words with the paper's chip and its dots. That line is why a row is 111 to 171 px tall.</span></li>
+    <li><span class="n">3</span><span><b>On a row with two presses, the main one jumps to the left.</b> <i>Not lienable…</i> takes the right side, where the main press is on every other row. The main press drops to a line of its own at the left.</span></li>
+    <li><span class="n">4</span><span><b>Row presses are 40 px tall.</b> The app's own rule for a phone is 44.</span></li>
+    <li><span class="n">5</span><span><b><i>No day set</i> is a heading twice.</b> Once in the middle of the days and once at the end. The list is two pools drawn one after the other, and each pool ends with its rows that have no day.</span></li>
+    <li><span class="n">6</span><span><b>The first tile's words leave one word alone on a line.</b> And its <b>Show them ›</b> is at the foot of the tile while the next tile's is in the top corner.</span></li>
+    <li><span class="n">7</span><span><b>The same row many times.</b> Every filed lien is its own row with the same words and the same press. This is the owner's run, punch list #362, and is not redrawn here.</span></li>
+  </ul>
+
+  <h2>What changes</h2>
+  <div class="scroll"><table>
+    <tr><th>Piece</th><th>Before</th><th>After</th></tr>
+    <tr><td>The press</td><td>As wide as its words, under the row's words, 40 px tall</td><td>One column at the right, 116 px wide and 44 px tall on every row. Longer words wrap inside it, as on a computer</td></tr>
+    <tr><td>A second press</td><td>A second button beside the first, which pushes the first away</td><td>A quiet line under the words: <i>Not lienable…</i>, <i>Take back…</i></td></tr>
+    <tr><td>The money</td><td>Beside the job's name</td><td>On the row's last line, at the right, so the amounts stand in a column beside the presses</td></tr>
+    <tr><td>The paper's chip and dots</td><td>On the press's line</td><td>On the row's last line, with the money. The chip still opens its paper</td></tr>
+    <tr><td>No day set</td><td>Two headings</td><td>One heading, last</td></tr>
+    <tr><td>The tiles</td><td>A word alone on a line, two doors in two corners</td><td>The day on one line and its parts on the next. Each door ends the line it acts on</td></tr>
+    <tr><td>Three long presses</td><td><i>Answer the homestead question</i>, <i>Open the property record</i>, <i>Fix the property record</i></td><td><i>Answer it</i>, <i>Open the record</i>, <i>Fix the record</i>. The line above each already says which question or record. <b>Your call</b></td></tr>
+    <tr><td>The list's length</td><td>About 1,880 px for these thirteen rows</td><td>About 1,680 px, a tenth shorter. A row with a long sentence gets taller, since its words have less room. The gain is the press in one place, not the height</td></tr>
+  </table></div>
+
+  <h2>The first screen, light</h2>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span></p><div class="scroll"><div data-frame="before" data-clip="1" data-theme="light" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> recommended</p><div class="scroll"><div data-frame="after" data-clip="1" data-theme="light" data-w="430"></div></div></div>
+  </div>
+
+  <h2>At 375 px and at 320 px</h2>
+  <p class="note">The After at the two narrower widths. At 320 px the press column is 100 px.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 375 px, dark</p><div class="scroll"><div data-frame="after" data-clip="1" data-theme="dark" data-w="375"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 320 px, dark</p><div class="scroll"><div data-frame="after" data-clip="1" data-theme="dark" data-w="320"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 320 px, light</p><div class="scroll"><div data-frame="after" data-clip="1" data-theme="light" data-w="320"></div></div></div>
+  </div>
+
+  <h2>What stays as it is</h2>
+  <p>The header, the four tabs, the fold over the bins, the find box, the day headings with their money, and what every press does. The open bins and their small chips are a separate matter and are not drawn here. Nothing changes on a computer.</p>
+</div>
+
+<script>
+// Made-up rows, one of each kind the list holds.
+const GROUPS = [
+  { head: 'Was due Mon Nov 16 · 2', left: '7 days late', tone: 'red', rows: [
+    { title: 'Northgate GC', sub: '2 notices approved · to print', kind: 'notice', chip: 'Notice', dots: [4, ''], act: 'Print and mail 2' },
+    { title: '4 notices printed Nov 17 to Nov 19', sub: 'A checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the print back.', kind: 'run', chip: 'Run', dots: [4, ''], jobs: '▸ The 4 jobs', sec: 'Take back…', act: 'Enter mail numbers' },
+  ] },
+  { head: 'Due Mon Nov 23 · 4', left: 'today', amt: '$14,860', tone: 'red', rows: [
+    { title: '2041 · Ridgeway Builders – Elm St', amt: '$2,400', sub: 'Retainage notice to send', kind: 'retainage', chip: 'Retainage', dots: [2, ''], act: 'Open the notice' },
+    { title: '2012 · Harbor Point GC', amt: '$4,900', sub: 'Lien filed · mail its copies today', kind: 'affidavit', chip: 'Affidavit', badge: 1, dots: [0, '—'], act: 'Enter mail numbers', same: 1 },
+    { title: '2018 · Harbor Point GC – Unit 5', amt: '$3,180', sub: 'Lien filed · mail its copies today', kind: 'affidavit', chip: 'Affidavit', badge: 1, dots: [0, '—'], act: 'Enter mail numbers' },
+    { title: '2025 · Service visit — 14 Example Ln (HCP 2025)', amt: '$4,380', sub: 'Lien filed · mail its copies today', kind: 'affidavit', chip: 'Affidavit', badge: 1, dots: [0, '—'], act: 'Enter mail numbers' },
+  ] },
+  { head: 'No day set · 2', amt: '$5,150', none: 1, rows: [
+    { title: '2033 · Service visit — 90 Sample Rd (HCP 2033)', amt: '$1,650', sub: 'A window closed with nothing recorded', kind: 'notice', chip: 'Notice', ok: 1, dots: [0, '—'], act: 'Note it' },
+    { title: '2044 · Cedar Row Homes', amt: '$3,500', sub: 'Retainage not on the job · $3,500.00 looks held · 1 bill paid at 90%', kind: 'retainage', chip: 'Retainage', dots: [0, '—'], act: 'Record the retainage' },
+  ] },
+  { head: 'Due Tue Dec 15 · 4', left: '22 days', amt: '$9,270', rows: [
+    { title: '2006 · Harbor Point GC', amt: '$650', sub: 'Affidavit to send', kind: 'affidavit', chip: 'Affidavit', ok: 1, dots: [2, ''], act: 'Open the affidavit' },
+    { title: '2051 · Lakeside Remodel', amt: '$450', sub: 'Affidavit · nobody has answered whether this home is a homestead', kind: 'affidavit', chip: 'Affidavit', badge: 1, dots: [1, ''], sec: 'Not lienable…', act: 'Answer the homestead question', short: 'Answer it', two: 1 },
+    { title: '2009 · Check pickup (a reissued check)', amt: '$350', sub: 'Affidavit · its § 53.056 notice is approved and not mailed yet', kind: 'affidavit', chip: 'Affidavit', badge: 1, dots: [0, '—'], sec: 'Not lienable…', act: 'Print and mail' },
+    { title: '2041 · Ridgeway Builders – Elm St', amt: '$7,820', sub: 'Notice to send', kind: 'notice', chip: 'Notice', ok: 1, dots: [2, ''], act: 'Open the notice' },
+  ] },
+  { head: 'No day set · 1', none: 1, rows: [
+    { title: 'Cedar Row GC', sub: '3 notices approved · to print', kind: 'notice', chip: 'Notice', dots: [4, ''], act: 'Print and mail 3' },
+  ] },
+]
+
+const pin = (n, style) => `<span class="pin" style="${style}">${n}</span>`
+const chip = (r) => `<button class="chip ${r.kind}">${r.chip}${r.ok ? '<em>✓</em>' : ''}${r.badge ? `<u>${r.badge}</u>` : ''}</button>`
+const dots = (r) => `<span class="dots k-${r.kind}">${[0, 1, 2, 3].map((i) => `<i class="${i < r.dots[0] ? 'on' : ''}"></i>`).join('')}${r.dots[1]}</span>`
+const ghead = (g, p = '') => `<div class="ghead ${g.tone || ''}">${p}<span>${g.head}</span><span class="sp"></span>${g.left ? `<span>${g.left}</span>` : ''}${g.amt ? `<span>${g.amt}</span>` : ''}</div>`
+
+// BEFORE: the tiles and the rows as they are.
+const tilesBefore = (pins) => `<div class="tiles">
+  <div class="tile red">${pins ? pin(6, 'right:-8px;top:30px') : ''}<span class="fig">14</span><span class="lab">by Dec 15 · 8 to file · 6 to send</span><span class="ln red">3 are past their day.</span><span class="door">Show them ›</span></div>
+  <div class="tile violet"><span class="fig">6</span><span class="door corner">Show them ›</span><span class="lab">waiting on Sam</span><span class="ln">6 to sign</span></div>
+  <div class="tile amber"><span class="fig">5</span><span class="lab">to print and mail</span><span class="ln">1 to print · 4 to mail</span></div>
+  <div class="tile"><span class="fig">$86,400</span><span class="lab">unpaid on the desk</span></div>
+</div>`
+const rowBefore = (r, pins) => `<div class="b-row">
+  ${pins && r.two ? pin(3, 'right:-6px;bottom:52px') : ''}${pins && r.same ? pin(7, 'left:-8px;top:8px') : ''}
+  <div class="top"><span class="title">${r.title}</span>${r.amt ? `<span class="amt">${r.amt}</span>` : ''}</div>
+  <div class="sub">${r.sub}</div>
+  ${r.jobs ? `<div class="jobs">${r.jobs}</div>` : ''}
+  <div class="foot">${chip(r)}${dots(r)}<span class="sp"></span>${r.sec ? `<button class="sec">${r.sec}</button>` : ''}<button class="act">${r.act}</button></div>
+</div>`
+const listBefore = (pins) => {
+  let first = true
+  return GROUPS.map((g) => ghead(g, pins && g.none ? pin(5, 'left:-8px;top:6px') : '') + g.rows.map((r) => {
+    const html = rowBefore(r, pins)
+    if (pins && first) { first = false; return html.replace('<div class="foot">', `<div class="foot" style="position:relative">${pin(2, 'left:150px;top:9px')}${pin(1, 'right:-6px;top:-12px')}${pin(4, 'right:60px;top:38px')}`) }
+    return html
+  }).join('')).join('')
+}
+
+// AFTER: the day on one line of its tile, and each row as words and one press.
+const tilesAfter = () => `<div class="tiles">
+  <div class="tile red"><span class="fig">14</span><span class="lab">by Dec 15</span><span class="ln">8 to file · 6 to send</span><span class="ln red">3 are past their day. <span class="door">Show them ›</span></span></div>
+  <div class="tile violet"><span class="fig">6</span><span class="lab">waiting on Sam</span><span class="ln">6 to sign · <span class="door">Show them ›</span></span></div>
+  <div class="tile amber"><span class="fig">5</span><span class="lab">to print and mail</span><span class="ln">1 to print · 4 to mail</span></div>
+  <div class="tile"><span class="fig">$86,400</span><span class="lab">unpaid on the desk</span></div>
+</div>`
+const rowAfter = (r) => `<div class="a-row"><div>
+  <div class="title">${r.title}</div>
+  <div class="sub">${r.sub}</div>
+  ${r.jobs ? `<div class="jobs" style="padding:4px 0 0">${r.jobs}</div>` : ''}
+  <div class="meta">${chip(r)}${dots(r)}<span class="sp"></span>${r.amt ? `<span class="amt">${r.amt}</span>` : ''}</div>
+  ${r.sec ? `<button class="quiet">${r.sec}</button>` : ''}
+</div><button class="act">${r.short || r.act}</button></div>`
+const listAfter = () => {
+  // The rows with no day are one group, last.
+  const dated = GROUPS.filter((g) => !g.none)
+  const none = GROUPS.filter((g) => g.none).flatMap((g) => g.rows)
+  const groups = [...dated, { head: `No day set · ${none.length}`, amt: '$5,150', rows: none }]
+  return groups.map((g) => ghead(g) + g.rows.map(rowAfter).join('')).join('')
+}
+
+const shell = (tiles, list) => `
+  <div class="nav"><i></i><i></i><i></i><span class="sp"></span><i></i><i class="sq" style="background:#3b6ea5"></i><i class="sq" style="background:#7c3aed"></i><i class="sq" style="background:#2563eb"></i><i></i><i></i></div>
+  <div class="desk">
+    <div class="dhead"><button class="back">← Pipeline</button><b>Lien desk</b><span class="more">···<u>9</u></span></div>
+    <div class="tabs4"><span class="on">To do · 13</span><span>By date</span><span>By paper</span><span>By job</span></div>
+    <div class="board">${tiles}<button class="wide">Print and mail 1 notice</button><div class="fold"><span>Show the bins · 38</span>▾</div></div>
+    <div class="find">⌕&nbsp; Find a job, a GC, an address or an owner</div>
+    ${list}
+  </div>`
+
+for (const el of document.querySelectorAll('[data-frame]')) {
+  const pins = el.dataset.pins === '1'
+  el.className = `app phone ${el.dataset.clip === '1' ? 'clip' : ''}`
+  el.style.width = `${Number(el.dataset.w) + 18}px`
+  el.innerHTML = el.dataset.frame === 'before' ? shell(tilesBefore(pins), listBefore(pins)) : shell(tilesAfter(), listAfter())
+}
+</script>
+</body>
+</html>

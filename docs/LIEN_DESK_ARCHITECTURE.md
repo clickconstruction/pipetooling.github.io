@@ -585,7 +585,11 @@ last_updated: 2026-11-21
 > **v2.7222 (a phone's rows by the day they are due, punch list #352 PR 3):** `LienDeskNextUp` on `isMobile` draws `phoneGroups` in place of the desk's groups: [`lienPhoneRows.ts`](../src/lib/jobs/lienPhoneRows.ts) `lienPhoneGroups` pools `now` and `coming` and splits them by `dueOn` (since v2.7371 in two pools, `risk` with `now` as one run of days and `coming` as the next;
 > the who-groups, the waiting rows among them, pass through between the two, as a pressed step's two groups did until the rails left in v2.7332), each head with `left` and the open money of its jobs counted once.
 > `LienDesk.tsx` hands in `amountFor` from `lienPhoneAmounts` over the three lists' `openBalance`.
-> A phone row is `data-layout="lines"`: the job and `data-lien-next-up-amount`, the state, then the chip, `LienStepMark` with `compact` (dots, no fraction) and the press at its words' width;
+> A phone row is `data-layout="columns"` since v2.8341 (`lines` until then, with the press at its words' width on a line of its own): two columns from `lienPhoneRowColumns` in [`lienPhonePress.ts`](../src/lib/jobs/lienPhonePress.ts), the words (`data-lien-next-up-words`: the job, the state, then `data-lien-next-up-meta` with the chip, `LienStepMark` with `compact` (dots, no fraction) and `data-lien-next-up-amount`) and one press that fills its column, 44 px tall, its words wrapping;
+> the column is 116 px, and 100 px at 360 px and under, a width `.lienPhoneRow` sets in `index.css` since an inline style cannot ask the screen's width, and `lienPhonePress.test.ts` holds the two together.
+> A row's second way out (`secondary`, `doors`) is a quiet press 32 px tall under the words (`data-lien-next-up-quiet`), never in the press column, and a run's fold is the row's last line across both columns.
+> `lienPhonePressWords` gives the three presses that would run to three lines a shorter form on a phone, *Answer it*, *Open the record* and *Fix the record*, matched whole, with the whole words as the press's name and title.
+> `lienPhoneGroups` pools the rows with no day into one last group since v2.8341, where each pool ended with its own under one key.
 > `lienPhoneStepWords` stands beside the dots only when the viewer has no press.
 > `LienStepRow`, the four named tiles of v2.4881, is no longer drawn by the list.
 > A computer's rows and groups are unchanged.

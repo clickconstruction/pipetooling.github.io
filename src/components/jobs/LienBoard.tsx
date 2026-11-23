@@ -7,6 +7,7 @@ import { thumbInLine } from '../../lib/phonePress'
 import { lienBoardDayLineDoorWords, lienBoardDayLinePicked } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienBoardTileDoorWords, lienBoardTilePicked } from '../../lib/jobs/lienBoardTileDoor'
+import { lienBoardDayLabelParts, lienBoardTileLabelSplits } from '../../lib/jobs/lienBoardPhoneTile'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -281,10 +282,22 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
 function Tile({ tile, isMobile, onTile, picked, linePicked }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void; /** The list under the Board is narrowed to this tile's papers: its press puts the list back. */ picked?: boolean; /** The same for the papers the tile's red line counts. */ linePicked?: boolean }) {
   const press = tile.destination && onTile ? () => onTile(tile.destination!) : null
   const linePress = !press && tile.lineDestination && onTile ? () => onTile(tile.lineDestination!) : null
+  // A tile that is a press says where it goes: *Show them ›*, *Open the run ›*.
+  const door = press ? lienBoardTileDoorWords(tile.destination, picked) : null
+  // On a phone the door ends the line it acts on, as the red line's own door does, so no two doors stand in different corners (`lienBoardPhoneTile.ts`).
+  const doorInLine = isMobile && door ? (
+    <span data-lien-board-tile-door={tile.destination?.kind} data-place="line" style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+      {door} ›
+    </span>
+  ) : null
+  // …and the day's label is two lines there, the day and then its parts, so no word is left alone on a line.
+  const split = lienBoardTileLabelSplits(tile, isMobile) ? lienBoardDayLabelParts(tile.label) : null
   const inner = (
     <>
       <span data-lien-board-tile-figure style={{ fontSize: isMobile ? '1.25rem' : '1.4rem', fontWeight: 800, lineHeight: 1.1, color: TILE_TONE[tile.tone], fontVariantNumeric: 'tabular-nums' }}>{tile.figure}</span>
-      <span data-lien-board-tile-label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-700)', lineHeight: 1.25 }}>{tile.label}</span>
+      <span data-lien-board-tile-label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-700)', lineHeight: 1.25 }}>{split ? split.day : tile.label}</span>
+      {split ? <span data-lien-board-tile-parts style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>{split.parts}</span> : null}
+      {doorInLine && !tile.line ? <span style={{ fontSize: '0.72rem', lineHeight: 1.3 }}>{doorInLine}</span> : null}
       {tile.line ? (
         linePress ? (
           // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts. It says so in words
@@ -295,19 +308,22 @@ function Tile({ tile, isMobile, onTile, picked, linePicked }: { tile: LienBoardT
             <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{lienBoardDayLineDoorWords(linePicked)} ›</span>
           </button>
         ) : (
-          <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span>
+          <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>
+            {tile.line}
+            {doorInLine ? <>{' · '}{doorInLine}</> : null}
+          </span>
         )
       ) : null}
     </>
   )
   const marks = { 'data-lien-board-tile': tile.key, 'data-tone': tile.tone }
   if (press) {
-    // A tile that is a press says where it goes, at its top right (the owner's pick of 2026-11-18): *Show them ›*, *Open the run ›*.
-    const door = lienBoardTileDoorWords(tile.destination, picked)
+    // On a computer the door stands at the tile's top right (the owner's pick of 2026-11-18).
+    const corner = Boolean(door) && !doorInLine
     return (
-      <button type="button" className="lienBoardTile" onClick={press} aria-pressed={tile.destination?.kind === 'leader' ? Boolean(picked) : undefined} style={door ? { position: 'relative' } : undefined} {...marks}>
+      <button type="button" className="lienBoardTile" onClick={press} aria-pressed={tile.destination?.kind === 'leader' ? Boolean(picked) : undefined} style={corner ? { position: 'relative' } : undefined} {...marks}>
         {inner}
-        {door ? (
+        {corner ? (
           <span data-lien-board-tile-door={tile.destination?.kind} style={{ position: 'absolute', top: isMobile ? 9 : 10, right: isMobile ? 10 : 12, fontSize: '0.74rem', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-link)' }}>
             {door} ›
           </span>

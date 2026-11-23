@@ -7,6 +7,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lienHeadDay, lienRowLine, type LienHeadDay, type LienRowTag } from '../../lib/jobs/lienRowWords'
 import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienPhoneGroups, lienPhoneStepWords, type LienPhoneGroup } from '../../lib/jobs/lienPhoneRows'
+import { LIEN_PHONE_PRESS_MIN_HEIGHT, LIEN_PHONE_QUIET_MIN_HEIGHT, lienPhonePressShortened, lienPhonePressWords, lienPhoneRowColumns } from '../../lib/jobs/lienPhonePress'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
@@ -36,6 +37,11 @@ import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps
  * `byBin`: one group a bin under the bin's own name, in the Board's order, each head with its papers and what they
  * owe. Papers that share one act are one row with their jobs behind a fold, and everything due later waits under one
  * line (`lienNextUpByBin.ts`). A phone keeps its list by the day.
+ *
+ * A phone's row is two columns (the owner's go of 2026-11-23): the words at the left and one press at the right, every
+ * press one width and a fingertip tall (`lienPhonePress.ts`). The paper's chip, the dots and what the job owes are the
+ * words' last line, and a row's second way out (*Not lienable…*, *Take back…*) is a quiet line under them. Until then
+ * each press was as wide as its words on a line of its own, and a second press took the main one's place.
  *
  * A table on a computer; the same rows as cards on a phone.
  */
@@ -67,8 +73,12 @@ const actBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'n
 const openBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 
 /** "Oct 15 · 10 days left", "Oct 1 · 4 days late", "Oct 5 · today"; empty with no day. */
-/** A phone's presses in a row: as wide as their words, a thumb tall (punch list #352, PR 3). */
-const PHONE_PRESS: CSSProperties = { flex: 'none', minHeight: 40, padding: '0 12px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
+/** A phone's press on a group's head (*Remind Sam of 3 papers*): as wide as its words, a thumb tall (punch list #352, PR 3). */
+const PHONE_HEAD_PRESS: CSSProperties = { flex: 'none', minHeight: 40, padding: '0 12px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
+/** A phone row's one press: it fills the row's press column, a fingertip tall, and its words wrap inside it (`lienPhonePress.ts`). */
+const PHONE_ROW_PRESS: CSSProperties = { width: '100%', minWidth: 0, minHeight: LIEN_PHONE_PRESS_MIN_HEIGHT, padding: '4px 6px', fontSize: '0.84rem', lineHeight: 1.2, whiteSpace: 'normal', textAlign: 'center', overflowWrap: 'anywhere' }
+/** A phone row's second way out: words in the link colour under the row's words, with a thumb's height to press. */
+const PHONE_QUIET_PRESS: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: LIEN_PHONE_QUIET_MIN_HEIGHT, padding: 0, margin: 0, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 const PHONE_TONE: Record<'red' | 'amber' | 'quiet', { fg: string; bg: string }> = {
   red: { fg: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
   amber: { fg: 'var(--text-amber-800)', bg: 'var(--bg-amber-tint)' },
@@ -274,7 +284,7 @@ export default function LienDeskNextUp({
           ev.stopPropagation()
           onAct({ ...r, target: d.target })
         }}
-        style={{ ...openBtn, ...(isMobile ? PHONE_PRESS : { padding: '2px 10px', fontSize: '0.78rem' }) }}
+        style={isMobile ? PHONE_QUIET_PRESS : { ...openBtn, padding: '2px 10px', fontSize: '0.78rem' }}
         {...d.hook}
       >
         {d.words}
@@ -325,19 +335,25 @@ export default function LienDeskNextUp({
       </div>
     )
   }
-  const button = (r: LienNextUpRow) => (
-    <button
-      type="button"
-      onClick={(ev) => {
-        ev.stopPropagation()
-        onAct(r)
-      }}
-      style={{ ...(r.button ? actBtn : openBtn), ...(isMobile ? PHONE_PRESS : { whiteSpace: 'normal', textAlign: 'center', lineHeight: 1.2 }) }}
-      data-lien-next-up-act={r.action}
-    >
-      {r.button ?? 'Open'}
-    </button>
-  )
+  const button = (r: LienNextUpRow) => {
+    const words = r.button ?? 'Open'
+    // A phone's column is too narrow for the three longest presses, so there they take a shorter form; the whole of it is the press's name still.
+    const short = isMobile && lienPhonePressShortened(words)
+    return (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onAct(r)
+        }}
+        style={{ ...(r.button ? actBtn : openBtn), ...(isMobile ? PHONE_ROW_PRESS : { whiteSpace: 'normal', textAlign: 'center', lineHeight: 1.2 }) }}
+        data-lien-next-up-act={r.action}
+        {...(short ? { title: words, 'aria-label': words } : null)}
+      >
+        {short ? lienPhonePressWords(words) : words}
+      </button>
+    )
+  }
   // The bin's name as the door to the row's card (v2.7372): the card the four dots opened, on the word that says the stage.
   const stageDoor = (r: LienNextUpRow, stage: string) => {
     const stepCard = lienStepCard(r, factsFor?.(r))
@@ -403,7 +419,7 @@ export default function LienDeskNextUp({
         ev.stopPropagation()
         remind.onPress()
       }}
-      style={{ ...openBtn, flex: 'none', padding: '2px 10px', fontSize: '0.78rem', ...(isMobile ? PHONE_PRESS : null), ...(remindOff ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'default' } : null) }}
+      style={{ ...openBtn, flex: 'none', padding: '2px 10px', fontSize: '0.78rem', ...(isMobile ? PHONE_HEAD_PRESS : null), ...(remindOff ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'default' } : null) }}
     >
       {remind.busy ? 'Reminding…' : remind.button}
     </button>
@@ -454,26 +470,28 @@ export default function LienDeskNextUp({
           const stepWords = r.button ? '' : lienPhoneStepWords(at, at?.ladder ?? r.kind, leadsRow ? leadsRow(r) : Boolean(viewerIsLeader))
           // A day's head says the day; under any other head the row says its own.
           const due = g.group === 'day' ? '' : lienNextUpDueWords(r)
+          const quiet = secondary(r)
           return (
-            <div key={r.key} data-lien-next-up-row={r.key} data-layout="lines" onClick={onOpenRow ? () => onOpenRow(r) : undefined} style={{ display: 'grid', gap: 2, padding: '0.55rem 0.75rem 0.4rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', ...(onOpenRow ? { cursor: 'pointer' } : null) }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ flex: 1, minWidth: 0 }}>{phoneTitle(r, { fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, overflowWrap: 'anywhere', whiteSpace: 'normal' })}</span>
-                {amount != null ? <span data-lien-next-up-amount style={{ flex: 'none', fontWeight: 700, fontSize: '1rem', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(amount)}</span> : null}
+            <div key={r.key} className="lienPhoneRow" data-lien-next-up-row={r.key} data-layout="columns" onClick={onOpenRow ? () => onOpenRow(r) : undefined} style={{ display: 'grid', gridTemplateColumns: lienPhoneRowColumns(), columnGap: 12, rowGap: 2, alignItems: 'center', padding: '0.55rem 0.75rem 0.45rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', ...(onOpenRow ? { cursor: 'pointer' } : null) }}>
+              {/* The words, at the left: the job, what is asked, then the paper, its dots and what the job owes. */}
+              <div data-lien-next-up-words style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                <div>{phoneTitle(r, { fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, overflowWrap: 'anywhere', whiteSpace: 'normal' })}</div>
+                <div data-lien-next-up-sub style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {r.sub}
+                  {due ? <span style={{ fontWeight: 600, color: dueColor(r) }}>{r.sub ? ' · ' : ''}{due}</span> : null}
+                </div>
+                <div data-lien-next-up-meta style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  {chip(r)}
+                  {mark(r)}
+                  {stepWords ? <span data-lien-next-up-step-words style={{ minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stepWords}</span> : null}
+                  <span style={{ flex: 1 }} />
+                  {amount != null ? <span data-lien-next-up-amount style={{ flex: 'none', fontWeight: 700, fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(amount)}</span> : null}
+                </div>
+                {/* The second way out is a quiet line here, so the press column holds one press on every row. */}
+                {quiet ? <div data-lien-next-up-quiet style={{ display: 'flex', flexWrap: 'wrap', gap: '0 16px' }}>{quiet}</div> : null}
               </div>
-              <div data-lien-next-up-sub style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                {r.sub}
-                {due ? <span style={{ fontWeight: 600, color: dueColor(r) }}>{r.sub ? ' · ' : ''}{due}</span> : null}
-              </div>
+              {button(r)}
               {fold(r)}
-              {/* One line at 390 wide and up; on a narrower phone the press wraps under the dots sooner than push the row sideways. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px 8px', minHeight: 44, flexWrap: 'wrap' }}>
-                {chip(r)}
-                {mark(r)}
-                {stepWords ? <span data-lien-next-up-step-words style={{ minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stepWords}</span> : null}
-                <span style={{ flex: 1 }} />
-                {secondary(r)}
-                {button(r)}
-              </div>
             </div>
           )
         })}
