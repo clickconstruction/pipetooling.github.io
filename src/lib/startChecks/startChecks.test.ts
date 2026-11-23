@@ -31,7 +31,6 @@ import {
   readiness,
   readyList,
   readyMarks,
-  lastArrival,
   noOn,
   saidNo,
   scheduleLookWords,
@@ -162,8 +161,6 @@ describe('the percent', () => {
     // Dana saw A on her arrival: that yes clears Luis's No, and the arrival itself is still on the stage.
     const seen = stage({ bullets: [{ ...a, yes: yes('saw') }, b, c], arrivals: [first, later] })
     expect(noOn(seen, seen.bullets[0] as ThemBullet)).toBeNull()
-    expect(lastArrival(seen)).toEqual(later)
-    expect(lastArrival(stage())).toBeNull()
   })
 })
 
@@ -227,6 +224,23 @@ describe('where a stage stands: every row of the table', () => {
     expect(read(s)).toEqual({ light: 'red', sentence: 'Luis got there Nov 17 and it was not as told: The trench to the building is open.', next: 'look', nextLabel: 'Open the stage' })
     // An arrival with every bullet as told is not this row.
     expect(read({ ...s, arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [] }], bullets: s.bullets.map((x) => (x.on === 'them' ? { ...x, yes: yes('saw') } : x)) }).light).toBe('green')
+  })
+
+  it('Not as told clears once the office has a new yes on every No, and names the No that still stands', () => {
+    // Luis said No on the trench. Ray calls to say it is open now, and the office ticks it: the stage read Not as told
+    // until one of ours answered again, though nothing was open. It is the Go row now (the audit's third fault).
+    const trench = them('The trench to the building is open.')
+    const water = them('Water is on site.', { yes: yes('saw') })
+    const s = stage({ bullets: [trench, water], decision: { kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }, arrivals: [{ day: '2026-11-16', by: 'Luis', notAsTold: [trench.id] }] })
+    expect(read(s).light).toBe('red')
+    const fixed = { ...s, bullets: [{ ...trench, yes: yes('word') }, water] }
+    expect(read(fixed)).toEqual({ light: 'green', sentence: 'Crew confirmed for Tue Dec 8. Dana pressed Go Nov 12.', next: 'none', nextLabel: null })
+    // Two Nos from two arrivals: the sentence names the first bullet still with a No, and the arrival that said it.
+    const slab = them('The slab is poured.')
+    const two = stage({ bullets: [slab, trench, water], arrivals: [{ day: '2026-11-16', by: 'Luis', notAsTold: [trench.id] }, { day: TODAY, by: 'Sam', notAsTold: [slab.id] }] })
+    expect(read(two).sentence).toBe('Sam got there Nov 17 and it was not as told: The slab is poured.')
+    // A new yes on the slab alone: the trench's No still stands, so the stage stays red and names Luis.
+    expect(read({ ...two, bullets: [{ ...slab, yes: yes('word') }, trench, water] }).sentence).toBe('Luis got there Nov 16 and it was not as told: The trench to the building is open.')
   })
 
   it('Go, nothing open: green, no press', () => {
