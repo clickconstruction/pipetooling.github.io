@@ -18,6 +18,8 @@ import { DISCOUNT_REASON_PRESETS, standingDiscountFromCustomer } from '../lib/jo
 import { CUSTOMER_PAYMENT_TERMS, isCustomerPaymentTerms, parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
 import CustomerContactsSection from './customers/CustomerContactsSection'
 import CustomerPropertiesSection from './customers/CustomerPropertiesSection'
+import { CustomerMergePlan } from './customers/CustomerMergePlan'
+import { mergedToastWords, parseMergePlan, type MergePlan } from '../lib/customers/customerMergePlan'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -77,6 +79,8 @@ type PreviewMerge = {
   victim_has_stripe: boolean
   survivor_has_stripe: boolean
   stripe_blocked: boolean
+  /** Everything the other customer holds and what the rules will do (v2.8324). Null from a database before it. */
+  plan: MergePlan | null
 }
 
 function parsePreviewMerge(data: unknown): PreviewMerge | null {
@@ -96,6 +100,7 @@ function parsePreviewMerge(data: unknown): PreviewMerge | null {
     victim_has_stripe: Boolean(data.victim_has_stripe),
     survivor_has_stripe: Boolean(data.survivor_has_stripe),
     stripe_blocked: Boolean(data.stripe_blocked),
+    plan: parseMergePlan(data),
   }
 }
 
@@ -407,7 +412,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       for (const k of MERGE_FIELD_KEYS) {
         p_field_choices[k] = mergeFieldSource[k]
       }
-      await withSupabaseRetry(
+      const merged = await withSupabaseRetry(
         async () =>
           await supabase.rpc('merge_customers', {
             p_survivor: customerId,
@@ -416,7 +421,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           }),
         'merge customers',
       )
-      showToast('Customers merged', 'success')
+      showToast(mergedToastWords(merged), 'success')
       setMergeConfirmOpen(false)
       setMergeConfirmText('')
       const removedId = mergeVictimId
@@ -435,6 +440,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     mergeVictimId &&
     mergePreview &&
     !mergePreview.stripe_blocked &&
+    !mergePreview.plan?.legalBlocked &&
     !mergePreviewLoading &&
     !mergePreviewError
 
@@ -842,8 +848,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           {mergeExpanded && (
             <div style={{ fontSize: '0.875rem', maxWidth: 520 }}>
               <p style={{ color: 'var(--text-muted)', marginTop: 0, marginBottom: '0.75rem' }}>
-                All bids, jobs, estimates, and projects linked to the other customer move to this one. Then the other
-                customer is removed. Choose which values to keep for each field.
+                Everything linked to the other customer moves to this one: its bids, jobs, files, properties, ratings,
+                portal links and the rest. Then the other customer is removed. Choose which values to keep for each field.
               </p>
               <label style={{ display: 'block', marginBottom: 4 }}>Other customer</label>
               <CustomerSearchCombobox
@@ -873,24 +879,28 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                       Both customers have different Stripe IDs. Resolve in Stripe before merging.
                     </p>
                   )}
-                  <div
-                    style={{
-                      background: 'var(--bg-subtle)',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: 6,
-                      marginBottom: '0.75rem',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Will re-link from other customer</div>
-                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                      <li>Bids: {mergePreview.victim_counts.bids}</li>
-                      <li>Jobs: {mergePreview.victim_counts.jobs_ledger}</li>
-                      <li>Estimates: {mergePreview.victim_counts.estimates}</li>
-                      <li>Projects: {mergePreview.victim_counts.projects}</li>
-                      <li>CRM contacts: {mergePreview.victim_counts.customer_contacts}</li>
-                      <li>Contact persons: {mergePreview.victim_counts.customer_contact_persons}</li>
-                    </ul>
-                  </div>
+                  {mergePreview.plan ? (
+                    <CustomerMergePlan plan={mergePreview.plan} />
+                  ) : (
+                    <div
+                      style={{
+                        background: 'var(--bg-subtle)',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: 6,
+                        marginBottom: '0.75rem',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Will re-link from other customer</div>
+                      <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                        <li>Bids: {mergePreview.victim_counts.bids}</li>
+                        <li>Jobs: {mergePreview.victim_counts.jobs_ledger}</li>
+                        <li>Estimates: {mergePreview.victim_counts.estimates}</li>
+                        <li>Projects: {mergePreview.victim_counts.projects}</li>
+                        <li>CRM contacts: {mergePreview.victim_counts.customer_contacts}</li>
+                        <li>Contact persons: {mergePreview.victim_counts.customer_contact_persons}</li>
+                      </ul>
+                    </div>
+                  )}
                   <div style={{ fontWeight: 600, marginBottom: 6 }}>Keep values from</div>
                   {victimRow && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
