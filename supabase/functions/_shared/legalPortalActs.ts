@@ -11,7 +11,9 @@
  *     and the time it lifts;
  *   - the cap on confirmation emails: three to a person and twenty-four to a firm
  *     in an hour, and the refusal says which;
- *   - who recorded it (`meta.recordedBy` = { id, name } from the firm's own list);
+ *   - who recorded it (`meta.recordedBy` = { id, name, how }): on one person's link that
+ *     person, set from the link by the server; on the firm's shared link a pick from the
+ *     firm's own list, and the record says it was picked (`recordedByForLink`);
  *   - undo with a reason (PR 2): which entries each side may void, and that a
  *     voided entry leaves every total.
  */
@@ -111,7 +113,36 @@ export function legalConfirmTwinMessage(email: string): string {
   return `A confirmation email to ${email.trim() || 'this person'} went a moment ago. Check that inbox before sending another.`
 }
 
-export type LegalRecordedBy = { id: string; name: string }
+/**
+ * How the name got on the act. `own_link`: the act came in on one person's link, so the server
+ * set the name from the link and nothing the page sent could change it. `shared_link`: the act
+ * came in on the firm's shared link and the name is the firm's own pick, which anyone holding
+ * that link can make. Absent on an act saved before v2.8312.
+ */
+export type LegalRecordedHow = 'own_link' | 'shared_link'
+
+export type LegalRecordedBy = { id: string; name: string; how?: LegalRecordedHow }
+
+/** A portal link as the functions read it: the firm's shared one (`firm`), or one person's (`person`, with its label). */
+export type LegalPortalLinkSeat = { id?: string | null; purpose?: string | null; label?: string | null }
+
+/** The person a link belongs to: its label when it is one person's link. Null on the firm's shared link, and on a person link with no name. */
+export function legalLinkPerson(link: LegalPortalLinkSeat | null | undefined): string | null {
+  if (!link || link.purpose !== 'person') return null
+  const name = typeof link.label === 'string' ? link.label.trim() : ''
+  return name || null
+}
+
+/**
+ * Who an act is recorded by, decided from the link it came in on. On one person's link it is that
+ * person, whatever the page sent: `picked` is not read. On the firm's shared link it is the person
+ * picked from the firm's list, marked as a pick, or nobody (*the firm*) when none was picked.
+ */
+export function recordedByForLink(link: LegalPortalLinkSeat | null | undefined, picked: { id: string; name: string } | null): LegalRecordedBy | null {
+  const person = legalLinkPerson(link)
+  if (person) return { id: `link:${typeof link?.id === 'string' ? link.id : ''}`, name: person, how: 'own_link' }
+  return picked ? { id: picked.id, name: picked.name, how: 'shared_link' } : null
+}
 
 /** Who at the firm recorded an act — `meta.recordedBy`; null on an older act or an office entry. */
 export function recordedByOf(meta: unknown): LegalRecordedBy | null {
@@ -120,7 +151,18 @@ export function recordedByOf(meta: unknown): LegalRecordedBy | null {
   if (!r || typeof r !== 'object' || Array.isArray(r)) return null
   const id = (r as Record<string, unknown>).id
   const name = (r as Record<string, unknown>).name
-  return typeof id === 'string' && typeof name === 'string' && name.trim() ? { id, name: name.trim() } : null
+  const how = (r as Record<string, unknown>).how
+  if (typeof id !== 'string' || typeof name !== 'string' || !name.trim()) return null
+  return { id, name: name.trim(), ...(how === 'own_link' || how === 'shared_link' ? { how } : {}) }
+}
+
+/**
+ * What the office reads after a firm person's name, so it can tell a name the link pinned from
+ * one that was picked: *own link*, *name picked*, or nothing on an act saved before the record
+ * kept it. The firm reads the name alone.
+ */
+export function recordedHowWords(by: Pick<LegalRecordedBy, 'how'> | null | undefined): string {
+  return by?.how === 'own_link' ? 'own link' : by?.how === 'shared_link' ? 'name picked' : ''
 }
 
 type VoidableEntry = { kind: string; via_portal: boolean; voided_at?: string | null; acknowledged_at?: string | null }

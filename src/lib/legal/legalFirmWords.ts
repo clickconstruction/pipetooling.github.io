@@ -213,6 +213,14 @@ export function firmJobRecordWords(j: Pick<LegalJobLine, 'contract' | 'record'>)
  * by `legalFirmWords.test.ts`. The role is a typed title that gates nothing: the column is read as
  * a label here, on the office's Legal desk list and in the *Recorded by* picker, and nowhere else.
  */
+/**
+ * Beside *Recorded by* on one person's link (v2.8312): the name is the link's, shown and not picked.
+ * Held to plain words with the Notifications lines.
+ */
+export const RECORDED_BY_PINNED_WORDS = 'This link is yours alone, so everything saved here is recorded under your name.'
+/** Beside *Answered by* on Start here, on one person's link. */
+export const ANSWERED_BY_PINNED_WORDS = 'This link is yours alone, so the answers are sent under your name.'
+
 export const FIRM_NOTIFICATIONS_WORDS = {
   addCaption: 'Add a person at the firm',
   name: 'Name',

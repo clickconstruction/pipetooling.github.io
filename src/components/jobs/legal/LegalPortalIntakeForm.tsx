@@ -3,12 +3,15 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN } from '../../../lib
 import { portalSmall } from '../../../lib/legal/legalPortalCards'
 import { EMPTY_LEGAL_FIRM_INTAKE, legalIntakeIntro, legalIntakeQuestions, legalIntakeSentWords, shapeLegalFirmIntake, type LegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
 import type { LegalPortalIntake, LegalPortalRecipient } from '../../../lib/legal/legalPortalPayload'
+import { ANSWERED_BY_PINNED_WORDS } from '../../../lib/legal/legalFirmWords'
+import { WorkedOutValue } from '../../valuesInPlace/ValuesInPlace'
 
 /**
  * Start here's step 4 (v2.4821): the firm's answers to five questions, sent to the office. The
  * answers on file fill the boxes; typing is kept on this browser until it sends, so a reload loses
- * nothing. *Answered by* is a person on the firm's own list, or a name typed in. The page's act
- * posts `{ kind: 'intake', answers, by }`.
+ * nothing. *Answered by* is a person on the firm's own list, or a name typed in. On one person's
+ * link it is that person, shown and not picked, and the server sets it from the link (v2.8312).
+ * The page's act posts `{ kind: 'intake', answers, by }`.
  */
 const DRAFT_KEY = 'legalPortal.intakeDraft'
 
@@ -25,12 +28,14 @@ const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 
 const input: CSSProperties = { font: 'inherit', fontSize: 13.5, padding: '6px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }
 
-export default function LegalPortalIntakeForm({ short, intake, recipients, recordedById, busy, notice, onSend, onOpenRules, onOpenNotifications }: {
+export default function LegalPortalIntakeForm({ short, intake, recipients, recordedById, linkPerson = null, busy, notice, onSend, onOpenRules, onOpenNotifications }: {
   short: string
   intake: LegalPortalIntake
   recipients: ReadonlyArray<LegalPortalRecipient>
   /** The person picked on this browser for the firm's acts, if any. */
   recordedById: string
+  /** Whose link this is (v2.8312): on one person's link the answers are that person's, shown and not picked. */
+  linkPerson?: string | null
   busy: boolean
   notice: string | null
   onSend: (answers: LegalFirmIntake, by: string) => Promise<boolean>
@@ -39,7 +44,8 @@ export default function LegalPortalIntakeForm({ short, intake, recipients, recor
 }) {
   const [draft, setDraft] = useState<LegalFirmIntake>(() => readDraft() ?? intake.answers ?? EMPTY_LEGAL_FIRM_INTAKE)
   const picked = recipients.find((r) => r.id === recordedById)
-  const [by, setBy] = useState(() => picked?.name ?? intake.sentBy ?? '')
+  const [typedBy, setBy] = useState(() => picked?.name ?? intake.sentBy ?? '')
+  const by = linkPerson ?? typedBy
   const [sentHere, setSentHere] = useState(false)
 
   useEffect(() => {
@@ -114,7 +120,11 @@ export default function LegalPortalIntakeForm({ short, intake, recipients, recor
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 18 }}>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: MUTED, flex: '1 1 240px' }}>
           Answered by
-          {recipients.length ? (
+          {linkPerson ? (
+            <span data-legal-intake-by="pinned" style={{ color: INK }}>
+              <WorkedOutValue>{linkPerson}</WorkedOutValue> <span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{ANSWERED_BY_PINNED_WORDS}</span>
+            </span>
+          ) : recipients.length ? (
             <select value={recipients.some((r) => r.name === by) ? by : ''} onChange={(e) => setBy(e.target.value)} style={{ ...input, width: 'auto', flex: 1 }} aria-label="Answered by">
               <option value="">Pick a person</option>
               {recipients.map((r) => <option key={r.id} value={r.name}>{r.name}{r.role ? ` · ${r.role}` : ''}</option>)}
