@@ -416,16 +416,33 @@ customer address, and both have a Drive folder. Throw away every place, line and
    on the job's team, from its dot on the **Map** tab, its row or its photo. The place's count of
    opens goes up by one (`painted_map_places.opened_count`). The person who set it is never counted.
    The session walked with one account, so its count stayed at 0, as designed.
-10. **Dark theme, and the 44 px presses once #9346 merges.** The place sheet and the Places window
-    at 390 px, and the **Map** tab at 390 and 1100 px, all in dark. **Take another**, **Remove the
-    photo**, **Remove**, **Remove this place**, **Change this place** and **Open the line** are each
-    44 px tall. The session's walk did not look at the dark theme, and came before #9346.
+10. **Dark theme, and the 44 px presses. Walked 2026-11-22 on Micah's word *Yes, walk it*, except
+    Open the line.** On JP9309 as the dev, in dark, at 390 and 1100 px. The live site at 390, then a
+    dev server on `main`'s code against the live database at 1100, after another session's View as
+    took the shared browser's sign-in.
+    - **Measured at 44 px tall, at both widths:** **Take another**, **Remove the photo**, **Remove**,
+      **Remove this place** and **Change this place**. The place sheet, the Places window and the
+      **Map** tab draw in dark, with no sideways scroll at 390.
+    - **Not measured in dark: Open the line.** It needs a drawn line, so a second map and a line
+      row, which the yes did not cover. The code sets it at 44 px, and the 2026-11-21 walk saw it in
+      light.
+    - **Made:** one `painted_maps` row, the job's list. One `painted_map_places` row, *ZZ Test walk
+      10*, with no kind and no words. One file in the bucket `painted-map-photos`, a made-up picture
+      of nothing. A second photo was put on the sheet twice and never saved.
+    - **Removed:** all three, with **Throw this list away**. Read back as the dev after: no map on
+      JP9309, no place on any map, and the map's folder in the bucket lists empty.
+    - **Left behind:** about four Google map loads, from the place sheet and the Places window. They
+      count in #387's tally.
+    - **Seen in passing:** at 390 px the **Map** tab opened on the whole country, with and without
+      the place, where 1100 px fit the place at street level. Not looked into.
+    - **For the next walk:** a theme set from the gear is kept for every tab of the shared browser.
+      Set `data-theme` on the page's own `<html>` instead, which lasts until a reload.
 
 ### Loose ends
 
-- **#9346 is in the merge queue**, 14th at 06:11 UTC on 2026-11-22. It raises the six small presses
-  to 44 px and moves this card to the close column. Nothing else of the card is unmerged. Both
-  migrations are pushed, and the card has no edge function.
+- **#9346 merged** at 07:25 UTC on 2026-11-22. It raised the six small presses to 44 px and moved
+  this card to the close column. Nothing of the card is unmerged. Both migrations are pushed, and
+  the card has no edge function.
 - **Small presses seen, and not this card's.** On the painted map's window, the link presses are
   32 px tall, such as **Remove this line**, **Move its corners** and **Type a length measured with a
   wheel or a tape**. **Send more…** on a place's row is 32 px. **From above** and **Streets** are
@@ -434,6 +451,8 @@ customer address, and both have a Drive folder. Throw away every place, line and
 - **Google map loads to watch.** The **Map** tab draws on the old map and loads nothing from Google.
   A press on a dot, a row or **Places on this job** opens the painted map's window, which shows a
   saved map on Google. Each open counts in #387's tally of loads. Watch it once crews keep places.
+  Since v2.8235 (#387) the place sheet draws on Google too, so **＋ Place on this job** and **Photo
+  of a spot** each count, and twice on a phone, where the glass is a second map.
 - **Step 0 is Taunya's.** Two crews press **Photo of a spot** on every job for three or four weeks,
   starting with the shutoff and the cleanout. The count of opens now says whether anyone came back
   to a place.
