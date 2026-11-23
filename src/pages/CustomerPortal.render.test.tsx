@@ -186,6 +186,19 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText(/all paid up/)).toBeTruthy())
   })
 
+  it('a customer whose open bills an in kind arrangement pays: nothing owed in money, the bills in their own card, no pay press (v2.8314)', async () => {
+    const scheduled = [{ invoiceId: 'i2', jobLabel: 'Shop restroom · Job 1104', jobNumber: '1104', jobName: 'Shop restroom', serviceTag: 'plum', jobAddress: '40 Mill Rd, Kyle, TX 78640', amount: 700, billedAmount: 900, totalPaid: 200, billedOn: '2026-05-01' }]
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, bills: [], totalDue: 0, scheduledBills: scheduled }), { status: 200 })))
+    const { container } = mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Nothing is owed in money.')).toBeTruthy())
+    expect(screen.queryByText(/all paid up/)).toBeNull()
+    const card = container.querySelector('[data-portal-scheduled-bills]')!
+    expect(card.textContent).toContain('Scheduled in kind')
+    expect(card.textContent).toContain('$700.00')
+    expect(card.querySelectorAll('button, a')).toHaveLength(0)
+    expect(container.querySelector('[data-bill-pay]')).toBeNull()
+  })
+
   it('an owner whose builder owes on the property: no "all paid up", the recorded notice in its own card (v2.3825)', async () => {
     const notice = { key: 'f1', address: '3507 Lister Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, bills: [], totalDue: 0, propertyNotices: [notice] }), { status: 200 })))

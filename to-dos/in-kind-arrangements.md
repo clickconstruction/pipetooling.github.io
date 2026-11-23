@@ -152,6 +152,7 @@ The lien months and deadlines stay as they are, on the desk and in counsel's lie
 
 ## Where it plugs in
 
+- The customer's page, by the owner's call of 2026-11-22 (v2.8314): `customer-portal` hands `buildPortalBills` the money jobs alone (`moneyJobsOf` in `supabase/functions/_shared/portalScheduledBills.ts`), so a deal's bill is off the statement, the balance and every pay link, and `buildPortalScheduledBills` lists it for the card **Scheduled in kind** (`src/components/portal/PortalScheduledBillsCard.tsx`). The pay-by promise covers the money jobs alone. Not built: a deal's bill that the office shares with the other party still reads as an open bill on that party's shared card.
 - The In kind kind and its words: `src/lib/jobs/inKindPayment.ts`, `supabase/functions/_shared/inKindPayment.ts` (v2.6816).
 - What in kind is never counted as: `src/lib/moneyInWeek.ts`; never listed for deposits: `list_unlinked_payments_for_bank_payments` (migration `20261109180000`).
 - The customer's money: `src/lib/customers/customerInvoiceRows.ts` (`lifetimeCollected` from `src/lib/billing/billTruth.ts`); pay speed: `src/lib/jobs/billedExpectedPay.ts`.

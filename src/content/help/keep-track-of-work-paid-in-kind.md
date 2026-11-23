@@ -64,6 +64,10 @@ The email lists money owed only. Its totals and its aging chips leave the bill o
 A residential customer is not reminded to pay that bill. Their **Paid** step waits with no due day. **Remind now** still sends one if you want it.
 :::
 
+:::card The customer's page
+The bill is not on the customer's statement and not in their balance. It sits in a card named **Scheduled in kind**, with no pay button. The card says what the credits have paid and what is still to come.
+:::
+
 :::card The Pipeline's map
 The job keeps its pin. Its money is not counted as money to collect. The job is not on the list to ask. A line on the rail says how much is scheduled in kind.
 :::
