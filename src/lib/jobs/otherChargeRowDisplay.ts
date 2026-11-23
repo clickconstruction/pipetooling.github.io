@@ -1,31 +1,14 @@
 /**
  * Other job charges, read as money (punch list #215, PR 1). Pure.
  *
- * An amount splits into its dollars and its cents so the cents can draw
- * smaller ("39,796" + ".70"), and a description that starts with `ESTIMATE`
- * splits into the chip and the text after it. The `ESTIMATE` prefix is the
+ * A description that starts with `ESTIMATE` splits into the chip and the
+ * text after it (an amount's dollars and cents split in `src/lib/moneyParts.ts`,
+ * the app's one kernel for that, since v2.8374). The `ESTIMATE` prefix is the
  * cost-batch contract (`docs/COST_BATCHES.md`: an `other_charge` op is
  * admitted only when its description starts with it), so it stays in the
  * data; only the drawing changes.
  */
 import { formatCurrency } from './jobFormMoney'
-
-export type MoneyParts = { whole: string; cents: string }
-
-/** 39796.7 → { whole: "39,796", cents: ".70" }; 0 → { whole: "0", cents: ".00" }. */
-export function splitMoneyForDisplay(n: number): MoneyParts {
-  return splitMoneyString(formatCurrency(Number.isFinite(n) ? n : 0)) ?? { whole: '0', cents: '.00' }
-}
-
-/**
- * An already-formatted money string ("14,115.35", "−40.00", "$1,250.00") into
- * dollars and cents; null for anything that is not one ("—", "…", "8.0 h").
- */
-export function splitMoneyString(s: string): MoneyParts | null {
-  const m = /^([−-]?\$?\d[\d,]*)(\.\d{2})$/.exec(s.trim())
-  if (!m) return null
-  return { whole: m[1] ?? '', cents: m[2] ?? '' }
-}
 
 /** `ESTIMATE`, then an optional dash or colon, then the text. Any case, as the batch function reads it (`upper(left(description, 8)) = 'ESTIMATE'`). */
 const ESTIMATE_PREFIX_RE = /^ESTIMATE\b\s*(?:[—–:-]\s*)?/i

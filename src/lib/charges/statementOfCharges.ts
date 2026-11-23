@@ -12,7 +12,7 @@ import type { MaterialLineInput } from './materialsCharged'
 import { jobChargeRuleWords } from './crewDays'
 import { crewRateWords, crewRateFor } from './rateCard'
 import { PREMIUM_CARRIES, premiumWaitsWords } from './premium'
-import { moneyWords } from './moneyParts'
+import { moneyWords } from '../moneyParts'
 import { chargeAdjustmentWords } from './adjustments'
 import type { SentFiling } from '../sent/sentCopies'
 
