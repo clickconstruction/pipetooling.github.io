@@ -27,6 +27,7 @@ import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import { PAINTED_MAP_DOCUMENT_WORDS } from '../../lib/paintedMap/paintedMapDocuments'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
+import { moneyText } from '../../test/moneyText'
 
 let onJob: SavedPayApplication[] = []
 const loadSpy = vi.fn((_jobId: string) => Promise.resolve(onJob))
@@ -312,7 +313,7 @@ describe('JobWindowDocumentsTab', () => {
     expect(rows.map((r) => r.textContent)).toEqual(['109/30/2026$17,460.00Open the file—Open', '210/31/2026$8,730.00Not yet—Open'])
     expect((screen.getByRole('link', { name: 'Open the file' }) as HTMLAnchorElement).href).toBe('https://docs.google.com/spreadsheets/d/abc123/edit')
     // 29,100 to date at 10%.
-    expect(screen.getByText('Retainage held as of application 2: $2,910.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('Retainage held as of application 2: $2,910.00'))).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open application 2' }))
     expect(screen.getByTestId('aia-stub').textContent).toContain('application 2 at 1030 starting on new')

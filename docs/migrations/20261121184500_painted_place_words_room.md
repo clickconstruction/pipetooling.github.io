@@ -1,6 +1,6 @@
 # 20261121184500_painted_place_words_room.sql (2026-11-21, v2.8186)
 
-Room for a description on a place. Punch list #413, step 0 ([`to-dos/photo-of-a-spot/README.md`](../../to-dos/photo-of-a-spot/README.md)), on Taunya's ask of 2026-11-21 for an open-ended description on a place. This is the database half. No screen writes a longer description yet.
+Room for a description on a place. Punch list #413, step 0 (closed 2026-11-23; what is left is [`to-dos/photo-of-a-spot-whats-left.md`](../../to-dos/photo-of-a-spot-whats-left.md)), on Taunya's ask of 2026-11-21 for an open-ended description on a place. This is the database half. No screen writes a longer description yet.
 
 A place's words were one line for whoever comes next. A plumber marking a buried line needs to say what it is, how deep and which way it runs, and one line does not hold that.
 

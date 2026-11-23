@@ -1,6 +1,6 @@
 # 20261121203000_photo_spot_ground.sql (2026-11-21, v2.8195)
 
-The ground for the later steps of punch list #413 ([`to-dos/photo-of-a-spot/README.md`](../../to-dos/photo-of-a-spot/README.md)), on Taunya's word of 2026-11-21 to build it all. One migration, so the screens that follow each need none of their own. No screen reads or writes any of it yet.
+The ground for the later steps of punch list #413 (closed 2026-11-23; what is left is [`to-dos/photo-of-a-spot-whats-left.md`](../../to-dos/photo-of-a-spot-whats-left.md)), on Taunya's word of 2026-11-21 to build it all. One migration, so the screens that follow each need none of their own. No screen reads or writes any of it yet.
 
 ## Step 3: a photo keeps the phone's reading
 

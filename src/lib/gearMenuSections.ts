@@ -5,8 +5,9 @@
  * no row left its group's place:
  *
  *   the wrench's press     only where the header had no room for it, first and unlabelled
- *   Modes                  Job Mode, Dispatch Mode with its PO tab, Task Mode: each changes the page
- *                          (every role but the estimator has the mode row above the header and keeps Dispatch Mode alone, `gearModesRows`)
+ *   Modes                  the list of Dashboard, Job Mode and Task Mode with one dot, then Dispatch Mode with its
+ *                          PO tab: each changes the page (a phone that has the mode row above the header keeps
+ *                          Dispatch Mode alone, `gearModesRows`)
  *   Show                   Pin bar, Tell the dev, Dark Mode: each shows or hides one thing
  *   Pages                  the pages this menu is the door to, in `GEAR_PAGE_ORDER`
  *   Help and settings      My logbook, Help, Settings
@@ -14,6 +15,9 @@
  *
  * The phone dock's More sheet uses the same four labels. Pure, so the order is tested without a screen.
  */
+
+import { MODE_ROW_WORDS, type ModeRowThird } from './modeRow'
+import { taskModeToggleTip } from './taskModeToggle'
 
 export const GEAR_SECTION_LABELS = {
   modes: 'Modes',
@@ -50,22 +54,47 @@ export function gearPagesInOrder(shown: Readonly<Record<GearPageKey, boolean>>):
 }
 
 /**
- * The Modes group's rows for this person (v2.8332, punch list #425).
- *
- * The mode row above the header (`modeRow.ts`) is the door to Job Mode and Task Mode for the roles it is
- * drawn for, so their menu lists neither: one door, and the tick can never disagree with the row.
- * Dispatch Mode is not on the row, so its menu row stays for whoever can hold it. The row is drawn for
- * every role whose first page is the Dashboard, so the estimator alone keeps the rows it had. The label
- * is drawn only when a row stands under it.
+ * The mode list's order (punch list #425, the owner's pick of 2026-11-23): the page with no mode on top
+ * first, then the two modes, Task Mode last since it is pressed least.
  */
-export function gearModesRows(input: { modeRow: boolean; jobEligible: boolean; dispatchEligible: boolean }): {
+export const GEAR_MODE_LIST_ORDER: readonly ModeRowThird[] = ['full', 'job', 'task']
+
+/** The usage control (`ui_nav_clicks`): a row of the mode list pressed, with target `#full`, `#job` or `#task`. */
+export const GEAR_MODE_PRESS_CONTROL = 'gear_mode'
+
+/** A row's tip: what a press does, or that the mode is the one on. */
+export function gearModeRowTip(third: ModeRowThird, on: boolean): string {
+  const word = third === 'full' ? 'the Dashboard' : MODE_ROW_WORDS.thirds[third]
+  if (on) return third === 'full' ? 'You are on the Dashboard, with no mode on top' : `${word} is on`
+  return third === 'task' ? taskModeToggleTip(false) : `Switch to ${word}`
+}
+
+/**
+ * The Modes group's rows for this person at this width (v2.8332, punch list #425).
+ *
+ * On a phone the mode row above the header (`modeRow.ts`) is the door to Job Mode and Task Mode for the
+ * roles it is drawn for, so their menu lists neither there: one door, and the mark can never disagree
+ * with the row. Wherever the row is not drawn (a desk or a tablet for every role, any width for the
+ * estimator) the menu holds the same three as a list with one dot, `list`: **Dashboard**, **Job Mode**
+ * for whoever can hold it, **Task Mode**. A press goes through the row's own rule (`modeRowPressWrites`).
+ *
+ * Dispatch Mode is on neither the row nor the list, so its tick row stays for whoever can hold it. The
+ * label is drawn only when a row stands under it. `job` and `task` say whether the list holds that row:
+ * the phone dock's More sheet draws its own two switches by them.
+ */
+export function gearModesRows(input: {
+  /** The mode row is drawn for this role at this width (`modeRowDrawnHere`). */
+  modeRow: boolean
+  jobEligible: boolean
+  dispatchEligible: boolean
+}): {
+  list: ModeRowThird[]
   job: boolean
   dispatch: boolean
   task: boolean
   label: boolean
 } {
-  const job = input.jobEligible && !input.modeRow
-  const task = !input.modeRow
+  const list = input.modeRow ? [] : GEAR_MODE_LIST_ORDER.filter((third) => third !== 'job' || input.jobEligible)
   const dispatch = input.dispatchEligible
-  return { job, dispatch, task, label: job || dispatch || task }
+  return { list, job: list.includes('job'), dispatch, task: list.includes('task'), label: list.length > 0 || dispatch }
 }
