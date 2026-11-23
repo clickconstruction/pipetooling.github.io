@@ -503,7 +503,7 @@ export function DashboardPinnedQuickRow({
       )}
       {/* Waiting on the leader (punch list #365, PR 2): the lines only he can clear, for the office that chases them. */}
       {cardsUnderTheList ? <DashboardWaitingOnLeaderCard authUserId={authUserId} role={role} enabled={canSeeWaitingOnLeader(role)} desk={needsYou.lienDeskData} deskReading={needsYou.reading.lienDesk} /> : null}
-      {/* The office's round (v2.5845, punch list #176, change 5): the round's close sheet in two lines, for the office. */}
+      {/* The office's round (v2.5845, punch list #176, change 5; a week of bars since punch list #424), for the office. */}
       {cardsUnderTheList ? <DashboardOfficeRoundCard enabled={officeEligible} /> : null}
       {/* Wednesday GC certification (v2.1984): the due state lives in the card
           (v2.2490); the green rest-of-Wednesday confirmation stays a notice. */}
