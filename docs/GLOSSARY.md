@@ -3280,6 +3280,7 @@ Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in
 **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map for a picture keeps the Leaflet map until it closes.
 A line is drawn by hand on Google since v2.8236, so the window is on Google from the moment it opens to Save: a press adds a corner, a press held still then slid places one under the glass, and the corners and the dots in the middle of the legs are Google's own markers a finger drags.
 A place's dot is put down on Google since v2.8235: one of Google's own markers a finger drags, with the magnifying glass above it, whose picture is a second small Google map made once for the page and kept (`paintedGoogleGlassMap.ts`).
+Since v2.8326 that map is drawn as close as Google has a picture of the spot, asked of Google once a held press (`askGlassDepth`), and drawn larger only by what is left (`glassPictureZoom`).
 The catch, the held press and the glass's place are one set of rules both canvases read (`handPlacing.ts`).
 A walk is painted on Google since v2.8212 (step 3 of #387): the canvas slides to the walker when they near its edge (`followMe.ts`) and draws again only the line that grew.
 The picture and the printed page are not on Google.

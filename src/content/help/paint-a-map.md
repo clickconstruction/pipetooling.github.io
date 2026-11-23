@@ -241,7 +241,7 @@ The glass opens when you drag a corner too.
 
 A corner dragged close to the end of another line jumps onto it. The ring of the glass turns green. Pull away and it lets go.
 
-The glass is as sharp as the picture. One dot of the picture is a foot or two of ground. A corner can be placed that closely and no closer.
+The glass is as sharp as the picture. On Google Maps it shows the closest photograph Google has of that spot. It can take a moment to sharpen. One dot of the picture is a foot or two of ground. A corner can be placed that closely and no closer.
 
 A mouse is already that exact, so a desk gets no glass. Roll the wheel to zoom in.
 

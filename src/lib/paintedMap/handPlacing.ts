@@ -9,7 +9,9 @@
  * - **The move in hand.** What a finger is doing right now, laid over the line's corners, so the
  *   line follows the finger before the caller is told.
  * - **The glass.** A fingertip hides the spot it is placing. The glass shows that spot two zoom
- *   steps in and rides above the finger, or to a side when the top of the map is too near.
+ *   steps in and rides above the finger, or to a side when the top of the map is too near. On
+ *   Google its picture is a small map drawn as close as Google has a picture of the spot, and drawn
+ *   larger only by what is left (`glassPictureZoom`).
  * - **A box and the ground.** Where a spot is in the map's box and what spot a press is on, worked
  *   out from the view and the box's size with no map library.
  */
@@ -85,4 +87,34 @@ export function spotAtBox(at: { x: number; y: number }, view: PaintedMapView, bo
 /** The view the glass looks through: the spot under the finger, two zoom steps in. */
 export function glassView(point: PaintedPoint, mapZoom: number): PaintedMapView {
   return { center: { lat: point.lat, lng: point.lng }, zoom: mapZoom + GLASS_ZOOM_IN }
+}
+
+/**
+ * The deepest zoom Google draws its road map at. Google draws that map, so it has a picture of every spot down to
+ * here and the glass need not ask.
+ */
+export const GLASS_ROAD_MAP_DEPTH = 22
+
+/**
+ * The zoom the glass's own map is drawn at, on a Google map (punch list #387, the owner's choice of 2026-11-22: ask
+ * Google first).
+ *
+ * The glass looks two zoom steps closer than the big map. Drawn at the big map's own zoom and blown up four times,
+ * Google's photograph is soft. So the glass's map is drawn as close as Google's picture of the spot goes, up to those
+ * two steps, and blown up only by what is left. `depth` is how deep Google's picture goes at the spot, or null until
+ * Google has said: then the map is drawn at the big map's own zoom, as it was before. It is never drawn deeper than
+ * the depth, where Google may draw nothing at all.
+ */
+export function glassPictureZoom(mapZoom: number, depth: number | null): number {
+  if (depth == null || !Number.isFinite(depth)) return mapZoom
+  return Math.max(mapZoom, Math.min(mapZoom + GLASS_ZOOM_IN, Math.floor(depth)))
+}
+
+/**
+ * How many times larger the glass draws its map, for the zoom that map is really at: four at the big map's own zoom,
+ * two one step closer, and one at the glass's own two steps. Google can hold its map back from the zoom it was asked
+ * for, so the size follows the zoom the map says it is at, and the picture stays under the lines drawn over it.
+ */
+export function glassPictureScale(mapZoom: number, pictureZoom: number): number {
+  return 2 ** (mapZoom + GLASS_ZOOM_IN - pictureZoom)
 }
