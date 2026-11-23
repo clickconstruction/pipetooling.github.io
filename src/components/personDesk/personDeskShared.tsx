@@ -141,11 +141,14 @@ export function DeskRow({
   children,
   actions,
   tone,
+  stack = false,
 }: {
   label: ReactNode
   children: ReactNode
   actions?: ReactNode
   tone?: 'gap' | 'locked'
+  /** A row whose value is a block with a field of its own (Working hours): on a phone the label sits above it and the value takes the row's whole width. */
+  stack?: boolean
 }) {
   // v2.7015: label | (value, presses). The value and its presses share one wrapping line, so a row with
   // three presses drops them under the value instead of squeezing the value to one word a line.
@@ -153,7 +156,8 @@ export function DeskRow({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(84px, 128px) minmax(0, 1fr)',
+        // A stacking row takes its columns from `.person-desk-row--stack`, which a phone width turns into one.
+        ...(stack ? {} : { gridTemplateColumns: 'minmax(84px, 128px) minmax(0, 1fr)' }),
         gap: '0.4rem 0.7rem',
         alignItems: 'baseline',
         padding: '0.45rem 0.7rem',
@@ -161,7 +165,7 @@ export function DeskRow({
         fontSize: '0.8125rem',
         background: tone === 'gap' ? 'var(--bg-amber-tint)' : 'transparent',
       }}
-      className="person-desk-row"
+      className={stack ? 'person-desk-row person-desk-row--stack' : 'person-desk-row'}
     >
       <span style={{ color: tone === 'gap' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: tone === 'gap' ? 600 : 400 }}>{label}</span>
       <span className="person-desk-row-body">

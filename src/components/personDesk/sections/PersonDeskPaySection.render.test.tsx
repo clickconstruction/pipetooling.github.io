@@ -17,6 +17,8 @@ const h = vi.hoisted(() => ({
   dates: { start_date: null as string | null, end_date: null as string | null },
   toast: vi.fn(),
   sync: vi.fn(async () => ({ error: null })),
+  /** What the Working hours row reports up: the set week in force, or null with none. */
+  hours: null as unknown,
 }))
 
 vi.mock('../../../lib/supabase', () => {
@@ -54,22 +56,35 @@ vi.mock('../../../lib/people/personDeskFacts', () => ({ loadPayConfigFacts: vi.f
 vi.mock('../../../lib/salaryScheduleSync', () => ({ denverWorkDateToday: () => '2026-11-18', syncSalaryClockSessionsForUserDay: h.sync }))
 vi.mock('../../pay/PersonOffsetFormModal', () => ({ PersonOffsetFormModal: () => null }))
 vi.mock('../../SalaryWorkScheduleSettings', () => ({ SalaryWorkScheduleSettings: () => null }))
+// The Working hours row has its own render test and its own door; here it reports no working hours, so the week is typed.
+vi.mock('./PersonDeskWorkingHoursRow', async () => {
+  const { useEffect } = await import('react')
+  return {
+    PersonDeskWorkingHoursRow: ({ onHours }: { onHours?: (days: unknown) => void }) => {
+      useEffect(() => onHours?.(h.hours), [onHours])
+      return null
+    },
+  }
+})
 
 import { PersonDeskPaySection } from './PersonDeskPaySection'
 
-const viewer = { role: 'assistant', isDev: false, canAccessPay: true, canAccessHours: true, readOnly: false } as unknown as PersonDeskViewer
+// The controller: the role that may type a week's days and hours (punch list #429).
+const viewer = { role: 'controller', isDev: false, canAccessPay: true, canAccessHours: true, readOnly: false } as unknown as PersonDeskViewer
+const owner = { role: 'master_technician', isDev: false, canAccessPay: true, canAccessHours: true, readOnly: false } as unknown as PersonDeskViewer
 const personKey = { payName: 'Rosa Sample', personId: 'p-rosa', userId: 'u-rosa', displayName: 'Rosa Sample' } as unknown as PersonKey
 const HOURLY: PayConfigFacts = { exists: true, hourlyWage: 10, officeWage: null, isSalary: false, recordHoursButSalary: false, salariedWeek: [0, 8, 8, 8, 8, 8, 0] }
 const SET_WEEK: PayConfigFacts = { exists: true, hourlyWage: 10, officeWage: null, isSalary: true, recordHoursButSalary: true, salariedWeek: [0, 6, 6, 6, 6, 6, 0] }
 
 const writes = () => h.calls.filter((c: Call) => c.method === 'update' || c.method === 'upsert')
-const show = () => render(<PersonDeskPaySection personKey={personKey} viewer={viewer} changeKey={0} onChanged={() => {}} />)
+const show = (as: PersonDeskViewer = viewer) => render(<PersonDeskPaySection personKey={personKey} viewer={as} changeKey={0} onChanged={() => {}} />)
 
 beforeEach(() => {
   h.calls.length = 0
   h.toast.mockClear()
   h.sync.mockClear()
   h.dates = { start_date: null, end_date: null }
+  h.hours = null
 })
 afterEach(() => cleanup())
 
@@ -147,5 +162,33 @@ describe('PersonDeskPaySection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(document.querySelector('[data-pay-setup-form]')).toBeNull()
     expect(writes()).toEqual([])
+  })
+
+  it('holds the week’s days and hours to a dev and the controller: an owner reads the boxes and cannot type them', async () => {
+    h.facts = SET_WEEK
+    show(owner)
+    expect(await screen.findByText('A set week')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit pay setup' }))
+    expect((screen.getByLabelText('Monday hours') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Monday hours') as HTMLInputElement).value).toBe('6')
+    expect(screen.queryByRole('button', { name: '6 h, five days' })).toBeNull()
+    expect(document.querySelector('[data-pay-setup-week-locked]')?.textContent).toBe('A dev or the controller sets the days and hours of a week.')
+    // The weekly pay is still the owner's to change, and the save leaves the week as it was.
+    fireEvent.change(screen.getByLabelText('Weekly pay'), { target: { value: '330' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save pay setup' }))
+    await waitFor(() => expect(h.toast).toHaveBeenCalledWith('Pay setup saved', 'success'))
+    const upsert = writes().find((w) => w.table === 'people_pay_config')
+    expect((upsert?.args[0] as { salaried_week_hours: number[]; hourly_wage: number }).salaried_week_hours).toEqual([0, 6, 6, 6, 6, 6, 0])
+    expect((upsert?.args[0] as { hourly_wage: number }).hourly_wage).toBe(11)
+  })
+
+  it('reads the week from working hours once they are set, for the controller too', async () => {
+    h.facts = SET_WEEK
+    h.hours = [[], [[360, 720]], [[360, 720]], [[360, 720]], [[360, 720]], [[360, 720]], []]
+    show()
+    expect(await screen.findByText('A set week')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit pay setup' }))
+    await waitFor(() => expect((screen.getByLabelText('Monday hours') as HTMLInputElement).disabled).toBe(true))
+    expect(document.querySelector('[data-pay-setup-week-locked]')?.textContent).toBe('The days and hours come from their working hours. Change them on the Working hours line.')
   })
 })
