@@ -56,7 +56,7 @@ export interface NeedsYouDoorPlan {
    * Whether what the card keeps around its list stays on the Dashboard: the Lien desk's strip from the top of
    * the card, and the two cards drawn under the list, the office's round and, for the office, what waits on the
    * leader. The office person's door of v2.3883 takes them to the Inbox tab with the list. The new phone
-   * layout's door stands in for the list alone, so the desk's four numbers and the red *No round* mark a leader
+   * layout's door stands in for the list alone, so the desk's four numbers and the round's missed day a leader
    * reads on his Dashboard today are still on his Dashboard.
    */
   cardsStay: boolean
