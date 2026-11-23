@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien Desk on the Dashboard</title>
+<style>
+/* The page: a reading column, with the app drawn inside phone and desk frames. Each frame carries its own
+   theme (data-theme on .app), so dark and light sit side by side whatever the reader's own theme is. */
+:root{
+  --pg:#f0f2f5;--pg-surface:#ffffff;--pg-text:#111827;--pg-muted:#4b5563;--pg-border:#cfd4db;--pg-frame:#1f2937;
+  --pg-link:#2563eb;--pg-accent:#f97316;--pg-good:#15803d;--pg-warn:#b91c1c;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;
+  padding:28px max(16px,env(safe-area-inset-right,0px)) 72px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.15rem;margin:44px 0 6px;padding-top:18px;border-top:1px solid var(--pg-border)}
+p{margin:6px 0;max-width:68ch}
+.lede{color:var(--pg-muted)}
+.note{color:var(--pg-muted);font-size:13.5px}
+.pair{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:14px}
+.col{min-width:0;max-width:100%}
+.cap{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted);margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.cap b{color:var(--pg-text)}
+.cap .tag{font-weight:700;letter-spacing:.04em;border-radius:999px;padding:1px 9px;border:1px solid var(--pg-border);color:var(--pg-text)}
+.cap .tag.pick{background:#15803d;border-color:#15803d;color:#fff}
+.scroll{overflow-x:auto;max-width:100%}
+.faults{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px;max-width:76ch}
+.faults li{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start}
+.faults .n,.pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;font:700 12px/1 system-ui,sans-serif}
+.faults .n.no{background:transparent;color:var(--pg-muted);border:1px solid var(--pg-border)}
+.faults s{color:var(--pg-muted)}
+table{border-collapse:collapse;margin-top:12px;font-size:14px;max-width:100%}
+th,td{text-align:left;padding:7px 12px 7px 0;border-bottom:1px solid var(--pg-border);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted)}
+td.num{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+
+/* ---- the app's own tokens, from src/index.css ---- */
+.app[data-theme="light"]{
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;--bg-200:#e5e7eb;
+  --text-base:#1a1a1a;--text-strong:#111827;--text-700:#374151;--text-600:#4b5563;--text-muted:#6b7280;--text-faint:#767f8d;
+  --border:#cfd4db;--border-strong:#aab2bd;--border-400:#9ca3af;
+  --text-link:#2563eb;--text-red-700:#b91c1c;--text-amber-800:#92400e;--text-violet-700:#6d28d9;
+  --bg-amber-100:#fef3c7;--bg-amber-tint:#fffbeb;--border-amber:#fcd34d;
+  --bg-teal-tint:#ccfbf1;--text-teal-700:#0f766e;--text-green-700:#15803d;--text-blue-700:#1d4ed8;--bg-blue-tint:#eff6ff;
+}
+.app[data-theme="dark"]{
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#4b5563;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;--text-faint:#8892a3;
+  --border:#374151;--border-strong:#4b5563;--border-400:#6b7280;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;--text-violet-700:#c4b5fd;
+  --bg-amber-100:#45390f;--bg-amber-tint:#3a2f11;--border-amber:#92400e;
+  --bg-teal-tint:#11312e;--text-teal-700:#5eead4;--text-green-700:#4ade80;--text-blue-700:#93c5fd;--bg-blue-tint:#1e3358;
+}
+.app{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;color:var(--text-base);background:var(--bg-page);text-align:left}
+.app button{font:inherit;color:inherit;cursor:pointer;text-align:left}
+.app strong{font-weight:700}
+
+/* frames */
+.phone{border:9px solid var(--pg-frame);border-radius:30px;overflow:hidden;position:relative;height:700px;flex:none}
+.phone .screen{padding:0 8px 80px}
+.phone .tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--border);padding:8px 2px 12px}
+.phone .tabs span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--text-700)}
+.phone .tabs i{width:18px;height:15px;border-radius:4px;background:var(--text-muted);opacity:.75}
+.desk{border:1px solid var(--pg-frame);border-radius:10px;overflow:hidden;width:1000px}
+.desk .screen{padding:16px 20px 18px}
+
+/* the job card above (the bottom of it, as on the phone) */
+.a-day{background:var(--surface);border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:0 14px 20px;margin-bottom:16px}
+.a-job{background:var(--bg-subtle);border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:0 11px 8px}
+.a-chips{display:flex;flex-wrap:wrap;gap:5px 6px;align-items:center;padding-top:0}
+.a-chips .lab{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-right:2px}
+.a-chip{font-size:11.5px;font-weight:600;border-radius:5px;padding:2px 8px;background:var(--bg-teal-tint);color:var(--text-teal-700);white-space:nowrap}
+.a-chip.none{background:none;border:1px dashed var(--border-strong);color:var(--text-muted);font-weight:500}
+.a-jobrow{display:flex;justify-content:space-between;align-items:center;margin-top:9px}
+.a-photo{width:38px;height:38px;border:1px solid var(--border-strong);border-radius:9px;display:flex;align-items:center;justify-content:center}
+.a-photo i{width:15px;height:12px;border:2px solid var(--text-link);border-radius:3px}
+.a-reports{border:1px solid var(--border-strong);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:600;color:var(--text-link)}
+.a-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--bg-muted);margin-top:9px}
+.a-bar span{background:#3b82f6}
+.a-pct{display:flex;justify-content:space-between;font-size:12px;margin-top:3px}
+.a-pct b{color:var(--text-strong)} .a-pct span{color:var(--text-muted)} .a-pct em{font-style:normal;font-weight:600;color:var(--text-faint)}
+.a-leave{display:block;width:100%;margin-top:7px;padding:9px;border:1px solid var(--border-strong);border-radius:8px;background:none;color:var(--text-link)!important;font-size:15px!important;font-weight:500;text-align:center!important}
+
+/* the Needs you card */
+.a-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px 12px;margin-bottom:16px}
+.a-head{display:flex;align-items:center;min-height:44px;background:var(--bg-muted);border-left:4px solid #f97316;padding:.3rem 20px .3rem 16px;--text-muted:var(--text-600)}
+.a-head.mid{border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0 -20px 12px}
+.a-head.top{border-bottom:1px solid var(--border);border-radius:9px 9px 0 0;margin:-16px -20px 12px}
+.a-head>div{display:flex;align-items:baseline;gap:.6rem;flex:1 1 auto;min-width:0}
+.a-head h3{margin:0;font-size:18px;font-weight:700;letter-spacing:.01em;color:var(--text-strong)}
+.a-pill{background:var(--bg-amber-100);color:var(--text-amber-800);border-radius:999px;padding:1px 9px;font-size:13px;font-weight:700}
+.a-others{color:var(--text-muted);font-size:13px}
+.a-rows{display:flex;flex-direction:column;gap:8px}
+.a-row{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem .875rem;background:var(--bg-subtle);border:1px solid var(--border);border-left:4px solid var(--rail);border-radius:8px;padding:.7rem .875rem}
+.a-row .t{flex:1 1 240px;min-width:0}
+.a-row .t b{display:block;font-weight:600;font-size:15px}
+.a-row .t span{display:block;color:var(--text-muted);font-size:13px;margin-top:1px}
+.a-row .f{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0}
+.a-row .act{border:0;border-radius:6px;padding:.45rem .9rem;font-size:13px;font-weight:600;flex-shrink:0;color:#fff;background:var(--act)}
+.a-row.amber{--rail:#f59e0b;--act:#b45309} .a-row.blue{--rail:#3b82f6;--act:#1d4ed8} .a-row.red{--rail:#dc2626;--act:#dc2626}
+/* The rows on a phone as the owner asked on 2026-11-23: words at the left, one press at the right, every press one size. Built in another session. */
+.a-rows.two .a-row{flex-wrap:nowrap}
+.a-rows.two .a-row .t{flex:1 1 0}
+.a-rows.two .a-row .f{display:none}
+.a-rows.two .a-row .act{width:104px;min-height:44px;padding:.3rem .5rem;line-height:1.2;text-align:center!important}
+.a-row.gray{--rail:var(--border-400)} .a-row.gray .act{background:var(--bg-muted);color:var(--text-700);border:1px solid var(--border-strong)}
+
+.a-label{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap}
+.a-door{color:var(--text-link);font-size:13px;font-weight:600;white-space:nowrap}
+
+/* BEFORE: the strip as it is (NeedsYouLienBoardStrip.tsx, the in-card branch) */
+.a-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%;margin:0 0 12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle);position:relative}
+.a-strip .a-door{margin-left:auto}
+.a-dot{display:inline-flex;align-items:baseline;gap:5px;font-size:13px;position:relative}
+.a-dot i{width:8px;height:8px;border-radius:50%;align-self:center;background:var(--c)}
+.a-dot strong{font-variant-numeric:tabular-nums}
+.a-dot span{color:var(--text-muted)}
+.a-dot.red{--c:var(--text-red-700)} .a-dot.violet{--c:var(--text-violet-700)} .a-dot.amber{--c:var(--text-amber-800)} .a-dot.quiet{--c:var(--border-strong)}
+/* BEFORE under the new phone layout: the strip as a card of its own (the standalone branch) */
+.a-strip.alone{flex-direction:column;align-items:stretch;gap:8px;margin:0 0 16px;padding:10px 12px;border-radius:10px;background:var(--surface)}
+.a-strip.alone .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.a-strip.alone .dots{display:flex;flex-wrap:wrap;gap:6px 14px}
+.a-strip.alone .a-door{margin-left:0}
+.pin{position:absolute;z-index:2;box-shadow:0 0 0 2px var(--surface)}
+
+/* the Needs you door of the new phone layout */
+.a-ndoor{display:flex;align-items:center;gap:.5rem;width:100%;min-height:48px;padding:.6rem .85rem;margin-bottom:16px;border:1px solid var(--border-amber);border-radius:10px;background:var(--bg-amber-tint);font-size:15px}
+.a-ndoor .w{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a-ndoor .w span{color:var(--text-muted)}
+
+/* AFTER A: the Board in small. A label line with the door, then the values as columns. No box, one hairline. */
+.a-lienA{display:flex;flex-direction:column;gap:6px;width:100%;margin:0 0 12px;padding:0 0 12px;border:0;border-bottom:1px solid var(--border);background:none}
+.a-lienA .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.a-vals{display:flex}
+.a-val{display:flex;flex-direction:column;gap:1px;flex:1 1 auto;padding:0 10px;border-left:1px solid var(--border);min-width:0}
+.a-val:first-child{padding-left:0;border-left:0}
+.a-vals:not(.two) .a-val:nth-child(-n+2){flex-shrink:0}
+.a-val strong{font-size:21px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text-strong)}
+.a-val strong.red{color:var(--text-red-700)}
+.a-val span{font-size:12px;font-weight:600;line-height:1.25;color:var(--text-700)}
+.a-lienA.alone{margin:0 0 16px;padding:12px 16px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.a-vals.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:10px}
+.a-vals.two .a-val:nth-child(odd){padding-left:0;border-left:0}
+.desk .a-lienA{flex-direction:row;align-items:baseline;gap:22px}
+.desk .a-lienA .hd{display:contents}
+.desk .a-lienA .a-door{order:9;margin-left:auto}
+.desk .a-vals{display:flex;gap:22px}
+.desk .a-val{flex-direction:row;align-items:baseline;gap:6px;padding:0;border:0}
+.desk .a-val strong{font-size:16px} .desk .a-val span{font-size:13px;font-weight:500;color:var(--text-muted)}
+
+/* AFTER B: one line, the shape of the Needs you door */
+.a-lienB{display:flex;align-items:center;gap:.5rem;width:100%;min-height:44px;margin:-12px 0 12px;padding:0;border:0;border-bottom:1px solid var(--border);background:none;font-size:14px}
+.a-lienB .w{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a-lienB .w span{color:var(--text-muted)}
+.a-lienB .red{color:var(--text-red-700)}
+.a-lienB.alone{min-height:48px;margin:0 0 16px;padding:.6rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:15px}
+
+/* ---- the widened page: two sightings ---- */
+.phone.tall{height:auto}
+.phone.tall .screen{padding-bottom:14px}
+.phone.tall .tabs{position:static}
+.facts td:first-child{font-weight:700;white-space:nowrap}
+.facts .same{color:var(--pg-warn);font-weight:700}
+.facts .only{color:var(--pg-muted)}
+.three{margin:16px 0 0;padding:14px 18px;border:1px solid var(--pg-border);border-left:4px solid var(--pg-accent);border-radius:8px;background:var(--pg-surface);max-width:76ch}
+.three p{margin:4px 0}
+
+/* the mark for the scroll between the two sightings: not part of the app */
+.a-gap{margin:2px 0 16px;padding:10px 12px;border-top:2px dashed var(--border-strong);border-bottom:2px dashed var(--border-strong);text-align:center;font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:.02em}
+.a-gap b{display:block;color:var(--text-700);font-size:12.5px}
+.a-ghost{margin:12px 0 0;padding:14px 12px;border:2px dashed var(--text-red-700);border-radius:12px;text-align:center;font-size:12.5px;font-weight:600;color:var(--text-red-700)}
+
+/* the Billing Pipeline's foot and the My crew head, the lien month card's neighbours */
+.a-bill{background:var(--surface);border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:6px 16px 12px}
+.a-bill div{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:var(--text-strong);padding:7px 0}
+.a-bill div i{flex:none;width:20px;height:20px;border-radius:50%;background:var(--bg-blue-tint);color:var(--text-blue-700);font:700 11px/20px system-ui,sans-serif;text-align:center}
+.a-crew{margin-top:16px;min-height:44px;display:flex;align-items:baseline;gap:10px;background:var(--bg-muted);border:1px solid var(--border-strong);border-left:4px solid #f97316;border-radius:6px;padding:.55rem .75rem}
+.a-crew b{font-size:18px;color:var(--text-strong)} .a-crew span{font-size:13px;color:var(--text-600)}
+
+/* BEFORE: the lien month card (DashboardLienMonthCard.tsx) */
+.a-month{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:.85rem 1rem;margin-top:.75rem;display:grid;gap:8px;position:relative}
+.a-month .hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.a-month .kick{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.a-month .mut{font-size:.78rem;color:var(--text-muted)}
+.a-month .mdoor{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--text-blue-700);position:relative}
+.a-mbar{position:relative;padding-top:10px}
+.a-mbar .today{position:absolute;top:0;width:2px;height:20px;background:var(--text-strong);border-radius:1px;z-index:1}
+.a-mbar .zones{display:grid;gap:2px;height:10px;border-radius:5px;overflow:hidden}
+.a-mbar .zones i{display:block}
+.a-mbar .g{background:var(--text-green-700)} .a-mbar .r{background:var(--text-red-700)} .a-mbar .q{background:var(--bg-subtle);border:1px dashed var(--border);opacity:.9}
+.a-month .ln{font-size:.85rem;color:var(--text-strong);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;position:relative}
+.a-month .ln strong.red{color:var(--text-red-700)} .a-month .ln strong.q{color:var(--text-700)}
+
+/* AFTER, recommended: the strip of idea A, with one red line while a paper is past its day or at risk */
+.a-late{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text-red-700)}
+.a-late i{width:7px;height:7px;border-radius:50%;background:var(--text-red-700);flex:none}
+.desk .a-late{order:8}
+/* AFTER, option 2: the same piece carrying the month's bar */
+.a-lienA .a-mbar{padding-top:6px}
+.a-lienA .a-mbar .today{height:14px}
+.a-lienA .a-mbar .zones{height:6px}
+.a-lienA .zone{font-size:12.5px;color:var(--text-700)} .a-lienA .zone b{color:var(--text-strong)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lien information on the Dashboard: two sightings, one answer</h1>
+  <p class="lede">Every count, amount, date, job and supply house on this page is made up. Nothing here is copied from the live app.</p>
+  <div class="three">
+    <p><b>What the two say.</b> The strip at the top says how the Lien desk stands against its next day. The lien month card far below says where today falls in the month's rhythm, what slipped, and what queues for next month.</p>
+    <p><b>What I recommend.</b> One place, at the top, as a slim card of its own beside Needs you and not inside it. Needs you then holds only things to press. Drop the lien month card. Carry up the one thing only the card said, as one red line: papers past their day.</p>
+    <p><b>What you pick.</b> Option 1, 2 or 3 below, and whether the unpaid amount stays on the Dashboard.</p>
+  </div>
+
+  <h2>Before and after, on a phone, dark</h2>
+  <p class="note">430 px wide, the width of the phone in your screenshots. Each frame is one Dashboard from the day's job card down. The dashed band stands for the long scroll between the two sightings. It is not part of the app.</p>
+  <p class="note">The rows of the list in every After are drawn the way you asked for them on 2026-11-23: the words at the left, one press at the right, every press one size. That change is being built in another session. The Before keeps the rows as they are today.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> today, two sightings</p><div class="scroll"><div data-frame="before" data-full="1" data-theme="dark" data-w="430" data-pins="1"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> option 1, recommended · one place</p><div class="scroll"><div data-frame="rec" data-full="1" data-theme="dark" data-w="430" data-ghost="1"></div></div></div>
+  </div>
+
+  <h2>Beside Needs you, not inside it</h2>
+  <p>Needs you is a place for action. Everything in it can be pressed, and goes away once it is done. The Lien desk's standing has one door and never clears. So it is a card of its own that touches Needs you. Under the New phone layout it sits under the Needs you line, where it is today. On the old layout and at a desk it sits directly above the Needs you card, because under that card it would be buried.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Earlier drawing</span> inside the card, under its title</p><div class="scroll"><div data-frame="recIn" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">Now recommended</span> its own card, above Needs you</p><div class="scroll"><div data-frame="rec" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+
+  <h2>What each one tells a leader, fact by fact</h2>
+  <p class="note">Each pairing was checked in the two kernels, <code>lienBoard.ts</code> for the strip and <code>lienMonthRhythm.ts</code> for the card. Three pairs look alike and count different things.</p>
+  <div class="scroll"><table class="facts">
+    <tr><th>Fact</th><th>Where</th><th>What it counts</th><th>Its look-alike</th><th>Where you act on it</th></tr>
+    <tr><td>14 by Dec 15</td><td>Strip</td><td>Every notice and lien still to send or file whose day is Dec 15 or earlier. Papers past their day that can still go are in it</td><td><span class="same">Not the same number</span> as the card's next month. The card counts December's deadlines only, leaves out papers the leader holds, and adds reminders, which the strip never counts</td><td>On the desk</td></tr>
+    <tr><td>6 waiting on the leader</td><td>Strip</td><td>Papers to approve, plus approved notices to sign</td><td><span class="only">Only here.</span> For the leader it is the total of his own lien rows in the list</td><td>On the Dashboard, in his rows</td></tr>
+    <tr><td>5 to print and mail</td><td>Strip</td><td>Monthly notices ready to print, and printed ones to mail</td><td><span class="same">Not the card's copies to mail.</span> Different papers, see below</td><td>On the desk, the office's run</td></tr>
+    <tr><td>$86,400 unpaid</td><td>Strip</td><td>Every open balance on the jobs the desk holds</td><td><span class="only">Only here.</span> The card shows no money</td><td>Nowhere. It opens nothing</td></tr>
+    <tr><td>The month bar</td><td>Card</td><td>The month cut into the owner's five zones, green where a zone went clean, red where it slipped, with today marked</td><td><span class="only">Only here.</span> The Lien desk itself dropped this bar for the Board on 2026-11-15</td><td>Nowhere. The card's door opens a desk that no longer draws it</td></tr>
+    <tr><td>Nothing scheduled, days 16 to the end</td><td>Card</td><td>The zone today is in. In a working week it reads like <i>12 to send · 4 sent</i></td><td><span class="only">Only here</span></td><td>On the desk</td></tr>
+    <tr><td>2 reminders · 4 notices · 7 liens for next month</td><td>Card</td><td>What is due in December, by kind</td><td><span class="same">Said twice on the card.</span> From day 16 to the month's end the second line and the fourth line are the same sentence</td><td>On the desk</td></tr>
+    <tr><td>5 slipped</td><td>Card</td><td>This month's reminders, notices and liens not done once their days passed, and windows that closed</td><td><span class="same">Not the Board's count.</span> The Board says <i>3 are past their day</i>, which leaves out reminders and closed windows</td><td>On the desk</td></tr>
+    <tr><td>8 copies to mail</td><td>Card</td><td>Filed liens whose copies to the owner and the GC are not yet recorded as served</td><td><span class="same">The list already has a row for these</span>, <i>filed liens have not been served</i>, the office's line</td><td>On the Dashboard, in the office's row</td></tr>
+  </table></div>
+
+  <h2>What the eye trips on</h2>
+  <ul class="faults">
+    <li><span class="n">1</span><span><b>A box in a card on a page.</b> The strip has its own border and fill inside the Needs you card. It is drawn like a row of the list, but it is not one.</span></li>
+    <li><span class="n">2</span><span><b>The card does not start with its title.</b> The strip sits above <b>Needs you</b>, so the title band is a third of the way down its own card.</span></li>
+    <li><span class="n">3</span><span><b>Four facts wrap where they fall.</b> Where the line breaks depends on the phone's width and the digits. Here it made three rows of three lengths.</span></li>
+    <li><span class="n">4</span><span><b>The Board › is alone on a third row.</b></span></li>
+    <li><span class="n">5</span><span><b>Four dot colors beside the rows' own colors.</b> Violet and yellow mean a person in the strip and a level of urgency in the rows.</span></li>
+    <li><span class="n">6</span><span><b>The amount is the widest bold thing in the box.</b> It is the one figure of the four that opens nothing.</span></li>
+    <li><span class="n">7</span><span><b>It says “the leader” to the leader.</b> The row under it says “your name” for the same papers.</span></li>
+    <li><span class="n">8</span><span><b>A second door, alone on a row again.</b> <b>Open the Lien desk ›</b> goes to the same page as <b>The Board ›</b>.</span></li>
+    <li><span class="n">9</span><span><b>The bar is a picture the desk gave up.</b> On 2026-11-15 the Board took the bar's place on the Lien desk. The Dashboard card is the last place it is drawn, and its door opens a page that speaks in other words.</span></li>
+    <li><span class="n">10</span><span><b>One sentence, twice.</b> From the 16th on, the card's second line and its last line are the same counts.</span></li>
+    <li><span class="n">11</span><span><b>“Mail” means two things.</b> <i>To print and mail</i> at the top is monthly notices. <i>Copies to mail</i> down here is filed liens. A reader takes them for one count.</span></li>
+  </ul>
+
+  <h2>Who sees each</h2>
+  <p>The same four roles see both: a dev, a leader, an assistant and a controller. The strip also needs a line in the Needs you list. The card shows whenever the desk can be read. So one place shows nobody a number they do not see today. The unpaid amount is on the strip only. The recommendation takes it off the Dashboard and leaves it on the Board.</p>
+
+  <h2>The same pair, light</h2>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span></p><div class="scroll"><div data-frame="before" data-full="1" data-theme="light" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> option 1, recommended</p><div class="scroll"><div data-frame="rec" data-full="1" data-theme="light" data-w="430"></div></div></div>
+  </div>
+
+  <h2>The three options</h2>
+  <p><b>Option 1, one slim card beside Needs you, and the lien month card dropped (recommended).</b> One place, at the top, where the work is. Three values and the door. Needs you starts with its title and holds only presses. One red line shows only while a paper is past its day or will not make it, in the Board's own words, so the Dashboard and the page its door opens agree. <b>A leader loses:</b> the picture of the month's zones, the count of reminders, and in a working week the zone's own progress, like <i>12 to send · 4 sent</i>.</p>
+  <p><b>Option 2, one piece that carries the month too.</b> The same card in the same place, with the month's bar as a thin line and the zone today is in. <b>A leader loses:</b> nothing but space. It is about 60 px taller at the top of his page every day, and for half of every month the bar says <i>Nothing scheduled</i>.</p>
+  <p><b>Option 3, neither block.</b> Lien work shows only as rows of the list, with <b>Open the Board</b> on a row when a paper is late. <b>A leader loses:</b> the standing at a glance, the office's side of the run, and under the New phone layout every lien fact on the Dashboard, since the rows live in the Inbox tab there. This goes against the 2026-11-22 call that he reads the desk's numbers on his Dashboard every day.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag pick">1</span> strip, card dropped · dark</p><div class="scroll"><div data-frame="rec" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag">2</span> one piece with the month · dark</p><div class="scroll"><div data-frame="opt2" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">3</span> rows only · dark</p><div class="scroll"><div data-frame="opt3" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag">2</span> light</p><div class="scroll"><div data-frame="opt2" data-theme="light" data-w="430"></div></div></div>
+  </div>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">3</span> light</p><div class="scroll"><div data-frame="opt3" data-theme="light" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">1</span> with nothing late · dark</p><div class="scroll"><div data-frame="recCalm" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+
+  <h2>Does the month bar earn its space on a phone?</h2>
+  <p>Not on the Dashboard. It answers “what week of the lien month is it?”, which the date already answers, and its days sit in <b>§ Rules</b> on the desk. From the 16th to the end of the month it reads <i>Nothing scheduled</i>. You asked for the Board in its place on the desk on 2026-11-15. One caution: you meant to look at the bar in a real reminders week, December 1 to 5. Today is day 23, the card's emptiest state. If you want that look first, the strip can be redrawn now and the card dropped after it.</p>
+
+  <h2>At 393 px and at 320 px</h2>
+  <p class="note">The Before breaks in a different place at each width. The After holds its shape.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> 393 px</p><div class="scroll"><div data-frame="before" data-theme="dark" data-w="393"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 393 px</p><div class="scroll"><div data-frame="rec" data-theme="dark" data-w="393"></div></div></div>
+  </div>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> 320 px</p><div class="scroll"><div data-frame="before" data-theme="dark" data-w="320"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 320 px</p><div class="scroll"><div data-frame="rec" data-theme="dark" data-w="320"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 320 px, light</p><div class="scroll"><div data-frame="rec" data-theme="light" data-w="320"></div></div></div>
+  </div>
+
+  <h2>If the unpaid amount stays</h2>
+  <p>Today the amount shows to a dev, a leader, an assistant and a controller, who also see it on the Lien desk. The recommendation moves it off the Dashboard, because it prompts no press and a phone gets glanced at on a job site. If you want it kept, it is a fourth value. On a small phone the four stand two by two.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">After, amount kept</span> 430 px</p><div class="scroll"><div data-frame="rec4" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag">After, amount kept</span> 320 px</p><div class="scroll"><div data-frame="rec4" data-theme="dark" data-w="320"></div></div></div>
+  </div>
+
+  <h2>With the New phone layout switched on</h2>
+  <p>Your screenshots are the old layout. With <b>New phone layout</b> ticked, the list becomes one line that opens the <b>Inbox</b> tab, and the strip is a card of its own under it. The lien month card is still far below. The same answer serves both layouts.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> new layout, today</p><div class="scroll"><div data-frame="doorBefore" data-full="1" data-theme="dark" data-w="393"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> option 1, recommended</p><div class="scroll"><div data-frame="doorRec" data-full="1" data-theme="dark" data-w="393"></div></div></div>
+  </div>
+
+  <h2>At a desk</h2>
+  <p class="note">At a desk the strip already fits on one line. The After keeps one line as a card of its own above Needs you, without the dots. The lien month card under the Billing pipeline goes, as on a phone.</p>
+  <p class="cap" style="margin-top:14px"><span class="tag">Before</span> dark</p>
+  <div class="scroll"><div data-frame="deskBefore" data-theme="dark"></div></div>
+  <p class="cap" style="margin-top:18px"><span class="tag pick">After</span> dark</p>
+  <div class="scroll"><div data-frame="deskRec" data-theme="dark"></div></div>
+  <p class="cap" style="margin-top:18px"><span class="tag pick">After</span> light</p>
+  <div class="scroll"><div data-frame="deskRec" data-theme="light"></div></div>
+</div>
+
+<script>
+// Made-up figures, one set for every frame.
+const D = { due: 14, day: 'Dec 15', leader: 6, run: 5, unpaid: '$86,400', late: 3, yours: 9, others: 21, slipped: 5, copies: 8, next: '2 reminders · 4 notices · 7 liens', job: '2041 · ZZ Test Job' }
+
+const jobCard = () => `
+  <div class="a-day"><div class="a-job">
+    <div class="a-chips"><span class="lab">Job accounts</span><span class="a-chip">● ZZ Supply One ✓</span><span class="a-chip">● ZZ Pipe Two ✓</span><span class="a-chip">● ZZ Rentals ✓</span><span class="a-chip none">ZZ Supply Four · none yet</span></div>
+    <div class="a-jobrow"><span class="a-photo"><i></i></span><span class="a-reports">3 reports</span></div>
+    <div class="a-bar"><span style="width:40%"></span></div>
+    <div class="a-pct"><span><b>40%</b> done</span><em>no change today</em></div>
+    <button class="a-leave">Leave Report</button>
+  </div></div>`
+
+const head = (pos) => `<div class="a-head ${pos}"><div><h3>Needs you</h3><span class="a-pill">${D.yours}</span><span class="a-others">${D.others} for others</span></div></div>`
+const pin = (n, style) => `<span class="pin" style="${style}">${n}</span>`
+
+const row = (tone, title, detail, fig, act) => `<div class="a-row ${tone}"><div class="t"><b>${title}</b><span>${detail}</span></div><div class="f">${fig}</div><button class="act">${act}</button></div>`
+const ROWS = [
+  row('amber', '6 purchases need a job', 'Purchases over 2 days old aren’t on a job yet (8 unlinked in all) — sort in Job Parts Tally.', 6, 'Open tally'),
+  row('blue', `Sign ${D.leader} lien notices before the run`, 'Approved, but the run holds them until your name is on them. One press each.', D.leader, 'Sign them'),
+  row('amber', '40 permits wait on a skim', 'Austin 22 · San Antonio 18. The oldest has waited 9 days.', 40, 'Skim them'),
+  row('gray', '3 jobs have had no hours in two weeks', 'Say whether each is waiting, done or dropped.', 3, 'Open the jobs'),
+]
+const rows = (o = {}) => `<div class="a-rows ${o.two ? 'two' : ''}">${o.first || ''}${ROWS.slice(0, o.n || 4).join('')}</div>`
+
+const dot = (tone, fig, words, p = '') => `<span class="a-dot ${tone}">${p}<i></i><strong>${fig}</strong><span>${words}</span></span>`
+const dots = (pins) => [
+  dot('red', D.due, `by ${D.day}`, pins ? pin(5, 'left:-4px;top:-19px') : ''),
+  dot('violet', D.leader, 'waiting on the leader', pins ? pin(7, 'right:-14px;top:-19px') : ''),
+  dot('amber', D.run, 'to print and mail'),
+  dot('quiet', D.unpaid, 'unpaid on the desk', pins ? pin(6, 'right:-26px;top:-2px') : ''),
+].join('')
+const stripBefore = (pins) => `<button class="a-strip">${pins ? pin(1, 'left:-14px;top:-14px') + pin(3, 'left:-18px;top:38px') : ''}<span class="a-label">Lien desk</span>${dots(pins)}<span class="a-door" style="position:relative">${pins ? pin(4, 'left:-28px;top:-1px') : ''}The Board ›</span></button>`
+const stripAlone = () => `<button class="a-strip alone"><span class="hd"><span class="a-label">Lien desk</span><span class="a-door">The Board ›</span></span><span class="dots">${dots(false)}</span></button>`
+
+// The month's bar: reminders 5 days, notices 4, liens 4, catch-up 2, quiet 15, and today on day 23 of 30.
+const mbar = () => `<span class="a-mbar" style="display:block"><span class="today" style="left:75%"></span><span class="zones" style="grid-template-columns:5fr 4fr 4fr 2fr 15fr"><i class="g"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="q"></i></span></span>`
+const monthCard = (pins) => `<section class="a-month">
+  <div class="hd"><span class="kick">The lien month</span><span class="mut">November 2026 · day 23</span><span class="mdoor">${pins ? pin(8, 'left:-28px;top:-2px') : ''}Open the Lien desk ›</span></div>
+  <div style="position:relative">${pins ? pin(9, 'left:-22px;top:2px') : ''}${mbar()}</div>
+  <div class="ln"><strong class="q">Nothing scheduled</strong><span class="mut">days 16 to the end</span><span>${D.next}</span><span class="mut">for next month</span></div>
+  <div class="ln">${pins ? pin(11, 'right:-8px;top:-2px') : ''}<strong class="red">${D.slipped} slipped</strong><span class="mut">${D.job}</span><span class="mut">· ${D.copies} copies to mail</span></div>
+  <div class="ln">${pins ? pin(10, 'left:-22px;top:-1px') : ''}<span class="mut">Next month</span><span>${D.next}</span></div>
+</section>`
+
+const val = (fig, words, cls = '') => `<span class="a-val"><strong class="${cls}">${fig}</strong><span>${words}</span></span>`
+const late = () => `<span class="a-late"><i></i>${D.late} are past their day</span>`
+const lien = (o = {}) => `<button class="a-lienA ${o.alone ? 'alone' : ''}">
+  <span class="hd"><span class="a-label">Lien desk${o.month ? ' · Nov, day 23' : ''}</span><span class="a-door">The Board ›</span></span>
+  ${o.month ? mbar() + `<span class="zone"><b>Nothing scheduled</b> till Dec 1 · ${D.next} next month</span>` : ''}
+  <span class="a-vals ${o.two ? 'two' : ''}">
+    ${val(D.due, `by ${D.day}`, o.calm ? '' : 'red')}${val(D.leader, 'wait on you')}${val(D.run, 'to print and mail')}${o.money ? val(D.unpaid, 'unpaid on the desk') : ''}
+  </span>
+  ${o.calm ? '' : o.month ? `<span class="a-late"><i></i>${D.slipped} slipped this month</span>` : late()}</button>`
+const ndoor = () => `<button class="a-ndoor"><span class="w"><strong>Needs you · ${D.yours}</strong><span> · 6 purchases need a job</span></span><span class="a-door">Inbox ›</span></button>`
+const round = () => `<div class="a-card" style="padding:12px 16px"><span class="a-label">The office’s round</span><div style="font-size:14px;margin-top:4px">Today’s round is done. <span style="color:var(--text-muted)">2 questions open.</span></div></div>`
+
+const card = (inner) => `<section class="a-card">${inner}</section>`
+const gap = (words) => `<div class="a-gap"><b>a long scroll</b>${words}</div>`
+const billing = () => `<div class="a-bill"><div><i>2</i>▸ Ready to Bill (4)</div><div><i>3</i>▸ Billed Waiting for Payment (38)</div></div>`
+const crew = () => `<div class="a-crew"><b>My crew</b><span>job-days you supervised</span></div>`
+const ghost = () => `<div class="a-ghost">The lien month card was here.<br>Its one fact that mattered is the red line at the top.</div>`
+const lowBefore = (o) => billing() + monthCard(o.pins) + crew()
+const lowAfter = (o) => billing() + (o.ghost ? ghost() : '') + crew()
+const lateRow = () => row('red', `${D.late} lien papers are past their day`, `${D.due} are due by ${D.day}. ${D.leader} wait on you.`, D.late, 'Open the Board')
+
+// Each screen is the top of the Dashboard and, in a full frame, what sits far below it.
+const SCREENS = {
+  before: (o) => [jobCard() + card(stripBefore(o.pins) + `<div style="position:relative">${o.pins ? pin(2, 'left:-30px;top:11px') : ''}${head('mid')}</div>` + rows({ n: o.full ? 2 : 4 })), 'the rest of the list · Assigned Jobs · Billing Pipeline', lowBefore(o)],
+  rec: (o) => [jobCard() + lien({ alone: true }) + card(head('top') + rows({ two: true, n: o.full ? 2 : 4 })), 'the rest of the list · Assigned Jobs · Billing Pipeline', lowAfter(o)],
+  recCalm: () => [jobCard() + lien({ alone: true, calm: true }) + card(head('top') + rows({ two: true }))],
+  recIn: () => [jobCard() + card(head('top') + lien() + rows({ two: true }))],
+  rec4: (o) => [jobCard() + lien({ alone: true, money: true, two: o.w < 360 }) + card(head('top') + rows({ two: true }))],
+  opt2: () => [jobCard() + lien({ alone: true, month: true }) + card(head('top') + rows({ two: true }))],
+  opt3: () => [jobCard() + card(head('top') + rows({ two: true, first: lateRow() }))],
+  doorBefore: (o) => [jobCard() + ndoor() + stripAlone() + round(), 'Pinned · Assigned Jobs · Billing Pipeline', lowBefore(o)],
+  doorRec: (o) => [jobCard() + ndoor() + lien({ alone: true }) + round(), 'Pinned · Assigned Jobs · Billing Pipeline', lowAfter(o)],
+  deskBefore: () => [card(stripBefore(false) + head('mid') + rows({ n: 3 })), 'the rest of the list · Assigned Jobs · Billing Pipeline', billing() + monthCard(false)],
+  deskRec: () => [lien({ alone: true }) + card(head('top') + rows({ n: 3 })), 'the rest of the list · Assigned Jobs · Billing Pipeline', billing()],
+}
+const tabs = `<div class="tabs">${['Dashboard', 'Schedule', 'Inbox', 'Customers', 'PO'].map((t) => `<span><i></i>${t}</span>`).join('')}</div>`
+
+for (const el of document.querySelectorAll('[data-frame]')) {
+  const kind = el.dataset.frame
+  const w = Number(el.dataset.w || 0)
+  const desk = kind.startsWith('desk')
+  const full = desk || el.dataset.full === '1'
+  el.className = `app ${desk ? 'desk' : 'phone'} ${full && !desk ? 'tall' : ''}`
+  if (!desk) el.style.width = `${w + 18}px`
+  const [top, between, low] = SCREENS[kind]({ pins: el.dataset.pins === '1', ghost: el.dataset.ghost === '1', full, w })
+  el.innerHTML = `<div class="screen">${top}${full && low != null ? gap(between) + low : ''}</div>${desk ? '' : tabs}`
+}
+</script>
+</body>
+</html>
