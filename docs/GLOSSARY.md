@@ -7112,11 +7112,11 @@ since v2.6096, punch list #178, `statement-round` → GC Review over the card an
 **Snooze / Dismiss** exist only on alert items and are per device (`localStorage`, `bulkDeleteAlertDismiss.ts` / `claimDevAlertDismiss.ts`).
 Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
-Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
+Since v2.8339 (punch list #423) the Lien desk's counts are a card of their own beside the Dashboard's card, three values and a red line while a paper is late or at risk, a press that opens the desk at the Board, where from v2.7334 they were four dots on one line inside it (`lienDeskCard` from `useNeedsYouInputs`;
 *The Board* above).
 On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
 The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
-A door that is new under the tick stands in for the list alone, so the Lien desk's strip ([`NeedsYouLienBoardStrip`](../src/components/dashboard/NeedsYouLienBoardStrip.tsx), drawn on its own as a card, `needsYouLienStripUnderDoor`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
+A door that is new under the tick stands in for the list alone, so the Lien desk's card ([`DashboardLienDeskCard`](../src/components/dashboard/DashboardLienDeskCard.tsx), `lienDeskCardShown`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
 Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
 With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
 Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.
