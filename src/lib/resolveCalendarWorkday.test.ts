@@ -129,3 +129,27 @@ describe('resolveCalendarWorkday', () => {
     expect(resolveCalendarWorkday({ workDateYmd: THU, timeOffRows: [], template: null, overrideForDate: override() })).toEqual({ kind: 'none' })
   })
 })
+
+describe('working hours on the calendar (punch list #429)', () => {
+  const tmpl = { user_id: 'u', timezone: APP_CALENDAR_TZ, mode: 'continuous', segment_a_start_local: '08:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null, created_at: null, updated_at: null, exclude_weekends: true } as Parameters<typeof resolveCalendarWorkday>[0]['template']
+  // Mon Nov 2, 2026 and Sat Nov 7, 2026.
+  const day = (workDateYmd: string, workingDay: ReadonlyArray<readonly [number, number]> | null, overrideForDate: Parameters<typeof resolveCalendarWorkday>[0]['overrideForDate'] = null) => resolveCalendarWorkday({ workDateYmd, timeOffRows: [], template: tmpl, overrideForDate, workingDay })
+
+  it('gives the day its own start and end where the template gave 8 hours', () => {
+    expect(day('2026-11-02', [[360, 720]])).toEqual({ kind: 'scheduled', source: 'working_hours', blocks: [{ label: '6:00 AM–12:00 PM CST' }] })
+    expect(day('2026-11-02', null)).toMatchObject({ kind: 'scheduled', source: 'template', blocks: [{ label: '8:00 AM–4:00 PM CST' }] })
+  })
+
+  it('draws a lunch as two blocks, a day off as nothing and a Saturday with hours as a workday', () => {
+    expect(day('2026-11-02', [[420, 690], [720, 930]])).toEqual({ kind: 'scheduled', source: 'working_hours', blocks: [{ label: '7:00 AM–11:30 AM CST', segmentIndex: 1 }, { label: '12:00 PM–3:30 PM CST', segmentIndex: 2 }] })
+    expect(day('2026-11-02', [])).toEqual({ kind: 'none' })
+    expect(day('2026-11-07', [[480, 720]])).toMatchObject({ kind: 'scheduled', source: 'working_hours' })
+    expect(day('2026-11-07', null)).toEqual({ kind: 'none' })
+  })
+
+  it('lets one day’s move and time off win, and makes nothing with no template', () => {
+    const moved = { user_id: 'u', work_date: '2026-11-02', mode: 'continuous', segment_a_start_local: '10:00:00', segment_a_duration_minutes: 300 } as Parameters<typeof resolveCalendarWorkday>[0]['overrideForDate']
+    expect(day('2026-11-02', [[360, 720]], moved)).toMatchObject({ kind: 'scheduled', source: 'override', blocks: [{ label: '10:00 AM–3:00 PM CST' }] })
+    expect(resolveCalendarWorkday({ workDateYmd: '2026-11-02', timeOffRows: [], template: null, overrideForDate: null, workingDay: [[360, 720]] })).toEqual({ kind: 'none' })
+  })
+})

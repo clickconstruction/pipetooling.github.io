@@ -113,11 +113,12 @@ describe('Layout: the gear menu’s sections and switches', () => {
     const groups = rowsBySection(menu)
     expect(Object.keys(groups)).toEqual(['top', 'Modes', 'Show', 'Pages', 'Help and settings', 'last'])
 
-    // Modes holds a leader's Dispatch Mode and its PO tab, and nothing else. Job Mode and Task Mode left the menu for
-    // the roles with the mode row above the header (punch list #425): the row is their one door.
+    // Modes holds a leader's Dispatch Mode and its PO tab, and nothing else. On a phone Job Mode and Task Mode left
+    // the menu for the roles with the mode row above the header (punch list #425): the row is their one door there.
     expect(groups.Modes!.length).toBeGreaterThan(0)
     expect(groups.Modes!.every((n) => /^Dispatch Mode|^PO tab/.test(n))).toBe(true)
     expect(menu.textContent).not.toMatch(/Job Mode|Task Mode/)
+    expect(menu.querySelector('[role="radiogroup"]')).toBeNull()
     // The switches, each with its icon. The only row called a mode outside Modes is the phone's own Dark Mode.
     // A leader on a phone is offered the new phone layout's tick too, unticked until they tick it.
     expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'New phone layout', 'Dark Mode'])
@@ -144,6 +145,31 @@ describe('Layout: the gear menu’s sections and switches', () => {
     expect(groups.Pages).toContain('Calendar')
     // The new phone layout's tick is a phone's: at a desk the Show group is the three it was.
     expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'Dark Mode'])
+    // Past a phone's width the mode row is not drawn, so the three modes are a list under Modes with one dot.
+    // A leader's Dispatch Mode reads as the Dashboard, as it does on the row, and keeps its own tick under the list.
+    const radios = Array.from(menu.querySelectorAll('[role="radio"]')) as HTMLElement[]
+    expect(radios.map((r) => r.textContent)).toEqual(['Dashboard', 'Job Mode', 'Task Mode'])
+    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
+    expect(groups.Modes![0]).toBe('DashboardJob ModeTask Mode')
+    expect(groups.Modes!.length).toBeGreaterThan(1)
+    expect(groups.Modes!.slice(1).every((n) => /^Dispatch Mode|^PO tab/.test(n))).toBe(true)
+  })
+
+  it('at a desk a press on Job Mode in the list switches to it and closes the menu, and Dashboard switches back', async () => {
+    setScreen(false)
+    const menu = await openGearMenu()
+    fireEvent.click(menu.querySelector('[data-gear-mode="job"]') as HTMLElement)
+    expect(storedUnder('dashboard_job_mode_')).toEqual(['1'])
+    expect(document.querySelector('[data-navtrack="gear-menu"]')).toBeNull()
+
+    fireEvent.click(screen.getByTitle('Settings'))
+    const again = document.querySelector('[data-navtrack="gear-menu"]') as HTMLElement
+    const radios = Array.from(again.querySelectorAll('[role="radio"]')) as HTMLElement[]
+    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false'])
+    fireEvent.click(again.querySelector('[data-gear-mode="full"]') as HTMLElement)
+    expect(storedUnder('dashboard_job_mode_')).toEqual(['0'])
+    // The Dashboard choice never writes Dispatch Mode: a leader keeps the bar they had.
+    expect(storedUnder('dispatch_mode_')).toEqual([])
   })
 
   it('reads each switch’s state and next press aloud, and keeps the stored keys', async () => {

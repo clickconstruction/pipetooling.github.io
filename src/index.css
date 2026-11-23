@@ -1954,6 +1954,10 @@ button.myTimeDay:focus-visible, .myTimeWeek:focus-visible, .myTimeArrow:focus-vi
 @media (max-width: 640px) {
   .myTimeOffice button { min-height: 44px; }
 }
+.myTimeHours { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.6rem; font-size: 0.82rem; color: var(--text-700); }
+.myTimeHoursNote { font-size: 0.74rem; color: var(--text-muted); }
+.myTimeHoursComing { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.4rem; }
+.myTimeHoursChip { padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-700); font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
 
 
 
@@ -6900,6 +6904,56 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
   .vipInput { font-size: 16px; }
   .vipKeep { padding: 2px 16px; }
   .vipCancel { padding: 0 6px; }
+}
+
+/* Working hours on a person's sheet (punch list #429): days that share their hours are one line, the hours in a
+   column, and a press on a line's hours opens its own field under it. The values keep the `.vip…` looks; these are
+   the row's own layout, its small presses and the pay line, which is amber only when pay moves and says so in words. */
+/* A desk row whose value is a block with its own field: label beside it on a desk, above it on a phone. */
+.person-desk-row--stack { grid-template-columns: minmax(84px, 128px) minmax(0, 1fr); }
+@media (max-width: 640px) {
+  .person-desk-row--stack { grid-template-columns: minmax(0, 1fr); }
+}
+.whBlock { display: grid; gap: 0.35rem; min-width: 0; }
+.whLines { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 6px 14px; align-items: baseline; line-height: 1.6; }
+.whDays, .whMuted { color: var(--text-muted); }
+.whWide { grid-column: 2 / -1; min-width: 0; }
+.whZero { color: var(--text-muted); text-align: right; }
+.whLines > .vipWorked { text-align: right; white-space: nowrap; }
+.whRule { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 2px 0; }
+.whField { grid-column: 1 / -1; display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg-subtle); line-height: 1.45; }
+.whFieldLine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.whFieldLabel { color: var(--text-muted); font-size: 0.78125rem; font-weight: 600; }
+.whSeg { display: inline-flex; }
+.whSeg button { margin: 0 0 0 -1px; padding: 2px 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.whSeg button:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
+.whSeg button:last-child { border-radius: 0 8px 8px 0; }
+.whSeg button[aria-pressed='true'] { position: relative; border-color: var(--text-link); background: var(--bg-blue-tint); color: var(--text-link); }
+.whSeg button:disabled { color: var(--text-faint); cursor: default; }
+.whPay { color: var(--text-green-700); font-size: 0.8125rem; font-weight: 600; }
+.whPay--moves { padding: 7px 10px; border-radius: 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 400; }
+.whPay .vipWorked { color: inherit; }
+.whChip { margin: 0; padding: 1px 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.whQuiet { margin: 0; padding: 0; border: none; background: none; color: var(--text-link); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.whQuiet:hover { text-decoration: underline; text-underline-offset: 3px; }
+.whQuiet:disabled { color: var(--text-muted); text-decoration: none; cursor: default; }
+.whMoves { gap: 4px 14px; }
+.whLegend { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.78125rem; }
+.whNew { padding: 0 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-link); font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.whEarlier { display: grid; gap: 6px; margin-top: 0.35rem; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.8125rem; }
+.whEarlierRow { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; }
+.whEarlierWhy { grid-column: 2; color: var(--text-muted); font-size: 0.78125rem; }
+@media (max-width: 640px) {
+  /* A line's days sit over its hours, so a long list of days never squeezes the times. */
+  .whLines { grid-template-columns: minmax(0, 1fr) max-content; row-gap: 18px; column-gap: 8px; }
+  .whLines > .whDays { grid-column: 1 / -1; margin-bottom: -16px; font-size: 0.8125rem; }
+  .whWide { grid-column: 1 / -1; }
+  .whRule { margin: -6px 0; }
+  .whSeg button, .whChip, .whQuiet { min-height: 44px; }
+  .whQuiet, .whChip { display: inline-flex; align-items: center; }
+  .whChip { padding: 1px 14px; }
+  .whEarlierRow { grid-template-columns: 1fr; }
+  .whEarlierWhy { grid-column: 1; }
 }
 
 /* The Payment forecast window's header (v2.7019): the title and the intro sit left of the two presses, so no

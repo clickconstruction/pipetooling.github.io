@@ -187,6 +187,8 @@ export type MyBidReadStateRow = {
   bid_id: string
   last_seen_bid_submission_at: string | null
   last_seen_customer_contact_at: string | null
+  /** When the person hid the bid on this card; null or absent when it is shown (punch list #426, step 6). */
+  hidden_at?: string | null
 }
 
 /** Compact "time ago" for My Bids note summaries (e.g. 25m ago). */
@@ -424,6 +426,11 @@ export const MY_BID_STATE_GLOSS: Record<MyBidState, string> = {
 export const MY_BIDS_HIDDEN_HEADING = 'Hidden'
 export const MY_BIDS_HIDDEN_GLOSS = 'You hid these. Show again puts one back.'
 
+/** The toast after a bid is hidden, with Undo beside it. */
+export function myBidHiddenWords(name: string): string {
+  return `Hidden: ${name}.`
+}
+
 /** The line under the groups when the read came back full (`myBidsReadIsCut`). */
 export const MY_BIDS_CUT_WORDS = `Showing your newest ${MY_BIDS_DASHBOARD_ROW_LIMIT} bids. The Bid Board has every bid.`
 
@@ -555,3 +562,44 @@ export function myBidGroupLabel(g: Pick<MyBidGroup, 'heading' | 'bids' | 'pastDu
   if (g.unread.length > 0) parts.push(`${g.unread.length} unread`)
   return parts.join(', ')
 }
+
+// ---------------------------------------------------------------------------
+// The hide that follows the person (punch list #426, step 6): their own read-state row holds it.
+// ---------------------------------------------------------------------------
+
+/**
+ * The browser key the hidden ids lived under before step 6. It now holds only the ids this device kept
+ * by itself: a hide the database refused, a hide made while View as is on, and ids not yet moved.
+ */
+export function myBidsHiddenStorageKey(userId: string): string {
+  return `dashboard_my_bids_hidden_${userId}`
+}
+
+/** The bids the person hid, from their read-state rows: every row with `hidden_at` set. */
+export function myBidsHiddenInReadState(rows: ReadonlyArray<Pick<MyBidReadStateRow, 'bid_id' | 'hidden_at'>>): Set<string> {
+  const out = new Set<string>()
+  for (const r of rows) if (r.hidden_at) out.add(r.bid_id)
+  return out
+}
+
+/**
+ * The ids this device kept that the person's rows can hold now: each one on the card and not hidden there
+ * already, in the order kept, once. An id for a bid the read did not bring stays on the device.
+ */
+export function myBidsLocalIdsToMove(localIds: readonly string[], bidIds: readonly string[], dbHidden: ReadonlySet<string>): string[] {
+  const onCard = new Set(bidIds)
+  return [...new Set(localIds)].filter((id) => onCard.has(id) && !dbHidden.has(id))
+}
+
+/** The row the card upserts to hide a bid (`hidden_at` a time) or show it again (null). The read marks are left as they are. */
+export type MyBidHiddenWrite = { user_id: string; bid_id: string; hidden_at: string | null; updated_at: string }
+
+export function myBidHiddenWrite(userId: string, bidId: string, hiddenAt: string | null, nowIso: string): MyBidHiddenWrite {
+  return { user_id: userId, bid_id: bidId, hidden_at: hiddenAt, updated_at: nowIso }
+}
+
+/** The toast when the database refused a hide: the bid stays hidden on this device alone, and why. */
+export function myBidHiddenHereOnlyWords(reason: string): string {
+  return `Hidden on this device only: ${reason}`
+}
+

@@ -2,7 +2,7 @@
 title: keep up with your bids on the dashboard
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: my bids, dashboard, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
+keywords: my bids, dashboard, swipe, swipe to hide, undo, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
 order: 69
 ---
 The My Bids card on the Dashboard lists the bids where you are the estimator or the account manager. You open the ones you are working on. You hide the ones you do not need to see.
@@ -37,10 +37,15 @@ Under **Open in Bids**, press the tab you want to work in. You land on that tab 
 
 ## Hide a bid
 
-1. Press {{button:outline|Hide}} on the bid.
-2. The bid moves to **Hidden** at the bottom of the card.
+On a phone, swipe the bid to the left. A strip under the bid reads **Hide**. Keep going until the strip turns blue, then let go. A shorter swipe springs back and hides nothing.
+
+On a computer, press {{button:outline|Hide}} on the bid.
+
+The bid moves to **Hidden** at the bottom of the card. A note at the bottom of the screen says which bid you hid. Press **Undo** on the note within ten seconds to put the bid back.
 
 Hiding changes nothing on the bid. Nobody else sees a difference.
+
+A hidden bid follows you. Hide it on your phone and it is hidden on the computer too. If a hide cannot be saved, the bid stays hidden on that device and a note says why.
 
 To bring one back, open **Hidden** and press {{button:outline|Show again}}.
 

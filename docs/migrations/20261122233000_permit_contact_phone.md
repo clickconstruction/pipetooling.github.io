@@ -65,3 +65,5 @@ Nothing reads any of this yet. Find their names and Compare are their own PR, ar
 ## Release order
 
 `supabase db push` after the merge, then `supabase functions deploy permit-pull`. Either order is safe: deployed ahead of this file, the pull drops the column from its upsert and carries on.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9435.

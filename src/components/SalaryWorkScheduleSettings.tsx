@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
+import { useOptionalAuth } from '../hooks/useAuth'
+import { canSetStandingSchedule } from '../lib/people/workingHours'
 import {
   denverWorkDateToday,
   removeSalaryScheduleForUser,
@@ -17,6 +19,9 @@ import {
   validSplitBreakMinutesForAnchor,
 } from '../lib/salarySplitBreakDerivedStart'
 import { APP_CALENDAR_TZ, formatIanaTimeZoneLongOffsetLabel } from '../utils/dateUtils'
+import { defaultAvailabilityIo } from '../lib/people/availabilityIo'
+import type { WeekDays } from '../lib/people/weekAvailability'
+import { workingHoursInForce, workingWeekLineWords } from '../lib/people/workingHours'
 
 type TemplateInsert = Database['public']['Tables']['salary_work_schedule_templates']['Insert']
 
@@ -135,9 +140,14 @@ export function SalaryWorkScheduleSettings({
   canEditPastDayOverrides: boolean
 }) {
   const { showToast } = useToastContext()
+  // The usual day is a dev's or the controller's to set, as working hours are (punch list #429): the database holds
+  // the same rule. Everyone else reads it here and keeps the custom schedule for one date.
+  const canSetStanding = canSetStandingSchedule(useOptionalAuth()?.role)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isSalary, setIsSalary] = useState(false)
+  /** Whether a usual day is saved for this person. With none, the fields below show the form's defaults and say so. */
+  const [hasTemplate, setHasTemplate] = useState(false)
   /** Pay config says hourly but a `salary_work_schedule_templates` row may still exist from before. */
   const [orphanWorkScheduleTemplate, setOrphanWorkScheduleTemplate] = useState(false)
   const [mode, setMode] = useState<'continuous' | 'split'>('continuous')
@@ -155,6 +165,21 @@ export function SalaryWorkScheduleSettings({
   const [splitBreakMinutes, setSplitBreakMinutes] = useState(60)
   const [ovSplitBreakMinutes, setOvSplitBreakMinutes] = useState(60)
   const [overrideDateYmd, setOverrideDateYmd] = useState<string>(() => denverWorkDateToday())
+  /** The person's working hours in force (punch list #429): the clock follows them where it followed this template's start and length. */
+  const [workingHours, setWorkingHours] = useState<WeekDays | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void defaultAvailabilityIo()
+      .listAnswers([userId])
+      .then((rows) => {
+        if (!cancelled) setWorkingHours(workingHoursInForce(rows, denverWorkDateToday()))
+      })
+      // A read that fails leaves the note out; the template's own controls stand as they were.
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   const durOptionsA = useMemo(() => validSegmentADurations(), [])
   const segmentBDuration = 480 - segmentADuration
@@ -241,6 +266,7 @@ export function SalaryWorkScheduleSettings({
       )) as Database['public']['Tables']['salary_work_schedule_templates']['Row'] | null
       const segmentAAllowed = validSegmentADurations()
       const anchorYmd = canEditPastDayOverrides ? overrideDateYmd : denverWorkDateToday()
+      setHasTemplate(!!row)
       if (row) {
         const rowSplit = row.mode === 'split'
         setMode((rowSplit ? 'split' : 'continuous') as 'continuous' | 'split')
@@ -452,10 +478,12 @@ export function SalaryWorkScheduleSettings({
           return
         }
       }
-      await withSupabaseRetry(
-        async () => supabase.from('salary_work_schedule_templates').upsert(payload, { onConflict: 'user_id' }),
-        'salary template upsert',
-      )
+      if (canSetStanding) {
+        await withSupabaseRetry(
+          async () => supabase.from('salary_work_schedule_templates').upsert(payload, { onConflict: 'user_id' }),
+          'salary template upsert',
+        )
+      }
 
       const ovDay = effectiveOverrideDate
       if (todayOverrideEnabled) {
@@ -531,7 +559,7 @@ export function SalaryWorkScheduleSettings({
         if (syncTodayErr) throw new Error(syncTodayErr)
       }
 
-      showToast('Workday schedule saved', 'success')
+      showToast(canSetStanding ? 'Workday schedule saved' : 'This date is saved', 'success')
       await load()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Save failed'), 'error')
@@ -574,12 +602,23 @@ export function SalaryWorkScheduleSettings({
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
+      {workingHours ? (
+        <p data-working-hours-note style={{ margin: '0 0 0.75rem', padding: '0.5rem 0.65rem', borderRadius: 8, background: 'var(--bg-blue-tint)', color: 'var(--text-700)', fontSize: '0.875rem' }}>
+          Working hours are set: <strong>{workingWeekLineWords(workingHours)}</strong>. The clock follows them. The start, the length and the weekend choice below are not read while they stand. A custom schedule for one date still wins for that day.
+        </p>
+      ) : null}
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
         You are marked <strong>salaried</strong> in pay settings. Define your usual 8-hour day (15-minute steps). The app
         creates clock sessions automatically so your team sees you on the clock strip. Use <strong>Update focus</strong> on
         the dashboard to link jobs or bids. To work on a Saturday or Sunday, turn on <strong>Custom schedule for this date</strong>{' '}
         below and pick that day.
       </p>
+      {!canSetStanding ? (
+        <p data-standing-schedule-locked style={{ margin: '0 0 0.75rem', padding: '0.5rem 0.65rem', borderRadius: 8, background: 'var(--bg-muted)', color: 'var(--text-700)', fontSize: '0.875rem' }}>
+          {hasTemplate ? 'A dev or the controller sets the usual day. It is shown here as it stands.' : 'No usual day is saved yet. A dev or the controller sets it.'} A custom schedule for one date is still yours to save below.
+        </p>
+      ) : null}
+      <fieldset disabled={!canSetStanding} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <label style={{ display: 'block', marginBottom: '0.75rem' }}>
         <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Timezone</span>
         <select
@@ -764,6 +803,7 @@ export function SalaryWorkScheduleSettings({
           <span style={{ marginLeft: '0.35rem' }}>Different job/bid focus for second block (set on dashboard per session)</span>
         </label>
       )}
+      </fieldset>
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem', background: 'var(--bg-page)' }}>
         {canEditPastDayOverrides && (
           <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -948,7 +988,7 @@ export function SalaryWorkScheduleSettings({
         disabled={saving}
         style={{ padding: '0.5rem 1rem', fontWeight: 600, background: '#ea580c', color: 'white', border: 'none', borderRadius: 6 }}
       >
-        {saving ? 'Saving…' : 'Save schedule'}
+        {saving ? 'Saving…' : canSetStanding ? 'Save schedule' : 'Save this date'}
       </button>
     </div>
   )

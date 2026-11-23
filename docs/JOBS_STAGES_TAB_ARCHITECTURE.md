@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: af364443c
 audience: Developers, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-23
 ---
 
 > **Line numbers are as of v2.7774** (2026-11-18). They were carried forward from `58caa94ee` at v2.7719 by the diff's hunks, each checked against its line's text, and every cut since re-stamps them the same way. The per-cluster hook counts in §1 are still the `58caa94ee` census. This is the hottest surface in the repo (260 commits in 90 days on the tab, 52 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -49,6 +49,8 @@ last_updated: 2026-11-18
 > **v2.6553 — the flag for a check with Dispatch (punch list #245, PR 3):** `useStageChecklistStates` reads the open stage-check requests on the board's jobs beside the answers (`loadOpenStageCheckCounts`, fail-soft on its own) and `checklistMarksFor` passes the counts as `stageChecklistMarks`'s fourth map, so a stage's state carries `withDispatch` and `StagesStageBar.tsx` draws `⚑` in the box's place with *with Dispatch* on the title (`docs/recent-features/v2.6553.md`).
 
 > **v2.7407 (after `mapped_at`) — Tagged job notes above the board (punch list #363):** `JobsStagesTab.tsx` mounts [`TaggedJobNotesSection`](../src/components/jobs/TaggedJobNotesSection.tsx) (`variant="pipeline"`) as the board's first child, above the money story and the command bar, on the desk and the phone board alike; its `onOpenJob` navigates to `/jobs?edit=<job>`. The section holds its own read (`useMyNoteTags`) and draws nothing while nothing waits and nothing was asked, so the tab owns no state for it. The row's note box (`JobsStagesActivityBox`) and the floating `JobActivityView` take the list of names through `useNoteTagBox` (v2.7400).
+
+> **v2.8218 (after `mapped_at`) — a bill an in kind deal pays leaves the Billed section's ages (punch list #301):** `stageRowBilledAgeReference` ([`invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts)) is the one clock the 30+ and 90+ chips and every other age on the Billed section read, and it answers null for a job with `jobs_ledger.in_kind_arrangement_id`, so no reader calls its bill late. `JobsStagesTab.tsx` counts those rows on a chip of their own, *In kind · 8 · $14.6k* (`buildBilledInKindBucket`), and the chip filters the list to them (`BilledListFilter` gains `'in_kind'`, over `billedStageRowIsInKind`, in `stagesSectionHeader.ts`). Who owes what and Quickfill's Billed Awaiting Payment put such a bill under no customer and say one line under the total (`buildBilledByCustomerBreakdown`, `billedInKindLine`). `LEAN_STATS_JOB_COLUMNS` (`stagesHeaderStats.ts`) selects the column, so the cached chips, Quickfill's station and Call mode's count can answer `jobIsScheduledInKind`. Since v2.8272 `JobsMapRail` says one line under its list (`jobsMapInKindLine`) and `BilledAgingChartModal`'s foot says what is not plotted (`billedAgingInKindLine` over `billedAgingChart.ts`'s `stats.inKind`); every reader the sweep reached is listed under *In kind arrangement* in [`GLOSSARY.md`](GLOSSARY.md).
 
 The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsStages*` filenames are unchanged): Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections → Paid in Full, rendered by [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx).
 

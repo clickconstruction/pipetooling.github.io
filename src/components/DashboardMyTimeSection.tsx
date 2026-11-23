@@ -543,8 +543,9 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
         canPressDay={canPressDay}
         onDayPress={disableDayEditor ? undefined : setEditorDate}
       >
-        {/* The office plans the crew from the answer, so the card still asks. A salaried person's week is on pay. */}
-        {disableDayEditor ? null : <MyTimeCanWorkLine userId={userId} displayName={myTimeSubjectDisplayName} />}
+        {/* A person with working hours reads them here. With none, the office plans the crew from the person's own
+            answer, so the card still asks; a salaried person is not asked, their week is on pay. */}
+        <MyTimeCanWorkLine userId={userId} displayName={myTimeSubjectDisplayName} asks={!disableDayEditor} />
       </DashboardMyTimePicture>
       {/* The job-by-job fold follows the week chosen, for this week and last week. An older week shows its days only. */}
       {shownBreakdown.length > 0 && (

@@ -31,6 +31,7 @@ import {
   readiness,
   readyList,
   readyMarks,
+  noOn,
   saidNo,
   scheduleLookWords,
   settledWords,
@@ -61,7 +62,7 @@ const SITE: Site = { noticeDays: 10, contact: 'Ray' }
 let seq = 0
 const them = (words: string, o: Partial<ThemBullet> = {}): ThemBullet => ({ id: `t${++seq}`, on: 'them', words, wantsPhoto: false, eye: true, yes: null, asks: [], byDay: null, ...o })
 const us = (words: string, ok: boolean, o: Partial<UsBullet> = {}): UsBullet => ({ id: `u${++seq}`, on: 'us', words, reads: 'order_log', ok, fact: ok ? 'Two lines land Nov 25, six days ahead' : 'Three lines are not ordered', door: 'Open the order log', ...o })
-const stage = (o: Partial<Stage> = {}): Stage => ({ id: `s${++seq}`, part: 'Lodge', job: 'J2101', name: 'Top Out', window: ['2026-12-08', '2026-12-12'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrival: null, ...o })
+const stage = (o: Partial<Stage> = {}): Stage => ({ id: `s${++seq}`, part: 'Lodge', job: 'J2101', name: 'Top Out', window: ['2026-12-08', '2026-12-12'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrivals: [], ...o })
 const yes = (know: Yes['know'], o: Partial<Yes> = {}): Yes => ({ know, who: know === 'saw' ? 'Luis' : 'Ray', how: know === 'saw' ? 'on site' : know === 'photo' ? 'on his page' : 'by phone', day: '2026-11-14', ...o })
 const kinds = (sentence: string) => sentenceParts<ValueKind>(sentence).flatMap((p) => (typeof p === 'string' ? [] : [p.kind]))
 
@@ -131,14 +132,35 @@ describe('the percent', () => {
     const b = them('B.', { yes: yes('saw') })
     const c = them('C.')
     const d = us('D.', true)
-    const s = stage({ bullets: [a, b, c, d], arrival: { day: TODAY, by: 'Luis', notAsTold: [c.id] } })
+    const s = stage({ bullets: [a, b, c, d], arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [c.id] }] })
     expect(readyMarks(s)).toEqual(['yes', 'yes', 'no', 'open'])
     expect(saidNo(s, c)).toBe(true)
     expect(saidNo(s, a)).toBe(false)
     // A yes given after the No clears the cross.
-    const fixed = stage({ bullets: [a, b, { ...c, yes: yes('photo') }, d], arrival: { day: TODAY, by: 'Luis', notAsTold: [c.id] } })
+    const fixed = stage({ bullets: [a, b, { ...c, yes: yes('photo') }, d], arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [c.id] }] })
     expect(readyMarks(fixed)).toEqual(['yes', 'yes', 'yes', 'open'])
     expect(readyMarks(stage())).toEqual([])
+  })
+
+  it('reads every arrival for a No, not the newest alone, and a later yes we saw clears the earlier No', () => {
+    // Luis said No on A. Dana got there later and said No on C: with two arrivals the earlier one's No stood on A and
+    // its line was not drawn (punch list #382, a fault seen on the audit).
+    const a = them('A.')
+    const b = them('B.', { yes: yes('saw') })
+    const c = them('C.')
+    const first = { day: '2026-11-16', by: 'Luis', notAsTold: [a.id] }
+    const later = { day: TODAY, by: 'Dana', notAsTold: [c.id] }
+    const s = stage({ bullets: [a, b, c], arrivals: [first, later] })
+    expect(noOn(s, a)).toEqual(first)
+    expect(noOn(s, c)).toEqual(later)
+    expect(noOn(s, b)).toBeNull()
+    expect(readyMarks(s)).toEqual(['yes', 'no', 'no'])
+    expect(readyList(s).open.map((o) => o.line)).toEqual(['Luis said No on site, Nov 16.', 'Dana said No on site, Nov 17.'])
+    // A second No on the same bullet names the newest.
+    expect(noOn(stage({ bullets: [a], arrivals: [first, { ...later, notAsTold: [a.id] }] }), a)?.by).toBe('Dana')
+    // Dana saw A on her arrival: that yes clears Luis's No, and the arrival itself is still on the stage.
+    const seen = stage({ bullets: [{ ...a, yes: yes('saw') }, b, c], arrivals: [first, later] })
+    expect(noOn(seen, seen.bullets[0] as ThemBullet)).toBeNull()
   })
 })
 
@@ -198,10 +220,27 @@ describe('where a stage stands: every row of the table', () => {
 
   it('the crew said No on arrival: red, Open the stage, even after a Go', () => {
     const b = them('The trench to the building is open.')
-    const s = stage({ bullets: [b, them('Water is on site.', { yes: yes('saw') })], decision: { kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }, arrival: { day: TODAY, by: 'Luis', notAsTold: [b.id] } })
+    const s = stage({ bullets: [b, them('Water is on site.', { yes: yes('saw') })], decision: { kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }, arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [b.id] }] })
     expect(read(s)).toEqual({ light: 'red', sentence: 'Luis got there Nov 17 and it was not as told: The trench to the building is open.', next: 'look', nextLabel: 'Open the stage' })
     // An arrival with every bullet as told is not this row.
-    expect(read({ ...s, arrival: { day: TODAY, by: 'Luis', notAsTold: [] }, bullets: s.bullets.map((x) => (x.on === 'them' ? { ...x, yes: yes('saw') } : x)) }).light).toBe('green')
+    expect(read({ ...s, arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [] }], bullets: s.bullets.map((x) => (x.on === 'them' ? { ...x, yes: yes('saw') } : x)) }).light).toBe('green')
+  })
+
+  it('Not as told clears once the office has a new yes on every No, and names the No that still stands', () => {
+    // Luis said No on the trench. Ray calls to say it is open now, and the office ticks it: the stage read Not as told
+    // until one of ours answered again, though nothing was open. It is the Go row now (the audit's third fault).
+    const trench = them('The trench to the building is open.')
+    const water = them('Water is on site.', { yes: yes('saw') })
+    const s = stage({ bullets: [trench, water], decision: { kind: 'go', by: 'Dana', day: '2026-11-12', openThen: [] }, arrivals: [{ day: '2026-11-16', by: 'Luis', notAsTold: [trench.id] }] })
+    expect(read(s).light).toBe('red')
+    const fixed = { ...s, bullets: [{ ...trench, yes: yes('word') }, water] }
+    expect(read(fixed)).toEqual({ light: 'green', sentence: 'Crew confirmed for Tue Dec 8. Dana pressed Go Nov 12.', next: 'none', nextLabel: null })
+    // Two Nos from two arrivals: the sentence names the first bullet still with a No, and the arrival that said it.
+    const slab = them('The slab is poured.')
+    const two = stage({ bullets: [slab, trench, water], arrivals: [{ day: '2026-11-16', by: 'Luis', notAsTold: [trench.id] }, { day: TODAY, by: 'Sam', notAsTold: [slab.id] }] })
+    expect(read(two).sentence).toBe('Sam got there Nov 17 and it was not as told: The slab is poured.')
+    // A new yes on the slab alone: the trench's No still stands, so the stage stays red and names Luis.
+    expect(read({ ...two, bullets: [{ ...slab, yes: yes('word') }, trench, water] }).sentence).toBe('Luis got there Nov 16 and it was not as told: The trench to the building is open.')
   })
 
   it('Go, nothing open: green, no press', () => {
@@ -437,7 +476,7 @@ describe('the list behind the ready bar', () => {
     const no = them('The trench to the building is open.')
     const met = them('Power is on for our tools.', { yes: yes('saw') })
     const ours = us('Our material lands before day one.', false)
-    const s = stage({ bullets: [asked, met, no, ours], arrival: { day: TODAY, by: 'Luis', notAsTold: [no.id] } })
+    const s = stage({ bullets: [asked, met, no, ours], arrivals: [{ day: TODAY, by: 'Luis', notAsTold: [no.id] }] })
     expect(readyList(s)).toEqual({
       title: 'What it takes to start Top Out',
       count: '1 of 4 ready, which is 25%. Every bullet counts the same.',

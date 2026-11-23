@@ -13,6 +13,8 @@ import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import type { PersonKey } from '../../../lib/people/personKey'
 import { PersonOffsetFormModal } from '../../pay/PersonOffsetFormModal'
 import { SalaryWorkScheduleSettings } from '../../SalaryWorkScheduleSettings'
+import type { WeekDays } from '../../../lib/people/weekAvailability'
+import { PersonDeskWorkingHoursRow } from './PersonDeskWorkingHoursRow'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn, fmtDate } from '../personDeskShared'
 
 type TimeOffRow = { id: string; start_date: string; end_date: string; kind: string | null; note: string | null }
@@ -56,9 +58,15 @@ export function PersonDeskPaySection({
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [offsetOpen, setOffsetOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  /** The person's working hours in force, as the row under Paid reads them: null with none, undefined until read. */
+  const [workingHours, setWorkingHours] = useState<WeekDays | null | undefined>(undefined)
 
   const { payName, personId, userId } = personKey
   const canEdit = viewer.canAccessPay && !viewer.readOnly
+  /** The days and hours of a week are a dev's and the controller's to set (punch list #429): the database holds it. */
+  const canSetHours = (viewer.isDev || viewer.role === 'controller') && !viewer.readOnly
+  /** The seven boxes are typed only while nobody has set working hours, and only by someone who may set hours. */
+  const weekTyped = canSetHours && !workingHours
   const todayYmd = denverWorkDateToday()
 
   useEffect(() => {
@@ -231,6 +239,16 @@ export function PersonDeskPaySection({
                   </>
                 )}
               </DeskRow>
+              <PersonDeskWorkingHoursRow
+                userId={userId}
+                displayName={personKey.displayName}
+                viewer={viewer}
+                pay={pay ? { isSalary: pay.isSalary, paidWeek: pay.salariedWeek ?? SALARIED_DEFAULT_WEEK } : null}
+                lastReportEndYmd={lastStub?.period_end ?? null}
+                changeKey={changeKey}
+                onChanged={onChanged}
+                onHours={setWorkingHours}
+              />
               {facts.isSalary ? (
                 <DeskRow
                   label="Clock"
@@ -315,6 +333,7 @@ export function PersonDeskPaySection({
                                 max="16"
                                 step="0.25"
                                 value={edit.week[i] ?? ''}
+                                disabled={!weekTyped}
                                 onChange={(e) => setEdit({ ...edit, week: edit.week.map((v, j) => (j === i ? e.target.value : v)) })}
                                 style={{ width: '100%', minWidth: 0, textAlign: 'center', fontSize: '0.8125rem', padding: '0.2rem 0' }}
                                 aria-label={`${DAY_LONG[i]} hours`}
@@ -323,13 +342,19 @@ export function PersonDeskPaySection({
                           )
                         })}
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                        {WEEK_PRESETS.map((preset) => (
-                          <button key={preset.label} type="button" style={{ ...BTN_QUIET, fontSize: '0.75rem' }} onClick={() => setEdit({ ...edit, week: preset.week.map((h) => String(h)) })}>
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
+                      {weekTyped ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                          {WEEK_PRESETS.map((preset) => (
+                            <button key={preset.label} type="button" style={{ ...BTN_QUIET, fontSize: '0.75rem' }} onClick={() => setEdit({ ...edit, week: preset.week.map((h) => String(h)) })}>
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={FORM_HINT} data-pay-setup-week-locked>
+                          {workingHours ? 'The days and hours come from their working hours. Change them on the Working hours line.' : 'A dev or the controller sets the days and hours of a week.'}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div style={FORM_ROW}>

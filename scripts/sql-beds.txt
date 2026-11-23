@@ -165,6 +165,7 @@ sub-company-ground
 document-builders
 document-builder-sheets
 coi-checked-against-a-sheet
+imitated-session
 write-down-first-amount
 working-hours
 stripe-paid-day

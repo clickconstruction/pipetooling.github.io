@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsGcReviewModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-11-23
 ---
 
 ## Overview
@@ -121,7 +121,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 7a | ↳ Pills: last-sent · temperature · cert | 1299–1323 · 1324–1348 · 1349–1375 | 77 | `historyGc` | `gcReviewCertification` ✓ | low | inline |
 | 7b | ↳ Actions: Certify + Share menu | `!g.isNoGc` 1376–1551 (menu 1430–1528) | 176 | `shareMenuGroupKey`, `certifyGroup`, `markSentGroup` | ✗ | med | inline |
 | 7c | ↳ Job table | 1559–1633 (job link → `onOpenJob` 1591–1616); since v2.4280 a GC's bills end with a **Lien waivers** column — `lienWaiverCellForBill`'s two chips per bill (they hold · we owe), calm since v2.4317 like the Bill tab (grey until a waiver on the bill is under way, amber only when its next step is owed), the jobs' releases read once per open, a chip opening the job (`waiverChipsFor`, shared with the cards). On a phone (`useNarrowViewport640`, ≤ 640 px) the table gives way to one card per bill (`.gcReviewBills`, v2.4364): the job link and what is open, the address, then `gcReviewBillCardWords`' when line (the customer only when the job's name lacks it), then the chips; it ran 550 px wide, breaking a job's name a word a line with the waivers off to the right | 75 | — | `lienWaiverCell` ✓ (7); `gcReviewBillCard` ✓ (6); modal render ✓ | low | inline |
-| 8 | Foot: Include Collections · Total outstanding (sticky) | `.gcReviewFoot` | 14 | `includeCollections`, `rollup.grandTotal` | `gcReviewRollup` ✓; modal render ✓ | low | inline |
+| 8 | Foot: Include Collections · Total outstanding (sticky); since v2.8309 one line under the total, *$1,200 on 2 bills is scheduled in kind, not money owed* (`inKindFootWords` over `inKindApartWords`) | `.gcReviewFoot` | 14 | `includeCollections`, `rollup.grandTotal`, `rollup.inKind` | `gcReviewRollup` ✓; modal render ✓ | low | inline |
 | 9 | **Draft Message dialog** | `emailDialogGroup ?` 1652–1895 + `openEmailDialogForGroup` 686–707 + `emailSendGuard` 709–716 | 244 + 31 | 13 · 11 · 3 · children `TeammateEmailChips`, `ScheduleWhenControls` | builders/guard/CC ✓; **payload assembly ✗** | **high** | inline |
 | 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `promisedPayDates`, `collectionsByGc`, `wordSources`, `onOpenJobDetail`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
 | 10a | ↳ Find a check + the sheet (v2.4046, v2.4050; by development v2.4912; a PDF v2.4913) | `findCheckGroup ?` → `<GcFindCheckModal>` from a group's Share menu (a GC, or a development); Print the sheet / CSV inside it | modal ~230 | `findCheckGroup` | `gcChecksApplied` ✓ (22), `gcChecksAppliedReport` ✓ (8), `gcChecksAppliedPdf` ✓ (3), render ✓ (4) | low | **extracted** |
@@ -232,7 +232,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 - **Owned:** `shareMenuGroupKey`. It is one-at-a-time across groups, so it stays in the parent unless the menu becomes per-card local state (a behaviour change, since two menus could be open).
 - **Shared:** `byDevelopment`, `effectiveGroupBy`, `certGroupByGc`, `certsByGc`, `mergedLastSent`, `temperatureByGc`, `boardRowByGc`, `portalLinkFor`, and the 4 pointer setters.
 - **Data:** read-only except `copyPortalLink` → **rpc `mark_customer_portal_slug_shared`** (locks the short slug on first share), then `refreshPortalLinks`.
-- **Tests:** `buildGcReviewRollup` (9: totals, collections, development grouping), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `gcUnpaidInvoicePrint` (10: which bills, which are left out, the message), `CustomerPortalGlobeButton.render` (5). The opened row is covered by `JobsGcReviewModal.render`.
+- **Tests:** `buildGcReviewRollup` (17: totals, collections, development grouping, and since v2.8309 the bills an in kind deal pays), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `gcUnpaidInvoicePrint` (10: which bills, which are left out, the message), `CustomerPortalGlobeButton.render` (5). The opened row is covered by `JobsGcReviewModal.render`.
 - **Approach:** `GcReviewGroupSection` (#10) with a callbacks bag. Take the pill IIFEs through small presentational helpers first.
 
 ### 9. Draft Message dialog (inline, 244 + 31 lines; money-adjacent send)
@@ -301,7 +301,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 | Kernel | Used for | Tests |
 |---|---|---|
-| [`lib/gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (182) | `buildGcReviewRollup`: groups, subtotals, grand total, collections, development grouping, the bills an in kind deal pays left out and counted (`inKind`, `gcGroupsInKind`) | 17 |
+| [`lib/gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (182) | `buildGcReviewRollup`: groups, subtotals, grand total, collections, development grouping, the bills an in kind deal pays left out of every row, subtotal, job count and age and counted (`inKind`, `gcGroupsInKind`, v2.8309, punch list #301) | 17 |
 | [`lib/jobs/gcStatementRounds.ts`](../src/lib/jobs/gcStatementRounds.ts) (248) | `GC_ROUND_THRESHOLD` (10000), `buildStatementRound`, `summarizeStatementRound`, `deriveGcAccountMen`, `mergeMarksIntoLastSent`, `describeRoundMark`, `sendChannelLabel` | 14 |
 | [`lib/jobs/gcReviewCertification.ts`](../src/lib/jobs/gcReviewCertification.ts) (169) | `gcReviewWeekStartYmd`, `latestCertByGc`, `gcGroupCertStatus`, `gcReviewSentThisWeek`, `gcReviewWeekProgress` | 10 |
 | [`lib/jobs/temperatureBoard.ts`](../src/lib/jobs/temperatureBoard.ts) (109) | `buildTemperatureBoard`, `latestTemperatureByGc`, `trailingWeekStarts` | 4 |

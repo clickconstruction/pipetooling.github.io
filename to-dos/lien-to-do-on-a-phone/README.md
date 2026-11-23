@@ -1,8 +1,8 @@
 ---
 name: "The Lien desk's To do on a phone: the flow on one screen with a way back, and one press at the right of every row"
 number: 428
-group: ready
-status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back, proved by render tests and not yet seen on a phone
+group: close
+status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back · both live 2026-11-23, and both looked at by hand at 430 px in dark on a dev server
 summary: >
   The Board ›, the Dashboard's door to the Lien desk, lands on To do. On a phone that screen opens
   cleanly: four tiles, the bins folded, one list by the day each paper is due. The rows are where it
@@ -11,11 +11,11 @@ summary: >
   left. A computer's rows already keep one press column. The mock-up gives a phone the same: words
   at the left, one press at the right, every press one size, the second way out as a quiet line, and
   No day set said once.
-next: One look by hand at the flow on a phone: the switch, a stage's papers under the pinned line, a cell, the way back, and Back from a job. Then the owner's look on his own phone.
+next: Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
 size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); left: a look on a phone (XS)
 blocker: none
 ver: v2.8341, v2.8346
-opinion: your call — both parts are built, and what is left is seeing the flow under a thumb
+opinion: close — built and live; what is left is seeing the flow under a thumb
 ---
 
 # The Lien desk's To do on a phone (#428)
@@ -181,11 +181,26 @@ Two things differ from the mock-up. A run's list of jobs is the row's last line 
 not between its words, so an open list has the row's whole width. The paper's chip is still 40 px tall
 with its fill, where the mock-up draws it smaller.
 
-**Proved by** the kernels' tests and the render tests. **Not yet seen on a phone.**
+**Proved by** the kernels' tests and the render tests, then looked at by hand on a dev server as the dev at
+430 by 932 in dark: every row's press 116 by 44 px at one right edge, the quiet lines 32 px tall, one *No day
+set* group, the three short words, and the tiles' doors on their lines. Not on a real phone.
 
 **Built, v2.8346 (one PR): the flow.** Under *The flow on a phone* above. **Proved by** the kernel's
-tests and the render tests, the page's history among them. **Not yet seen on a phone:** jsdom measures
-no height, so the line's stick and the headings' offset are held by their styles.
+tests and the render tests, the page's history among them. Then looked at by hand on a dev server as the
+dev, one page load at 430 by 932 in dark:
+
+- The switch, both presses 44 px tall.
+- The flow: 16 stages, each 44 px, the two columns side by side with the arrow across, its foot 793 px down
+  a 932 px screen, no sideways scroll.
+- A stage pressed: the pinned line with its eight squares, 45 by 44 px, and that stage's own press, and the
+  history one entry longer.
+- The line held its place while the list scrolled, with the day heading stuck under it.
+- A square moved to its stage with no new history entry.
+- **‹ The flow** returned to the flow with the stage lit.
+- A job opened from a stage, then Back twice: first to the stage's papers under the line, then to the flow
+  with the stage lit.
+
+Not on a real phone.
 
 ## How to verify
 

@@ -37,6 +37,14 @@ const bidsRead: { rows: unknown[]; hold: Promise<void> | null } = { rows: BIDS, 
 /** What the other tables answer: someone else's note on a bid makes it unread. */
 const otherRows: Record<string, unknown[]> = {}
 const openBidPreview = vi.fn()
+/** True for a test that runs on a device held in the hand, where a bid is hidden with a swipe; `viewAs` while View as is on. */
+const device = { handHeld: false, viewAs: false }
+/** Every upsert to the person's read-state rows, and the refusal the next ones answer with, if any. */
+const readStateWrites: { rows: Array<Record<string, unknown>>; onConflict: string | undefined }[] = []
+const writeAnswer: { error: { code: string; message: string } | null } = { error: null }
+
+vi.mock('../../lib/paintedMap/handHeld', () => ({ handHeld: () => device.handHeld }))
+vi.mock('../../lib/impersonationSession', () => ({ isImpersonationSessionActive: () => device.viewAs }))
 
 vi.mock('../../contexts/BidPreviewModalContext', () => ({ useBidPreview: () => ({ openBidPreview }) }))
 
@@ -61,7 +69,17 @@ vi.mock('../../lib/supabase', async () => {
     chain.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok, bad)
     return chain
   }
-  stub.from = (table: string) => (table === 'bids' ? bidsChain() : otherRows[table] ? rowsChain(otherRows[table]) : origFrom(table))
+  /** The person's read-state rows: a read answers `otherRows`, an upsert is recorded and answers `writeAnswer`. */
+  const readStateChain = (): unknown => {
+    const chain = rowsChain(otherRows.user_bid_notes_read_state ?? []) as Record<string, unknown>
+    chain.upsert = (rows: Array<Record<string, unknown>>, opts?: { onConflict?: string }) => {
+      readStateWrites.push({ rows, onConflict: opts?.onConflict })
+      return Promise.resolve({ data: null, error: writeAnswer.error })
+    }
+    return chain
+  }
+  stub.from = (table: string) =>
+    table === 'bids' ? bidsChain() : table === 'user_bid_notes_read_state' ? readStateChain() : otherRows[table] ? rowsChain(otherRows[table]) : origFrom(table)
   return { supabase: stub }
 })
 
@@ -83,6 +101,10 @@ afterEach(() => {
   for (const k of Object.keys(otherRows)) delete otherRows[k]
   openBidPreview.mockClear()
   localStorage.clear()
+  device.handHeld = false
+  device.viewAs = false
+  readStateWrites.length = 0
+  writeAnswer.error = null
 })
 
 describe('DashboardMyBidsSection — how the card opens', () => {
@@ -234,3 +256,126 @@ describe('DashboardMyBidsSection — the bids by state (punch list #426)', () =>
     expect(screen.getByText('HVAC')).toBeTruthy()
   })
 })
+
+describe('DashboardMyBidsSection — hiding a bid (punch list #426, step 4)', () => {
+  const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+
+  it('at a desk, Hide says what it did, and Undo puts the bid back', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await loadedHeading()).toBeTruthy()
+    expect(screen.getByText('Fire Cabinet Installation')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual([])
+  })
+
+  it('on a device held in the hand, a swipe to the left hides the bid and the card says how', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')?.textContent).toBe('Swipe a bid left to hide it.')
+    const slide = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 150)
+    pointer(slide, 'pointerup', 150)
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    // The swipe did not also open the bid.
+    expect(openBidPreview).not.toHaveBeenCalled()
+    // The hide is the person's own row (step 6), not this browser's.
+    await waitFor(() => expect(readStateWrites.map((w) => w.rows.map((r) => [r.bid_id, typeof r.hidden_at]))).toEqual([[['b1', 'string']]]))
+    expect(localStorage.getItem('dashboard_my_bids_hidden_me')).toBeNull()
+  })
+
+  it('on a device held in the hand, a short swipe leaves the bid, and a press still opens its window', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const slide = document.querySelector('[data-my-bid="b2"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 240)
+    pointer(slide, 'pointerup', 240)
+    expect(screen.getByRole('button', { name: 'My Bids, 2 bids' })).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 5))
+    fireEvent.click(screen.getByText('Restroom Stalls'))
+    expect(openBidPreview).toHaveBeenCalledWith('b2')
+  })
+})
+
+describe('DashboardMyBidsSection — a hidden bid follows the person (punch list #426, step 6)', () => {
+  const hiddenRow = (bidId: string) => ({ bid_id: bidId, last_seen_bid_submission_at: null, last_seen_customer_contact_at: null, hidden_at: '2026-11-20T15:00:00Z' })
+
+  it('a bid hidden in the person\'s row is under Hidden on any device, with nothing in this browser', async () => {
+    otherRows.user_bid_notes_read_state = [hiddenRow('b2')]
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    expect(screen.queryByText('Restroom Stalls')).toBeNull()
+    expect(readStateWrites).toEqual([])
+  })
+
+  it('Hide writes the person\'s row, and Show again sets it back to null', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    await waitFor(() => expect(readStateWrites.length).toBe(1))
+    const hide = readStateWrites[0]!
+    expect(hide.onConflict).toBe('user_id,bid_id')
+    expect(hide.rows).toHaveLength(1)
+    expect(hide.rows[0]).toMatchObject({ user_id: 'me', bid_id: 'b1' })
+    expect(Number.isNaN(Date.parse(String(hide.rows[0]!.hidden_at)))).toBe(false)
+    // The write names no read mark, so Mark read's watermarks are left as they are.
+    expect(Object.keys(hide.rows[0]!).sort()).toEqual(['bid_id', 'hidden_at', 'updated_at', 'user_id'])
+    fireEvent.click(await screen.findByRole('button', { name: 'Hidden, 1 bid' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show again, Fire Cabinet Installation' }))
+    await waitFor(() => expect(readStateWrites.length).toBe(2))
+    expect(readStateWrites[1]!.rows[0]).toMatchObject({ user_id: 'me', bid_id: 'b1', hidden_at: null })
+    expect(await loadedHeading()).toBeTruthy()
+  })
+
+  it('Undo right after Hide runs after the hide, so the bid ends shown in the person\'s row', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(readStateWrites.length).toBe(2))
+    expect(readStateWrites.map((w) => w.rows[0]!.hidden_at === null)).toEqual([false, true])
+    expect(await loadedHeading()).toBeTruthy()
+  })
+
+  it('the ids this browser kept move into the person\'s rows once, and an id the read did not bring stays', async () => {
+    localStorage.setItem('dashboard_my_bids_hidden_me', JSON.stringify(['b1', 'gone']))
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    await waitFor(() => expect(readStateWrites.length).toBe(1))
+    expect(readStateWrites[0]!.rows.map((r) => r.bid_id)).toEqual(['b1'])
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual(['gone']))
+  })
+
+  it('a hide the database refuses stays on this device, and says why', async () => {
+    writeAnswer.error = { code: '42501', message: 'new row violates row-level security policy' }
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    expect(await screen.findByText(/^Hidden on this device only:/)).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual(['b1'])
+    expect(screen.getByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+  })
+
+  it('while View as is on, a hide is this browser\'s alone and the person\'s row is not written', async () => {
+    device.viewAs = true
+    localStorage.setItem('dashboard_my_bids_hidden_me', JSON.stringify(['b2']))
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual(['b2', 'b1']))
+    expect(readStateWrites).toEqual([])
+  })
+})
+

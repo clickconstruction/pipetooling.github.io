@@ -34,3 +34,5 @@ Nothing calls the function until the client PR that follows the push and the typ
 ## Apply
 
 `supabase db push` once this PR is on `main`. Nothing on the client depends on the order.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9365.

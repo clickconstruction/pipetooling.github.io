@@ -7,6 +7,7 @@ import {
   MODE_ROW_WORDS,
   modeRowCountOpen,
   modeRowDraw,
+  modeRowDrawnHere,
   modeRowFirstVisits,
   modeRowHeldOpen,
   modeRowLandingPath,
@@ -106,8 +107,23 @@ describe('when the row shows', () => {
     expect(modeRowDraw({ ...leader, pathname: '/jobs', memory: MODE_ROW_NO_MEMORY })).toBe('none')
   })
 
-  it('always shows on a desk', () => {
-    expect(modeRowDraw({ ...leader, phone: false, memory: USED })).toBe('row')
+  it('is not drawn past a phone’s width for any role, in any mode, whatever the phone remembers', () => {
+    for (const role of ALL_ROLES) {
+      expect(modeRowDrawnHere(role, false), role).toBe(false)
+      for (const mode of ['full', 'dispatch', 'job', 'task'] as PageMode[]) {
+        for (const pathname of ['/dashboard', '/checklist']) {
+          for (const memory of [MODE_ROW_NO_MEMORY, USED]) {
+            expect(modeRowDraw({ role, pathname, mode, phone: false, shownNow: true, memory }), `${role} ${mode} ${pathname}`).toBe('none')
+          }
+        }
+      }
+    }
+  })
+
+  it('on a phone it is the door for every role it is offered to', () => {
+    for (const role of ALL_ROLES) expect(modeRowDrawnHere(role, true), role).toBe(modeRowOfferedToRole(role))
+    expect(modeRowDrawnHere('estimator', true)).toBe(false)
+    expect(modeRowDrawnHere(null, true)).toBe(false)
   })
 
   it('shows on the first visits, then tucks', () => {

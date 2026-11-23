@@ -13,6 +13,9 @@ import {
 } from '../types/clockSessions'
 import type { Database } from '../types/database'
 import { getSalarySyntheticClockInIso } from '../lib/salaryOnShift'
+import { defaultAvailabilityIo } from '../lib/people/availabilityIo'
+import type { AvailableHoursAnswer } from '../lib/people/utilization'
+import { workingDayForClock } from '../lib/people/workingHours'
 import { calendarYmdInAppTzFromIso, denverCalendarDayKey, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import type { AssignSessionJobSavedPatch } from '../components/clock-sessions/AssignSessionJobPopover'
 import {
@@ -299,6 +302,8 @@ export function useDashboardMyTeamSectionState(
     templates: Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
     overrides: Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][]
     timeOff: Database['public']['Tables']['user_time_off']['Row'][]
+    /** Each templated person's rows on `person_available_hours`, where the viewer may read them: a set week gives the day its own start and end. */
+    workingHoursRows: AvailableHoursAnswer[]
     /** Resolved from `users` for every salary template `user_id` (org-wide strip names not on team roster). */
     displayNameByUserId: Readonly<Record<string, string>>
   } | null>(null)
@@ -454,7 +459,7 @@ export function useDashboardMyTeamSectionState(
       if (!orgWideStripEnabled) {
         if (stripTeamUserIds.length === 0) {
           if (!staleStrip()) {
-            setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+            setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], workingHoursRows: [], displayNameByUserId: {} })
           }
           return
         }
@@ -469,7 +474,7 @@ export function useDashboardMyTeamSectionState(
       const ids = [...new Set(tlist.map((t) => t.user_id))]
       if (ids.length === 0) {
         if (!staleStrip()) {
-          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], workingHoursRows: [], displayNameByUserId: {} })
         }
         return
       }
@@ -504,12 +509,17 @@ export function useDashboardMyTeamSectionState(
           'salary strip time off',
         ),
       ])
+      // A viewer who may not read the rows gets none back, and the strip reads the template's day, as before.
+      const workingHoursRows = await defaultAvailabilityIo()
+        .listAnswers(ids)
+        .catch(() => [] as AvailableHoursAnswer[])
       if (staleStrip()) return
       setSalaryStripMeta({
         todayYmd,
         templates: tlist,
         overrides: (overrides ?? []) as Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][],
         timeOff: (timeOff ?? []) as Database['public']['Tables']['user_time_off']['Row'][],
+        workingHoursRows,
         displayNameByUserId,
       })
     } catch {
@@ -1197,7 +1207,7 @@ export function useDashboardMyTeamSectionState(
     ) {
       return []
     }
-    const { todayYmd, templates, overrides, timeOff, displayNameByUserId } = salaryStripMeta
+    const { todayYmd, templates, overrides, timeOff, workingHoursRows, displayNameByUserId } = salaryStripMeta
     const ovByUser = new Map(overrides.map((o) => [o.user_id, o]))
     const timeOffByUser = new Map<string, Database['public']['Tables']['user_time_off']['Row'][]>()
     for (const r of timeOff) {
@@ -1223,6 +1233,10 @@ export function useDashboardMyTeamSectionState(
         timeOffRows: toRows,
         template,
         overrideForDate: ov,
+        workingDay: (() => {
+          const mine = workingHoursRows.filter((r) => r.user_id === uid)
+          return mine.length ? workingDayForClock(mine, todayYmd) : null
+        })(),
       })
       if (!clockInIso) continue
       const rosterD = rosterName.get(uid)?.trim()

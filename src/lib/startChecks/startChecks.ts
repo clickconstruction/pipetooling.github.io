@@ -65,7 +65,7 @@ export type TheirDay = { day: string; said: string; who: string; how: string }
 /** Go or Hold: who pressed it, the day, and the words of every bullet that was open then. */
 export type Decision = { kind: 'go' | 'hold'; by: string; day: string; openThen: string[] }
 
-/** What the crew found on arrival: the ids of the bullets that were not as told. */
+/** What one of ours found on arrival: the day, who, and the ids of the bullets that were not as told. */
 export type Arrival = { day: string; by: string; notAsTold: string[] }
 
 export type Stage = {
@@ -85,7 +85,8 @@ export type Stage = {
   theirDays: TheirDay[]
   bullets: Bullet[]
   decision: Decision | null
-  arrival: Arrival | null
+  /** Every arrival at the stage, oldest first: a stage can be arrived at more than once (v2.8238). */
+  arrivals: Arrival[]
 }
 
 /** The site, as the rules need it: the days of notice we need, and who we ask. */
@@ -133,8 +134,21 @@ export const KNOW_WORDS: Record<Know, string> = { word: 'their word', photo: 'th
 
 export const lastAsk = (b: Bullet): Ask | null => (b.on === 'them' && b.asks.length ? (b.asks[b.asks.length - 1] ?? null) : null)
 
-/** The crew said No to this bullet on arrival, and nobody has given a yes since. */
-export const saidNo = (s: Stage, b: Bullet): boolean => !bulletIsYes(b) && !!s.arrival?.notAsTold.includes(b.id)
+/**
+ * The arrival that said No to this bullet, while nobody has given a yes since. Every arrival is read, not the newest
+ * alone: with two arrivals the earlier one's No stood on its bullet and its line was not drawn (v2.8366).
+ */
+export function noOn(s: Stage, b: Bullet): Arrival | null {
+  if (bulletIsYes(b)) return null
+  for (let i = s.arrivals.length - 1; i >= 0; i--) {
+    const a = s.arrivals[i]
+    if (a && a.notAsTold.includes(b.id)) return a
+  }
+  return null
+}
+
+/** One of ours said No to this bullet on arrival, and nobody has given a yes since. */
+export const saidNo = (s: Stage, b: Bullet): boolean => noOn(s, b) != null
 
 /**
  * The line under a bullet: how we know, or when we asked. Its values are marked: who, how and the day of a yes,
@@ -221,7 +235,7 @@ export const ASKED_FRESH_DAYS = 2
 
 /**
  * Where a stage stands, as one sentence and one press. The order of the questions is the order a person would ask
- * them: is there a list, do we have our days, did it go wrong on arrival, is it decided, do their day and ours
+ * them: is there a list, do we have our days, does a No from arrival still stand, is it decided, do their day and ours
  * disagree, what is still open, and how close is the day we must decide. The first that fits is the stage's
  * sentence. A stage line has no days until the office plans them on the Stage Plan, so that row is the build's own.
  */
@@ -230,12 +244,16 @@ export function stageStanding(s: Stage, site: Site, today: string): Standing {
   if (!s.bullets.length) return { light: 'grey', headline: 'No list yet', sentence: 'Nobody has written what must be true before this stage.', next: 'write', nextLabel: 'Write the list' }
   if (!s.window) return { light: 'grey', headline: 'No days yet', sentence: 'We have not planned our days for this stage.', next: 'plan', nextLabel: 'Plan our days' }
   const decideBy = addDays(s.window[0], -site.noticeDays)
-  if (s.arrival && s.arrival.notAsTold.length) {
-    const first = s.bullets.find((b) => b.id === s.arrival?.notAsTold[0])
+  // Red while a No stands on a bullet with no yes since. Once the office or the customer gives a new yes on every No,
+  // the stage goes back to its own rows: the new yes is the one the crew is asked to look at (v2.8238), and the stage
+  // read Not as told until one of ours answered again (v2.8367).
+  const notAsTold = s.bullets.find((b) => noOn(s, b))
+  const arrived = notAsTold ? noOn(s, notAsTold) : null
+  if (notAsTold && arrived) {
     return {
       light: 'red',
       headline: 'Not as told',
-      sentence: `${mark('who', s.arrival.by)} got there ${mark('day', monthDay(s.arrival.day))} and it was not as told: ${first ? first.words : 'a bullet'}`,
+      sentence: `${mark('who', arrived.by)} got there ${mark('day', monthDay(arrived.day))} and it was not as told: ${notAsTold.words}`,
       next: 'look',
       nextLabel: 'Open the stage',
     }
@@ -456,7 +474,8 @@ export function readyList(s: Stage): ReadyList {
   const ready = readiness(s.bullets)
   const open = openBullets(s)
   const line = (b: Bullet): string => {
-    if (saidNo(s, b) && s.arrival) return `${s.arrival.by} said No on site, ${monthDay(s.arrival.day)}.`
+    const no = noOn(s, b)
+    if (no) return `${no.by} said No on site, ${monthDay(no.day)}.`
     return b.on === 'us' ? `Ours. ${b.fact}` : plainSentence(bulletLine(b))
   }
   return {

@@ -20,6 +20,12 @@ import {
   MY_BIDS_ON_THE_BOARD_FILTER,
   MY_BIDS_READ_ORDER,
   myBidGroupLabel,
+  myBidHiddenHereOnlyWords,
+  myBidHiddenWords,
+  myBidHiddenWrite,
+  myBidsHiddenInReadState,
+  myBidsHiddenStorageKey,
+  myBidsLocalIdsToMove,
   myBidIsPutAway,
   myBidState,
   myBidWhen,
@@ -474,6 +480,38 @@ describe('buildMyBidsCard', () => {
 describe('the card\'s own words', () => {
   it('are plain words', () => {
     for (const words of [...Object.values(MY_BID_STATE_GLOSS), MY_BIDS_HIDDEN_GLOSS, MY_BIDS_CUT_WORDS]) expect(plainWordsFailures(words), words).toEqual([])
+    expect(myBidHiddenWords('88 Quarry Rd Ste 100')).toBe('Hidden: 88 Quarry Rd Ste 100.')
+  })
+})
+
+describe('the hide that follows the person (punch list #426, step 6)', () => {
+  it('reads the hidden bids from the person\'s rows: hidden_at set, and no other', () => {
+    const rows = [
+      { bid_id: 'a', hidden_at: '2026-11-20T15:00:00Z' },
+      { bid_id: 'b', hidden_at: null },
+      { bid_id: 'c' },
+    ]
+    expect([...myBidsHiddenInReadState(rows)]).toEqual(['a'])
+  })
+
+  it('moves the ids this device kept that are on the card and not hidden there yet, once each', () => {
+    expect(myBidsLocalIdsToMove(['a', 'gone', 'b', 'a', 'c'], ['a', 'b', 'c'], new Set(['c']))).toEqual(['a', 'b'])
+    expect(myBidsLocalIdsToMove([], ['a'], new Set())).toEqual([])
+  })
+
+  it('writes the hide or the show and names no read mark', () => {
+    expect(myBidHiddenWrite('me', 'b1', '2026-11-23T16:00:00.000Z', '2026-11-23T16:00:00.000Z')).toEqual({
+      user_id: 'me',
+      bid_id: 'b1',
+      hidden_at: '2026-11-23T16:00:00.000Z',
+      updated_at: '2026-11-23T16:00:00.000Z',
+    })
+    expect(myBidHiddenWrite('me', 'b1', null, '2026-11-23T16:00:00.000Z').hidden_at).toBeNull()
+  })
+
+  it('keeps the browser key the hides lived under, and says when a hide stayed on the device', () => {
+    expect(myBidsHiddenStorageKey('me')).toBe('dashboard_my_bids_hidden_me')
+    expect(myBidHiddenHereOnlyWords('You do not have access to save this.')).toBe('Hidden on this device only: You do not have access to save this.')
   })
 })
 

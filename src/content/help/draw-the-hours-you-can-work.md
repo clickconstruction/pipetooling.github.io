@@ -14,6 +14,8 @@ Open your dashboard and find **My Time**. At the foot of the picture there is a 
 
 If you live in Job Mode, the **My Time** card under Your record has the same line.
 
+Sometimes the line reads *Your hours are 6:00 AM to 12:00 PM, Mon to Fri* with no button. Then the office has set your working hours. You cannot change them yourself. Ask the office if they look wrong.
+
 ## Draw your week
 
 The window shows Sunday to Saturday as columns and 5 AM to 8 PM as rows.

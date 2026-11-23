@@ -54,7 +54,7 @@ The **Pay setup** card on each person sets how they're paid. Changes save automa
 
 - **Hourly wage**: the rate used everywhere, including for salaried people. A salaried person's pay is this rate × the hours of their set week. By default the week is 8 hours on weekdays.
 - **Office wage**: an optional second rate for office, bid or unassigned time. Hourly people only. The office wage does not apply to salaried people.
-- **Salaried**: a slider switch to a set week. The line beside the switch names the days and hours the person is credited, such as *8 h Mon to Fri*. Clock time never changes that credit. The switch leaves the week as it is. To set a week that is not 8 hours on weekdays, see [open a person's desk](/help/open-a-persons-desk). Turning it **off** asks for confirmation first, because it permanently deletes the person's workday schedule. Turning it back on does not restore the schedule.
+- **Salaried**: a slider switch to a set week. The line beside the switch names the days and hours the person is credited, such as *8 h Mon to Fri*. Clock time never changes that credit. The switch leaves the week as it is. To set a week that is not 8 hours on weekdays, see [set someone's working hours](/help/set-someones-working-hours). Turning it **off** asks for confirmation first, because it permanently deletes the person's workday schedule. Turning it back on does not restore the schedule.
 - **Record hours anyway**: shown for salaried people only. The person's logged hours appear on the Hours grids for record-keeping. But pay stays on the set week.
 
 :::example Switching someone to salaried
@@ -65,7 +65,7 @@ or out.
 
 ## Salaried workday schedule
 
-For salaried people, the **Salaried workday** card edits their daily schedule right here. The card has the same settings as Settings → Salaried workday. The settings are a continuous or split day, start time, weekends, and a custom schedule for a single date. If the card says no login user matches the person's name, fix the roster name or invite them first. A person who still clocks in by hand before their start keeps that punch as their day. The app adds no scheduled session over it.
+For salaried people, the **Salaried workday** card edits their daily schedule right here. The card has the same settings as Settings → Salaried workday. The settings are a continuous or split day, start time, weekends, and a custom schedule for a single date. A dev or the controller changes the usual day. Everyone else reads it there with its fields off. A custom schedule for a single date is still theirs to save. If the card says no login user matches the person's name, fix the roster name or invite them first. A person who still clocks in by hand before their start keeps that punch as their day. The app adds no scheduled session over it.
 
 ## Recording time off
 

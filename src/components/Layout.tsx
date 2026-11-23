@@ -77,7 +77,7 @@ import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { usePageMode } from '../hooks/usePageMode'
 import { dispatchModeEligibleForRole } from '../lib/pageMode'
-import { TASK_MODE_EXIT_CONTROL, taskModeBounceTarget, taskModeToggleTip } from '../lib/taskModeToggle'
+import { TASK_MODE_EXIT_CONTROL, taskModeBounceTarget } from '../lib/taskModeToggle'
 import { TaskModeChip } from './TaskModeChip'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
@@ -91,8 +91,9 @@ import {
 import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
 import { AppTopBanner } from './layout/AppTopBanner'
+import { GearModeList } from './layout/GearModeList'
 import { ModeRow } from './layout/ModeRow'
-import { modeRowOfferedToRole } from '../lib/modeRow'
+import { modeRowDrawnHere, modeRowLandingPath, modeRowPressWrites, modeRowThirdOn, type ModeRowThird } from '../lib/modeRow'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
@@ -116,7 +117,7 @@ import { PHONE_BAR_PAD_Y_PX, PHONE_BAR_PRESS_PX, phoneBarPageName, phoneBarPlan,
 import { PhoneBarPageNameContext } from '../contexts/PhoneBarPageNameContext'
 import { PhoneBarGearRows } from './layout/PhoneBarGearRows'
 import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
-import { GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder } from '../lib/gearMenuSections'
+import { GEAR_MODE_PRESS_CONTROL, GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder } from '../lib/gearMenuSections'
 import { GearSectionLabel } from './layout/GearSectionLabel'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
 import { GearAnswerDot, NavRowLinkMenuRows, PeopleNavIcon, TellTheDevMenuRow } from './layout/NavRowMenuRows'
@@ -219,9 +220,6 @@ export default function Layout() {
   // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
   // them the toggle rendered a footer of dead tabs (they keep /schedule-dispatch editing itself).
   const dispatchModeMenuEligible = dispatchModeEligibleForRole(role)
-  // The Modes rows this person's gear menu holds. A role with the mode row above the header switches Job Mode
-  // and Task Mode there, so the menu lists neither for it (`gearModesRows`).
-  const gearModes = gearModesRows({ modeRow: modeRowOfferedToRole(role), jobEligible: jobModeMenuEligible, dispatchEligible: dispatchModeMenuEligible })
   const dispatchModeActive = dispatchModeEnabled
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) and
@@ -296,6 +294,11 @@ export default function Layout() {
   const [viewportNarrow, setViewportNarrow] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
+  // The Modes rows this person's gear menu holds. A phone with the mode row above the header switches Job Mode
+  // and Task Mode there, so the menu lists neither. Wherever the row is not drawn (a desk, a tablet, the
+  // estimator at any width) the menu holds the three as a list with one dot (`gearModesRows`).
+  const modeRowHere = modeRowDrawnHere(role, viewportNarrow)
+  const gearModes = gearModesRows({ modeRow: modeRowHere, jobEligible: jobModeMenuEligible, dispatchEligible: dispatchModeMenuEligible })
   // The desktop header's width varies by role (dev shows far more items than a
   // sub), so above the 640px floor we collapse based on whether the row
   // actually fits rather than a second fixed breakpoint.
@@ -478,6 +481,20 @@ export default function Layout() {
     recordNavClick(authUser?.id, role, TASK_MODE_EXIT_CONTROL, location.pathname)
     setTaskModeEnabled(false)
   }, [authUser?.id, role, location.pathname, setTaskModeEnabled])
+  // A press in the gear menu's mode list. It goes through the mode row's own rule (`modeRow.ts`), so the
+  // list on a desk and the row on a phone write the same values and land on the same page.
+  const pickGearMode = useCallback(
+    (third: ModeRowThird) => {
+      setGearOpen(false)
+      if (third === modeRowThirdOn(pageMode.mode)) return
+      recordNavClick(authUser?.id, role, GEAR_MODE_PRESS_CONTROL, `#${third}`)
+      if (third === 'job') recordJobModeEnabledOncePerSession(authUser?.id, role, 'gear')
+      for (const write of modeRowPressWrites(third)) setPageMode(write.key, write.on, 'gear')
+      const to = modeRowLandingPath(third, location.pathname)
+      if (to) navigate(to)
+    },
+    [authUser?.id, role, pageMode.mode, setPageMode, location.pathname, navigate],
+  )
   const navSearchOverlayBg = impersonating && isMobile ? 'var(--bg-amber-100)' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
@@ -1557,57 +1574,8 @@ export default function Layout() {
                 <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {/* The menu reads in groups, each under its label (`gearMenuSections.ts`). Modes change the page. */}
                 {authUser?.id && gearModes.label && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
-                {gearModes.job && authUser?.id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !jobModeEnabled
-                      if (next) recordJobModeEnabledOncePerSession(authUser?.id, role, 'gear')
-                      setJobModeEnabled(next, 'gear')
-                      setGearOpen(false)
-                    }}
-                    title={jobModeEnabled ? 'Turn Job Mode off' : 'Turn Job Mode on'}
-                    aria-label="Toggle Job Mode"
-                    aria-pressed={jobModeEnabled}
-                    style={{
-                      display: 'flex',
-                      width: '100%',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 'inherit',
-                      color: 'inherit',
-                      borderBottom: '1px solid var(--chrome-border)',
-                      boxSizing: 'border-box',
-                      fontWeight: jobModeEnabled ? 600 : 400,
-                    }}
-                  >
-                    <span>Job Mode</span>
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        display: 'inline-flex',
-                        width: 16,
-                        height: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 3,
-                        border: '1px solid var(--border-400)',
-                        background: jobModeEnabled ? '#15803d' : 'var(--surface)',
-                        color: 'white',
-                        fontSize: '0.75rem',
-                        lineHeight: 1,
-                      }}
-                    >
-                      {jobModeEnabled ? '✓' : ''}
-                    </span>
-                  </button>
-                )}
+                {/* Wherever the mode row above the header is not drawn, the three modes are a list with one dot (`GearModeList`). */}
+                {authUser?.id ? <GearModeList rows={gearModes.list} on={modeRowThirdOn(pageMode.mode)} onPick={pickGearMode} /> : null}
                 {dispatchModeMenuEligible && authUser?.id && (
                   <button
                     type="button"
@@ -1703,55 +1671,6 @@ export default function Layout() {
                       }}
                     >
                       {dispatchModePoEnabled ? '✓' : ''}
-                    </span>
-                  </button>
-                )}
-                {authUser?.id && gearModes.task && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTaskModeEnabled(!taskModeEnabled)
-                      setGearOpen(false)
-                    }}
-                    title={taskModeToggleTip(taskModeEnabled)}
-                    aria-label="Toggle Task Mode"
-                    aria-pressed={taskModeEnabled}
-                    style={{
-                      display: 'flex',
-                      width: '100%',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 'inherit',
-                      color: 'inherit',
-                      borderBottom: '1px solid var(--chrome-border)',
-                      boxSizing: 'border-box',
-                      fontWeight: taskModeEnabled ? 600 : 400,
-                    }}
-                  >
-                    <span>Task Mode</span>
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        display: 'inline-flex',
-                        width: 16,
-                        height: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 3,
-                        border: '1px solid var(--border-400)',
-                        background: taskModeEnabled ? '#65a30d' : 'var(--surface)',
-                        color: 'white',
-                        fontSize: '0.75rem',
-                        lineHeight: 1,
-                      }}
-                    >
-                      {taskModeEnabled ? '✓' : ''}
                     </span>
                   </button>
                 )}
@@ -2333,7 +2252,7 @@ export default function Layout() {
         }}
       >
         {/* The mode row is the way out of Task Mode for the roles it is drawn for; the estimator, who has no row, keeps the strip. */}
-        {taskModeActive && !modeRowOfferedToRole(role) ? <TaskModeChip onExit={exitTaskMode} /> : null}
+        {taskModeActive && !modeRowHere ? <TaskModeChip onExit={exitTaskMode} /> : null}
         <AssistantReadyToBillBanner />
         {/* The new phone layout: the Add Task offer left the top of every page for one quiet row of the Dashboard.
             Keyed by the role, which lands after the first draw, so the offer is decided once the role is known. */}

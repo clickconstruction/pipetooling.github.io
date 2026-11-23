@@ -15,7 +15,7 @@ covers:
   - src/lib/prospects/ (the kernels: prospectKinds, prospectRow, prospectFormat, prospectCopyTemplates, prospectTimerSums, prospectTimerIo, prospectWeekReportIo, subsDeckOrder, benchRead, callingLockIo, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones, gcNeeds, pagePadding)
 mapped_at: 82094de18b
 audience: Developers, AI Agents
-last_updated: 2026-11-19
+last_updated: 2026-11-23
 sections: What this surface is; Master summary table; Shared substrate; Per-tab dossiers; TeamProspectsTab sub-decomposition; Page-level windows; URL / navigation router; Test coverage by region; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order; Hazards
 ---
 
@@ -26,7 +26,7 @@ sections: What this surface is; Master summary table; Shared substrate; Per-tab 
 
 ## What this surface is
 
-[`src/pages/Prospects.tsx`](../src/pages/Prospects.tsx) is the cold-call workstation. It finds three kinds of company through one calling deck, and it is the door to the Hiring board and the Permits ledger. Since the cuts of 2026-11-17 the page is the shell: the router and the gates, the tab rows, the state the tabs share, the outcomes that write the caches, and the mounts. Each tab draws in its own file, and the page reaches its data through hooks it calls, so a tab's state lives as long as the page does and survives a tab switch. [`src/components/prospects/TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) is the extracted Hiring tab, a God component of its own. Hook censuses are from `npm run map` at `82094de18b`:
+[`src/pages/Prospects.tsx`](../src/pages/Prospects.tsx) is the cold-call workstation. It finds three kinds of company through one calling deck, and it is the door to the Hiring board, the Permits ledger and the State roll. Since the cuts of 2026-11-17 the page is the shell: the router and the gates, the tab rows, the state the tabs share, the outcomes that write the caches, and the mounts. Each tab draws in its own file, and the page reaches its data through hooks it calls, so a tab's state lives as long as the page does and survives a tab switch. [`src/components/prospects/TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) is the extracted Hiring tab, a God component of its own. Hook censuses are from `npm run map` at `82094de18b`:
 
 | File | Lines (at `6af60c5bcf`) | useState · effects · useMemo · useCallback · refs | Handlers | Role |
 |---|---|---|---|---|
@@ -69,6 +69,7 @@ Out before the cuts, each in `src/components/prospects/` unless named: `SubsBoar
 | 2026-10-28 | v2.6032 | 5,546 | the run's first text starts a thread |
 | 2026-11-17 | `6af60c5bcf` | 5,600 | the Permits tab's mount (v2.6782, v2.6787), the phone padding (v2.6869), sweeps; the second map's anchor |
 | 2026-11-18 | `82094de18b` | 1,556 | the thirteen cuts of 2026-11-17 (v2.7595–v2.7638) and the two fixes they found (v2.7656, v2.7657) |
+| 2026-11-21 | v2.8233 | 1,596 | the State roll pill, its gate `canReadRoll`, its `?tab=roll` branch and its mount (punch list #411, v2.8198); the tab's Our own view (v2.8233) landed in the tab's own files |
 
 1,560 of the 1,638 lines between the first two anchors came in the ten days from 2026-10-15 to 2026-10-24, all of them on the lanes. Each feature put its rules in a tested kernel under `src/lib/prospects/`, and left its state, its effects, its handlers and its JSX in the page, which had no render test. The cuts gave it one first (v2.7615), then moved everything but the shell out, each move run against the same cases before and after.
 
@@ -83,7 +84,7 @@ activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (Pro
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review'          (TeamProspectsTab 806; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-The top row (1290–1311) draws six pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299), **Permits** (1304) and **State roll** (punch list #411: [`StateRollTab`](../src/components/prospects/StateRollTab.tsx), shown to `teamProspectsAccess` alone, its lines in [`rollPulls.ts`](../src/lib/licenseRoll/rollPulls.ts) and its reads in `rollPullsIo.ts`). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
+The top row (1290–1311) draws six pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299), **Permits** (1304) and **State roll** (punch list #411: v2.8198 the pill, the gate and the Pulls view, [`StateRollTab`](../src/components/prospects/StateRollTab.tsx), shown to `teamProspectsAccess` alone, its lines in [`rollPulls.ts`](../src/lib/licenseRoll/rollPulls.ts) and its reads in `rollPullsIo.ts`; v2.8233 its **Our own** view, [`StateRollOwn`](../src/components/prospects/StateRollOwn.tsx) over [`ownLicenses.ts`](../src/lib/licenseRoll/ownLicenses.ts), mounted through `StateRollTabForUser` so the view strip waits for who the person is). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
 
 | Tab | Shows on | Owns |
 |---|---|---|
@@ -495,6 +496,7 @@ All of it is in the page.
 - **`?newProspect=true`** (Dashboard quick-add): effect 332–342 opens the New Prospect window and strips the param.
 - **`?stage=` / `?rate=`** (from the Dashboard pinned row, Needs you and the Person desk, e.g. `/prospects?tab=team&stage=review&rate=<id>`): handled **inside** TeamProspectsTab (effect 814–826). It passes through `coerceStage(wanted, shared)`, so a share holder's `hire`/`review` is ignored. It is applied once, then stripped.
 - **`?view=` / `?looks=` / `?city=`** (Permits): handled **inside** `ProspectsResearchTab` through `permitsLink.ts`. The parent only clears them in `openResearchTab`.
+- **`?roll=`** (State roll, v2.8233): `own` or `pulls`, read and written **inside** `StateRollTab` (`useSearchParams`, `replace: true`); a person without `canAccessLicenses` gets Pulls whatever the value, and one with it and no value gets Our own. `openRollTab` clears the Permits keys through `permitsLinkCleared` and never writes `roll`.
 
 All of this stays in the parent (playbook rule), except the keys the two extracted tabs own and the `?prospect_id=` reads that moved into the data and list hooks with their effects.
 

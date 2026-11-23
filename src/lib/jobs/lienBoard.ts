@@ -692,6 +692,29 @@ export function lienLeaderWaitWords(w: Pick<LienLeaderWaits, 'toApprove' | 'toSi
   return [w.toApprove > 0 ? `${w.toApprove} to approve` : '', w.toSign > 0 ? `${w.toSign} to sign` : ''].filter(Boolean).join(' · ')
 }
 
+/**
+ * The leader the Board's second tile names (v2.7332, one rule since v2.8372): the master most of the desk's papers wait
+ * on, each paper counted once, in the order the papers are handed in. A tie goes to the master met first. Null when no
+ * paper's job has a master. The Lien desk names him through its list of people, and the Dashboard's Lien desk card
+ * reads the same person, so the card and the Board its press opens say the same name (punch list #423).
+ */
+export function lienBoardLeaderUserId(papers: ReadonlyArray<{ jobId: string }>, masterOf: (jobId: string) => string | null | undefined): string | null {
+  const tally = new Map<string, number>()
+  for (const p of papers) {
+    const id = masterOf(p.jobId)
+    if (id) tally.set(id, (tally.get(id) ?? 0) + 1)
+  }
+  let top: string | null = null
+  let most = 0
+  for (const [id, n] of tally) {
+    if (n > most) {
+      top = id
+      most = n
+    }
+  }
+  return top
+}
+
 function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, affidavits: ReadonlyArray<LienBoardChip>): { tiles: LienBoardTile[]; dayWords: string | null; atRisk: number } {
   // A chip on a property that reads as public and is unanswered (v2.7443) has no day to make: no paper can be made there.
   const liveChips = [...notices, ...affidavits].filter(open).filter((c) => !c.publicMark)

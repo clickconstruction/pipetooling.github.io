@@ -86,6 +86,8 @@ The office can change the list while your card is open. Your send is then refuse
 
 The card reads the list again by itself. Look at the lines again and press the send.
 
+The card marks only the lines it showed you. A line the office added while your card was open stays with the office. It keeps the customer's word and no mark of ours.
+
 The card goes away when there is nothing left to ask.
 
 ## Related

@@ -295,7 +295,7 @@ The Dashboard has a small **Lien desk** card beside the Needs you list. It shows
 *3 are past their day.*
 :::
 
-The first count is the papers due by the next lien day. The second is what waits on the leader. A leader reads *wait on you* there. The third is what waits to print and mail.
+The first count is the papers due by the next lien day. The second is what waits on the leader. The office reads his name there, as the Board does. A leader reads *wait on you*. The third is what waits to print and mail.
 
 A red line shows only while a paper is past its day or will not make it. The line uses the Board's own words.
 

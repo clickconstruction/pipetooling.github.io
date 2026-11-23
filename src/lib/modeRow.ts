@@ -9,11 +9,16 @@
  * a guard below holds it open. After that the page opens with the row out of sight, and a pull down at
  * the top of the page, or a tap on the small handle there, brings it down. The app switches off the
  * rubber band at the top of every page (`overscroll-behavior-y: none` in `index.css`), so nothing else
- * answers that pull. On a desk there is room, and the row always shows.
+ * answers that pull.
+ *
+ * The row is a phone's. Past a phone's width it is not drawn, and the gear menu lists the same three
+ * as a list with one dot (`gearModesRows`, the owner's second look, 2026-11-23). A press there goes
+ * through this file's own rule, so the row and the list can never disagree.
  *
  * The middle third is no mode on top: it switches Task Mode and Job Mode off and leaves Dispatch Mode
  * alone, so a leader or the office keeps the Dispatch Mode bar (`pageMode.ts`). Dispatch Mode stays a
- * row of the gear menu, and so does every mode for the estimator, the one role this row is not drawn for.
+ * row of the gear menu. The estimator, the one role this row is not drawn for, has the gear menu's list
+ * at every width.
  *
  * This file is the rule and every word on the row. The rule is pure. The phone's memory of the row
  * (was a third ever pressed, how many times the page opened) is read and written at the foot.
@@ -66,9 +71,10 @@ export const MODE_ROW_SHOWN_CONTROL = 'mode_row_shown'
 
 /**
  * Every role whose first page is the Dashboard, the page the row sits on (the owner, 2026-11-23: *give
- * it to everyone*). That is eight of the nine. The estimator's first page is Bids (`roleHomePath`) and
- * its header has no Home press, so the row would be on a page the estimator does not open: the
- * estimator keeps the gear menu's Modes rows. A role nobody knows gets nothing.
+ * it to everyone*). That is eight of the nine. An estimator who opens the app lands on Bids: `/` is not
+ * on the estimator's list, so `Layout`'s route guard sends it to `roleHomePath`, and only a fresh sign-in
+ * lands on the Dashboard. The owner saw the row drawn on top of Bids the same day and left the estimator
+ * out, so the estimator keeps the gear menu's Modes rows. A role nobody knows gets nothing.
  */
 export function modeRowOfferedToRole(role: Role): boolean {
   return canLeaveJobFieldReport(role) && roleHomePath(role) === '/dashboard'
@@ -140,21 +146,30 @@ export function modeRowHeldOpen(role: Role, mode: PageMode): boolean {
   return isSubcontractorLikeRole(role as UserRole | null | undefined) && mode !== 'job'
 }
 
-/** `none`: not this role or this page. `row`: the three thirds. `tucked`: out of sight, a pull away. */
+/**
+ * Whether the row is this person's door to the modes at this width. It is a phone's: a desk or a tablet
+ * has the gear menu's list in its place (`gearModesRows`), the green *Task Mode · Exit* strip while Task
+ * Mode is on and **Show full dashboard** at the foot of the Job Mode page.
+ */
+export function modeRowDrawnHere(role: Role, phone: boolean): boolean {
+  return phone && modeRowOfferedToRole(role)
+}
+
+/** `none`: not this role, this width or this page. `row`: the three thirds. `tucked`: out of sight, a pull away. */
 export type ModeRowDraw = 'none' | 'row' | 'tucked'
 
 export function modeRowDraw(input: {
   role: Role
   pathname: string
   mode: PageMode
-  /** A phone's width. A desk never tucks. */
+  /** A phone's width. Past it the row is not drawn. */
   phone: boolean
   memory: ModeRowMemory
   /** Brought down this visit: by a pull, the handle or a switch. */
   shownNow: boolean
 }): ModeRowDraw {
-  if (!modeRowOfferedToRole(input.role) || !modeRowOnPage(input.pathname, input.mode)) return 'none'
-  if (!input.phone || input.shownNow) return 'row'
+  if (!modeRowDrawnHere(input.role, input.phone) || !modeRowOnPage(input.pathname, input.mode)) return 'none'
+  if (input.shownNow) return 'row'
   if (modeRowFirstVisits(input.memory) || modeRowHeldOpen(input.role, input.mode)) return 'row'
   return 'tucked'
 }

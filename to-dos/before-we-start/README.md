@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word) · left: a live walk on the ZZ job, the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes, v2.8368 the card sends the list it showed, whose migration waits for a go) · left: a live walk on the ZZ job, the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -509,12 +509,15 @@ the proof.
 - **One test row on production.** Arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on the ZZ job, from the build's walk
   on 2026-11-20. It has no Dispatch line. A dev deletes it when the ZZ job is done with.
 - **Faults seen and not fixed.**
-  - The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
-    card left open while the office adds a bullet, or a new yes, can mark one it never showed. The pick: a third
-    argument on `start_check_arrive` and a change to the card. Not built.
-  - The office reads a stage's newest arrival. With two arrivals the earlier one's *said No on site* line is not
-    drawn, though its bullet stays open.
-  - A stage with a No reads *Not as told* until one of ours answers again, also after the office has a new yes.
+  - ~~The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
+    card left open while the office adds a bullet, or a new yes, can mark one it never showed.~~ The pick: a third
+    argument on `start_check_arrive` and a change to the card. Built as v2.8368, migration
+    `20261123100000_start_check_arrive_shown.sql`, pushed only on a go that names it and right after its merge.
+  - ~~The office reads a stage's newest arrival. With two arrivals the earlier one's *said No on site* line is not
+    drawn, though its bullet stays open.~~ Built as v2.8366: a stage holds every arrival, and each bullet's line names
+    the arrival that said No on it.
+  - ~~A stage with a No reads *Not as told* until one of ours answers again, also after the office has a new yes.~~
+    Built as v2.8367: the red sentence holds only while a No stands with no yes since, and names that bullet.
   - ~~The Schedule look draws nothing while its reads are out. A push that fails after a No is dropped without a
     word.~~ Both were left as they are on the audit's pick, and built on the owner's word of 2026-11-23 as v2.8360: the
     look reads *Reading the schedule…* while its first read is out, and a No whose push failed says so on the card.

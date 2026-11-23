@@ -23,13 +23,13 @@ vi.mock('../../hooks/useAuth', async () => {
 const ASK: ArrivalAsk = { fixtureId: 'fx-1', name: 'Rough In', bullets: [{ id: 'b1', words: 'The slab is poured.' }, { id: 'b2', words: 'The trench is open.' }] }
 function io(first: ArrivalAsk | null, fail = false) {
   let ask = first
-  const sent: Array<{ fixtureId: string; no: string[] }> = []
+  const sent: Array<{ fixtureId: string; no: string[]; shown: string[] }> = []
   return {
     sent,
     readArrival: vi.fn(async () => ask),
-    arrive: vi.fn(async (fixtureId: string, no: readonly string[]) => {
+    arrive: vi.fn(async (fixtureId: string, no: readonly string[], shown: readonly string[]) => {
       if (fail) throw new Error('The list has changed. Open it again.')
-      sent.push({ fixtureId, no: [...no] })
+      sent.push({ fixtureId, no: [...no], shown: [...shown] })
       ask = null
       return { dispatchRequestId: no.length ? 'dr-1' : null, pushed: true }
     }),
@@ -61,7 +61,8 @@ describe('JobModeArrivalCheck', () => {
     // Each bullet's press is the word No, never a state to read: nothing on it says As told.
     expect(Array.from(document.querySelectorAll('.scArrivalNo')).map((b) => b.textContent)).toEqual(['No', 'No'])
     fireEvent.click(screen.getByRole('button', { name: 'Yes, all as told' }))
-    await waitFor(() => expect(mem.sent).toEqual([{ fixtureId: 'fx-1', no: [] }]))
+    // The send carries the list the card showed: the door marks those bullets and no other.
+    await waitFor(() => expect(mem.sent).toEqual([{ fixtureId: 'fx-1', no: [], shown: ['b1', 'b2'] }]))
     // Asked once a stage: the card says what it kept, and asks nothing more.
     const said = await screen.findByRole('status', { name: 'Is it as told?' })
     expect(said.textContent).toBe('Saved: all as told.Keep working either way.')
@@ -82,7 +83,7 @@ describe('JobModeArrivalCheck', () => {
     expect(screen.getByRole('button', { name: 'Tell Dispatch: 2 things not as told' })).toBeTruthy()
     fireEvent.click(trench)
     fireEvent.click(screen.getByRole('button', { name: 'Tell Dispatch: 1 thing not as told' }))
-    await waitFor(() => expect(mem.sent).toEqual([{ fixtureId: 'fx-1', no: ['b1'] }]))
+    await waitFor(() => expect(mem.sent).toEqual([{ fixtureId: 'fx-1', no: ['b1'], shown: ['b1', 'b2'] }]))
     const said = await screen.findByRole('status', { name: 'Is it as told?' })
     expect(said.textContent).toBe('Dispatch has it: 1 thing not as told.Keep working either way.')
     expect(said.dataset.arrivalSaid).toBe('no')

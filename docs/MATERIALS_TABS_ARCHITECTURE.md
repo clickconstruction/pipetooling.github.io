@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: 9c26f3f3e7
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-23
 ---
 
 ## Overview
@@ -85,7 +85,7 @@ Each tab section lists: **parent JSX** (range + prop count), **parent-owned stat
 |---|---|---|---|
 | Error banner | 1446–1450 | 5 | inline |
 | Service-type row (hidden on `supply-houses`, `job-accounts`, `what-we-buy` and `on-site`) | 1453–1474 | 22 | inline |
-| Tab strip — the three groups, the On site tab's mount, the Scan a label and Print labels windows (v2.6851) and, since v2.7272, the Print future stickers window (`PrintStickersWindow`, the parent's `printStickers` state, opened by `onStripPress` on `print-stickers`) | 1477–1521 | 45 | **extracted** — `MaterialsGroupStrip` (1477–1484) over `materialsGroupsFor(myRole)`; one `openTab` writes the state and `?tab=`; under it `MaterialsOnSiteTab` (1487–1493), `ScanLabelWindow` (1494), `PrintLabelsWindow` (1495–1507) and `PrintStickersWindow` (1508–1521) |
+| Tab strip — the three groups, the On site tab's mount, the Scan a label and Print labels windows (v2.6851) and, since v2.7272, the Print future stickers window (`PrintStickersWindow`, the parent's `printStickers` state, opened by `onStripPress` on `print-stickers`), and since v2.8282 the phone's shape: the page hands the strip `phone` (`isPhone` from `useNarrowViewport640`, so `stripFit` keeps the row of names with the scan and print icons) and `onPrint`, which opens the Print sheet — `MaterialsPrintSheet` over `pagePrintSheet(stripPresses)` drawn by the page with no job open, and with a job open on On site handed down as `printSheet` for the job's section to draw (`printSheetOnJob`) | 1477–1521 | 45 | **extracted** — `MaterialsGroupStrip` (1477–1484) over `materialsGroupsFor(myRole)`; one `openTab` writes the state and `?tab=`; under it `MaterialsOnSiteTab` (1487–1493), `ScanLabelWindow` (1494), `PrintLabelsWindow` (1495–1507) and `PrintStickersWindow` (1508–1521) |
 | `MaterialsPartsBookTab` | 1524–1557 | 34 | extracted, 32 props |
 | `PartFormModal` | 1560–1571 | 12 | extracted, 10 props |
 | Part Prices modal shell — overlay around `PartPricesManager`; `onPricesUpdated` fires `MATERIAL_PRICES_CHANGED_EVENT`, then patches `parts`/`allParts`/`templateItems` | 1575–1611 | 37 | **inline shell** |

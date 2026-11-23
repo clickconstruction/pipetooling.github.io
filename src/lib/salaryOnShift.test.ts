@@ -110,3 +110,29 @@ describe('getSalarySyntheticClockInIso', () => {
     expect(iso).toBeNull()
   })
 })
+
+describe('working hours on shift (punch list #429)', () => {
+  const tmpl = { user_id: 'u', timezone: APP_CALENDAR_TZ, mode: 'continuous', segment_a_start_local: '08:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null, created_at: null, updated_at: null, exclude_weekends: true } as Parameters<typeof getSalaryScheduleWindowsUtc>[1]
+  // Mon Nov 2, 2026, Central standard time: 6:00 AM is 12:00 UTC.
+  const at = (hm: string) => Date.parse(`2026-11-02T${hm}:00Z`)
+
+  it('reads the day’s windows from the working hours, a lunch as two', () => {
+    expect(getSalaryScheduleWindowsUtc('2026-11-02', tmpl, null, [[360, 720]])).toEqual([{ start: at('12:00'), end: at('18:00') }])
+    expect(getSalaryScheduleWindowsUtc('2026-11-02', tmpl, null, [[420, 690], [720, 930]])).toEqual([
+      { start: at('13:00'), end: at('17:30') },
+      { start: at('18:00'), end: at('21:30') },
+    ])
+    expect(getSalaryScheduleWindowsUtc('2026-11-02', tmpl, null, [])).toEqual([])
+    expect(getSalaryScheduleWindowsUtc('2026-11-02', tmpl, null, null)).toEqual([{ start: at('14:00'), end: at('22:00') }])
+  })
+
+  it('puts a person on shift inside their own hours, and off shift after them', () => {
+    const on = (nowHm: string, workingDay: ReadonlyArray<readonly [number, number]> | null) => getSalarySyntheticClockInIso({ workDateYmd: '2026-11-02', nowMs: at(nowHm), timeOffRows: [], template: tmpl, overrideForDate: null, workingDay })
+    expect(on('12:30', [[360, 720]])).toBe(new Date(at('12:00')).toISOString())
+    // 1:00 PM Central: past noon for six to noon, and still inside the template's 8:00 to 4:00.
+    expect(on('19:00', [[360, 720]])).toBeNull()
+    expect(on('19:00', null)).toBe(new Date(at('14:00')).toISOString())
+    expect(on('17:45', [[420, 690], [720, 930]])).toBeNull()
+    expect(on('12:30', [])).toBeNull()
+  })
+})
