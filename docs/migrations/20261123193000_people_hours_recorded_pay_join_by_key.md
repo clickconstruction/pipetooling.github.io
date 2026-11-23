@@ -1,4 +1,4 @@
-# 20261123190100_people_hours_recorded_pay_join_by_key.sql (2026-11-23, recorded time finds a person's pay row by its key, v2.8392)
+# 20261123193000_people_hours_recorded_pay_join_by_key.sql (2026-11-23, recorded time finds a person's pay row by its key, v2.8392)
 
 Punch list #430, the second of its two views. One migration on a view. No client change, no edge function.
 

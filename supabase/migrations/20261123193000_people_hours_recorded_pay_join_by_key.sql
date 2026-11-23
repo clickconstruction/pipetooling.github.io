@@ -16,7 +16,7 @@ SET lock_timeout = '3s';
 -- the generated types and the dev seat's catalog stay as they are. security_invoker as before.
 --
 -- Either order with the client: it reads the same columns from the old view and the new. No table is made, so there is
--- no fence to call. Safe to run twice. Doc: docs/migrations/20261123190100_people_hours_recorded_pay_join_by_key.md.
+-- no fence to call. Safe to run twice. Doc: docs/migrations/20261123193000_people_hours_recorded_pay_join_by_key.md.
 
 CREATE OR REPLACE VIEW public.people_hours_recorded
 WITH (security_invoker = true)
