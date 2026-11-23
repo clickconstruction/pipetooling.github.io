@@ -1574,7 +1574,7 @@ hook **[`useJobModeEnabled(userId, role)`](../src/hooks/useJobModeEnabled.ts)**.
 Since v2.8038 the shell and the Dashboard read it through `usePageMode`, so the Job Mode page is drawn only when Job Mode is the page's mode (*Page mode*).
 Mirrors the **`dashboard_clock_strip_scope`** pattern.
 
-**Mode row** — the first-run card ("Working in the field? Turn on Job Mode.") is gone since v2.8332: the *Mode row* under *Page mode* is how a leader or a superintendent turns Job Mode on, and how anyone it is drawn for gets back.
+**Mode row** — the first-run card that offered Job Mode to a leader or a superintendent is gone since v2.8332: the *Mode row* under *Page mode* is how they turn Job Mode on, and how anyone it is drawn for gets back.
 A device that stored `'card'` still reads on, and the old put-away key `dashboard_job_mode_card_dismissed_${userId}` is read by nothing.
 **Show full dashboard** at the foot of the Job Mode page is drawn only for the roles the row is not drawn for.
 

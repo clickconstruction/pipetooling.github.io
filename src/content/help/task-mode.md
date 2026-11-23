@@ -35,13 +35,13 @@ Check the truck fluids {{chip:green|Done}}
 1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.
 2. Tap **Task Mode**. A green check appears and the app jumps to your checklist.
 
-Leaders, superintendents, subs and helpers do it another way. They tap **Task Mode** on the row at the top of the Dashboard. Their gear menu does not list **Task Mode**.
+Leaders, superintendents, subs and helpers do it another way. Those four roles tap **Task Mode** on the row at the top of the Dashboard. The gear menu of those roles does not list **Task Mode**.
 
 ## Turning it off
 
 Tap {{button:outline|Exit}} on the green **Task Mode** strip at the top of the page. Or, same as before, open the {{icon:gear}} gear menu and tap **Task Mode**. The full app comes back exactly as you left it. Job Mode or Dispatch Mode is on again if you had one of those on before.
 
-Leaders, superintendents, subs and helpers have no strip. They tap **Dashboard** or **Job Mode** on the row at the top. They land on the page they tapped.
+Leaders, superintendents, subs and helpers have no strip. Those four roles tap **Dashboard** or **Job Mode** on the row at the top. The app opens the page that was tapped.
 
 ## One mode at a time
 
