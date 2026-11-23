@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Time: the week and the eight weeks</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:20px; background:#e9edf3; color:#111827; font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  h1 { font-size:23px; margin:0 0 4px; }
+  h2.sec { font-size:18px; margin:30px 0 2px; }
+  p.lead { margin:2px 0 0; max-width:880px; color:#374151; }
+  .bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; margin:14px -20px 0; padding:10px 20px; background:#e9edf3; border-bottom:1px solid #cfd5dd; }
+  .bar .grp { display:flex; align-items:center; gap:6px; font-size:13px; color:#374151; }
+  .bar .seg { display:inline-flex; }
+  .bar button { min-height:36px; padding:4px 12px; border:1px solid #aab2bd; background:#fff; color:#374151; font:inherit; font-size:13px; font-weight:600; cursor:pointer; margin-left:-1px; }
+  .bar button:first-child { border-radius:8px 0 0 8px; margin-left:0; }
+  .bar button:last-child { border-radius:0 8px 8px 0; }
+  .bar button[aria-pressed="true"] { background:#2563eb; border-color:#2563eb; color:#fff; position:relative; }
+  .strip { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; padding:12px 0 4px; }
+  figure { margin:0; flex:none; max-width:100%; }
+  figcaption { font-weight:700; font-size:14px; margin:0 0 6px; max-width:375px; }
+  figcaption span { display:block; font-weight:400; color:#4b5563; font-size:13px; }
+  figcaption .tagb, figcaption .taga, figcaption .tagp { display:inline-block; margin-right:6px; padding:0 7px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.03em; vertical-align:1px; }
+  figcaption .tagb { background:#374151; color:#fff; }
+  figcaption .taga { background:#2563eb; color:#fff; }
+  figcaption .tagp { background:#fff; color:#2563eb; border:1px solid #2563eb; }
+  table.t { border-collapse:collapse; background:#fff; border:1px solid #cfd5dd; margin-top:8px; max-width:880px; }
+  table.t td, table.t th { border-top:1px solid #e5e7eb; padding:7px 12px; text-align:left; vertical-align:top; font-size:14px; }
+  table.t tr:first-child th { border-top:none; background:#f3f4f6; }
+
+  /* The app's tokens (src/index.css), dark then light. */
+  .ph { --page:#111827; --surface:#1f2937; --subtle:#18212f; --muted-bg:#374151; --strong:#f9fafb; --base:#f3f4f6; --t700:#d1d5db; --muted:#9ca3af; --faint:#8892a3;
+        --border:#374151; --border-strong:#4b5563; --link:#60a5fa; --tint:#1e3358; --amber:#fcd34d; --amber-bg:#3a2f11; --hatch:#4b5563;
+        background:var(--page); color:var(--base); border:1px solid #4b5563; border-radius:22px; padding:10px 8px 14px; overflow:hidden; }
+  .light .ph { --page:#f0f2f5; --surface:#ffffff; --subtle:#f9fafb; --muted-bg:#f3f4f6; --strong:#111827; --base:#1a1a1a; --t700:#374151; --muted:#6b7280; --faint:#767f8d;
+        --border:#cfd4db; --border-strong:#aab2bd; --link:#2563eb; --tint:#eff6ff; --amber:#92400e; --amber-bg:#fffbeb; --hatch:#cfd4db; border-color:#9aa3af; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .card > h3 { margin:0; padding:9px 14px; font-size:17px; color:var(--strong); background:var(--muted-bg); border-left:3px solid #f97316; }
+  .card > .in { padding:10px 14px 14px; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:11px; }
+  .tile { background:var(--subtle); border-radius:6px; padding:7px; text-align:center; }
+  .tile small { display:block; font-size:11px; color:var(--muted); }
+  .tile b { font-size:20px; font-weight:600; color:var(--strong); font-variant-numeric:tabular-nums; }
+  .foot { display:flex; align-items:center; gap:8px; border-top:1px solid var(--border); margin-top:12px; padding-top:10px; }
+  .foot span { padding:5px 11px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface); color:var(--t700); font-size:13px; font-weight:500; white-space:nowrap; }
+  .foot span:last-child { margin-left:auto; }
+  .fold { color:var(--muted); font-size:14px; font-weight:500; padding:6px 0 0; }
+
+  /* BEFORE, as the app draws it today. */
+  .b-block { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:var(--subtle); border-radius:6px; padding:8px 11px; margin-bottom:12px; }
+  .b-block .w { display:grid; gap:2px; min-width:0; }
+  .b-block .hl { font-size:14px; font-weight:600; color:var(--strong); }
+  .b-block .hl .press { margin-left:8px; padding:3px 9px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface); color:var(--t700); font-size:12.5px; font-weight:500; }
+  .b-block .sub { font-size:12.5px; color:var(--t700); }
+  .b-block .mu { font-size:12.5px; color:var(--muted); }
+  .b-block .bars { display:grid; gap:2px; justify-items:end; }
+  .b-block .cap { font-size:10.9px; color:var(--muted); }
+  .b-days { display:grid; gap:4px; padding:8px 12px; background:var(--page); border-radius:6px; font-size:13px; margin-bottom:8px; color:var(--base); font-variant-numeric:tabular-nums; }
+  .b-days .pend { font-size:12px; color:var(--faint); margin-left:4px; }
+
+  /* AFTER: shared pieces. */
+  .panel { background:var(--subtle); border-radius:8px; padding:10px 11px; margin-bottom:10px; }
+  .eyebrow { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:0 0 6px; }
+  .verdict { font-size:17px; font-weight:700; color:var(--strong); line-height:1.25; }
+  .vsub { font-size:13px; color:var(--t700); margin-top:2px; }
+  .vsub b, .wv { font-weight:700; color:var(--strong); }
+  .alert { display:flex; gap:8px; margin-top:8px; padding:8px 10px; border-radius:8px; background:var(--amber-bg); color:var(--amber); font-size:13px; line-height:1.4; }
+  .alert i { flex:none; width:20px; height:20px; border-radius:50%; border:2px solid currentColor; font-style:normal; font-weight:800; font-size:13px; line-height:16px; text-align:center; }
+  .note { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4; }
+  .rule { border-top:1px solid var(--border); margin:10px 0; }
+  .who { font-size:12.5px; color:var(--t700); }
+  .who b { color:var(--strong); }
+  .who .press { margin-left:6px; padding:2px 9px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface); color:var(--t700); font-size:12.5px; font-weight:500; white-space:nowrap; }
+
+  /* Seven day cells. */
+  .cells { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; margin-top:8px; }
+  .cell { display:grid; justify-items:center; gap:2px; padding:4px 0 5px; border-radius:8px; border:1.5px solid transparent; min-width:0; }
+  .cell .dw { font-size:11px; color:var(--muted); line-height:1.2; }
+  .cell .dn { font-size:12px; font-weight:600; color:var(--t700); line-height:1.3; padding:0 5px; border-radius:9px; }
+  .cell .col { position:relative; width:70%; max-width:26px; height:38px; border-radius:5px; background:var(--muted-bg); overflow:hidden; }
+  .cell .col i { position:absolute; left:0; right:0; bottom:0; background:#2563eb; border-radius:0 0 4px 4px; }
+  .cell .v { font-size:13px; font-weight:700; color:var(--strong); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .cell .v.s { font-size:11.5px; letter-spacing:-.02em; line-height:1.36; }
+  .cell .f { font-size:10px; color:var(--muted); line-height:1.2; min-height:12px; white-space:nowrap; }
+  .cell.off .col { background:repeating-linear-gradient(135deg, transparent 0 4px, var(--hatch) 4px 5px); }
+  .cell.off .v { font-weight:500; color:var(--muted); font-size:12px; }
+  .cell.come .col { background:none; border:1.5px dashed var(--border-strong); }
+  .cell.come .v { font-weight:500; color:var(--muted); }
+  .cell.today { border-color:var(--link); background:var(--tint); }
+  .cell.today .dn { background:var(--link); color:var(--surface); }
+  .cell.today .col { background:var(--surface); border:1.5px dashed var(--border-strong); }
+  .cell.today.run .col { border-style:solid; }
+  .cell.bad { border-color:var(--amber); border-style:dashed; }
+  .cell.bad .col { background:var(--amber-bg); }
+  .cell.bad .col i { background:repeating-linear-gradient(135deg, var(--amber) 0 3px, transparent 3px 6px); }
+  .cell.bad .v { color:var(--amber); }
+  .cell.bad .f { color:var(--amber); font-weight:800; }
+
+  /* A line a day. */
+  .dl { display:grid; margin-top:6px; }
+  .dl .r { display:grid; grid-template-columns:52px minmax(0,1fr) max-content; gap:2px 10px; align-items:center; min-height:44px; padding:5px 0; border-top:1px solid var(--border); }
+  .dl .r:first-child { border-top:none; }
+  .dl .d { font-size:13px; color:var(--muted); }
+  .dl .d b { display:block; color:var(--strong); font-weight:600; }
+  .dl .m { min-width:0; font-size:12.5px; color:var(--t700); }
+  .dl .m .track { height:6px; border-radius:3px; background:var(--muted-bg); overflow:hidden; margin-top:4px; }
+  .dl .m .track i { display:block; height:100%; background:#2563eb; }
+  .dl .m .chip { display:inline-block; padding:0 7px; border-radius:9px; background:var(--link); color:var(--surface); font-size:11px; font-weight:700; margin-right:5px; }
+  .dl .val { font-size:13px; font-weight:700; color:var(--strong); text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .dl .val small { display:block; font-weight:400; font-size:11px; color:var(--muted); }
+  .dl .r.come .val, .dl .r.off .val { font-weight:500; color:var(--muted); }
+  .dl .r.come .track { background:none; border:1px dashed var(--border-strong); }
+  .dl .r.bad .val, .dl .r.bad .m { color:var(--amber); }
+  .dl .r.bad .track i { background:repeating-linear-gradient(135deg, var(--amber) 0 3px, transparent 3px 6px); }
+
+  /* One bar for the week. */
+  .wk { margin-top:30px; }
+  .wk .segs { position:relative; display:flex; gap:2px; height:22px; }
+  .wk .segs .s { position:relative; background:var(--muted-bg); border-radius:4px; overflow:hidden; min-width:0; }
+  .wk .segs .s i { position:absolute; left:0; top:0; bottom:0; background:#2563eb; }
+  .wk .segs .s.come { background:none; border:1.5px dashed var(--border-strong); }
+  .wk .mark { position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--strong); }
+  .wk .mark::after { content:attr(data-l); position:absolute; top:-17px; left:50%; transform:translateX(-50%); font-size:10.5px; font-weight:700; color:var(--strong); white-space:nowrap; }
+  .wk .mark.left::after { left:0; transform:none; }
+  .wk .labs { display:flex; gap:2px; margin-top:4px; }
+  .wk .labs span { text-align:center; font-size:11px; color:var(--muted); min-width:0; }
+  .wk .labs span.t { color:var(--strong); font-weight:700; }
+  .wk .ends { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px; }
+
+  /* Eight weeks, labelled. */
+  .wks { position:relative; display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:4px; margin-top:8px; }
+  .wks .c { display:grid; justify-items:center; gap:2px; padding:3px 0 4px; border-radius:7px; min-width:0; border:1.5px solid transparent; }
+  .wks .c .n { font-size:11px; font-weight:700; color:var(--strong); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .wks .c .z { position:relative; width:64%; max-width:20px; height:50px; }
+  .wks .c .z i { position:absolute; left:0; right:0; bottom:0; background:#2563eb; border-radius:3px 3px 0 0; }
+  .wks .c .z u { position:absolute; left:-90%; right:-90%; border-top:1.5px dashed var(--muted); }
+  .wks .c .lb { font-size:10px; color:var(--muted); line-height:1.2; white-space:nowrap; }
+  .wks .c .df { font-size:10px; font-weight:700; color:var(--t700); line-height:1.2; min-height:12px; white-space:nowrap; }
+  .wks .c.now { border-color:var(--link); background:var(--tint); }
+  .wks .c.now .z i { background:none; border:1.5px solid #2563eb; border-bottom:none; }
+  .wks .c.now .lb { color:var(--strong); font-weight:700; }
+  .w320 .wks { gap:2px; }
+  .w320 .wks .c .n { font-size:10px; letter-spacing:-.02em; }
+  .w320 .wks .c .df, .w320 .wks .c .lb { letter-spacing:-.02em; }
+  .lineKey { display:flex; align-items:flex-start; gap:6px; font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .lineKey u { flex:none; display:inline-block; width:22px; margin-top:8px; border-top:1.5px dashed var(--muted); }
+
+  /* The tally. */
+  .tally { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-top:8px; }
+  .tally div { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 4px; text-align:center; }
+  .tally b { display:block; font-size:20px; color:var(--strong); line-height:1.15; }
+  .tally small { font-size:11px; color:var(--muted); }
+  .wl { display:grid; margin-top:8px; }
+  .wl .r { display:grid; grid-template-columns:50px minmax(0,1fr) max-content; gap:8px; align-items:center; min-height:30px; border-top:1px solid var(--border); font-size:12.5px; }
+  .wl .r .d { color:var(--muted); }
+  .wl .r .track { position:relative; height:6px; border-radius:3px; background:var(--muted-bg); }
+  .wl .r .track i { position:absolute; left:0; top:0; bottom:0; background:#2563eb; border-radius:3px; }
+  .wl .r .track u { position:absolute; top:-4px; bottom:-4px; border-left:1.5px dashed var(--muted); }
+  .wl .r .x { text-align:right; white-space:nowrap; color:var(--t700); }
+  .wl .r .x b { color:var(--strong); }
+</style>
+</head>
+<body>
+
+<h1>My Time: the week and the eight weeks</h1>
+<p class="lead">A mock-up, 2026-11-23, for the two parts of the Dashboard's My Time card that were circled. Every person and every hour here is made up. No pay is drawn. Each BEFORE is the card as the app draws it today. Use the bar to switch the person, the moment, the width and the theme.</p>
+
+<div class="bar" id="bar"></div>
+<noscript><p class="lead"><b>This page draws itself with a script. Turn scripts on to see the frames.</b></p></noscript>
+
+<div id="stage"></div>
+
+<h2 class="sec">What each BEFORE mark means today</h2>
+<table class="t">
+  <tr><th>What is drawn</th><th>What it means in the code</th></tr>
+  <tr><td>A bar's height</td><td>The week's recorded hours against the person's week, cut at 150 percent. The whole bar is 30 px, so 5 percent is 1 px.</td></tr>
+  <tr><td>The dashed line</td><td>100 percent. Nothing on the screen says so.</td></tr>
+  <tr><td>Red, <i>over</i></td><td>Anything above 100 percent. One hour over a 40 hour week is red.</td></tr>
+  <tr><td>Green, <i>full</i></td><td>85 to 100 percent. A salaried week at exactly its hours is green.</td></tr>
+  <tr><td>Blue, <i>steady</i>. Amber, <i>light</i></td><td>60 to 84 percent, and under 60.</td></tr>
+  <tr><td>The striped stub</td><td>This week, still running. It is coloured against the whole week, so it reads <i>light</i> until about Thursday.</td></tr>
+  <tr><td><i>On Shift</i></td><td>A salaried day with any time on it, a finished day included. The hours are hidden.</td></tr>
+  <tr><td>A dash</td><td>No time on the day. A day off, a day to come and today before the start all read the same.</td></tr>
+</table>
+
+<script>
+(function () {
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var DATES = [22, 23, 24, 25, 26, 27, 28];
+  var HIST = ['10/4', '10/11', '10/18', '10/25', '11/1', '11/8', '11/15'];
+  var HIST_LONG = ['Oct 4', 'Oct 11', 'Oct 18', 'Oct 25', 'Nov 1', 'Nov 8', 'Nov 15'];
+  var PEOPLE = {
+    salaried: { head: 'Salaried: your week is 40 h.', sub: '8 h Mon to Fri', target: [0, 8, 8, 8, 8, 8, 0], week: 40, hist: [41, 40, 41.5, 40, 43.25, 40, 40], change: false, shift: 'On Shift',
+                who: 'Your week is <b>40 h</b>, <b>8 h</b> Mon to Fri.', times: '7:00 AM to 3:00 PM, Mon to Fri', end: '3:00 PM' },
+    hourly:   { head: 'You can work 38 h a week.', sub: 'Mon–Thu 7a–3p, Fri 7a–1p. Off Sat and Sun.', target: [0, 8, 8, 8, 8, 6, 0], week: 38, hist: [36.5, 38, 41, 30, 21.5, 38, 39.5], change: true,
+                who: 'You can work <b>38 h</b> a week.', times: '7:00 AM to 3:00 PM Mon to Thu, 7:00 AM to 1:00 PM Fri', end: '3:00 PM' }
+  };
+  var MOMENTS = {
+    mon: { today: 1, open: false, worked: { salaried: [14.75, 0, 0, 0, 0, 0, 0], hourly: [0, 0, 0, 0, 0, 0, 0] }, pend: [0, 0, 0, 0, 0, 0, 0] },
+    wed: { today: 3, open: true,  worked: { salaried: [0, 8, 8, 6.5, 0, 0, 0],  hourly: [0, 8.25, 7.5, 6.5, 0, 0, 0] }, pend: [0, 1, 1, 0, 0, 0, 0] }
+  };
+  var state = { theme: 'dark', width: 375, person: 'salaried', moment: 'mon' };
+
+  function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+  function f1(n) { return Number.isInteger(n) ? String(n) : n.toFixed(1); }
+  function fq(n) { return String(Math.round(n * 100) / 100); }
+  function hm(h) { var s = Math.round(h * 3600), H = Math.floor(s / 3600), M = Math.floor((s % 3600) / 60); return H === 0 ? M + 'm' : H + 'h ' + M + 'm'; }
+  function hmWords(h) { var H = Math.floor(h), M = Math.round((h - H) * 60); return M ? H + ' h ' + M + ' m' : H + ' h'; }
+  function band(pct, worked) { if (worked <= 0) return 'none'; if (pct > 100) return 'over'; if (pct >= 85) return 'full'; if (pct >= 60) return 'ok'; return 'light'; }
+  var FILL = { over: '#dc2626', full: '#16a34a', ok: '#2563eb', light: '#d97706', none: 'var(--border-strong)' };
+
+  function ctx() {
+    var p = PEOPLE[state.person], m = MOMENTS[state.moment];
+    var worked = m.worked[state.person], total = sum(worked);
+    var bad = -1;
+    worked.forEach(function (h, d) { if (h > 0 && p.target[d] === 0) bad = d; });
+    return { p: p, m: m, worked: worked, total: total, bad: bad, salaried: state.person === 'salaried' };
+  }
+
+  // ---------- BEFORE ----------
+  function beforeBars(c) {
+    var weeks = c.p.hist.map(function (h) { return { h: h, partial: false }; });
+    weeks.push({ h: c.total, partial: true });
+    var BW = 10, GAP = 4, H = 30, CAP = 150, width = weeks.length * (BW + GAP) - GAP, lineY = Math.round(H - (100 / CAP) * (H - 2));
+    var s = '<svg width="' + width + '" height="' + H + '" viewBox="0 0 ' + width + ' ' + H + '" style="display:block;overflow:visible"><defs><pattern id="hx" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="4" fill="currentColor"/></pattern></defs>';
+    s += '<line x1="0" x2="' + width + '" y1="' + (lineY + 0.5) + '" y2="' + (lineY + 0.5) + '" stroke="var(--muted)" stroke-dasharray="2 2" stroke-width="1"/>';
+    weeks.forEach(function (w, i) {
+      var x = i * (BW + GAP), pctRaw = Math.round((w.h / c.p.week) * 100), pct = Math.min(CAP, Math.max(0, pctRaw));
+      var bh = w.h > 0 ? Math.max(2, Math.round((pct / CAP) * (H - 2))) : 0;
+      s += '<rect x="' + x + '" y="0" width="' + BW + '" height="' + H + '" fill="var(--subtle)" rx="2"/>';
+      if (bh > 0) s += '<rect x="' + x + '" y="' + (H - bh) + '" width="' + BW + '" height="' + bh + '" fill="' + FILL[band(pctRaw, w.h)] + '" rx="2" opacity="' + (w.partial ? 0.55 : 1) + '"/>';
+      if (bh > 0 && w.partial) s += '<rect x="' + x + '" y="' + (H - bh) + '" width="' + BW + '" height="' + bh + '" fill="url(#hx)" rx="2" style="color:var(--surface)" opacity="0.6"/>';
+    });
+    return s + '</svg>';
+  }
+  function beforeBlock(c) {
+    var last = c.p.hist[c.p.hist.length - 1];
+    var weekLine = c.total > 0 ? 'This week ' + f1(c.total) + ' of ' + f1(c.p.week) + ' h so far.' : '';
+    var lastLine = 'Last week ' + f1(last) + ' of ' + f1(c.p.week) + ' h, ' + Math.round((last / c.p.week) * 100) + ' percent.';
+    return '<div class="b-block"><div class="w"><span class="hl">' + c.p.head + (c.p.change ? '<span class="press">Change</span>' : '') + '</span><span class="sub">' + c.p.sub + '</span><span class="mu">' + (weekLine ? weekLine + ' ' : '') + lastLine + '</span></div>' +
+      '<div class="bars">' + beforeBars(c) + '<span class="cap">8 weeks · <span style="color:#dc2626">over</span> · <span style="color:#16a34a">full</span> · <span style="color:#2563eb">steady</span> · <span style="color:#d97706">light</span></span></div></div>';
+  }
+  function beforeDays(c) {
+    var s = '<div class="b-days">';
+    c.worked.forEach(function (h, d) {
+      var v = h > 0 ? (c.salaried ? '<b>On Shift</b>' : '<b>' + h.toFixed(2) + '</b> hrs' + (c.m.pend[d] ? '<span class="pend">1 pending</span>' : '')) : '—';
+      s += '<span>' + DOW[d] + ' 11/' + DATES[d] + ': ' + v + '</span>';
+    });
+    return s + '</div>';
+  }
+  function tiles(c) { return '<div class="tiles"><div class="tile"><small>Today</small><b>' + hm(c.worked[c.m.today]) + '</b></div><div class="tile"><small>This week</small><b>' + hm(c.total) + '</b></div></div>'; }
+  function foot(c) { return (c.total > 0 ? '<div class="fold">▸ This week detail</div>' : '') + '<div class="foot"><span>▸ Last week</span><span>Personal Time Off…</span></div>'; }
+  function card(inner) { return '<div class="card"><h3>My Time</h3><div class="in">' + inner + '</div></div>'; }
+
+  // ---------- AFTER: the words ----------
+  function verdict(c) {
+    var t = c.m.today, before = 0, due = 0;
+    for (var d = 0; d < t; d++) { if (c.p.target[d] > 0) { before += c.worked[d]; due += c.p.target[d]; } }
+    var counted = sum(c.worked.filter(function (_, d) { return d !== c.bad; }));
+    var v = { title: '', sub: '', alert: '' };
+    if (c.bad >= 0) {
+      v.alert = '<b>' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][c.bad] + ' is a day off for you.</b> The clock ran ' + hmWords(c.worked[c.bad]) + ' and stopped itself at midnight. ' + (c.salaried ? 'Ask the office to fix it.' : 'Press the day to fix it.');
+    }
+    if (counted === 0 && due === 0) {
+      v.title = c.bad >= 0 ? 'Your week starts today.' : 'Nothing on the clock yet this week.';
+      v.sub = c.bad >= 0 ? 'The clock shows <b>' + fq(c.total) + ' h</b>, all of it from Sunday.' : 'Your week is <b>' + f1(c.p.week) + ' h</b>. Today is <b>' + f1(c.p.target[t]) + ' h</b>.';
+    } else {
+      var gap = Math.round((before - due) * 4) / 4;
+      v.title = Math.abs(gap) <= 0.5 ? 'On track.' : gap > 0 ? fq(gap) + ' h ahead.' : fq(-gap) + ' h behind.';
+      v.sub = '<b>' + fq(counted) + '</b> of <b>' + f1(c.p.week) + ' h</b>. Today <b>' + hmWords(c.worked[t]) + '</b> so far, of ' + f1(c.p.target[t]) + '.';
+    }
+    return v;
+  }
+  function verdictHtml(c) {
+    var v = verdict(c);
+    return '<div class="verdict">' + v.title + '</div><div class="vsub">' + v.sub + '</div>' + (v.alert ? '<div class="alert"><i>!</i><span>' + v.alert + '</span></div>' : '');
+  }
+  function whoLine(c) { return '<div class="who">' + c.p.who + (c.p.change ? '<span class="press">Change</span>' : '') + '</div>'; }
+
+  // ---------- AFTER: the seven days ----------
+  function dayKind(c, d) {
+    if (d === c.bad) return 'bad';
+    if (d === c.m.today) return 'today';
+    if (c.p.target[d] === 0 && c.worked[d] === 0) return 'off';
+    if (d > c.m.today) return 'come';
+    return 'done';
+  }
+  function cells(c) {
+    var s = '<div class="cells">';
+    c.worked.forEach(function (h, d) {
+      var k = dayKind(c, d), tg = c.p.target[d], pct = tg > 0 ? Math.min(100, Math.round((h / tg) * 100)) : (h > 0 ? 100 : 0);
+      var hv = fq(h).length > 4 ? f1(h) : fq(h);
+      var v = k === 'off' ? 'Off' : k === 'come' ? f1(tg) : k === 'today' && h === 0 ? f1(tg) : hv;
+      var f = k === 'bad' ? '!' : (k === 'done' || (k === 'today' && h > 0)) ? 'of ' + f1(tg) : k === 'today' ? 'today' : '';
+      s += '<div class="cell ' + k + (k === 'today' && h > 0 ? ' run' : '') + '"><span class="dw">' + DOW[d] + '</span><span class="dn">' + DATES[d] + '</span><span class="col">' + (pct ? '<i style="height:' + pct + '%"></i>' : '') + '</span><span class="v' + (v.length > 3 ? ' s' : '') + '">' + v + '</span><span class="f">' + f + '</span></div>';
+    });
+    return s + '</div><div class="note">Hours a day. Filled is on the clock. A dashed box is still to come.</div>';
+  }
+  function dayLines(c, withTimes) {
+    var s = '<div class="dl">';
+    c.worked.forEach(function (h, d) {
+      var k = dayKind(c, d), tg = c.p.target[d], pct = tg > 0 ? Math.min(100, Math.round((h / tg) * 100)) : (h > 0 ? 100 : 0);
+      var words = k === 'off' ? 'Off' : k === 'bad' ? 'Day off. The clock ran to midnight.' : k === 'come' ? 'To come' : k === 'today' ? '<span class="chip">Today</span>' + (h > 0 ? 'on the clock' : 'not started') : 'Done';
+      if (withTimes && tg > 0 && k !== 'bad') words += (k === 'today' ? ' until ' : ' · until ') + (d === 5 && !c.salaried ? '1:00 PM' : c.p.end);
+      var val = k === 'off' ? '0 h' : k === 'bad' ? '! ' + hmWords(h) : k === 'come' ? f1(tg) + ' h' : hmWords(h) + '<small>of ' + f1(tg) + ' h</small>';
+      var track = k === 'off' ? '' : '<div class="track">' + (pct ? '<i style="width:' + pct + '%"></i>' : '') + '</div>';
+      s += '<div class="r ' + k + '"><span class="d"><b>' + DOW[d] + '</b>Nov ' + DATES[d] + '</span><span class="m">' + words + track + '</span><span class="val">' + val + '</span></div>';
+    });
+    return s + '</div>';
+  }
+  function weekBar(c) {
+    var days = [], t = c.m.today, dueTonight = 0, total = 0;
+    c.p.target.forEach(function (tg, d) { if (tg > 0) days.push(d); });
+    days.forEach(function (d) { total += c.p.target[d]; if (d <= t) dueTonight += c.p.target[d]; });
+    var segs = '', labs = '';
+    days.forEach(function (d) {
+      var tg = c.p.target[d], pct = Math.min(100, Math.round((c.worked[d] / tg) * 100));
+      segs += '<span class="s' + (d > t ? ' come' : '') + '" style="flex:' + tg + ' 1 0">' + (pct ? '<i style="width:' + pct + '%"></i>' : '') + '</span>';
+      labs += '<span style="flex:' + tg + ' 1 0"' + (d === t ? ' class="t"' : '') + '>' + DOW[d] + '</span>';
+    });
+    var at = Math.round((dueTonight / total) * 100);
+    var counted = sum(c.worked.filter(function (_, d) { return d !== c.bad; }));
+    return '<div class="wk"><div class="segs">' + segs + '<span class="mark' + (at < 30 ? ' left' : '') + '" data-l="by tonight, ' + f1(dueTonight) + ' h" style="left:calc(' + at + '% - 1px)"></span></div><div class="labs">' + labs + '</div>' +
+      '<div class="ends"><span><b class="wv">' + fq(counted) + ' h</b> on the clock</span><span>your week, <b class="wv">' + f1(total) + ' h</b></span></div></div>';
+  }
+
+  // ---------- AFTER: the eight weeks ----------
+  function weekDiff(h, wk) { var d = Math.round((h - wk) * 4) / 4; return Math.abs(d) <= 1 ? 0 : d; }
+  function weeksSentence(c) {
+    var at = 0, over = 0, under = 0;
+    c.p.hist.forEach(function (h) { var d = weekDiff(h, c.p.week); if (d === 0) at++; else if (d > 0) over++; else under++; });
+    var parts = [at + ' at your hours'];
+    if (over) parts.push(over + ' over');
+    if (under) parts.push(under + ' under');
+    return { at: at, over: over, under: under, words: 'Your last 7 weeks: ' + parts.join(', ') + '.' };
+  }
+  function weeksStrip(c) {
+    var s = '<div class="wks">', top = c.p.week * 1.25;
+    var all = c.p.hist.concat([c.total]);
+    all.forEach(function (h, i) {
+      var now = i === all.length - 1, hgt = Math.min(100, Math.round((h / top) * 100)), d = weekDiff(h, c.p.week);
+      var df = now || d === 0 ? '' : (d > 0 ? '+' : '−') + f1(Math.abs(d));
+      s += '<div class="c' + (now ? ' now' : '') + '"><span class="n">' + f1(h) + '</span><span class="z"><u style="bottom:80%"></u>' + (h > 0 ? '<i style="height:' + hgt + '%"></i>' : '') + '</span><span class="lb">' + (now ? 'now' : HIST[i]) + '</span><span class="df">' + df + '</span></div>';
+    });
+    return s + '</div><div class="lineKey"><u></u><span>your week, ' + f1(c.p.week) + ' h. Each date is a Sunday. The boxed week is still running.</span></div>';
+  }
+  function weeksTally(c) {
+    var w = weeksSentence(c);
+    var s = '<div class="tally"><div><b>' + w.at + '</b><small>at your hours</small></div><div><b>' + w.over + '</b><small>over</small></div><div><b>' + w.under + '</b><small>under</small></div></div><div class="wl">';
+    var top = c.p.week * 1.25;
+    c.p.hist.slice().reverse().forEach(function (h, j) {
+      var i = c.p.hist.length - 1 - j, d = weekDiff(h, c.p.week);
+      var x = d === 0 ? 'at your hours' : d > 0 ? '<b>' + fq(d) + ' h</b> over' : '<b>' + fq(-d) + ' h</b> under';
+      s += '<div class="r"><span class="d">' + HIST_LONG[i] + '</span><span class="track"><i style="width:' + Math.min(100, Math.round((h / top) * 100)) + '%"></i><u style="left:80%"></u></span><span class="x"><b>' + f1(h) + ' h</b>, ' + x + '</span></div>';
+    });
+    return s + '</div><div class="note">A week within an hour of your hours reads as at your hours.</div>';
+  }
+
+  // ---------- frames ----------
+  function fig(tag, title, sub, body) {
+    var t = tag === 'b' ? '<span class="tagb">BEFORE</span>' : tag === 'p' ? '<span class="tagp">PICK</span>' : '<span class="taga">AFTER</span>';
+    return '<figure style="width:' + state.width + 'px"><figcaption>' + t + title + '<span>' + sub + '</span></figcaption><div class="ph">' + body + '</div></figure>';
+  }
+  function render() {
+    var c = ctx(), h = '';
+    document.getElementById('stage').className = state.theme + (state.width === 320 ? ' w320' : '');
+
+    h += '<h2 class="sec">1. The eight weeks: how have my weeks gone</h2><p class="lead">Today a bar flips from green to red on one hour, while its height moves less than a pixel. The options say the hours in numbers and keep colour out of the meaning.</p><div class="strip">';
+    h += fig('b', 'The strip today', 'Eight bars 10 px wide, pushed to the right of their caption. No week is named. The key is four coloured words.', card(beforeBlock(c)));
+    h += fig('a', 'A. Eight weeks, labelled', 'Full width. Each week has its hours on top and its Sunday under it. The dashed line is the person\'s week. This week is boxed and drawn hollow.', card('<div class="panel"><p class="eyebrow">Your weeks</p><div class="vsub">' + weeksSentence(c).words + '</div>' + weeksStrip(c) + '</div>'));
+    h += fig('a', 'B. A count, then the weeks', 'No chart to decode. Three counts answer the question. Each week is one line under them.', card('<div class="panel"><p class="eyebrow">Your last 7 weeks</p>' + weeksTally(c) + '</div>'));
+    h += '</div>';
+
+    h += '<h2 class="sec">2. The seven days: am I on track this week</h2><p class="lead">Today a finished day reads <i>On Shift</i> with its hours hidden, and a dash stands for four different things. Each option says what kind of day it is and puts the hours beside the day\'s own hours.</p><div class="strip">';
+    h += fig('b', 'The list today', 'Seven lines of text. Today is not marked. A day off, a day to come and a day not started all read as a dash.', card(beforeDays(c)));
+    h += fig('a', 'C. Seven cells in a row', 'One glance across the week. Today is boxed. A day to come is a dashed box with its hours. A day off is hatched.', card('<div class="panel"><p class="eyebrow">This week</p>' + verdictHtml(c) + cells(c) + '</div>'));
+    h += fig('a', 'D. A line a day', 'The same facts as words, with the values in a column. Taller, and the easiest to read aloud. Each line is 44 px.', card('<div class="panel"><p class="eyebrow">This week</p>' + verdictHtml(c) + dayLines(c, false) + '</div>'));
+    h += fig('a', 'E. One bar for the week', 'The whole week as one bar, a piece for each working day. The mark is where the hours should be by tonight.', card('<div class="panel"><p class="eyebrow">This week</p>' + verdictHtml(c) + weekBar(c) + '</div>'));
+    h += '</div>';
+
+    h += '<h2 class="sec">3. The whole card, before and after</h2><p class="lead">The pick puts C and A in one panel: this week on top, the eight weeks under it, drawn the same way. The two tiles and the three presses under the panel stay as they are.</p><div class="strip">';
+    h += fig('b', 'The card today', 'As circled: the words, the small bars and the day list are three separate blocks.', card(tiles(c) + beforeBlock(c) + beforeDays(c) + foot(c)));
+    h += fig('p', 'C and A together', 'One panel answers both questions. It works today, with hours a day only.', card(tiles(c) + '<div class="panel">' + whoLine(c) + '<div class="rule"></div><p class="eyebrow">This week</p>' + verdictHtml(c) + cells(c) + '<div class="rule"></div><p class="eyebrow">Your weeks</p><div class="vsub">' + weeksSentence(c).words + '</div>' + weeksStrip(c) + '</div>' + foot(c)));
+    h += fig('a', 'Later, with a start and an end', 'Only if the working-hours plan is built. The same panel gains one line of times, and each day says when it ends.', card(tiles(c) + '<div class="panel"><div class="who">Your hours are <b>' + c.p.times + '</b>.</div><div class="rule"></div><p class="eyebrow">This week</p>' + verdictHtml(c) + dayLines(c, true) + '</div>' + foot(c)));
+    h += '</div>';
+
+    document.getElementById('stage').innerHTML = h;
+  }
+
+  function bar() {
+    var groups = [
+      ['Person', 'person', [['salaried', 'Salaried'], ['hourly', 'Hourly']]],
+      ['Moment', 'moment', [['mon', 'Early Monday, as circled'], ['wed', 'Wednesday afternoon']]],
+      ['Width', 'width', [[375, '375'], [320, '320']]],
+      ['Theme', 'theme', [['dark', 'Dark'], ['light', 'Light']]]
+    ];
+    var el = document.getElementById('bar');
+    el.textContent = '';
+    groups.forEach(function (g) {
+      var grp = document.createElement('span'); grp.className = 'grp';
+      var lab = document.createElement('span'); lab.textContent = g[0]; grp.appendChild(lab);
+      var seg = document.createElement('span'); seg.className = 'seg';
+      g[2].forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = o[1];
+        b.setAttribute('aria-pressed', String(state[g[1]] === o[0]));
+        b.addEventListener('click', function () { state[g[1]] = o[0]; bar(); render(); });
+        seg.appendChild(b);
+      });
+      grp.appendChild(seg); el.appendChild(grp);
+    });
+  }
+  bar(); render();
+})();
+</script>
+</body>
+</html>

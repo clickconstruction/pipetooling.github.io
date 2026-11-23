@@ -2047,7 +2047,6 @@ export default function Dashboard() {
             userId={authUser.id}
             hoursDaysCorrect={hoursDaysCorrectSet}
             disableDayEditor={dashboardSelfIsSalary}
-            salariedWeek={dashboardSelfSalariedWeek}
             onWeekSeconds={setMyTimeWeekSeconds}
           />
         </PhoneFold>
