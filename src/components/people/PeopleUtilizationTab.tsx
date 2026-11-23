@@ -32,6 +32,7 @@ import {
 } from '../../lib/people/utilization'
 import { BAND_FILL } from '../../lib/people/utilizationColors'
 import { describeWeek, describeWeekShort } from '../../lib/people/weekAvailability'
+import { formatHours, workingWeekLineWords } from '../../lib/people/workingHours'
 import { salariedWeekWords } from '../../lib/salariedEffectiveHours'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
@@ -93,6 +94,7 @@ function roleWords(role: string): string {
 }
 
 function canWorkWords(p: PersonUtilization): { main: string; sub: string | null; week: string | null } {
+  if (p.canWork.source === 'set') return { main: `${formatHours(p.canWork.hours)} h`, sub: 'working hours', week: p.canWork.days ? workingWeekLineWords(p.canWork.days) : null }
   if (p.canWork.source === 'schedule') return { main: `${p.canWork.hours} h`, sub: 'set week', week: p.canWork.salariedWeek ? salariedWeekWords(p.canWork.salariedWeek) : null }
   if (p.canWork.source === 'assumed') return { main: `${p.canWork.hours} h`, sub: 'assumed, not asked', week: null }
   const when = p.canWork.setAt ? new Date(p.canWork.setAt) : null
@@ -204,7 +206,8 @@ export default function PeopleUtilizationTab({ authRole, authUserId, io: ioIn }:
   const subject: AvailableHoursSubject | null = changing ? { userId: changing.person.id, name: changing.person.name } : null
 
   const changePress = (p: PersonUtilization, extra?: CSSProperties) =>
-    p.kind === 'hourly' && p.verdict !== 'left' ? (
+    // Working hours are a dev's and the controller's to set, on the person's sheet: no press here.
+    p.kind === 'hourly' && p.verdict !== 'left' && p.canWork.source !== 'set' ? (
       <button type="button" style={{ ...PRESS, ...extra }} onClick={() => setChanging(p)}>
         {p.canWork.source === 'assumed' ? 'Set hours' : 'Change'}
       </button>

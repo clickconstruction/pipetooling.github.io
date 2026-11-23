@@ -33,6 +33,11 @@
  *
  * A phone draws a line in three rows (`billsSentPhoneWords`): the time and the amount, then the work, then where it
  * went. The bill's number stays on the bill's record, where the whole line leads.
+ *
+ * Punch list #422 makes payment plain. A bill's line carries where the bill stands (`pay`, built in `billsPaid.ts`
+ * from the bill's own payment rows): paid with the day and the way, part paid with what is still out, or not paid
+ * with the days since it first went (`billsSentPayWords`). A day band says how many of its bills are paid and what
+ * is still out (`billsSentDayPaidWords`), a tile adds up what is not paid, and two chips narrow the list.
  */
 import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { batchOutcomeWords, countedLabel, type BatchOutcome } from '../batchWords'
@@ -41,6 +46,8 @@ import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { BILL_HAND_WAYS_BUILT_IN, liveBillHandWays, type BillHandWay } from './billHandWays'
+// By type alone: `billsPaid.ts` and the job kernels it leans on stay out of the first bundle, where this file rides.
+import type { BillPaidState } from './billsPaid'
 
 /** Who may open the screen: the people who read sent copies, as the table's own policy (dev, master, assistant, controller). */
 export function canOpenBillsSent(role: string | null | undefined): boolean {
@@ -68,6 +75,10 @@ export interface BillsSentBill {
   status: string
   /** When the bill was made, for its record. Absent on a read that did not ask. */
   billedAtIso?: string | null
+  /** What says whether Stripe holds a record of a payment on the bill. Absent on a read that did not ask. */
+  stripeInvoiceId?: string | null
+  stripeInvoiceStatus?: string | null
+  externalSendChannel?: string | null
 }
 
 /** A job's words and what the search box can find it by. */
@@ -152,6 +163,8 @@ export interface BillsSentInput {
   unsent?: ReadonlyArray<BillsSentUnsent>
   /** By sent copy id. Absent before the read function is on the database: the lines then say nothing of arriving. */
   marks?: ReadonlyMap<string, BillsSentMark>
+  /** Where each bill stands, by bill id, from its own payment rows (`billsPaidByBill`). Absent when the payments did not read: a line then says paid or not from the bill's status alone. */
+  paid?: ReadonlyMap<string, BillPaidState>
 }
 
 /** How it left, as the chips sort it. */
@@ -160,12 +173,14 @@ export type BillsSentRoute = 'email' | 'text' | 'printed' | 'statement' | 'house
 /** The name the tile, the chip and the strip give a bill that has no send of any kind on record. */
 export const BILLS_SENT_GAP_LABEL = 'No send on record'
 
-/** A chip's key: a route, every line, the sends that did not arrive, or the bills with no send on record. */
-export type BillsSentChip = BillsSentRoute | 'all' | 'missed' | 'gap'
+/** A chip's key: a route, every line, the bills not paid or paid, the sends that did not arrive, or the bills with no send on record. */
+export type BillsSentChip = BillsSentRoute | 'all' | 'unpaid' | 'paid' | 'missed' | 'gap'
 
-/** The chips: every route, the sends that did not arrive, then the bills with no send on record (`gap`), which are not lines. */
+/** The chips: every line, what is paid and what is not, every route, the sends that did not arrive, then the bills with no send on record (`gap`), which are not lines. */
 export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentChip; label: string }> = [
   { key: 'all', label: 'All' },
+  { key: 'unpaid', label: 'Not paid' },
+  { key: 'paid', label: 'Paid' },
   { key: 'email', label: 'Email' },
   { key: 'text', label: 'Text' },
   { key: 'printed', label: 'Printed' },
@@ -220,6 +235,10 @@ export interface BillsSentLine {
   stillMissed: boolean
   /** The day the bill was paid, YYYY-MM-DD, when the read knows it. */
   paidOn: string | null
+  /** Where the bill stands: paid, part paid or not paid, with the day and the way. Null on a line that is no bill's, and on a bill that is neither billed nor paid. */
+  pay: BillPaidState | null
+  /** The day the bill first went, YYYY-MM-DD, which the days out are counted from. '' when no time parses. */
+  firstYmd: string
   /** True for a statement the app sent on a schedule: `by` is then whose schedule it is. */
   bySchedule: boolean
   /** The copy the line opens; null on a send that kept none, whose note says so. */
@@ -375,6 +394,19 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     else alone.push(r)
   }
 
+  /**
+   * Where a bill stands. From its payment rows when they read. Else from the bill's status and the day its sent
+   * copy's mark holds, which is all the page knew before: no way, no part payment.
+   */
+  const payOf = (bill: BillsSentBill | undefined, markPaidOn: string | null): BillPaidState | null => {
+    if (!bill) return null
+    if (input.paid) return input.paid.get(bill.id) ?? null
+    if (bill.status !== 'paid' && bill.status !== 'billed') return null
+    const paid = bill.status === 'paid'
+    return { kind: paid ? 'paid' : 'open', paidOn: paid ? markPaidOn : null, paidAmount: 0, outAmount: paid ? 0 : (bill.amount ?? 0), wayWords: '', paidAtIso: null, payments: [] }
+  }
+  const ymdOf = (at: number | null): string => (at != null && at > 0 ? calendarYmdInAppTzFromIso(new Date(at).toISOString()) : '')
+
   const lineOf = (copy: BillsSentCopy, rode: BillsSentCopy[]): BillsSentLine => {
     const billId = billIdOf(copy)
     const bill = billId ? input.bills.get(billId) : undefined
@@ -398,6 +430,8 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     const what = whatOf(copy)
     const mark = input.marks?.get(copy.id)
     const arrival = arrivalOf(mark, copy.sentAt)
+    // A statement and a pay application are no one bill's: they carry no payment.
+    const pay = route === 'statement' || copy.kind === 'pay_application' ? null : payOf(bill, mark?.paidOn ?? null)
     return {
       id: copy.id,
       atIso: copy.sentAt,
@@ -405,7 +439,9 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       delivery: arrival.words,
       deliveryTone: arrival.tone,
       stillMissed: false,
-      paidOn: mark?.paidOn ?? null,
+      paidOn: pay?.paidOn ?? mark?.paidOn ?? null,
+      pay,
+      firstYmd: ymdOf(times.length ? times[0]! : at),
       bySchedule: mark?.emailType === 'gc_statement_scheduled',
       route,
       routeWords: routeWordsOf(copy, route, nth),
@@ -416,7 +452,7 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       payer,
       amount,
       counts: !!billId && nth === 1 && amount != null && route !== 'statement',
-      paid: bill?.status === 'paid',
+      paid: pay ? pay.kind === 'paid' : bill?.status === 'paid',
       toName: copy.recipientName,
       toAddresses: copy.recipientEmails,
       copyTo,
@@ -464,6 +500,7 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     const toAddresses = o.toAddresses ?? []
     const copyTo = o.copyTo ?? []
     const by = (o.by ?? '').trim()
+    const pay = payOf(bill, null)
     return {
       id: o.id,
       atIso: o.atIso,
@@ -471,7 +508,9 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       delivery: o.delivery ?? '',
       deliveryTone: o.delivery === 'Delivered' ? 'ok' : o.delivery ? 'bad' : '',
       stillMissed: false,
-      paidOn: null,
+      paidOn: pay?.paidOn ?? null,
+      pay,
+      firstYmd: ymdOf(times.length ? times[0]! : ms(o.atIso)),
       bySchedule: false,
       route: o.route,
       routeWords: o.routeWords(nth),
@@ -482,7 +521,7 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       payer,
       amount,
       counts: !!o.billId && nth === 1 && amount != null,
-      paid: bill?.status === 'paid',
+      paid: pay ? pay.kind === 'paid' : bill?.status === 'paid',
       toName,
       toAddresses,
       copyTo,
@@ -602,8 +641,62 @@ export function billsSentByWords(line: Pick<BillsSentLine, 'by' | 'bySchedule'>)
 
 /** A paid bill's word on its lines: *Paid Nov 9* when the day is known, *Paid since* when only the fact is. '' when not paid. */
 export function billsSentPaidWords(line: Pick<BillsSentLine, 'paid' | 'paidOn'>): string {
-  if (line.paidOn) return `Paid ${formatWorkDateYmdMonthDayShort(line.paidOn)}`
-  return line.paid ? 'Paid since' : ''
+  if (!line.paid) return ''
+  return line.paidOn ? `Paid ${formatWorkDateYmdMonthDayShort(line.paidOn)}` : 'Paid since'
+}
+
+/** What a line's stamp says and how it is drawn. */
+export interface BillsSentPayWords {
+  tone: 'paid' | 'part' | 'open'
+  /** *Paid Fri, Nov 20*, *Paid today*, *Part paid*, *Not paid*. */
+  stamp: string
+  /** The part paid so far, on a part-paid bill: drawn after the stamp's word, as money. Null otherwise. */
+  stampAmount: number | null
+  /** How it was paid: *Card · Stripe*, *Check 4417 · bank deposit*. '' when not known, and on a bill not paid. */
+  way: string
+  /** The small words after the way: *in 6 days*, *8:21 AM*, *3 days out*, *sent today*, the day of a part payment. */
+  when: string
+  /** What is still out on a part-paid bill, drawn as money before the word *out*. Null otherwise. */
+  outAmount: number | null
+}
+
+/** Whole days from one company day to a later one. Null when either does not parse or the second is the earlier. */
+function daysFrom(fromYmd: string, toYmd: string): number | null {
+  const a = Date.parse(`${fromYmd}T12:00:00Z`)
+  const b = Date.parse(`${toYmd}T12:00:00Z`)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null
+  return Math.round((b - a) / 86_400_000)
+}
+
+const dayOrToday = (ymd: string, todayYmd: string): string => (ymd === todayYmd ? 'today' : formatWorkDateYmdWeekdayShortFriendly(ymd))
+
+/**
+ * The stamp under a line's amount: who has paid, the day and the way. Null on a line that is no bill's.
+ * A bill paid today by Stripe says the time, since the leader is watching it land. Any other paid bill says how
+ * long the money took from the day the bill first went. A bill not paid says how long it has been out.
+ */
+export function billsSentPayWords(line: Pick<BillsSentLine, 'pay' | 'firstYmd'>, todayYmd: string): BillsSentPayWords | null {
+  const pay = line.pay
+  if (!pay) return null
+  if (pay.kind === 'open') {
+    const out = line.firstYmd ? daysFrom(line.firstYmd, todayYmd) : null
+    return { tone: 'open', stamp: 'Not paid', stampAmount: null, way: '', when: out == null ? '' : out === 0 ? 'sent today' : `${plural(out, 'day')} out`, outAmount: null }
+  }
+  if (pay.kind === 'part') {
+    return { tone: 'part', stamp: 'Part paid', stampAmount: pay.paidAmount, way: pay.wayWords, when: pay.paidOn ? dayOrToday(pay.paidOn, todayYmd) : '', outAmount: pay.outAmount }
+  }
+  if (!pay.paidOn) return { tone: 'paid', stamp: 'Paid', stampAmount: null, way: pay.wayWords, when: '', outAmount: null }
+  const took = line.firstYmd ? daysFrom(line.firstYmd, pay.paidOn) : null
+  const when = pay.paidOn === todayYmd && pay.paidAtIso ? billsSentTime(pay.paidAtIso) : took == null ? '' : took === 0 ? 'the same day' : `in ${plural(took, 'day')}`
+  return { tone: 'paid', stamp: `Paid ${dayOrToday(pay.paidOn, todayYmd)}`, stampAmount: null, way: pay.wayWords, when, outAmount: null }
+}
+
+/** The stamp as one run of plain words, for a print, a spreadsheet and a reader's ear: *Paid Fri, Nov 20 · Check 4417 · bank deposit · in 10 days*. '' on a line that is no bill's. */
+export function billsSentPayPlain(line: Pick<BillsSentLine, 'pay' | 'firstYmd'>, todayYmd: string): string {
+  const w = billsSentPayWords(line, todayYmd)
+  if (!w) return ''
+  const stamp = w.stampAmount != null ? `${w.stamp} ${billsSentMoney(w.stampAmount)}` : w.stamp
+  return [stamp, w.way, w.when, w.outAmount != null ? `${billsSentMoney(w.outAmount)} out` : ''].filter(Boolean).join(' · ')
 }
 
 /** A bill with no send on record, as the strip above the days draws it. */
@@ -720,6 +813,32 @@ export interface BillsSentDay {
   statements: number
   /** Lines whose send did not arrive. */
   missed: number
+  /** Of the bills that first went this day, how many are paid and what is still out. */
+  back: BillsSentBack
+}
+
+/** What has come back of a set of bills: how many are paid, of how many, and what is still out. */
+export interface BillsSentBack {
+  /** The bills that carry a payment state: the ones `paid` is counted out of. */
+  bills: number
+  paid: number
+  /** What is still out across them: an open bill's amount, a part-paid bill's remainder. */
+  out: number
+}
+
+/** What has come back of the bills these lines first sent. A bill is counted once, as in the day's total. */
+function backOf(lines: ReadonlyArray<BillsSentLine>): BillsSentBack {
+  const seen = new Set<string>()
+  const back: BillsSentBack = { bills: 0, paid: 0, out: 0 }
+  for (const l of lines) {
+    if (!l.counts || !l.pay || !l.billId || seen.has(l.billId)) continue
+    seen.add(l.billId)
+    back.bills += 1
+    if (l.pay.kind === 'paid') back.paid += 1
+    else back.out += l.pay.outAmount
+  }
+  back.out = Math.round(back.out * 100) / 100
+  return back
 }
 
 const sumOf = (lines: ReadonlyArray<BillsSentLine>): BillsSentSum => {
@@ -739,10 +858,11 @@ export function billsSentDays(lines: ReadonlyArray<BillsSentLine>, todayYmd: str
       continue
     }
     const day = ymd ? formatWorkDateYmdWeekdayShortFriendly(ymd) : 'No date'
-    out.push({ ymd, label: ymd === todayYmd ? `Today · ${day}` : ymd === yesterday ? `Yesterday · ${day}` : day, lines: [line], sum: { bills: 0, total: 0 }, again: 0, statements: 0, missed: 0 })
+    out.push({ ymd, label: ymd === todayYmd ? `Today · ${day}` : ymd === yesterday ? `Yesterday · ${day}` : day, lines: [line], sum: { bills: 0, total: 0 }, again: 0, statements: 0, missed: 0, back: { bills: 0, paid: 0, out: 0 } })
   }
   for (const d of out) {
     d.sum = sumOf(d.lines)
+    d.back = backOf(d.lines)
     d.again = d.lines.filter((l) => l.nth > 1).length
     d.statements = d.lines.filter((l) => l.route === 'statement').length
     d.missed = d.lines.filter((l) => l.deliveryTone === 'bad').length
@@ -759,18 +879,33 @@ export function billsSentDayExtras(day: Pick<BillsSentDay, 'again' | 'statements
   return parts.join(' · ')
 }
 
+/** A band's second line as plain words, for a print: *1 of 3 paid · $6,820.00 still out*, or *3 of 3 paid*. '' on a day whose bills carry no payment state. */
+export function billsSentBackWords(back: BillsSentBack): string {
+  if (back.bills === 0) return ''
+  const paid = `${back.paid} of ${back.bills} paid`
+  return back.out > 0 ? `${paid} · ${billsSentMoney(back.out)} still out` : paid
+}
+
 /** `2 bills · $8,270.00`; a day with sends and no first send says *0 bills*. */
 export function billsSentSumWords(sum: BillsSentSum): string {
   return sum.bills > 0 ? `${plural(sum.bills, 'bill')} · ${billsSentMoney(sum.total)}` : '0 bills'
 }
 
-/** The two tiles: the bills that first went today, and since the Sunday that began this week. */
-export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: string): { today: BillsSentSum; week: BillsSentSum } {
+/**
+ * The tiles: the bills that first went today, since the Sunday that began this week, and the bills on the list
+ * that are not paid in full, with what is still out on them (a part-paid bill counts for its remainder).
+ */
+export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: string): { today: BillsSentSum; week: BillsSentSum; unpaid: BillsSentSum } {
   const weekStart = companyWeekStartSundayContaining(todayYmd) ?? todayYmd
   const dayOf = (l: BillsSentLine) => (Number.isFinite(Date.parse(l.atIso)) ? calendarYmdInAppTzFromIso(l.atIso) : '')
+  // Every bill on the list that is not paid in full, counted once whichever of its sends is on the page, so the
+  // tile counts the bills its chip shows.
+  const open = new Map<string, number>()
+  for (const l of lines) if (l.billId && l.pay && l.pay.kind !== 'paid') open.set(l.billId, l.pay.outAmount)
   return {
     today: sumOf(lines.filter((l) => dayOf(l) === todayYmd)),
     week: sumOf(lines.filter((l) => dayOf(l) >= weekStart && dayOf(l) <= todayYmd)),
+    unpaid: { bills: open.size, total: Math.round([...open.values()].reduce((s, n) => s + n, 0) * 100) / 100 },
   }
 }
 
@@ -778,7 +913,15 @@ export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: st
 export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: BillsSentChip, typed: string): BillsSentLine[] {
   if (route === 'gap') return []
   const words = typed.toLowerCase().split(/\s+/).filter(Boolean)
-  return lines.filter((l) => (route === 'all' || (route === 'missed' ? l.stillMissed : l.route === route)) && words.every((w) => l.haystack.includes(w)))
+  const kept = (l: BillsSentLine): boolean => {
+    if (route === 'all') return true
+    if (route === 'missed') return l.stillMissed
+    // Every send of a bill that is not paid in full, a part-paid bill included. Then every send of a paid one.
+    if (route === 'unpaid') return !!l.pay && l.pay.kind !== 'paid'
+    if (route === 'paid') return l.pay?.kind === 'paid'
+    return l.route === route
+  }
+  return lines.filter((l) => kept(l) && words.every((w) => l.haystack.includes(w)))
 }
 
 /** The words a copy's window is headed with. */
@@ -799,6 +942,16 @@ export interface BillsSentRecordEvent {
   line: BillsSentLine
 }
 
+/** One payment on a bill's record. */
+export interface BillsSentRecordPayment {
+  id: string
+  /** *Fri, Nov 20*, with the time for a payment Stripe recorded. *No day on record* when the row holds none. */
+  when: string
+  amount: number
+  /** *Check 4417 · bank deposit*. */
+  way: string
+}
+
 /** Every send of one bill, as its record draws it. */
 export interface BillsSentRecord {
   billId: string
@@ -808,8 +961,10 @@ export interface BillsSentRecord {
   jobTo: string | null
   payer: string
   amount: number | null
-  /** *Not paid*, *Paid Nov 9*, *Paid*. */
+  /** *Not paid*, *Paid Fri, Nov 20*, *Part paid, $1,620.00 still out*, *Paid*. */
   stateWords: string
+  /** Each payment on the bill, oldest first. Empty when none is on record, or the payments did not read. */
+  payments: BillsSentRecordPayment[]
   /** Newest first. Empty for a bill with no send on record. */
   events: BillsSentRecordEvent[]
   /** *Bill made Tue, Nov 3 at 4:38 PM.* '' when the read does not know. */
@@ -854,7 +1009,7 @@ function recordDetail(line: BillsSentLine): string {
  * One bill's record from the lines on the page: every send of it, newest first. A bill with no line (a gap) still
  * has a record, with no events. Null when the page knows nothing of the bill.
  */
-export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLine>, input: Pick<BillsSentInput, 'bills' | 'jobs'>): BillsSentRecord | null {
+export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLine>, input: Pick<BillsSentInput, 'bills' | 'jobs' | 'paid'>): BillsSentRecord | null {
   const own = lines.filter((l) => l.billId === billId)
   const bill = input.bills.get(billId)
   if (own.length === 0 && !bill) return null
@@ -863,6 +1018,18 @@ export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLi
   const job = jobId ? input.jobs.get(jobId) : undefined
   const paidLine = own.find((l) => l.paidOn)
   const paid = bill?.status === 'paid' || own.some((l) => l.paid)
+  // A bill with no line (a gap) still has its payments, read by bill.
+  const pay = own.find((l) => l.pay)?.pay ?? input.paid?.get(billId) ?? null
+  const stateWords =
+    pay?.kind === 'part'
+      ? `Part paid, ${billsSentMoney(pay.outAmount)} still out`
+      : paid
+        ? pay?.paidOn
+          ? `Paid ${formatWorkDateYmdWeekdayShortFriendly(pay.paidOn)}`
+          : paidLine
+            ? billsSentPaidWords(paidLine)
+            : 'Paid'
+        : 'Not paid'
   const madeYmd = bill?.billedAtIso && Number.isFinite(Date.parse(bill.billedAtIso)) ? calendarYmdInAppTzFromIso(bill.billedAtIso) : ''
   return {
     billId,
@@ -871,7 +1038,13 @@ export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLi
     jobTo: first?.jobTo ?? (jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null),
     payer: first?.payer || (job?.customer_name ?? '').trim(),
     amount: bill?.amount ?? first?.amount ?? null,
-    stateWords: paid ? (paidLine ? billsSentPaidWords(paidLine) : 'Paid') : 'Not paid',
+    stateWords,
+    payments: (pay?.payments ?? []).map((p) => ({
+      id: p.id,
+      when: p.ymd ? (p.atIso ? `${formatWorkDateYmdWeekdayShortFriendly(p.ymd)} · ${billsSentTime(p.atIso)}` : formatWorkDateYmdWeekdayShortFriendly(p.ymd)) : 'No day on record',
+      amount: p.amount,
+      way: p.wayWords,
+    })),
     events: own.map((line) => ({ id: line.id, when: dayAndTime(line.atIso, line.dayOnly), head: recordHead(line), detail: recordDetail(line), line })),
     madeWords: madeYmd ? `Bill made ${formatWorkDateYmdWeekdayShortFriendly(madeYmd)} at ${billsSentTime(bill!.billedAtIso!)}.` : '',
   }
@@ -894,14 +1067,18 @@ export function billsSentRecordHtml(record: BillsSentRecord, printedAtIso: strin
     .map((e) => `<tr><td class="when">${esc(e.when)}</td><td><b>${esc(e.head)}</b><br>${esc(e.detail)}</td></tr>`)
     .join('')
   const none = '<p>No send of this bill is on record. The app sent no email, text or print for it.</p>'
+  const payments = record.payments.length
+    ? `<h2>Payments, oldest first</h2><table>${record.payments.map((p) => `<tr><td class="when">${esc(p.when)}</td><td><b>${esc(billsSentMoney(p.amount))}</b>${p.way ? ` · ${esc(p.way)}` : ''}</td></tr>`).join('')}</table>`
+    : ''
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} · record of sends</title><style>
 body{font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:32px}
-h1{font-size:18px;margin:0 0 2px}p{margin:4px 0}.sub{color:#444}
-table{border-collapse:collapse;width:100%;margin-top:14px}td{border-top:1px solid #bbb;padding:7px 8px 7px 0;vertical-align:top}
+h1{font-size:18px;margin:0 0 2px}h2{font-size:13px;margin:16px 0 0}p{margin:4px 0}.sub{color:#444}
+table{border-collapse:collapse;width:100%;margin-top:14px}h2+table{margin-top:4px}td{border-top:1px solid #bbb;padding:7px 8px 7px 0;vertical-align:top}
 td.when{white-space:nowrap;width:1%;padding-right:16px;font-weight:600}.foot{margin-top:16px;color:#444;font-size:12px}
 </style></head><body>
 <h1>${esc(title)}</h1>
 <p class="sub">${esc([record.payer, record.amount != null ? billsSentMoney(record.amount) : '', record.stateWords].filter(Boolean).join(' · '))}</p>
+${payments}
 <p class="sub">Record of sends, newest first. All times are Central.</p>
 ${record.events.length ? `<table>${rows}</table>` : none}
 ${record.madeWords ? `<p class="foot">${esc(record.madeWords)}</p>` : ''}
@@ -914,11 +1091,19 @@ ${record.madeWords ? `<p class="foot">${esc(record.madeWords)}</p>` : ''}
 /** A cell a spreadsheet will not run: text that opens like a formula is led with an apostrophe. */
 const csvCell = (v: string): string => escapeCsvField(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v)
 
-export const BILLS_SENT_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Time', 'Bill', 'Job', 'For', 'Amount', 'In the day total', 'To', 'Address or number', 'Copy to', 'How it went', 'Sent by', 'Send of this bill', 'Arrived', 'Paid', 'Note']
+export const BILLS_SENT_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Time', 'Bill', 'Job', 'For', 'Amount', 'In the day total', 'To', 'Address or number', 'Copy to', 'How it went', 'Sent by', 'Send of this bill', 'Arrived', 'Paid', 'Paid on', 'Paid how', 'Still out', 'Days to pay', 'Note']
+
+/** A line's five payment cells: the word, the day, the way, what is still out and the days the money took. Blank on a line that is no bill's. */
+function csvPaidCells(l: BillsSentLine): string[] {
+  const pay = l.pay
+  if (!pay) return [l.paid ? 'Paid' : '', l.paidOn ?? '', '', '', '']
+  const took = pay.kind === 'paid' && pay.paidOn && l.firstYmd ? daysFrom(l.firstYmd, pay.paidOn) : null
+  return [pay.kind === 'paid' ? 'Paid' : pay.kind === 'part' ? 'Part paid' : 'Not paid', pay.paidOn ?? '', pay.wayWords, pay.outAmount.toFixed(2), took == null ? '' : String(took)]
+}
 
 /**
  * The lines as a spreadsheet, in the order given, then the bills with no send on record. Dates are the company's
- * calendar days, times are Central. The amount is a plain number so a column of them adds.
+ * calendar days, times are Central. The amount and what is still out are plain numbers so a column of them adds.
  */
 export function billsSentCsv(lines: ReadonlyArray<BillsSentLine>, gaps: ReadonlyArray<BillsSentGap> = []): string {
   const rows: string[][] = [BILLS_SENT_CSV_HEAD.slice()]
@@ -939,12 +1124,12 @@ export function billsSentCsv(lines: ReadonlyArray<BillsSentLine>, gaps: Readonly
       billsSentByWords(l).replace(/^by /, ''),
       String(l.nth),
       l.delivery,
-      billsSentPaidWords(l),
+      ...csvPaidCells(l),
       l.note,
     ])
   }
   for (const g of gaps) {
-    rows.push(['', '', 'Bill', g.jobWords, g.payer, g.amount != null ? g.amount.toFixed(2) : '', 'no', '', '', '', BILLS_SENT_GAP_LABEL, '', '', '', g.paid ? 'Paid' : '', g.billedWords])
+    rows.push(['', '', 'Bill', g.jobWords, g.payer, g.amount != null ? g.amount.toFixed(2) : '', 'no', '', '', '', BILLS_SENT_GAP_LABEL, '', '', '', g.paid ? 'Paid' : 'Not paid', '', '', '', '', g.billedWords])
   }
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n'
 }
@@ -958,14 +1143,16 @@ export function billsSentCsvFileName(todayYmd: string): string {
  * The list as a page to print: what is shown, under its days, with each day's count and total, then the open bills
  * with no send on record. `shownWords` says what the page holds when the list was narrowed (*Email · "larkfield"*).
  */
-export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: ReadonlyArray<BillsSentGap>, opts: { printedAtIso: string; shownWords: string }): string {
+export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: ReadonlyArray<BillsSentGap>, opts: { printedAtIso: string; shownWords: string; todayYmd?: string }): string {
+  // The page's day, which the days out are counted to. A caller that names none gets the day of the print.
+  const today = opts.todayYmd ?? calendarYmdInAppTzFromIso(opts.printedAtIso)
   const lineRow = (l: BillsSentLine): string => {
     const to = [l.toName, l.toAddresses.join(', ')].filter(Boolean).join(', ')
-    const facts = [l.routeWords, billsSentByWords(l), billsSentAgainWords(l), l.delivery, billsSentPaidWords(l)].filter(Boolean).join(' · ')
+    const facts = [l.routeWords, billsSentByWords(l), billsSentAgainWords(l), l.delivery, billsSentPayPlain(l, today) || billsSentPaidWords(l)].filter(Boolean).join(' · ')
     return `<tr><td class="when">${esc(l.dayOnly ? 'Day only' : billsSentTime(l.atIso))}</td><td><b>${esc(l.what)}</b>${l.jobWords ? ` · ${esc(l.jobWords)}` : ''}${l.payer ? ` · ${esc(l.payer)}` : ''}<br>${to ? `To ${esc(to)}${l.copyTo.length ? `, copy to ${esc(l.copyTo.join(', '))}` : ''}<br>` : ''}${esc(facts)}${l.note ? `<br>${esc(l.note)}` : ''}</td><td class="amt">${l.amount != null ? esc(billsSentMoney(l.amount)) : ''}</td></tr>`
   }
   const dayBlock = (d: BillsSentDay): string => {
-    const extras = billsSentDayExtras(d)
+    const extras = [billsSentDayExtras(d), billsSentBackWords(d.back)].filter(Boolean).join(' · ')
     return `<tr class="day"><td colspan="3"><b>${esc(d.label)}</b> <span>${esc(billsSentSumWords(d.sum))}${extras ? ` · ${esc(extras)}` : ''}</span></td></tr>${d.lines.map(lineRow).join('')}`
   }
   const gapBlock = gaps.length

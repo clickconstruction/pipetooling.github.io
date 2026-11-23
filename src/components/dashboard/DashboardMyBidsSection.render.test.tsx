@@ -34,6 +34,15 @@ const BIDS = [
 
 /** What the `bids` read answers, and a gate that holds it while a test reads the loading card. */
 const bidsRead: { rows: unknown[]; hold: Promise<void> | null } = { rows: BIDS, hold: null }
+/** What the other tables answer: someone else's note on a bid makes it unread. */
+const otherRows: Record<string, unknown[]> = {}
+const openBidPreview = vi.fn()
+/** True for a test that runs on a device held in the hand, where a bid is hidden with a swipe. */
+const device = { handHeld: false }
+
+vi.mock('../../lib/paintedMap/handHeld', () => ({ handHeld: () => device.handHeld }))
+
+vi.mock('../../contexts/BidPreviewModalContext', () => ({ useBidPreview: () => ({ openBidPreview }) }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -46,11 +55,17 @@ vi.mock('../../lib/supabase', async () => {
       return { data: bidsRead.rows, error: null }
     }
     const chain: Record<string, unknown> = {}
-    for (const m of ['select', 'or', 'order', 'limit']) chain[m] = () => chain
+    for (const m of ['select', 'or', 'is', 'order', 'limit']) chain[m] = () => chain
     chain.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => answer().then(ok, bad)
     return chain
   }
-  stub.from = (table: string) => (table === 'bids' ? bidsChain() : origFrom(table))
+  const rowsChain = (rows: unknown[]): unknown => {
+    const chain: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'in']) chain[m] = () => chain
+    chain.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok, bad)
+    return chain
+  }
+  stub.from = (table: string) => (table === 'bids' ? bidsChain() : otherRows[table] ? rowsChain(otherRows[table]) : origFrom(table))
   return { supabase: stub }
 })
 
@@ -69,6 +84,10 @@ const loadedHeading = () => screen.findByRole('button', { name: 'My Bids, 2 bids
 afterEach(() => {
   bidsRead.rows = BIDS
   bidsRead.hold = null
+  for (const k of Object.keys(otherRows)) delete otherRows[k]
+  openBidPreview.mockClear()
+  localStorage.clear()
+  device.handHeld = false
 })
 
 describe('DashboardMyBidsSection — how the card opens', () => {
@@ -124,3 +143,149 @@ describe('DashboardMyBidsSection — how the card opens', () => {
     expect(screen.queryByText('Fire Cabinet Installation')).toBeNull()
   })
 })
+
+describe('DashboardMyBidsSection — the bids by state (punch list #426)', () => {
+  const row = (over: Record<string, unknown>) => ({ ...BIDS[0], ...over })
+  const group = (name: string | RegExp) => screen.findByRole('button', { name })
+
+  it('a bid marked won with no sent date is under Won, folded, and never in the unsent list', async () => {
+    bidsRead.rows = [row({ id: 'u1', project_name: 'Alder St changes' }), row({ id: 'w1', project_name: 'Quarry Rd shell', outcome: 'won', bid_date_sent: null })]
+    renderWithProviders(section('estimator'))
+    expect(await group('Unsent, 1 bid, 1 past due')).toBeTruthy()
+    expect(screen.getByText('Alder St changes')).toBeTruthy()
+    expect(screen.queryByText('Quarry Rd shell')).toBeNull()
+    fireEvent.click(await group('Won, 1 bid'))
+    expect(screen.getByText('Quarry Rd shell')).toBeTruthy()
+  })
+
+  it('a bid the Bid Board no longer lists is not drawn: archived from the board while unsent, or adopted', async () => {
+    bidsRead.rows = [
+      row({ id: 'u1', project_name: 'Alder St changes' }),
+      row({ id: 'a1', project_name: 'Harbor St rough-in', working_board_archived_at: '2026-05-11T15:00:00Z' }),
+      row({ id: 'a2', project_name: 'Maple Court Lot 2', adopted_into_bid_id: 'u1' }),
+    ]
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    expect(screen.queryByText('Harbor St rough-in')).toBeNull()
+    expect(screen.queryByText('Maple Court Lot 2')).toBeNull()
+  })
+
+  it('a sent bid with no answer is under the board\'s words, and its group opens on a press', async () => {
+    bidsRead.rows = [row({ id: 'p1', project_name: 'Juniper Ave finish', bid_date_sent: '2026-11-03' })]
+    renderWithProviders(section('estimator'))
+    const heading = await group('Not yet won or lost, 1 bid')
+    expect(heading.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText('Juniper Ave finish')).toBeNull()
+    // Unsent is always drawn, with its good words when it is empty.
+    expect(screen.getByText('Nothing unsent.')).toBeTruthy()
+    fireEvent.click(heading)
+    expect(screen.getByText('Juniper Ave finish')).toBeTruthy()
+    expect(screen.getByText('Sent. Waiting on an answer.')).toBeTruthy()
+  })
+
+  it('a folded group still draws a bid with unread updates', async () => {
+    bidsRead.rows = [row({ id: 'p1', project_name: 'Juniper Ave finish', bid_date_sent: '2026-11-03' }), row({ id: 'p2', project_name: 'Tanner Way remodel', bid_date_sent: '2026-11-10' })]
+    otherRows.bids_submission_entries = [{ id: 'e1', bid_id: 'p1', created_at: '2026-11-20T15:00:00Z', created_by: 'someone-else', notes: 'The owner wants the price held.', occurred_at: '2026-11-20', contact_method: null }]
+    renderWithProviders(section('estimator'))
+    const heading = await group('Not yet won or lost, 2 bids, 1 unread')
+    expect(heading.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByText('Juniper Ave finish')).toBeTruthy()
+    expect(screen.getByText('Unread updates')).toBeTruthy()
+    expect(screen.queryByText('Tanner Way remodel')).toBeNull()
+  })
+
+  it('Hide moves a bid to Hidden, and Show again brings it back', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    const hidden = await group('Hidden, 1 bid')
+    expect(screen.queryByText('Fire Cabinet Installation')).toBeNull()
+    fireEvent.click(hidden)
+    fireEvent.click(screen.getByRole('button', { name: 'Show again, Fire Cabinet Installation' }))
+    expect(await loadedHeading()).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Hidden/ })).toBeNull()
+  })
+
+  it('with every bid hidden the card still draws, and Hidden is the way back', async () => {
+    localStorage.setItem('dashboard_my_bids_hidden_me', JSON.stringify(['b1', 'b2']))
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 0 bids' })).toBeTruthy()
+    expect(screen.getByText('Nothing unsent.')).toBeTruthy()
+    expect(screen.getByText('The bids you hid are below.')).toBeTruthy()
+    expect(await group('Hidden, 2 bids')).toBeTruthy()
+  })
+
+  it('a press on a bid opens the bid\'s window, and the card has one door, Bid Board', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByText('Restroom Stalls'))
+    expect(openBidPreview).toHaveBeenCalledWith('b2')
+    expect(screen.getByRole('link', { name: 'Bid Board ›' }).getAttribute('href')).toBe('/bids?tab=bid-board')
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
+  })
+
+  it('the trade is left off while every bid shares one', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(screen.queryByText('Plumbing')).toBeNull()
+  })
+
+  it('the trade is on each bid when they span more than one', async () => {
+    bidsRead.rows = [row({ id: 'u1', project_name: 'Alder St changes' }), row({ id: 'u2', project_name: 'Cobalt Dr shell', service_type: { name: 'HVAC' } })]
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(screen.getByText('Plumbing')).toBeTruthy()
+    expect(screen.getByText('HVAC')).toBeTruthy()
+  })
+})
+
+describe('DashboardMyBidsSection — hiding a bid (punch list #426, step 4)', () => {
+  const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+
+  it('at a desk, Hide says what it did, and Undo puts the bid back', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await loadedHeading()).toBeTruthy()
+    expect(screen.getByText('Fire Cabinet Installation')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual([])
+  })
+
+  it('on a device held in the hand, a swipe to the left hides the bid and the card says how', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')?.textContent).toBe('Swipe a bid left to hide it.')
+    const slide = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 150)
+    pointer(slide, 'pointerup', 150)
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    // The swipe did not also open the bid.
+    expect(openBidPreview).not.toHaveBeenCalled()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual(['b1'])
+  })
+
+  it('on a device held in the hand, a short swipe leaves the bid, and a press still opens its window', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const slide = document.querySelector('[data-my-bid="b2"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 240)
+    pointer(slide, 'pointerup', 240)
+    expect(screen.getByRole('button', { name: 'My Bids, 2 bids' })).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 5))
+    fireEvent.click(screen.getByText('Restroom Stalls'))
+    expect(openBidPreview).toHaveBeenCalledWith('b2')
+  })
+})
+

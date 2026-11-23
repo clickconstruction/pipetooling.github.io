@@ -31,7 +31,7 @@ function io(first: ArrivalAsk | null, fail = false) {
       if (fail) throw new Error('The list has changed. Open it again.')
       sent.push({ fixtureId, no: [...no] })
       ask = null
-      return { dispatchRequestId: no.length ? 'dr-1' : null }
+      return { dispatchRequestId: no.length ? 'dr-1' : null, pushed: true }
     }),
   }
 }
@@ -43,7 +43,7 @@ describe('JobModeArrivalCheck', () => {
     await settle()
     expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull()
     cleanup()
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival: async () => Promise.reject(new Error('no signal')), arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival: async () => Promise.reject(new Error('no signal')), arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     await settle()
     expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull()
   })
@@ -86,6 +86,26 @@ describe('JobModeArrivalCheck', () => {
     const said = await screen.findByRole('status', { name: 'Is it as told?' })
     expect(said.textContent).toBe('Dispatch has it: 1 thing not as told.Keep working either way.')
     expect(said.dataset.arrivalSaid).toBe('no')
+  })
+
+  it('a No whose push to the phones failed says so: the line is in the inbox, call Dispatch too', async () => {
+    // The line is kept before the push goes out, so a failed push loses nothing but the ring. Dropped without a word,
+    // the crew would think a dispatcher was on it.
+    const arrive = vi.fn(async () => ({ dispatchRequestId: 'dr-1', pushed: false }))
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival: async () => ASK, arrive }} />)
+    await screen.findByRole('region', { name: 'Is it as told?' })
+    fireEvent.click(screen.getByRole('button', { name: 'No: The slab is poured.' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tell Dispatch: 1 thing not as told' }))
+    const said = await screen.findByRole('status', { name: 'Is it as told?' })
+    expect(said.textContent).toBe('Dispatch has it: 1 thing not as told.The line is in the inbox, but no phone rang. Call Dispatch too.Keep working either way.')
+    expect(said.querySelector('[data-arrival-not-pushed]')).toBeTruthy()
+    cleanup()
+    // A Yes, all as told sends no line and so no push: nothing to say about a phone.
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival: async () => ASK, arrive: async () => ({ dispatchRequestId: null, pushed: false }) }} />)
+    await screen.findByRole('region', { name: 'Is it as told?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, all as told' }))
+    const yes = await screen.findByRole('status', { name: 'Is it as told?' })
+    expect(yes.textContent).toBe('Saved: all as told.Keep working either way.')
   })
 
   it('a send that is refused says why and keeps the card', async () => {
@@ -145,7 +165,7 @@ describe('JobModeArrivalCheck', () => {
       if (fail) throw new Error('no signal')
       return ASK
     })
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     await screen.findByRole('region', { name: 'Is it as told?' })
     fireEvent.click(screen.getByRole('button', { name: 'No: The slab is poured.' }))
     fail = true
@@ -164,7 +184,7 @@ describe('JobModeArrivalCheck', () => {
       if (fail) throw new Error('no signal')
       return ASK
     })
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     await settle()
     expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull()
     fail = false
@@ -182,7 +202,7 @@ describe('JobModeArrivalCheck', () => {
       if (refuse) throw { code: 'P0001', message: 'The stage line has no days.' }
       return ASK
     })
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     const card = await screen.findByRole('region', { name: 'Is it as told?' })
     expect(card.getAttribute('data-arrival-refused')).toBe('yes')
     expect(card.textContent).toContain('The app could not read what to look at here: The stage line has no days.')
@@ -202,7 +222,7 @@ describe('JobModeArrivalCheck', () => {
     const readArrival = vi.fn(async () => {
       throw new TypeError('Failed to fetch')
     })
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     await settle()
     expect(readArrival).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('job-mode-arrival-check')).toBeNull()
@@ -214,7 +234,7 @@ describe('JobModeArrivalCheck', () => {
       if (refuse) throw { code: 'P0001', message: 'The stage line has no days.' }
       return ASK
     })
-    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null }) }} />)
+    renderWithProviders(<JobModeArrivalCheck jobId="job-1" io={{ readArrival, arrive: async () => ({ dispatchRequestId: null, pushed: true }) }} />)
     await screen.findByRole('button', { name: 'Yes, all as told' })
     refuse = true
     act(() => {

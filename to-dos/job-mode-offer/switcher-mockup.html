@@ -1,0 +1,509 @@
+<title>Mode switcher</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Layout: a bench. One live 320 px phone to scroll and press, its settings beside it, then what was thought through in one narrow column. */
+:root {
+  --ground: #eef1f5;
+  --sheet: #ffffff;
+  --ink: #131a26;
+  --ink-soft: #566173;
+  --rule: #cfd5de;
+  --pick: #0f766e;
+  --pick-tint: #dff3f0;
+  --warn: #b45309;
+  /* the app's own look, inside the frames: the values of src/index.css */
+  --a-bg: #f0f2f5;
+  --a-surface: #ffffff;
+  --a-border: #cfd4db;
+  --a-border-strong: #aab2bd;
+  --a-text: #1a1a1a;
+  --a-muted: #6b7280;
+  --a-ink800: #1f2937;
+  --a-green-tint: #f0fdf4;
+  --a-green-border: #bbf7d0;
+  --a-green-text: #15803d;
+  --a-skel: #dfe3e9;
+  --a-green: #16a34a;
+  --a-blue: #2563eb;
+  --a-orange: #ff6600;
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644;
+    --pick: #5eead4; --pick-tint: #12332f; --warn: #fbbf24;
+    --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+    --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+    --a-green-text: #4ade80; --a-skel: #2b3646;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644;
+  --pick: #5eead4; --pick-tint: #12332f; --warn: #fbbf24;
+  --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+  --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+  --a-green-text: #4ade80; --a-skel: #2b3646;
+  color-scheme: dark;
+}
+.look-light .phone, .look-light .desk {
+  --a-bg: #f0f2f5; --a-surface: #ffffff; --a-border: #cfd4db; --a-border-strong: #aab2bd; --a-text: #1a1a1a;
+  --a-muted: #6b7280; --a-ink800: #1f2937; --a-green-tint: #f0fdf4; --a-green-border: #bbf7d0;
+  --a-green-text: #15803d; --a-skel: #dfe3e9;
+}
+.look-dark .phone, .look-dark .desk {
+  --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+  --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+  --a-green-text: #4ade80; --a-skel: #2b3646;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.85rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 0.95rem; font-family: var(--body); font-weight: 700; }
+p { margin: 0; }
+.prose { max-width: 64ch; display: grid; gap: 10px; }
+.soft { color: var(--ink-soft); }
+.eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+section { display: grid; gap: 16px; min-width: 0; }
+.tag { font-family: var(--body); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: var(--pick-tint); color: var(--pick); white-space: nowrap; }
+button:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+/* the bench */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (min-width: 760px) { .bench { grid-template-columns: 320px minmax(0, 420px); gap: 36px; } .bench .playcol { order: -1; } }
+.playcol { display: grid; gap: 8px; min-width: 0; }
+.knobs { display: grid; gap: 18px; min-width: 0; }
+.knob { display: grid; gap: 6px; }
+.knob .lab { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.knob .say { font-size: 0.85rem; color: var(--ink-soft); min-height: 2.6em; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); justify-self: start; }
+.seg button { font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--ink); background: none; border: 0; min-height: 44px; padding: 0 14px; cursor: pointer; flex: 1 0 auto; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+.again { font: inherit; font-weight: 700; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--pick); background: var(--pick-tint); color: var(--pick); cursor: pointer; justify-self: start; }
+.readout { font-size: 0.85rem; font-weight: 600; color: var(--pick); min-height: 1.5em; }
+
+/* ---------- the phone ---------- */
+.phone { width: 320px; max-width: 100%; border: 1px solid var(--rule); border-radius: 22px; background: var(--a-bg); color: var(--a-text); overflow: hidden; font-family: var(--body); font-size: 13px; line-height: 1.3; display: flex; flex-direction: column; }
+.phone.live { height: 600px; }
+.phone.still { max-height: 470px; }
+.scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; position: relative; scrollbar-width: none; }
+.scroller::-webkit-scrollbar { display: none; }
+.app { min-height: 100%; display: flex; flex-direction: column; }
+
+/* the switcher: three thirds, each a thumb tall */
+.swrow { padding: 8px 10px; background: var(--a-bg); z-index: 3; }
+.sw { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--a-border-strong); border-radius: 10px; overflow: hidden; background: var(--a-surface); }
+.sw > * { font-family: inherit; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 2px; font-size: 13.5px; font-weight: 600; color: var(--a-ink800); background: none; border: 0; border-left: 1px solid var(--a-border); cursor: default; white-space: nowrap; }
+.sw > *:first-child { border-left: 0; }
+.sw > button { cursor: pointer; }
+.sw > .on { background: var(--a-blue); color: #fff; font-weight: 700; border-left-color: var(--a-blue); }
+.sw .new { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 5px; border-radius: 999px; background: var(--a-green); color: #fff; }
+/* Rides the scroll: the row sticks to the top and slides away going down */
+.hide-ride .swrow { position: sticky; top: 0; transition: transform 0.18s ease-out; box-shadow: 0 1px 0 var(--a-border); }
+.hide-ride .swrow.away { transform: translateY(-100%); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .hide-ride .swrow { transition: none; } }
+/* the small handle that says something is above */
+.grab { display: none; height: 12px; align-items: center; justify-content: center; background: var(--a-surface); }
+.grab i { width: 36px; height: 4px; border-radius: 2px; background: var(--a-border-strong); display: block; }
+.hide-tuck.with-grab .grab { display: flex; }
+
+.p-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--a-surface); border-bottom: 1px solid var(--a-border); color: var(--a-muted); }
+.p-head .dot { width: 24px; height: 24px; border-radius: 6px; background: var(--a-skel); flex: none; }
+.p-head .dot.call { background: var(--a-green); opacity: 0.55; }
+.p-head .name { font-weight: 700; font-size: 13px; }
+.p-head .gap { flex: 1; }
+.gear { width: 26px; height: 26px; display: grid; place-items: center; flex: none; color: var(--a-muted); }
+.gear svg { width: 20px; height: 20px; display: block; }
+.p-body { padding: 10px; display: grid; gap: 10px; align-content: start; }
+.clockin { min-height: 44px; border-radius: 8px; background: var(--a-orange); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; padding: 11px 12px; display: grid; gap: 7px; }
+.card .t { font-size: 13px; font-weight: 700; }
+.card .m { color: var(--a-muted); font-size: 12px; }
+.line { height: 8px; border-radius: 4px; background: var(--a-skel); }
+.line.w70 { width: 70%; } .line.w50 { width: 50%; } .line.w85 { width: 85%; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 14px; border-radius: 8px; font-size: 14px; font-weight: 700; line-height: 1.15; text-align: center; border: 1px solid transparent; }
+.btn.green { background: var(--a-green); color: #fff; }
+.btn.blue { background: var(--a-blue); color: #fff; }
+.btn.line-btn { background: var(--a-surface); color: var(--a-ink800); border-color: var(--a-border-strong); font-weight: 600; }
+
+/* Job Mode */
+.sqs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sq { min-height: 46px; border-radius: 8px; display: grid; place-items: center; text-align: center; font-size: 10.5px; font-weight: 600; line-height: 1.15; padding: 4px 2px; }
+.sq.loud { background: var(--a-blue); color: #fff; }
+.sq.quiet { background: var(--a-surface); color: var(--a-text); border: 1px solid var(--a-border); }
+.jcard .jt { font-size: 15px; font-weight: 700; }
+.jcard .jt span { font-weight: 500; }
+.jcard .cap { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--a-muted); margin-top: 4px; }
+.stop { display: grid; grid-template-columns: 16px 3.4em 1fr auto; gap: 5px; align-items: center; min-width: 0; font-size: 12.5px; min-height: 26px; }
+.stop .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stop .tm { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+.mk { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 700; flex: none; font-style: normal; }
+.mk.done { background: var(--a-green); color: #fff; }
+.mk.now { border: 3px solid var(--a-green); }
+.mk.todo { border: 1.5px solid var(--a-muted); }
+.nowchip { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; color: var(--a-green-text); }
+.foot { flex: none; }
+.jbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 10px; background: var(--a-surface); border-top: 1px solid var(--a-border); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--a-surface); border-top: 1px solid var(--a-border); padding: 7px 4px 9px; font-size: 10.5px; font-weight: 600; color: var(--a-muted); text-align: center; }
+.tabs .on { color: var(--a-blue); }
+
+/* Task Mode */
+.daybar { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--a-border-strong); border-radius: 8px; overflow: hidden; background: var(--a-surface); }
+.daybar span { min-height: 40px; display: grid; place-items: center; font-weight: 600; font-size: 13px; color: var(--a-ink800); }
+.daybar .on { background: var(--a-blue); color: #fff; font-weight: 700; }
+.task { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.task .nm { font-weight: 600; min-width: 0; }
+.chip { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.chip.green { background: var(--a-green-tint); color: var(--a-green-text); border: 1px solid var(--a-green-border); }
+.oldstrip { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 12px; background: var(--a-green-tint); border-bottom: 1px solid var(--a-green-border); color: var(--a-green-text); font-size: 13px; font-weight: 700; }
+.oldstrip i { font-style: normal; background: var(--a-surface); border: 1px solid var(--a-green-border); border-radius: 999px; padding: 1px 11px; }
+
+.frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 320px)); gap: 26px 22px; align-items: start; }
+.col { display: grid; gap: 8px; min-width: 0; }
+.step { font-size: 0.82rem; font-weight: 700; }
+.note { font-size: 0.82rem; color: var(--ink-soft); }
+
+.desk { width: 100%; max-width: 760px; border: 1px solid var(--rule); border-radius: 12px; background: var(--a-bg); color: var(--a-text); font-family: var(--body); font-size: 13px; line-height: 1.3; overflow: hidden; }
+.desk .p-head { padding: 10px 16px; }
+.desk .sw { width: 330px; max-width: 100%; }
+.desk .p-body { padding: 14px 16px; }
+
+/* what was thought through */
+.thinks { display: grid; gap: 0; max-width: 74ch; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.thinks li { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.thinks h3 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.thinks .take { color: var(--pick); font-weight: 600; }
+.picks { display: grid; gap: 10px; max-width: 70ch; padding: 0; margin: 0; list-style: none; counter-reset: pick; }
+.picks li { display: grid; grid-template-columns: 1.6rem 1fr; gap: 8px; counter-increment: pick; }
+.picks li::before { content: counter(pick); font-family: var(--display); font-weight: 700; color: var(--ink-soft); }
+</style>
+
+<main class="wrap" id="sheet">
+
+  <header class="prose">
+    <span class="eyebrow">Mock-up · nothing built · made-up jobs and tasks</span>
+    <h1>The mode switcher, tucked above the page</h1>
+    <p>Your idea, to play with. <b>Task Mode · Dashboard · Job Mode</b> is one row that lives above the top of the page. Scroll the phone up to the very top and it comes down.</p>
+  </header>
+
+  <!-- ============ THE BENCH ============ -->
+  <section>
+    <h2>Play with it</h2>
+    <div class="bench">
+      <div class="knobs">
+        <div class="knob">
+          <span class="lab">How the row hides</span>
+          <span class="seg" role="group" aria-label="How the row hides">
+            <button type="button" id="hide-tuck" data-set="hide" data-val="tuck" aria-pressed="true">Tucked</button>
+            <button type="button" id="hide-ride" data-set="hide" data-val="ride" aria-pressed="false">Rides the scroll</button>
+            <button type="button" id="hide-always" data-set="hide" data-val="always" aria-pressed="false">Always there</button>
+          </span>
+          <span class="say" id="say-hide"></span>
+        </div>
+        <div class="knob">
+          <span class="lab">Which visit</span>
+          <span class="seg" role="group" aria-label="Which visit">
+            <button type="button" id="visit-first" data-set="visit" data-val="first" aria-pressed="true">First visits</button>
+            <button type="button" id="visit-later" data-set="visit" data-val="later" aria-pressed="false">Later visits</button>
+          </span>
+          <span class="say" id="say-visit"></span>
+        </div>
+        <div class="knob">
+          <span class="lab">A handle on the page's top</span>
+          <span class="seg" role="group" aria-label="A handle on the page's top">
+            <button type="button" id="grab-on" data-set="grab" data-val="on" aria-pressed="true">Handle</button>
+            <button type="button" id="grab-off" data-set="grab" data-val="off" aria-pressed="false">No handle</button>
+          </span>
+          <span class="say" id="say-grab"></span>
+        </div>
+        <div class="knob">
+          <span class="lab">Frames</span>
+          <span class="seg" role="group" aria-label="How the frames are painted">
+            <button type="button" id="look-auto" data-look="" aria-pressed="true">Match</button>
+            <button type="button" id="look-light" data-look="look-light" aria-pressed="false">Light</button>
+            <button type="button" id="look-dark" data-look="look-dark" aria-pressed="false">Dark</button>
+          </span>
+        </div>
+        <button type="button" class="again" id="again">Open the app again</button>
+      </div>
+
+      <div class="playcol">
+        <div class="phone live hide-tuck with-grab" id="play">
+          <div class="scroller" id="scroller" tabindex="0" aria-label="The phone's page. Scroll it.">
+            <div class="swrow" id="swrow">
+              <div class="sw" role="group" aria-label="Mode">
+                <button type="button" id="sw-task" data-mode="task">Task Mode</button>
+                <button type="button" id="sw-full" data-mode="full" class="on">Dashboard</button>
+                <button type="button" id="sw-job" data-mode="job">Job Mode <i class="new" id="newmark" style="font-style:normal">NEW</i></button>
+              </div>
+            </div>
+            <div class="app" id="app"></div>
+          </div>
+          <div class="foot" id="foot" hidden></div>
+        </div>
+        <span class="readout" id="readout" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THE THREE THIRDS ============ -->
+  <section>
+    <h2>What each third opens</h2>
+    <p class="prose soft">Task Mode sits on the left because it is pressed least. Job Mode is on the right, under a right thumb. The row shows after every switch, so the way back is where the thumb is.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">Task Mode</span>
+        <div class="phone still">
+          <div class="swrow"><div class="sw"><span class="on">Task Mode</span><span>Dashboard</span><span>Job Mode</span></div></div>
+          <div data-t="task"></div>
+        </div>
+        <span class="note">The green <i>Task Mode · Exit</i> strip goes. The row is the exit.</span>
+      </div>
+      <div class="col">
+        <span class="step">Dashboard</span>
+        <div class="phone still">
+          <div class="swrow"><div class="sw"><span>Task Mode</span><span class="on">Dashboard</span><span>Job Mode</span></div></div>
+          <div data-t="full"></div>
+        </div>
+        <span class="note">The middle means no mode on top. A leader's Dispatch Mode bar stays as it was.</span>
+      </div>
+      <div class="col">
+        <span class="step">Job Mode</span>
+        <div class="phone still">
+          <div class="swrow"><div class="sw"><span>Task Mode</span><span>Dashboard</span><span class="on">Job Mode</span></div></div>
+          <div data-t="job"></div>
+          <div data-t="jobfoot"></div>
+        </div>
+        <span class="note">The offer card goes. So does <i>Show full dashboard</i> at the page's foot.</span>
+      </div>
+    </div>
+    <div class="col" style="margin-top:6px">
+      <span class="step">On a desk</span>
+      <div class="desk">
+        <div class="p-head"><span class="dot"></span><span class="name">Dashboard</span><span class="gap"></span><div class="sw"><span>Task Mode</span><span class="on">Dashboard</span><span>Job Mode</span></div></div>
+        <div class="p-body"><div class="card" style="opacity:0.5"><div class="t">Needs you</div><div class="line w70"></div><div class="line w50"></div></div></div>
+      </div>
+      <span class="note">No tuck on a desk. There is room, so the row sits in the header for good.</span>
+    </div>
+  </section>
+
+  <!-- ============ THOUGHT THROUGH ============ -->
+  <section>
+    <h2>What I thought through</h2>
+    <ul class="thinks">
+      <li>
+        <h3>A hidden row is never found <span class="tag">The big one</span></h3>
+        <p>The card's whole job was to be seen. A row that starts tucked is seen by nobody. So the row has to earn its tuck.</p>
+        <p class="take">My take: it opens showing until the person has pressed a third once, or for five visits. It also shows after every switch. Only then does it tuck. Try First visits against Later visits above.</p>
+      </li>
+      <li>
+        <h3>The pull is plain scrolling</h3>
+        <p>The app already switches off the rubber band at the top of every page. So there is no pull past the top to borrow, and nothing fights for the gesture. The row is simply the first thing on the page, and the page opens scrolled just past it.</p>
+        <p class="take">My take: good news. No gesture code, and it works the same on an iPhone and an Android phone.</p>
+      </li>
+      <li>
+        <h3>Anything that jumps to the top shows the row</h3>
+        <p>A dozen places in the app jump the page to its top. Each one would land on the row. A page shorter than the screen needs a little height added, or the row cannot tuck.</p>
+        <p class="take">My take: mostly welcome. The top of the page is where the row belongs. It is the part of the build that needs the most care.</p>
+      </li>
+      <li>
+        <h3>It lives in the app's shell, above the header</h3>
+        <p>Task Mode is not a Dashboard. It sends every page to the checklist. So the row cannot belong to the Dashboard. It sits above the header, where the app already draws its top lines.</p>
+        <p class="take">My take: it shows on the Dashboard, on the Job Mode page and on the Task Mode checklist. Other pages keep their top as it is.</p>
+      </li>
+      <li>
+        <h3>There are four modes, and the row has three thirds</h3>
+        <p>Dispatch Mode is the fourth. It is a bar that follows a person to every phone, and a leader has it on before choosing. It is not a place to go.</p>
+        <p class="take">My take: leave it in the gear menu. The middle third switches Task Mode and Job Mode off and leaves Dispatch Mode alone.</p>
+      </li>
+      <li>
+        <h3>Rides the scroll is the other way to hide it</h3>
+        <p>The row shows at the top, slides away going down and comes back on any scroll up. It is found more easily. It also covers the top of the page each time a thumb moves up.</p>
+        <p class="take">My take: Tucked is calmer and is the better fit, with the guards above. Feel both before you pick.</p>
+      </li>
+      <li>
+        <h3>Who gets the row</h3>
+        <p>The old card went to leaders and superintendents only. Every role can hold Job Mode, and anyone can hold Task Mode.</p>
+        <p class="take">My take: leaders, superintendents, subs and helpers on a phone. The crews are the ones who need the gear to leave Job Mode today. The office keeps the gear menu.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What you are asked to pick</h2>
+    <ol class="picks">
+      <li><span><b>How it hides:</b> Tucked, Rides the scroll or Always there. I would build Tucked.</span></li>
+      <li><span><b>When it starts to tuck:</b> after the first press or five visits, as drawn, or another count.</span></li>
+      <li><span><b>The handle:</b> a small grey bar on the page's top that hints at the row, or nothing.</span></li>
+      <li><span><b>Who gets it:</b> the four field roles on a phone, as drawn, or everyone.</span></li>
+    </ol>
+  </section>
+</main>
+
+<!-- the pages the thirds open -->
+<template id="t-full">
+  <div class="grab"><i></i></div>
+  <div class="p-head"><span class="dot"></span><span class="name">Dashboard</span><span class="gap"></span><span class="dot"></span><span class="dot"></span><span class="gear"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="3.14 3.14"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="p-body">
+    <div class="clockin">Clock In</div>
+    <div class="card"><div class="t">Needs you</div><div class="line w85"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">My Schedule</div><div class="line w70"></div><div class="line w50"></div><div class="line w85"></div></div>
+    <div class="card"><div class="t">Ready to Bill</div><div class="line w50"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">My Inbox</div><div class="line w85"></div><div class="line w50"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">Training</div><div class="line w70"></div></div>
+    <div class="card"><div class="t">My Team</div><div class="line w85"></div><div class="line w70"></div><div class="line w50"></div></div>
+    <div class="card"><div class="t">Projects</div><div class="line w70"></div><div class="line w85"></div></div>
+    <div class="card"><div class="t">My Vehicle</div><div class="line w50"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">Your record</div><div class="line w85"></div><div class="line w50"></div></div>
+  </div>
+</template>
+<template id="t-job">
+  <div class="grab"><i></i></div>
+  <div class="p-head"><span class="dot"></span><span class="name">Contact:</span><span class="dot call"></span><span class="dot"></span><span class="dot"></span><span class="gap"></span><span class="gear"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="3.14 3.14"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="p-body">
+    <div class="sqs"><span class="sq loud">Photo</span><span class="sq loud">Job details</span><span class="sq quiet">Paint a map</span><span class="sq quiet">My spend</span></div>
+    <div class="card jcard">
+      <div class="jt">PLUM 2038 <span>| Quarry Lane Water Heater</span></div>
+      <div class="m">77 Quarry Lane · Clocked in since 10:34 AM</div>
+      <div class="cap">TODAY · 1 OF 3 DONE</div>
+      <div class="stop"><i class="mk done">✓</i><span class="tm">8:00</span><span class="nm">Larkspur Duplex Repipe</span></div>
+      <div class="stop"><i class="mk now"></i><span class="tm">10:30</span><span class="nm">Quarry Lane Water Heater</span><span class="nowchip">NOW</span></div>
+      <div class="stop"><i class="mk todo"></i><span class="tm">1:00</span><span class="nm">Fennel Court Gas Test</span></div>
+    </div>
+    <div class="card"><div class="t">Your week</div><div class="line w70"></div></div>
+    <div class="card"><div class="t">Your record</div><div class="line w85"></div><div class="line w50"></div></div>
+    <div class="card"><div class="t">My Schedule</div><div class="line w70"></div><div class="line w50"></div><div class="line w85"></div></div>
+    <div class="card"><div class="t">Your hours</div><div class="line w85"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">Training</div><div class="line w70"></div><div class="line w50"></div></div>
+  </div>
+</template>
+<template id="t-jobfoot">
+  <div class="jbar"><span class="btn blue">Leave report</span><span class="btn green">On my way</span></div>
+  <div class="tabs"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+</template>
+<template id="t-task">
+  <div class="grab"><i></i></div>
+  <div class="p-head"><span class="dot"></span><span class="name" style="color:var(--a-blue)">Checklist</span><span class="gap"></span><span class="gear"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="3.14 3.14"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="p-body">
+    <div class="daybar"><span class="on">Today</span><span>History</span></div>
+    <div><div style="font-weight:700;font-size:15px">Monday, November 23</div><div class="m" style="color:var(--a-muted);font-size:12px">2 of 3 done. One to go.</div></div>
+    <div class="card">
+      <div class="task"><span class="nm">Check the truck fluids</span><span class="chip" style="background:var(--a-blue);color:#fff">Next</span></div>
+      <span class="btn blue">Mark done</span>
+    </div>
+    <div class="card"><div class="task"><span class="nm">Sweep the shop bays</span><span class="chip green">Done</span></div></div>
+    <div class="card"><div class="task"><span class="nm">Restock the van's fittings</span><span class="chip green">Done</span></div></div>
+    <span class="btn line-btn">＋ Add a task for me</span>
+  </div>
+</template>
+
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function tpl(name) { return $('t-' + name).content.cloneNode(true); }
+
+  // The three still frames.
+  document.querySelectorAll('[data-t]').forEach(function (slot) { slot.replaceWith(tpl(slot.getAttribute('data-t'))); });
+
+  var play = $('play'), scroller = $('scroller'), row = $('swrow'), app = $('app'), foot = $('foot'), readout = $('readout');
+  var state = { hide: 'tuck', visit: 'first', grab: 'on', mode: 'full', pressed: false };
+  var SAY = {
+    hide: {
+      tuck: 'Your idea. The row sits above the page. Scroll to the very top and it comes down.',
+      ride: 'The row shows at the top, slides away as you go down and comes back on any scroll up.',
+      always: 'The row is the first thing on the page and scrolls away with it. It costs a row on every visit.'
+    },
+    visit: {
+      first: 'The app opens with the row showing, and Job Mode wears a green mark until a third is pressed.',
+      later: 'The person has used the row. With Tucked, the app now opens with it out of sight.'
+    },
+    grab: {
+      on: 'A small grey bar on the page’s top says something is above. It only shows with Tucked.',
+      off: 'Nothing hints at the row. It is found by scrolling to the top, or not at all.'
+    }
+  };
+
+  function rowH() { return row.offsetHeight; }
+  function tell() {
+    var st = scroller.scrollTop, shown;
+    if (state.hide === 'ride') shown = !row.classList.contains('away');
+    else shown = st < rowH() / 2;
+    readout.textContent = shown ? 'The row is showing.' : (state.hide === 'tuck' ? 'The row is tucked above the page. Scroll up to the top.' : 'The row is out of sight.');
+  }
+  function paint() {
+    app.replaceChildren(tpl(state.mode));
+    foot.replaceChildren();
+    foot.hidden = state.mode !== 'job';
+    if (state.mode === 'job') foot.appendChild(tpl('jobfoot'));
+    ['task', 'full', 'job'].forEach(function (m) { $('sw-' + m).classList.toggle('on', m === state.mode); });
+    $('newmark').hidden = !(state.visit === 'first' && !state.pressed && state.mode !== 'job');
+    play.className = 'phone live hide-' + state.hide + (state.grab === 'on' ? ' with-grab' : '');
+    ['hide', 'visit', 'grab'].forEach(function (k) { $('say-' + k).textContent = SAY[k][state[k]]; });
+    document.querySelectorAll('[data-set]').forEach(function (b) { b.setAttribute('aria-pressed', String(state[b.getAttribute('data-set')] === b.getAttribute('data-val'))); });
+  }
+  // Open the app: the row shows on first visits and after a switch. Later, Tucked opens just past it.
+  function openApp(showRow) {
+    paint();
+    row.classList.remove('away');
+    scroller.scrollTop = (state.hide === 'tuck' && !showRow) ? rowH() : 0;
+    last = scroller.scrollTop;
+    tell();
+  }
+
+  var last = 0, settle = null;
+  scroller.addEventListener('scroll', function () {
+    var st = scroller.scrollTop;
+    if (state.hide === 'ride') {
+      if (st <= 4) row.classList.remove('away');
+      else if (st - last > 4) row.classList.add('away');
+      else if (last - st > 4) row.classList.remove('away');
+    }
+    last = st;
+    tell();
+    // Tucked: never rest half open. Settle to showing or hidden once the thumb lets go.
+    clearTimeout(settle);
+    if (state.hide === 'tuck') settle = setTimeout(function () {
+      var h = rowH(), now = scroller.scrollTop;
+      if (now > 0 && now < h) scroller.scrollTo({ top: now < h / 2 ? 0 : h, behavior: 'smooth' });
+    }, 140);
+  }, { passive: true });
+
+  row.addEventListener('click', function (e) {
+    var third = e.target.closest('[data-mode]');
+    if (!third) return;
+    state.mode = third.getAttribute('data-mode');
+    // A press is the end of the first visits: from here the app opens tucked.
+    state.pressed = true;
+    state.visit = 'later';
+    openApp(true);
+  });
+  document.querySelectorAll('[data-set]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-set');
+      state[k] = b.getAttribute('data-val');
+      if (k === 'visit') state.pressed = state.visit === 'later';
+      openApp(state.visit === 'first');
+    });
+  });
+  $('again').addEventListener('click', function () { openApp(state.visit === 'first' && !state.pressed); });
+
+  var sheet = $('sheet');
+  document.querySelectorAll('[data-look]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      sheet.classList.remove('look-light', 'look-dark');
+      var look = b.getAttribute('data-look');
+      if (look) sheet.classList.add(look);
+      document.querySelectorAll('[data-look]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+
+  openApp(true);
+})();
+</script>

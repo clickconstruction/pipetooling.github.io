@@ -3,7 +3,7 @@
  * which job papers open the Contract window, and the words around a new link. Every name here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { agreementCanBeSentAgain, agreementOpensContractWindow, copySigningLinkConfirm, signingLinkByHandPrompt, signingLinkCopiedWords } from './agreementsActs'
+import { SEND_LABEL, agreementCanBeSent, agreementCanBeSentAgain, agreementOpensContractWindow, copySigningLinkConfirm, signingLinkByHandPrompt, signingLinkCopiedWords } from './agreementsActs'
 
 describe('agreementCanBeSentAgain', () => {
   it('is a staff, sub or partner paper that is out and not signed', () => {
@@ -27,6 +27,37 @@ describe('agreementCanBeSentAgain', () => {
     expect(agreementCanBeSentAgain({ kind: 'work_order', state: 'waiting', facts: { status: 'offered' } })).toBe(false)
     expect(agreementCanBeSentAgain({ kind: 'company_agreement', state: 'waiting', facts: { status: 'sent' } })).toBe(false)
     expect(agreementCanBeSentAgain({ kind: 'sow', state: 'waiting', facts: { status: 'sent' } })).toBe(false)
+  })
+})
+
+describe('agreementCanBeSent', () => {
+  it('is an outside party’s paper that was made and never sent', () => {
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'outside_agreement']) {
+      expect(agreementCanBeSent({ kind, state: 'not_sent', job_id: null, facts: { status: 'unsent' } }), kind).toBe(true)
+    }
+    expect(SEND_LABEL).toBe('Send')
+  })
+  it('is never a paper that is out or signed: that one is sent again, or is done', () => {
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'waiting', job_id: null, facts: { status: 'sent' } })).toBe(false)
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'signed', job_id: null, facts: { status: 'signed' } })).toBe(false)
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'ended', job_id: null, facts: { status: 'unsent', replaced: true } })).toBe(false)
+  })
+  it('needs the state and the status to agree, so a row half read sends nothing', () => {
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'not_sent', job_id: null, facts: { status: 'sent' } })).toBe(false)
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'waiting', job_id: null, facts: { status: 'unsent' } })).toBe(false)
+    expect(agreementCanBeSent({ kind: 'supply_house_agreement', state: 'not_sent', job_id: null, facts: null })).toBe(false)
+  })
+  it('leaves a paper a job requires to its job, and every other kind to its own page', () => {
+    expect(agreementCanBeSent({ kind: 'customer_agreement', state: 'not_sent', job_id: 'j1', facts: { status: 'unsent' } })).toBe(false)
+    for (const kind of ['person_agreement', 'partner_agreement', 'company_agreement', 'job_contract', 'work_order', 'sow']) {
+      expect(agreementCanBeSent({ kind, state: 'not_sent', job_id: null, facts: { status: 'unsent' } }), kind).toBe(false)
+    }
+  })
+  it('a line carries Send or Send again, never both', () => {
+    for (const [state, status] of [['not_sent', 'unsent'], ['waiting', 'sent'], ['signed', 'signed']] as const) {
+      const row = { kind: 'outside_agreement', state, job_id: null, facts: { status } }
+      expect(agreementCanBeSent(row) && agreementCanBeSentAgain(row)).toBe(false)
+    }
   })
 })
 

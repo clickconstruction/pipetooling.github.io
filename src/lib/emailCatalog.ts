@@ -546,13 +546,13 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'crew_day',
-    name: 'Crew day digest',
+    name: 'Who worked digest',
     group: 'digests',
     audience: 'internal',
     builtWhere: 'server',
     sender: 'crew-day-email-dispatch',
     editable: { kind: 'templates', templateTypes: ['crew_day'] },
-    subjectExample: 'Crew day — {{date}}',
+    subjectExample: 'Who worked — {{date}}',
   },
   {
     id: 'weekly_money',
@@ -586,13 +586,13 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'people_week',
-    name: 'Your people’s week (the Monday people email)',
+    name: 'The team’s week (the Monday email)',
     group: 'digests',
     audience: 'internal',
     builtWhere: 'server',
     sender: 'people-week-email',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Your people’s week · Nov 2 to 8',
+    subjectExample: 'The team’s week · Nov 2 to 8',
   },
   {
     id: 'gc_money_monday',

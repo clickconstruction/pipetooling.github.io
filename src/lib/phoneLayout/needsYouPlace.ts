@@ -9,8 +9,8 @@
  * Under the new phone layout (`newPhoneLayout.ts`) the rule is the page's mode, not the role:
  *
  * - **A mode with an Inbox tab** (Dispatch Mode, Job Mode): the Dashboard draws the door, and the door opens
- *   that mode's Inbox, where the card is. The door stands in for the Needs you list alone: the Lien desk's strip
- *   from the top of the card and the cards under it stay on the Dashboard.
+ *   that mode's Inbox, where the card is. The door stands in for the Needs you list alone: the Lien desk's card
+ *   beside it (`lienDeskCard.ts`) and the cards under it stay on the Dashboard.
  * - **No mode, or Task Mode**: there is no Inbox tab to lead to, so the card stays on the Dashboard.
  *
  * Wherever the card is drawn it opens on Walk the list (`needsYouInitialMode`), with Cards one chip away.
@@ -53,10 +53,10 @@ export interface NeedsYouDoorPlan {
   /** The Inbox tab the door opens. */
   to: string
   /**
-   * Whether what the card keeps around its list stays on the Dashboard: the Lien desk's strip from the top of
-   * the card, and the two cards drawn under the list, the office's round and, for the office, what waits on the
-   * leader. The office person's door of v2.3883 takes them to the Inbox tab with the list. The new phone
-   * layout's door stands in for the list alone, so the desk's four numbers and the red *No round* mark a leader
+   * Whether what stands around the list stays on the Dashboard: the Lien desk's card beside it, and the two
+   * cards drawn under the list, the office's round and, for the office, what waits on the leader. The office
+   * person's door of v2.3883 takes them to the Inbox tab with the list. The new phone
+   * layout's door stands in for the list alone, so the desk's numbers and the round's missed day a leader
    * reads on his Dashboard today are still on his Dashboard.
    */
   cardsStay: boolean
@@ -83,18 +83,6 @@ export function needsYouDashboardDoor(input: NeedsYouPlaceInput): NeedsYouDoorPl
  */
 export function needsYouJobModeDoor(input: { newPhoneLayout: boolean }): string | null {
   return input.newPhoneLayout ? JOB_MODE_INBOX_PATH : null
-}
-
-/**
- * Whether the Lien desk's strip is drawn on its own under the door (`NeedsYouLienBoardStrip`, standalone).
- *
- * The strip lives at the top of the Needs you card and shows only while the card has a line. A door that keeps
- * the cards keeps it too, on the same terms: a door is drawn, which is a list with a line, on a page that draws
- * the banners. The office person's older door keeps nothing, and Job Mode's own Dashboard draws no banners, so
- * neither draws it.
- */
-export function needsYouLienStripUnderDoor(input: { door: boolean; cardsStay: boolean; bannersHidden: boolean }): boolean {
-  return input.door && input.cardsStay && !input.bannersHidden
 }
 
 /**

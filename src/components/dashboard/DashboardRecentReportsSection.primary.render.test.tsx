@@ -18,7 +18,8 @@ const report = {
   template_name: 'Status Report',
   created_by_user_id: 'u1',
   created_by_name: 'Abraham',
-  created_at: '2026-08-22T18:16:00Z',
+  // Inside the card's 14-day window, whenever the suite runs.
+  created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
   field_values: { 'How complete is the job?': '100' },
   job_ledger_id: 'j1',
   project_id: null,
@@ -134,3 +135,116 @@ describe('DashboardRecentReportsSection — a primary reads their own jobs\' rep
     }
   })
 })
+
+describe('DashboardRecentReportsSection — one heading row, a foot, and Opened (punch list #426)', () => {
+  /** `n` reports an hour apart, the newest first, each on its own made-up job. */
+  const filed = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...report, id: `n${i}`, job_ledger_id: `j${i}`, job_display_name: `Maple Court Lot ${i + 1}`, created_at: new Date(Date.now() - (i + 1) * 60 * 60 * 1000).toISOString() }))
+  const open = async (rows: unknown[], role: UserRole = 'assistant') => {
+    listed.rows = rows
+    renderWithProviders(<DashboardRecentReportsSection authUserId="me" role={role} />)
+    await waitFor(() => expect(screen.getByText('Maple Court Lot 1')).toBeTruthy())
+  }
+  const restore = () => {
+    listed.rows = [report]
+  }
+
+  it('the heading holds the fold, the title and the badge, and nothing else', async () => {
+    try {
+      await open(filed(2))
+      const head = document.querySelector('[data-dashboard-card-head]') as HTMLElement
+      expect(head.querySelectorAll('button').length).toBe(1)
+      expect(head.querySelector('a')).toBeNull()
+      expect(head.textContent).toContain('2 new')
+      // What acted on the whole list, and the two doors, are at the foot.
+      expect(document.querySelector('[data-reports-foot="mark"]')?.textContent).toBe('2 new reportsMark 2 opened')
+      const doors = document.querySelector('[data-reports-foot="doors"]') as HTMLElement
+      expect(doors.textContent).toBe('Email reportsView all ›')
+      expect(screen.getByRole('link', { name: 'View all ›' }).getAttribute('href')).toBe('/jobs?tab=reports')
+    } finally {
+      restore()
+    }
+  })
+
+  it('a ninth new report is counted, and comes up when one of the eight is marked opened', async () => {
+    try {
+      await open(filed(9))
+      expect(screen.getByLabelText('9 new reports')).toBeTruthy()
+      expect(document.querySelectorAll('[data-reports-list] > li').length).toBe(8)
+      expect(screen.queryByText('Maple Court Lot 9')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Mark 8 opened' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Mark opened, Maple Court Lot 1' }))
+      await waitFor(() => expect(screen.getByText('Maple Court Lot 9')).toBeTruthy())
+      expect(screen.getByLabelText('8 new reports')).toBeTruthy()
+      expect(screen.queryByText('Maple Court Lot 1')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Opened, 1 report' })).toBeTruthy()
+    } finally {
+      restore()
+    }
+  })
+
+  it('Mark opened says what it did with Undo, and Undo puts the report back as new', async () => {
+    try {
+      await open(filed(2))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark opened, Maple Court Lot 2' }))
+      expect(await screen.findByText('Marked opened: Maple Court Lot 2.')).toBeTruthy()
+      expect(screen.getByLabelText('1 new report')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await waitFor(() => expect(screen.getByLabelText('2 new reports')).toBeTruthy())
+      expect(screen.queryByRole('button', { name: /^Opened,/ })).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('with every report marked opened the list says nothing is new, and Mark unread brings one back', async () => {
+    try {
+      await open(filed(2))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark 2 opened' }))
+      const empty = await waitFor(() => {
+        const el = document.querySelector('[data-empty-state]') as HTMLElement | null
+        expect(el).not.toBeNull()
+        return el as HTMLElement
+      })
+      expect(empty.textContent).toBe('Nothing new to read. A report lands here when the crew files one.')
+      expect(document.querySelector('[data-reports-foot="mark"]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Opened, 2 reports' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark unread, Maple Court Lot 1' }))
+      await waitFor(() => expect(screen.getByLabelText('1 new report')).toBeTruthy())
+      expect(document.querySelectorAll('[data-reports-list] > li').length).toBe(1)
+    } finally {
+      restore()
+    }
+  })
+
+  it('a press on the name opens the report in place, where Job detail is, and there is no Done', async () => {
+    try {
+      await open(filed(1))
+      expect(screen.queryByRole('button', { name: /Job details/ })).toBeNull()
+      fireEvent.click(screen.getByText('Maple Court Lot 1'))
+      await waitFor(() => expect(screen.getByText(/How complete is the job/)).toBeTruthy())
+      expect(screen.getByRole('button', { name: 'Job detail' })).toBeTruthy()
+      expect(screen.queryByText(/Done/)).toBeNull()
+      // Opened in place: it stays in the list with its tick, and no longer counts as new.
+      expect(screen.getByLabelText('Opened')).toBeTruthy()
+      expect(screen.queryByLabelText(/new report/)).toBeNull()
+      expect(document.querySelector('[data-reports-foot="mark"]')?.textContent).toBe('Every report here is opened.')
+    } finally {
+      restore()
+    }
+  })
+
+  it('a report older than 14 days is not on the card, which then says nothing is new', async () => {
+    listed.rows = [{ ...report, id: 'old', created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() }]
+    try {
+      renderWithProviders(<DashboardRecentReportsSection authUserId="me" role="assistant" />)
+      await waitFor(() => expect(screen.getByText('Recent Reports')).toBeTruthy())
+      fireEvent.click(screen.getByText('Recent Reports'))
+      await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent).toBe('Nothing new to read. A report lands here when the crew files one.'))
+      expect(screen.queryByText(/Mike Holmby/)).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+})
+

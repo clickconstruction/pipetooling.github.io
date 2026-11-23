@@ -1,0 +1,590 @@
+<title>Job Mode offer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Layout: a review sheet. Few words in one narrow column. Each option is a row of 320 px phone frames read left to right: the offer, then the moment after the press. */
+:root {
+  --ground: #eef1f5;
+  --sheet: #ffffff;
+  --ink: #131a26;
+  --ink-soft: #566173;
+  --rule: #cfd5de;
+  --pick: #0f766e;
+  --pick-tint: #dff3f0;
+  --warn: #b45309;
+  --warn-tint: #fdf1dc;
+  /* the app's own look, inside the frames: the values of src/index.css */
+  --a-bg: #f0f2f5;
+  --a-surface: #ffffff;
+  --a-border: #cfd4db;
+  --a-border-strong: #aab2bd;
+  --a-text: #1a1a1a;
+  --a-muted: #6b7280;
+  --a-ink800: #1f2937;
+  --a-green-tint: #f0fdf4;
+  --a-green-border: #bbf7d0;
+  --a-green-text: #15803d;
+  --a-skel: #dfe3e9;
+  --a-green: #16a34a;
+  --a-blue: #2563eb;
+  --a-orange: #ff6600;
+  --a-amber: #b45309;
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644;
+    --pick: #5eead4; --pick-tint: #12332f; --warn: #fbbf24; --warn-tint: #3a2f11;
+    --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+    --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+    --a-green-text: #4ade80; --a-skel: #2b3646; --a-amber: #fbbf24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644;
+  --pick: #5eead4; --pick-tint: #12332f; --warn: #fbbf24; --warn-tint: #3a2f11;
+  --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+  --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+  --a-green-text: #4ade80; --a-skel: #2b3646; --a-amber: #fbbf24;
+  color-scheme: dark;
+}
+/* The Light and Dark buttons at the top repaint the frames only, whatever the page's own theme is. */
+.look-light .phone, .look-light .desk {
+  --a-bg: #f0f2f5; --a-surface: #ffffff; --a-border: #cfd4db; --a-border-strong: #aab2bd; --a-text: #1a1a1a;
+  --a-muted: #6b7280; --a-ink800: #1f2937; --a-green-tint: #f0fdf4; --a-green-border: #bbf7d0;
+  --a-green-text: #15803d; --a-skel: #dfe3e9; --a-amber: #b45309;
+}
+.look-dark .phone, .look-dark .desk {
+  --a-bg: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563; --a-text: #f3f4f6;
+  --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-green-tint: #12301f; --a-green-border: #166534;
+  --a-green-text: #4ade80; --a-skel: #2b3646; --a-amber: #fbbf24;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1400px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.85rem; }
+h2 { font-size: 1.3rem; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+h3 { font-size: 0.95rem; font-family: var(--body); font-weight: 700; }
+p { margin: 0; }
+.prose { max-width: 62ch; display: grid; gap: 10px; }
+.soft { color: var(--ink-soft); }
+.eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+section { display: grid; gap: 16px; min-width: 0; }
+.letter { font-family: var(--display); font-weight: 700; color: var(--ink-soft); }
+.tag { font-family: var(--body); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: var(--pick-tint); color: var(--pick); }
+
+/* the three lines at the top */
+.brief { display: grid; gap: 0; max-width: 70ch; border-top: 1px solid var(--rule); }
+.brief div { display: grid; grid-template-columns: 6.5rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.brief dt { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); padding-top: 3px; }
+.brief dd { margin: 0; }
+dl { margin: 0; }
+
+.looks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem; color: var(--ink-soft); }
+.looks .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); }
+.looks button { font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; min-height: 44px; padding: 0 14px; cursor: pointer; }
+.looks button + button { border-left: 1px solid var(--rule); }
+.looks button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+button:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+/* a row of frames */
+.frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 320px)); gap: 26px 22px; align-items: start; }
+.col { display: grid; gap: 8px; min-width: 0; }
+.step { font-size: 0.82rem; font-weight: 700; }
+.step small { font-weight: 500; color: var(--ink-soft); font-size: inherit; }
+.note { font-size: 0.82rem; color: var(--ink-soft); }
+.note.warn { color: var(--warn); font-weight: 600; }
+.note.good { color: var(--pick); font-weight: 600; }
+
+/* three facts under each option */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px 22px; max-width: 980px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.facts dt { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.facts dd { margin: 2px 0 0; font-size: 0.9rem; }
+
+/* ---------- the phone, 320 px wide ---------- */
+.phone { width: 320px; max-width: 100%; border: 1px solid var(--rule); border-radius: 22px; background: var(--a-bg); color: var(--a-text); overflow: hidden; font-family: var(--body); font-size: 13px; line-height: 1.3; display: flex; flex-direction: column; }
+.p-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--a-surface); border-bottom: 1px solid var(--a-border); color: var(--a-muted); }
+.p-head .dot { width: 24px; height: 24px; border-radius: 6px; background: var(--a-skel); flex: none; }
+.p-head .dot.call { background: var(--a-green); opacity: 0.55; }
+.p-head .name { font-weight: 700; font-size: 13px; }
+.p-head .gap { flex: 1; }
+.gear { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; flex: none; color: var(--a-muted); }
+.gear svg { width: 20px; height: 20px; display: block; }
+.hot-gear .gear { outline: 2px solid var(--warn); outline-offset: 2px; color: var(--a-text); }
+.p-body { padding: 10px; display: grid; gap: 10px; align-content: start; }
+.faded { opacity: 0.5; }
+
+/* skeleton of the rest of the full Dashboard */
+.clockin { min-height: 44px; border-radius: 8px; background: var(--a-orange); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; padding: 11px 12px; display: grid; gap: 7px; }
+.card .t { font-size: 13px; font-weight: 700; }
+.line { height: 8px; border-radius: 4px; background: var(--a-skel); }
+.line.w70 { width: 70%; } .line.w50 { width: 50%; } .line.w85 { width: 85%; }
+
+/* presses */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 14px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.15; text-align: center; border: 1px solid transparent; }
+button.btn { cursor: pointer; }
+.btn.green { background: var(--a-green); color: #fff; }
+.btn.blue { background: var(--a-blue); color: #fff; }
+.btn.line-btn { background: var(--a-surface); color: var(--a-ink800); border-color: var(--a-border-strong); font-weight: 600; }
+.btn.grow { flex: 1 1 auto; }
+.btn.big { font-size: 15px; min-height: 48px; }
+
+/* the offer card: var(--bg-green-tint) under var(--border-green), as the component draws it */
+.offer { background: var(--a-green-tint); border: 1px solid var(--a-green-border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.offer .h { font-weight: 700; font-size: 16px; line-height: 1.25; }
+.offer .small { font-size: 13.6px; color: var(--a-muted); margin-top: -8px; }
+.offer .presses { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* today's two presses at their real size: 0.55rem of padding, so under 44 px tall */
+.btn.old { min-height: 0; padding: 8.8px 12.8px; font-size: 14px; font-weight: 400; }
+.btn.old.green { padding: 8.8px 16px; font-size: 15.2px; font-weight: 700; }
+
+/* A: the small picture of the Job Mode card */
+.pic { background: var(--a-surface); border: 1px solid var(--a-border-strong); border-radius: 9px; overflow: hidden; font-size: 11px; line-height: 1.25; display: grid; }
+.pic .ph { padding: 7px 9px 5px; font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pic .rows { padding: 0 9px 7px; display: grid; gap: 4px; }
+.pic .bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 7px 9px; border-top: 1px solid var(--a-border); background: var(--a-bg); }
+.pic .bar span { border-radius: 6px; padding: 6px 4px; color: #fff; font-weight: 700; text-align: center; }
+.stop { display: grid; grid-template-columns: 14px 3.2em 1fr auto; gap: 5px; align-items: center; min-width: 0; }
+.stop .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stop .tm { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+.mk { width: 12px; height: 12px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 700; flex: none; }
+.mk.done { background: var(--a-green); color: #fff; }
+.mk.now { border: 3px solid var(--a-green); }
+.mk.todo { border: 1.5px solid var(--a-muted); }
+.nowchip { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; color: var(--a-green-text); }
+
+/* B: the way back, in the offer's own spot */
+.strip { background: var(--a-green-tint); border: 1px solid var(--a-green-border); border-radius: 10px; padding: 8px 8px 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.strip b { font-size: 14px; }
+
+/* C: the two-way switch */
+.sw { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--a-border-strong); border-radius: 10px; overflow: hidden; background: var(--a-surface); }
+.sw span { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--a-ink800); }
+.sw span.on { background: var(--a-blue); color: #fff; font-weight: 700; }
+.sw .new { font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 999px; background: var(--a-green); color: #fff; }
+
+/* the Job Mode page */
+.sqs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sq { min-height: 46px; border-radius: 8px; display: grid; place-items: center; text-align: center; font-size: 10.5px; font-weight: 600; line-height: 1.15; padding: 4px 2px; }
+.sq.loud { background: var(--a-blue); color: #fff; }
+.sq.quiet { background: var(--a-surface); color: var(--a-text); border: 1px solid var(--a-border); }
+.jcard { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; padding: 11px 12px; display: grid; gap: 6px; }
+.jcard .jt { font-size: 15px; font-weight: 700; }
+.jcard .jt span { font-weight: 500; }
+.jcard .m { color: var(--a-muted); font-size: 12px; }
+.jcard .cap { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--a-muted); margin-top: 4px; }
+.jcard .stop { font-size: 12.5px; grid-template-columns: 16px 3.4em 1fr auto; min-height: 26px; }
+.jcard .mk { width: 14px; height: 14px; }
+.jbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 10px; background: var(--a-surface); border-top: 1px solid var(--a-border); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--a-surface); border-top: 1px solid var(--a-border); padding: 7px 4px 9px; font-size: 10.5px; font-weight: 600; color: var(--a-muted); text-align: center; }
+.tabs .on { color: var(--a-blue); }
+
+/* ---------- the desk ---------- */
+.desk { width: 100%; max-width: 860px; border: 1px solid var(--rule); border-radius: 12px; background: var(--a-bg); color: var(--a-text); padding: 14px; font-family: var(--body); font-size: 13px; line-height: 1.3; display: grid; gap: 10px; }
+.desk .offer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.desk .offer .words { flex: 9999 1 240px; min-width: 0; display: grid; gap: 2px; }
+.desk .offer .small { margin-top: 0; }
+.desk .offer .presses { flex: 1 0 auto; }
+.desk .offer .pic { flex: 0 1 250px; }
+.desk .sw { width: 280px; max-width: 100%; }
+.deskrows { display: grid; gap: 18px; }
+.deskrow { display: grid; gap: 6px; }
+
+.picks { display: grid; gap: 10px; max-width: 70ch; padding: 0; margin: 0; list-style: none; counter-reset: pick; }
+.picks li { display: grid; grid-template-columns: 1.6rem 1fr; gap: 8px; counter-increment: pick; }
+.picks li::before { content: counter(pick); font-family: var(--display); font-weight: 700; color: var(--ink-soft); }
+@media (prefers-reduced-motion: no-preference) { .live .screen { animation: in 0.16s ease-out; } }
+@keyframes in { from { opacity: 0.4; } to { opacity: 1; } }
+</style>
+
+<main class="wrap" id="sheet">
+
+  <header class="prose" style="max-width:70ch">
+    <span class="eyebrow">Mock-up · nothing built · made-up jobs and names</span>
+    <h1>The Job Mode offer, for someone who will not read it</h1>
+    <dl class="brief">
+      <div><dt>Found</dt><dd>The grey text is the only place that says how to get back. The green press swaps the whole page, and the way back is in the gear menu. <b>Not now</b> removes the offer from that phone for good.</dd></div>
+      <div><dt>Recommend</dt><dd><b>B, Try it.</b> Leave the words short and make the press safe: one press in, one press back, in the same spot.</dd></div>
+      <div><dt>Your pick</dt><dd>A, B, C or D, and the two small calls at the bottom.</dd></div>
+    </dl>
+    <div class="looks" role="group" aria-label="How the frames are painted">
+      <span>Frames:</span>
+      <span class="seg">
+        <button type="button" id="look-auto" data-look="" aria-pressed="true">Match</button>
+        <button type="button" id="look-light" data-look="look-light" aria-pressed="false">Light</button>
+        <button type="button" id="look-dark" data-look="look-dark" aria-pressed="false">Dark</button>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============ TODAY ============ -->
+  <section>
+    <h2>Today</h2>
+    <p class="prose soft">A leader or a superintendent sees this on top of the full Dashboard. A one-second look sees a green button.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">The offer</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="offer">
+              <div class="h">Working in the field? Turn on Job Mode.</div>
+              <div class="small">One big card with your current job, today's stops, Clock In, Leave Report and Next Job. You can turn it off any time from the gear menu.</div>
+              <div class="presses"><span class="btn line-btn old">Not now</span><span class="btn green old">Turn on Job Mode</span></div>
+            </div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+        <span class="note">Both presses are under 44 px tall.</span>
+      </div>
+      <div class="col">
+        <span class="step">After <small>Turn on Job Mode</small></span>
+        <div class="phone hot-gear">
+          <div data-t="jm-head"></div>
+          <div class="p-body"><div data-t="jm-rest"></div></div>
+          <div data-t="jm-foot"></div>
+        </div>
+        <span class="note warn">The whole page changed. The way back is the gear, and only the grey text said so.</span>
+      </div>
+      <div class="col">
+        <span class="step">After <small>Not now</small></span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body"><div data-t="full-rest"></div></div>
+        </div>
+        <span class="note warn">The offer is gone from this phone for good. Only the gear menu offers Job Mode now.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ A ============ -->
+  <section>
+    <h2><span class="letter">A</span> Show it</h2>
+    <p class="prose soft">The grey text becomes a small picture of the Job Mode card. Pressing the picture is the same as pressing the green button.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">The offer</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="offer">
+              <div class="h">Working in the field? Turn on Job Mode.</div>
+              <div data-t="pic"></div>
+              <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green grow">Turn on Job Mode</span></div>
+            </div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <span class="step">After <small>Turn on Job Mode</small></span>
+        <div class="phone hot-gear">
+          <div data-t="jm-head"></div>
+          <div class="p-body"><div data-t="jm-rest"></div></div>
+          <div data-t="jm-foot"></div>
+        </div>
+        <span class="note warn">Same as today. The way back is still the gear, and now nothing says so.</span>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>Build</dt><dd>Small. One component and its words in three guides.</dd></div>
+      <div><dt>At 320 px</dt><dd>The picture is the card's width. The card grows by about 70 px.</dd></div>
+      <div><dt>A wrong press</dt><dd>Costs what it costs today, with the hint taken away.</dd></div>
+    </dl>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section>
+    <h2><span class="letter">B</span> Try it <span class="tag">Recommended</span></h2>
+    <p class="prose soft">The press shows the real thing, so the card needs no description. The way back lands where the offer was, and it is the only press on the strip.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">Press it yourself</span>
+        <div class="phone live" id="live">
+          <div class="screen" data-screen="offer">
+            <div data-t="full-head"></div>
+            <div class="p-body">
+              <div class="offer">
+                <div class="h">Working in the field?</div>
+                <div class="presses"><button type="button" class="btn line-btn" id="live-notnow" data-go="later">Not now</button><button type="button" class="btn green grow big" id="live-try" data-go="on">Try Job Mode</button></div>
+              </div>
+              <div data-t="full-rest"></div>
+            </div>
+          </div>
+          <div class="screen" data-screen="on" hidden>
+            <div data-t="jm-head"></div>
+            <div class="p-body">
+              <div class="strip"><b>Job Mode is on.</b><button type="button" class="btn line-btn" id="live-back" data-go="offer">‹ Full Dashboard</button></div>
+              <div data-t="jm-rest"></div>
+            </div>
+            <div data-t="jm-foot"></div>
+          </div>
+          <div class="screen" data-screen="later" hidden>
+            <div data-t="full-head"></div>
+            <div class="p-body">
+              <div data-t="full-rest"></div>
+              <button type="button" class="btn line-btn" id="live-again" data-go="offer">Two weeks later ›</button>
+            </div>
+          </div>
+        </div>
+        <span class="note good">Every press here has a way back.</span>
+      </div>
+      <div class="col">
+        <span class="step">1 · The offer</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="offer">
+              <div class="h">Working in the field?</div>
+              <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green grow big">Try Job Mode</span></div>
+            </div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+        <span class="note">Three words and a button that says what it does.</span>
+      </div>
+      <div class="col">
+        <span class="step">2 · After <small>Try Job Mode</small></span>
+        <div class="phone">
+          <div data-t="jm-head"></div>
+          <div class="p-body">
+            <div class="strip"><b>Job Mode is on.</b><span class="btn line-btn">‹ Full Dashboard</span></div>
+            <div data-t="jm-rest"></div>
+          </div>
+          <div data-t="jm-foot"></div>
+        </div>
+        <span class="note">The strip stays for the first week, then goes by itself.</span>
+      </div>
+      <div class="col">
+        <span class="step">3 · After <small>‹ Full Dashboard</small></span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="offer">
+              <div class="h">Working in the field?</div>
+              <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green grow big">Try Job Mode</span></div>
+            </div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+        <span class="note good">Nothing lost. The offer is still there.</span>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>Build</dt><dd>Small. The strip on both Job Mode pages, one rule for how long it stays, and the guides.</dd></div>
+      <div><dt>At 320 px</dt><dd>Card and strip are each one row. The card is about half as tall as today.</dd></div>
+      <div><dt>A wrong press</dt><dd>One press back, in the spot the thumb just left.</dd></div>
+    </dl>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section>
+    <h2><span class="letter">C</span> A switch, no card</h2>
+    <p class="prose soft">No offer and nothing to dismiss. The two pages become two halves of one control that never moves.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">The full Dashboard</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="sw"><span class="on">Dashboard</span><span>Job Mode <i class="new" style="font-style:normal">NEW</i></span></div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+        <span class="note">The green mark shows until the first press.</span>
+      </div>
+      <div class="col">
+        <span class="step">After <small>Job Mode</small></span>
+        <div class="phone">
+          <div data-t="jm-head"></div>
+          <div class="p-body">
+            <div class="sw"><span>Dashboard</span><span class="on">Job Mode</span></div>
+            <div data-t="jm-rest"></div>
+          </div>
+          <div data-t="jm-foot"></div>
+        </div>
+        <span class="note">Same control, same spot, both ways, for good.</span>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>Build</dt><dd>Medium. A row on both pages that must agree with the gear menu and the other two modes.</dd></div>
+      <div><dt>At 320 px</dt><dd>Two halves of 150 px. It costs every leader 54 px on every visit, used or not.</dd></div>
+      <div><dt>A wrong press</dt><dd>One press back, always. But a quiet control may never get the first press.</dd></div>
+    </dl>
+  </section>
+
+  <!-- ============ D ============ -->
+  <section>
+    <h2><span class="letter">D</span> Your own day</h2>
+    <p class="prose soft">The card waits for a day with stops, on a phone. Then it shows the person their own stops. People read their own job's name.</p>
+    <div class="frames">
+      <div class="col">
+        <span class="step">A day with stops, on a phone</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body">
+            <div class="offer">
+              <div class="h">3 stops today.</div>
+              <div class="pic">
+                <div class="rows" style="padding-top:8px">
+                  <div class="stop"><i class="mk todo"></i><span class="tm">8:00</span><span class="nm">Larkspur Duplex Repipe</span></div>
+                  <div class="stop"><i class="mk todo"></i><span class="tm">10:30</span><span class="nm">Quarry Lane Water Heater</span></div>
+                  <div class="stop"><i class="mk todo"></i><span class="tm">1:00</span><span class="nm">Fennel Court Gas Test</span></div>
+                </div>
+              </div>
+              <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green grow big">Open in Job Mode</span></div>
+            </div>
+            <div data-t="full-rest"></div>
+          </div>
+        </div>
+        <span class="note">The heading answers the old question before it is asked.</span>
+      </div>
+      <div class="col">
+        <span class="step">A day with none, or at a desk</span>
+        <div class="phone">
+          <div data-t="full-head"></div>
+          <div class="p-body"><div data-t="full-rest"></div></div>
+        </div>
+        <span class="note">No card. It never asks an office day about the field.</span>
+      </div>
+      <div class="col">
+        <span class="step">After <small>Open in Job Mode</small></span>
+        <div class="phone">
+          <div data-t="jm-head"></div>
+          <div class="p-body">
+            <div class="strip"><b>Job Mode is on.</b><span class="btn line-btn">‹ Full Dashboard</span></div>
+            <div data-t="jm-rest"></div>
+          </div>
+          <div data-t="jm-foot"></div>
+        </div>
+        <span class="note">Drawn with B's way back. D changes when and what, not the way back.</span>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>Build</dt><dd>Small to medium. The rule gains the phone's width and today's stops, which the Dashboard already reads.</dd></div>
+      <div><dt>At 320 px</dt><dd>Long job names are cut with dots. Past three stops it says the count.</dd></div>
+      <div><dt>A wrong press</dt><dd>As today by itself. One press back when built on B.</dd></div>
+    </dl>
+  </section>
+
+  <!-- ============ DESK ============ -->
+  <section>
+    <h2>On a desk</h2>
+    <p class="prose soft">The same cards at a computer's width. D shows on a phone only.</p>
+    <div class="deskrows">
+      <div class="deskrow"><span class="step">Today</span>
+        <div class="desk"><div class="offer">
+          <div class="words"><div class="h">Working in the field? Turn on Job Mode.</div><div class="small">One big card with your current job, today's stops, Clock In, Leave Report and Next Job. You can turn it off any time from the gear menu.</div></div>
+          <div class="presses"><span class="btn line-btn old">Not now</span><span class="btn green old">Turn on Job Mode</span></div>
+        </div></div>
+      </div>
+      <div class="deskrow"><span class="step">A · Show it</span>
+        <div class="desk"><div class="offer">
+          <div class="words"><div class="h">Working in the field? Turn on Job Mode.</div></div>
+          <div data-t="pic"></div>
+          <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green">Turn on Job Mode</span></div>
+        </div></div>
+      </div>
+      <div class="deskrow"><span class="step">B · Try it, and the strip after the press</span>
+        <div class="desk">
+          <div class="offer">
+            <div class="words"><div class="h">Working in the field?</div></div>
+            <div class="presses"><span class="btn line-btn">Not now</span><span class="btn green big">Try Job Mode</span></div>
+          </div>
+          <div class="strip"><b>Job Mode is on.</b><span class="btn line-btn">‹ Full Dashboard</span></div>
+        </div>
+      </div>
+      <div class="deskrow"><span class="step">C · A switch, no card</span>
+        <div class="desk"><div class="sw"><span class="on">Dashboard</span><span>Job Mode <i class="new" style="font-style:normal">NEW</i></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PICK ============ -->
+  <section>
+    <h2>What you are asked to pick</h2>
+    <ol class="picks">
+      <li><span><b>Which one: A, B, C or D.</b> B is the recommendation. A's picture or D's timing can be added to B later, each as its own small change.</span></li>
+      <li><span><b>Not now: for good, or back in two weeks?</b> Today it is for good. You said you want to keep offering it, so the drawing brings it back in two weeks.</span></li>
+      <li><span><b>How long the way back stays.</b> The drawing keeps the strip for the first week. After that the gear menu is the way, as it is for the crews.</span></li>
+    </ol>
+  </section>
+</main>
+
+<!-- the pieces every frame shares -->
+<template id="t-full-head">
+  <div class="p-head"><span class="dot"></span><span class="name">Dashboard</span><span class="gap"></span><span class="dot"></span><span class="dot"></span><span class="gear" title="The gear menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="3.14 3.14"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+</template>
+<template id="t-full-rest">
+  <div class="faded" style="display:grid;gap:10px">
+    <div class="clockin">Clock In</div>
+    <div class="card"><div class="t">Needs you</div><div class="line w85"></div><div class="line w70"></div></div>
+    <div class="card"><div class="t">My Schedule</div><div class="line w70"></div><div class="line w50"></div><div class="line w85"></div></div>
+  </div>
+</template>
+<template id="t-jm-head">
+  <div class="p-head"><span class="dot"></span><span class="name">Contact:</span><span class="dot call"></span><span class="dot"></span><span class="dot"></span><span class="gap"></span><span class="gear" title="The gear menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="3.14 3.14"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+</template>
+<template id="t-jm-rest">
+  <div style="display:grid;gap:10px">
+    <div class="sqs"><span class="sq loud">Photo</span><span class="sq loud">Job details</span><span class="sq quiet">Paint a map</span><span class="sq quiet">My spend</span></div>
+    <div class="jcard">
+      <div class="jt">PLUM 2038 <span>| Quarry Lane Water Heater</span></div>
+      <div class="m">77 Quarry Lane · Clocked in since 10:34 AM</div>
+      <div class="cap">TODAY · 1 OF 3 DONE</div>
+      <div class="stop"><i class="mk done">✓</i><span class="tm">8:00</span><span class="nm">Larkspur Duplex Repipe</span></div>
+      <div class="stop"><i class="mk now"></i><span class="tm">10:30</span><span class="nm">Quarry Lane Water Heater</span><span class="nowchip">NOW</span></div>
+      <div class="stop"><i class="mk todo"></i><span class="tm">1:00</span><span class="nm">Fennel Court Gas Test</span></div>
+    </div>
+  </div>
+</template>
+<template id="t-jm-foot">
+  <div class="jbar"><span class="btn blue">Leave report</span><span class="btn green">On my way</span></div>
+  <div class="tabs"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+</template>
+<template id="t-pic">
+  <div class="pic" aria-label="A small picture of the Job Mode card">
+    <div class="ph">PLUM 2038 | Quarry Lane Water Heater</div>
+    <div class="rows">
+      <div class="stop"><i class="mk done">✓</i><span class="tm">8:00</span><span class="nm">Larkspur Duplex Repipe</span></div>
+      <div class="stop"><i class="mk now"></i><span class="tm">10:30</span><span class="nm">Quarry Lane Water Heater</span><span class="nowchip">NOW</span></div>
+      <div class="stop"><i class="mk todo"></i><span class="tm">1:00</span><span class="nm">Fennel Court Gas Test</span></div>
+    </div>
+    <div class="bar"><span style="background:var(--a-blue)">Leave report</span><span style="background:var(--a-green)">On my way</span></div>
+  </div>
+</template>
+
+<script>
+(function () {
+  // Stamp the shared pieces into every frame.
+  document.querySelectorAll('[data-t]').forEach(function (slot) {
+    var tpl = document.getElementById('t-' + slot.getAttribute('data-t'));
+    if (tpl) slot.replaceWith(tpl.content.cloneNode(true));
+  });
+  // B's live phone: each press shows the screen it leads to.
+  var live = document.getElementById('live');
+  if (live) live.addEventListener('click', function (e) {
+    var press = e.target.closest('[data-go]');
+    if (!press) return;
+    var go = press.getAttribute('data-go');
+    live.querySelectorAll('.screen').forEach(function (s) { s.hidden = s.getAttribute('data-screen') !== go; });
+    var first = live.querySelector('.screen:not([hidden]) button');
+    if (first) first.focus({ preventScroll: true });
+  });
+  // Light and Dark repaint the frames only.
+  var sheet = document.getElementById('sheet');
+  document.querySelectorAll('[data-look]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      sheet.classList.remove('look-light', 'look-dark');
+      var look = b.getAttribute('data-look');
+      if (look) sheet.classList.add(look);
+      document.querySelectorAll('[data-look]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+})();
+</script>

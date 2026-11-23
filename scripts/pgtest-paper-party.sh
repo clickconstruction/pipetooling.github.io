@@ -23,7 +23,9 @@ PORT="${PGTEST_PORT:-55903}"
 NAME="pgtest-paper-party"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # In order: the ground puts its own policy back, then the widening restates it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql)"
+# Last, the view's newest definition (punch list #403, the owner's first decision): the ground restates the view as
+# it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

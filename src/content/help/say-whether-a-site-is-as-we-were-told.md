@@ -46,6 +46,8 @@ Every line you left alone is marked as seen by us.
 
 The card says what was kept. You read *Saved: all as told.* or *Dispatch has it: 1 thing not as told.*
 
+A **No** rings the dispatchers' phones. When that ring fails, the card says so. You read *The line is in the inbox, but no phone rang. Call Dispatch too.* The line is kept either way.
+
 Nothing stops you. Keep working either way.
 
 The first of ours to answer has answered for the whole crew.

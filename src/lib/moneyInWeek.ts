@@ -27,7 +27,7 @@
  * left out for the same reason. Weeks run Monday–Sunday.
  */
 import { isCheckPayment } from './jobs/checkClearing'
-import { instrumentWord } from './jobs/billsAndPayments'
+import { instrumentWord, isStripePayment } from './jobs/billsAndPayments'
 import { claimOpen, type PaidClaim } from './jobs/paidClaims'
 import { arRowInvoiceId } from './bridge/collect/collectBills'
 import { MAILED_CHECK_DAYS, mailedCheckYmd } from './bridge/collect/collectOutcome'
@@ -249,11 +249,6 @@ function daysBetween(fromYmd: string, toYmd: string): number {
   const a = Date.parse(`${fromYmd}T12:00:00Z`)
   const b = Date.parse(`${toYmd}T12:00:00Z`)
   return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 86_400_000) : 0
-}
-
-/** A recorded Stripe payment: the webhook writes the row with this note. */
-export function isStripePayment(p: { note?: string | null }): boolean {
-  return (p.note ?? '').trim().toLowerCase() === 'stripe'
 }
 
 /** Mercury kinds that are never a customer paying us. */

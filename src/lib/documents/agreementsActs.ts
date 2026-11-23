@@ -14,6 +14,8 @@ import { PERSON_PAPER_LINK_DAYS } from '../contracts/personPaperSend'
 import { isPartyAgreementKind } from '../contracts/paperParty'
 
 export const SEND_AGAIN_LABEL = 'Send again'
+/** The press on a paper that was made and never sent (punch list #403): it opens the same Send window, for a first send. */
+export const SEND_LABEL = 'Send'
 export const COPY_SIGNING_LINK_LABEL = 'Copy the signing link'
 
 function factOf(row: Pick<AgreementRow, 'facts'>, key: string): unknown {
@@ -29,6 +31,17 @@ export function agreementCanBeSentAgain(row: Pick<AgreementRow, 'kind' | 'state'
   if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement' && !isPartyAgreementKind(row.kind)) return false
   if (row.state !== 'waiting') return false
   return factOf(row, 'status') === 'sent' && factOf(row, 'replaced') !== true
+}
+
+/**
+ * Whether a line carries **Send**: an outside party's paper that was made and never sent (punch list #403, the owner's
+ * first decision). The press opens the Send window on that paper, where the office names the signer and the address.
+ * A paper a job requires is sent from its job, and no other kind is listed before it is sent.
+ */
+export function agreementCanBeSent(row: Pick<AgreementRow, 'kind' | 'state' | 'job_id' | 'facts'>): boolean {
+  if (!isPartyAgreementKind(row.kind)) return false
+  if (row.state !== 'not_sent' || row.job_id) return false
+  return factOf(row, 'status') === 'unsent' && factOf(row, 'replaced') !== true
 }
 
 /**

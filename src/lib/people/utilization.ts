@@ -28,6 +28,7 @@ import { payWeekContaining, type PayWeek } from '../payWeekAnchor'
 import { SALARIED_DEFAULT_WEEK, salariedWeekHours, type SalariedWeek } from '../salariedEffectiveHours'
 import { sessionHours } from './approvalsQueue'
 import { dayHours, dowOfYmd, outsideMinutes, weekHours, type WeekDays } from './weekAvailability'
+import { setRowInForce, workingHoursInForce, workingWeekHours } from './workingHours'
 
 export const UTILIZATION_WEEKS = 8
 /** The company day: a day past it is a long day. */
@@ -82,11 +83,17 @@ export type AvailableHoursAnswer = {
   set_by: string | null
   set_at: string
   note?: string | null
+  /**
+   * `set` is the person's working hours, written by a dev or the controller through `set_working_hours`; it wins
+   * over any answer, and `days` null takes the hours off again. Missing or `answer` is the week a person can work.
+   */
+  kind?: 'answer' | 'set'
 }
 
 export type UtilizationTimeOff = { user_id: string; startYmd: string; endYmd: string }
 
-export type AvailabilitySource = 'answered' | 'assumed' | 'schedule'
+/** `set` is the person's working hours; `answered` their own answer or the office's; `schedule` a salaried set week from pay. */
+export type AvailabilitySource = 'answered' | 'assumed' | 'schedule' | 'set'
 export type UtilizationBand = 'over' | 'full' | 'ok' | 'light' | 'none'
 export type UtilizationSide = 'field' | 'office'
 
@@ -232,6 +239,8 @@ export function answerInForce(answers: readonly AvailableHoursAnswer[], ymd: str
   let best: AvailableHoursAnswer | null = null
   let first: AvailableHoursAnswer | null = null
   for (const a of answers) {
+    // Working hours are not an answer: they are read by `setRowInForce`, and win where they hold.
+    if (a.kind === 'set') continue
     if (!first || a.effective_from < first.effective_from || (a.effective_from === first.effective_from && a.set_at < first.set_at)) first = a
     if (a.effective_from > ymd) continue
     if (!best || a.effective_from > best.effective_from || (a.effective_from === best.effective_from && a.set_at > best.set_at)) best = a
@@ -289,8 +298,10 @@ function personWeek(args: {
 }): PersonWeek {
   const { person, kind, week, todayYmd, nowMs, sessions, answers, timeOff } = args
   const partial = todayYmd >= week.start && todayYmd <= week.end
-  const answer = kind === 'salaried' ? null : answerInForce(answers, week.start)
-  const drawn = answer?.days ?? null
+  // Working hours win for anyone they are set for, salaried or not. A week before their Sunday reads as it did.
+  const setDays = workingHoursInForce(answers, week.start)
+  const answer = setDays || kind === 'salaried' ? null : answerInForce(answers, week.start)
+  const drawn = setDays ?? answer?.days ?? null
   const setWeek = person.isSalary ? (person.salariedWeek ?? SALARIED_DEFAULT_WEEK) : null
   const byDay = new Map<string, number>()
   let pendingHours = 0
@@ -320,7 +331,10 @@ function personWeek(args: {
   // An answer wins. Without one a salaried person is held to their set week, anyone else to the company week.
   let canWorkHours: number
   let source: AvailabilitySource
-  if (answer) {
+  if (setDays) {
+    canWorkHours = workingWeekHours(setDays)
+    source = 'set'
+  } else if (answer) {
     canWorkHours = drawn ? weekHours(drawn) : answer.hours_per_week
     source = 'answered'
   } else if (setWeek) {
@@ -483,6 +497,8 @@ export function buildUtilizationBoard(input: UtilizationInput): UtilizationBoard
     const outsideWeeks = personWeeks.filter((w) => w.outsideHours != null)
     const outsideHours = outsideWeeks.length ? round1(outsideWeeks.reduce((a, w) => a + (w.outsideHours ?? 0), 0)) : null
     const canWork: CanWork = (() => {
+      const set = setRowInForce(answers, input.todayYmd)
+      if (set?.days) return { hours: workingWeekHours(set.days), source: 'set', setAt: set.set_at, setBy: set.set_by, days: set.days }
       const a = kind === 'salaried' ? null : answerInForce(answers, input.todayYmd)
       if (a) return { hours: a.days ? weekHours(a.days) : a.hours_per_week, source: 'answered', setAt: a.set_at, setBy: a.set_by, days: a.days ?? null }
       if (person.isSalary) {

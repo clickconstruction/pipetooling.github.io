@@ -14,8 +14,6 @@ import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resend
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import {
   buildGcTradeEmail,
-  GC_TRADE_EMAIL_FROM_NAME,
-  GC_TRADE_EMAIL_ROLES,
   spanishHeld,
   TRADE_EMAIL_ERRORS,
   tradeEmailReach,
@@ -25,6 +23,8 @@ import {
   type TradeMailPerson,
 } from '../_shared/gcTradeEmail.ts'
 import {
+  companyPaperCallerRefusal,
+  companyPaperFromName,
   companyPaperMessageKind,
   companySigningEmailInput,
   companySigningSentCopy,
@@ -94,7 +94,8 @@ async function sendEmailViaResend(
 /**
  * A trade partner company's paper (GC mode, the Board's B6-b-i, call S, A): its master agreement or W-9 goes to the
  * company's 'contracts' people in GC's frame, with the signing link as the email's own step. In order, as gc-trade-email:
- * the caller (a dev until the papers' door, never a training account or a twin), the request, Spanish held, the paper (the
+ * the caller (never an archived account; then the four roles that send a paper, since punch list #403's step 5, where a
+ * dev alone did; never a training account or a twin), the request, Spanish held, the paper (the
  * company's own, sendable), the key sent once (checked before a token is minted, so a repeat never voids the link already
  * sent), who gets it, the token as the person path mints it, the email, the send, then the `gc_trade_messages` row and the
  * sent copy. A failed send writes no row. The company's portal link is read, never minted here.
@@ -106,9 +107,13 @@ async function sendCompanyPaper(rawBody: unknown, ctx: { userId: string; supabas
   if (!resendApiKey) return refuse('failed', 'Email is not configured yet: set RESEND_API_KEY')
   const admin = createClient(ctx.supabaseUrl, ctx.serviceKey)
 
+  // Who may send: this branch writes with the service role, which no row policy or fence holds, so it says who its
+  // caller may be first. An archived account, then the four roles, never a training account or a digital twin.
+  const archivedRefusal = await refuseArchivedCaller(admin, ctx.userId, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   const { data: who } = await admin.from('users').select('role, name, email, read_only, is_digital_twin').eq('id', ctx.userId).maybeSingle()
-  if (!who || !GC_TRADE_EMAIL_ROLES.includes(String(who.role))) return refuse('officeOnly')
-  if (who.read_only || who.is_digital_twin) return refuse('readOnly')
+  const callerRefusal = companyPaperCallerRefusal(who)
+  if (callerRefusal || !who) return refuse(callerRefusal ?? 'officeOnly')
 
   const parsed = parseCompanySigningRequest(rawBody)
   if (!parsed.ok) return refuse('badRequest')
@@ -151,6 +156,8 @@ async function sendCompanyPaper(rawBody: unknown, ctx: { userId: string; supabas
   const portalToken = (await admin.from('gc_trade_portal_links').select('token').eq('company_id', m.companyId).is('revoked_at', null).maybeSingle()).data?.token as string | null | undefined
   const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
   const names = reach.map((r) => r.name)
+  // Whose name it goes out under: the GC's from GC mode, the company a sub knows from People.
+  const fromName = companyPaperFromName(m.from)
   const email = buildGcTradeEmail(
     companySigningEmailInput({
       req: m,
@@ -158,11 +165,11 @@ async function sendCompanyPaper(rawBody: unknown, ctx: { userId: string; supabas
       company: String(company.name ?? ''),
       portalUrl: portalToken ? tradePortalLinkUrl(appOrigin, portalToken) : null,
       acceptUrl,
-      signer: (who.name || GC_TRADE_EMAIL_FROM_NAME).trim(),
-      gc: GC_TRADE_EMAIL_FROM_NAME,
+      signer: (who.name || fromName).trim(),
+      gc: fromName,
     }),
   )
-  const from = mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, EMAIL_FROM)
+  const from = mailboxWithName(fromName, EMAIL_FROM)
   const [first, ...rest] = reach
   const cc = rest.map((r) => r.email)
   const replyTo = (who.email || '').trim() || undefined

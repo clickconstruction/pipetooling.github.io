@@ -28,6 +28,8 @@ const io = vi.hoisted(() => ({
   customers: [] as Array<{ id: string; name: string }>,
   /** What a customer search throws, when it fails. */
   failSearch: null as unknown,
+  /** The contact a picked record already has, when the look before the window finds one. */
+  found: null as string | null,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -50,6 +52,8 @@ vi.mock('../../lib/documents/paperPartyIo', () => ({
     if (io.failSearch) throw io.failSearch
     return io.customers
   },
+  findPartyContact: async () => io.found,
+  readCopiesOut: async (ids: string[]) => ids.map((docId) => ({ docId, signerName: 'Lena Park', signerTitle: 'Branch manager', signerEmail: 'lena@tallgrass.example', sentAt: '2026-11-01T18:00:00Z' })),
   readPartyContact: async (record: { table: string; id: string }) => {
     io.party.push(`contact ${record.table}:${record.id}`)
     return '3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
@@ -141,6 +145,7 @@ beforeEach(() => {
   io.party = []
   io.customers = []
   io.failSearch = null
+  io.found = null
 })
 afterEach(() => cleanup())
 
@@ -296,5 +301,60 @@ describe('AgreementsSendPaper', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Lena Park/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'fake party send' }))
     await waitFor(() => expect(io.party).toEqual(['contact supply_house_contacts:r1', 'sends p-out']))
+  })
+
+  // The owner's third decision of 2026-11-22: a second signer at the same company.
+  const outAtTallgrass = () => {
+    io.found = '3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
+    io.personDocuments = [{ ...sentCopy, id: 'p-out', person_name: 'party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d' }]
+  }
+
+  it('a company that already has the paper out: the window says who has it and offers both ways, with nothing written', async () => {
+    outAtTallgrass()
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Subcontractor Handbook is already out' })
+    expect(dialog.textContent).toContain('Tallgrass Supply Co. has one copy waiting on a signature.')
+    expect(screen.getByTestId('party-copy-out').textContent).toBe('Lena Park already has this paper out, sent Nov 1.')
+    expect(screen.getByRole('button', { name: /^Send it to Lena Park again/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Send a second copy to someone else/ })).toBeTruthy()
+    expect(screen.queryByTestId('send-window')).toBeNull()
+    expect(io.party).toEqual([])
+  })
+
+  it('Send it to them again opens the copy that is out, on the person who has it', async () => {
+    outAtTallgrass()
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Send it to Lena Park again/ }))
+    expect((await screen.findByTestId('send-window')).textContent).toContain('again|p-out|undefined|Lena Park|Subcontractor Handbook')
+    expect(screen.getByTestId('send-window-party').textContent).toBe('Tallgrass Supply Co.|listed|keep Tallgrass Supply Co.|Lena Park|Branch manager|lena@tallgrass.example')
+    // The copy is written already: Send email writes no row.
+    expect(screen.queryByRole('button', { name: 'fake party send' })).toBeNull()
+    expect(io.party).toEqual([])
+  })
+
+  it('a second copy is a row of its own, and the copy that is out is left alone', async () => {
+    outAtTallgrass()
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Send a second copy to someone else/ }))
+    expect((await screen.findByTestId('send-window')).textContent).toContain('first|null|')
+    expect(screen.getByTestId('send-window-party').textContent).toBe('Tallgrass Supply Co.|listed|keep Tallgrass Supply Co.|||')
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.party[io.party.length - 1]).toBe('sends party-row'))
+    // The mock's contact is the one that holds the copy that is out: a first send would have reused it.
+    expect(io.party.filter((line) => line.startsWith('wrote'))).toEqual(['wrote insert party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d · Subcontractor Handbook · Tallgrass Supply Co.'])
+    expect(io.party).not.toContain('sends p-out')
+  })
+
+  it('a person picked who has it out already is offered the same two ways, and a second copy is the company’s', async () => {
+    outAtTallgrass()
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Lena Park/ }))
+    await screen.findByRole('dialog', { name: 'Subcontractor Handbook is already out' })
+    fireEvent.click(screen.getByRole('button', { name: /^Send a second copy to someone else/ }))
+    // The boxes open empty: the person picked is the one who has it.
+    expect((await screen.findByTestId('send-window-party')).textContent).toBe('Tallgrass Supply Co.|listed|keep Tallgrass Supply Co.|||')
   })
 })

@@ -62,6 +62,9 @@ describe('LienBoard · the Retainage line has its door (the owner’s pick of 20
 
   it('is a press a thumb can hit on a phone', () => {
     render(<LienBoard board={board()} isMobile onRetainage={() => {}} />)
+    // On a phone the line stands under the flow (punch list #428).
+    fireEvent.click(document.querySelector('[data-lien-board-switch-press="flow"]') as HTMLButtonElement)
     expect(door()?.style.minHeight).toBe('32px')
+    window.localStorage.clear()
   })
 })

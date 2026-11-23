@@ -14,7 +14,11 @@ import { createElement, lazy, useState, type ComponentType } from 'react'
  *
  * It does two things `React.lazy` alone does not. A window whose code has already loaded is drawn at
  * once, with no loading step in between, so a warmed window opens in the same frame as the press. And a
- * load that failed is asked for again on the next open, where `React.lazy` keeps the failure for good.
+ * load that failed is asked for again on a later open, where `React.lazy` keeps the failure for good.
+ *
+ * Later, not at once. The render that was waiting gets the failure, so its boundary can say so. Until
+ * v2.8327 the next ask began the moment a load failed: the waiting render drew again, asked again and
+ * failed again, with no pause and no error for any boundary to catch, for as long as the file stayed away.
  */
 
 type Loaded<P> = { default: ComponentType<P> }
@@ -22,30 +26,54 @@ type Loaded<P> = { default: ComponentType<P> }
 /** A window loaded on demand, with its loader beside it so it can be warmed before anyone presses. */
 export type LazyWindow<P> = ComponentType<P> & { preload: () => Promise<unknown> }
 
+/**
+ * How long a failed load stays failed for whoever mounts the window. Long enough for the render that was
+ * waiting to draw again and hand the failure to its boundary; after it, the next mount asks afresh.
+ */
+export const FAILED_LOAD_HELD_MS = 2000
+
 export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): LazyWindow<P> {
   let loaded: ComponentType<P> | null = null
   let pending: Promise<Loaded<P>> | null = null
+  /** True once a render has waited on `suspended`: from then on its fate is that load's. */
+  let waitedOn = false
+  /** When the load `suspended` waited on failed. `React.lazy` keeps that failure, so `suspended` is spent. */
+  let failedAt: number | null = null
   const once = (): Promise<Loaded<P>> => {
     if (!pending) {
-      pending = load().then(
-        (module) => {
+      pending = load()
+        .then((module) => {
+          // A lost chunk can resolve to nothing: `main.tsx` cancels Vite's throw when it starts the recovery
+          // reload. Reading `default` then throws here, and the catch below treats it as the failure it is.
           loaded = module.default
           return module
-        },
-        (error: unknown) => {
-          // Ask again next time: a new lazy for the next mount, since the old one holds this failure.
+        })
+        .catch((error: unknown) => {
           pending = null
-          suspended = lazy(once)
+          // A load nobody rendered for (a warm-up) leaves `suspended` untouched, so the first open asks again.
+          if (waitedOn) failedAt = Date.now()
           throw error
-        },
-      )
+        })
     }
     return pending
   }
-  let suspended = lazy(once)
+  const fresh = () =>
+    lazy(() => {
+      waitedOn = true
+      return once()
+    })
+  let suspended = fresh()
+  const current = () => {
+    if (failedAt != null && Date.now() - failedAt >= FAILED_LOAD_HELD_MS) {
+      suspended = fresh()
+      waitedOn = false
+      failedAt = null
+    }
+    return suspended
+  }
   // One mount keeps the component it started with, so a window never remounts when its code lands.
   const Window = (props: P) => {
-    const [Chosen] = useState<ComponentType<P>>(() => loaded ?? (suspended as unknown as ComponentType<P>))
+    const [Chosen] = useState<ComponentType<P>>(() => loaded ?? (current() as unknown as ComponentType<P>))
     return createElement(Chosen, props)
   }
   const out = Window as LazyWindow<P>

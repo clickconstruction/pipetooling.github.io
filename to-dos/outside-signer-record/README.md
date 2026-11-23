@@ -367,6 +367,9 @@ against the pick.
 - `esign_consents.audience` allows *customer*, *sub* and *gc*. A supply house needs a value.
 - `sendCompanyPaper` in `send-contract-for-signature` is the pattern for a paper to a company: it mails
   every person whose `gets` holds *contracts*.
+  Since v2.8322 it takes the office's four roles, where it took a dev, and refuses an archived account.
+  A request that says `from: 'office'` goes out under the name a sub knows, and not the GC's.
+  Every other email to a trade partner is still a dev's (`GC_TRADE_EMAIL_ROLES`).
 - The estimator's read (call 4) is on the paper's row. A signed form's PDF opens through
   `open-contract-form-pdf`, which checks the role itself, so it needs the same rule or an estimator sees
   the line and cannot open the file. Built in v2.8108: both ask `paper_is_outside_company`.
@@ -514,7 +517,7 @@ What is left above sorts into four decisions, each with the session's pick. Taun
 1. **Where an outside party's paper shows, and whether it can be taken back.** This covers step 4's questions 1 to 3, the gap, and the audit's findings 2 and 4. The pick: the Agreements tab lists every paper that is with an outside party, of any kind and any state, a party on no list among them, and one that is not signed carries **Send** and **Take back**.
 2. **How far an estimator's reach goes.** This covers step 4's questions 4 to 6 and the first two older calls. The pick: a signed line opens its record from the tab. An estimator reads the form's layout and the signature's image for an outside company's paper. Naming a party who holds papers needs one of the four roles. A training account reads the line and is refused the signed file. A trade company's chip stays where it is until step 6.
 3. **A second signer at the same company.** This is the audit's finding 3 and step 4's question 7. The pick: the window says who already has the paper out, and offers to send it to them again or to send a second copy to someone else.
-4. **Whether the open log outlives its paper.** This is the third older call. The pick: it does.
+4. **Whether the open log outlives its paper.** This is the third older call. The pick: it does. **Built 2026-11-22 as v2.8323** (`20261123030000_form_pdf_opens_outlive_paper.sql`): a deleted paper empties the line's link and leaves the line, which keeps the paper's name and who it was with.
 
 The audit's finding 8, a signer kept at a supply house becoming its price-request rep, is set aside for now on Taunya's word.
 
