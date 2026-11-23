@@ -2,7 +2,7 @@
 title: find a supply house bill by what is on it
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: supply house, bill, invoice, search, find a bill, find an invoice, invoice number, PO, amount, part, part code, which bill, every bill, on the paper, line items, ball valve
+keywords: supply house, bill, invoice, search, find a bill, find an invoice, invoice number, PO, amount, part, part code, which bill, every bill, on the paper, line items, ball valve, ship to, ordered by, header search, search from anywhere
 ---
 One box searches every supply house bill on file. Type what you know about the bill, and the bills that hold it are listed.
 
@@ -26,8 +26,14 @@ Type any of these:
 - A month, such as **october**, or a month and a year.
 - A part printed on the bill, such as **ball valve**.
 - A supply house's part code, or the maker's number.
+- The job the bill is on, by its name or its number.
+- Any other word printed on the bill, such as a street in the ship-to.
 
 Type two words and a bill must hold both. A search starts at two letters.
+
+## Search from anywhere
+
+The search at the top of the app finds bills too. Type an invoice number or a part there. Bills are listed under the jobs and bids, each marked **Bill**. It lists the first five. Press one to open it.
 
 ## Read what it found
 
@@ -54,5 +60,7 @@ Press the link icon at the left of a bill to copy a link to it. A note on the sc
 The search is exact. A bill is found when your words are on it.
 
 A part is found on the bills whose lines the app has read. That is about nine bills in ten. A bill with no PDF is found by its number, its house, its PO, its amount or its day.
+
+The app also keeps every word printed on a bill, such as the ship-to address and who ordered. Type one of those words to find the bill. The list then shows the words around the one you typed. A scanned bill has no words to keep. The bills already on file get their words over a few hours, by themselves.
 
 When nothing matches, the list says so. Press **Clear the search** to start again.

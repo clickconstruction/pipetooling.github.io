@@ -95,3 +95,30 @@ export function billSearchJobsWords(hit: Pick<BillSearchHit, 'jobs'>): string {
 export function billSearchViewerItems(hits: readonly BillSearchHit[]): BillViewerItem[] {
   return hits.map((hit) => ({ invoiceId: hit.invoice_id, number: hit.invoice_number, house: hit.supply_house_name, dateYmd: (hit.invoice_date ?? '').slice(0, 10), amount: Number(hit.amount) || 0 }))
 }
+
+/** How many bills the header search lists: it is one kind of row among jobs, bids and customers. */
+export const HEADER_BILL_MAX = 5
+
+/** A bill as a row of the header search (punch list #431, PR 7): what the row shows, and the bill to open. */
+export interface HeaderBillResult {
+  source: 'bill'
+  id: string
+  invoice_number: string
+  supply_house_name: string
+  invoice_date: string | null
+  amount: number
+  on_paper: string | null
+}
+
+/** The first few bills a search found, as the header search's rows. */
+export function headerBillResults(hits: readonly BillSearchHit[]): HeaderBillResult[] {
+  return hits.slice(0, HEADER_BILL_MAX).map((hit) => ({
+    source: 'bill' as const,
+    id: hit.invoice_id,
+    invoice_number: hit.invoice_number,
+    supply_house_name: hit.supply_house_name,
+    invoice_date: hit.invoice_date,
+    amount: Number(hit.amount) || 0,
+    on_paper: hit.on_paper,
+  }))
+}
