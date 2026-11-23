@@ -54,9 +54,6 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
-import { isLienOffice } from '../lib/jobs/lienDesk'
-import { useLienMonth } from '../hooks/useLienMonth'
-import { DashboardLienMonthCard } from '../components/dashboard/DashboardLienMonthCard'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -170,8 +167,6 @@ export default function Dashboard() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   /** ZZ test jobs off the Billed pin for every role but a dev who shows them (punch list #61, v2.5120). */
   const hideZzTestJobs = useZzTestJobsHidden(role)
-  // The lien month (punch list #235, PR 3): the desk's five zones as a card, for everyone who can open the desk.
-  const { month: lienMonth } = useLienMonth(isLienOffice(role), hideZzTestJobs)
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -1971,8 +1966,7 @@ export default function Dashboard() {
             <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
             <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
           </PhoneFold>
-          {/* The lien month (v2.6650, punch list #235): the Lien desk's five zones in one strip, with the zone today is in, what slipped and next month's queue. */}
-          <DashboardLienMonthCard month={lienMonth} />
+          {/* The lien month card stood here from v2.6650 until punch list #423: the Dashboard says how the Lien desk stands once, in `DashboardLienDeskCard` beside Needs you. */}
         </>
       )}
 
