@@ -95,7 +95,7 @@ export default function DashboardJobModeFirstRunCard({
             padding: '0.55rem 1rem',
             borderRadius: 8,
             border: 'none',
-            background: '#16a34a',
+            background: '#15803d',
             color: 'white',
             fontWeight: 700,
             fontSize: '0.95rem',

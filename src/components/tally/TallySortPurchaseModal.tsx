@@ -393,7 +393,7 @@ export function TallySortPurchaseModal({
                 }
                 style={{
                   width: '100%',
-                  background: saving || remainder !== 0 ? 'var(--bg-200)' : '#16a34a',
+                  background: saving || remainder !== 0 ? 'var(--bg-200)' : '#15803d',
                   color: saving || remainder !== 0 ? 'var(--text-muted)' : '#fff',
                   border: 'none',
                   borderRadius: 10,

@@ -303,7 +303,7 @@ export function DashboardMyDayEditorModal({
             type="button"
             onClick={() => void save()}
             disabled={busy}
-            style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#16a34a', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#15803d', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
           >
             {busy ? 'Saving…' : 'Save my day'}
           </button>

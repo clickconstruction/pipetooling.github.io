@@ -30,7 +30,7 @@ Every measure below is from a walk on made-up rows.
 
 ## The four
 
-### 1. The green fill is pale under white words
+### 1. ~~The green fill is pale under white words~~ Sweep v2.8364 (the owner looks at the mock-up before it lands)
 
 The green send on **Is it as told?** is white 16 px words on `#16a34a`. That is about 3.3 to 1. Small
 words need 4.5 to 1.

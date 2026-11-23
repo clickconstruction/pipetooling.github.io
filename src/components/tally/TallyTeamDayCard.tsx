@@ -428,7 +428,7 @@ export function TallyTeamDayCard({
             minHeight: 40,
             borderRadius: 8,
             border: 'none',
-            background: busy || selectedCount === 0 ? 'var(--border)' : '#16a34a',
+            background: busy || selectedCount === 0 ? 'var(--border)' : '#15803d',
             color: busy || selectedCount === 0 ? 'var(--text-muted)' : 'white',
             fontWeight: 700,
             cursor: busy || selectedCount === 0 ? 'default' : 'pointer',
