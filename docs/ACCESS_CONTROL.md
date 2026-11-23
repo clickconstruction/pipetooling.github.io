@@ -975,6 +975,8 @@ Since v2.7998 **Add to a list** says what such a contact is through `name_contac
 Since v2.8313 (punch list #403, step 5, the owner's calls 3 and 7, `20261123020000_sub_company_ground.sql`) `person_trade_companies` says which trade company a roster person works for, and it is the four roles' to read and to write under one policy (`is_office_staff()`).
 Nobody else reads a row of it, an estimator and the person themself among them, and a training account, a digital twin and an archived account write nothing.
 Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
+Since v2.8381 People → Contracts reads those links only for the four roles (`isOfficeRole`), so the company rows and the **Their company** control are drawn for them alone, and anyone else sees the tab as before.
+A company the control makes goes through `gc_add_company` as the caller, under `gc_companies`' team policy (`gc_office_team()`).
 A person's paper takes `signing_for` from that link through definer triggers, so no read policy on a paper changes: an estimator reads no person's paper, whether or not it names a company.
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
