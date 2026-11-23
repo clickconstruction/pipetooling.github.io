@@ -180,7 +180,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
 
         <div style={{ ...section, display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: '0.875rem' }}>
-            {amount != null ? <span style={chip('blue')}>Payment <MoneyText text={lienWaiverMoney(amount)} />{guess.payment?.payment_date ? ` · ${guess.payment.payment_date.slice(0, 10)}` : ''}</span> : <span style={chip('grey')}>Nothing paid yet</span>}
+            {amount != null ? <span style={chip('blue')}>Payment {lienWaiverMoney(amount)}{guess.payment?.payment_date ? ` · ${guess.payment.payment_date.slice(0, 10)}` : ''}</span> : <span style={chip('grey')}>Nothing paid yet</span>}
             <span style={chip(settled ? 'green' : 'grey')}>{settled ? 'Settled in the bank' : 'Not settled yet'}</span>
             <span style={chip('grey')}>{final ? 'Last payment on the sheet' : 'One of several payments'}</span>
           </div>
