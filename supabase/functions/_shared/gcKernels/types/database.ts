@@ -8764,6 +8764,7 @@ export type Database = {
           builder_key: string | null
           city: string
           contact: string | null
+          contact_phone: string | null
           declared_value: number | null
           first_seen_at: string
           id: string
@@ -8791,6 +8792,7 @@ export type Database = {
           builder_key?: string | null
           city: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -8818,6 +8820,7 @@ export type Database = {
           builder_key?: string | null
           city?: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
