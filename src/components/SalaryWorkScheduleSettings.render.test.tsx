@@ -21,8 +21,9 @@ vi.mock('../lib/salaryScheduleSync', () => ({
   syncSalaryClockSessionsForUserDay: () => Promise.resolve({ error: null }),
   removeSalaryScheduleForUser: () => Promise.resolve({ error: null }),
 }))
-vi.mock('../lib/supabase', () => {
-  const TEMPLATE = { user_id: 'u-hal', timezone: 'America/Chicago', exclude_weekends: true, mode: 'continuous', segment_a_start_local: '07:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false }
+vi.mock('../lib/supabase', async () => {
+  const { APP_CALENDAR_TZ } = await vi.importActual<typeof import('../utils/dateUtils')>('../utils/dateUtils')
+  const TEMPLATE = { user_id: 'u-hal', timezone: APP_CALENDAR_TZ, exclude_weekends: true, mode: 'continuous', segment_a_start_local: '07:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false }
   function builder(table: string): Record<string, unknown> {
     const b: Record<string, unknown> = {}
     for (const op of ['select', 'eq', 'is', 'in', 'limit', 'order']) b[op] = () => b

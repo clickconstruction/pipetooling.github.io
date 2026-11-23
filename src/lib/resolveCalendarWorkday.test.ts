@@ -131,7 +131,7 @@ describe('resolveCalendarWorkday', () => {
 })
 
 describe('working hours on the calendar (punch list #429)', () => {
-  const tmpl = { user_id: 'u', timezone: 'America/Chicago', mode: 'continuous', segment_a_start_local: '08:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null, created_at: null, updated_at: null, exclude_weekends: true } as Parameters<typeof resolveCalendarWorkday>[0]['template']
+  const tmpl = { user_id: 'u', timezone: APP_CALENDAR_TZ, mode: 'continuous', segment_a_start_local: '08:00:00', segment_a_duration_minutes: 480, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null, created_at: null, updated_at: null, exclude_weekends: true } as Parameters<typeof resolveCalendarWorkday>[0]['template']
   // Mon Nov 2, 2026 and Sat Nov 7, 2026.
   const day = (workDateYmd: string, workingDay: ReadonlyArray<readonly [number, number]> | null, overrideForDate: Parameters<typeof resolveCalendarWorkday>[0]['overrideForDate'] = null) => resolveCalendarWorkday({ workDateYmd, timeOffRows: [], template: tmpl, overrideForDate, workingDay })
 
