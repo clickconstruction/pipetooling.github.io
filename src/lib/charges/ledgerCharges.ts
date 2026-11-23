@@ -11,7 +11,7 @@ import { chargedAtMarkup } from './materialsCharged'
 import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
 import { CREW_SHAPES, NOBODY_CHARGED_WHY, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
-import { moneyWords } from './moneyParts'
+import { moneyWords } from '../moneyParts'
 import { liveOverArchived, type ChargeStandingRow } from './chargeStandings'
 
 export type LedgerChargesInput = {

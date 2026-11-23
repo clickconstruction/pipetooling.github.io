@@ -42,7 +42,9 @@ import {
 } from '../../lib/jobChargesTimeline'
 import type { JobOverheadDayLine } from '../../lib/jobs/jobDayLedger'
 import { endLabelWidth, iconRowSpan, iconRowY, marksWithin, paymentMarkerY, placeEndLabels, type ChartMark, type EndLabelWant } from '../../lib/jobs/chartEndLabels'
-import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
+import { jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
+import { moneyWords } from '../../lib/moneyParts'
+import { Money, MoneyTspans } from '../Money'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { chartCashLegendLabel } from '../../lib/jobs/profitLabels'
@@ -81,10 +83,6 @@ type TimelineDotProps = {
   payload?: JobChargesTimelineChartRow
 }
 
-/** Signed money label: +$166.21 / −$83.79. */
-function signedCurrency(n: number): string {
-  return `${n < 0 ? '−' : '+'}$${formatCurrency(Math.abs(n))}`
-}
 
 /** Dot renderer for the costs line: source icons (clamped inside the plot) at charge buckets.
  * The end-of-line total is `ChargesTimelineEndLabels`'s (v2.6718). */
@@ -208,10 +206,10 @@ function ChargesTimelineEndLabels({ xAxisMap, yAxisMap, offset, rows, overheadSh
     ...(valueY != null ? [{ key: 'value', lineY: valueY, side: 'above' as const }] : []),
   ]
   const texts: Record<string, string> = {
-    trueCost: `$${formatCurrency(last.trueCost)} true cost`,
-    cost: `$${formatCurrency(last.expense)}`,
-    cash: signedCurrency(last.profit),
-    value: `$${formatCurrency(last.value ?? 0)}`,
+    trueCost: `${moneyWords(last.trueCost)} true cost`,
+    cost: moneyWords(last.expense),
+    cash: moneyWords(last.profit, { sign: 'both' }),
+    value: moneyWords(last.value ?? 0),
   }
   // The marks the labels' text reaches across: every bucket's icon row, 💵 and 🚩 within the widest label's reach of the end.
   const reachLeft = cx - 8 - Math.max(...wants.map((w) => endLabelWidth(texts[w.key] ?? '')))
@@ -228,8 +226,8 @@ function ChargesTimelineEndLabels({ xAxisMap, yAxisMap, offset, rows, overheadSh
   const bottom = (offset?.top ?? 0) + (offset?.height ?? 300)
   const placed = placeEndLabels(wants, { lineHeight: END_LABEL_LINE_HEIGHT, top, bottom, obstacles })
   const label = (key: string, fill: string, text: string, stroke = true) => (
-    <text key={key} x={cx - 8} y={placed.get(key)} dominantBaseline="middle" fontSize={13} fontWeight={700} textAnchor="end" fill={fill} stroke={stroke ? 'var(--surface)' : undefined} strokeWidth={stroke ? 2 : undefined} paintOrder={stroke ? 'stroke' : undefined} data-end-label={key}>
-      {text}
+    <text key={key} x={cx - 8} y={placed.get(key)} dy="0.27em" fontSize={13} fontWeight={700} textAnchor="end" fill={fill} stroke={stroke ? 'var(--surface)' : undefined} strokeWidth={stroke ? 2 : undefined} paintOrder={stroke ? 'stroke' : undefined} data-end-label={key}>
+      <MoneyTspans text={text} />
     </text>
   )
   return (
@@ -268,12 +266,12 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
       </div>
       {row.chargeEvents.map((e, i) => (
         <div key={`c-${i}`} style={{ color: 'var(--text-red-900)' }}>
-          {JOB_CHARGE_SOURCE_META[e.source].icon} {e.label} — ${formatCurrency(e.amount)}
+          {JOB_CHARGE_SOURCE_META[e.source].icon} {e.label} — <Money amount={e.amount} />
         </div>
       ))}
       {row.paymentEvents.map((e, i) => (
         <div key={`p-${i}`} style={{ color: 'var(--text-green-700)' }}>
-          💵 {e.label} — ${formatCurrency(e.amount)}
+          💵 {e.label} — <Money amount={e.amount} />
         </div>
       ))}
       {row.valueEvents.map((e, i) => (
@@ -283,19 +281,26 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.25rem' }}>
-        <div style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</div>
+        <div style={{ color: 'var(--text-red-600)' }}>Cost: <Money amount={row.expense} /></div>
         {row.overheadToDate > 0 && (
           <>
             <div style={{ color: 'var(--text-amber-800)' }}>
-              Overhead to date: ${formatCurrency(row.overheadToDate)}
-              {row.overheadCarryToDate > 0 ? ` · by hours $${formatCurrency(row.overheadActivityToDate)} · carry $${formatCurrency(row.overheadCarryToDate)}` : ''}
+              Overhead to date: <Money amount={row.overheadToDate} />
+              {row.overheadCarryToDate > 0 ? (
+                <>
+                  {' · by hours '}
+                  <Money amount={row.overheadActivityToDate} />
+                  {' · carry '}
+                  <Money amount={row.overheadCarryToDate} />
+                </>
+              ) : null}
             </div>
-            <div style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>True cost: ${formatCurrency(row.trueCost)}</div>
+            <div style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>True cost: <Money amount={row.trueCost} /></div>
           </>
         )}
         {row.paymentsToDate > 0 && (
           <div style={{ color: 'var(--text-green-700)' }}>
-            Paid: ${formatCurrency(row.paymentsToDate)}
+            Paid: <Money amount={row.paymentsToDate} />
           </div>
         )}
         <div
@@ -304,11 +309,11 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
             color: row.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)',
           }}
         >
-          Cash position: {signedCurrency(row.profit)}
+          Cash position: <Money amount={row.profit} sign="both" />
         </div>
         {row.value != null && (
           <div style={{ color: 'var(--text-link)' }}>
-            Value created: ${formatCurrency(row.value)}
+            Value created: <Money amount={row.value} />
           </div>
         )}
       </div>
