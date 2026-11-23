@@ -4,6 +4,10 @@
  * and the amount, off the rows already loaded, so it needs no index. A date typed as a day (*nov 16*, *11/16*,
  * *2026-11-16*) is matched as that day and never as loose digits, so *nov 1* does not find the 16th. The share link
  * is the app's own lasting link to a bill (`fileRoute.ts`), never a public file link.
+ *
+ * Since PR 3 the search also reaches the lines read from each bill's paper (punch list #298 keeps them as rows): a
+ * word the four facts do not hold may be a part on the paper, by its description, the house's code or the maker's
+ * number. A row found that way says which line found it.
  */
 import type { JobSummaryInvoiceAllocationLine } from '../../types/jobSummary'
 import { fileUrl } from '../files/fileRoute'
@@ -16,6 +20,8 @@ export const SUPPLY_INVOICE_SEARCH_FROM = 8
 
 export const SUPPLY_INVOICE_WORDS = {
   searchPlaceholder: 'Search house, invoice, date or amount',
+  searchPlaceholderWithLines: 'Search house, invoice, date, amount or a part',
+  onThePaper: 'On the paper:',
   searchLabel: 'Search this job’s invoices',
   clearSearch: 'Clear the search',
   allHouses: 'All',
@@ -135,24 +141,99 @@ function matchesText(row: SupplyInvoiceRow, text: string, date: RegExpExecArray 
   return [...amountForms(row.allocated_amount), ...amountForms(row.invoice_total_amount)].some((form) => form.includes(text))
 }
 
-function matchesTerm(row: SupplyInvoiceRow, term: Term): boolean {
+/** One line read from a bill's paper, as the search reads it. */
+export interface InvoiceLineWords {
+  description: string
+  /** The supply house's own part code. */
+  code: string
+  /** The maker's number, when the paper prints one. */
+  mfr: string
+}
+
+/** The lines read from each bill's paper, by invoice id. A bill with no paper read has no entry. */
+export type InvoiceLinesById = ReadonlyMap<string, readonly InvoiceLineWords[]>
+
+/** Whether a word is on a line: in its description, or in a code with or without its dashes and spaces. */
+export function lineHoldsWord(line: InvoiceLineWords, text: string): boolean {
+  if (line.description.toLowerCase().includes(text)) return true
+  const bare = alnum(text)
+  return [line.code, line.mfr].some((code) => {
+    const c = code.toLowerCase()
+    return !!c && (c.includes(text) || (bare.length >= 2 && alnum(c).includes(bare)))
+  })
+}
+
+/** How a row meets a term: by its own four facts, by a line on its paper, or not at all. */
+function meetsTerm(row: SupplyInvoiceRow, term: Term, lines: readonly InvoiceLineWords[]): 'facts' | InvoiceLineWords | null {
   const date = /^(\d{4})-(\d{2})-(\d{2})/.exec(row.invoice_date ?? '')
-  if (term.kind === 'text') return matchesText(row, term.text, date)
+  const byLine = (text: string) => lines.find((line) => lineHoldsWord(line, text)) ?? null
+  if (term.kind === 'text') return matchesText(row, term.text, date) ? 'facts' : byLine(term.text)
   const inMonth = !!date && Number(date[2]) === term.month && (term.year == null || Number(date[1]) === term.year)
-  if (term.kind === 'day') return inMonth && Number(date![3]) === term.day
-  // A month typed alone may be the start of a house's name (*may* in a house called Mayfield), so it is read both ways.
-  return inMonth || (term.year == null && matchesText(row, term.word, date))
+  if (term.kind === 'day') return inMonth && Number(date![3]) === term.day ? 'facts' : null
+  if (inMonth) return 'facts'
+  // A month typed alone may be the start of a house's name (*may* in a house called Mayfield) or of a part's, so it is
+  // read as a word too.
+  if (term.year != null) return null
+  return matchesText(row, term.word, date) ? 'facts' : byLine(term.word)
+}
+
+/** The words of a search that are plain words, for marking them where they were found. A typed day is not one. */
+export function supplyInvoiceSearchWords(query: string): string[] {
+  return supplyInvoiceSearchTerms(query).flatMap((term) => (term.kind === 'text' ? [term.text] : term.kind === 'month' && term.year == null ? [term.word] : []))
+}
+
+/**
+ * A text cut where the search's words sit in it, so a screen can mark them. The first place each word is found, the
+ * pieces in order; a text none of the words is in comes back as one unmarked piece.
+ */
+export function markWords(text: string, words: readonly string[]): { text: string; hit: boolean }[] {
+  const lower = text.toLowerCase()
+  const spans: [number, number][] = []
+  for (const word of words) {
+    if (word.length < 2) continue
+    const at = lower.indexOf(word)
+    if (at >= 0 && !spans.some(([from, to]) => at < to && at + word.length > from)) spans.push([at, at + word.length])
+  }
+  if (spans.length === 0) return [{ text, hit: false }]
+  spans.sort((a, b) => a[0] - b[0])
+  const out: { text: string; hit: boolean }[] = []
+  let at = 0
+  for (const [from, to] of spans) {
+    if (from > at) out.push({ text: text.slice(at, from), hit: false })
+    out.push({ text: text.slice(from, to), hit: true })
+    at = to
+  }
+  if (at < text.length) out.push({ text: text.slice(at), hit: false })
+  return out
 }
 
 /**
  * The rows the search and the house chip leave, in the order they came, with what they add up to on this job. Every
- * term must be met. An empty search with no house is every row.
+ * term must be met, by the row's own facts or, when `lines` is handed in, by a line on its paper. `onPaper` names the
+ * line that found a row its own facts would not have. An empty search with no house is every row.
  */
-export function searchSupplyInvoices(rows: readonly SupplyInvoiceRow[], query: string, house: string | null = null): { rows: SupplyInvoiceRow[]; total: number } {
+export function searchSupplyInvoices(
+  rows: readonly SupplyInvoiceRow[],
+  query: string,
+  house: string | null = null,
+  lines: InvoiceLinesById | null = null,
+): { rows: SupplyInvoiceRow[]; total: number; onPaper: Map<string, InvoiceLineWords> } {
   const terms = supplyInvoiceSearchTerms(query)
-  const kept = rows.filter((row) => (house == null || (row.supply_house_name ?? '') === house) && terms.every((term) => matchesTerm(row, term)))
+  const onPaper = new Map<string, InvoiceLineWords>()
+  const kept = rows.filter((row) => {
+    if (house != null && (row.supply_house_name ?? '') !== house) return false
+    const rowLines = lines?.get(row.invoice_id) ?? []
+    let found: InvoiceLineWords | null = null
+    for (const term of terms) {
+      const met = meetsTerm(row, term, rowLines)
+      if (!met) return false
+      if (met !== 'facts') found ??= met
+    }
+    if (found) onPaper.set(row.invoice_id, found)
+    return true
+  })
   const cents = kept.reduce((sum, row) => sum + Math.round((Number(row.allocated_amount) || 0) * 100), 0)
-  return { rows: kept, total: cents / 100 }
+  return { rows: kept, total: cents / 100, onPaper }
 }
 
 /** A chip per supply house, the one with the most invoices first; none when the list has one house. */

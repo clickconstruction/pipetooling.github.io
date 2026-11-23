@@ -7,9 +7,9 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { SUPPLY_INVOICE_WORDS, invoiceDayWords } from '../../lib/jobs/supplyInvoiceList'
+import { SUPPLY_INVOICE_WORDS, invoiceDayWords, lineHoldsWord, markWords as cutAtWords } from '../../lib/jobs/supplyInvoiceList'
 import { billLinkHref } from '../../lib/materials/bills/billLink'
-import { BILL_VIEWER_WORDS as WORDS, billEditHref, billViewerKey, billViewerPosition, type BillFacts, type BillViewerItem } from '../../lib/materials/bills/billViewer'
+import { BILL_VIEWER_WORDS as WORDS, billEditHref, billLinesToList, billViewerKey, billViewerPosition, type BillFactLine, type BillFacts, type BillViewerItem } from '../../lib/materials/bills/billViewer'
 import { supabaseBillViewerIo, type BillBytes, type BillLoad, type BillViewerIo } from '../../lib/materials/bills/billViewerIo'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -28,6 +28,8 @@ export interface BillViewerProps {
   search?: { query: string; onQuery: (query: string) => void } | null
   /** The link the share press copies for a bill. */
   shareUrlOf: (invoiceId: string) => string
+  /** The plain words of the list's search, marked where the bill's lines hold them. */
+  markWords?: readonly string[]
   io?: BillViewerIo
   /** A page of its own, opened from a bill's link: there is no screen behind it to press. */
   standalone?: boolean
@@ -42,6 +44,8 @@ function LinkGlyph() {
   )
 }
 
+const NO_WORDS: readonly string[] = []
+
 const TONE_COLOR: Record<BillFacts['linesTone'], string> = { ok: 'var(--text-green-700)', accepted: 'var(--text-green-700)', off: 'var(--text-amber-800)', none: 'var(--text-muted)' }
 
 /**
@@ -51,7 +55,7 @@ const TONE_COLOR: Record<BillFacts['linesTone'], string> = { ok: 'var(--text-gre
  * paper. **Open in Drive** is the way out to a tab of its own. On a phone the viewer is the whole screen, with
  * Previous and Next under the thumb. The rules are `billViewer.ts`, the reads `billViewerIo.ts`.
  */
-export function BillViewer({ items, openId, onOpen, onClose, jobId = null, search = null, shareUrlOf, io = supabaseBillViewerIo, standalone = false }: BillViewerProps) {
+export function BillViewer({ items, openId, onOpen, onClose, jobId = null, search = null, shareUrlOf, markWords = NO_WORDS, io = supabaseBillViewerIo, standalone = false }: BillViewerProps) {
   const toast = useOptionalToastContext()
   const narrow = useIsNarrowScreen()
   const todayYmd = useMemo(() => todayYmdInAppTz(), [])
@@ -62,6 +66,7 @@ export function BillViewer({ items, openId, onOpen, onClose, jobId = null, searc
   const [load, setLoad] = useState<{ id: string; got: BillLoad } | null>(null)
   const [file, setFile] = useState<{ id: string; got: BillBytes } | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [allLines, setAllLines] = useState<{ id: string } | null>(null)
 
   useEffect(() => {
     let live = true
@@ -192,6 +197,43 @@ export function BillViewer({ items, openId, onOpen, onClose, jobId = null, searc
     </div>
   )
 
+  // The lines read from the paper, beside it: with a search on, the lines that hold its words come alone and marked.
+  const linesBody = (lines: readonly BillFactLine[]) => {
+    const holds = (line: BillFactLine) => markWords.some((word) => word.length >= 2 && lineHoldsWord(line, word))
+    const list = billLinesToList(lines, holds, allLines?.id === openId)
+    return (
+      <div data-testid="bill-lines" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        <div style={{ ...muted, fontSize: '0.75rem' }}>{list.found > 0 && list.more > 0 ? WORDS.linesFound : WORDS.linesTitle}</div>
+        <div>
+          {list.lines.map((line) => {
+            const found = holds(line)
+            return (
+              <div
+                key={line.lineNo}
+                data-found={found ? 'true' : undefined}
+                style={{ display: 'grid', gridTemplateColumns: '2.2rem minmax(0, 1fr) auto', columnGap: '0.4rem', padding: '0.2rem 0.25rem', paddingLeft: line.component ? '0.9rem' : '0.25rem', borderTop: '1px solid var(--border)', background: found ? 'var(--bg-amber-100)' : undefined, fontSize: '0.75rem' }}
+              >
+                <span style={{ ...muted, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{line.qty ?? ''}</span>
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere', color: found ? 'var(--text-amber-800)' : undefined }}>
+                  {cutAtWords(line.description || line.code, markWords).map((piece, i) => (piece.hit ? <b key={i}>{piece.text}</b> : <span key={i}>{piece.text}</span>))}
+                  {line.code && line.description ? <span style={{ ...(found ? {} : muted), marginLeft: '0.35rem', fontSize: '0.92em' }}>{line.code}</span> : null}
+                </span>
+                <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: found ? 'var(--text-amber-800)' : undefined }}>
+                  {line.extendedCents == null ? '' : <SignedAmountSmallCents value={line.extendedCents / 100} />}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {list.more > 0 ? (
+          <button type="button" onClick={() => setAllLines({ id: openId })} style={{ alignSelf: 'flex-start', margin: 0, padding: 0, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+            Show all {lines.length} lines
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   let paperBody: ReactNode
   if (!got) paperBody = <p style={muted}>{WORDS.opening}</p>
   else if ('problem' in got) paperBody = <p data-testid="bill-problem">{got.problem === 'notYours' ? WORDS.notYours : WORDS.notHere}</p>
@@ -283,6 +325,7 @@ export function BillViewer({ items, openId, onOpen, onClose, jobId = null, searc
           </ValueLine>
         ) : null}
       </ValueLines>
+      {facts.lines.length > 0 ? linesBody(facts.lines) : null}
       <p style={{ ...muted, fontSize: '0.75rem', margin: 0 }}>{WORDS.factsNote}</p>
     </>
   ) : null

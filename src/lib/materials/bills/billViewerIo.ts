@@ -76,6 +76,15 @@ async function loadBill(invoiceId: string, jobId: string | null): Promise<BillLo
       pageTo: paper?.pageTo ?? null,
       linesWords: lines.words,
       linesTone: lines.tone,
+      lines: (paper?.lines ?? []).map((line) => ({
+        lineNo: line.lineNo,
+        code: line.houseCode,
+        mfr: line.mfrNumber,
+        description: line.description,
+        qty: line.qtyShipped ?? line.qtyOrdered,
+        extendedCents: line.extendedCents,
+        component: line.lineKind === 'component',
+      })),
     },
   }
 }

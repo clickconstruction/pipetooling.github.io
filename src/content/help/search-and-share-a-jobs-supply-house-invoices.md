@@ -2,7 +2,7 @@
 title: search and share a job's supply house invoices
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: supply house, invoice, bill, job summary, parts cost, search, find an invoice, share, copy link, link copied, PDF, no PDF, supplier, flip through, viewer, previous, next, open in drive, arrow keys
+keywords: supply house, invoice, bill, job summary, parts cost, search, find an invoice, share, copy link, link copied, PDF, no PDF, supplier, flip through, viewer, previous, next, open in drive, arrow keys, part, part code, line items, on the paper, which invoice has
 ---
 A job's supply house invoices sit together on its Job Summary. You can flip through them without leaving the page. You can also search a long list and copy a link to an invoice for a teammate.
 
@@ -28,6 +28,8 @@ Press an invoice number. The bill opens over the page, with the job's list besid
 - Press **Esc** or the ✕ to close.
 
 The bill's facts sit beside the paper. They show the supply house, the invoice number, the date, the bill total and what is on this job. They also show how many lines the app read from the paper, and whether the bill is paid.
+
+Under the facts are the lines read from the paper. A long bill shows its first eight. Press **Show all** to see the rest. When you searched for a part, the lines that match come first.
 
 One PDF sometimes holds several bills. The paper then shows this bill's pages alone. A line under it says which pages they are. Press **See the whole file** to read the rest.
 
@@ -62,8 +64,12 @@ A list of eight or more invoices has a search box above it. Type any of these:
 - A day, such as **nov 16** or **11/16**.
 - A month, such as **october**.
 - An amount, such as **1,085.58**.
+- A part printed on the bill, such as **ball valve**.
+- A supply house's part code.
 
 Type two words and a row must match both. The count beside the box says how many invoices are left. It also says what they add up to on this job.
+
+A row found by a part says **On the paper** under its number. It shows the line that matched, with your words marked. The app reads the lines of about nine bills in ten. A bill with no PDF is found by its number, date or amount alone.
 
 The same box sits above the list in an open bill. **Previous** and **Next** follow the search, so you flip through what it left.
 

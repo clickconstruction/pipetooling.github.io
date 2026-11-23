@@ -43,6 +43,7 @@ const facts = (id: string): BillFacts => ({
   pageTo: null,
   linesWords: '4 lines · adds up',
   linesTone: 'ok',
+  lines: [],
 })
 
 const row = (n: number): SupplyInvoiceRow => ({
