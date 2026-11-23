@@ -27,6 +27,7 @@ lien-closed-paid-activity
 sub-sheet-stamps
 sub-sheet-draw-invoice
 gc-papers
+form-pdf-opens-outlive-paper
 gc-trade-sign-sow
 revenue-riders
 gc-portal-p5
@@ -160,7 +161,6 @@ salaried-week
 primary-scope-reports
 primary-scope-job-photos
 paper-party
-form-pdf-opens-outlive-paper
 document-builders
 document-builder-sheets
 coi-checked-against-a-sheet
