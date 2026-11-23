@@ -35,11 +35,21 @@ INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-000
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, customer_id) VALUES
   ('00000000-0000-0000-0000-000000000bb1', '00000000-0000-0000-0000-000000000bd1', '00000000-0000-0000-0000-000000000bf9', 'Front office repipe', '00000000-0000-0000-0000-000000000bc1'),
   ('00000000-0000-0000-0000-000000000bb2', '00000000-0000-0000-0000-000000000bd1', '00000000-0000-0000-0000-000000000bf9', 'Back office water heater', '00000000-0000-0000-0000-000000000bc1');
+-- A contact points at exactly one record: the trade partner at its company, the architect at a person the office
+-- named as one (a person at a customer, the office's pick), the lead at none.
+INSERT INTO public.customers (id, name, master_user_id, contact_info) VALUES
+  ('00000000-0000-0000-0000-000000000bc2', 'Heard Day Studio', '00000000-0000-0000-0000-000000000bd1', NULL);
+INSERT INTO public.customer_contact_persons (id, customer_id, name, phone, email) VALUES
+  ('00000000-0000-0000-0000-000000000be2', '00000000-0000-0000-0000-000000000bc2', 'Ivy Stone', '(210) 555-0149', 'ivy@heardday.example');
+INSERT INTO public.gc_companies (id, name, trades, contact_name, phone, email) VALUES
+  ('00000000-0000-0000-0000-000000000ba1', 'Heard Day Tile', ARRAY['Tile'], 'Dee Ramos', '(210) 555-0148', 'dee@heardday.example');
 INSERT INTO public.contacts (id, kind, customer_id) VALUES
   ('00000000-0000-0000-0000-00000000b101', 'customer', '00000000-0000-0000-0000-000000000bc1');
+INSERT INTO public.contacts (id, kind, gc_company_id) VALUES
+  ('00000000-0000-0000-0000-00000000b102', 'trade', '00000000-0000-0000-0000-000000000ba1');
+INSERT INTO public.contacts (id, kind, customer_contact_person_id) VALUES
+  ('00000000-0000-0000-0000-00000000b103', 'arch', '00000000-0000-0000-0000-000000000be2');
 INSERT INTO public.contacts (id, kind) VALUES
-  ('00000000-0000-0000-0000-00000000b102', 'trade'),
-  ('00000000-0000-0000-0000-00000000b103', 'arch'),
   ('00000000-0000-0000-0000-00000000b104', 'lead');
 INSERT INTO public.contact_channels (contact_id, kind, value) VALUES
   ('00000000-0000-0000-0000-00000000b101', 'phone', '(210) 555-0147'),
