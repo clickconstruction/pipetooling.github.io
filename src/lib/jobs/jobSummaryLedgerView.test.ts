@@ -447,6 +447,27 @@ describe('leakage flags (v2.2832)', () => {
     expect(rows[2]!.inCollections).toBe(false)
     expect(summarizeJobSummaryRows(rows)).toMatchObject({ writeDownUsd: 200, writeDownJobs: 1, collectionsJobs: 1, collectionsUsd: 900 })
   })
+
+  it('a bill written down twice counts everything written off, since the bill keeps its first amount (v2.8305)', () => {
+    // 1,000 written down to 900 and then to 750. The writers leave the amount before the FIRST write-down on the row.
+    const twice = { status: 'billed', amount: 750, agreed_write_down_at: '2026-09-01T00:00:00Z', agreed_write_down_previous_amount: 1000 }
+    const rows = enrichJobSummaryRows({
+      rows: [{ job: { id: 't', hcp_number: 't', job_name: 't', pct_complete: 100, status: 'billed', invoices: [twice, { status: 'billed', amount: 500 }] }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 1250 }],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect(rows[0]).toMatchObject({ writeDownUsd: 250 })
+    expect(summarizeJobSummaryRows(rows)).toMatchObject({ writeDownUsd: 250, writeDownJobs: 1 })
+    // Before v2.8305 the second write-down left 900 there, and the first 100 went missing from the total.
+    const before = enrichJobSummaryRows({
+      rows: [{ job: { id: 't', hcp_number: 't', job_name: 't', pct_complete: 100, status: 'billed', invoices: [{ ...twice, agreed_write_down_previous_amount: 900 }] }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 750 }],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect(before[0]!.writeDownUsd).toBe(150)
+  })
 })
 
 describe('the premium total (punch list #254, the live pass, v2.6471)', () => {
