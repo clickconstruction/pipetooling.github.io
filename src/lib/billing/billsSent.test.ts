@@ -344,6 +344,16 @@ describe('billsSent — whether a send arrived (PR 3)', () => {
       ['w1', 'Sent. Their mail server has not answered yet.', 'quiet', false],
       ['n1', '', '', false],
     ])
+    // Told the day, the line stops promising an answer once the silence has run two days.
+    const silence = (todayYmd: string, over: Parameters<typeof input>[1] = {}) => billsSentLines(input([copy({ id: 'w1', sentAt: '2026-11-09T15:28:00.000Z' })], { marks: new Map([mark('w1', 'sent', '2026-11-09T15:28:00.000Z')]), ...over }), { todayYmd }).find((l) => l.id === 'w1')!
+    expect(silence('2026-11-09').delivery).toBe('Sent. Their mail server has not answered yet.')
+    expect(silence('2026-11-10').delivery).toBe('Sent. Their mail server has not answered yet.')
+    // The bill is still open: the line says how long, and the next step.
+    expect(silence('2026-11-11')).toMatchObject({ delivery: 'Sent. No answer from their mail server in 2 days. Check the address.', deliveryTone: 'quiet' })
+    expect(silence('2026-11-23').delivery).toBe('Sent. No answer from their mail server in 14 days. Check the address.')
+    // A paid bill wants no one: the silence is said, and no step.
+    const paidCopy = billsSentLines(input([copy({ id: 'w2', sourceId: BILL_B, jobIds: [JOB_B], sentAt: '2026-11-09T15:28:00.000Z' })], { marks: new Map([mark('w2', 'sent', '2026-11-09T15:28:00.000Z')]) }), { todayYmd: '2026-11-23' })
+    expect(paidCopy[0]!.delivery).toBe('Sent. No answer from their mail server in 14 days.')
   })
 
   it('marks a bounce on an open bill until a later send arrives', () => {
