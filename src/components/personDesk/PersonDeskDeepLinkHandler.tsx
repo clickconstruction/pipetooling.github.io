@@ -12,7 +12,8 @@ const FLOW_PARAM = 'flow'
 /**
  * Opens the Person Desk when the URL carries `?person=u:<users.id>` or
  * `?person=p:<people.id>`, on any route, then strips the param so the link is
- * reusable (the `?userReview=` precedent). Mounted globally from Layout.
+ * reusable (the `?userReview=` precedent). Mounted globally from Layout. Any other
+ * `person` is left where it is.
  * v2.2810: `&section=paperwork` (any id in personDeskSections) opens it scrolled there.
  */
 export function PersonDeskDeepLinkHandler() {
@@ -26,9 +27,13 @@ export function PersonDeskDeepLinkHandler() {
     if (handledRef.current === raw) return
     handledRef.current = raw
     const parsed = parsePersonDeskParam(raw)
+    // v2.8321: a `person` this desk cannot read is another screen's, and stays in the address. People → HR's link
+    // carries a bare people.id and the pay ledger's a name. Stripping them here, on every page, took the person off
+    // a cold `/people?tab=hr&person=<people.id>` before the HR tab had mounted to read it.
+    if (!parsed) return
     const section = parseDeskSectionParam(searchParams.get(SECTION_PARAM))
     const flow = searchParams.get(FLOW_PARAM) === 'bring_back' ? 'bring_back' : null
-    if (parsed) desk.open({ ...parsed, section, flow })
+    desk.open({ ...parsed, section, flow })
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
