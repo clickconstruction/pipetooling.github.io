@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainSentence } from '../valuesInPlace'
 import {
+  canOpenSignedRecord,
   canReadPartyPapers,
   canSendPartyPapers,
   contactIsOfParty,
@@ -51,6 +52,20 @@ describe('who reads a party’s papers', () => {
   it('lists them for the four roles and the estimator, and for nobody else', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) expect(canReadPartyPapers(role)).toBe(true)
     for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) expect(canReadPartyPapers(role)).toBe(false)
+  })
+
+  it('a signed record opens for the four roles, and for an estimator who is not in training (punch list #403, decision 2)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(canOpenSignedRecord(role, false), role).toBe(true)
+      // The four roles open it in training as before: the rule is the estimator's.
+      expect(canOpenSignedRecord(role, true), role).toBe(true)
+    }
+    expect(canOpenSignedRecord('estimator', false)).toBe(true)
+    expect(canOpenSignedRecord('estimator', true)).toBe(false)
+    for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) {
+      expect(canOpenSignedRecord(role, false)).toBe(false)
+      expect(canOpenSignedRecord(role, true)).toBe(false)
+    }
   })
 
   it('keeps sending with the four roles: an estimator reads and does not send', () => {

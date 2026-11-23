@@ -6,7 +6,8 @@
  * paper, or an estimator on a paper with an outside company (Taunya's call of 2026-11-21, as #403's call 10 gives them
  * such a company's signed form), and must be able to read the row under its own policy. The database says which papers
  * are an outside company's: `estimator_reads_paper`, asked as the caller. A digital twin reads as an estimator and is
- * refused. A paper signed since this shipped has its PDF already.
+ * refused, and so is an estimator in training (punch list #403, the owner's second decision). A paper signed since
+ * this shipped has its PDF already.
  * An older one gets it made here, the first time someone opens it, and kept beside the forms'. Nobody is emailed.
  * Answers a short-lived link that downloads under the paper's name.
  */
@@ -57,7 +58,7 @@ serve(async (req) => {
 
     // Gate: the four roles that send a paper, or an estimator on a paper the database says is an outside company's.
     // The estimator's read policy follows the same function, so the gate and the policy cannot come apart.
-    const { data: me } = await admin.from('users').select('role, is_digital_twin').eq('id', user.id).maybeSingle()
+    const { data: me } = await admin.from('users').select('role, is_digital_twin, read_only').eq('id', user.id).maybeSingle()
     const caller = me as PaperPdfCaller | null
     const facts: { estimatorReads?: boolean } = {}
     if (paperPdfOpener(caller) === 'estimator') {
