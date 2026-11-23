@@ -122,6 +122,9 @@ its left to copy a link, and type in the box.
     - Every bill's whole text, kept on the bill's own paper (`supply_papers.page_text`) and read by
       one function, `search_supply_bills`, behind **Search every bill** on Materials → Supply houses
       and behind the header search.
+11. **Questions in words are held.** "How much copper did we buy for this job in October" needs a
+    model writing a query, and is only safe when every answer shows its rows and its sum. It waits
+    until the Parts Book match of #298 covers most of the dollars, as a card of its own.
 12. **The words are kept on the paper, not in the file index.** The plan first said the file index.
     Three things changed it while building. One PDF often holds several bills, and the index keeps one
     row a file, so a search for one bill's ship-to would have found every bill scanned with it. Bills
@@ -131,9 +134,6 @@ its left to copy a link, and type in the box.
     Meaning is weak on bills, which are codes and numbers. Adding bills to the file index as well is
     the owner's call, and is small now that the words are kept.
 13. **The search also reads the job a bill is on**, and the PO and order number its paper prints.
-11. **Questions in words are held.** "How much copper did we buy for this job in October" needs a
-    model writing a query, and is only safe when every answer shows its rows and its sum. It waits
-    until the Parts Book match of #298 covers most of the dollars, as a card of its own.
 
 ## How reliable each kind of search is
 
