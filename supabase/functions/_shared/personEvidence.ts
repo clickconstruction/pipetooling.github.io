@@ -91,7 +91,7 @@ export function evidenceFileIsLinked(f: Pick<PersonEvidenceFile, 'storage_path' 
 /** A file goes through the function as bytes it reads from the bucket; the same cap as the company folder's door. */
 export const EVIDENCE_FILE_MAX_BYTES = 10 * 1024 * 1024
 /**
- * The cap on a file the dev seat declares and its agent sends straight to the bucket (dev-mcp 0.129.0,
+ * The cap on a file the dev seat declares and its agent sends straight to the bucket (dev-mcp 0.130.0,
  * `devMcpEvidenceUpload.ts`): the project's own storage limit. The panel and a file sent inside a tool call keep the
  * cap above, which is what a browser upload and a JSON body carry.
  */

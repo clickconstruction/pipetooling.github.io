@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- A staged evidence file may be as large as storage takes (v2.8375, dev-mcp 0.129.0).
+-- A staged evidence file may be as large as storage takes (v2.8375, dev-mcp 0.130.0).
 --
 -- dev_person_evidence_write refused a file over 10 MB, the size a browser upload and a tool call's JSON body carry.
 -- The dev seat's agent can now declare a file by its size and sha256 and send its bytes straight to the hr-files
