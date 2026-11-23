@@ -38,6 +38,10 @@ pgtest_migrate
 # A second run must change nothing: every function is replaced as it was, and each DO block adds no
 # second constraint.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# Then the later migration that restates gc_company_paper for the office's four roles (punch list #403, step 5), as on
+# prod, where it came after: the re-run above put the older body back.
+LATER="$(ls supabase/migrations/*_sub_company_ground.sql)"
+psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_papers/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_papers PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
