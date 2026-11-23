@@ -18,6 +18,16 @@ vi.mock('../../hooks/useAuth', async () => {
 vi.mock('../../utils/dateUtils', async (orig) => ({ ...(await orig<typeof import('../../utils/dateUtils')>()), todayYmdInAppTz: () => '2026-11-23' }))
 const opened = vi.hoisted(() => ({ urls: [] as string[] }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.urls.push(url) }))
+// The viewer has its own smoke: here it is a stand-in that says what it was handed.
+vi.mock('../materials/BillViewer', () => ({
+  BillViewer: (p: { items: { invoiceId: string }[]; openId: string; jobId: string | null; search: { query: string; onQuery: (q: string) => void } | null; onOpen: (id: string) => void; onClose: () => void; shareUrlOf: (id: string) => string }) => (
+    <div data-testid="viewer" data-open={p.openId} data-items={p.items.map((i) => i.invoiceId).join(',')} data-job={p.jobId ?? ''} data-search={p.search ? p.search.query : 'none'} data-link={p.shareUrlOf(p.openId)}>
+      <button type="button" onClick={() => p.search?.onQuery('cf117')}>viewer types</button>
+      <button type="button" onClick={() => p.onOpen('inv-8')}>viewer flips</button>
+      <button type="button" onClick={p.onClose}>viewer closes</button>
+    </div>
+  ),
+}))
 
 import { JobSummarySupplyInvoiceList } from './JobSummarySupplyInvoiceList'
 
@@ -94,21 +104,60 @@ describe('JobSummarySupplyInvoiceList', () => {
     expect(screen.getByText(/^Copy this link: .*\/files\/bills\/inv-1\?job=job-1$/)).toBeTruthy()
   })
 
-  it('the invoice number opens the bill’s PDF', () => {
+  it('for the office the invoice number opens the bill in the viewer, with this list and its job', () => {
+    renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY} />)
+    expect(screen.queryByTestId('viewer')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'HS-204418' }))
+    const viewer = screen.getByTestId('viewer')
+    expect(viewer.getAttribute('data-open')).toBe('inv-1')
+    expect(viewer.getAttribute('data-items')).toBe('inv-1,inv-2,inv-3,inv-4,inv-5,inv-6,inv-7,inv-8')
+    expect(viewer.getAttribute('data-job')).toBe('job-1')
+    expect(viewer.getAttribute('data-link')).toMatch(/\/files\/bills\/inv-1\?job=job-1$/)
+    // No new tab.
+    expect(opened.urls).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'viewer flips' }))
+    expect(screen.getByTestId('viewer').getAttribute('data-open')).toBe('inv-8')
+    fireEvent.click(screen.getByRole('button', { name: 'viewer closes' }))
+    expect(screen.queryByTestId('viewer')).toBeNull()
+  })
+
+  it('the viewer flips through the list as it is searched, and types into the same search', () => {
+    renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Brightwater Pipe & Valve 6$/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'BW 7702-01' }))
+    expect(screen.getByTestId('viewer').getAttribute('data-items')).toBe('inv-2,inv-3,inv-4,inv-5,inv-6,inv-7')
+    expect(screen.getByTestId('viewer').getAttribute('data-search')).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: /^All 8$/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'viewer types' }))
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('cf117')
+    expect(screen.getByTestId('viewer').getAttribute('data-items')).toBe('inv-8')
+  })
+
+  it('a short list hands the viewer no search', () => {
+    renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY.slice(0, 3)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'HS-204418' }))
+    expect(screen.getByTestId('viewer').getAttribute('data-search')).toBe('none')
+  })
+
+  it('for the office a bill with no PDF says so, still opens in the viewer and still has its share press', () => {
+    renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY} />)
+    expect(screen.getByText('no PDF')).toBeTruthy()
+    expect(screen.getAllByTestId('supply-invoice-share')).toHaveLength(8)
+    expect(screen.queryByRole('button', { name: /supplier’s site/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'BW 7704-01' }))
+    expect(screen.getByTestId('viewer').getAttribute('data-open')).toBe('inv-4')
+  })
+
+  it('anyone else keeps the Drive link in a tab of its own, and a bill with no PDF offers the house’s site apart from the number', () => {
+    auth.role = 'helper'
     renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY} />)
     fireEvent.click(screen.getByRole('button', { name: 'HS-204418' }))
     expect(opened.urls).toEqual(['https://drive.example/file/d/f1/view'])
-  })
-
-  it('a bill with no PDF says so, has no share press, and offers the house’s site apart from the number', () => {
-    renderWithProviders(<JobSummarySupplyInvoiceList rows={MANY} />)
+    expect(screen.queryByTestId('viewer')).toBeNull()
     expect(screen.queryByRole('button', { name: 'BW 7704-01' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Copy a link to invoice BW 7704-01' })).toBeNull()
     expect(screen.getByText('no PDF')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /supplier’s site/ }))
-    expect(opened.urls).toEqual(['https://brightwater.example'])
-    // Seven bills have a PDF, so seven share presses.
-    expect(screen.getAllByTestId('supply-invoice-share')).toHaveLength(7)
+    expect(opened.urls).toEqual(['https://drive.example/file/d/f1/view', 'https://brightwater.example'])
   })
 
   it('nobody outside the office gets a share press', () => {

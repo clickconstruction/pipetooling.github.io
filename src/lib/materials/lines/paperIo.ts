@@ -35,6 +35,8 @@ type PaperDbRow = {
   po_text: string
   file_path: string | null
   drive_file_id: string | null
+  page_from?: number | null
+  page_to?: number | null
   subtotal_cents: number | null
   tax_cents: number | null
   freight_cents: number | null
@@ -93,6 +95,8 @@ export function paperOfDb(p: PaperDbRow, lines: readonly LineDbRow[]): PaperRow 
     poText: p.po_text ?? '',
     filePath: p.file_path,
     driveFileId: p.drive_file_id,
+    pageFrom: p.page_from ?? null,
+    pageTo: p.page_to ?? null,
     subtotalCents: p.subtotal_cents,
     taxCents: p.tax_cents,
     freightCents: p.freight_cents,
