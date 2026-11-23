@@ -23,7 +23,8 @@ export type CalendarWorkdayResolution =
   | { kind: 'time_off'; kindLabel: string; note: string | null }
   | {
       kind: 'scheduled'
-      source: 'override' | 'template'
+      /** `working_hours`: the day's start and end come from the person's set week (punch list #429). */
+      source: 'override' | 'template' | 'working_hours'
       /** Chip labels: wall-clock range in 12h form + short TZ (e.g. CST) from template/override IANA. */
       blocks: Array<{ label: string; segmentIndex?: 1 | 2 }>
     }
@@ -50,7 +51,10 @@ function blockLabel(
   iana: string,
   workDateYmd: string,
 ): string {
-  const startM = pgTimeToMinutes(startLocal.length >= 5 ? startLocal.slice(0, 5) : startLocal)
+  return blockLabelFromMinutes(pgTimeToMinutes(startLocal.length >= 5 ? startLocal.slice(0, 5) : startLocal), durationMinutes, iana, workDateYmd)
+}
+
+function blockLabelFromMinutes(startM: number, durationMinutes: number, iana: string, workDateYmd: string): string {
   const endM = startM + durationMinutes
   const range = `${minutesTo12h(startM)}–${minutesTo12h(endM)}`
   const ref = referenceDateForWorkDateYmd(workDateYmd)
@@ -113,12 +117,30 @@ export function resolveCalendarWorkday(params: {
   timeOffRows: TimeOffRow[]
   template: TemplateRow | null
   overrideForDate: OverrideRo | null | undefined
+  /**
+   * The person's working hours on the day as the clock reads them (`workingDayForClock`): ranges in minutes, an
+   * empty list for a day off, null or left out with none. They stand in for the template's start and length, and
+   * one day's move still wins.
+   */
+  workingDay?: ReadonlyArray<readonly [number, number]> | null
 }): CalendarWorkdayResolution {
-  const { workDateYmd, timeOffRows, template, overrideForDate } = params
+  const { workDateYmd, timeOffRows, template, overrideForDate, workingDay } = params
 
   const off = timeOffRows.find((r) => workDateYmd >= r.start_date && workDateYmd <= r.end_date)
   if (off) {
     return { kind: 'time_off', kindLabel: timeOffKindLabel(off.kind), note: off.note }
+  }
+
+  // Working hours say which days are worked and when, where the template gave one start, 8 hours and no weekends.
+  // The template row is still what says the schedule clocks this person in and out.
+  if (template && workingDay != null && !overrideIsMeaningful(overrideForDate)) {
+    if (workingDay.length === 0) return { kind: 'none' }
+    const iana = (template.timezone ?? '').trim() || APP_CALENDAR_TZ
+    return {
+      kind: 'scheduled',
+      source: 'working_hours',
+      blocks: workingDay.map(([s, e], i) => (workingDay.length > 1 ? { label: blockLabelFromMinutes(s, e - s, iana, workDateYmd), segmentIndex: (i + 1) as 1 | 2 } : { label: blockLabelFromMinutes(s, e - s, iana, workDateYmd) })),
+    }
   }
 
   const isoDow = isoWeekdayFromYmd(workDateYmd)

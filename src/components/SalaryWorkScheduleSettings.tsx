@@ -17,6 +17,9 @@ import {
   validSplitBreakMinutesForAnchor,
 } from '../lib/salarySplitBreakDerivedStart'
 import { APP_CALENDAR_TZ, formatIanaTimeZoneLongOffsetLabel } from '../utils/dateUtils'
+import { defaultAvailabilityIo } from '../lib/people/availabilityIo'
+import type { WeekDays } from '../lib/people/weekAvailability'
+import { workingHoursInForce, workingWeekLineWords } from '../lib/people/workingHours'
 
 type TemplateInsert = Database['public']['Tables']['salary_work_schedule_templates']['Insert']
 
@@ -155,6 +158,21 @@ export function SalaryWorkScheduleSettings({
   const [splitBreakMinutes, setSplitBreakMinutes] = useState(60)
   const [ovSplitBreakMinutes, setOvSplitBreakMinutes] = useState(60)
   const [overrideDateYmd, setOverrideDateYmd] = useState<string>(() => denverWorkDateToday())
+  /** The person's working hours in force (punch list #429): the clock follows them where it followed this template's start and length. */
+  const [workingHours, setWorkingHours] = useState<WeekDays | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void defaultAvailabilityIo()
+      .listAnswers([userId])
+      .then((rows) => {
+        if (!cancelled) setWorkingHours(workingHoursInForce(rows, denverWorkDateToday()))
+      })
+      // A read that fails leaves the note out; the template's own controls stand as they were.
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   const durOptionsA = useMemo(() => validSegmentADurations(), [])
   const segmentBDuration = 480 - segmentADuration
@@ -574,6 +592,11 @@ export function SalaryWorkScheduleSettings({
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
+      {workingHours ? (
+        <p data-working-hours-note style={{ margin: '0 0 0.75rem', padding: '0.5rem 0.65rem', borderRadius: 8, background: 'var(--bg-blue-tint)', color: 'var(--text-700)', fontSize: '0.875rem' }}>
+          Working hours are set: <strong>{workingWeekLineWords(workingHours)}</strong>. The clock follows them. The start, the length and the weekend choice below are not read while they stand. A custom schedule for one date still wins for that day.
+        </p>
+      ) : null}
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
         You are marked <strong>salaried</strong> in pay settings. Define your usual 8-hour day (15-minute steps). The app
         creates clock sessions automatically so your team sees you on the clock strip. Use <strong>Update focus</strong> on
