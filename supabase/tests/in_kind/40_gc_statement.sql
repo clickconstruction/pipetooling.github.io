@@ -1,6 +1,7 @@
 -- A GC's statement leaves out a bill an in kind deal pays (v2.8309, punch list #301, migration
 -- *_gc_statement_in_kind_apart): get_gc_statement_email_payload keeps such a bill off a group's rows and every sum, in
--- in_kind_rows, and get_statement_week_for_office, which calls it, follows. Everything rolls back. Ends with
+-- in_kind_rows, and get_statement_week_for_office, which calls it, follows and counts them for its one line (v2.8320,
+-- migration *_statement_week_in_kind_line). Everything rolls back. Ends with
 -- "in_kind_gc_statement PASSED". See scripts/pgtest-in-kind.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -95,6 +96,9 @@ SELECT ikg.same('the week counts Harlow by its money: the amount, over 90 days, 
 SELECT ikg.same('a GC with $20,000 on a deal and no money owed is not on the week', (
   SELECT count(*)::text FROM ikg.kept, jsonb_array_elements(v -> 'items') i WHERE k = 'week' AND i ->> 'gc_id' = '00000000-0000-0000-0000-0000003040c2'
 ), '0');
+-- The week's own count (v2.8320, migration *_statement_week_in_kind_line): what GCs' deals pay, the GC off the list
+-- included, and never a bill no GC pays.
+SELECT ikg.same('the week counts what the GCs'' deals pay, for its one line', (SELECT (v -> 'in_kind')::text FROM ikg.kept WHERE k = 'week'), '{"count": 3, "dollars": 21300.00}');
 
 -- A deal that ends lets its jobs go, and their bills read as owed again.
 UPDATE public.in_kind_arrangements SET ended_at = now() WHERE id = '00000000-0000-0000-0000-000000304001';
@@ -102,6 +106,8 @@ SELECT ikg.same('an ended deal''s bills are back on the statement', (
   SELECT concat_ws(' | ', g ->> 'subtotal', g ->> 'job_count', g ->> 'oldest_age_days', jsonb_array_length(g -> 'rows')::text, (g -> 'in_kind')::text)
   FROM (SELECT ikg.grp(public.get_gc_statement_email_payload('gc', '00000000-0000-0000-0000-0000003040c1', false), '00000000-0000-0000-0000-0000003040c1') AS g) t
 ), '13300.00 | 3 | 200 | 3 | {"count": 0, "dollars": 0.00}');
+
+SELECT ikg.same('with the deal ended the week counts the other deal alone', (SELECT (public.get_statement_week_for_office() -> 'in_kind')::text), '{"count": 1, "dollars": 20000.00}');
 
 DO $$ BEGIN RAISE NOTICE 'in_kind_gc_statement PASSED'; END $$;
 ROLLBACK;
