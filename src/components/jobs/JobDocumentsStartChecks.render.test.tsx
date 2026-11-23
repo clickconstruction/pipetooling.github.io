@@ -352,10 +352,21 @@ describe('JobDocumentsStartChecks', () => {
 
   it('a No on arrival reads on its row with who said it, and the office is offered it for the company’s list', async () => {
     const db = seeded()
-    db.rows = { ...db.rows, arrivals: [{ id: 'a1', job_id: JOB.id, fixture_id: 'f1', arrived_on: '2026-11-16', not_as_told: ['inspection'], by_name: 'Luis', created_at: '2026-11-16T15:00:00Z' }] }
+    // Two arrivals: Luis said No on the inspection, and Sam got there later and said No on the power. Each row names
+    // its own arrival; the earlier one's line was not drawn when the stage read the newest arrival alone.
+    db.rows = {
+      ...db.rows,
+      // Sam's No took Luis's yes on the power back, as the door does.
+      marks: db.rows.marks.map((m) => (m.bullet_id === 'power' ? { ...m, taken_back_at: '2026-11-17T15:00:00Z' } : m)),
+      arrivals: [
+        { id: 'a1', job_id: JOB.id, fixture_id: 'f1', arrived_on: '2026-11-16', not_as_told: ['inspection'], by_name: 'Luis', created_at: '2026-11-16T15:00:00Z' },
+        { id: 'a2', job_id: JOB.id, fixture_id: 'f1', arrived_on: '2026-11-17', not_as_told: ['power'], by_name: 'Sam', created_at: '2026-11-17T15:00:00Z' },
+      ],
+    }
     await mount(db)
     await openStage('Top Out')
     expect(row('inspection').textContent).toContain('Luis said No on site, Nov 16. It was not as told.')
+    expect(row('power').textContent).toContain('Sam said No on site, Nov 17. It was not as told.')
     // Values in place: who said it and the day are values the app works out, drawn apart from the words.
     expect(Array.from(row('inspection').querySelectorAll('[data-value="worked-out"][data-tone="red"]')).map((v) => v.textContent)).toEqual(['Luis', 'Nov 16'])
     fireEvent.click(within(row('inspection')).getByRole('button', { name: 'Add to the company’s list for Top Out' }))

@@ -5,7 +5,7 @@ import { TIME_LINE_WORDS, movedSheet, movedSlide, timeLine } from './timeLine'
 // Every site, person and day here is made up.
 const SITE: Site = { noticeDays: 10, contact: 'Ray' }
 const TODAY = '2026-11-17'
-const stage = (over: Partial<Stage>): Stage => ({ id: 's1', part: '', job: 'J2101', name: 'Top Out', window: ['2026-12-01', '2026-12-05'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrival: null, ...over }) as Stage
+const stage = (over: Partial<Stage>): Stage => ({ id: 's1', part: '', job: 'J2101', name: 'Top Out', window: ['2026-12-01', '2026-12-05'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrivals: [], ...over }) as Stage
 const said = (day: string, on: string) => ({ day, said: on, who: 'Ray', how: 'by phone' })
 
 describe('the Schedule look on a line of time', () => {

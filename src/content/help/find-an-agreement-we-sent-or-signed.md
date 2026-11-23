@@ -30,6 +30,8 @@ Each line is one agreement. It starts with a tag that says its kind.
 - **Customer** and **Supply house** are a paper with an outside company.
 - **Not on a list** is a paper sent to someone you typed in.
 
+A paper with an outside company is not always an agreement. A second tag then says what it is. It reads **W-9**, **Insurance certificate** or **License**.
+
 After the tag comes the paper's name. Under it you see who it is with, then the job as a green link.
 
 A paper with a company also says who signs. It reads *Lena Park signs, Branch manager*. Once signed it reads *signed by Lena Park, Branch manager*.
@@ -164,6 +166,13 @@ Someone on your roster is not sent a paper this way. Close the window and pick t
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
+**A company may already have the paper out.** The app checks when you pick the company. A window then says who has the paper and the day it went. It offers two presses.
+
+- **Send it to Lena Park again** sends the same copy to the same person. They get a new signing link. The link sent before stops working.
+- **Send a second copy to someone else** makes a new copy for another person there. The first copy stays as it is, with its own link. Each person signs their own copy.
+
+Each copy is its own line under **Outside companies**.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
@@ -211,6 +220,27 @@ The leader and a dev have **Take back**. They are the two who can delete a paper
 The email that went out stays under Sent copies. The record that they opened the paper goes with it.
 
 A teammate's or a sub's paper is not taken back here. It stays on People, under Contracts.
+
+## Send a paper that was never sent
+
+A paper can be made for an outside company and never sent. The list keeps it under **Not sent**.
+
+The **Not sent** chip is in the second row. It shows only while such a paper exists. The number on it is how many there are.
+
+1. Press **Not sent**.
+2. Press **Send** on the paper's line. The Send window opens.
+3. Fill in **Signer name** and **Signer email**.
+4. Press **Send email**.
+
+The line then reads *never opened*. It moves under **Waiting on a signature**.
+
+:::example A paper that was never sent
+{{chip:blue|Supply house}} {{chip:gray|W-9}} **W-9**, with Tallgrass Supply Co. {{chip:gray|not sent}} Made Nov 21. {{button:outline|Send}} {{button:outline|Take back}}
+:::
+
+Maybe the paper should not exist. The leader or a dev presses **Take back** on its line. Nobody holds a link to it, so nothing stops working.
+
+Someone you typed in has no page of their own. This list is where their papers are found.
 
 ## Write or change a paper
 
@@ -295,7 +325,8 @@ Nothing is sent from these lists. To send a paper, press **Send a paper** on the
 - A draft. A draft stays in the window that made it until it is sent.
 - A job with no contract. That list is the Contract sweep, under Tools on the [Pipeline](/jobs?tab=stages).
 - An accepted estimate. It is on the [Estimates](/documents?tab=estimates) tab.
-- A W-9, an insurance certificate or a licence. Those papers are not agreements. A person's papers stay on People. An outside company's papers are on that company's own page.
+- A teammate's or a sub's W-9, insurance certificate or licence. A person's papers stay on People. An outside company's are on this tab, and on that company's own page.
+- A paper made for a teammate or a sub and never sent. It stays on People until it is sent.
 - A lien waiver. It is under its job on the [Jobs](/documents?tab=jobs) tab.
 
 ## What an estimator sees
@@ -303,7 +334,8 @@ Nothing is sent from these lists. To send a paper, press **Send a paper** on the
 An estimator has the tab to read.
 
 - The chips are **All**, **Outside companies** and **Work orders**.
-- The list holds agreements with a customer, a supply house or a trade company. Sub work orders are on the list too.
+- The list holds papers with a customer, a supply house or a trade company. A W-9 and a certificate are among them. Sub work orders are on the list too.
+- A paper that was made and never sent reads *not sent*.
 - A staff paper, a sub's own paper and a job's contract are not on it.
 - A paper sent to someone on no list is not on it until the office adds them to a list.
 

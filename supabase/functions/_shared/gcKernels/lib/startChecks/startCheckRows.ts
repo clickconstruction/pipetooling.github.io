@@ -3,7 +3,7 @@
 /**
  * Before we start (punch list #382, PR 4): the tables' rows, read into what the rules read. The tables are
  * `20261120033820_start_checks.sql`. A stage line with its window, its bullets, their live yeses, the asks, the days
- * they gave, the newest decision that stands and the newest arrival become one `Stage` of `startChecks.ts`. The days
+ * they gave, the newest decision that stands and every arrival become one `Stage` of `startChecks.ts`. The days
  * of notice come from the site's row, or the job's own when it is on no site, or the default. The starter list a
  * stage with no list is offered is here too. Pure: the reads and writes are `startChecksIo.ts`.
  */
@@ -202,10 +202,11 @@ export function stageFromRows(line: StageLine, rows: StartCheckRows, ctx: StageC
     .sort(byMade)
   const newest = standing[standing.length - 1]
   const decision: Decision | null = newest ? { kind: newest.kind, by: newest.by_name, day: newest.decided_on, openThen: newest.open_then } : null
-  const arrivals = mine(rows.arrivals).sort(byMade)
-  const last = arrivals[arrivals.length - 1]
-  const arrival: Arrival | null = last ? { day: last.arrived_on, by: last.by_name, notAsTold: last.not_as_told } : null
-  return { id: line.fixtureId, part: ctx.part, job: ctx.jobLabel, name: line.name, window: line.window, trip: ctx.trip ?? null, finished: line.finished, theirDays, bullets, decision, arrival }
+  // Every arrival, oldest first: an earlier one's No stands on its bullet until a yes comes after it (v2.8366).
+  const arrivals: Arrival[] = mine(rows.arrivals)
+    .sort(byMade)
+    .map((a) => ({ day: a.arrived_on, by: a.by_name, notAsTold: a.not_as_told }))
+  return { id: line.fixtureId, part: ctx.part, job: ctx.jobLabel, name: line.name, window: line.window, trip: ctx.trip ?? null, finished: line.finished, theirDays, bullets, decision, arrivals }
 }
 
 /** The live yes on a bullet, for a row that shows its photo or takes it back. */

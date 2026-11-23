@@ -12,7 +12,7 @@ summary: >
   is no score. The state gives no phone, address or email, so how to reach a person is added by
   the office by hand.
 next: >
-  Walk the Our own view on the live site, and read the first scheduled pull on Monday 2026-11-23. Then step three: Everyone and the person's sheet.
+  Walk the Our own view on the live site. The first scheduled pull of 2026-11-23 is read and holds. Then step three: Everyone and the person's sheet.
 size: L as a train of five (M · M · M · M · S)
 ver: v2.8159 · 8164 · 8198 · 8202 · 8233 · 8317
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.
@@ -130,6 +130,8 @@ After they run, check by counts:
 - `license_roll_pulls` has five new rows, each with `finished_at` set and `error` empty.
 - The four weekly files keep about what they kept on 2026-11-21: 1,228 responsible masters, 597 masters, 4,010 journeymen and 672 tradesmen. A refusal that says a file *looks cut short* means the board sent a partial file, and nothing was changed.
 - The apprentice file keeps our own apprentices' rows and no other.
+
+**Read on 2026-11-23 at 12:53 UTC, counts only, off `license_roll_pulls` through the dev seat.** All five jobs ran at their minute and each wrote one row with `finished_at` set, `error` empty and no `pulled_by`: responsible masters 9,416 seen and 1,228 kept with 5 changed, masters 4,365 and 597 with 1 changed, journeymen 26,474 and 4,010 with none, tradesmen 3,580 and 672 with 1 changed, apprentices 43,076 seen and 3 kept with none. Nothing was added and nothing went. The four weekly files kept what they kept on 2026-11-21, and the apprentice file kept our own three rows and no other. `cron.job_run_details` was not read: the seat does not open the cron schema, and the five rows stand for the five jobs.
 - The journeyman and apprentice zips can run up to a week behind the other files, so a quiet week for them is normal.
 
 ### Loose ends
