@@ -301,7 +301,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 | Kernel | Used for | Tests |
 |---|---|---|
-| [`lib/gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (182) | `buildGcReviewRollup`: groups, subtotals, grand total, collections, development grouping | 9 |
+| [`lib/gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (182) | `buildGcReviewRollup`: groups, subtotals, grand total, collections, development grouping, the bills an in kind deal pays left out and counted (`inKind`, `gcGroupsInKind`) | 17 |
 | [`lib/jobs/gcStatementRounds.ts`](../src/lib/jobs/gcStatementRounds.ts) (248) | `GC_ROUND_THRESHOLD` (10000), `buildStatementRound`, `summarizeStatementRound`, `deriveGcAccountMen`, `mergeMarksIntoLastSent`, `describeRoundMark`, `sendChannelLabel` | 14 |
 | [`lib/jobs/gcReviewCertification.ts`](../src/lib/jobs/gcReviewCertification.ts) (169) | `gcReviewWeekStartYmd`, `latestCertByGc`, `gcGroupCertStatus`, `gcReviewSentThisWeek`, `gcReviewWeekProgress` | 10 |
 | [`lib/jobs/temperatureBoard.ts`](../src/lib/jobs/temperatureBoard.ts) (109) | `buildTemperatureBoard`, `latestTemperatureByGc`, `trailingWeekStarts` | 4 |

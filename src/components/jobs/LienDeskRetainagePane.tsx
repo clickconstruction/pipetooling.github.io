@@ -1,16 +1,16 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { daysBetweenYmd, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
-import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
+import { contractEndedWords, parseContractEndedHow, parsePaymentBond, paymentBondWords, type LienContractEndedHow, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
 import { useJobRetainage } from '../../hooks/useJobRetainage'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienPaneHeads } from './useLienPaneHeads'
@@ -30,6 +30,40 @@ import { runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL } from '../../lib/jobs/lienRunWords'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { lienDayValues } from '../../lib/jobs/lienDayValues'
+import { retainageDeadlineFor } from '../../lib/jobs/lienDeadlines'
+import {
+  LIEN_CONTRACT_NOT_SAVED_WORDS,
+  LIEN_CONTRACT_NO_DAY_WORDS,
+  LIEN_CONTRACT_STATE_CHOICES,
+  LIEN_CONTRACT_STILL_OPEN,
+  LIEN_CONTRACT_STILL_OPEN_PATCH,
+  LIEN_CONTRACT_STILL_OPEN_SAVED_WORDS,
+  LIEN_PAYMENT_BOND_CHOICES,
+  LIEN_RETAINAGE_FROM_APPLICATION,
+  LIEN_RETAINAGE_HELD_HINT,
+  LIEN_RETAINAGE_VALUE_LABELS,
+  lienContractDayPreview,
+  lienContractEndedAsk,
+  lienContractEndedPatch,
+  lienContractEndedSavedWords,
+  lienContractStartHint,
+  lienContractStateText,
+  lienContractStillOpenAsk,
+  lienPaymentBondPatch,
+  lienPaymentBondSavedWords,
+  lienPaymentBondText,
+  lienRetainageHeldPatch,
+  lienRetainageHeldPreview,
+  lienRetainageHeldSavedWords,
+  lienRetainageHeldText,
+  lienRetainageHeldValue,
+  retainageDeadlineValues,
+  type LienContractPatch,
+} from '../../lib/jobs/lienRetainageFacts'
+import { saveLienContractFacts } from '../../lib/jobs/lienRetainageFactsIo'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
  * The retainage pane of the Lien desk (v2.3753, punch list #33 PR 1): the
@@ -40,6 +74,12 @@ import { LIEN_RUN_ACT, LIEN_RUN_NOW_TO_MAIL } from '../../lib/jobs/lienRunWords'
  * affidavit), the paper as the run prints it (the retainage cover letter in counsel's form,
  * then the statute's form), and the same draft → approve → send verbs as the
  * monthly notice. Approved ones ride in the desk's run.
+ *
+ * Values in place (punch list #399, the Lien desk's second screen): every day, amount and name on the pane is drawn
+ * apart from its words, one fact a line. The three facts a person types — the day our contract ended with how it
+ * ended, the retainage the GC holds, the payment bond — are changed where they sit (`lienRetainageFacts.ts`), where
+ * *Change ›* and *Set on the job ›* used to open Edit Job. A change to the day asks first, because it moves the
+ * § 53.057 deadline.
  */
 
 const chip = (bg: string, fg: string): React.CSSProperties => ({ display: 'inline-block', padding: '0 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap', background: bg, color: fg, verticalAlign: 'middle' })
@@ -55,6 +95,15 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
   opacity: disabled ? 0.55 : 1,
   whiteSpace: 'nowrap',
 })
+
+/** A day or an amount the app works out, never broken across two lines. `tone` is for a day inside a red sentence. */
+const worked = (text: string, tone?: 'red') => (
+  <WorkedOutValue tone={tone}>
+    <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
+  </WorkedOutValue>
+)
+/** A value inside a toned chip keeps the chip's colour. */
+const inChip = (text: string) => <b style={{ fontWeight: 700, whiteSpace: 'nowrap' }} data-value="worked-out">{text}</b>
 
 export default function LienDeskRetainagePane({
   entry,
@@ -104,7 +153,15 @@ export default function LienDeskRetainagePane({
   const office = isLienOffice(authRole)
   const [busy, setBusy] = useState(false)
   // Punch list #165 (PR 4): the figure's source and, once a release exists, the door to it.
-  const { retainage: jobRetainage } = useJobRetainage(entry.jobId)
+  const { retainage: jobRetainage, loading: retainageLoading, reload: reloadRetainage } = useJobRetainage(entry.jobId)
+  const confirmDialog = useConfirmDialog()
+  // Starting the clock is two facts, how our contract ended and its day. The way is picked first and held here, unsaved, until its day is kept.
+  const [startHow, setStartHow] = useState<LienContractEndedHow | null>(null)
+  // Each count opens a field again: the day's after a way is picked, the way's after the footer's press.
+  const [dayAsk, setDayAsk] = useState(0)
+  const [howAsk, setHowAsk] = useState(0)
+  // What was just kept, shown until the desk reads the job again: without it the old value came back for a moment after Keep and read as a save that failed.
+  const [kept, setKept] = useState<LienContractPatch>({})
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -198,21 +255,81 @@ export default function LienDeskRetainagePane({
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
 
+  // ---------- the facts a person types, changed where they sit (punch list #399) ----------
+  // A refusal is thrown, so the open field says the reason under what was typed. A save reads the desk and the job's retainage line again.
+  const saveFact = async (patch: LienContractPatch, done: string) => {
+    await saveLienContractFacts(entry.jobId, patch)
+    setKept((k) => ({ ...k, ...patch }))
+    showToast(done, 'success')
+    onChanged()
+    reloadRetainage()
+  }
+  // The desk's own read wins as soon as it lands: the kept values are dropped when the job's facts change under the pane.
+  const heldColumn = job?.lien_retainage_held
+  useEffect(() => {
+    setKept({})
+  }, [entry.contractEndedOn, entry.contractEndedHow, entry.retainageHeld, entry.paymentBond, heldColumn])
+  const onNow = 'lien_contract_ended_on' in kept ? (kept.lien_contract_ended_on ?? null) : entry.contractEndedOn
+  const howNow = 'lien_contract_ended_how' in kept ? (kept.lien_contract_ended_how ?? null) : entry.contractEndedHow
+  const endedHow = onNow ? howNow : null
+  const endedOn = endedHow ? (onNow ?? '') : ''
+  const bondNow = kept.lien_payment_bond ?? entry.paymentBond
+  // The day the notice is due is the desk's. Between a kept day and the desk's next read it is the day the window just named.
+  const dueNow = 'lien_contract_ended_on' in kept ? retainageDeadlineFor(endedOn) || null : entry.deadline
+  const dueLeft = dueNow ? daysBetweenYmd(todayYmd, dueNow) : null
+  /** The day is kept: the window says which day the notice is then due, and its press is the write. */
+  const keepDay = async (day: string) => {
+    const how = endedHow ?? startHow
+    if (!how) return
+    const ask = lienContractEndedAsk({ how, day, was: endedOn, todayYmd, formatDay: formatYmdMonthDay })
+    if (!(await confirmDialog({ title: ask.title, message: ask.message, confirmLabel: ask.confirmLabel }))) return
+    await saveFact(lienContractEndedPatch(day, how, authUserId, new Date().toISOString()), lienContractEndedSavedWords(how, day, formatYmdMonthDay))
+    setStartHow(null)
+  }
+  /** How it ended is kept. On an ended contract the word alone moves no deadline; *Still open* takes the day off and asks first. */
+  const keepHow = (picked: string): void | Promise<void> => {
+    const how = parseContractEndedHow(picked)
+    if (endedHow) return changeHow(picked, how)
+    // Still open: nothing is written until the day is kept. The day's field opens beside the pick, in the same draw, so the day's box can take the cursor.
+    setStartHow(how)
+    if (how) setDayAsk((n) => n + 1)
+  }
+  const changeHow = async (picked: string, how: LienContractEndedHow | null) => {
+    if (picked === LIEN_CONTRACT_STILL_OPEN) {
+      const ask = lienContractStillOpenAsk({ was: endedOn, formatDay: formatYmdMonthDay })
+      if (!(await confirmDialog({ title: ask.title, message: ask.message, confirmLabel: ask.confirmLabel }))) return
+      await saveFact(LIEN_CONTRACT_STILL_OPEN_PATCH, LIEN_CONTRACT_STILL_OPEN_SAVED_WORDS)
+      return
+    }
+    if (how) await saveFact(lienContractEndedPatch(endedOn, how, authUserId, new Date().toISOString()), lienContractEndedSavedWords(how, endedOn, formatYmdMonthDay))
+  }
+  const keepHeld = (draft: string) => saveFact(lienRetainageHeldPatch(Number(draft)), lienRetainageHeldSavedWords(Number(draft)))
+  const keepBond = (picked: string) => saveFact(lienPaymentBondPatch(parsePaymentBond(picked)), lienPaymentBondSavedWords(parsePaymentBond(picked)))
+  // The figure as the job holds it: an empty column reads *not recorded*, where the desk's row reads it as 0.
+  const heldOnJob = 'lien_retainage_held' in kept ? (kept.lien_retainage_held ?? null) : heldColumn == null ? (entry.retainageHeld > 0 ? entry.retainageHeld : null) : Number(heldColumn)
+  // A figure read from a pay application is changed in the AIA window. While the source is still being read the figure has no press.
+  const heldFromApplication = jobRetainage?.figure?.source === 'pay_application'
+
   // The pane's stacked heads (v2.7320, the owner's ask of 2026-11-15): the notice pane's grey bars over the gates, the § 53.056 claim and the paper, where two boxes wore a tiny caption.
   const isMobile = useIsMobile()
   const paneRef = useRef<HTMLDivElement | null>(null)
   const paneHeads = lienRetainagePaneSections({ gates: entry.gates, endedWords, retainageWords: formatUsdNoCents(entry.retainageHeld), inClaim: entry.inClaim, pages: 2 })
   const heads = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile })
+  // A way of ending was just picked: its day is the next thing to type, so the day's box takes the cursor the pick's press took back.
+  useEffect(() => {
+    if (dayAsk > 0) paneRef.current?.querySelector<HTMLInputElement>('[data-lien-retainage-contract] input[type="date"]')?.focus()
+  }, [dayAsk])
 
   // ---------- footer ----------
   let footer: React.ReactNode = null
-  const fuse = entry.deadline ? <span style={{ color: 'var(--text-red-600)' }}>The § 53.057 window on {label} closes {demandDate(entry.deadline)}.</span> : null
+  const fuse = entry.deadline ? <span style={{ color: 'var(--text-red-600)' }}>The § 53.057 window on {label} closes {worked(demandDate(entry.deadline), 'red')}.</span> : null
   if (entry.pile === 'clock_not_started') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         <span>No clock yet — the 30 days start the day our contract on this job is complete, terminated or abandoned. Type that day on the job the day it happens; do not wait for {gc?.name ?? 'the GC'} to declare it.</span>
         <span style={{ flex: 1 }} />
-        <button type="button" onClick={() => onOpenEditJob(entry.jobId, 'lien-contract')} disabled={!office} style={btn('primary', !office)}>Set the day our contract ended ›</button>
+        {/* The press opens the fact's own field on its line (punch list #399), where it used to open Edit Job. */}
+        <button type="button" onClick={() => setHowAsk((n) => n + 1)} disabled={!office} style={btn('primary', !office)} data-lien-retainage-start>Set the day our contract ended</button>
       </div>
     )
   } else if (entry.pile === 'needs_owner' || entry.pile === 'to_draft') {
@@ -237,7 +354,7 @@ export default function LienDeskRetainagePane({
     ) : (
       <>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          ✉ Certified mail to <strong style={{ color: 'var(--text-700)' }}>{ownerName || 'the owner of record'}</strong> and <strong style={{ color: 'var(--text-700)' }}>{gc?.name ?? 'the original contractor'}</strong> · {blocked ? 'Blocked until every gate above is clear.' : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between paper and their word.` : foot.primary?.line} {fuse}
+          ✉ Certified mail to <WorkedOutValue>{ownerName || 'the owner of record'}</WorkedOutValue> and <WorkedOutValue>{gc?.name ?? 'the original contractor'}</WorkedOutValue> · {blocked ? 'Blocked until every gate above is clear.' : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? <>They promised {worked(formatYmdMonthDay(promise.promisedYmd))} — {press.name} decides between paper and their word.</> : foot.primary?.line} {fuse}
         </div>
         {/* One press per footer (v2.7324): his word waits behind He already okayed it ▾; the one press is the leader's okay or the office's ask. */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -257,7 +374,7 @@ export default function LienDeskRetainagePane({
     footer = leader ? (
       holdOpen ? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-          <span>Holds until <strong>{formatYmdMonthDay(holdUntilFor(holdOpen, entry.deadline, promise?.promisedYmd ?? null, todayYmd))}</strong>, then asks again. {fuse}</span>
+          <span>Holds until {worked(formatYmdMonthDay(holdUntilFor(holdOpen, entry.deadline, promise?.promisedYmd ?? null, todayYmd)))}, then asks again. {fuse}</span>
           <button type="button" onClick={() => hold(holdOpen)} disabled={busy} style={btn('amber', busy)}>Hold</button>
           <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
         </div>
@@ -272,7 +389,7 @@ export default function LienDeskRetainagePane({
       )
     ) : (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Waiting on the leader since {item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(item.submitted_at)) : '—'}. {fuse}</span>
+        <span>Waiting on the leader since {item?.submitted_at ? worked(demandDate(calendarYmdInAppTzFromIso(item.submitted_at))) : '—'}. {fuse}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
       </div>
@@ -289,7 +406,7 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'held') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Held{item?.hold_reason === 'promised' ? ' — they promised' : " — the leader will call first"} · asks again {item?.hold_until ? demandDate(item.hold_until) : ''}. {fuse}</span>
+        <span>Held{item?.hold_reason === 'promised' ? ' — they promised' : " — the leader will call first"} · asks again {item?.hold_until ? worked(demandDate(item.hold_until)) : ''}. {fuse}</span>
         <span style={{ flex: 1 }} />
         {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold, sign and approve ▸</button> : null}
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
@@ -298,11 +415,11 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'sent') {
     footer = (
       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Sent{entry.item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at))}` : ''} · the notice is in the job's Lien window.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Lien affidavits tab is watching this job.'}
+        Sent{entry.item?.sent_at ? <> {worked(demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at)))}</> : ''} · the notice is in the job's Lien window.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Lien affidavits tab is watching this job.'}
       </div>
     )
   } else if (entry.pile === 'missed') {
-    footer = <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>The § 53.057 window closed {entry.deadline ? demandDate(entry.deadline) : ''} with nothing sent. {entry.inClaim ? 'The retainage was named in a § 53.056 notice, so the claim on it stands to that extent (§ 53.057(f)).' : 'Talk to the attorney about what the lien can still reach.'}</div>
+    footer = <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>The § 53.057 window closed {entry.deadline ? worked(demandDate(entry.deadline), 'red') : ''} with nothing sent. {entry.inClaim ? 'The retainage was named in a § 53.056 notice, so the claim on it stands to that extent (§ 53.057(f)).' : 'Talk to the attorney about what the lien can still reach.'}</div>
   }
   const tone = entry.severity === 'red' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : entry.severity === 'amber' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
 
@@ -319,39 +436,114 @@ export default function LienDeskRetainagePane({
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name ?? ''} {job?.job_address ? `· ${job.job_address}` : ''}</span>
-        <span style={tone}>§ 53.057 · {retainageDeadlineWords(entry, formatYmdMonthDay)}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name ? <WorkedOutValue>{gc.name}</WorkedOutValue> : ''} {job?.job_address ? `· ${job.job_address}` : ''}</span>
+        <span style={tone} data-lien-retainage-deadline>§ 53.057 · <ValueSentence text={retainageDeadlineValues(entry, formatYmdMonthDay)} values={{ day: inChip, days: inChip }} /></span>
         <span style={chip(entry.paymentBond === 'yes' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', entry.paymentBond === 'yes' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{paymentBondWords(entry.paymentBond)}</span>
       </div>
       {heads.head('gates')}
       <div data-lien-pane-body="gates" data-lien-retainage-gates style={{ display: 'grid', gap: '0.35rem' }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-retainage-window>{lienRetainageWindowWords(endedWords)}</div>
-        <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8125rem' }}>
-          {entry.gates.map((g) => (
-            <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
-              <span>
-                {g.label}
-                {g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}
-                {g.key === 'gc' && gc?.name ? ` — ${gc.name}` : ''}
-                {g.key === 'retainage' && entry.retainageHeld > 0 ? ` — ${formatUsdNoCents(entry.retainageHeld)}` : ''}
-              </span>
-              {!g.ok && g.key === 'owner' ? <button type="button" onClick={() => onOpenEditJob(entry.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Property record ›</button> : null}
-              {(g.key === 'contract_ended' || g.key === 'retainage') && office ? <button type="button" onClick={() => onOpenEditJob(entry.jobId, 'lien-contract')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{g.ok ? 'Change ›' : 'Set on the job ›'}</button> : null}
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-retainage-claim>
-          Retainage the notice claims: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(entry.retainageHeld)}</strong> · still unpaid on this job {formatUsdNoCents(entry.openBalance)}
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-retainage-window><ValueSentence text={lienDayValues(lienRetainageWindowWords(endedWords))} /></div>
+        {/* One fact a line (punch list #399): the gate's own words on the left, its value on the right. A value a person types opens its field right there. */}
+        <div style={{ fontSize: '0.8125rem' }} data-lien-retainage-facts>
+          <ValueLines>
+            {entry.gates.map((g) => (
+              <ValueLine
+                key={g.key}
+                label={
+                  <span data-lien-retainage-gate={g.key} data-ok={g.ok ? 'yes' : 'no'} style={{ color: 'var(--text-base)' }}>
+                    <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span> {g.label}
+                  </span>
+                }
+              >
+                {g.key === 'owner' ? (
+                  <>
+                    {ownerName ? <WorkedOutValue>{ownerName}</WorkedOutValue> : null}
+                    {!g.ok ? <button type="button" onClick={() => onOpenEditJob(entry.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem', marginLeft: ownerName ? 8 : 0 }}>Property record ›</button> : null}
+                  </>
+                ) : g.key === 'gc' ? (
+                  gc?.name ? <WorkedOutValue>{gc.name}</WorkedOutValue> : null
+                ) : g.key === 'contract_ended' ? (
+                  <span data-lien-retainage-contract style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'baseline', maxWidth: '100%' }}>
+                    <ChangeableValue
+                      key={`how-${howAsk}`}
+                      startOpen={howAsk > 0}
+                      text={lienContractStateText(endedHow ?? startHow)}
+                      label={LIEN_RETAINAGE_VALUE_LABELS.how}
+                      type="choice"
+                      value={endedHow ?? startHow ?? LIEN_CONTRACT_STILL_OPEN}
+                      choices={LIEN_CONTRACT_STATE_CHOICES}
+                      onKeep={keepHow}
+                      off={!office}
+                    />
+                    {endedHow ? (
+                      <ChangeableValue
+                        text={formatYmdMonthDay(endedOn)}
+                        label={LIEN_RETAINAGE_VALUE_LABELS.day}
+                        type="date"
+                        value={endedOn}
+                        preview={(draft) => <ValueSentence text={lienContractDayPreview(draft, todayYmd, formatYmdMonthDay)} />}
+                        onKeep={keepDay}
+                        off={!office}
+                      />
+                    ) : startHow && office ? (
+                      <>
+                        <ChangeableValue
+                          key={`day-${dayAsk}`}
+                          startOpen
+                          text={LIEN_CONTRACT_NO_DAY_WORDS}
+                          label={LIEN_RETAINAGE_VALUE_LABELS.day}
+                          type="date"
+                          value=""
+                          hint={lienContractStartHint(startHow, job?.last_work_date, formatYmdMonthDay)}
+                          preview={(draft) => <ValueSentence text={lienContractDayPreview(draft, todayYmd, formatYmdMonthDay)} />}
+                          onKeep={keepDay}
+                        />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }} data-lien-retainage-not-saved>{LIEN_CONTRACT_NOT_SAVED_WORDS}</span>
+                      </>
+                    ) : null}
+                  </span>
+                ) : (
+                  <ChangeableValue
+                    text={lienRetainageHeldText(heldOnJob)}
+                    label={LIEN_RETAINAGE_VALUE_LABELS.held}
+                    type="number"
+                    value={lienRetainageHeldValue(heldOnJob)}
+                    min="0"
+                    hint={LIEN_RETAINAGE_HELD_HINT}
+                    preview={(draft) => <ValueSentence text={lienRetainageHeldPreview(draft)} />}
+                    onKeep={keepHeld}
+                    locked={office && heldFromApplication ? LIEN_RETAINAGE_FROM_APPLICATION : undefined}
+                    off={!office || (retainageLoading && !jobRetainage)}
+                  />
+                )}
+              </ValueLine>
+            ))}
+            {dueNow ? (
+              <ValueLine label="The § 53.057 notice is due by">
+                <span data-lien-retainage-due>{worked(formatYmdMonthDay(dueNow), dueLeft != null && dueLeft < 0 ? 'red' : undefined)}</span>
+              </ValueLine>
+            ) : null}
+            <ValueLine label="Retainage the notice claims">
+              <span data-lien-retainage-claim>{worked(formatUsdNoCents(heldOnJob ?? entry.retainageHeld))}</span>
+            </ValueLine>
+            <ValueLine label="Still unpaid on this job">
+              <span data-lien-retainage-unpaid>{worked(formatUsdNoCents(entry.openBalance))}</span>
+            </ValueLine>
+            {entry.gates.length ? (
+              <ValueLine label="Payment bond on the project">
+                <ChangeableValue text={lienPaymentBondText(bondNow)} label={LIEN_RETAINAGE_VALUE_LABELS.bond} type="choice" value={bondNow} choices={LIEN_PAYMENT_BOND_CHOICES} onKeep={keepBond} off={!office} />
+              </ValueLine>
+            ) : null}
+          </ValueLines>
         </div>
         {jobRetainage?.line ? (
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center' }} data-lien-retainage-source>
-            <span>Read {retainageSourceWords(jobRetainage.line, formatYmdMonthDay)}</span>
+            <span>Read <ValueSentence text={lienDayValues(retainageSourceWords(jobRetainage.line, formatYmdMonthDay))} /></span>
             {jobRetainage.line.release.state !== 'none' ? (
               <>
                 <span>
                   · Release: {retainageReleaseWords(jobRetainage.line.release)}
-                  {jobRetainage.releaseBillLabel ? ` · bill ${jobRetainage.releaseBillLabel}` : ''}
+                  {jobRetainage.releaseBillLabel ? <> · bill <WorkedOutValue>{jobRetainage.releaseBillLabel}</WorkedOutValue></> : ''}
                 </span>
                 {onOpenJob ? (
                   <button type="button" data-testid="lien-retainage-release-door" onClick={() => onOpenJob(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>

@@ -1,5 +1,5 @@
 -- Bid photos (punch list #306 PRs 1, 2 and 9, migrations *_bid_photos, *_photo_save_bid_photos and
--- *_uploaded_photos_bid_branch): the table's gate is the bid's own, read through bids
+-- *_uploaded_photos_bid_branch, with the view's *_uploaded_photos_message_job_join): the table's gate is the bid's own, read through bids
 -- under the caller's RLS. Whoever reads a bid reads its photos and adds one as themselves; a primary only on a bid
 -- they estimate, manage or made; a subcontractor, a superintendent and a primary on no bid read nothing and add
 -- nothing. The adder and the office change a photo; an estimator does not change another's. Only an un-added shot of
@@ -211,6 +211,41 @@ INSERT INTO public.messages (id, contact_id, channel, direction, bid_id, who_tex
   ('00000000-0000-0000-0000-00000306e001', '00000000-0000-0000-0000-00000306d001', 'text', 'in', '00000000-0000-0000-0000-00000306b001', 'Greg Paulk · 555-0142', 'The meter, north wall.');
 INSERT INTO public.message_attachments (message_id, sort_order, kind, name, mime, size_bytes, bucket_path, drive_file_id) VALUES
   ('00000000-0000-0000-0000-00000306e001', 0, 'file', 'IMG_0042.jpg', 'image/jpeg', 204800, 'in/00000000-0000-0000-0000-00000306e001/0-IMG_0042.jpg', 'driveFile306text01');
+-- The message branch's job (v2.8301, migration *_uploaded_photos_message_job_join): a text on a job, and a text on a
+-- project whose billing job is that job. Each carries a picture. The view finds the job either way, and by its key.
+INSERT INTO public.customers (id, name, master_user_id, contact_info) VALUES
+  ('00000000-0000-0000-0000-00000306d101', 'Bid photos bed customer', '00000000-0000-0000-0000-00000306a001', '{}');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, customer_id) VALUES
+  ('00000000-0000-0000-0000-00000306d201', '00000000-0000-0000-0000-00000306a001', '00000000-0000-0000-0000-00000306f001', 'Bid photos bed job', '00000000-0000-0000-0000-00000306d101');
+INSERT INTO public.projects (id, name, customer_id) VALUES
+  ('00000000-0000-0000-0000-00000306d301', 'Bid photos bed project', '00000000-0000-0000-0000-00000306d101');
+INSERT INTO public.gc_projects (project_id, stage, billing_job_id) VALUES
+  ('00000000-0000-0000-0000-00000306d301', 'building', '00000000-0000-0000-0000-00000306d201');
+INSERT INTO public.messages (id, contact_id, channel, direction, jobs_ledger_id, project_id, who_text, body) VALUES
+  ('00000000-0000-0000-0000-00000306e002', '00000000-0000-0000-0000-00000306d001', 'text', 'in', '00000000-0000-0000-0000-00000306d201', NULL, 'Greg Paulk · 555-0142', 'On the job.'),
+  ('00000000-0000-0000-0000-00000306e003', '00000000-0000-0000-0000-00000306d001', 'text', 'in', NULL, '00000000-0000-0000-0000-00000306d301', 'Greg Paulk · 555-0142', 'On the project.');
+INSERT INTO public.message_attachments (message_id, sort_order, kind, name, mime, size_bytes, bucket_path) VALUES
+  ('00000000-0000-0000-0000-00000306e002', 0, 'file', 'IMG_0043.jpg', 'image/jpeg', 1000, 'in/00000000-0000-0000-0000-00000306e002/0-IMG_0043.jpg'),
+  ('00000000-0000-0000-0000-00000306e003', 0, 'file', 'IMG_0044.jpg', 'image/jpeg', 1000, 'in/00000000-0000-0000-0000-00000306e003/0-IMG_0044.jpg');
+-- How the view reaches a text's job, read off the plan with the walks priced out: by the job's key, or by a walk of
+-- every job. A COALESCE in the join cannot be an index condition under jobs_ledger's row policies, and the list timed
+-- out on it. The settings are put back before the function returns.
+CREATE FUNCTION bp.job_join() RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  line text;
+  by_key boolean := false;
+BEGIN
+  PERFORM set_config('enable_seqscan', 'off', true);
+  PERFORM set_config('enable_hashjoin', 'off', true);
+  PERFORM set_config('enable_mergejoin', 'off', true);
+  FOR line IN EXECUTE $q$EXPLAIN (COSTS OFF) SELECT job_name FROM public.uploaded_photos WHERE source = 'message'$q$ LOOP
+    IF line ~ 'Index Cond: \(id = CASE WHEN \(m[_0-9]*\.jobs_ledger_id IS NOT NULL\)' THEN by_key := true; END IF;
+  END LOOP;
+  PERFORM set_config('enable_seqscan', 'on', true);
+  PERFORM set_config('enable_hashjoin', 'on', true);
+  PERFORM set_config('enable_mergejoin', 'on', true);
+  RETURN CASE WHEN by_key THEN 'by its key' ELSE 'by a walk of every job' END;
+END $$;
 -- What a reader sees of the view for one bid, under their own RLS: the bid's photos and the texts' pictures.
 CREATE FUNCTION bp.seen(p_bid uuid) RETURNS text LANGUAGE sql AS $$
   SELECT count(*) FILTER (WHERE source = 'bid') || ' bid · ' || count(*) FILTER (WHERE source = 'message') || ' message'
@@ -235,6 +270,11 @@ SELECT bp.same('and B', bp.seen('00000000-0000-0000-0000-00000306b002'), '1 bid 
 SELECT bp.same('the text''s picture is listed once for Ann, by its line', bp.listed_as('driveFile306text01'), 'message');
 SELECT bp.same('a removed photo is not listed', (SELECT count(*)::text FROM public.uploaded_photos WHERE id = '00000000-0000-0000-0000-00000306c010'), '0');
 SELECT bp.same('a shot nobody added is not listed', bp.seen('00000000-0000-0000-0000-00000306b003'), '0 bid · 0 message');
+SELECT bp.same('a text on a job names the job, and a text on a project names its billing job', (
+  SELECT string_agg(caption || ' · ' || coalesce(job_id::text, 'no job') || ' · ' || coalesce(job_name, 'no name') || ' · ' || coalesce(customer_name, 'no customer'), ' | ' ORDER BY caption)
+  FROM public.uploaded_photos WHERE source = 'message' AND message_id IN ('00000000-0000-0000-0000-00000306e002', '00000000-0000-0000-0000-00000306e003')
+), 'IMG_0043.jpg · 00000000-0000-0000-0000-00000306d201 · Bid photos bed job · Bid photos bed customer | IMG_0044.jpg · 00000000-0000-0000-0000-00000306d201 · Bid photos bed job · Bid photos bed customer');
+SELECT bp.same('the view finds a text''s job by its key under row policies', bp.job_join(), 'by its key');
 
 -- Eve, an estimator: the same, and the row's shape: the bid, no job, the photo's name, the bid's project name.
 SELECT bp.sign_in('00000000-0000-0000-0000-00000306a003');

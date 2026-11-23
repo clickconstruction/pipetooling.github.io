@@ -6723,6 +6723,9 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
    the field, and a date box with Keep and Cancel is narrow, so the line ran to three short lines beside empty room. */
 .lienLastWorkDay:has(> .vipField) { flex: 1 1 100%; }
 .lienLastWorkDay > .vipField { display: flex; }
+/* The retainage pane's facts (punch list #399): an open field takes its line, so the words under it run across it, and a dollar figure has room to be read. */
+[data-lien-retainage-facts] .vipField { display: flex; flex: 1 1 100%; }
+[data-lien-retainage-facts] .vipInput[data-type='number'] { width: 8rem; }
 .vipLegend { margin: 8px 0 0; color: var(--text-muted); font-size: 0.78125rem; }
 /* Before we start (punch list #382): a stage's list (`StartCheckStage.tsx`). `.scBox` is a bullet's tick box,
    `.scChip` a small choice, `.scWord` a press that is words alone. Their hover, focus and phone sizes need a class. */

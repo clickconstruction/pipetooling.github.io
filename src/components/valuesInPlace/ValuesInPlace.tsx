@@ -92,6 +92,12 @@ export interface ChangeableValueProps {
   locked?: { tag: string; why: string }
   /** No press and no tag. `ValuesInPlaceOff` sets it for a whole screen. */
   off?: boolean
+  /**
+   * The field is open when the value first draws: the screen just asked for the fact before this one, and this is
+   * the next thing to type (the Lien desk's retainage pane asks how our contract ended, then its day). Cancel closes
+   * it like any other, and a later press opens it again.
+   */
+  startOpen?: boolean
 }
 
 /**
@@ -102,7 +108,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
   const { text, label, type, value, onKeep, choices, min, max, whole, canClear, hint, preview, reason, check, fromDefault, backToDefault, locked } = props
   const offAround = useContext(OffContext)
   const off = props.off ?? offAround
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(props.startOpen === true)
   const [draft, setDraft] = useState(value)
   const [why, setWhy] = useState<string | null>(null)
   const [because, setBecause] = useState('')

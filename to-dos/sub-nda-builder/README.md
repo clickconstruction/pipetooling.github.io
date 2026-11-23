@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The walks owed in *Left to do and to walk*, which need nobody's call: v2.8275 on the live build, the light theme, a person's own Read and sign, and a change after a signature. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then step 5, the GC's page, read-only. Steps 1 to 4 are built. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+next: The walks owed in *Left to do and to walk*, which wait on the owner's yes, since each writes on prod: v2.8275 with a paper required, a person's own Read and sign, a change after a signature, a sub with no login, and a finger on a real phone. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then step 5, the GC's page, read-only. Steps 1 to 4 are built. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
 ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
@@ -634,19 +634,31 @@ it.
 ### Left to do and to walk (2026-11-22)
 
 Each walk runs on the `ZZ TEST sink` job with a `ZZ Test` Contract Book entry made for it, placeholder words only, and the entry deleted after.
+Each one writes on prod, so each waits on the owner's yes, and its setup goes through the app's own screens or the dev seat's plan and apply verbs.
+Requiring a paper shuts the job to everyone on its roster until they sign. On 2026-11-22 that roster was 7 office accounts, with no ZZ person on it.
+The plan for one sitting, with every row it makes and how each goes, is in the side-session note *pl-389-sub-nda-walks*.
 
-- **v2.8275 on the live build.** The job window's Documents tab, as a signed-in dev, at 1100 px and 375 px. With no paper on the job, **Add a paper** in the empty line is 44 px tall. With a paper required, the Papers to sign window's *This job's papers and who has signed* is 44 px, **Settings** and **Take off** stay together on a phone, and **Require this paper** does not move while the last blank is typed. Not walked because it merged after the last walk.
-- **The light theme.** The settings flow and the one page, as a dev, at both widths. Every walk so far ran in the dark theme.
-- **A person's own Read and sign.** The Papers to sign window, then **Read and sign**, as a ZZ login linked to a ZZ person on the job's roster, at 375 px. It opens the paper put together from the job's settings, signs at the seal it shows, and the job opens. Not walked because no ZZ login was signed in; the office's link and the signing page were walked instead (v2.8156).
-- **A change after a signature.** **Settings** on the paper's row once a ZZ person has signed, as a dev. The button reads *Save, and ask 1 person to sign again*. After the save that person owes the new version and the old signed copy stays. Not walked because it needs a ZZ signature first; the SQL bed covers the database side.
-- **A sub with no login.** The sub's own page, as a ZZ sub on the job, with a paper built from settings. The card for the job lists the paper, and the sub signs it there. Not walked for such a paper.
-- **A finger on a real phone.** The sliders on the flow and the one page, dragged with a finger. The browser pane sends a mouse, so a touch drag was never tried.
+Seen on 2026-11-22 without a write:
+
+- **v2.8275 is live.** The live build reads v2.8294, and its Papers to sign window draws the door at 44 px.
+- **With no paper on the job,** **Add a paper** in the empty line is 44 px tall at 1100 px and 375 px, in light. The list of papers, its rows, **Close the list**, an unsaved pick's **Take off** and **Require 1 paper** are 44 px or more at both widths. The pick was taken off and nothing was saved.
+- **The light theme,** for the flow and the one page, at both widths. It was drawn from main's own screens on a scratch page with made-up words, since the Book holds no settings paper. Every press and field is 44 px or more but the step bar's dashes. **Require this paper** keeps its place while the blanks are typed. **Settings** and **Take off** share a line at 375 px. After a signature the one page's button reads *Save, and ask 1 person to sign again*.
+- The browser pane had the dark theme pinned, which is why every walk before ran in dark.
+
+Left to walk, each with a paper required:
+
+- **v2.8275 with a paper required.** The job window's Documents tab and the Papers to sign window, as a signed-in dev, at 1100 px and 375 px. *This job's papers and who has signed* is 44 px, **Settings** and **Take off** stay together on a phone, and **Require this paper** does not move while the last blank is typed. The scratch page showed the last two. The live page has not.
+- **A person's own Read and sign.** The Papers to sign window, then **Read and sign**, as a ZZ login linked to a ZZ person on the job's roster, at 375 px. It opens the paper put together from the job's settings, signs at the seal it shows, and the job opens. No ZZ login exists to sign in with. `ZZ Test Hand` has no login, and the two ZZ papers accounts have none and are archived. A person attaches a login to a ZZ person, puts them on the job's team and signs in on a phone.
+- **A change after a signature.** **Settings** on the paper's row once a ZZ person has signed, as a dev. The button reads *Save, and ask 1 person to sign again*. After the save that person owes the new version and the old signed copy stays. It needs a ZZ signature first, which the sub's walk gives. The SQL bed covers the database side.
+- **A sub with no login.** The sub's own page, as `ZZ Test Papers Sub` on the job, with a paper built from settings. The card for the job lists the paper, and the sub signs it there. The sub is put on the job with a ZZ sub labor sheet, and the sheet goes after.
+- **A finger on a real phone.** The sliders on the flow and the one page, dragged with a finger. The browser pane sends a mouse, so this one is a person's.
 
 Loose ends:
 
-- **Test rows left on prod**, which the app cannot delete. Five `job_required_papers` rows on `ZZ TEST sink`, all taken off: `b80915f9-9aee-4040-912a-53c603aa84ae`, `1e55c6f4-e8df-4208-a236-e74d5d83de58`, `88defbb0-808d-44c9-9cc6-37c87778028c`, `e8ea5b7b-8502-4afb-8b55-0a0f6ef1358c` and `2cc82c28-66c8-4a1e-9d2b-2e48ea20e6d7`. One `esign_consents` row from the ZZ signature, `13235afd-0074-4dc0-984c-1045cbe754af`. Each goes with one SQL delete by id, on Taunya's go.
-- **Small presses left.** A dash of the step bar is 38 px wide at phone width with seven steps. It is 44 px tall, and **Back** and **Next** do the same job. The app's shared confirm window has buttons 36 px tall; changing them changes every confirm in the app.
-- Nothing of this card waits to merge, push or deploy. Every migration is on the ledger. On 2026-11-22 `npm run check:edge-drift` named five functions behind `main`, none of them this card's, and the dev seat reads as 0.125.0.
+- **Test rows left on prod**, which the app cannot delete, all read again on 2026-11-22. Five `job_required_papers` rows on `ZZ TEST sink`, all taken off: `b80915f9-9aee-4040-912a-53c603aa84ae`, `1e55c6f4-e8df-4208-a236-e74d5d83de58`, `88defbb0-808d-44c9-9cc6-37c87778028c`, `e8ea5b7b-8502-4afb-8b55-0a0f6ef1358c` and `2cc82c28-66c8-4a1e-9d2b-2e48ea20e6d7`. One `esign_consents` row from the ZZ signature, `13235afd-0074-4dc0-984c-1045cbe754af`. Each goes with one guarded SQL delete by id, on the owner's go. The six lines are in the side-session note.
+- **A dash of the step bar** is 37.6 px wide at 375 px with seven steps, and about 22 px with the real paper's eleven. The bar is 287 px wide there, so seven 44 px dashes cannot fit. It is 44 px tall, a real press on one lands, and **Back** and **Next** do the same job at full size.
+- **The shared confirm window's buttons** are 35.5 px tall at both widths. `useConfirmDialog` is called from 160 files and `usePromptDialog` from 19, 172 in all. At 44 px each window grows 8.5 px taller and nothing else moves. It is two style lines and its own call.
+- Nothing of this card waits to merge, push or deploy. Every migration is on the ledger. On 2026-11-22 `npm run check:edge-drift` named five functions behind `main`, none of them this card's, and the dev seat reads as 0.126.0.
 
 The words, from the Document builder's send session (2026-11-22). They live in Taunya's private Claude doc, *Sub NDA: clause table*, and never here.
 

@@ -66,8 +66,10 @@ import {
   applyPaymentRule,
   attachJobTotals,
   payloadJobIds,
+  setInKindApart,
   type GcStatementPayload,
 } from './render.ts'
+import { addInKindApart, noInKindApart } from '../_shared/inKindApart.ts'
 
 /**
  * GC's portal link for the statement card (v2.2151). Keep in sync with
@@ -327,6 +329,9 @@ serve(async (req) => {
         }
         // v2.5006: each bill netted by the one payment rule, as the board and GC Review show it.
         applyPaymentRule(payload)
+        // v2.8309: the bills an in kind deal pays are counted for the statement's one line, and a payer
+        // with no money bill left has nothing outstanding.
+        setInKindApart(payload)
 
         const dateStr = chicagoDateStr()
         const isSingle = entityId != null
@@ -373,6 +378,7 @@ serve(async (req) => {
           if (heldInReport.length > 0) {
             payload.groups = kept
             payload.grand_total = Math.round(kept.reduce((t, g) => t + Number(g.subtotal ?? 0), 0) * 100) / 100
+            payload.in_kind = kept.reduce((all, g) => addInKindApart(all, g.in_kind ?? noInKindApart()), noInKindApart())
             console.log('gc-statement-email-dispatch', row.id, gcBulkHeldSummary('in the report', kept.length, heldInReport.map((h) => h.why)))
           }
         }
