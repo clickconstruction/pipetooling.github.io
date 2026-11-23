@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 the migration open, unarmed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 #9514 the migration open, unarmed · PR 3 the choice open, unarmed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -27,8 +27,11 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
    no longer describes the unseen button. PR #9510, armed.
 2. **PR 2, v2.8383**: the migration (`20261123185942_heard_day_write.sql`): `write_down_heard` writes a line's day and
    kind in one press or just talk, and `message_promises.job_id` with `write_down_payment`'s `p_job_id` gives a payment
-   mark its job. Open, unarmed: the parent pushes it, then a types PR and the dev seat's deploy.
-3. **PR 3, v2.8384**: the choice under a line. Not yet open.
+   mark its job. PR #9514, unarmed: the parent pushes it, then a types PR and the dev seat's deploy.
+3. **PR 3, v2.8384**: the choice under a line (`useFollowUpThreadSlots`' `underLine` over `heardChoice.ts`): their
+   kinds, *just talk*, a voicemail's *Another day*, a customer's *A payment* opening #129's sheet, and a line already
+   said reading *Written down as their quote by Wed Nov 25.* Written on the line only; PR 4 adds where else it goes.
+   Open, unarmed until PR 2's push.
 4. **PR 4, v2.8385**: the write-throughs' hands. Not yet open.
 5. **PR 5, v2.8386**: a payment mark carries its job. Not yet open.
 
