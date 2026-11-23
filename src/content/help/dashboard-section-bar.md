@@ -29,7 +29,7 @@ Want it gone for a while? Click the **>** at the bar's right edge. The bar colla
 | Teams Inbox | The **Teams Inbox** card. Notes to the dev, Dispatch and Estimator inboxes grouped together |
 | My Inbox | My Inbox card. Due Today, Overdue and Recently Completed Tasks |
 | My Schedule | My Schedule card. Today and tomorrow blocks |
-| Bids | My Bids. For a primary it starts folded. Press the ▶ title to open it |
+| Bids | My Bids. For a primary it starts folded. Press the ▶ title to open it. See [keep up with your bids](/help/keep-up-with-your-bids-on-the-dashboard) |
 | Reports | Recent Reports |
 | Assigned Jobs | Assigned Jobs card. It starts collapsed. Tap the ▶ title to expand. Your choice is remembered |
 | Billing | Billing Pipeline card. It sits below Assigned Jobs |
