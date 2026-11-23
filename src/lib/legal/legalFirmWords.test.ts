@@ -160,6 +160,9 @@ describe('the Notifications tab words · punch list #233 · the add card is the 
     const { plainWordsFailures } = await import('../plainWords')
     const { FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine, firmSendConfirmationLabel } = await import('./legalFirmWords')
     for (const line of Object.values(FIRM_NOTIFICATIONS_WORDS)) expect(plainWordsFailures(line)).toEqual([])
+    // v2.8312: the lines beside a name the link pinned.
+    const { ANSWERED_BY_PINNED_WORDS, RECORDED_BY_PINNED_WORDS } = await import('./legalFirmWords')
+    for (const line of [ANSWERED_BY_PINNED_WORDS, RECORDED_BY_PINNED_WORDS]) expect(plainWordsFailures(line)).toEqual([])
     expect(plainWordsFailures(firmHandlingCountLine('Dana Whitlock', [{ handling: 'Dana Whitlock' }, { handling: 'Priya Natarajan' }]))).toEqual([])
     expect(plainWordsFailures(firmSendConfirmationLabel('Dana Whitlock'))).toEqual([])
   })

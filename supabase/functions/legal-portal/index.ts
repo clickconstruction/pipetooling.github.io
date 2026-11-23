@@ -25,6 +25,8 @@ import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { LEGAL_OFFICE_CONTACT_ROLES, officeContactsFromUsers } from '../_shared/legalOfficeContacts.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
+// v2.8312: one person's link names that person, so the page shows who an act is recorded by and offers no pick.
+import { legalLinkPerson } from '../_shared/legalPortalActs.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 // #144 PR 4: Who covers what is counts only until counsel widens it — no names, no dollars.
 import { shapeFirmCoverage, type FirmCoverage } from '../_shared/legalFirmCoverage.ts'
@@ -260,9 +262,10 @@ serve(async (req) => {
     if (!officeFirmId && (await askGuessGate(admin, ip, false)).locked) return jsonResponse({ error: GUESS_LOCKED_MSG }, 429)
 
     // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
-    let link: { firm_id: string; revoked_at: string | null } | null = officeFirmId ? { firm_id: officeFirmId, revoked_at: null } : null
-    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
-    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
+    type PortalLink = { firm_id: string; revoked_at: string | null; purpose?: string | null; label?: string | null }
+    let link: PortalLink | null = officeFirmId ? { firm_id: officeFirmId, revoked_at: null } : null
+    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at, purpose, label').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as PortalLink | null
+    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at, purpose, label').eq('token', rawToken).maybeSingle()).data as PortalLink | null
     if (!link || link.revoked_at) {
       if (!officeFirmId) await askGuessGate(admin, ip, true)
       return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
@@ -295,6 +298,10 @@ serve(async (req) => {
         () => {},
       )
 
+    // v2.8312: whose link this is. One person's link names that person, and the page shows *Recorded by* as that
+    // name with no pick; `submit-legal-portal` sets it from the link whatever the page sends. Null on the firm's
+    // shared link and on the office's preview.
+    const linkPerson = legalLinkPerson(link)
     const todayYmd = todayYmdInAppTz()
     const { data: particularsRow } = await admin.from('app_settings').select('value_text').eq('key', 'legal_particulars_v1').maybeSingle()
     let particulars: Record<string, string> = {}
@@ -337,7 +344,7 @@ serve(async (req) => {
     const { data: officeRows } = await admin.from('users').select('name, phone, role').match(REAL_ACCOUNT).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
     const officeContacts = officeContactsFromUsers(((officeRows ?? []) as Array<{ name: string | null; phone: string | null; role: string }>), PORTAL_COMPANY.phone)
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, linkPerson, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -634,7 +641,7 @@ serve(async (req) => {
       })
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, linkPerson, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }
