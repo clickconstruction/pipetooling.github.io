@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import type { BillHandWay } from '../../lib/billing/billHandWays'
+import type { BillPaidState } from '../../lib/billing/billsPaid'
 import { BillsSentLedger } from './BillsSentLedger'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -116,9 +117,9 @@ describe('BillsSentLedger', () => {
     renderWithProviders(<BillsSentLedger />)
     const lines = await screen.findAllByTestId('bills-sent-line')
     expect(lines).toHaveLength(3)
-    expect(screen.getAllByTestId('bills-sent-day').map((h) => h.textContent)).toEqual(['Thu, Nov 50 bills1 sent again · 1 statement', 'Tue, Nov 31 bill · $4,860.00'])
+    expect(screen.getAllByTestId('bills-sent-day').map((h) => h.textContent)).toEqual(['Thu, Nov 50 bills1 sent again · 1 statement', 'Tue, Nov 31 bill · $4,860.000 of 1 paid · $4,860.00 still out'])
     // The second send: its own line, marked, with the day of the first; the address is on the line.
-    expect(lines[0]?.textContent).toMatch(/^\d{1,2}:\d\d [AP]MBill 1412-0002 · J1412 · Sable Ridge Lot 14 · Sable Ridge Builders\$4,860\.00To hal@sableridge\.example/)
+    expect(lines[0]?.textContent).toMatch(/^\d{1,2}:\d\d [AP]MBill 1412-0002 · J1412 · Sable Ridge Lot 14 · Sable Ridge Builders\$4,860\.00Not paid\d+ days outTo hal@sableridge\.example/)
     expect(lines[0]?.textContent).toContain('Email, sent againby Priya2nd send. First sent Tue, Nov 3.')
     expect(lines[1]?.textContent).toContain('Statement · 12 jobs · Ridgeway Builders$48,210.00To billing@ridgeway.example')
     expect(lines[1]?.textContent).toContain('Lists bills already sent. Not in the day’s total.')
@@ -128,6 +129,112 @@ describe('BillsSentLedger', () => {
     fireEvent.click(lines[2]!.querySelector('button')!)
     await waitFor(() => expect(io.opened).toEqual(['c1']))
     expect(screen.getByTestId('bills-sent-foot').textContent).toContain('All times are Central.')
+  })
+
+  it('says who has paid: a stamp under the amount with the day and the way, a band that adds it up, a tile and chips that narrow', async () => {
+    const PAID = 'bbbbbbbb-2222-4222-8222-222222222222'
+    const PART = 'cccccccc-3333-4333-8333-333333333333'
+    const today = todayYmdInAppTz()
+    const state = (over: Partial<BillPaidState>): BillPaidState => ({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 4860, wayWords: '', paidAtIso: null, payments: [], ...over })
+    io.data = {
+      ...data([
+        copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' }),
+        copy({ id: 'c2', sentAt: '2026-11-03T21:00:00.000Z', sourceId: PAID, title: 'Invoice #1398-0003 from Northgate Plumbing Co.' }),
+        copy({ id: 'c3', sentAt: '2026-11-03T20:00:00.000Z', sourceId: PART, title: 'Invoice #1431-0001 from Northgate Plumbing Co.' }),
+      ]),
+      bills: new Map([
+        [BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }],
+        [PAID, { id: PAID, jobId: JOB, amount: 9750.5, status: 'paid' }],
+        [PART, { id: PART, jobId: JOB, amount: 3120, status: 'billed' }],
+      ]),
+      marks: new Map([['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-03T21:00:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }]]),
+      paid: new Map([
+        [BILL, state({})],
+        [PAID, state({ kind: 'paid', paidOn: today, paidAmount: 9750.5, outAmount: 0, wayWords: 'Check 4417 · bank deposit' })],
+        [PART, state({ kind: 'part', paidOn: '2026-11-09', paidAmount: 1500, outAmount: 1620, wayWords: 'Check 2291 · typed by hand' })],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const lines = await screen.findAllByTestId('bills-sent-line')
+    const stamps = lines.map((l) => within(l).getByTestId('bills-sent-stamp'))
+    expect(stamps.map((st) => [st.getAttribute('data-tone'), st.textContent])).toEqual([
+      ['open', 'Not paid'],
+      ['paid', '✓ Paid today'],
+      ['part', 'Part paid · $1,500.00'],
+    ])
+    expect(lines.map((l) => within(l).getByTestId('bills-sent-pay-how').textContent)).toEqual([expect.stringMatching(/^\d+ days out$/), expect.stringMatching(/^Check 4417 · bank deposit · in \d+ days$/), 'Check 2291 · typed by hand · Mon, Nov 9 · $1,620.00 out'])
+    // The stamp sits in the money column, under the amount; the paid word is gone from the grey row.
+    expect(within(lines[1]!).getByTestId('bills-sent-money').textContent).toMatch(/^\$9,750\.50✓ Paid todayCheck 4417/)
+    // Whether it arrived is the last thing in its row, at the right edge, and no longer green.
+    const delivery = within(lines[1]!).getByTestId('bills-sent-delivery')
+    expect(delivery.textContent).toMatch(/^Delivered/)
+    expect(delivery.style.marginLeft).toBe('auto')
+    expect(delivery.style.textAlign).toBe('right')
+    expect(delivery.style.color).toBe('var(--text-700)')
+    expect(delivery.parentElement!.lastElementChild).toBe(delivery)
+    // Cents are smaller than the dollars.
+    const cents = within(lines[1]!).getByTestId('bills-sent-money').querySelector('span span') as HTMLElement
+    expect([cents.textContent, cents.style.fontSize]).toEqual(['.50', '0.7em'])
+    // The band says how many of its bills are paid and what is still out: the open bill and the rest of the part-paid one.
+    expect(screen.getByTestId('bills-sent-day-back').textContent).toBe('1 of 3 paid · $6,480.00 still out')
+    // The tile adds up what is not paid, and is the press that narrows the list to it.
+    const tile = screen.getByTestId('bills-sent-tile-unpaid')
+    expect(tile.textContent).toBe('Not paid2 bills $6,480.00')
+    fireEvent.click(tile)
+    expect(screen.getAllByTestId('bills-sent-line').map((l) => within(l).getByTestId('bills-sent-stamp').textContent)).toEqual(['Not paid', 'Part paid · $1,500.00'])
+    expect(screen.getByRole('button', { name: 'Not paid' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Paid' }))
+    expect(screen.getAllByTestId('bills-sent-line').map((l) => within(l).getByTestId('bills-sent-stamp').textContent)).toEqual(['✓ Paid today'])
+    expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Not paid counts every bill on this list that is not paid in full.')
+  })
+
+  it('on a phone, puts who has paid in a bar across the foot of the card', async () => {
+    io.phone = true
+    const today = todayYmdInAppTz()
+    io.data = {
+      ...data([copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' })]),
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]),
+      marks: new Map([['c1', { id: 'c1', lastEvent: 'opened', lastEventAtIso: '2026-11-03T22:50:00.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }]]),
+      paid: new Map([[BILL, { kind: 'paid', paidOn: today, paidAmount: 4860, outAmount: 0, wayWords: 'Card · Stripe', paidAtIso: `${today}T18:21:00.000Z`, payments: [] }]]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const [line] = await screen.findAllByTestId('bills-sent-line')
+    const bar = within(line!).getByTestId('bills-sent-pay-bar')
+    expect(bar.getAttribute('data-tone')).toBe('paid')
+    expect(bar.textContent).toMatch(/^✓ Paid todayCard · Stripe · \d{1,2}:\d\d [AP]M$/)
+    expect(line!.lastElementChild).toBe(bar)
+    expect(within(line!).getByTestId('bills-sent-delivery').style.textAlign).toBe('right')
+    // The whole card is still the one press that opens the record.
+    expect(line!.tagName).toBe('A')
+  })
+
+  it('puts each payment on a bill’s record', async () => {
+    io.data = {
+      ...data([copy({ id: 'c1' })]),
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]),
+      paid: new Map([
+        [
+          BILL,
+          {
+            kind: 'paid' as const,
+            paidOn: '2026-11-10',
+            paidAmount: 4860,
+            outAmount: 0,
+            wayWords: 'Check 4417 · bank deposit',
+            paidAtIso: null,
+            payments: [
+              { id: 'p1', ymd: '2026-11-06', amount: 1000, wayWords: 'Cash · typed by hand', atIso: null, stripe: false, inKind: false, bankTransactionId: null },
+              { id: 'p2', ymd: '2026-11-10', amount: 3860, wayWords: 'Check 4417 · bank deposit', atIso: null, stripe: false, inKind: false, bankTransactionId: 'm1' },
+            ],
+          },
+        ],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    const record = await screen.findByTestId('bills-sent-record')
+    expect(record.textContent).toContain('Sable Ridge Builders · Paid Tue, Nov 10')
+    expect(within(record).getByTestId('bills-sent-record-payments').textContent).toContain('The payments on this bill, oldest first')
+    expect(within(record).getAllByTestId('bills-sent-record-payment').map((p) => p.textContent)).toEqual(['Fri, Nov 6Cash · typed by hand$1,000.00', 'Tue, Nov 10Check 4417 · bank deposit$3,860.00'])
   })
 
   it('narrows by what is typed and by how it went, and says so when nothing matches', async () => {
@@ -474,7 +581,7 @@ describe('BillsSentLedger', () => {
     // A bill's line is one press, the whole of it: the work, the address, whether it arrived, which send. No long number, no press inside.
     expect(lines[0]?.tagName).toBe('A')
     expect(lines[0]?.getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
-    expect(lines[0]?.textContent).toMatch(/^\d{1,2}:\d\d [AP]MEmail, sent againby Priya\$4,860\.00J1412 · Sable Ridge Lot 14 · Sable Ridge BuildersTo hal@sableridge\.exampleDelivered \d{1,2}:\d\d [AP]M · 2nd send$/)
+    expect(lines[0]?.textContent).toMatch(/^\d{1,2}:\d\d [AP]MEmail, sent againby Priya\$4,860\.00J1412 · Sable Ridge Lot 14 · Sable Ridge BuildersTo hal@sableridge\.example2nd sendDelivered \d{1,2}:\d\d [AP]MNot paid\d+ days out$/)
     expect(lines[0]?.querySelector('button, a')).toBeNull()
     // A statement is no bill, so it keeps its own press for the copy.
     expect(lines[1]?.tagName).toBe('DIV')

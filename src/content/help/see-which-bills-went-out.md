@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, several bills at once, record how bills went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, who paid, who has paid, when was the bill paid, paid today, part paid, not paid, still out, days out, check number, card, stripe, how was the bill paid, handed over, mailed, by hand, say how it went, several bills at once, record how bills went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -37,6 +37,7 @@ The list is the first thing on the screen. Each send is a card with three or fou
 - The first row has the time, how the bill went, who sent it and the amount.
 - The next row names the job and the customer.
 - The last rows hold the address, then whether the bill arrived.
+- A bar across the foot of the card says who has paid.
 
 Tap anywhere on a card to open that bill's record. The record has **Copy as sent** and **Print this record** as full buttons.
 
@@ -52,9 +53,10 @@ Each line is one send. The line shows these facts.
 
 - The time it went. All times are Central.
 - The bill's number, the job and who the bill is for.
-- The amount.
+- The amount, with a stamp under it that says who has paid.
 - The address it went to. A copy address follows the words *copy to*.
 - How it went, and who pressed send.
+- Whether the email arrived, at the right end of the line.
 
 Press **Copy as sent** to open the email as the customer read it. The bill is attached to that copy.
 
@@ -75,7 +77,35 @@ A red tile at the top reads **Did not arrive** with a count. The tile counts sen
 
 Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
 
-A line whose bill was paid says *Paid* and the day.
+Green on this page means money. The word about the email is plain, and a bounce is red.
+
+## See who has paid
+
+Each bill's line has a stamp under the amount. The stamp says where the bill stands.
+
+- {{chip:green|✓ Paid Fri, Nov 20}} means the bill is paid. The day is the day the money came.
+- {{chip:yellow|Part paid}} and an amount means some money came. The bill is still open.
+- *Not paid* in a dashed box means no money has come.
+
+Small words under the stamp say how the bill was paid.
+
+- *Card · Stripe* is a payment the customer made through the pay link.
+- *Check 4417 · bank deposit* is a check the office matched to a deposit at the bank.
+- *Cash · typed by hand* is a payment someone typed in.
+
+The small words also say how long the money took. Those words read like *in 6 days*.
+
+A bill paid today through the pay link shows the time the customer paid.
+
+A bill that is not paid says how long it has been out. The words read like *3 days out*. The days are counted from the first send of the bill.
+
+A part-paid bill says what is still out.
+
+Every send of one bill carries the same stamp. A statement has no stamp, because a statement is not one bill.
+
+A tile at the top reads **Not paid**. The tile counts every bill on the list that is not paid in full. A part-paid bill counts for what is left of it.
+
+Press the **Not paid** tile to see only those bills. Press {{chip:gray|All}} to see every send again.
 
 ## A bill sent more than once
 
@@ -91,6 +121,8 @@ The bill's record opens. The record lists every send of that bill, newest first.
 
 Each send shows the day and time, who sent it, who it went to and whether it arrived. Press **Copy as sent** on a send to open that email.
 
+A green box above the sends lists each payment on the bill. A payment shows its day, how it was made and its amount.
+
 Press {{button:outline|Print this record}} to print the record as one page. The page is for your file or for counsel.
 
 The address of the record is a link you can save or paste. Press **← All bills sent** to go back to the list.
@@ -100,6 +132,10 @@ The address of the record is a link you can save or paste. Press **← All bills
 The days run newest first. Each day has a band with a count and a total.
 
 The total counts each bill once, on the day it first went. A resend is listed and not added again.
+
+A second line on the band says what has come back. The line reads like *1 of 3 paid · $6,820.00 still out*.
+
+That second line counts the same bills as the total above it.
 
 Two tiles at the top give the same count for today and for this week. The week starts on Sunday.
 
@@ -119,6 +155,8 @@ Type in the box at the top. You can type a job, a customer, an address or a bill
 
 Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}}, {{chip:gray|Housecall Pro}} and {{chip:gray|Recorded by hand}}. Press {{chip:gray|All}} to see every send again.
 
+Press {{chip:gray|Not paid}} to see the bills that are still open. Press {{chip:gray|Paid}} to see the bills that are paid.
+
 ## Print the list or save it as a spreadsheet
 
 Narrow the list first if you want only part of it. Use the search box or a chip.
@@ -128,6 +166,8 @@ Press {{button:outline|Print}} to print what the list shows. The page keeps the 
 Press {{button:outline|Download CSV}} to save what the list shows as a spreadsheet file. Each send is one row.
 
 The file has a column that says whether a row is in its day's total. Add only those rows to get the same totals as the screen.
+
+The file also says who has paid. Four columns hold the paid day, the way, what is still out and the days the money took.
 
 The bills with no send on record come along in both. Those bills are last in the file and first on the printed page.
 

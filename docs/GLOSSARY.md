@@ -6790,6 +6790,10 @@ it lists the same customer's other bills with no send on record to tick, files o
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
+**Paid, Part paid, Not paid** (v2.8333, punch list #422) is where a bill stands, drawn as a stamp under its amount on every send of it, from the bill's own payment rows (`billPaidState`, `src/lib/billing/billsPaid.ts`).
+A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
+**Still out** is an open bill's amount or a part-paid bill's remainder;
+a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
 ### Document builder (Documents → Document builder)
