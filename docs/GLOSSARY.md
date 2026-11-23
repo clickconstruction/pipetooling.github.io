@@ -286,6 +286,7 @@ Kernel: `src/lib/customerArchive.ts`.
 
 ### Customer Hub
 The dedicated page per customer at `/customers/:id` (v2.1775–v2.1780): Profile (money strip + open jobs + Activity feed), Estimates, Jobs (full history incl. paid), and Invoices tabs.
+Since v2.8302 (punch list #307) a fifth tab, **Permits** (`?tab=permits`), shows for the people who research permits, which tabs a role has being `customerDetailTabs`, and any other role's `?tab=permits` reads as Profile (see PROJECT_DOCUMENTATION.md → Customer Hub).
 Opened by clicking a customer's name on the Customers list (the ✎ pencil keeps the edit-modal path).
 See PROJECT_DOCUMENTATION.md → Customer Hub.
 
@@ -378,6 +379,8 @@ Predicates are the edge functions' `_shared` twins (`paidJobBillGuard`, `portalB
 The company's one cold-call deck for companies we want something from, one card at a time (Follow Up), with the Prospect List, the Activity report and, on Customers, Convert;
 the Hiring board is the fourth top tab (next entry) and **Permits** the fifth (v2.6782, punch list #292: the permit ledger, opening since v2.6830 (punch list #302) on a skim of one permit at a time with Investigate or Pass, five cities since v2.6861, open to the office and every estimator, named Research until v2.6787;
 guide *research the permits a city issues and find work to bid*).
+**State roll** is the sixth top tab (v2.8198, punch list #411;
+see **State roll** below).
 A city on Permits is **quiet** (v2.7880, `permitQuiet.ts`) when its newest permit day is more than 7 days back, 10 for San Antonio, while our own pull ran clean inside two days: the city picker then reads *quiet since* that day, and never when the pull itself stopped.
 **Market** (v2.7978, punch list #405, `permitMarket.ts`) is the Permits view beside Builders that says what the permits mean for us: every **company we bid** in two years beside the commercial permits its names pulled in twelve months, each row reading *Builds, and we win*, *Builds, we never win*, too early to say or *No permit on record*, and **the clock**, the middle wait between two dates on a city's permits.
 A **company we bid** there is a bid's customer or the old builders list's name on it, keyed as permits are, with practice bids (a project name that starts with the word ZZ) and a bid platform's catch-all customer left out, in the last two years.
@@ -1434,6 +1437,9 @@ an offer pressed for a job already answered mints a fresh ask).
 Since v2.6386 the window holds an offer whose step and job got a text after it was prepared (`nudge_sent` read since the oldest open offer;
 the run's own text, Remind now, another offer pressed — the roads an office-made offer, a moved visit's or Send later's, never took, since `sentLately` and `offeredAlready` are the run's) with the day and the door, and the older of two open offers on one step and job (a visit moved twice), `offers.ts`'s `withSentHolds`.
 Since v2.6387 a moved visit's text expires with its visit: the row carries the day its words are about (`nudge_offers.about_on`, written by the schedule's move through `nudge_offer_make`'s `p_about_on`), the window holds it once that day has passed (`heldStaleWords`, over every other hold) and the 9 AM run puts it away before planning (`dismissed_why` `stale`, counted in the run's summary as *expired*).
+Since v2.8277 (punch list #301) the window holds the app's own pay reminder on a job an in kind arrangement pays, with its reason *An in kind arrangement pays this job’s bills.
+Put this one away with Not this one.* over any hold the run gave it, so the row has no Send button and **Send all** skips it (`withInKindHolds` over `payJobsOf` and `HELD_IN_KIND` in `offers.ts`;
+`offersIo.ts`'s `loadOpen` asks `jobs_ledger` which of the waiting pay reminders' jobs carry `in_kind_arrangement_id`, `jobsOnDeal`, only when one waits, and a read that fails holds nothing).
 Since v2.8336 (punch list #424) the row shows the texts in place of a line of counts: *3 texts to send* counts the ones a person can send, the names they go to sit under it, a clock chip carries a timed text's time and an amber chip a held text's cause in a word or two (`todaysSendsNeed` and `heldCause` in `offers.ts`, every value marked with `val` and drawn apart from the fixed words by `NeedsYouRowWords`), and the press reads **Read them**;
 the GC office team sees it.
 Kernel `src/lib/offers/`;
@@ -1529,6 +1535,10 @@ On a phone (≤ 640 px, `useNarrowViewport640`) the card's day press, Leave repo
 **[`JobModePressBar`](../src/components/jobMode/JobModePressBar.tsx)** drawn from the rows of **[`lib/jobMode/pressBar.ts`](../src/lib/jobMode/pressBar.ts)**, which also picks the day's press — Clock In / On my way / I'm here / Wrap Up Day / Last job of the day / Choose Next Job — for the desktop grid): `position: fixed` directly above the Job Mode footer at z 701, hidden with it under the keyboard, three 44 px buttons — **Turnaway**, **% done** (the My Schedule stepper `FieldPctUpdateModal` on the clocked-in job, subs / helpers / superintendents, hidden otherwise) and **Clock out** (the quiet link's rule) — over **Leave report** and the day's press at 56 px (Leave report and Turnaway carry the job's number through `effectiveJobLedgerNumber`, a Click number when there is no HCP number, so the Turnaway's dispatch title and the report's heading read it, v2.6014);
 the bar sets `--job-mode-press-bar` on the root so Layout's `<main>` pads by its height, the card's remaining quiet links become 44 px presses, and the pinned row's dead Job Report button leaves Job Mode at every width (`hideJobReport`;
 a phone only until v2.6092, since it opened nothing in Job Mode at a desk either).
+Since v2.8287 **Turnaway** is in the bar only on the clock with a current job (`turnawayOffered` in `lib/jobMode/pressBar.ts`), where the row drew it dead before **On my way**;
+clocked onto a bid the small row holds **Clock out** alone, the desk grid's long press reads the same rule, and **Leave report** is always drawn, dead with its reason without a current job.
+Since v2.8055 the card's Job updates thread draws its filter pills on one row that slides when the row carries **Customer** (`activityPillsOnOneRow` in `lib/phonePress.ts`, drawn in `ScrollableTabStrip` with the `ONE_ROW_PILLS` trims), so a field hand's five pills stand whole at 390 px and Customer never sits alone on a second row;
+a row without Customer, and a desk, wrap as before.
 On the clocked-in job the card carries **✍ Hand the phone to the customer to sign** (v2.4159, `jobContractInPerson.ts`): one tap opens the job's agreement on the phone in person — the live one reused, or one minted from the job's facts — for the roles that speak for the company on site, until the job is signed.
 Beside it, **💬 Message the customer** (v2.5449, residential R5, on since v2.5505 by `JOB_MODE_MESSAGES_ON` in `messages/jobBox.ts`): a primary or a helper picks one of the lines the office put on the phone, sees it filled for this job, types only what the app cannot know, and sends it tied to the job.
 **Something else** leaves a job note for the office, and an orange dot means the customer answered (`MessageCustomerSheet`, `jobModeMessageCustomer.ts`).
@@ -2371,7 +2381,8 @@ The second course is **Intro to plumbing** (v2.5610–v2.5613, punch list #119;
 ten more drawings v2.5619), how water comes in under pressure and leaves by gravity, a drawing in every lesson;
 the third is **Intro to electrical** (v2.5614–v2.5618, punch list #120;
 four more drawings v2.5620), how a house's electrical system works for the plumbers who work beside it, understanding and not doing, offered to every role and required of nobody, with a content rule that no lesson instructs.
-The fourth is **Intro to HVAC** (v2.8158–v2.8169), how a house is cooled and heated, written as the company's own trade so its lessons instruct, offered to every role and required of nobody, with a content rule that work on a refrigerant loop names the carded technician (`cardWorkFailures`).
+The fourth is **Intro to HVAC** (v2.8158–v2.8169;
+seventeen more drawings and five put right v2.8209), how a house is cooled and heated, written as the company's own trade so its lessons instruct, offered to every role and required of nobody, with a content rule that work on a refrigerant loop names the carded technician (`cardWorkFailures`).
 Its `from:` lines say which facts were read at a 2024 code section or an agency's page and which are trade knowledge still to be checked, and Taunya switched it on for every role on 2026-11-21, before a licensed HVAC reader had read it, so that read is still owed.
 Every course is held to **plain words a fourteen-year-old reads** (v2.5621 the plumbing course;
 v2.5622 the electrical, its fifty-five words on its own list since v2.5623;
@@ -2387,7 +2398,8 @@ Distinct from *Read-only (training) mode* above, the account flag.
 The fourth seed row is `20261121074500`.
 
 **See**: `to-dos/training/README.md` (the plan), `to-dos/intro-plumbing/README.md` and `to-dos/intro-electrical/README.md` (the two courses' outlines and what each still waits on), `ACCESS_CONTROL.md` → Training
-Intro to HVAC has no card: its criteria, its sources and what it waits on are in `docs/recent-features/v2.8158.md` to `v2.8169.md`.
+Intro to HVAC's card is `to-dos/intro-hvac.md` (punch list #419, opened 2026-11-22 for what is left to walk and the licensed read).
+Its criteria and its sources are in `docs/recent-features/v2.8158.md` to `v2.8169.md`, and the second pass's drawings in `v2.8209.md`.
 
 ### Deleted-records archive & restore
 Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) snapshots deleted rows from high-value tables (jobs, bids, reports, customers→projects trees, people roster + cascades) into **`public.deleted_records_archive`**, grouped by the top-level record with `deleted_by`/`deleted_at`;
@@ -2476,6 +2488,7 @@ Nothing is saved until **Send write-up to HR** on the read-back, which lands a `
 The row waits on People, HR, **Pending reports** as any field report does, and the writer sees only their own with where each stands, *Waiting on HR*, *On file*, *Set aside by HR* or *Taken back*.
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
 Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
+Since v2.8250 the amber note on **Your write-ups** (*Kept on this phone at …*) goes once no kept write-up is waiting, a sent one reads *Sent to HR at* with the time it went, and a refused one shows no sent word while its row, **Not sent**, carries the reason.
 The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
@@ -3221,6 +3234,8 @@ since v2.7188 **Where is it?**, `PhoneSheet` and the dispatch job picker read th
 the field that has the keyboard is scrolled back into the form (`scrollTopToReveal`;
 since v2.7190 a field inside an element marked `data-keyboard-reveal="top"`, the Someone else search, goes to the top of the form so the names it finds show under it).
 The bar's Send is the only one: the second Send at the top of a phone came off in v2.7155.
+Since v2.8278 (punch list #334) the window sits on the modal stack (`useModalStackEntry`) and Escape closes it as the × does, the draft gone, when it is the top window and no task is being sent.
+A list open under **Tell someone else** takes the first Escape, and the next one closes the window.
 Kernel `src/lib/tasks/newTaskWindow.ts`;
 pieces in `src/components/checklist/newTask/`.
 Since v2.7092 the rows (`TaskFormRows`) and the frame (`TaskWindowShell`) are shared, and **Edit task** (Checklist → Manage → ⋮ → Edit;
@@ -3255,7 +3270,7 @@ Every Google canvas shares these checks (`useGoogleCanvasDoors`), and the frame 
 Since v2.7981 Google's one global for a refused key is set once by `googleAuthFailure.ts`, so every Google map on the screen hears the refusal.
 Since v2.8076 the refusal is remembered until the page loads again (`googleKeyRefusedOnPage`), so a map made after it opens on the Leaflet canvas and never mounts Google's, and the permit skim's still asks through `onGoogleAuthFailure` like every other Google map.
 Since v2.7876 the 8 s clock waits while the map is scrolled off screen (`paintClock.ts`, `useFrameInView`), since Google builds no map far below the window.
-Until Google's script is in, the frame says *Loading the map…* in its middle (`MapLoadingLine`, since v2.8179), as a painted map's Google canvas does since v2.8078.
+Until Google's script is in, the frame says *Loading the map…* in its middle (`MapLoadingLine`, since v2.8179), as a painted map's Google canvas does since v2.8078, under its lines since v2.8213 (→ *Painted map*).
 Since v2.7809 *Where my tasks are* draws in it too, where Time looks at a task's place and never at the person's own dot, on its Leaflet half until v2.8032 put it on Google with a switch.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
@@ -3286,6 +3301,8 @@ gate `painted_map_can_touch` (→ `ACCESS_CONTROL.md`, *Painted maps*).
 The words are *painted map*, *line*, *place* and *dot*;
 never *pin*, *location*, *track* or *route*.
 **The map under it** (since v2.7990, punch list #387) is Google Maps for a saved map opened to be read in its window, when the browser key is set and Google loads: **From above** is Google's photograph with the street names and **Streets** is its road map (`resolvePaintedMapProvider` in `paintedMapProvider.ts`, drawn by `PaintedMapGoogleCanvas`).
+While Google's script loads, the painted canvas draws the lines and the numbered places at once as a plain drawing on the view the map opens on (since v2.8213, `PaintedWaitSketch` over `paintedWaitSketch.ts`, by `paintedOpeningView`), with *Loading the map…* moved under them, and the drawing goes when the map settles, when the reader moves it, three seconds after the script came in (`WAIT_SKETCH_LINGER_MS`) or when the Leaflet canvas takes the frame;
+it never shows on a page where Google's map code is already in.
 Since v2.8211 every Google map in the app wears one look, `GOOGLE_MAP_STYLES` in `googleMapLook.ts`: Google's own labels for shops, landmarks, parks and bus stops are off, on a painted map and on every map of dots, and the street names stay.
 **Time** and a picture of the map each bring back the Leaflet map over Esri's view from above, and a window that left Google's map for a picture keeps the Leaflet map until it closes.
 A line is drawn by hand on Google since v2.8236, so the window is on Google from the moment it opens to Save: a press adds a corner, a press held still then slid places one under the glass, and the corners and the dots in the middle of the legs are Google's own markers a finger drags.
@@ -3399,6 +3416,7 @@ A rough reading sets the phone's two numbers side by side, *Your phone now* and 
 A desk, or a phone the page cannot tell, gets one line for each kind of phone and no switch named, and on Android the switch is **Use precise location**.
 A margin is worded in feet up to half a mile and in whole miles past it, always rounded up (`marginWords`).
 On the map a rough reading that has stayed rough is an area and not a spot: its whole circle is drawn dashed with no dot, the map pulls back until the circle and the map's own lines show, and the first spot after it brings the map in to the person (`marginFrame.ts`, the canvas's `frameMargin` and `me.area`).
+Since v2.8079 (punch list #402) **Draw it by hand instead** pressed while the map is on the whole circle brings it back to the job: with a line or a place on the map the canvas frames them again (`refit`), with nothing on it the map flies to the place it opened on (`center`), and a map with nowhere to open moves nothing (`onDrawInstead` in `PaintedMapWindow.tsx`).
 What a screen does about a weak or a rough reading is its own sentence, kept with the screen (`WALK_WEAK_NOTE_WORDS`, `WALK_ROUGH_NOTE_WORDS`).
 **Put the dot where I am** draws the same line under its press since v2.8001, from the one reading the press takes, called rough at once since a press has no better reading to wait for.
 A rough reading leaves the dot and the map where they were and says *The dot was not moved.*, a weak one moves the dot and asks for a drag (`readingMovesDot` and the notes in `paintedPlaceDot.ts`), and a saved place's own margin says nothing of the phone, so a place opened to change shows no line.
@@ -3831,6 +3849,7 @@ Since v2.6872 (punch list #307) a name a city lists on permits can be **tied** t
 Since v2.8308 **Find their names on permits** and **Looks like a customer** also offer a name that shares a phone or a web domain with the customer, graded as one name beginning the other is (`permit_name_contact_matches`), and nothing is tied by it.
 The answers are kept append-only in `builder_customer_answers` (newest decisive answer per name and customer stands;
 **Take back** undoes, on the bid or on the builder's sheet), Builders' **Our bids** counts a tied customer's bids beside a customer of the same name (v2.6963), and the app never ties a name on a likeness, only an exact same name.
+Since v2.8261 `builder_customer_answers` is the one place a tie is kept: `builders.customer_id`, a column nothing ever wrote, is dropped (`20261122040000`) and `research_builders` no longer returns it.
 **Ours** (v2.6959) is the chip on a plumbing permit whose listed name is one of **our names on plumbing permits**: the short list on Settings → Company (`app_settings.permit_our_names_v1`, `src/lib/research/ourNames.ts`) plus the company name on paper bills, compared by the feed's own name key.
 The bid's two permit blocks draw it, the Bid Board reads *Plumbing permit · ours* in place of the red *Permit lists …* chip (*another name* until v2.7942), and it says whose permit it is, never that a bid was won.
 
@@ -3941,6 +3960,7 @@ never wider than the screen since v2.6435 and v2.6442: an older set's presses ta
 the Jobs & bids table folds archived bids under *Archived* above Done, wears a *shadow* chip on a digital twin's bid and keeps it out of the counts and the head's people (`shadowBidIds`, `withoutShadowBids`), and History folds a same-day run of three or more like lines into one with the count (`historyFolds.ts`) (v2.6378);
 with no bill open the fifth tile reads *Not yet billed* with what is left and its card lists the waiting jobs with money left (`unbilledTileWords`), and the head's GC contact line opens a sheet (`DevelopmentGcContactSheet`) that puts a name, phone and email onto every bid of the site that has none, or changes the one it has, with *Put it back* on the toast (`gcContactWrites.ts`, v2.6379);
 under the Plans look's *jobs follow no plans yet* chip the office ticks jobs, each a row with its name and sorted by it (`orderForPicking`), picks a part and puts them on it in one press, one write per job with the failures named (v2.6381).
+Since v2.8293 the phone's strip of looks slides (`DevelopmentJumpStrip.tsx` inside `ScrollableTabStrip` with `fill`, `activePeek` and `edgeMarks`): a cell grows to share the row and never shrinks under its words (`.developmentPhoneLook`, a 44 px floor), six looks fill a phone's row as before, eight are a row that slides with the look you are in kept whole in view and an arrow at an edge with more past it, and History's **Show** chips and the Photos look's **Job** and **Source** chips slide inside the same strip (`DevelopmentHistoryTools.tsx`, `DevelopmentPhotosLook.tsx`).
 History's lines each wear a mark from one table, `lib/developments/historyLegend.ts` (v2.6361: grey a note, blue a move, green money or won, red lost, amber what went out or came in), and the round **?** on the card's header opens the legend (`HistoryLegendWindow.tsx`);
 since v2.7479 History also draws the mail tied to the site's bids and jobs in Messages — the `messages` rows on channel email whose `bid_id` or `jobs_ledger_id` is one of the page's, read by `readTiedMail` under the reader's own policies and only for the roles that open Messages (`canOpenMessages`), failing soft with its reason — as one *Email in* or *Email out* line a mail at the mail's own time, with its subject, its words folded like a long entry, who it was from and to and **Open in Messages**, Job activity's door to the thread (`mailLines` in `history.ts`, `threadHrefByKind`);
 the line wears the kept email's mark, sits under *What happened*, and a line someone kept by hand about the same mail stays beside it, since a kept line carries no Gmail id to match on.
@@ -4732,6 +4752,7 @@ What of it is on main, one line a piece:
   Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
   Since v2.8271 a promise saved from a line also marks that line's own promise as a payment by the day (`write_down_payment`), so the job's *They promised* row names it and the thread reads *Their move · until Fri Nov 27 · payment* once our word is the newest, and *Never said that* takes the mark back off.
   Since v2.8307 *Never said that* leaves the day on the thread while another promise of the customer's still names it (`dayStillPromised`), and a line on the screen says so.
+  Since v2.8278 (punch list #334) the sheet sits on the modal stack (`useModalStackEntry`) and Escape closes it when it is the top window and no save is on its way, wherever it was opened from, while *Never said that*'s own question takes the key first.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
   *Flow · step*).
@@ -5437,6 +5458,7 @@ Since v2.8266 the customer's profile window reads such a bill as *billed · sche
 Since v2.8272 the Pipeline's map keeps such a job's pin with nothing to collect, no age and no place on the ask list (`JobsMapJob.inKind`, `jobsMapInKindLine`), a development's Money look reads *Scheduled in kind* in place of Expected and never past due (`MoneyDates.inKind`, `moneyInKindLine`), and the aging chart and the printed Billed awaiting payment report leave the bill out with one line each.
 Since v2.8309 a GC's statement, GC Review, its whole report and its prints leave such a bill out of every row, total and age and say one line under the total, *$1,200 on 2 bills is scheduled in kind, not money owed* (`in_kind_rows` in `get_gc_statement_email_payload`, `setInKindApart`, `GcReviewGroup.inKind`, `statementInKindLine`), the owner's call of 2026-11-22.
 The office's statement week reads that payload, so its amounts leave them out too, and since v2.8320 its email says the line under its summary (`in_kind` in `get_statement_week_for_office`, `officeWeekInKindLine`).
+Since v2.8277 Today's sends holds the app's pay reminder on such a job with its reason (*Today's sends* above).
 A deal with a **monthly credit** has months: each is settled by one line (a line of zero is *no credit this month*), a month with none is **due** once it is over or its bill has left the bank, and the card and the Dashboard's Needs you line (`in-kind-credit-due`, v2.6831) offer the press that enters it with the amount read from the bank.
 Nothing is entered by itself.
 A line's amount is a **cost**: overhead on the day it was given (the overhead pool's materials, source `in_kind`), or the material of the job it is put on (the Costs tab's 🤝 *Given in kind* stream and row, the profit band).
@@ -5715,7 +5737,7 @@ since v2.6805 so do the assistants' ready-to-bill bar and the contract counts (t
 since v2.8086 so does the Needs you line of answers a customer owes on a stage (`start-answers-owed`, `withoutZzTestStartJobs`), before a site is placed, while the Development page's Schedule look still shows a ZZ site's list;
 since v2.6807 so do the Bridge's own reads, which carried no rule (`loadBridgeData`, `bill/loadBillDesk.ts`;
 kernel `src/lib/bridge/zzTestJobs.ts`): the sessions clocked on a ZZ job, so it is no job worked and earns nothing, its bills and payments in the billed and paid weeks, its row in the Ready to Bill and Collections reads and its bills on the Bill desk, by the shared ids and by the rows' own names where the read carries them, on the page and in the Monday sheet, and since v2.6813 the Bridge's other loaders too (`bridgeZzJobIds`, `withoutZzJobKeyedRows`): the Build pace's open jobs, jobs sold and percent points, the people's sessions, bills sent, payments, percents and reports, the Collect scorecard's payments, and the job a bid became on the demand read and the Market and Sales desks, where a ZZ job is no sale and takes no bid out of the open pile;
-and since v2.6823 the Bridge is the second surface to read **`isZzBidName`** (`withoutZzBridgeBids`): a ZZ bid, the robots' shadow and backtest bids among them, is no ask on Market, no bid sent, won, lost or awaiting on Sales, no asker's first bid in the relationship book, nobody's bid sent or won on Vectors and no bid due, for the same viewer and switch (estimates had no ZZ rule anywhere until v2.7119, punch list #334: `isZzEstimate` in `src/lib/bridge/loadEstimateWins.ts` reads a test estimate by its customer's ZZ name or by its title and leaves it out of the Bridge's won rate, for the same viewer and switch and in the Monday email;
+and since v2.6823 the Bridge is the second surface to read **`isZzBidName`** (`withoutZzBridgeBids`): a ZZ bid, the robots' shadow and backtest bids among them, is no ask on Market, no bid sent, won, lost or awaiting on Sales, no asker's first bid in the relationship book, nobody's bid sent or won on Vectors and no bid due, for the same viewer and switch (estimates had no ZZ rule anywhere until v2.7119, punch list #334: `isZzEstimate`, in `src/lib/bridge/loadEstimateWins.ts` until v2.8280 moved it beside the Bridge's other ZZ rules in `zzTestJobs.ts`, reads a test estimate by its customer's ZZ name or by its title and leaves it out of the Bridge's won rate, for the same viewer and switch and in the Monday email;
 since v2.8280 `withoutZzBridgeEstimates` in `src/lib/bridge/zzTestJobs.ts` leaves it out of the count of asks, the estimates sent, won, lost and still out, and the Market and Sales windows' own lists too, by the viewer's switch alone and not by the set of ids the left-out list fills);
 and a dev sees them only while their per-device switch in Hide groups… shows them (hidden by default;
 `zzTestJobSwitch.ts`;
@@ -5881,6 +5903,7 @@ the Pipeline row's activity box draws each as an unnumbered **Sent** line since 
 All flow through ONE generic `event` item kind defined in **[`jobActivityEvent.ts`](../src/lib/jobActivityEvent.ts)** (`JobActivityEventType` + `JOB_ACTIVITY_EVENT_RENDER` registry: tag/colors/`financial`/bucket);
 the panel renders them with one branch (colored left-border + uppercase tag + humanized `summary`).
 A segmented **All / Notes / Status / Billing / Crew** filter (**[`jobActivityFilter.ts`](../src/lib/jobActivityFilter.ts)**) sits above the feed.
+On a phone the row that carries **Customer** is one sliding row since v2.8055 (→ *Job Mode*).
 **Financial events** (payments/invoices) are gated by the source tables' existing RLS (dev/master_technician/assistant/primary) — others see none.
 **Phase 1** (v2.594) was client-only (per-source pure kernel + fetcher, mirroring `clockSessionsToActivityItems`, merged in both thread hooks).
 **Phase 2** (v2.595, **now live**) replaces that with an append-only **`job_activity_events`** table written by DB triggers (status / payments / invoices / team / field-edits / materials / fixtures + the split RPC), read through the single SECURITY DEFINER **`list_job_activity_events`** RPC (role-aware, gating via `can_read_job_activity`) with one realtime subscription — additionally capturing **removals** (payment/crew), **field edits**, and **combine/separate**.
@@ -6213,6 +6236,7 @@ A bullet on them is open or a **yes**, and a yes says how we know: their word, t
 A bullet that **asks for a photo** is not a yes on their word alone.
 A bullet of ours is ticked by nobody: it shows where it stands and the press that fixes it.
 A bullet of ours says where it is **read from** (v2.8015): a hand tick, or the order log, Trips or the city's permits, each a reader in `startCheckReaders.ts` that says ready or open, the fact, and the door to the screen that holds it.
+Since v2.8083 the order log's reader holds a line's day to land against today as well (`readOrderLog(read, stage, dayOne, today)`, the company's day handed down by `useStartCheckReads`): an undelivered line whose day has passed reads open, said before the first-day cases, and a line marked on site is never counted, however old its day.
 The **ready bar** is one small box a bullet with a percent after it, every bullet counting the same, and it reads 100% only when every bullet has a yes (`readiness`).
 The **notice** is the days we need before our first day, one number a site, ten by default for a far site and two for a near one, and **We decide by** is our first day less the notice (`goNoGoDay`).
 Every day they give for ready is kept, and first to newest is how far they have **moved** (`movedDays`).
@@ -6897,6 +6921,7 @@ Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or
 Since v2.8348 (punch list #403, the owner's first decision and his answer of 2026-11-23) an outside party's paper that is not signed carries **Take back** on its line, for the leader and a dev: after a confirm the paper is deleted and its signing link stops working, nobody is emailed, and a signed paper is kept ([`paperTakeBack.ts`](../src/lib/documents/paperTakeBack.ts)).
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.
+Since v2.8240 **Send email** on the Send for signature window waits for the look-up of an address typed under **Someone not in any list** (`addressLookUpVerdict`, [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), drawn by [`ContractSendWindow.tsx`](../src/components/contracts/ContractSendWindow.tsx)): someone on the roster is refused, someone the app already keeps is named first and the next press sends to their record, nobody sends at once, and a look-up that failed sends nothing and says why.
 Since v2.8013 a waiting staff, sub or partner line says how many **reminders by email** went and when the next one is, and carries **Turn reminders off** or **Turn reminders on**: up to three, three days apart, each with a new signing link that ends the one before it ([`personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts)).
 The reminders are behind one switch that ships off, **Settings → People & teams → Paper reminders by email**, and a paper sent while it is off is never reminded.
 Since v2.8016 a person who signs an agreement the office emailed gets their **signed copy** by email as a PDF, and a paper of plain words or clauses has a PDF, opened with **Open the PDF** on its signed record ([`personPaperPdf.ts`](../supabase/functions/_shared/personPaperPdf.ts)).
@@ -6915,6 +6940,7 @@ The two are kept apart because a rep leaves a supply house and the paper must st
 The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agreements_every_party_paper.sql`) the view answers a party's paper of any kind and any state: a W-9, a certificate or a licence carries a second tag from `facts.doc_type`, and a paper made and never sent reads the state *not_sent*, drawn as *not sent* under a **Not sent** chip that shows while one exists, with **Send** on its line beside **Take back** (`agreementCanBeSent`, [`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
 *Not on a list* is a party whose contact has no record yet.
+Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) a roster person can work for a trade company: `person_trade_companies` holds one row a person, written through `person_trade_company_set` or `person_trade_company_enter` by the office's four roles, and a person's paper fills `signing_for` from that link when it is made and each time it is sent, while a signed paper keeps what it said (who may write it: [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md)).
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.
@@ -8087,6 +8113,7 @@ Since v2.6107 (punch list #214, PR 4) the tab opens with a **strip of days** (`s
 Since v2.5851 the Timeline is the desk's one line: every item carries a **lane** — *said* (the Record of contact's contacts, promises, calls and the collections note, folded in with their holds, `LegalTimelineSaid`), *did* (bills, payments, events, the firm's entries, `LegalTimelineDid`), *paper* (documents, demand letters, lien paper, the clock's deadlines) or *planned* — and the tab's chips narrow it (`timelineInLane`, `timelineLaneCounts`);
 the Record of contact tab and *What we did, in order* are gone from the desk, and Fees & steps reads **With the firm**.
 The firm's portal keeps its own tabs.
+Since v2.8312 (punch list #85) an act the firm saves on one person's link is recorded under that link's label with no name to pick, and the office reads it as *<name> · firm · own link* on Fees & steps, the conversation and the Timeline, a name picked on the firm's shared link as *<name> · firm · name picked*, and an act saved before that as *<name> · firm* alone (`firmPersonForOffice`, `entryRecordedByWords` and `conversationWho` in `src/lib/legal/legalAsks.ts`), while the firm reads the name alone and the two functions' side is `submit-legal-portal` and `legal-portal` in EDGE_FUNCTIONS.
 
 **Statement** (v2.6209, punch list #220;
 the kernel v2.6208, `src/lib/legal/affidavitPaper.ts` and `juratWords.ts`) — a sworn statement or an unsworn declaration the office drafts, prints and files from the Legal desk: a `legal_matter_entries` row of kind `statement` whose `occurred_on` is the day it is about (where it sits on the Timeline's **Said** lane;

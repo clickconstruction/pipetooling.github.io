@@ -19,3 +19,5 @@ Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Idempot
 **Order.** Pushed after its merge, then `sub-portal` is redeployed. Neither waits on the other. Before the push, the function writes as it did. After the push and before the redeploy, a refused second confirm would answer *That could not be saved*, which no page can reach while the switch is off.
 
 **Checked.** The bed `sub-papers` gains a fourth scenario, `supabase/tests/sub_papers/50_ack_confirmed_once.sql`: the index is there and unique over the confirms that name a copy, a second confirm of one copy is refused by it, the next revision takes its own confirm once, two notes on the same copy are kept, and a voided copy keeps its confirm. The runner applies this file a second time.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

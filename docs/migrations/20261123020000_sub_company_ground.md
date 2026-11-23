@@ -42,3 +42,5 @@ The owner settled both on 2026-11-19.
 ## After the merge
 
 `supabase db push`, then a types PR (`npm run gen-types:linked`). No client calls any of it yet, so nothing waits on the push.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9442.

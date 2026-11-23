@@ -1247,6 +1247,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Changing or removing a stroke or a place is its maker's and the office's.
   Renaming a map, moving it to another home and deleting it are its maker's and the office's, and they must pass the gate for the new home too.
   **A job's own list of places** (v2.7792 the column `painted_maps.job_list`, v2.7795 the screens, punch list #393) is a painted map and has no rule of its own in the database: whoever may paint a map for the job may start its list, and its maker and the office may rename, unmark or delete it.
+  Since v2.8195 (punch list #413, `docs/migrations/20261121203000_photo_spot_ground.md`) a second SELECT policy, `painted_maps_select_at_my_address`, reads a job's list to whoever may touch another job at the same customer address: `painted_map_at_my_address(map)` runs as the caller and is true when one of the job ids `painted_list_address_jobs(map)` names passes `on_site_can_touch_job`, and that function and `painted_address_jobs_of(job)` run as their owner, since a helper cannot read the ledger, and answer job ids and nothing else.
+  A painted map that is not a list stays its own job's, a job with no customer address shares nothing, and `job_address_place_lists(job)`, what a job's window asks, runs as the caller and names the lists other jobs kept at the address only for a job the caller may touch.
+  `note_painted_place_opened(place)` runs as the caller and counts an open on a place the caller can read and did not set, through the owner-run `painted_place_opened_bump`, and the count names nobody.
   The app is narrower than the table on one press: it offers **Throw this list away** to the office team alone (`isOfficeRole`) and offers no rename, since the list holds other people's places.
   **Put it on a job…** (v2.7227) is that move, from no job to a job the mover can open.
 - **The bucket `painted-map-photos`** is private.
@@ -4263,6 +4266,7 @@ everyone else gets no rows or a refusal.
   The owner may lock it (`locked_by`);
   then only the holder, a dev or a master writes its counts, takeoff, prices, CountTooling projects and plan sets, and only they may rename it or turn the lock.
   Enforced by database triggers (`bid_version_write_guard`, `price_book_version_write_guard`, `bid_versions_lock_guard`), so an import or a paste cannot write through it;
+  since v2.8324 `bid_versions_lock_guard`, `document_builder_sends_guard` and `gc_difficulty_ratings_guard` let a row through when a customer merge alone moves it (`customer_merge_moves_only`: the merge's transaction flag `app.merging_customers` up and the row changed in its customer column alone);
   the service role's fenced robot verbs are not kept out.
   Off by default;
   reads, sends, adopts and copies never blocked.
