@@ -7706,6 +7706,9 @@ button.lienBoardBinHead:focus-visible { outline: 2px solid #2563eb; outline-offs
 button.lienBoardChip { cursor: pointer; }
 button.lienBoardChip:hover, button.lienBoardChip:focus-visible { filter: brightness(0.94); outline: none; box-shadow: 0 0 0 2px var(--border-blue); }
 .lienBoardChip[data-pair-lit='yes'] { box-shadow: 0 0 0 2px #2563eb; }
+/* A phone's To do row on the Lien desk: the width of its one press column (`lienPhonePress.ts` holds the same numbers). */
+.lienPhoneRow { --lien-phone-press: 116px; }
+@media (max-width: 360px) { .lienPhoneRow { --lien-phone-press: 100px; } }
 .lienBoardTile { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); text-align: left; font: inherit; color: inherit; min-width: 0; }
 button.lienBoardTile { cursor: pointer; }
 button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #2563eb; outline: none; }

@@ -5,6 +5,10 @@ import {
   lazyComponentNames,
   lazyRoutesWithoutSuspense,
   lazyRouteWithoutSuspenseWords,
+  onDemandImports,
+  publicRouteNotOnDemandWords,
+  publicRoutesNotOnDemand,
+  ROUTES_KEPT_IN_THE_ENTRY,
   routesOutsideLayout,
   routesSitInChunkBoundary,
 } from './lazyRouteBoundaries'
@@ -36,6 +40,10 @@ function AppContent() {
 }
 `
 
+/** The same small App.tsx with routes below the Layout's closing tag, ending in the catch-all redirect. */
+const below = (routes: string): string =>
+  app('<Route path="/sign-in" element={<SignIn />} />').replace('</Routes>', `${routes}\n<Route path="*" element={<Navigate to="/" replace />} />\n</Routes>`)
+
 describe('lazyComponentNames', () => {
   it('reads the names declared with lazy(), and not a plain import', () => {
     expect(lazyComponentNames(app(''))).toEqual(['BoxCode', 'Preview', 'Jobs'])
@@ -44,10 +52,14 @@ describe('lazyComponentNames', () => {
   it('reads React.lazy too, and skips a declaration inside a comment', () => {
     expect(lazyComponentNames("const A = React.lazy(() => import('./A'))\n// const B = lazy(() => import('./B'))\n")).toEqual(['A'])
   })
+
+  it('reads a page held through lazyWindow, which is lazy too', () => {
+    expect(lazyComponentNames("const PayLink = lazyWindow(() => import('./pages/PayLink'))\nconst plain = lazyish()\n")).toEqual(['PayLink'])
+  })
 })
 
 describe('routesOutsideLayout', () => {
-  it('stops at the Layout route and leaves out the routes nested in it', () => {
+  it('leaves out the Layout route and the routes nested in it', () => {
     const routes = routesOutsideLayout(app('<Route path="/sign-in" element={<SignIn />} />\n<Route path="/b" element={<BoxCode />} />'))
     expect(routes.map((r) => r.path)).toEqual(['/sign-in', '/b'])
     expect(routes[1]?.element).toBe('<BoxCode />')
@@ -55,6 +67,29 @@ describe('routesOutsideLayout', () => {
 
   it('answers nothing for a file with no <Routes>', () => {
     expect(routesOutsideLayout('const BoxCode = lazy(() => import("./BoxCode"))')).toEqual([])
+  })
+
+  it('reads the routes after the Layout’s closing tag too, where the catch-all sits', () => {
+    const routes = routesOutsideLayout(below('<Route path="/promo" element={<BoxCode />} />'))
+    expect(routes.map((r) => r.path)).toEqual(['/sign-in', '/promo', '*'])
+    expect(routes[1]?.element).toBe('<BoxCode />')
+  })
+
+  it('reads a route after a Layout route that has no children', () => {
+    const source = '<Routes><Route path="/" element={<Layout />} /><Route path="/promo" element={<BoxCode />} /></Routes>'
+    expect(routesOutsideLayout(source).map((r) => r.path)).toEqual(['/promo'])
+  })
+})
+
+describe('a route below the Layout', () => {
+  it('is named when it draws a lazy page with no Suspense', () => {
+    expect(lazyRoutesWithoutSuspense(below('<Route path="/promo" element={<BoxCode />} />'))).toEqual(['/promo'])
+    expect(lazyRoutesWithoutSuspense(below('<Route path="/promo" element={<Suspense fallback={null}><BoxCode /></Suspense>} />'))).toEqual([])
+  })
+
+  it('is named when it is a public page imported plainly, and the redirect beside it is left alone', () => {
+    expect(publicRoutesNotOnDemand(below('<Route path="/promo" element={<SignIn />} />'), { '/sign-in': 'the first page' })).toEqual(['/promo'])
+    expect(publicRoutesNotOnDemand(below(''), { '/sign-in': 'the first page' })).toEqual([])
   })
 })
 
@@ -74,6 +109,25 @@ describe('lazyRoutesWithoutSuspense', () => {
         }
       />`
     expect(lazyRoutesWithoutSuspense(app(wrapped))).toEqual([])
+  })
+
+  it('passes a lazy route wrapped in PublicPage, which holds the Suspense, with its props or without', () => {
+    const wrapped = `
+      <Route path="/b/:code" element={<PublicPage tone="landing" compact><BoxCode /></PublicPage>} />
+      <Route
+        path="/b"
+        element={
+          <PublicPage>
+            <BoxCode />
+          </PublicPage>
+        }
+      />`
+    expect(lazyRoutesWithoutSuspense(app(wrapped))).toEqual([])
+  })
+
+  it('is not fooled by a PublicPage that closed before the lazy page', () => {
+    const beside = '<Route path="/b" element={<><PublicPage><SignIn /></PublicPage><BoxCode /></>} />'
+    expect(lazyRoutesWithoutSuspense(app(beside))).toEqual(['/b'])
   })
 
   it('passes a lazy route wrapped in Suspense inside ProtectedRoute', () => {
@@ -143,20 +197,125 @@ describe('lazyRouteWithoutSuspenseWords', () => {
   it('names the route and the fix, with a wrapped route as the example', () => {
     const words = lazyRouteWithoutSuspenseWords('/b/:code')
     expect(words).toContain('"/b/:code"')
+    expect(words).toContain('<PublicPage>')
     expect(words).toContain('<Suspense fallback={null}>')
     expect(words).toContain('as /t/:token is')
     expect(lazyRouteWithoutSuspenseWords('/t/:token')).toContain('as /f/:link is')
   })
 })
 
+describe('onDemandImports', () => {
+  it('reads each lazy and lazyWindow page with what it imports, and skips a plain import and a comment', () => {
+    const source = `
+      import SignIn from './pages/SignIn'
+      const Jobs = lazy(() => import('./pages/Jobs'))
+      const PayLink = lazyWindow(() => import("./pages/PayLink"))
+      const Old = React.lazy(
+        () => import('./pages/Old'),
+      )
+      // const Gone = lazy(() => import('./pages/Gone'))
+    `
+    expect(onDemandImports(source)).toEqual([
+      { name: 'Jobs', how: 'lazy', specifier: './pages/Jobs' },
+      { name: 'PayLink', how: 'lazyWindow', specifier: './pages/PayLink' },
+      { name: 'Old', how: 'lazy', specifier: './pages/Old' },
+    ])
+  })
+})
+
+describe('publicRoutesNotOnDemand', () => {
+  /** A small App.tsx with one page held through lazyWindow, one through lazy and one imported plainly. */
+  const publicApp = (routes: string): string => `
+import SignIn from './pages/SignIn'
+import Rating from './pages/Rating'
+const PayLink = lazyWindow(() => import('./pages/PayLink'))
+const Preview = lazy(() => import('./pages/Preview'))
+<Routes>
+  ${routes}
+  <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+    <Route path="rating" element={<Rating />} />
+  </Route>
+</Routes>
+`
+  const kept = { '/sign-in': 'the first page' }
+
+  it('passes a page held through lazyWindow inside PublicPage, with props or on lines of its own', () => {
+    const routes = `
+      <Route path="/pay/:id" element={<PublicPage tone="plain" compact><PayLink /></PublicPage>} />
+      <Route
+        path="/p"
+        element={
+          <PublicPage>
+            <PayLink />
+          </PublicPage>
+        }
+      />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual([])
+  })
+
+  it('names a public page imported plainly, bare or inside PublicPage', () => {
+    const routes = `
+      <Route path="/rate" element={<Rating />} />
+      <Route path="/rate2" element={<PublicPage><Rating /></PublicPage>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/rate', '/rate2'])
+  })
+
+  it('names a public page held with plain lazy: in a bare Suspense it has no loading look, and in PublicPage no place on ON_DEMAND_PAGES', () => {
+    const routes = '<Route path="/look" element={<Suspense fallback={null}><Preview /></Suspense>} />'
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/look'])
+    expect(publicRoutesNotOnDemand(publicApp('<Route path="/look" element={<PublicPage><Preview /></PublicPage>} />'), kept)).toEqual(['/look'])
+  })
+
+  it('names a route where a plain page sits beside the PublicPage, and a PublicPage that draws nothing', () => {
+    const routes = `
+      <Route path="/two" element={<><PublicPage><PayLink /></PublicPage><Rating /></>} />
+      <Route path="/none" element={<PublicPage></PublicPage>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/two', '/none'])
+  })
+
+  it('leaves a route behind ProtectedRoute and a route on the kept list alone', () => {
+    const routes = `
+      <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/staff" element={<ProtectedRoute><Rating /></ProtectedRoute>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual([])
+    expect(publicRoutesNotOnDemand(publicApp(routes), {})).toEqual(['/sign-in'])
+  })
+
+  it('does not look inside the Layout', () => {
+    expect(publicRoutesNotOnDemand(publicApp(''), kept)).toEqual([])
+  })
+
+  it('says what is wrong and the fix', () => {
+    const words = publicRouteNotOnDemandWords('/rate')
+    expect(words).toContain('"/rate"')
+    expect(words).toContain('lazyWindow')
+    expect(words).toContain('<PublicPage>')
+    expect(words).toContain('ON_DEMAND_PAGES')
+    expect(words).toContain('ROUTES_KEPT_IN_THE_ENTRY')
+  })
+})
+
 describe('src/App.tsx', () => {
   const source = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf8')
 
+  it('loads every page that opens with no sign-in on demand, inside PublicPage', () => {
+    // A parser that read no route would pass with nothing checked.
+    expect(routesOutsideLayout(source).filter((r) => /^<PublicPage[\s>]/.test(r.element.trim())).length).toBeGreaterThan(20)
+    const atFault = publicRoutesNotOnDemand(source)
+    expect(atFault, atFault.map(publicRouteNotOnDemandWords).join('\n')).toEqual([])
+  })
+
+  it('keeps no path on the kept list that is not a route outside the Layout', () => {
+    const paths = routesOutsideLayout(source).map((r) => r.path)
+    const stale = Object.keys(ROUTES_KEPT_IN_THE_ENTRY).filter((path) => !paths.includes(path))
+    expect(stale, `ROUTES_KEPT_IN_THE_ENTRY names ${stale.join(', ')}, which src/App.tsx no longer draws outside the Layout. Take it off the list.`).toEqual([])
+  })
+
   it('is read as it is written: lazy pages, routes above the Layout, the Layout left out', () => {
     // A parser that found nothing would pass the check below without checking anything.
-    expect(lazyComponentNames(source)).toEqual(expect.arrayContaining(['GcTradePortal', 'Jobs']))
+    expect(lazyComponentNames(source)).toEqual(expect.arrayContaining(['GcTradePortal', 'PayLink', 'EstimateAcceptStaffPreview', 'Jobs']))
     const paths = routesOutsideLayout(source).map((r) => r.path)
-    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token']))
+    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token', '/pay/:id', '*']))
     expect(paths).not.toContain('/')
     expect(paths).not.toContain('dashboard')
   })

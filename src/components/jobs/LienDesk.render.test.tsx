@@ -1919,6 +1919,93 @@ describe('LienDesk', () => {
     }
   })
 
+  it('on a phone the flow stands behind the switch; a stage’s papers take the screen under the pinned line, a cell moves along the flow, and ‹ The flow puts every row back with the stage lit (punch list #428)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" />)
+      await settle()
+      const rows = () => document.querySelectorAll('[data-lien-next-up-row]').length
+      const every = rows()
+      expect(every).toBeGreaterThan(0)
+      // By day the first time: the tiles, the switch, and no bin on a phone.
+      expect(document.querySelector('[data-lien-board]')!.getAttribute('data-lien-board-phone')).toBe('day')
+      expect(document.querySelector('[data-lien-board-bin]')).toBeNull()
+      fireEvent.click(document.querySelector<HTMLElement>('[data-lien-board-switch-press="flow"]')!)
+      const full = document.querySelector<HTMLElement>('[data-lien-board-phone-flow] [data-lien-board-flow-column="notice"] [data-lien-board-stage]:not([data-empty])')!
+      const key = full.getAttribute('data-lien-board-stage')!
+      fireEvent.click(full)
+      await settle()
+      // The stage's papers are the screen: the Board is the pinned line alone, and the list is that stage's rows.
+      const line = () => document.querySelector<HTMLElement>('[data-lien-board-line]')!
+      expect(line().getAttribute('data-lien-board-line')).toBe(key)
+      expect(document.querySelector('[data-lien-board-phone-flow]')).toBeNull()
+      expect(document.querySelector('[data-lien-board-tiles]')).toBeNull()
+      expect(rows()).toBe(1)
+      // A cell moves along the flow without going back: a stage with no paper shows no row.
+      const emptyCell = Array.from(line().querySelectorAll<HTMLElement>('[data-lien-board-line-cell]')).find((c) => c.textContent === '0')!
+      const emptyKey = emptyCell.getAttribute('data-lien-board-line-cell')!
+      fireEvent.click(emptyCell)
+      await settle()
+      expect(line().getAttribute('data-lien-board-line')).toBe(emptyKey)
+      expect(rows()).toBe(0)
+      // The way back: the flow again, the stage a person was last in lit, and every row under it.
+      fireEvent.click(line().querySelector<HTMLElement>('[data-lien-board-line-back]')!)
+      await settle()
+      expect(document.querySelector('[data-lien-board-line]')).toBeNull()
+      expect(document.querySelector('[data-lien-board]')!.getAttribute('data-lien-board-phone')).toBe('flow')
+      expect(document.querySelector(`[data-lien-board-stage="${emptyKey}"]`)!.getAttribute('data-lit')).toBe('yes')
+      expect(rows()).toBe(every)
+    } finally {
+      window.matchMedia = before
+      window.localStorage.clear()
+    }
+  })
+
+  it('where the page keeps the stage in the history entry (punch list #428), a pressed stage asks the page, the entry says which stage is pinned, and ‹ The flow is the page’s Back', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      window.localStorage.setItem('pipetooling_lien_desk_phone_view', 'flow')
+      const onOpenFlowStage = vi.fn()
+      const onCloseFlowStage = vi.fn()
+      const first = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" flowStageKey={null} onOpenFlowStage={onOpenFlowStage} onCloseFlowStage={onCloseFlowStage} />)
+      await settle()
+      const full = document.querySelector<HTMLElement>('[data-lien-board-phone-flow] [data-lien-board-flow-column="notice"] [data-lien-board-stage]:not([data-empty])')!
+      const key = full.getAttribute('data-lien-board-stage')!
+      fireEvent.click(full)
+      await settle()
+      // The press asks the page for an entry. Until the entry names the stage nothing is pinned.
+      expect(onOpenFlowStage).toHaveBeenCalledWith(key)
+      expect(document.querySelector('[data-lien-board-line]')).toBeNull()
+      first.unmount()
+
+      // The entry names the stage: its papers are the screen. This is also what Back from a job's own screen returns to.
+      const on = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" flowStageKey={key} onOpenFlowStage={onOpenFlowStage} onCloseFlowStage={onCloseFlowStage} />)
+      await settle()
+      const line = document.querySelector<HTMLElement>('[data-lien-board-line]')!
+      expect(line.getAttribute('data-lien-board-line')).toBe(key)
+      expect(document.querySelectorAll('[data-lien-next-up-row]')).toHaveLength(1)
+      // A cell asks the page for the other stage, and the way back is the page's.
+      onOpenFlowStage.mockClear()
+      const other = Array.from(line.querySelectorAll<HTMLElement>('[data-lien-board-line-cell]')).find((c) => c.getAttribute('data-lit') !== 'yes')!
+      fireEvent.click(other)
+      expect(onOpenFlowStage).toHaveBeenCalledWith(other.getAttribute('data-lien-board-line-cell'))
+      fireEvent.click(line.querySelector<HTMLElement>('[data-lien-board-line-back]')!)
+      expect(onCloseFlowStage).toHaveBeenCalledTimes(1)
+      on.unmount()
+
+      // A stage the Board does not hold reads as none: the flow, and every row.
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" flowStageKey="notice:not_a_stage" onOpenFlowStage={onOpenFlowStage} onCloseFlowStage={onCloseFlowStage} />)
+      await settle()
+      expect(document.querySelector('[data-lien-board-line]')).toBeNull()
+      expect(document.querySelector('[data-lien-board-phone-flow]')).not.toBeNull()
+    } finally {
+      window.matchMedia = before
+      window.localStorage.clear()
+    }
+  })
+
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
