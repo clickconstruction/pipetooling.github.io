@@ -578,7 +578,8 @@ describe('working hours go through the sheet\'s own door', () => {
     const r = resolvePaySetup(ask({ working_hours: SIX }), world(), TODAY)
     if (!r.ok) throw new Error(r.refused)
     const args = Object.keys(setWorkingHoursArgs(r.ops, 'why')!).sort()
-    if (door) expect(args).toEqual(Object.keys(door.args).sort())
+    // The catalog marks an argument with a default by a trailing `?`.
+    if (door) expect(args).toEqual(Object.keys(door.args).map((k) => k.replace(/\?$/, '')).sort())
     if (DOOR) for (const a of args) expect(DOOR).toContain(`${a} `)
     const cols = CATALOG_TABLES.person_available_hours ? Object.keys(CATALOG_TABLES.person_available_hours.columns) : []
     for (const c of PAY_WORKING_HOURS_SELECT.split(',')) if (cols.includes('kind')) expect(cols).toContain(c)
