@@ -7,3 +7,5 @@ The week is built on `get_gc_statement_email_payload`, which since `202611230100
 The body is otherwise verbatim, copied from the function's own text. `get_my_statement_week()` calls this function and passes the key through. No new table. Grants are unchanged.
 
 **Apply order:** after `20261123010000`. Pushed before it, the key reads zero. Push, then deploy `statement-round-email-dispatch`.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

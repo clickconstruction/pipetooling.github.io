@@ -30,3 +30,5 @@ The migration's own block was also run twice on a local Postgres 15 over a stub 
 ## Order
 
 Additive: every row that passed the old check passes the new one. No `CREATE TABLE`, so no fence calls. The lock is an `ALTER TABLE` on a small table, with no row on prod on 2026-11-21, under the 3 second timeout. The push can come any time after the merge. **The screens that follow must not merge before the push**: a description past 200 characters would be refused by the table.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).
