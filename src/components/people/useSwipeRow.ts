@@ -6,8 +6,10 @@ import { classifySwipe, swipeOffset, swipeSettles } from '../../lib/people/users
  * rows slide over their strip of presses the same way. A touch that moves sideways drags the row over the
  * strip and settles open or shut; a touch that moves up or down scrolls as usual. The parent owns which row
  * is open. `suppressClick` is true for the tick after a drag, so the row's own tap does not fire with it.
+ * `settleAt` is how far the row must travel to settle the other way, a third of the strip when it is not
+ * given: the swipe-away rows of the Dashboard ask for more (v2.8349, punch list #426).
  */
-export function useSwipeRow({ actionsWidth, swipeOpen, onSwipeChange, enabled }: { actionsWidth: number; swipeOpen: boolean; onSwipeChange: (open: boolean) => void; enabled: boolean }) {
+export function useSwipeRow({ actionsWidth, swipeOpen, onSwipeChange, enabled, settleAt }: { actionsWidth: number; swipeOpen: boolean; onSwipeChange: (open: boolean) => void; enabled: boolean; settleAt?: number }) {
   const start = useRef<{ x: number; y: number; id: number } | null>(null)
   const axis = useRef<'horizontal' | 'vertical' | 'undecided'>('undecided')
   const [dragX, setDragX] = useState<number | null>(null)
@@ -42,7 +44,7 @@ export function useSwipeRow({ actionsWidth, swipeOpen, onSwipeChange, enabled }:
     if (!s || s.id !== e.pointerId) return
     if (axis.current === 'horizontal') {
       const dx = e.clientX - s.x
-      onSwipeChange(swipeSettles(dx, actionsWidth, swipeOpen))
+      onSwipeChange(swipeSettles(dx, actionsWidth, swipeOpen, settleAt))
       suppressClick.current = true
       setTimeout(() => {
         suppressClick.current = false

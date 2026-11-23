@@ -424,6 +424,11 @@ export const MY_BID_STATE_GLOSS: Record<MyBidState, string> = {
 export const MY_BIDS_HIDDEN_HEADING = 'Hidden'
 export const MY_BIDS_HIDDEN_GLOSS = 'You hid these. Show again puts one back.'
 
+/** The toast after a bid is hidden, with Undo beside it. */
+export function myBidHiddenWords(name: string): string {
+  return `Hidden: ${name}.`
+}
+
 /** The line under the groups when the read came back full (`myBidsReadIsCut`). */
 export const MY_BIDS_CUT_WORDS = `Showing your newest ${MY_BIDS_DASHBOARD_ROW_LIMIT} bids. The Bid Board has every bid.`
 

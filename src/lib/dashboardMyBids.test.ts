@@ -20,6 +20,7 @@ import {
   MY_BIDS_ON_THE_BOARD_FILTER,
   MY_BIDS_READ_ORDER,
   myBidGroupLabel,
+  myBidHiddenWords,
   myBidIsPutAway,
   myBidState,
   myBidWhen,
@@ -474,6 +475,7 @@ describe('buildMyBidsCard', () => {
 describe('the card\'s own words', () => {
   it('are plain words', () => {
     for (const words of [...Object.values(MY_BID_STATE_GLOSS), MY_BIDS_HIDDEN_GLOSS, MY_BIDS_CUT_WORDS]) expect(plainWordsFailures(words), words).toEqual([])
+    expect(myBidHiddenWords('88 Quarry Rd Ste 100')).toBe('Hidden: 88 Quarry Rd Ste 100.')
   })
 })
 
