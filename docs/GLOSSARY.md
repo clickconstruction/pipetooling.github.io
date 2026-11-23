@@ -7177,6 +7177,7 @@ since v2.6096, punch list #178, `statement-round` → GC Review over the card an
 Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
 Since v2.8339 (punch list #423) the Lien desk's counts are a card of their own beside the Dashboard's card, three values and a red line while a paper is late or at risk, a press that opens the desk at the Board, where from v2.7334 they were four dots on one line inside it (`lienDeskCard` from `useNeedsYouInputs`;
+Since v2.8372 the office reads that card's middle count by the leader's name, the one the Lien desk's Board gives, the master most of the desk's papers wait on (`lienBoardLeaderUserId`, read for one person by `useLienDeskLeaderName`), where it read *waiting on the leader*.
 *The Board* above).
 On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
 The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.

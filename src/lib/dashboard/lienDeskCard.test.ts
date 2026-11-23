@@ -3,7 +3,7 @@ import type { LienBoard, LienBoardTile } from '../jobs/lienBoard'
 import { needsYouDashboardDoor } from '../phoneLayout/needsYouPlace'
 import type { PageMode } from '../pageMode'
 import { plainWordsFailures } from '../plainWords'
-import { lienDeskCard, lienDeskCardShown } from './lienDeskCard'
+import { lienDeskCard, lienDeskCardShown, lienDeskLeaderNameOf } from './lienDeskCard'
 
 const tile = (key: LienBoardTile['key'], figure: string, label: string, tone: LienBoardTile['tone'], line: string | null = null): LienBoardTile => ({ key, figure, label, line, tone, destination: null })
 
@@ -91,5 +91,34 @@ describe('where the Lien desk’s card stands', () => {
         }
       }
     }
+  })
+})
+
+describe('the leader’s name, as the Lien desk gives it (v2.8372)', () => {
+  // A made-up person.
+  const sam = { id: 'u-sam', name: ' Sam ', role: 'master_technician', archived_at: null, is_digital_twin: false, is_sample: false, is_walk_tester: false }
+
+  it('is the name on his row, trimmed', () => {
+    expect(lienDeskLeaderNameOf(sam)).toBe('Sam')
+  })
+
+  it('is no one’s for a person the desk’s list leaves out: archived, a sample, a twin, the walk tester, a dev', () => {
+    expect(lienDeskLeaderNameOf({ ...sam, archived_at: '2026-10-01T00:00:00Z' })).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, is_sample: true })).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, is_digital_twin: true })).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, is_walk_tester: true })).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, role: 'dev' })).toBeNull()
+  })
+
+  it('is null with no row or no name, so the card says waiting on the leader', () => {
+    expect(lienDeskLeaderNameOf(null)).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, name: '  ' })).toBeNull()
+    expect(lienDeskLeaderNameOf({ ...sam, name: null })).toBeNull()
+  })
+
+  it('reaches the office’s card through the Board’s own label', () => {
+    const named = board({ waiting: tile('waiting', '6', `waiting on ${lienDeskLeaderNameOf(sam)}`, 'violet') })
+    expect(lienDeskCard(named, { viewerIsLeader: false }).values[1]!.words).toBe('waiting on Sam')
+    expect(lienDeskCard(named, { viewerIsLeader: true }).values[1]!.words).toBe('wait on you')
   })
 })

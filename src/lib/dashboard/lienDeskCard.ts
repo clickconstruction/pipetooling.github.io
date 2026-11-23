@@ -5,7 +5,8 @@
  * it is a card of its own.
  *
  * The values are the Board's own tiles (`buildLienBoard`), so the card and the page its door opens never
- * disagree: what is due by the next day, what waits on the leader, and what waits to print and mail. The
+ * disagree: what is due by the next day, what waits on the leader, and what waits to print and mail. Since
+ * v2.8372 the office reads the leader by the name the Board gives him (`lienDeskLeaderNameOf`). The
  * line is the day tile's own, *3 are past their day.* or *2 will not make Monday as they stand.*, and shows
  * only while a paper is late or at risk. The Board's fourth tile, the unpaid amount, stays on the Board: it
  * opens nothing, and a phone on a job site is read by more people than its owner.
@@ -13,6 +14,7 @@
  * Pure. It reads a Board that is already built and counts nothing of its own.
  */
 import type { LienBoard, LienBoardTileKey } from '../jobs/lienBoard'
+import { isActiveRosterPerson, type ActiveRosterRow } from '../people/activeRoster'
 
 /** The three tiles the card draws, in the Board's order. */
 export type LienDeskCardValueKey = Exclude<LienBoardTileKey, 'unpaid'>
@@ -56,6 +58,17 @@ export function lienDeskCard(board: Pick<LienBoard, 'tiles' | 'dayWords'>, opts:
   }
   const day = tile('by_day')
   return { values, line: day && day.tone === 'red' ? day.line : null }
+}
+
+/**
+ * The name the Lien desk gives the leader, from his row: a person on the desk's list, so an active account that is
+ * not a dev, a sample, a digital twin or the walk tester (`LienDeskPage`'s `fetchActiveUsers` over its roles, every
+ * role but dev), named as the row holds it (its `leaderNameFor`). Null for anyone else, and for a row with no name:
+ * the card then says *waiting on the leader*, as the Board does for a leader it cannot name.
+ */
+export function lienDeskLeaderNameOf(row: (ActiveRosterRow & { name?: string | null }) | null | undefined): string | null {
+  if (!row || !isActiveRosterPerson(row)) return null
+  return row.name?.trim() || null
 }
 
 /**
