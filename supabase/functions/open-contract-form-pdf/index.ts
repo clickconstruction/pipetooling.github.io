@@ -21,6 +21,8 @@
  * among them, and no other. The database says which papers those are:
  * `estimator_reads_paper`, asked as the caller, the rule the estimator's read
  * policy follows. A digital twin reads as an estimator and is refused here.
+ * So is an estimator in training (the owner's second decision of 2026-11-22):
+ * a training account reads the line and is refused the signed file.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -73,7 +75,7 @@ serve(async (req) => {
     if (archivedRefusal) return archivedRefusal
 
     // Gate: who the caller is, then the facts their kind of opener needs, each read only when it matters.
-    const { data: me } = await admin.from('users').select('role, is_digital_twin').eq('id', user.id).maybeSingle()
+    const { data: me } = await admin.from('users').select('role, is_digital_twin, read_only').eq('id', user.id).maybeSingle()
     const caller = me as FormPdfCaller | null
     const opener = formPdfOpener(caller)
     const facts: FormPdfFacts = {}

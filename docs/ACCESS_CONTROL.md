@@ -953,7 +953,9 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
-Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no press on a line.
+Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no act on a line.
+Since v2.8388 (the owner's second decision) a signed line's name is a press that opens the signed record for an estimator (`agreementReaderDoor`), and a waiting paper, a work order and a job stay plain words.
+A training estimator's lines open nothing, on the tab and on a company's own page (`canOpenSignedRecord`), the default the owner chose on 2026-11-23: a training account reads the line only.
 Their list is what the view answers them under each table's own read, an outside company's papers from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
 Since v2.8354 (`20261123083000_agreements_every_party_paper.sql`) the view lists a party's paper of every kind and every state, so their list also holds an outside company's W-9, certificate and paper never sent, rows their policy already read.
 Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
@@ -965,6 +967,7 @@ That list reads `person_contract_documents` itself, every kind and every state, 
 An estimator opens a signed paper's record from its name there.
 Since v2.8378 (punch list #403, the owner's second decision, `20261123184149_estimator_reach.sql`) an estimator who is not a digital twin and not in training also reads that record's two other reads for an outside company's paper: the form's layout (`contract_form_templates_estimator_outside`, a form such a paper is filled on) and the signature's image (`contract_signer_signatures_estimator_outside` on `storage.objects`, which asks `estimator_reads_paper`).
 A training estimator still reads the paper's row and reads neither, and the four roles read both as before.
+Since v2.8388 `open-contract-form-pdf` and `person-paper-pdf` refuse an estimator in training the signed file (`users.read_only`, read by each handler with the role), and a dev, the controller, a pay-approved master and the four roles open theirs in training as before.
 Since v2.8108 (calls 10 and 11) an estimator also opens a signed form's PDF, and its scan, through `open-contract-form-pdf` when the paper is with an outside company, a signed W-9 with its whole tax number among them.
 That function asks `estimator_reads_paper`, the policy's own rule, as the caller, refuses a digital twin and a signed hours statement itself, and logs the open as every other.
 An assistant still reads the row and is refused the file, and a person's signed form opens for a dev, the controller and a pay-approved master alone, as before.
@@ -978,6 +981,7 @@ Since v2.8378 (the owner's second decision, `20261123184149_estimator_reach.sql`
 The trigger `paper_holder_named_by_office` on `contacts` refuses anyone else signed in who gives a contact on no list a kind or a record, or who makes a contact an outside company's when it was not, through `name_contact` or a statement of their own (`officeNamesPaperHolder`).
 `contacts_fold_papers` refuses the same caller a fold that would carry a paper off a contact that is not an outside company's.
 An estimator still names a contact that holds no paper, and `contact_holds_paper`, the definer both guards ask, is open to nobody signed in.
+Since v2.8388 Messages' **Who is this?** says the refusal in the app's words (`contacts/paperHolderNaming.ts`), where it showed the database's own.
 Since v2.8313 (punch list #403, step 5, the owner's calls 3 and 7, `20261123020000_sub_company_ground.sql`) `person_trade_companies` says which trade company a roster person works for, and it is the four roles' to read and to write under one policy (`is_office_staff()`).
 Nobody else reads a row of it, an estimator and the person themself among them, and a training account, a digital twin and an archived account write nothing.
 Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
