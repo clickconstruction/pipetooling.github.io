@@ -1973,6 +1973,7 @@ Two sides: the **field** (leaders, helpers, subs, superintendents) carries the l
 the **office** lists under it with a line of its own.
 Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
+A person with **working hours** (a `set` row on `person_available_hours`, v2.8345) is held to them, salaried or not, from the row's Sunday on: the source reads *working hours*, the row has no **Change** press, and a punch outside them is counted (`workingHours.ts`, v2.8350).
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
 a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), or from the **Your hours** card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
 guide *draw the hours you can work each week*).
