@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1574,13 +1574,11 @@ hook **[`useJobModeEnabled(userId, role)`](../src/hooks/useJobModeEnabled.ts)**.
 Since v2.8038 the shell and the Dashboard read it through `usePageMode`, so the Job Mode page is drawn only when Job Mode is the page's mode (*Page mode*).
 Mirrors the **`dashboard_clock_strip_scope`** pattern.
 
-**First-run card** — **[`DashboardJobModeFirstRunCard`](../src/components/dashboard/DashboardJobModeFirstRunCard.tsx)** ("Working in the field?
-Turn on Job Mode.") renders at the top of the full Dashboard for `master_technician` / `superintendent` only, with nothing stored and not dismissed;
-one tap stores `'card'` and the Dashboard re-renders into the Job Mode card;
-**Not now** stores `dashboard_job_mode_card_dismissed_${userId}`.
-Never for sub-like (already on) or office roles.
+**Mode row** — the first-run card that offered Job Mode to a leader or a superintendent is gone since v2.8332: the *Mode row* under *Page mode* is how every role but the estimator turns Job Mode on and gets back.
+A device that stored `'card'` still reads on, and the old put-away key `dashboard_job_mode_card_dismissed_${userId}` is read by nothing.
+**Show full dashboard** at the foot of the Job Mode page is drawn only for the estimator, the one role the row is not drawn for.
 
-**Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the card tap, or the gear turn-on.
+**Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear` / `#row`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the mode row's Job Mode third, or the gear turn-on.
 
 **Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (all 9 roles: dev, master_technician, assistant, controller, helpers, subcontractor, estimator, primary, superintendent — the predicate uses `isAssistantLike`, so controller passes;
 [`canLeaveJobFieldReport.ts`](../src/lib/canLeaveJobFieldReport.ts)).
@@ -1636,6 +1634,7 @@ Backed by the append-only **`checklist_instance_events`** card history (v2.1842)
 ### Task Mode (app-wide)
 Called **Farm Mode** until v2.7050, so an older note, fragment or guide link that says Farm Mode means this.
 The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist` (`taskModeBounceTarget`), shows a **"☑ Task Mode · Exit" strip** above the page content (**[`TaskModeChip`](../src/components/TaskModeChip.tsx)**, v2.2916 — Exit records `farm_mode_exit` in `ui_nav_clicks`), gates the `/` Person quick sheet (`canOpenPersonQuickSheet`), and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs, drawn since v2.7533 as one joined bar (**[`TaskDayBar`](../src/components/checklist/TaskDayBar.tsx)**) in place of the tab strip and the page's title.
+Since v2.8332 the estimator alone is drawn that strip and the gear-menu toggle, and every other role switches on the *Mode row* under *Page mode*.
 It is the first of the three page modes, so it is drawn over Job Mode and Dispatch Mode while on (*Page mode* below);
 their stored toggles are untouched, which is why switching it off goes back to the mode the person had.
 Toggle lib **[`taskModeToggle.ts`](../src/lib/taskModeToggle.ts)** + hook **[`useTaskModeEnabled`](../src/hooks/useTaskModeEnabled.ts)** mirror the Job Mode pair;
@@ -1653,7 +1652,16 @@ Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the 
 `pageModeWrites` is what a press stores: switching a mode on switches off the modes above it in the order and leaves the ones under it, and switching one off clears that value alone, so the page goes back to the mode underneath.
 Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
-Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the Dashboard's Job Mode card all go through its `set`.
+Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the mode row all go through its `set`.
+**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist.
+For those eight roles the gear menu lists neither **Job Mode** nor **Task Mode** (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was.
+The third of the mode drawn is filled, and Dispatch Mode reads as Dashboard, since the middle third switches Task Mode and Job Mode off and never writes Dispatch Mode.
+On a phone the row is tucked: it shows on the first five opens or until a third is pressed, after every switch, in Task Mode, and for a sub-like role that is off Job Mode, and otherwise a pull down at the top of the page or a tap on its 24 px handle brings it down for that visit.
+On a desk it always shows.
+The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and the phone's memory is `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage`.
+Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, and `mode_row_shown` with `#pull` / `#handle` for a tucked row brought down.
+The Task Mode strip is drawn only for the roles the row is not drawn for.
+The same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 

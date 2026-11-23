@@ -113,10 +113,11 @@ describe('Layout: the gear menu’s sections and switches', () => {
     const groups = rowsBySection(menu)
     expect(Object.keys(groups)).toEqual(['top', 'Modes', 'Show', 'Pages', 'Help and settings', 'last'])
 
-    // Every mode is under Modes, Task Mode last, and nothing else is.
+    // Modes holds a leader's Dispatch Mode and its PO tab, and nothing else. Job Mode and Task Mode left the menu for
+    // the roles with the mode row above the header (punch list #425): the row is their one door.
     expect(groups.Modes!.length).toBeGreaterThan(0)
-    expect(groups.Modes!.every((n) => /Mode|PO tab/.test(n))).toBe(true)
-    expect(groups.Modes![groups.Modes!.length - 1]).toMatch(/^Task Mode/)
+    expect(groups.Modes!.every((n) => /^Dispatch Mode|^PO tab/.test(n))).toBe(true)
+    expect(menu.textContent).not.toMatch(/Job Mode|Task Mode/)
     // The switches, each with its icon. The only row called a mode outside Modes is the phone's own Dark Mode.
     // A leader on a phone is offered the new phone layout's tick too, unticked until they tick it.
     expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'New phone layout', 'Dark Mode'])

@@ -22,30 +22,29 @@ import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 const PREFIX = 'dashboard_job_mode'
-const CARD_DISMISSED_PREFIX = 'dashboard_job_mode_card_dismissed'
 
 /** Same-tab change signal: `storage` events only fire in OTHER tabs, so the
  * gear-menu toggle dispatches this for hook instances in the same tab
  * (e.g. the Dashboard's) to re-read. */
 export const JOB_MODE_CHANGED_EVENT = 'dashboard_job_mode_changed'
 
-/** Where an ON came from — the telemetry `source` and the stored provenance. */
-export type JobModeSource = 'default' | 'card' | 'gear'
+/**
+ * Where an ON came from — the telemetry `source`. `row` is the mode row above the header (punch list
+ * #425), stored as `'1'` like the gear menu. `card` was the Dashboard's first-run card, which the row
+ * replaced; a device that stored `'card'` still reads on.
+ */
+export type JobModeSource = 'default' | 'card' | 'gear' | 'row'
 
 /**
  * What the device remembers for this user: `'1'` = turned on from the gear
- * menu (also the pre-v2 legacy on-value), `'card'` = turned on from the
- * first-run Dashboard card, `'0'` = explicitly turned off, `null` = never
- * touched (the role default applies).
+ * menu or the mode row (also the pre-v2 legacy on-value), `'card'` = turned on
+ * from the first-run Dashboard card the row replaced, `'0'` = explicitly
+ * turned off, `null` = never touched (the role default applies).
  */
 export type JobModeStoredValue = '1' | 'card' | '0' | null
 
 export function jobModeStorageKey(userId: string): string {
   return `${PREFIX}_${userId}`
-}
-
-export function jobModeCardDismissedKey(userId: string): string {
-  return `${CARD_DISMISSED_PREFIX}_${userId}`
 }
 
 /** Pure: the role-level default when the device has no stored value. */
@@ -80,23 +79,6 @@ export function jobModeActiveSource(storedValue: JobModeStoredValue | string | n
   if (stored === 'card') return 'card'
   if (stored === '1') return 'gear'
   return 'default'
-}
-
-/**
- * Pure: should the Dashboard show the one-time "Working in the field? Turn on
- * Job Mode" card? Only for roles that CAN use Job Mode but default off and also
- * plausibly work in the field — master_technician and superintendent. Never for
- * sub-like roles (already on by default) and never for office roles.
- */
-export function showJobModeFirstRunCard(
-  role: UserRole | string | null | undefined,
-  storedValue: JobModeStoredValue | string | null | undefined,
-  dismissed: boolean,
-): boolean {
-  if (dismissed) return false
-  if (role !== 'master_technician' && role !== 'superintendent') return false
-  if (!canLeaveJobFieldReport(role)) return false
-  return parseJobModeStoredValue(storedValue) === null
 }
 
 export function readJobModeStoredValue(userId: string | null | undefined): JobModeStoredValue {
@@ -135,26 +117,6 @@ export function writeJobModeEnabled(
     } else {
       localStorage.setItem(jobModeStorageKey(userId), '0')
     }
-  } catch {
-    // ignore
-  }
-}
-
-export function readJobModeCardDismissed(userId: string | null | undefined): boolean {
-  if (!userId) return false
-  try {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem(jobModeCardDismissedKey(userId)) === '1'
-  } catch {
-    return false
-  }
-}
-
-export function writeJobModeCardDismissed(userId: string | null | undefined): void {
-  if (!userId) return
-  try {
-    if (typeof localStorage === 'undefined') return
-    localStorage.setItem(jobModeCardDismissedKey(userId), '1')
   } catch {
     // ignore
   }

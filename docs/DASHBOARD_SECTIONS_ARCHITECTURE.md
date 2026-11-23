@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 ---
 
 ## Overview
@@ -140,8 +140,8 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **Owned local state:** `jobModeShowFullDashboard` (460, resets each load — the gear-menu toggle is the persistent setting), `turnawayJob` (448 — **only settable/renderable in this branch**, quirk #7).
 - **Cross-section/shared state:** `leaveReportJob` (447), `refreshDashboardAssignedJobLists`, `loadDashboardReportCounts`, `pinnedQuickRowSharedProps`, `myScheduleSection`, `dashboardSelfIsSalary`, `clockDisplayName`.
 - **Data deps:** `usePageMode(authUser.id, role)` over `useJobModeEnabled` (451; v2.2877 role default + `'0'` explicit off — see `jobModeToggle.ts`); `DashboardJobModeCard` self-loads (since v2.5573 also, through `jobModeOnMyWayIo.ts` and fail-soft, the session's travel stamps, the office's two press lines, the job's point from `address_geocodes` and the phone's GPS; since v2.5590 the tech's bio lines and whether the customer was introduced; since v2.7701 `trip_phone_state` for the header's job through `useTripPhone`, once ready to start and once more when a clock session opens, and for somebody clocked in the shop's point and the job's address point only when the distance alone would decide the trip question). Effect 453–456 records `job_mode_enabled{source}` once per session (`jobModeTelemetry.ts`).
-- **First-run card (v2.2877):** `DashboardJobModeFirstRunCard` 1366–1373, top of the **main** return (above `DashboardPinnedQuickRow`); self-gated by `showJobModeFirstRunCard(role, stored, dismissed)` → master_technician / superintendent only; its tap calls `setJobModeEnabled(true, 'card')` and resets `jobModeShowFullDashboard`, so the page flips into this branch without a reload.
-- **Tests:** `jobModeToggle` 16, `jobModeTelemetry` 4; `DashboardJobModeCard` + `DashboardJobModeFirstRunCard` smokes; `useJobModeEnabled.render.test.tsx` 5; `onMyWay.test.ts` 18, `OnMyWaySheet.render.test.tsx` 13, `ImHereSheet.render.test.tsx` 3; `topRow.test.ts` 21, `JobModeTopRow.render.test.tsx` 12; `tripPhone.test.ts` 36, `useTripPhone.render.test.tsx` 26, `JobModeTrip.render.test.tsx` 15, `DashboardJobModeCard.trip.render.test.tsx` 6. The branch itself has no smoke (no `Dashboard.render.test.tsx`).
+- **The way in (v2.8332, punch list #425):** the first-run card is gone; the mode row above the header (`ModeRow`, mounted by `Layout`, rule in `lib/modeRow.ts`) switches Job Mode on and off for every role but the estimator, so the page flips into this branch without a reload. An effect clears `jobModeShowFullDashboard` whenever Job Mode goes off, and **Show full dashboard** is drawn only when `modeRowOfferedToRole(role)` is false, which is the estimator.
+- **Tests:** `jobModeToggle` 13, `jobModeTelemetry` 4, `modeRow` 21; `DashboardJobModeCard` + `ModeRow` smokes; `useJobModeEnabled.render.test.tsx` 5; `onMyWay.test.ts` 18, `OnMyWaySheet.render.test.tsx` 13, `ImHereSheet.render.test.tsx` 3; `topRow.test.ts` 21, `JobModeTopRow.render.test.tsx` 12; `tripPhone.test.ts` 36, `useTripPhone.render.test.tsx` 26, `JobModeTrip.render.test.tsx` 15, `DashboardJobModeCard.trip.render.test.tsx` 6. The branch itself has no smoke (no `Dashboard.render.test.tsx`).
 - **Extraction status + approach:** **Stays in the parent** — it is the page-level fork. Four elements are written twice across the two returns (quirk #15); hoist them into consts. Known consequence (accepted): the pinned row is a component, so flipping "Show full dashboard" remounts it and its tally/lost-bids counts reload.
 
 ### 1. Section dock
@@ -545,7 +545,7 @@ The host-side step landed as v2.5771: `needsYouDoor(item, data, host)` in [`need
 | [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) (584) | dispatch requests engine | Teams Inbox ×2, `DispatchDismissedItemsModal`, `dispatchAged` → Needs You |
 | [`useEstimatorInbox`](../src/hooks/useEstimatorInbox.ts) (594) | estimator requests engine | Teams Inbox ×2 (adopted v2.719); also `ChecklistReviewInboxes`, `DispatchModeInbox`, `DispatchModeFooter` |
 | `useApplyScheduleProportions` (192) | apply-schedule flow + confirm modal state | clock strip |
-| `usePageMode` (451) | the page mode: Job Mode's flag, and Dispatch Mode's for the Needs you door | page fork + first-run card |
+| `usePageMode` (451) | the page mode: Job Mode's flag, and Dispatch Mode's for the Needs you door | page fork |
 | `useWeeklyTeamLaborTotal`, `useBilledTotal`, `useSupplyHousesAPTotal`, `useSubLaborDueTotal` (648–651) | financial pin totals (the last three keyed on `financialRefreshKey`) | parent → `DashboardPinnedQuickRow` props |
 | `useAuth`, `useIsMobile`, `useDocumentVisibility`, `useFirstAssistantDispatchPhone`, `useRealtimeChannel` | cross-cutting | `useAuth`/`useIsMobile` page-wide; `useDocumentVisibility` (140) + `useRealtimeChannel` (841) only the financial-pins machinery (§3); `useFirstAssistantDispatchPhone` (336) only My Schedule |
 | Contexts in the parent: `useToastContext`, `useJobFormModal`, `useJobDetailModal`, `useBillCustomerModal` (596) | app-level modals | billing glue, inbox openers, job rows (children also call `useBidPreview`, `useEditProjectModal` themselves) |
