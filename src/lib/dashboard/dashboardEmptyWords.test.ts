@@ -10,6 +10,7 @@ import {
   JOBS_STAGES_PATH,
   LIEN_RELEASE_QUEUE_EMPTY,
   LIEN_WAIVERS_TO_SIGN_EMPTY,
+  MY_BIDS_ONLY_HIDDEN_EMPTY,
   MY_BIDS_UNSENT_EMPTY,
   NEEDS_YOU_EMPTY,
   READY_TO_BILL_EMPTY,
@@ -22,7 +23,6 @@ import {
   crewDayOfficeOnlyEmptyWords,
   financeDrillEmptyWords,
   myScheduleDayEmptyWords,
-  myTimeWeekEmptyWords,
   recentReportsEmptyWords,
   staleFollowUpEmptyWords,
   supervisorReportsOwedEmptyWords,
@@ -61,6 +61,7 @@ describe('dashboardEmptyWords: the good states', () => {
 
   it('My bids and My crew say their good state', () => {
     expect(read(MY_BIDS_UNSENT_EMPTY)).toBe('Nothing unsent. Every bid went out.')
+    expect(read(MY_BIDS_ONLY_HIDDEN_EMPTY)).toBe('Nothing unsent. The bids you hid are below.')
     expect(read(supervisorReportsOwedEmptyWords(3))).toBe('Every job-day you supervised has a report. 3 filed.')
     expect(supervisorReportsOwedEmptyWords(0)).toEqual({ main: 'Nothing owed.' })
     expect(SUPERVISOR_CREW_EMPTY.next).toBeUndefined()
@@ -96,15 +97,6 @@ describe('dashboardEmptyWords: the presses', () => {
     expect(band.main).toBe('No items match the filters.')
     press(band)
     expect(clearFilters).toHaveBeenCalledTimes(1)
-  })
-
-  it('My time offers Last week until last week is open', () => {
-    const show = vi.fn()
-    const words = myTimeWeekEmptyWords(show)
-    expect(read(words)).toBe('Nothing clocked this week. Last week shows the week before.')
-    press(words)
-    expect(show).toHaveBeenCalledTimes(1)
-    expect(myTimeWeekEmptyWords(null)).toEqual({ main: 'Nothing clocked this week.' })
   })
 
   it('the stale purchases window: Stale hiding everything offers To sort', () => {
@@ -166,6 +158,7 @@ describe('dashboardEmptyWords: plain words', () => {
       READY_TO_BILL_EMPTY,
       LIEN_RELEASE_QUEUE_EMPTY,
       LIEN_WAIVERS_TO_SIGN_EMPTY,
+      MY_BIDS_ONLY_HIDDEN_EMPTY,
       MY_BIDS_UNSENT_EMPTY,
       TEAM_CLOCKED_IN_TODAY_EMPTY,
       SUPERVISOR_CREW_EMPTY,
@@ -176,7 +169,6 @@ describe('dashboardEmptyWords: plain words', () => {
       arCustomersEmptyWords({ query: '', filtered: false, hasCollections: false, clearSearch: noop, clearFilters: noop }),
       financeDrillEmptyWords({ query: 'Hartline', clearSearch: noop, clearFilters: noop }),
       financeDrillEmptyWords({ query: '', clearSearch: noop, clearFilters: noop }),
-      myTimeWeekEmptyWords(noop),
       staleFollowUpEmptyWords({ staleOnly: true, anyRows: true, showToSort: noop }),
       staleFollowUpEmptyWords({ staleOnly: false, anyRows: false, showToSort: noop }),
       assignedJobsSearchEmptyWords('zzz', noop),

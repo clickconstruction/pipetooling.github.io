@@ -69,8 +69,11 @@ export const LIEN_RELEASE_QUEUE_EMPTY: EmptyStateWords = {
 /** Waivers to sign, none left. */
 export const LIEN_WAIVERS_TO_SIGN_EMPTY: EmptyStateWords = { main: 'Nothing waits for your signature.' }
 
-/** My bids with every bid sent: the sent ones sit below. */
+/** My bids with every bid sent: the sent ones sit in the groups below. */
 export const MY_BIDS_UNSENT_EMPTY: EmptyStateWords = { main: 'Nothing unsent.', tail: 'Every bid went out.' }
+
+/** My bids with every bid the person holds hidden: the Hidden group below is the way back (punch list #426). */
+export const MY_BIDS_ONLY_HIDDEN_EMPTY: EmptyStateWords = { main: MY_BIDS_UNSENT_EMPTY.main, tail: 'The bids you hid are below.' }
 
 /** My crew → Reports owed with nothing owed: the filed count when there are job-days, else the plain good state. */
 export function supervisorReportsOwedEmptyWords(filed: number): EmptyStateWords {
@@ -103,12 +106,6 @@ export function arCustomersEmptyWords(s: { query: string; filtered: boolean; has
 /** The Financials drill window (AR, AP, Not billed): the search, or the age band, hides every item. */
 export function financeDrillEmptyWords(s: { query: string; clearSearch: Press; clearFilters: Press }): EmptyStateWords {
   return s.query.trim() ? searchEmptyWords('items', s.query, s.clearSearch) : filtersEmptyWords('items', s.clearFilters)
-}
-
-/** My time with nothing clocked this week: Last week opens the week before, unless it is already open. */
-export function myTimeWeekEmptyWords(showLastWeek: Press | null): EmptyStateWords {
-  const main = 'Nothing clocked this week.'
-  return showLastWeek ? { main, next: { label: 'Last week', onPress: showLastWeek }, tail: 'shows the week before.' } : { main }
 }
 
 /**

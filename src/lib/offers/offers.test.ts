@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { goesLine, HELD_IN_KIND, HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, payJobsOf, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withInKindHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { goesLine, HELD_IN_KIND, HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, payJobsOf, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsNeed, heldCause, TODAYS_SENDS_WORDS, withAnsweredHolds, withInKindHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -147,7 +148,7 @@ describe('a text about a day that has passed', () => {
       ['moved', 'This text names a visit on Thu Oct 22. That day has passed. Put this one away with Not this one.'],
     ])
     expect(readyRows(rows).map((r) => r.id)).toEqual(['other'])
-    expect(todaysSendsLine(rows)).toBe('1 text ready to send, 1 held')
+    expect(plainSentence(todaysSendsNeed(rows)!.title)).toBe('1 text to send')
     expect(plainWordsFailures(heldStaleWords('2026-10-22'))).toEqual([])
   })
 
@@ -231,23 +232,118 @@ describe('offerRefusalWords: a press on a step the flow does not have', () => {
   })
 })
 
-describe('todaysSendsLine: the Dashboard’s line', () => {
-  it('counts ready, the morning’s and held, each only when there are some', () => {
-    const rows = todaysSends(input([offer({ id: 'a' }), offer({ id: 'b', channelId: null }), offer({ id: 'c', preparedBy: 'office', sendOn: '2026-10-18' }), offer({ id: 'd', contactId: 'c-sam', channelId: 'ch-9' }), offer({ id: 'e', contactId: 'c-sam', channelId: null })]))
-    expect(todaysSendsLine(rows)).toBe('2 texts ready to send, 1 goes in the morning, 2 held')
-    expect(todaysSendsLine(todaysSends(input([offer()])))).toBe('1 text ready to send')
-    expect(todaysSendsLine(todaysSends(input([offer({ channelId: null })])))).toBe('1 held')
-    expect(todaysSendsLine([])).toBe('')
+describe('todaysSendsNeed: the Dashboard’s row, built from the texts (punch list #424)', () => {
+  // Sat Oct 17 2026, 11:00 AM Central. The offers were written that morning unless a test says otherwise.
+  const NOW = new Date('2026-10-17T16:00:00Z')
+  const values = (text: string) => sentenceParts(text).flatMap((p) => (typeof p === 'string' ? [] : [`${p.kind}=${p.text}`]))
+
+  it('nothing waits: no row', () => {
+    expect(todaysSendsNeed([], NOW)).toBeNull()
   })
-  it('a text handed to a time counts as going later, and the row names the time (v2.6774)', () => {
+
+  it('counts the texts that can go, names who they go to, and gives a timed and a held text a chip each', () => {
+    const rows = todaysSends(
+      input(
+        [
+          offer({ id: 'a' }),
+          offer({ id: 'b', contactId: 'c-sam', channelId: 'ch-9', stepKey: 'booked' }),
+          offer({ id: 'c', contactId: 'c-lee', channelId: 'ch-3', preparedBy: 'office', sendOn: '2026-10-20', sendAt: '2026-10-20T14:00:00Z' }),
+          offer({ id: 'd', contactId: 'c-pat', channelId: null }),
+        ],
+        { names: { 'c-dana': 'Dana Whitfield', 'c-sam': 'Sam Ortiz', 'c-lee': 'Lee Park', 'c-pat': 'Pat Novak' } },
+      ),
+      NOW,
+    )
+    const need = todaysSendsNeed(rows, NOW)!
+    // The count is the texts a person can send, not every text on the list.
+    expect(need.count).toBe(2)
+    expect(plainSentence(need.title)).toBe('2 texts to send')
+    expect(values(need.title)).toEqual(['n=2'])
+    expect(values(need.names)).toEqual(['who=Dana Whitfield', 'who=Sam Ortiz'])
+    expect(need.peek).toBeNull()
+    expect(need.chips.map((c) => `${c.kind}: ${plainSentence(c.text)}`)).toEqual(['timed: 1 · Tue 9:00 AM', 'held: 1 held · no number'])
+    expect(values(need.chips[1]!.text)).toEqual(['n=1', 'why=no number'])
+    expect(need).toMatchObject({ press: 'Read them', severity: 'amber' })
+    // One plain line for a place that draws no values apart: Walk the list, a fold.
+    expect(need.detail).toBe('Dana Whitfield · Sam Ortiz · 1 · Tue 9:00 AM · 1 held · no number')
+    expect(need.detail).not.toMatch(/[⟪⟫]/)
+  })
+
+  it('one text shows the text itself, with its person and its step', () => {
+    const need = todaysSendsNeed(todaysSends(input([offer()]), NOW), NOW)!
+    expect(plainSentence(need.title)).toBe('1 text to send')
+    expect(plainSentence(need.names)).toBe('Dana Whitfield · Approved')
+    expect(need.peek).toBe('Dana, any word on the estimate? Happy to walk through it.')
+    expect(need.press).toBe('Read it')
+    expect(need.chips).toEqual([])
+  })
+
+  it('names three, counts the rest, and says how long the oldest has waited once it is two days', () => {
+    const names = { 'c-1': 'Ann Bell', 'c-2': 'Bo Cruz', 'c-3': 'Cy Dunn', 'c-4': 'Di Egan', 'c-5': 'Ed Frey' }
+    const rows = todaysSends(input(Object.keys(names).map((c, i) => offer({ id: `o${i}`, contactId: c, preparedAt: i === 0 ? '2026-10-13T14:00:00Z' : '2026-10-17T14:00:00Z' })), { names }), NOW)
+    const need = todaysSendsNeed(rows, NOW)!
+    // The spaces round the last dot do not break, so the count of the rest stays with the last name.
+    expect(plainSentence(need.names)).toBe('Ann Bell · Bo Cruz · Cy Dunn\u00a0·\u00a0+2')
+    expect(need.detail).toBe('Ann Bell · Bo Cruz · Cy Dunn · +2 · oldest 4 days')
+    expect(values(need.names).slice(-1)).toEqual(['more=+2'])
+    expect(need.chips.map((c) => `${c.kind}: ${plainSentence(c.text)}`)).toEqual(['old: oldest 4 days'])
+    // Written yesterday is not old yet.
+    const fresh = todaysSendsNeed(todaysSends(input([offer({ preparedAt: '2026-10-16T14:00:00Z' }), offer({ id: 'o2', contactId: 'c-sam', channelId: 'ch-9' })]), NOW), NOW)!
+    expect(fresh.chips).toEqual([])
+  })
+
+  it('none can go: the held texts are the row, each name with its cause', () => {
+    const rows = todaysSends(
+      input([offer({ id: 'a', channelId: null }), offer({ id: 'b', contactId: 'c-sam', channelId: 'ch-9', heldWhy: OFFER_HELD['opted out'] }), offer({ id: 'c', contactId: 'c-lee', channelId: 'ch-3', heldWhy: OFFER_HELD.answered })], {
+        names: { 'c-dana': 'Dana Whitfield', 'c-sam': 'Sam Ortiz', 'c-lee': 'Lee Park' },
+      }),
+      NOW,
+    )
+    const need = todaysSendsNeed(rows, NOW)!
+    expect(plainSentence(need.title)).toBe('3 texts cannot go')
+    expect(need.names).toBe('')
+    expect(need.chips.map((c) => plainSentence(c.text))).toEqual(['Dana Whitfield · no number', 'Lee Park · already answered', '+1'])
+    expect(need).toMatchObject({ count: 3, press: 'Fix them', severity: 'amber' })
+    expect(todaysSendsNeed(todaysSends(input([offer({ channelId: null })]), NOW), NOW)!.press).toBe('Fix it')
+  })
+
+  it('only timed texts wait: a grey row that needs nobody, with the time in its title', () => {
+    const one = todaysSendsNeed(todaysSends(input([offer({ preparedBy: 'office', sendOn: '2026-10-20', sendAt: '2026-10-20T14:00:00Z', stepKey: 'booked' })]), NOW), NOW)!
+    expect(plainSentence(one.title)).toBe('1 text goes Tue 9:00 AM')
+    expect(values(one.title)).toEqual(['n=1', 'when=Tue 9:00 AM'])
+    expect(plainSentence(one.names)).toBe('Dana Whitfield · Booked')
+    expect(one).toMatchObject({ count: 1, press: 'See it', severity: 'gray', chips: [] })
+    const two = todaysSendsNeed(todaysSends(input([offer({ id: 'a', preparedBy: 'office', sendOn: '2026-10-20', sendAt: '2026-10-20T14:00:00Z' }), offer({ id: 'b', contactId: 'c-sam', channelId: 'ch-9', preparedBy: 'office', sendOn: '2026-10-19' })]), NOW), NOW)!
+    expect(plainSentence(two.title)).toBe('2 texts go later')
+    expect(two.press).toBe('See them')
+  })
+
+  it('a held text’s cause is a word or two, whatever the hold’s sentence', () => {
+    expect(heldCause(HELD_NO_NUMBER)).toBe('no number')
+    expect(heldCause('(830) 555-0121 sent STOP. Call instead.')).toBe('sent STOP')
+    expect(heldCause(OFFER_HELD['opted out'])).toBe('sent STOP')
+    expect(heldCause(`${OFFER_HELD['prefers email']} It would go to (830) 555-0121.`)).toBe('wants email')
+    expect(heldCause(OFFER_HELD.answered)).toBe('already answered')
+    expect(heldCause(HELD_IN_KIND)).toBe('paid in kind')
+    expect(heldCause(HELD_NEWER)).toBe('a newer text waits')
+    expect(heldCause(heldSentWords('2026-10-16T15:00:00Z'))).toBe('already sent')
+    expect(heldCause(heldStaleWords('2026-10-15'))).toBe('the visit has passed')
+    expect(heldCause('The line still has {amount}. Send it from the customer’s thread, where the box fills it, or change the step’s line.')).toBe('a blank to fill')
+    // Words the app did not write, such as the carrier's: the row points at the window.
+    expect(heldCause('Quo turned the text away.')).toBe('see why')
+  })
+})
+
+describe('a text handed to a time (v2.6774)', () => {
+  it('waits with its time, is not ready to press, and the row names when it goes', () => {
     const now = Date.parse('2026-11-09T21:32:00Z')
-    const rows = todaysSends(input([offer({ id: 'later', preparedBy: 'office', sendOn: '2026-11-10', sendAt: '2026-11-10T15:00:00Z' }), offer({ id: 'morning', contactId: 'c-sam', channelId: 'ch-9', preparedBy: 'office', sendOn: '2026-11-10' })]), new Date(now))
+    const rows = todaysSends(input([offer({ id: 'later', preparedBy: 'office', sendOn: '2026-11-10', sendAt: '2026-11-10T15:00:00Z' }), offer({ id: 'morning', contactId: 'c-sam', channelId: 'ch-9', preparedBy: 'office', sendOn: '2026-11-10' })]))
     expect(rows.find((r) => r.id === 'later')).toMatchObject({ goesOn: '2026-11-10', goesAt: Date.parse('2026-11-10T15:00:00Z'), office: true, held: null })
     expect(rows.find((r) => r.id === 'morning')).toMatchObject({ goesAt: null, office: true })
-    expect(todaysSendsLine(rows)).toBe('2 go later')
     expect(goesLine(rows.find((r) => r.id === 'later')!, now)).toBe('Goes Tomorrow 9:00 AM')
     expect(goesLine(rows.find((r) => r.id === 'morning')!, now)).toBe('Goes in the morning of Tue Nov 10.')
     expect(readyRows(rows)).toEqual([])
+    expect(plainSentence(todaysSendsNeed(rows, new Date(now))!.title)).toBe('2 texts go later')
   })
 })
 

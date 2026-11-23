@@ -78,8 +78,12 @@ export interface StartChecksIo {
   setNotice: (home: { developmentId: string } | { jobId: string }, days: number | null, who: StartWho) => Promise<void>
   /** What the crew is asked on arrival at this job: the one stage whose days have come, with what nobody of ours has seen. Null: nothing to ask. */
   readArrival: (jobId: string) => Promise<ArrivalAsk | null>
-  /** The crew's answer. A No opens its bullet again and sends Dispatch one stage check; the id of that line comes back. */
-  arrive: (fixtureId: string, notAsTold: readonly string[]) => Promise<{ dispatchRequestId: string | null }>
+  /**
+   * The crew's answer. A No opens its bullet again and sends Dispatch one stage check; the id of that line comes back,
+   * and whether the push to Dispatch's phones went. The line is kept either way: `pushed` false means the inbox has it
+   * and no phone rang, so the card can say so.
+   */
+  arrive: (fixtureId: string, notAsTold: readonly string[]) => Promise<{ dispatchRequestId: string | null; pushed: boolean }>
   /** The job's second switch: show what we need before each stage on the GC's page. The job's row alone. */
   setShowsOnGcPage: (jobId: string, on: boolean, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
@@ -321,12 +325,15 @@ export const supabaseStartChecksIo: StartChecksIo = {
     const result = await db.rpc('start_check_arrive', { p_fixture_id: fixtureId, p_not_as_told: [...notAsTold] })
     checkSupabaseError(result, 'keep what you found')
     const id = (result.data as { dispatch_request_id?: string | null } | null)?.dispatch_request_id ?? null
-    if (id) {
-      // A No is a stage check to Dispatch, on the road #245 built: the inbox is told, and the push goes out.
-      notifyDispatchRequestsChanged()
-      void supabase.functions.invoke('notify-dispatch-request', { body: { dispatch_request_id: id } }).catch(() => {})
-    }
-    return { dispatchRequestId: id }
+    if (!id) return { dispatchRequestId: null, pushed: true }
+    // A No is a stage check to Dispatch, on the road #245 built: the inbox is told, and the push goes out. The line is
+    // kept before the push, so a push that fails loses no line; it is said, not thrown, so the card can tell the crew.
+    notifyDispatchRequestsChanged()
+    const pushed = await supabase.functions
+      .invoke('notify-dispatch-request', { body: { dispatch_request_id: id } })
+      .then((r) => !r.error)
+      .catch(() => false)
+    return { dispatchRequestId: id, pushed }
   },
 
   setShowsOnGcPage: async (jobId, on, who) => {

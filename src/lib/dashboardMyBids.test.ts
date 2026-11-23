@@ -1,16 +1,35 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from './plainWords'
 import {
   bucketMyBidCustomerContactsFromOthers,
   bucketMyBidSubmissionsFromOthers,
   buildMyBidRows,
+  buildMyBidsCard,
   collectMyBidNoteAuthorIds,
   formatRelativeCompactAgo,
+  groupMyBids,
+  isMyBidOffTheBoard,
   isMyBidStreamUnread,
+  MY_BID_STATE_GLOSS,
+  MY_BID_STATES,
+  MY_BID_STATE_WORDS,
+  MY_BIDS_CUT_WORDS,
+  MY_BIDS_HIDDEN_GLOSS,
+  MY_BIDS_DASHBOARD_ROW_LIMIT,
+  MY_BIDS_NOT_LOST_FILTER,
+  MY_BIDS_ON_THE_BOARD_FILTER,
+  MY_BIDS_READ_ORDER,
+  myBidGroupLabel,
+  myBidIsPutAway,
+  myBidState,
+  myBidWhen,
+  myBidsReadIsCut,
   myBidRolesForUser,
   myBidsStartsOpen,
   truncateMyBidNotePreview,
   type MyBidBaseRow,
   type MyBidCustomerContactRow,
+  type MyBidRow,
   type MyBidSubmissionEntryRow,
 } from './dashboardMyBids'
 
@@ -255,3 +274,206 @@ describe('myBidsStartsOpen', () => {
     expect(myBidsStartsOpen(undefined)).toBe(true)
   })
 })
+
+describe('myBidState — the Bid Board\'s rule (punch list #426)', () => {
+  it('reads the answer before the sent date, so a won bid with no sent date is Won', () => {
+    expect(myBidState({ outcome: 'won', bid_date_sent: null })).toBe('won')
+    expect(myBidState({ outcome: 'started_or_complete', bid_date_sent: null })).toBe('startedOrComplete')
+  })
+
+  it('with no answer, the sent date decides', () => {
+    expect(myBidState({ outcome: null, bid_date_sent: null })).toBe('unsent')
+    expect(myBidState({ outcome: null, bid_date_sent: '2026-11-03' })).toBe('pending')
+  })
+
+  it('a lost bid that slips through reads as its sent date says, never a fifth state', () => {
+    expect(myBidState({ outcome: 'lost', bid_date_sent: '2026-11-03' })).toBe('pending')
+    expect(myBidState({ outcome: 'lost', bid_date_sent: null })).toBe('unsent')
+  })
+
+  it('has the board\'s words for every state, in the order a person works them', () => {
+    expect(MY_BID_STATES.map((s) => MY_BID_STATE_WORDS[s])).toEqual(['Unsent', 'Not yet won or lost', 'Won', 'Started or Complete'])
+  })
+})
+
+describe('isMyBidOffTheBoard', () => {
+  it('an adopted bid is off, whatever its state', () => {
+    expect(isMyBidOffTheBoard({ outcome: 'won', bid_date_sent: '2026-11-03', adopted_into_bid_id: 'other' })).toBe(true)
+  })
+
+  it('an archived bid is off only while it is unsent, as on the board', () => {
+    const archived = '2026-05-11T15:00:00Z'
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: null, working_board_archived_at: archived })).toBe(true)
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: '2026-11-03', working_board_archived_at: archived })).toBe(false)
+    expect(isMyBidOffTheBoard({ outcome: 'won', bid_date_sent: null, working_board_archived_at: archived })).toBe(false)
+  })
+
+  it('a bid with neither mark stays', () => {
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: null })).toBe(false)
+  })
+})
+
+describe('groupMyBids', () => {
+  const bid = (id: string, over: Partial<{ outcome: string | null; bid_date_sent: string | null; bid_due_date: string | null }>) => ({
+    id,
+    outcome: null,
+    bid_date_sent: null,
+    bid_due_date: null,
+    ...over,
+  })
+
+  it('unsent bids run oldest due date first, with no due date last', () => {
+    const g = groupMyBids([bid('none', {}), bid('late', { bid_due_date: '2026-04-08' }), bid('soon', { bid_due_date: '2026-11-26' })])
+    expect(g.unsent.map((b) => b.id)).toEqual(['late', 'soon', 'none'])
+  })
+
+  it('every other state runs newest sent first', () => {
+    const g = groupMyBids([
+      bid('p-old', { bid_date_sent: '2026-09-01' }),
+      bid('p-new', { bid_date_sent: '2026-11-20' }),
+      bid('w-old', { outcome: 'won', bid_date_sent: '2026-02-07' }),
+      bid('w-new', { outcome: 'won', bid_date_sent: '2026-06-17' }),
+      bid('s', { outcome: 'started_or_complete', bid_date_sent: '2026-01-05' }),
+    ])
+    expect(g.pending.map((b) => b.id)).toEqual(['p-new', 'p-old'])
+    expect(g.won.map((b) => b.id)).toEqual(['w-new', 'w-old'])
+    expect(g.startedOrComplete.map((b) => b.id)).toEqual(['s'])
+    expect(g.unsent).toEqual([])
+  })
+
+  it('leaves the list it was given untouched', () => {
+    const list = [bid('b', { bid_due_date: '2026-11-26' }), bid('a', { bid_due_date: '2026-04-08' })]
+    groupMyBids(list)
+    expect(list.map((b) => b.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('the read', () => {
+  it('keeps what is not lost and what the board still lists', () => {
+    expect(MY_BIDS_NOT_LOST_FILTER).toBe('outcome.is.null,outcome.neq.lost')
+    expect(MY_BIDS_ON_THE_BOARD_FILTER).toBe('working_board_archived_at.is.null,outcome.not.is.null,bid_date_sent.not.is.null')
+  })
+
+  it('sorts the bids with no answer first, each pile newest first, so a cut falls on the oldest decided bids', () => {
+    expect(MY_BIDS_READ_ORDER).toEqual([
+      { column: 'outcome', ascending: false, nullsFirst: true },
+      { column: 'created_at', ascending: false, nullsFirst: false },
+    ])
+  })
+
+  it('says it was cut only when it came back full', () => {
+    expect(myBidsReadIsCut(MY_BIDS_DASHBOARD_ROW_LIMIT - 1)).toBe(false)
+    expect(myBidsReadIsCut(MY_BIDS_DASHBOARD_ROW_LIMIT)).toBe(true)
+  })
+})
+
+describe('myBidWhen — the value line of a bid (punch list #426, step 2)', () => {
+  const TODAY = new Date(2026, 10, 23, 9)
+  const bid = (over: Partial<{ bid_due_date: string | null; bid_date_sent: string | null; outcome: string | null; created_at: string | null }>) => ({
+    bid_due_date: null,
+    bid_date_sent: null,
+    outcome: null,
+    created_at: null,
+    ...over,
+  })
+
+  it('an unsent bid past its due date is red and counts the days', () => {
+    expect(myBidWhen(bid({ bid_due_date: '2026-04-08' }), TODAY)).toEqual({ label: 'Due', value: 'Wed 4/8', tail: '229 days past due', late: true, tone: 'red' })
+    expect(myBidWhen(bid({ bid_due_date: '2026-11-22' }), TODAY).tail).toBe('1 day past due')
+  })
+
+  it('an unsent bid due today or within three days is amber, and later than that is grey', () => {
+    expect(myBidWhen(bid({ bid_due_date: '2026-11-23' }), TODAY)).toMatchObject({ value: 'Mon 11/23', tail: 'today', late: false, tone: 'amber' })
+    expect(myBidWhen(bid({ bid_due_date: '2026-11-26' }), TODAY)).toMatchObject({ tail: 'in 3 days', tone: 'amber' })
+    expect(myBidWhen(bid({ bid_due_date: '2026-11-24' }), TODAY).tail).toBe('in 1 day')
+    expect(myBidWhen(bid({ bid_due_date: '2026-12-02' }), TODAY)).toMatchObject({ tail: 'in 9 days', tone: 'gray' })
+  })
+
+  it('an unsent bid with no due date reads its days on the board, red after 14', () => {
+    expect(myBidWhen(bid({ created_at: '2026-11-17T15:00:00Z' }), TODAY)).toEqual({ label: null, value: 'No due date', tail: '6 days on the board', late: false, tone: 'gray' })
+    expect(myBidWhen(bid({ created_at: '2026-11-04T15:00:00Z' }), TODAY)).toMatchObject({ tail: '19 days on the board', late: true, tone: 'red' })
+    expect(myBidWhen(bid({}), TODAY)).toMatchObject({ value: 'No due date', tail: null, tone: 'gray' })
+  })
+
+  it('every other state reads its sent date and is never red, whatever its due date', () => {
+    expect(myBidWhen(bid({ bid_due_date: '2026-04-08', bid_date_sent: '2026-11-20' }), TODAY)).toEqual({ label: 'Sent', value: 'Fri 11/20', tail: '3 days ago', late: false, tone: 'gray' })
+    expect(myBidWhen(bid({ outcome: 'won', bid_date_sent: '2026-11-23' }), TODAY).tail).toBe('today')
+    expect(myBidWhen(bid({ outcome: 'won' }), TODAY)).toEqual({ label: null, value: 'No sent date', tail: null, late: false, tone: 'gray' })
+  })
+})
+
+describe('buildMyBidsCard', () => {
+  const TODAY = new Date(2026, 10, 23, 9)
+  const row = (id: string, over: Partial<MyBidRow> = {}): MyBidRow => ({
+    id,
+    project_name: id,
+    bid_due_date: null,
+    bid_date_sent: null,
+    outcome: null,
+    created_at: null,
+    service_type_name: 'Plumbing',
+    myBidRoles: 'estimator',
+    unreadBidNotes: false,
+    unreadCustomerNotes: false,
+    othersBidUpdates: [],
+    othersCustomerUpdates: [],
+    ...over,
+  })
+
+  it('draws the states that hold a bid, in the board\'s order, and Unsent always', () => {
+    const card = buildMyBidsCard([row('w', { outcome: 'won', bid_date_sent: '2026-06-17' }), row('p', { bid_date_sent: '2026-11-20' })], new Set(), TODAY)
+    expect(card.groups.map((g) => [g.heading, g.bids.length])).toEqual([
+      ['Unsent', 0],
+      ['Not yet won or lost', 1],
+      ['Won', 1],
+    ])
+    expect(card.shown).toBe(2)
+  })
+
+  it('counts the unsent bids past due and the bids with unread updates', () => {
+    const card = buildMyBidsCard(
+      [row('late', { bid_due_date: '2026-04-08' }), row('none', { created_at: '2026-11-04T15:00:00Z' }), row('p', { bid_date_sent: '2026-11-20', unreadBidNotes: true })],
+      new Set(),
+      TODAY,
+    )
+    expect(card.groups[0]).toMatchObject({ heading: 'Unsent', pastDue: 1 })
+    expect(card.groups[1]?.unread.map((b) => b.id)).toEqual(['p'])
+    expect(myBidGroupLabel(card.groups[0]!)).toBe('Unsent, 2 bids, 1 past due')
+    expect(myBidGroupLabel(card.groups[1]!)).toBe('Not yet won or lost, 1 bid, 1 unread')
+  })
+
+  it('a hidden bid leaves its group and the title\'s count, and waits in Hidden', () => {
+    const card = buildMyBidsCard([row('a'), row('b', { bid_date_sent: '2026-11-20' })], new Set(['b']), TODAY)
+    expect(card.shown).toBe(1)
+    expect(card.groups.map((g) => g.heading)).toEqual(['Unsent'])
+    expect(card.hidden.map((b) => b.id)).toEqual(['b'])
+  })
+
+  it('a hidden bid with unread updates shows in its group until they are read', () => {
+    const unread = row('b', { unreadCustomerNotes: true })
+    expect(myBidIsPutAway(unread, new Set(['b']))).toBe(false)
+    expect(myBidIsPutAway({ ...unread, unreadCustomerNotes: false }, new Set(['b']))).toBe(true)
+    const card = buildMyBidsCard([unread], new Set(['b']), TODAY)
+    expect(card.groups[0]?.bids.map((x) => x.id)).toEqual(['b'])
+    expect(card.hidden).toEqual([])
+  })
+
+  it('a stored hidden id the read no longer holds counts for nothing', () => {
+    const card = buildMyBidsCard([row('a')], new Set(['gone-1', 'gone-2']), TODAY)
+    expect(card.hidden).toEqual([])
+    expect(card.shown).toBe(1)
+  })
+
+  it('says the trade only when the bids span more than one', () => {
+    expect(buildMyBidsCard([row('a'), row('b')], new Set(), TODAY).showTrade).toBe(false)
+    expect(buildMyBidsCard([row('a'), row('b', { service_type_name: 'HVAC' })], new Set(), TODAY).showTrade).toBe(true)
+    expect(buildMyBidsCard([row('a'), row('b', { service_type_name: '' })], new Set(), TODAY).showTrade).toBe(false)
+  })
+})
+
+describe('the card\'s own words', () => {
+  it('are plain words', () => {
+    for (const words of [...Object.values(MY_BID_STATE_GLOSS), MY_BIDS_HIDDEN_GLOSS, MY_BIDS_CUT_WORDS]) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+

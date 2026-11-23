@@ -19,7 +19,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { usePageMode } from '../hooks/usePageMode'
 import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
-import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
+import { modeRowOfferedToRole } from '../lib/modeRow'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
 import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
@@ -43,6 +43,7 @@ import { DashboardUpcomingInspectionsSection } from '../components/dashboard/Das
 import { DashboardRecentReportsSection } from '../components/dashboard/DashboardRecentReportsSection'
 import { DashboardMyBidsSection } from '../components/dashboard/DashboardMyBidsSection'
 import { SectionDock } from '../components/SectionDock'
+import { BackToTop } from '../components/BackToTop'
 import {
   getPinnedForUserFromSupabase,
   type PinnedItem,
@@ -53,9 +54,6 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
-import { isLienOffice } from '../lib/jobs/lienDesk'
-import { useLienMonth } from '../hooks/useLienMonth'
-import { DashboardLienMonthCard } from '../components/dashboard/DashboardLienMonthCard'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -111,7 +109,7 @@ import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
 import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
-import { DashboardMyHoursBlock } from '../components/dashboard/DashboardMyHoursBlock'
+import { DashboardMyTimeCard } from '../components/dashboard/DashboardMyTimeCard'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import type { SalariedWeek } from '../lib/salariedEffectiveHours'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
@@ -169,8 +167,6 @@ export default function Dashboard() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   /** ZZ test jobs off the Billed pin for every role but a dev who shows them (punch list #61, v2.5120). */
   const hideZzTestJobs = useZzTestJobsHidden(role)
-  // The lien month (punch list #235, PR 3): the desk's five zones as a card, for everyone who can open the desk.
-  const { month: lienMonth } = useLienMonth(isLienOffice(role), hideZzTestJobs)
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -389,6 +385,8 @@ export default function Dashboard() {
   const [yourPeopleDockVisible, setYourPeopleDockVisible] = useState(false)
   // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
   const [trainingDockVisible, setTrainingDockVisible] = useState(false)
+  /** The page's top, where Back to top lands focus (v2.8334). */
+  const dashboardTopRef = useRef<HTMLDivElement>(null)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const {
     assignedJobs,
@@ -496,7 +494,6 @@ export default function Dashboard() {
   // Read through the page mode (`pageMode.ts`), so this page is Job Mode only when the menu ticks it.
   const pageMode = usePageMode(authUser?.id ?? null, role)
   const jobModeEnabled = pageMode.mode === 'job'
-  const setPageMode = pageMode.set
   // `job_mode_enabled{source}` — once per session, on the first render with Job Mode active.
   useEffect(() => {
     if (!jobModeEnabled || !authUser?.id) return
@@ -506,6 +503,11 @@ export default function Dashboard() {
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
   // remains the persistent setting.
   const [jobModeShowFullDashboard, setJobModeShowFullDashboard] = useState(false)
+  // Job Mode switched off, by the mode row or the gear menu, ends that visit's look at the full page:
+  // switched on again, the page opens on the Job Mode card.
+  useEffect(() => {
+    if (!jobModeEnabled) setJobModeShowFullDashboard(false)
+  }, [jobModeEnabled])
   /** This week's hours so far, reported by Job Mode's hours card for the top row's This week square. `null` until read. */
   const [jobModeWeekHours, setJobModeWeekHours] = useState<number | null>(null)
   // The short Dashboard: a leader whose view is Short (`users.dashboard_view`, his own choice or the office's) gets
@@ -1399,8 +1401,8 @@ export default function Dashboard() {
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
-        {/* Your hours (design spike): Job Mode shows no My Time, so the ask and the eight weeks sit here as a card. */}
-        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed onWeek={setJobModeWeekHours} />
+        {/* My Time: Job Mode shows no My Time section, so the picture of the time added up sits here as a card. */}
+        <DashboardMyTimeCard userId={authUser.id} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} onWeek={setJobModeWeekHours} />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
@@ -1409,6 +1411,9 @@ export default function Dashboard() {
         <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
           <DashboardTrainingSection userId={authUser.id} role={role} />
         </div>
+        {/* The mode row above the header (punch list #425) is the way to the full Dashboard for the roles it is
+            drawn for, so this press is left for the estimator, who turns Job Mode on in the gear menu. */}
+        {modeRowOfferedToRole(role) ? null : (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1427,6 +1432,7 @@ export default function Dashboard() {
             Show full dashboard
           </button>
         </div>
+        )}
         {jobModeWindows}
       </div>
     )
@@ -1597,7 +1603,8 @@ export default function Dashboard() {
     ) : null
 
   return (
-    <div style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0 }}>
+    // The page's top is where Back to top lands focus (v2.8334): it takes focus from a press, never from Tab, and draws no ring around the whole page.
+    <div ref={dashboardTopRef} tabIndex={-1} data-dashboard-top="" style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0, outline: 'none' }}>
       {dockSections.length > 1 && !phoneOffice ? (
         <SectionDock
           sections={dockSections}
@@ -1636,16 +1643,6 @@ export default function Dashboard() {
       <Suspense fallback={null}>
         <DashboardTrialVerdictSection authUserId={authUser?.id} role={role} />
       </Suspense>
-      {/* First-run nudge for masters / superintendents who work in the field (v2.2877);
-          self-gated — never renders for sub-like (already on) or office roles. */}
-      <DashboardJobModeFirstRunCard
-        userId={authUser?.id}
-        role={role}
-        onEnable={() => {
-          setPageMode('job', true, 'card')
-          setJobModeShowFullDashboard(false)
-        }}
-      />
       <DashboardPinnedQuickRow
         {...pinnedQuickRowSharedProps}
         renderModals
@@ -1967,8 +1964,7 @@ export default function Dashboard() {
             <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
             <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
           </PhoneFold>
-          {/* The lien month (v2.6650, punch list #235): the Lien desk's five zones in one strip, with the zone today is in, what slipped and next month's queue. */}
-          <DashboardLienMonthCard month={lienMonth} />
+          {/* The lien month card stood here from v2.6650 until punch list #423: the Dashboard says how the Lien desk stands once, in `DashboardLienDeskCard` beside Needs you. */}
         </>
       )}
 
@@ -2047,7 +2043,6 @@ export default function Dashboard() {
             userId={authUser.id}
             hoursDaysCorrect={hoursDaysCorrectSet}
             disableDayEditor={dashboardSelfIsSalary}
-            salariedWeek={dashboardSelfSalariedWeek}
             onWeekSeconds={setMyTimeWeekSeconds}
           />
         </PhoneFold>
@@ -2059,6 +2054,8 @@ export default function Dashboard() {
           Renders nothing while nothing is required of the role or the tables are not on prod yet. */}
       {authUser?.id && <div id="dash-training" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && <DashboardTrainingSection userId={authUser.id} role={role} onVisibility={setTrainingDockVisible} />}
+      {/* Back to top (v2.8334): a quiet press at the foot of the page, for every role, drawn only when the page is two screens or more. */}
+      <BackToTop topRef={dashboardTopRef} onPress={() => recordNavClick(authUser?.id, role, 'dashboard', '#back-to-top')} />
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 

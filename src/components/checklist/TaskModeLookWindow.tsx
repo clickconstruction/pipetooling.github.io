@@ -3,6 +3,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { LOOK_CANT_TITLE, LOOK_CLOSE_LABEL, LOOK_LINE_LEAD, LOOK_READ_AGAIN_LABEL, lookCantLines, lookLine, lookReadAtWords, lookWindowTitle } from '../../lib/tasks/taskLook'
 import { LOOK_BAR_AHEAD, LOOK_BAR_SCREEN } from '../../lib/tasks/comingUp'
+import { ModeRowThirds } from '../layout/ModeRow'
 import { TaskModeChip } from '../TaskModeChip'
 import { TaskLookGate } from './TaskLookGate'
 
@@ -13,6 +14,11 @@ type Props = {
   readAt: Date
   onReadAgain: () => void
   onClose: () => void
+  /**
+   * The top of the person's screen in Task Mode: the mode row with Task Mode filled for a role that has it
+   * (`modeRowOfferedToRole`), the green strip for the estimator. Nothing until the person's role is read.
+   */
+  top?: 'row' | 'strip'
   /** The person's Today, drawn in its look mode by the page that owns it. */
   children: ReactNode
   /** Coming up, for the side column, above the list of what a look does not show. */
@@ -27,10 +33,10 @@ const HEAD_PRESS: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', font
 /**
  * See a person's Task Mode (punch list #381): the window Review opens from a person's card. At a desk it draws their
  * screen at a phone's width beside a side column. On a phone it takes the whole screen, and a bar switches between
- * their screen and the side column, so Coming up is one press away and not under a long day. The Task Mode strip and the day are drawn inside `TaskLookGate`, so nothing in them can be pressed to change
+ * their screen and the side column, so Coming up is one press away and not under a long day. The top of their screen, the mode row or the estimator's Task Mode strip, and the day are drawn inside `TaskLookGate`, so nothing in them can be pressed to change
  * a task. The head's own presses are the viewer's and work.
  */
-export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, children, side, door }: Props) {
+export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, top, children, side, door }: Props) {
   const phone = useIsNarrowScreen()
   const titleId = useId()
   /** On a phone, which of the two is showing. Both stay drawn, so the day keeps its place and what was opened. */
@@ -46,7 +52,13 @@ export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, c
 
   const screen = (
     <TaskLookGate>
-      <TaskModeChip onExit={() => {}} />
+      {top === 'row' ? (
+        <div data-look-mode-row style={{ padding: '0.4rem 0.6rem', background: 'var(--chrome-bg)', borderBottom: '1px solid var(--chrome-border)' }}>
+          <ModeRowThirds on="task" />
+        </div>
+      ) : top === 'strip' ? (
+        <TaskModeChip onExit={() => {}} />
+      ) : null}
       <div style={{ padding: '0.1rem 0.85rem 1rem' }}>{children}</div>
     </TaskLookGate>
   )

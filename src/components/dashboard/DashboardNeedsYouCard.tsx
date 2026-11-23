@@ -15,10 +15,9 @@ import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYo
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
 import { EmptyState } from '../EmptyState'
-import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
-import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
+import { NeedsYouRowWords } from './NeedsYouRowWords'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -54,8 +53,6 @@ export function DashboardNeedsYouCard({
   onAction,
   onSecondary,
   fillIn,
-  lienBoardStrip,
-  onOpenBoard,
 }: {
   userId: string | undefined
   role: UserRole | null
@@ -73,9 +70,6 @@ export function DashboardNeedsYouCard({
    * and draws the other lines under it.
    */
   fillIn?: { rowCount: number; opensFirst?: boolean; render: (opts: { startKind: FillInKind | null; onExit: () => void }) => ReactNode }
-  /** The Lien desk's Board as four dots on one line (v2.7334), for the office; the strip is one press that opens the desk at the Board. */
-  lienBoardStrip?: LienBoardDot[] | null
-  onOpenBoard?: () => void
 }) {
   const isPhone = useIsMobile()
   // The new phone layout: with no saved choice the card opens on Walk the list for every role, Cards one chip away.
@@ -221,8 +215,7 @@ export function DashboardNeedsYouCard({
               }}
             >
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
+                <NeedsYouRowWords item={it} />
                 {secondaryLinks(it)}
               </div>
               <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
@@ -327,8 +320,8 @@ export function DashboardNeedsYouCard({
         boxSizing: 'border-box',
       }}
     >
-      <NeedsYouLienBoardStrip strip={lienBoardStrip} userId={userId} role={role} onOpenBoard={onOpenBoard} />
-      <DashboardCardHead card={{ top: lienBoardStrip && lienBoardStrip.length ? null : '1rem', side: '1.25rem', radius: 10 }} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+      {/* The card starts with its title. The Lien desk's counts stood above it until punch list #423: they are how the desk stands, not a thing to press, so they are a card of their own beside this one (`DashboardLienDeskCard`). */}
+      <DashboardCardHead card={{ top: '1rem', side: '1.25rem', radius: 10 }} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
         <DashboardCardTitle>Needs you</DashboardCardTitle>
         <span
           style={{

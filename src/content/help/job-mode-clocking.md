@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: row at the top, switch, pull down, grey bar, dashboard, task mode, top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -11,16 +11,41 @@ Job Mode turns the Dashboard into one big card built for working in the field. I
 ## Is Job Mode on?
 
 - **Subs and helpers:** yes, already. Job Mode is on the first time you open the app on any phone. Nothing to set up.
-- **Leaders and superintendents:** the Dashboard shows a one-time card, **Working in the field? Turn on Job Mode.** You tap {{button:green|Turn on Job Mode}} and you are in. {{button:outline|Not now}} hides the card on that phone.
-- **Anyone who can file field reports:** you tap the {{icon:gear}} **gear menu** in the top-right of the header. You toggle **Job Mode** on or off.
+- **Everyone else but estimators:** you tap **Job Mode** on the row at the top of the Dashboard. See [the row at the top](#the-row-at-the-top).
+- **Estimators:** you tap the {{icon:gear}} **gear menu** in the top-right of the header. You toggle **Job Mode** on or off.
 
-Turning it **off** is remembered on that phone even if your role has it on by default. The same gear-menu row turns it back on. With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it. Then you see everything else for the rest of the visit. The next time you open the app you are back on the card.
+Turning it **off** is remembered on that phone even if your role has it on by default. With Job Mode on, the Dashboard shows the Job Mode card first.
+
+An estimator has no row at the top. An estimator taps {{button:outline|Show full dashboard}} under the card. The rest of the Dashboard then shows for that visit. The next time the app opens, the card is back.
 
 Job Mode, Dispatch Mode and Task Mode are [one at a time](/help/task-mode#one-mode-at-a-time). Turning Job Mode on takes you out of the other two. Turning it off puts you back in Dispatch Mode if you had that on.
 
 :::example A new phone
-Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} at the bottom of the screen — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
+Your helper gets a replacement phone and signs in. They land straight on the Job Mode card, with {{button:green|Clock In}} at the bottom of the screen. They need no gear menu and no guide. To see the whole Dashboard, they tap **Dashboard** on the row at the top.
 :::
+
+## The row at the top
+
+Every role but the estimator gets one row above the header. The row has three parts.
+
+:::example The row at the top of the Dashboard
+{{button:outline|Task Mode}} {{button:blue|Dashboard}} {{button:outline|Job Mode}}
+:::
+
+- The blue part is the page you are on.
+- You tap another part to switch. The row stays in sight after a switch, so the way back is one tap.
+- **Dashboard** is the full Dashboard. Anyone with Dispatch Mode on keeps the Dispatch Mode bar there.
+- **Task Mode** shows only your checklist. See [use Task Mode](/help/task-mode).
+
+On a phone the row hides once you have used it. A small grey bar at the top of the page marks its place. You pull the page down from its top to bring the row back. A tap on the grey bar does the same.
+
+The row stays in sight in two cases. The row stays while you are in Task Mode. The row also stays for a sub or a helper who is not in Job Mode.
+
+The row is the one place to switch. The {{icon:gear}} gear menu no longer lists **Job Mode** or **Task Mode**. **Dispatch Mode** is still in the gear menu for the roles that can use it.
+
+An estimator's first page is Bids, not the Dashboard. So an estimator has no row. An estimator still finds **Job Mode** and **Task Mode** in the gear menu.
+
+On a computer the row always shows.
 
 The header also changes. The three task buttons become a **Contact:** row. It has a green phone button that calls the office. Then {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} are spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating**. It sends a question to the estimators. You are not opening anyone's inbox.
 
@@ -248,7 +273,7 @@ Salaried teammates do not clock out manually. Their hours are handled automatica
 
 The details section also shows for your **Ready to start** job before you clock in. That is the customer contact, Street View, and updates. You review the visit before you head out.
 
-Below the card, **My Schedule** shows your upcoming visits. It is the same section as the full Dashboard. So you can see what is next without leaving Job Mode. {{button:outline|Show full dashboard}} sits just under it.
+Below the card, **My Schedule** shows your upcoming visits. That section is the same one the full Dashboard shows. So you can see what is next without leaving Job Mode. For an estimator, {{button:outline|Show full dashboard}} sits just under it.
 
 ## The Job Mode tab bar
 

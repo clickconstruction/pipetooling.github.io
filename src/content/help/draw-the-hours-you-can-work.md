@@ -6,13 +6,13 @@ keywords: my time, your hours, hours you can work, draw the week, available hour
 order: 44
 where: /dashboard
 ---
-My Time now asks one thing: how many hours a week can you work for the company, and when? You draw it once, and the office plans the crew from your picture.
+My Time asks one thing: how many hours a week can you work for the company, and when? You draw it once, and the office plans the crew from your picture.
 
 ## Where it is
 
-Open your dashboard and find **My Time**. Under the Today and This week tiles there is a line that reads *How many hours a week can you work?* with {{button:outline|Set hours}}. Once you have answered, the line reads your hours back with {{button:outline|Change}} beside it.
+Open your dashboard and find **My Time**. At the foot of the picture there is a line that reads *How many hours a week can you work?* with {{button:outline|Set hours}}. Once you have answered, the line reads *The office has your week as 38 h*, with your own hours and {{button:outline|Change}} beside it.
 
-If you live in Job Mode, the same block sits as a card under Your record.
+If you live in Job Mode, the **My Time** card under Your record has the same line.
 
 ## Draw your week
 
@@ -29,9 +29,9 @@ Pick which Sunday the drawing holds from, this week or next. Then press {{button
 
 If you would rather type a number, press *Type a number instead*.
 
-## Read your weeks
+## Where your hours are used
 
-Once you have answered, the block shows your last eight pay weeks as bars. A pay week runs Sunday to Saturday. The dashed line is 100 percent of your hours. The line under your total says this week so far and last week. It also counts the hours that fell outside the week you drew.
+The office plans the crew from your drawing on its own screen. Your dashboard does not measure your time against it. To read the time you have worked, see [see the time I have added up](/help/see-the-time-i-have-added-up).
 
 Only you and the office see your hours. Nobody sees a wage here.
 
@@ -39,4 +39,4 @@ Only you and the office see your hours. Nobody sees a wage here.
 
 - Until you answer, the office reads you at 40 hours a week and the board says so.
 - A new drawing holds from the Sunday you pick. The weeks before keep what you said then.
-- Salaried people read the week their pay sets, like *8 h Mon to Thu, 4 h Fri*. They have no Set hours press.
+- Salaried people have no Set hours press. A salaried week is set on pay.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { UserRole } from '../../hooks/useAuth'
@@ -9,24 +9,42 @@ import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
   MY_BID_OTHERS_VISIBLE_STEP,
+  MY_BID_STATE_WORDS,
+  MY_BIDS_CUT_WORDS,
   MY_BIDS_DASHBOARD_ROW_LIMIT,
+  MY_BIDS_HIDDEN_GLOSS,
+  MY_BIDS_HIDDEN_HEADING,
+  MY_BIDS_NOT_LOST_FILTER,
+  MY_BIDS_ON_THE_BOARD_FILTER,
+  MY_BIDS_READ_ORDER,
   bucketMyBidCustomerContactsFromOthers,
   bucketMyBidSubmissionsFromOthers,
   buildMyBidRows,
+  buildMyBidsCard,
   collectMyBidNoteAuthorIds,
   formatMyBidPreviewDate,
   formatRelativeCompactAgo,
+  isMyBidOffTheBoard,
+  myBidGroupLabel,
+  myBidHasUnread,
+  myBidState,
+  myBidWhen,
+  myBidsReadIsCut,
   myBidsStartsOpen,
   truncateMyBidNotePreview,
   type MyBidBaseRow,
   type MyBidCustomerContactRow,
+  type MyBidOthersBidItem,
+  type MyBidOthersCustomerItem,
   type MyBidReadStateRow,
   type MyBidRow,
   type MyBidSubmissionEntryRow,
 } from '../../lib/dashboardMyBids'
 import { MyBidsSectionSkeleton } from './DashboardSkeletons'
 import { EmptyState } from '../EmptyState'
-import { MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import { MY_BIDS_ONLY_HIDDEN_EMPTY, MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import { NEEDS_YOU_RAIL } from '../../lib/dashboard/needsYouPalette'
+import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 export function DashboardMyBidsSection({
@@ -45,8 +63,10 @@ export function DashboardMyBidsSection({
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
   const [myBidsLoading, setMyBidsLoading] = useState(false)
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
-  const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
-  const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
+  /** True when the read came back full, so older bids may be left out. */
+  const [readCut, setReadCut] = useState(false)
+  /** The groups drawn open. Unsent is the work, so it starts open; nothing remembers a press. */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(['unsent']))
   const myBidsPrimaryCollapseAppliedRef = useRef(false)
   const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(() => myBidsStartsOpen(role))
   const [myBidOthersVisibleLimits, setMyBidOthersVisibleLimits] = useState<
@@ -63,10 +83,8 @@ export function DashboardMyBidsSection({
     })
   }, [])
 
-  const myBidsVisibleCount = useMemo(
-    () => myBids.reduce((acc, b) => acc + (hiddenBidIds.has(b.id) ? 0 : 1), 0),
-    [myBids, hiddenBidIds],
-  )
+  const card = useMemo(() => buildMyBidsCard(myBids, hiddenBidIds), [myBids, hiddenBidIds])
+  const myBidsVisibleCount = card.shown
 
   useEffect(() => {
     if (myBidsStartsOpen(role) || myBidsPrimaryCollapseAppliedRef.current) return
@@ -95,16 +113,22 @@ export function DashboardMyBidsSection({
             supabase
               .from('bids')
               .select(
-                'id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, estimator_id, account_manager_id, service_type:service_types(name)'
+                'id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, estimator_id, account_manager_id, created_at, working_board_archived_at, adopted_into_bid_id, service_type:service_types(name)'
               )
               .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
-              .or('outcome.is.null,outcome.neq.lost')
-              .order('bid_due_date', { ascending: true, nullsFirst: false })
+              .or(MY_BIDS_NOT_LOST_FILTER)
+              // What the Bid Board no longer lists is not listed here (punch list #426): an adopted bid, and an unsent one archived from the board.
+              .is('adopted_into_bid_id', null)
+              .or(MY_BIDS_ON_THE_BOARD_FILTER)
+              // The limit cuts the oldest decided bids, never the newest due dates.
+              .order(MY_BIDS_READ_ORDER[0].column, { ascending: MY_BIDS_READ_ORDER[0].ascending, nullsFirst: MY_BIDS_READ_ORDER[0].nullsFirst })
+              .order(MY_BIDS_READ_ORDER[1].column, { ascending: MY_BIDS_READ_ORDER[1].ascending, nullsFirst: MY_BIDS_READ_ORDER[1].nullsFirst })
               .limit(MY_BIDS_DASHBOARD_ROW_LIMIT),
           'load dashboard my bids'
         )
         if (cancelled) return
-        const baseRows = (rawRows ?? []) as MyBidBaseRow[]
+        setReadCut(myBidsReadIsCut((rawRows ?? []).length))
+        const baseRows = ((rawRows ?? []) as MyBidBaseRow[]).filter((r) => !isMyBidOffTheBoard(r))
         const bidIds = baseRows.map((r) => r.id)
         const uid = authUserId
         if (bidIds.length === 0) {
@@ -280,14 +304,283 @@ export function DashboardMyBidsSection({
     })
   }, [myBids])
 
-  const hasVisibleContent = myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))
+  // The card draws while the person has any bid, hidden or not (punch list #426): with every bid hidden it
+  // used to go, and its way back to them with it.
+  const hasVisibleContent = myBidsLoading || myBids.length > 0
   useEffect(() => {
     onContentVisibleChange(hasVisibleContent)
   }, [hasVisibleContent, onContentVisibleChange])
 
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const rolePill = (kind: 'estimator' | 'account_manager'): CSSProperties => ({
+    fontSize: '0.6875rem',
+    fontWeight: 600,
+    padding: '0.15rem 0.45rem',
+    borderRadius: 4,
+    lineHeight: 1.2,
+    whiteSpace: 'nowrap',
+    background: kind === 'estimator' ? 'var(--bg-blue-200)' : 'var(--bg-violet-100)',
+    border: kind === 'estimator' ? '1px solid #93c5fd' : '1px solid var(--border-violet)',
+    color: kind === 'estimator' ? 'var(--text-blue-800)' : 'var(--text-violet-800)',
+  })
+  const wordPress: CSSProperties = {
+    flexShrink: 0,
+    minHeight: 44,
+    padding: '0 0.8rem',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    color: 'var(--text-700)',
+    fontFamily: 'inherit',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  }
+  const othersBtn: CSSProperties = {
+    padding: 0,
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.8125rem',
+    color: 'var(--text-amber-800)',
+    textDecoration: 'underline',
+    fontWeight: 500,
+  }
+  const metaBold: CSSProperties = { fontWeight: 600 }
+
+  /** One stream of someone else's notes inside the amber box: the bid's own notes, or the customer's. */
+  const othersStream = (b: MyBidRow, stream: 'bid' | 'customer') => {
+    const items: Array<MyBidOthersBidItem | MyBidOthersCustomerItem> = stream === 'bid' ? b.othersBidUpdates : b.othersCustomerUpdates
+    const lim = myBidOthersVisibleLimits[b.id] ?? { bid: 1, customer: 1 }
+    const total = items.length
+    const limit = Math.min(Math.max(1, stream === 'bid' ? lim.bid : lim.customer), total)
+    const adjust = (op: 'more' | 'all' | 'less') => adjustMyBidOthersLimit(b.id, stream, op, total)
+    return (
+      <div style={{ marginTop: stream === 'bid' ? '0.35rem' : '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>{stream === 'bid' ? 'Recent Bid Notes' : 'Recent Customer Notes'}</span>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {total > limit ? (
+              <button type="button" onClick={() => adjust('more')} style={othersBtn}>
+                Show more
+              </button>
+            ) : null}
+            {total > limit && limit > 1 ? (
+              <button type="button" onClick={() => adjust('all')} style={othersBtn}>
+                Show all
+              </button>
+            ) : null}
+            {limit > 1 ? (
+              <button type="button" onClick={() => adjust('less')} style={othersBtn}>
+                Show less
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {items.slice(0, limit).map((item, idx) => {
+          const text = item.text
+          const teaser = truncateMyBidNotePreview(text, 90) || 'No note text'
+          const detailKey = `${stream === 'bid' ? 'bid' : 'cust'}:${item.id}`
+          const isNoteOpen = myBidOthersNoteDetailsOpen.has(detailKey)
+          const fullBody = text?.trim() ? text : 'No note text.'
+          const contactDate = 'contactDate' in item ? item.contactDate : undefined
+          return (
+            <details
+              key={item.id}
+              open={isNoteOpen}
+              onToggle={(e) => toggleMyBidOthersNoteDetails(detailKey, (e.currentTarget as HTMLDetailsElement).open)}
+              style={{ marginTop: idx > 0 ? '0.5rem' : 0 }}
+            >
+              <summary style={{ cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-amber-900)', listStyle: 'none' }}>
+                {isNoteOpen ? (
+                  <span style={{ fontWeight: 400, whiteSpace: 'pre-wrap', display: 'block', maxHeight: 200, overflowY: 'auto', lineHeight: 1.45 }}>
+                    <span style={metaBold}>({formatRelativeCompactAgo(item.createdAt)})</span> {fullBody} -{' '}
+                    <span style={metaBold}>{item.authorLabel ?? 'Someone'}</span>
+                    {' '}·{' '}
+                    {formatMyBidPreviewDate(item.createdAt)}
+                  </span>
+                ) : (
+                  <span style={{ fontWeight: 400 }}>
+                    {teaser} -{' '}
+                    <span style={metaBold}>
+                      {item.authorLabel ?? 'Someone'} ({formatRelativeCompactAgo(item.createdAt)})
+                    </span>
+                  </span>
+                )}
+              </summary>
+              {isNoteOpen && (item.contactMethod || contactDate) ? (
+                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#a16207' }}>
+                  {item.contactMethod ? <span>Method: {item.contactMethod}</span> : null}
+                  {item.contactMethod && contactDate ? ' · ' : null}
+                  {contactDate ? <span>Contact: {formatMyBidPreviewDate(contactDate)}</span> : null}
+                </div>
+              ) : null}
+            </details>
+          )
+        })}
+      </div>
+    )
+  }
+
+  /** The amber box under a bid with unread updates: someone else's notes since the last Mark read. */
+  const unreadBox = (b: MyBidRow) => (
+    <div
+      role="region"
+      aria-label={`Unread notes for ${b.project_name || 'bid'}`}
+      style={{
+        marginTop: '0.35rem',
+        marginLeft: '0.5rem',
+        padding: '0.35rem 0.5rem 0.6rem 1rem',
+        background: 'var(--bg-amber-tint)',
+        border: '1px solid var(--border-amber)',
+        borderLeft: '3px solid #f59e0b',
+        borderRadius: 6,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Unread updates</span>
+        <button
+          type="button"
+          onClick={() => void markMyBidNotesReadAsViewed(b.id)}
+          style={{ ...wordPress, border: '1px solid #d97706', color: 'var(--text-amber-900)', fontWeight: 500 }}
+        >
+          Mark read
+        </button>
+      </div>
+      {b.unreadBidNotes && b.othersBidUpdates.length > 0 ? othersStream(b, 'bid') : null}
+      {b.unreadCustomerNotes && b.othersCustomerUpdates.length > 0 ? othersStream(b, 'customer') : null}
+    </div>
+  )
+
+  /**
+   * One bid: a box whose edge says how soon it wants a look, the name across the full width, then when it is
+   * due or was sent, with the role chips beside it. A press on the bid opens the bid's window (the owner's
+   * pick of 2026-11-23, one press per bid), which has a door to every tab of it. The word press on the right
+   * hides it, or shows it again.
+   */
+  const bidBox = (b: MyBidRow, mode: 'shown' | 'hidden') => {
+    const when = myBidWhen(b)
+    const name = b.project_name || 'Untitled'
+    return (
+      <li key={b.id} data-my-bid={b.id}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderLeft: `4px solid ${NEEDS_YOU_RAIL[mode === 'hidden' ? 'gray' : when.tone]}`,
+            borderRadius: 8,
+            padding: '0.65rem 0.875rem',
+          }}
+        >
+          <button
+            type="button"
+            data-my-bid-open
+            onClick={() => bidPreview?.openBidPreview(b.id)}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              minHeight: 44,
+              display: 'grid',
+              alignContent: 'center',
+              gap: '0.3rem',
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: 'var(--text-700)',
+            }}
+          >
+            <span style={{ fontSize: '0.9375rem', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: mode === 'hidden' ? 'var(--text-700)' : 'var(--text-link)' }}>{name}</span>
+            <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.6rem', fontSize: '0.8125rem' }}>
+              <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 0.4rem', fontVariantNumeric: 'tabular-nums' }}>
+                {mode === 'hidden' ? <span style={{ color: 'var(--text-muted)' }}>{MY_BID_STATE_WORDS[myBidState(b)]}</span> : null}
+                {when.label ? <span style={{ color: 'var(--text-muted)' }}>{when.label}</span> : null}
+                <WorkedOutValue>{when.value}</WorkedOutValue>
+                {when.tail ? when.late && mode === 'shown' ? <WorkedOutValue tone="red">{when.tail}</WorkedOutValue> : <span style={{ color: 'var(--text-muted)' }}>{when.tail}</span> : null}
+              </span>
+              {card.showTrade && b.service_type_name ? <span style={{ color: 'var(--text-muted)' }}>{b.service_type_name}</span> : null}
+              <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                {b.myBidRoles === 'estimator' || b.myBidRoles === 'both' ? <span style={rolePill('estimator')}>Estimator</span> : null}
+                {b.myBidRoles === 'account_manager' || b.myBidRoles === 'both' ? <span style={rolePill('account_manager')}>Account Manager</span> : null}
+              </span>
+            </span>
+          </button>
+          {mode === 'shown' ? (
+            <button type="button" onClick={() => hideBid(b.id)} aria-label={`Hide, ${name}`} style={wordPress}>
+              Hide
+            </button>
+          ) : (
+            <button type="button" onClick={() => unhideBid(b.id)} aria-label={`Show again, ${name}`} style={wordPress}>
+              Show again
+            </button>
+          )}
+        </div>
+        {mode === 'shown' && myBidHasUnread(b) ? unreadBox(b) : null}
+      </li>
+    )
+  }
+
+  /** A group's heading: the fold, the state in the Bid Board's words, its count, and what in it wants a look. */
+  const groupHead = (key: string, heading: string, count: number, label: string, gloss: string, flags: ReactNode) => {
+    const open = openGroups.has(key)
+    return (
+      <h3 style={{ margin: 0 }}>
+        <button
+          type="button"
+          onClick={() => toggleGroup(key)}
+          aria-expanded={open}
+          aria-label={label}
+          data-my-bids-group={key}
+          style={{
+            width: '100%',
+            minHeight: 44,
+            display: 'grid',
+            gridTemplateColumns: 'auto minmax(0, 1fr)',
+            columnGap: '0.5rem',
+            alignItems: 'center',
+            margin: 0,
+            padding: '0.4rem 0',
+            border: 'none',
+            background: 'none',
+            textAlign: 'left',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            color: 'var(--text-strong)',
+          }}
+        >
+          <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {open ? '▼' : '▶'}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0 }}>
+            <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>{heading}</span>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+            {flags}
+          </span>
+          {open ? <span style={{ gridColumn: 2, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{gloss}</span> : null}
+        </button>
+      </h3>
+    )
+  }
+  const bidList: CSSProperties = { listStyle: 'none', margin: 0, padding: '0 0 0.6rem', display: 'grid', gap: '0.5rem' }
+  const groupLine = (first: boolean): CSSProperties => ({ borderTop: first ? 'none' : '1px solid var(--border)' })
+
   return (
     <>
-      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
+      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary') && hasVisibleContent && (
         // Card frame (v2.2222): the primary's dashboard showed My Bids as a bare
         // heading between the Recent Reports and Assigned Jobs cards — same
         // frame as those two now (owner call).
@@ -297,7 +590,7 @@ export function DashboardMyBidsSection({
             border: '1px solid var(--border)',
             borderRadius: 8,
             background: 'var(--surface)',
-            padding: myBidsSectionExpanded ? '0.85rem 1rem 1rem' : '0.85rem 1rem',
+            padding: myBidsSectionExpanded ? '0.85rem 1rem 0.5rem' : '0.85rem 1rem',
             marginBottom: '1rem',
             scrollMarginTop: 8,
           }}
@@ -305,7 +598,7 @@ export function DashboardMyBidsSection({
           {/* One heading at every width. A phone had no fold at all until the owner's
               ask of 2026-11-19, so a primary's 24 bids stood open there; New Bid
               stays beside the heading while the list is folded. */}
-          <DashboardCardHead closed={!myBidsSectionExpanded} below="0.5rem" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <DashboardCardHead closed={!myBidsSectionExpanded} below="0.25rem" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
             <button
               type="button"
               onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
@@ -318,7 +611,7 @@ export function DashboardMyBidsSection({
               style={{
                 margin: 0,
                 padding: 0,
-                minHeight: 32,
+                minHeight: 44,
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
@@ -333,7 +626,10 @@ export function DashboardMyBidsSection({
             <Link
               to="/bids?new=true"
               style={{
-                padding: '0.35rem 0.75rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 44,
+                padding: '0 0.85rem',
                 background: '#2563eb',
                 color: 'white',
                 borderRadius: 6,
@@ -349,601 +645,44 @@ export function DashboardMyBidsSection({
             <MyBidsSectionSkeleton />
           ) : (
             <>
-              {(() => {
-                const visibleBids = myBids.filter((b) => !hiddenBidIds.has(b.id))
-                const unsentBids = visibleBids.filter((b) => !b.bid_date_sent)
-                const sentBids = visibleBids.filter((b) => b.bid_date_sent != null)
-                const myBidPillEstimator: CSSProperties = {
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: 4,
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                  background: 'var(--bg-blue-200)',
-                  border: '1px solid #93c5fd',
-                  color: 'var(--text-blue-800)',
-                }
-                const myBidPillAccountManager: CSSProperties = {
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: 4,
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                  background: 'var(--bg-violet-100)',
-                  border: '1px solid var(--border-violet)',
-                  color: 'var(--text-violet-800)',
-                }
-                const renderBidItem = (b: typeof myBids[0], cardStyle: CSSProperties, mode: 'visible' | 'hidden' = 'visible') => {
-                  const status =
-                    !b.bid_date_sent
-                      ? 'Unsent'
-                      : b.outcome === 'won'
-                        ? 'Won'
-                        : b.outcome === 'started_or_complete'
-                          ? 'Started or Complete'
-                          : 'Pending'
-                  const dueStr = b.bid_due_date
-                    ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
-                    : '—'
-                  const hasUnread = b.unreadBidNotes || b.unreadCustomerNotes
-                  const myBidMetaBold: CSSProperties = { fontWeight: 600 }
-                  return (
-                    <li key={b.id} style={{ marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <Link
-                          to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            display: 'block',
-                            padding: '0.5rem 0.75rem',
-                            ...cardStyle,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'row',
-                              alignItems: 'flex-start',
-                              justifyContent: 'space-between',
-                              gap: '0.5rem',
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
-                              {b.service_type_name && (
-                                <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
-                              )}
-                            </div>
-                            <div
-                              style={{
-                                flexShrink: 0,
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                justifyContent: 'flex-end',
-                                alignItems: 'flex-start',
-                                gap: '0.25rem',
-                              }}
-                            >
-                              {(b.myBidRoles === 'estimator' || b.myBidRoles === 'both') && (
-                                <span style={myBidPillEstimator}>Estimator</span>
-                              )}
-                              {(b.myBidRoles === 'account_manager' || b.myBidRoles === 'both') && (
-                                <span style={myBidPillAccountManager}>Account Manager</span>
-                              )}
-                            </div>
-                          </div>
-                          <div style={{ marginTop: '0.25rem', color: 'var(--text-600)' }}>
-                            Due {dueStr} · {status}
-                          </div>
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            bidPreview?.openBidPreview(b.id)
-                          }}
-                          style={{
-                            flexShrink: 0,
-                            padding: '0.35rem 0.55rem',
-                            background: 'var(--bg-muted)',
-                            border: '1px solid var(--border-strong)',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            color: 'var(--text-700)',
-                            fontSize: '0.8125rem',
-                          }}
-                          title="Preview bid"
-                        >
-                          Preview
-                        </button>
-                        {mode === 'visible' ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              hideBid(b.id)
-                            }}
-                            style={{
-                              flexShrink: 0,
-                              padding: '0.35rem',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--text-muted)',
-                            }}
-                            title="Hide bid"
-                            aria-label="Hide bid"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
-                              <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => unhideBid(b.id)}
-                            style={{
-                              flexShrink: 0,
-                              padding: '0.2rem 0.5rem',
-                              fontSize: '0.8125rem',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              background: 'var(--surface)',
-                              color: 'var(--text-700)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Add back
-                          </button>
-                        )}
-                      </div>
-                      {hasUnread ? (
-                        <div
-                          role="region"
-                          aria-label={`Unread notes for ${b.project_name || 'bid'}`}
-                          style={{
-                            marginTop: '0.35rem',
-                            marginLeft: '0.5rem',
-                            padding: '0.6rem 0.75rem 0.6rem 1rem',
-                            background: 'var(--bg-amber-tint)',
-                            border: '1px solid var(--border-amber)',
-                            borderLeft: '3px solid #f59e0b',
-                            borderRadius: 6,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              flexWrap: 'wrap',
-                              marginBottom:
-                                (b.unreadBidNotes && b.othersBidUpdates.length > 0) ||
-                                (b.unreadCustomerNotes && b.othersCustomerUpdates.length > 0)
-                                  ? '0.5rem'
-                                  : 0,
-                            }}
-                          >
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Unread updates</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                void markMyBidNotesReadAsViewed(b.id)
-                              }}
-                              style={{
-                                flexShrink: 0,
-                                padding: '0.35rem 0.6rem',
-                                fontSize: '0.8125rem',
-                                border: '1px solid #d97706',
-                                borderRadius: 4,
-                                background: 'var(--surface)',
-                                color: 'var(--text-amber-900)',
-                                cursor: 'pointer',
-                                fontWeight: 500,
-                              }}
-                            >
-                              Mark read
-                            </button>
-                          </div>
-                          {b.unreadBidNotes && b.othersBidUpdates.length > 0 ? (
-                            <div style={{ marginTop: '0.35rem' }}>
-                              {(() => {
-                                const lim = myBidOthersVisibleLimits[b.id] ?? { bid: 1, customer: 1 }
-                                const bidTotal = b.othersBidUpdates.length
-                                const bidLimit = Math.min(Math.max(1, lim.bid), bidTotal)
-                                const bidSlice = b.othersBidUpdates.slice(0, bidLimit)
-                                const othersBtn: CSSProperties = {
-                                  padding: 0,
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8125rem',
-                                  color: 'var(--text-amber-800)',
-                                  textDecoration: 'underline',
-                                  fontWeight: 500,
-                                }
-                                return (
-                                  <>
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'flex-start',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        flexWrap: 'wrap',
-                                        marginBottom: '0.35rem',
-                                      }}
-                                    >
-                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                                        Recent Bid Notes
-                                      </span>
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          gap: '0.75rem',
-                                          flexWrap: 'wrap',
-                                          alignItems: 'center',
-                                        }}
-                                      >
-                                        {bidTotal > bidLimit ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'bid', 'more', bidTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show more
-                                          </button>
-                                        ) : null}
-                                        {bidTotal > bidLimit && bidLimit > 1 ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'bid', 'all', bidTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show all
-                                          </button>
-                                        ) : null}
-                                        {bidLimit > 1 ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'bid', 'less', bidTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show less
-                                          </button>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                    {bidSlice.map((item, idx) => {
-                                      const teaser =
-                                        truncateMyBidNotePreview(item.text, 90) || 'No note text'
-                                      const detailKey = `bid:${item.id}`
-                                      const isNoteOpen = myBidOthersNoteDetailsOpen.has(detailKey)
-                                      const fullBody = item.text?.trim() ? item.text : 'No note text.'
-                                      return (
-                                        <details
-                                          key={item.id}
-                                          open={isNoteOpen}
-                                          onToggle={(e) => {
-                                            toggleMyBidOthersNoteDetails(
-                                              detailKey,
-                                              (e.currentTarget as HTMLDetailsElement).open
-                                            )
-                                          }}
-                                          style={{ marginTop: idx > 0 ? '0.5rem' : 0 }}
-                                        >
-                                          <summary
-                                            style={{
-                                              cursor: 'pointer',
-                                              fontSize: '0.8125rem',
-                                              color: 'var(--text-amber-900)',
-                                              listStyle: 'none',
-                                            }}
-                                          >
-                                            {isNoteOpen ? (
-                                              <span
-                                                style={{
-                                                  fontWeight: 400,
-                                                  whiteSpace: 'pre-wrap',
-                                                  display: 'block',
-                                                  maxHeight: 200,
-                                                  overflowY: 'auto',
-                                                  lineHeight: 1.45,
-                                                }}
-                                              >
-                                                <span style={myBidMetaBold}>
-                                                  ({formatRelativeCompactAgo(item.createdAt)})
-                                                </span>{' '}
-                                                {fullBody} -{' '}
-                                                <span style={myBidMetaBold}>{item.authorLabel ?? 'Someone'}</span>
-                                                {' '}·{' '}
-                                                {formatMyBidPreviewDate(item.createdAt)}
-                                              </span>
-                                            ) : (
-                                              <span style={{ fontWeight: 400 }}>
-                                                {teaser} -{' '}
-                                                <span style={myBidMetaBold}>
-                                                  {item.authorLabel ?? 'Someone'} (
-                                                  {formatRelativeCompactAgo(item.createdAt)})
-                                                </span>
-                                              </span>
-                                            )}
-                                          </summary>
-                                          {isNoteOpen && item.contactMethod ? (
-                                            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#a16207' }}>
-                                              <span>Method: {item.contactMethod}</span>
-                                            </div>
-                                          ) : null}
-                                        </details>
-                                      )
-                                    })}
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          ) : null}
-                          {b.unreadCustomerNotes && b.othersCustomerUpdates.length > 0 ? (
-                            <div style={{ marginTop: '0.5rem' }}>
-                              {(() => {
-                                const lim = myBidOthersVisibleLimits[b.id] ?? { bid: 1, customer: 1 }
-                                const custTotal = b.othersCustomerUpdates.length
-                                const custLimit = Math.min(Math.max(1, lim.customer), custTotal)
-                                const custSlice = b.othersCustomerUpdates.slice(0, custLimit)
-                                const othersBtn: CSSProperties = {
-                                  padding: 0,
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8125rem',
-                                  color: 'var(--text-amber-800)',
-                                  textDecoration: 'underline',
-                                  fontWeight: 500,
-                                }
-                                return (
-                                  <>
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'flex-start',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        flexWrap: 'wrap',
-                                        marginBottom: '0.35rem',
-                                      }}
-                                    >
-                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                                        Recent Customer Notes
-                                      </span>
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          gap: '0.75rem',
-                                          flexWrap: 'wrap',
-                                          alignItems: 'center',
-                                        }}
-                                      >
-                                        {custTotal > custLimit ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'customer', 'more', custTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show more
-                                          </button>
-                                        ) : null}
-                                        {custTotal > custLimit && custLimit > 1 ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'customer', 'all', custTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show all
-                                          </button>
-                                        ) : null}
-                                        {custLimit > 1 ? (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              adjustMyBidOthersLimit(b.id, 'customer', 'less', custTotal)
-                                            }}
-                                            style={othersBtn}
-                                          >
-                                            Show less
-                                          </button>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                    {custSlice.map((item, idx) => {
-                                      const teaser =
-                                        truncateMyBidNotePreview(item.text, 90) || 'No note text'
-                                      const detailKey = `cust:${item.id}`
-                                      const isNoteOpen = myBidOthersNoteDetailsOpen.has(detailKey)
-                                      const fullBody = item.text?.trim() ? item.text : 'No note text.'
-                                      return (
-                                        <details
-                                          key={item.id}
-                                          open={isNoteOpen}
-                                          onToggle={(e) => {
-                                            toggleMyBidOthersNoteDetails(
-                                              detailKey,
-                                              (e.currentTarget as HTMLDetailsElement).open
-                                            )
-                                          }}
-                                          style={{ marginTop: idx > 0 ? '0.5rem' : 0 }}
-                                        >
-                                          <summary
-                                            style={{
-                                              cursor: 'pointer',
-                                              fontSize: '0.8125rem',
-                                              color: 'var(--text-amber-900)',
-                                              listStyle: 'none',
-                                            }}
-                                          >
-                                            {isNoteOpen ? (
-                                              <span
-                                                style={{
-                                                  fontWeight: 400,
-                                                  whiteSpace: 'pre-wrap',
-                                                  display: 'block',
-                                                  maxHeight: 200,
-                                                  overflowY: 'auto',
-                                                  lineHeight: 1.45,
-                                                }}
-                                              >
-                                                <span style={myBidMetaBold}>
-                                                  ({formatRelativeCompactAgo(item.createdAt)})
-                                                </span>{' '}
-                                                {fullBody} -{' '}
-                                                <span style={myBidMetaBold}>{item.authorLabel ?? 'Someone'}</span>
-                                                {' '}·{' '}
-                                                {formatMyBidPreviewDate(item.createdAt)}
-                                              </span>
-                                            ) : (
-                                              <span style={{ fontWeight: 400 }}>
-                                                {teaser} -{' '}
-                                                <span style={myBidMetaBold}>
-                                                  {item.authorLabel ?? 'Someone'} (
-                                                  {formatRelativeCompactAgo(item.createdAt)})
-                                                </span>
-                                              </span>
-                                            )}
-                                          </summary>
-                                          {isNoteOpen && (item.contactMethod || item.contactDate) ? (
-                                            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#a16207' }}>
-                                              {item.contactMethod ? <span>Method: {item.contactMethod}</span> : null}
-                                              {item.contactMethod && item.contactDate ? ' · ' : null}
-                                              {item.contactDate ? (
-                                                <span>Contact: {formatMyBidPreviewDate(item.contactDate)}</span>
-                                              ) : null}
-                                            </div>
-                                          ) : null}
-                                        </details>
-                                      )
-                                    })}
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </li>
-                  )
-                }
-                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
-                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
-                const hiddenBidCardStyle: CSSProperties = {
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  color: 'var(--text-700)',
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                }
+              {card.groups.map((g, i) => {
+                const open = openGroups.has(g.state)
+                // A folded group still draws a bid with unread updates: a note on a sent bid was never seen behind its link.
+                const drawn = open ? g.bids : g.unread
                 return (
-                  <>
-                    {unsentBids.length === 0 && sentBids.length > 0 ? <EmptyState compact {...MY_BIDS_UNSENT_EMPTY} /> : null}
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {unsentBids.map((b) => renderBidItem(b, unsentCardStyle))}
-                    </ul>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <Link
-                        to="/bids?tab=bid-board"
-                        style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--text-link)',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        View all
-                      </Link>
-                      <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {sentBids.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setSentBidsExpanded((x) => !x)}
-                            style={{
-                              padding: 0,
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem',
-                              color: 'var(--text-link)',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            Sent bids ({sentBids.length}) {sentBidsExpanded ? '▲' : '▼'}
-                          </button>
-                        )}
-                        {hiddenBidIds.size > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setHiddenBidsExpanded((x) => !x)}
-                            style={{
-                              padding: 0,
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem',
-                              color: 'var(--text-link)',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            View hidden ({hiddenBidIds.size})
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                    {sentBidsExpanded && sentBids.length > 0 && (
-                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Sent bids</div>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {sentBids.map((b) => renderBidItem(b, sentCardStyle))}
-                        </ul>
-                      </div>
+                  <div key={g.state} style={groupLine(i === 0)}>
+                    {groupHead(
+                      g.state,
+                      g.heading,
+                      g.bids.length,
+                      myBidGroupLabel(g),
+                      g.gloss,
+                      <>
+                        {g.pastDue > 0 ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-red-700)' }}>{g.pastDue} past due</span> : null}
+                        {g.unread.length > 0 ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>{g.unread.length} unread</span> : null}
+                      </>,
                     )}
-              {hiddenBidsExpanded && hiddenBidIds.size > 0 && (
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Hidden bids</div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {myBids.filter((b) => hiddenBidIds.has(b.id)).map((b) => renderBidItem(b, hiddenBidCardStyle, 'hidden'))}
-                  </ul>
+                    {open && g.bids.length === 0 ? <EmptyState compact {...(card.shown > 0 ? MY_BIDS_UNSENT_EMPTY : MY_BIDS_ONLY_HIDDEN_EMPTY)} /> : null}
+                    {drawn.length > 0 ? <ul style={bidList}>{drawn.map((b) => bidBox(b, 'shown'))}</ul> : null}
+                  </div>
+                )
+              })}
+              {card.hidden.length > 0 ? (
+                <div style={groupLine(false)}>
+                  {groupHead('hidden', MY_BIDS_HIDDEN_HEADING, card.hidden.length, `${MY_BIDS_HIDDEN_HEADING}, ${card.hidden.length} ${card.hidden.length === 1 ? 'bid' : 'bids'}`, MY_BIDS_HIDDEN_GLOSS, null)}
+                  {openGroups.has('hidden') ? <ul style={bidList}>{card.hidden.map((b) => bidBox(b, 'hidden'))}</ul> : null}
                 </div>
-              )}
+              ) : null}
+              <div style={{ ...groupLine(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', minHeight: 44 }}>
+                {readCut ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{MY_BIDS_CUT_WORDS}</span> : null}
+                <Link
+                  to="/bids?tab=bid-board"
+                  style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  Bid Board ›
+                </Link>
+              </div>
             </>
-          )
-        })()}
-      </>
           ))}
         </div>
       )}

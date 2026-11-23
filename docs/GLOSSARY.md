@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1434,7 +1434,7 @@ an offer pressed for a job already answered mints a fresh ask).
 Since v2.6386 the window holds an offer whose step and job got a text after it was prepared (`nudge_sent` read since the oldest open offer;
 the run's own text, Remind now, another offer pressed — the roads an office-made offer, a moved visit's or Send later's, never took, since `sentLately` and `offeredAlready` are the run's) with the day and the door, and the older of two open offers on one step and job (a visit moved twice), `offers.ts`'s `withSentHolds`.
 Since v2.6387 a moved visit's text expires with its visit: the row carries the day its words are about (`nudge_offers.about_on`, written by the schedule's move through `nudge_offer_make`'s `p_about_on`), the window holds it once that day has passed (`heldStaleWords`, over every other hold) and the 9 AM run puts it away before planning (`dismissed_why` `stale`, counted in the run's summary as *expired*).
-The line counts *ready*, *goes in the morning* (*go later* once a waiting row has a time, v2.6774) and *held*;
+Since v2.8336 (punch list #424) the row shows the texts in place of a line of counts: *3 texts to send* counts the ones a person can send, the names they go to sit under it, a clock chip carries a timed text's time and an amber chip a held text's cause in a word or two (`todaysSendsNeed` and `heldCause` in `offers.ts`, every value marked with `val` and drawn apart from the fixed words by `NeedsYouRowWords`), and the press reads **Read them**;
 the GC office team sees it.
 Kernel `src/lib/offers/`;
 window `src/components/dashboard/TodaysSendsWindow.tsx`;
@@ -1574,13 +1574,11 @@ hook **[`useJobModeEnabled(userId, role)`](../src/hooks/useJobModeEnabled.ts)**.
 Since v2.8038 the shell and the Dashboard read it through `usePageMode`, so the Job Mode page is drawn only when Job Mode is the page's mode (*Page mode*).
 Mirrors the **`dashboard_clock_strip_scope`** pattern.
 
-**First-run card** — **[`DashboardJobModeFirstRunCard`](../src/components/dashboard/DashboardJobModeFirstRunCard.tsx)** ("Working in the field?
-Turn on Job Mode.") renders at the top of the full Dashboard for `master_technician` / `superintendent` only, with nothing stored and not dismissed;
-one tap stores `'card'` and the Dashboard re-renders into the Job Mode card;
-**Not now** stores `dashboard_job_mode_card_dismissed_${userId}`.
-Never for sub-like (already on) or office roles.
+**Mode row** — the first-run card that offered Job Mode to a leader or a superintendent is gone since v2.8332: the *Mode row* under *Page mode* is how every role but the estimator turns Job Mode on and gets back.
+A device that stored `'card'` still reads on, and the old put-away key `dashboard_job_mode_card_dismissed_${userId}` is read by nothing.
+**Show full dashboard** at the foot of the Job Mode page is drawn only for the estimator, the one role the row is not drawn for.
 
-**Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the card tap, or the gear turn-on.
+**Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear` / `#row`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the mode row's Job Mode third, or the gear turn-on.
 
 **Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (all 9 roles: dev, master_technician, assistant, controller, helpers, subcontractor, estimator, primary, superintendent — the predicate uses `isAssistantLike`, so controller passes;
 [`canLeaveJobFieldReport.ts`](../src/lib/canLeaveJobFieldReport.ts)).
@@ -1636,6 +1634,7 @@ Backed by the append-only **`checklist_instance_events`** card history (v2.1842)
 ### Task Mode (app-wide)
 Called **Farm Mode** until v2.7050, so an older note, fragment or guide link that says Farm Mode means this.
 The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist` (`taskModeBounceTarget`), shows a **"☑ Task Mode · Exit" strip** above the page content (**[`TaskModeChip`](../src/components/TaskModeChip.tsx)**, v2.2916 — Exit records `farm_mode_exit` in `ui_nav_clicks`), gates the `/` Person quick sheet (`canOpenPersonQuickSheet`), and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs, drawn since v2.7533 as one joined bar (**[`TaskDayBar`](../src/components/checklist/TaskDayBar.tsx)**) in place of the tab strip and the page's title.
+Since v2.8332 the estimator alone is drawn that strip and the gear-menu toggle, and every other role switches on the *Mode row* under *Page mode*.
 It is the first of the three page modes, so it is drawn over Job Mode and Dispatch Mode while on (*Page mode* below);
 their stored toggles are untouched, which is why switching it off goes back to the mode the person had.
 Toggle lib **[`taskModeToggle.ts`](../src/lib/taskModeToggle.ts)** + hook **[`useTaskModeEnabled`](../src/hooks/useTaskModeEnabled.ts)** mirror the Job Mode pair;
@@ -1653,7 +1652,16 @@ Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the 
 `pageModeWrites` is what a press stores: switching a mode on switches off the modes above it in the order and leaves the ones under it, and switching one off clears that value alone, so the page goes back to the mode underneath.
 Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
-Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the Dashboard's Job Mode card all go through its `set`.
+Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the mode row all go through its `set`.
+**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist.
+For those eight roles the gear menu lists neither **Job Mode** nor **Task Mode** (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was.
+The third of the mode drawn is filled, and Dispatch Mode reads as Dashboard, since the middle third switches Task Mode and Job Mode off and never writes Dispatch Mode.
+On a phone the row is tucked: it shows on the first five opens or until a third is pressed, after every switch, in Task Mode, and for a sub-like role that is off Job Mode, and otherwise a pull down at the top of the page or a tap on its 24 px handle brings it down for that visit.
+On a desk it always shows.
+The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and the phone's memory is `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage`.
+Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, and `mode_row_shown` with `#pull` / `#handle` for a tucked row brought down.
+The Task Mode strip is drawn only for the roles the row is not drawn for.
+The same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
@@ -1973,9 +1981,11 @@ Two sides: the **field** (leaders, helpers, subs, superintendents) carries the l
 the **office** lists under it with a line of its own.
 Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
+A person with **working hours** (a `set` row on `person_available_hours`, v2.8345) is held to them, salaried or not, from the row's Sunday on: the source reads *working hours*, the row has no **Change** press, and a punch outside them is counted (`workingHours.ts`, v2.8350).
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
-a person draws their own from My Time's **Your hours** block, which reads their last eight pay weeks against it, or from the same block as a card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
+a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), on the full Dashboard or on the **My Time** card under Your record in Job Mode (`DashboardMyTimeCard`, v2.8347;
 guide *draw the hours you can work each week*).
+My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
 Kernels: [`utilization.ts`](../src/lib/people/utilization.ts), [`weekAvailability.ts`](../src/lib/people/weekAvailability.ts);
 reads `fetchUtilizationBoard.ts`;
@@ -6202,6 +6212,7 @@ The office's Needs You line *Ray owes us 6 answers on 2 stages* (`start-answers-
 **Is it as told?**, the crew's look on arrival (v2.8110), is a card at the head of the job's details in Job Mode ([`JobModeArrivalCheck.tsx`](../src/components/jobMode/JobModeArrivalCheck.tsx)): it lists the bullets on them that nobody of ours has seen, from the first of our days for the stage, and is asked once a stage.
 **Yes, all as told** turns each into a yes we saw in that person's name, and a **No** takes their word back, leaves the bullet open, turns the stage red (`saidNo`) and sends Dispatch one line, all through `start_check_arrive`.
 Since v2.8238 a bullet with a No is asked about again once the office or the customer gives a new yes on it, and a No sent after someone else's yes is kept as an arrival of its own.
+Since v2.8360 the card says when a No's push to the dispatchers' phones failed, since the line is kept before the push, and the Schedule look says *Reading the schedule…* while its first read is out.
 That line is a **Stage check (to Dispatch)** with no check behind it: `notAsToldFrom` in [`arrival.ts`](../src/lib/startChecks/arrival.ts) reads it, and its door is **Open the list**.
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
@@ -6587,6 +6598,7 @@ a mark when its stages left outrun the working days), thin grey arrows down each
 since v2.7796 a closed end at the foot of each column in the place of Missed on the heading line, *Window closed · no notice* under Sent and *Lien day passed · not filed* under Served, dashed with grey chips and no arrow into it, drawn only while a job is in it (`lienClosedEnd.ts`, the owner's pick of 2026-11-18), an affidavit not filed whose day has passed standing there whatever its status and a notice leaving once its closed months are recorded;
 since v2.7801 a chip at a closed end, and *Answer N ›* on the bin's title line, open **the closed window** (`LienClosedWindow`), which says what closed, the day and where the day is counted from, then asks: for a passed lien day *The date is wrong* (the last day of work, with *Record the filing ›*), *Keep collecting* (off the lien path with the reason, into Collections) or *Let it go* (the Uncollectible mark, asked twice), and for a closed month with the lien day ahead *Send a late notice*, *The date is wrong* or *Record it closed*;
 since v2.7817 a job whose lien day passed with nothing filed stays in *Lien day passed · not filed* past its seventh day, read from `list_lien_closed_days` beside the windows reader (`withLienClosedDays`), until a filing is recorded, its last day of work is set right, it is taken off the lien path, it is marked Uncollectible or it is paid;
+since v2.8341 a tile on a phone draws the day's label as two lines, the day and then its parts, and ends its small line with its door, *N to sign · Show them ›*, where a computer keeps one label and the door at the top right (`lienBoardPhoneTile.ts`);
 a bin's head narrows the list under it;
 the page's title opens To do at the Board from any view, and since v2.7465 on a computer the title is the first tab, *⏱ Lien desk · N to do* (a phone keeps the title on its own row and its first tab reads *To do · N*);
 since v2.7333 every chip is a press to the desk's door for its stage (the property record at the missing line, the paper on By paper as a history entry of its own so Back returns to the Board, the run on that envelope, the affidavit, the Lien window) and the same press sits on every job number on To do, By date and By paper's notice and affidavit lists (a retainage row, By job's number and a pane's heading still open the job);
@@ -6637,12 +6649,13 @@ Since v2.7372 a computer's row is two lines: the job, what it owes and its press
 a held affidavit's press names the missing fact and opens the property record on it, and *On track* carries **Print N for notarization ›**, a door to the Ready to file list named as the button it opens (v2.7398).
 Since v2.7381 a chip pointed at or focused on a computer shows a card before any press: the job's name, address, customer and GC, its paper and bin, the day, what is unpaid, the job's other paper and where the press goes (`lienBoardChipCard.ts`);
 since v2.7419 a chip that will not make its day lists the stages it still has to pass by name.
-On a phone the tiles always show and the bins stand behind **Show the bins · N**.
+On a phone since v2.8346 (punch list #428) a switch of two stands at the Board's top, **By day** (the tiles) and **The flow** (the two columns side by side as counts, a stage a press, no chip, `lienBoardFlow.ts`, `LienBoardPhoneFlow.tsx`), where the bins stood behind **Show the bins · N** until then.
+A pressed stage narrows the list and the Board draws one pinned line, **‹ The flow**, where the stage stands, its column's cells and the bin's own press, kept in the history entry so the phone's Back returns to the flow.
 Kernel [`lienBoard.ts`](../src/lib/jobs/lienBoard.ts), component `LienBoard.tsx`;
 guide *read the Board on the Lien desk*.
 
 **The lien month** (**v2.6645** · 6648, punch list #235): the office's rhythm for lien work, the owner's policy of 2026-11-01 refined 2026-11-07 — reminders on days 1 to 5, notices on days 6 to 9, liens on days 10 to 13, catch-up on the 14th and 15th, nothing scheduled from the 16th — as the five-zone bar across the top of To do until the Board took its place in v2.7332 (`LienMonthBar`, deleted then;
-the Dashboard's lien month card still draws the zones through `useLienMonth`), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
+the Dashboard's lien month card drew the zones through `useLienMonth` until v2.8342, punch list #423, when it was dropped and its hook with it), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
 the rule is `LIEN_MONTH_RULE` in `lib/jobs/lienMonthRhythm.ts` and reads under § Rules.
 A policy, not an app rule: the bar sends, files and moves nothing.
 
@@ -6790,6 +6803,14 @@ it lists the same customer's other bills with no send on record to tick, files o
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
+**Paid, Part paid, Not paid** (v2.8333, punch list #422) is where a bill stands, drawn as a stamp under its amount on every send of it, from the bill's own payment rows (`billPaidState`, `src/lib/billing/billsPaid.ts`).
+A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
+**Still out** is an open bill's amount or a part-paid bill's remainder;
+a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
+**By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
+**A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
+Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
+The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
 ### Document builder (Documents → Document builder)
@@ -7113,11 +7134,11 @@ since v2.6096, punch list #178, `statement-round` → GC Review over the card an
 **Snooze / Dismiss** exist only on alert items and are per device (`localStorage`, `bulkDeleteAlertDismiss.ts` / `claimDevAlertDismiss.ts`).
 Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
-Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
+Since v2.8339 (punch list #423) the Lien desk's counts are a card of their own beside the Dashboard's card, three values and a red line while a paper is late or at risk, a press that opens the desk at the Board, where from v2.7334 they were four dots on one line inside it (`lienDeskCard` from `useNeedsYouInputs`;
 *The Board* above).
 On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
 The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
-A door that is new under the tick stands in for the list alone, so the Lien desk's strip ([`NeedsYouLienBoardStrip`](../src/components/dashboard/NeedsYouLienBoardStrip.tsx), drawn on its own as a card, `needsYouLienStripUnderDoor`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
+A door that is new under the tick stands in for the list alone, so the Lien desk's card ([`DashboardLienDeskCard`](../src/components/dashboard/DashboardLienDeskCard.tsx), `lienDeskCardShown`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
 Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
 With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
 Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.

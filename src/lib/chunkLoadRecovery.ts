@@ -167,18 +167,29 @@ function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch): void {
 /** True once a recovery reload has been started in this document. The page is leaving. */
 let recoveryReloadStarted = false
 
+/** The browser's own word on the network. Only a plain `false` is offline: a browser that cannot say counts as online. */
+export function browserSaysOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
 /**
  * Start the one guarded recovery reload: claim it, remember that it is on its way and call
  * `reload`, at once when no write is in flight and otherwise when the write is back. False
  * when the guard refuses (one already ran inside the interval); nothing is started then, and
  * the caller shows the fallback with its Reload press.
+ *
+ * False too while the browser says it is offline, with the guard left unclaimed. A reload has
+ * nothing to fetch then: it empties the caches and lands on the browser's own error page, which
+ * is worse than the fallback. The chunk was lost to the signal, not to a deploy.
  */
 export function startChunkRecoveryReload(
   now: number,
   storage: StorageLike | null | undefined,
   reload: () => void,
   writes: WriteWatch = appWrites,
+  offline: boolean = browserSaysOffline(),
 ): boolean {
+  if (offline) return false
   if (!tryClaimChunkRecoveryReload(now, storage)) return false
   recoveryReloadStarted = true
   reloadWhenWritesSettle(reload, writes)
