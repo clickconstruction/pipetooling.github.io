@@ -2,7 +2,7 @@
 title: see your jobs on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
-keywords: map, my jobs, dashboard, pins, directions, where is the job, job location, working, waiting, satellite, streets, time, older photos, zoom, scroll wheel, mouse wheel, zooms out
+keywords: map, my jobs, dashboard, pins, fold, hide map, collapse, office view, fit all, hundred miles, far job, directions, where is the job, job location, working, waiting, satellite, streets, time, older photos, zoom, scroll wheel, mouse wheel, zooms out
 order: 31
 ---
 The Dashboard has a Your jobs on a map card above your Assigned Jobs. It plots every active job you are on.
@@ -26,9 +26,19 @@ You click a pin to open its card. The card shows the job number and name, the ad
 
 On a phone, you tap a pin. The job shows as a bar under the map instead of a pop-up. The buttons stay big and the pin stays in view.
 
-## Fit all and Hide map
+## Fold the card away
 
-You press {{button:outline-blue|Fit all}} to re-center the map on every pin after you have zoomed in on one. **Hide map** collapses the card. That choice is remembered on that device. **Show map** brings it back.
+Press the card's title to fold the card away. Press the title again to bring the map back. The small triangle beside the title points down while the map is open. On a phone you can touch anywhere on the title bar. Your device remembers the choice.
+
+## The office view and Fit all
+
+The map opens centered on the office. The map shows about a hundred miles around the office. So one job far away does not shrink the jobs near you to a single dot.
+
+A job outside that view is not lost. A line under the map says how many, like *1 job is outside the office view*. The counts beside the title always count every job.
+
+Press {{button:outline-blue|Fit all}} to see every pin at once. The button then reads {{button:outline-blue|Office view}}. Press it to come back to the office. At a computer the button is in the title bar. On a phone it sits beside the counts.
+
+The map fits every pin when no office address is on record.
 
 On a desktop the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
 
