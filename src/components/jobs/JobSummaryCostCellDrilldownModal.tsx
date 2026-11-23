@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { CardChargeCostAmount } from './CardChargeCostAmount'
+import { Money } from '../Money'
 import type { Json } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { elementToLikelyCsv, sanitizeFilenameSegment } from '../../lib/domTableToCsv'
@@ -90,6 +91,7 @@ export function JobSummaryCostCellDrilldownModal({ open, onClose, title, childre
   th { background: #f5f5f5; }
   tfoot td { font-weight: 600; }
   p { margin: 0.35rem 0; }
+  [data-cents] { font-size: inherit !important; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>
   <h1>${safeTitle}</h1>
@@ -298,7 +300,6 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
   personName,
   byWorkDate,
   formatWorkDate: fmt,
-  formatCurrency: fc,
   formatHhMm: fh,
   totalCost,
   totalHours,
@@ -334,7 +335,7 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
             <tr key={b.workDate} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: '0.3rem 0.45rem' }}>{fmt(b.workDate)}</td>
               <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>{fh(b.hours)}</td>
-              <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${fc(b.cost)}</td>
+              <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}><Money amount={b.cost} /></td>
             </tr>
           ))}
         </tbody>
@@ -342,7 +343,7 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
           <tr style={{ fontWeight: 600, borderTop: '1px solid var(--border-strong)' }}>
             <td style={{ padding: '0.3rem 0.45rem' }}>Total</td>
             <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>{fh(totalHours)}</td>
-            <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${fc(totalCost)}</td>
+            <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}><Money amount={totalCost} /></td>
           </tr>
         </tfoot>
       </table>

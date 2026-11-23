@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 import { jobSummaryDiscountLeakage, type DiscountEventInput, type DiscountLeakageLine, type DiscountLeakageRowInput } from '../../lib/jobs/jobSummaryDiscounts'
 
 /** The discount's words: green-700, light on the dark wash in dark mode (v2.6116); the bars keep the literal. */
 const INK = 'var(--text-green-700)'
 const INK_FILL = '#0f7a52'
-const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const pct = (n: number | null) => (n == null ? '—' : `${n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`)
 
 const TH: CSSProperties = { textAlign: 'left', fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.25rem 0.4rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }
@@ -76,7 +76,7 @@ export function JobSummaryDiscountFold({ rows }: { rows: readonly DiscountLeakag
     <div data-testid="job-summary-discount-fold" style={{ marginTop: '0.5rem', padding: '0.6rem 0.8rem', border: '1px dashed #a7dcc2', borderRadius: 8, background: 'var(--bg-green-100)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
         <strong style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-          {money(leak.givenUsd)} given away · <span style={{ color: INK }}>{pct(leak.sharePct)}</span> of {money(leak.revenueUsd)} revenue
+          <Money amount={leak.givenUsd} /> given away · <span style={{ color: INK }}>{pct(leak.sharePct)}</span> of <Money amount={leak.revenueUsd} /> revenue
         </strong>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           this window · {leak.jobs} of {leak.jobsInView} jobs{loading ? ' · reading the trail…' : ''}
@@ -109,7 +109,7 @@ function Table({ title, lines, shareHead }: { title: string; lines: DiscountLeak
           <tr key={l.key}>
             <td style={TD}>{l.label}</td>
             <td style={{ ...TD, ...R }}>{l.jobs}</td>
-            <td style={{ ...TD, ...R }}>{money(l.givenUsd)}</td>
+            <td style={{ ...TD, ...R }}><Money amount={l.givenUsd} /></td>
             <td style={{ ...TD, ...R }}>{pct(l.sharePct)}</td>
             <td style={TD}>
               <div style={{ height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
