@@ -3483,6 +3483,13 @@ The table's insert policy takes `kind = 'answer'` alone, so nobody signed in, a 
 An answer is written as before: by the person, or for anyone by a dev, an assistant, the controller or a pay-approved master.
 `working_hours_on(user, day)` is a security invoker, so it answers what the caller may already read.
 Migration `20261123075925_working_hours_door.sql`.
+Since v2.8353 a change to `people_pay_config.salaried_week_hours` is a **dev**'s or the **controller**'s, held by the trigger `people_pay_config_week_dev_or_controller`.
+A pay-approved owner still changes a wage, and a new pay row on the default week is made by anyone who may make one.
+The **Working hours** row on a person's sheet (*Pay & schedule*) is changed by a dev or the controller, and an owner with pay approval reads it locked.
+**Edit pay setup** shows the seven hour boxes to a dev or the controller for a person with no working hours, and one worked-out line otherwise.
+An answer is refused while the person's working hours are in force, their own and the office's, by `has_working_hours(user)` in the table's insert policy.
+The person reads their working hours at the foot of **My Time** on the Dashboard, with no press.
+Migration `20261123082812_working_hours_lock.sql`.
 
 **Vehicle holders (any role, v2.1648):** whoever currently holds a company vehicle (open `vehicle_possessions` row) gets scoped self-service via the `holds_vehicle()` policies (migration `20260814183650_vehicle_holder_access.sql`): SELECT on their vehicle + its readings/service events/problem reports + own possessions, INSERT odometer readings (`created_by = auth.uid()`), and INSERT problem reports (`reported_by = auth.uid()`).
 Surfaced as the Dashboard **My Vehicle** card (below My Time).
