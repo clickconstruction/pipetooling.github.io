@@ -87,7 +87,7 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   const shareCell = (row: SupplyInvoiceRow, hasPdf: boolean) => {
     if (!canShare) return null
     // A bill with no PDF has nothing for the link to open yet, so its row keeps the gap and no press.
-    if (!hasPdf) return <span aria-hidden="true" style={{ width: press, flex: 'none' }} />
+    if (!hasPdf) return <span aria-hidden="true" style={{ width: press, height: press, flex: 'none' }} />
     return (
       <button
         type="button"
