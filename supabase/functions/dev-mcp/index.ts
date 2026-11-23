@@ -145,7 +145,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.127.0'
+const SERVER_VERSION = '0.128.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -351,7 +351,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'check_license',
-    description: "A license number against the state's own record (punch list #255). Electrical and HVAC licenses are TDLR's, read from its open list on data.texas.gov: the holder, the type and the expiry of the license of this trade and level under that number (one number can belong to several types). Plumbing licenses are TSBPE's, read from the free files the board publishes (since 0.127.0, punch list #411): the holder, the level, whether it is current or expired, the day it was issued, the expiry and the endorsements, and for a master who contracts with the public the company and the day the insurance on file ends. A master is looked for on both master files. The journeyman and apprentice files are refreshed about weekly, so a license issued in the last week may not be on them yet. Read-only, and nothing read is kept. Check before plan_license, and put where the date came from in its note.",
+    description: "A license number against the state's own record (punch list #255). Electrical and HVAC licenses are TDLR's, read from its open list on data.texas.gov: the holder, the type and the expiry of the license of this trade and level under that number (one number can belong to several types). Plumbing licenses are TSBPE's, read from the free files the board publishes (since 0.128.0, punch list #411): the holder, the level, whether it is current or expired, the day it was issued, the expiry and the endorsements, and for a master who contracts with the public the company and the day the insurance on file ends. A master is looked for on both master files. The journeyman and apprentice files are refreshed about weekly, so a license issued in the last week may not be on them yet. Read-only, and nothing read is kept. Check before plan_license, and put where the date came from in its note.",
     inputSchema: { type: 'object', properties: { trade: { type: 'string', description: 'plumbing | electrical | hvac' }, level: { type: 'string', description: 'plumbing: apprentice | tradesman | journeyman | master; electrical: apprentice | journeyman | master | contractor; hvac: registered_tech | certified_tech | contractor' }, number: { type: 'string', description: "As on the license: '783430', 'TACLA39079E', 'J-12345'" } }, required: ['trade', 'level', 'number'] },
   },
   {
@@ -2318,7 +2318,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const level = String(args.level ?? '').trim().toLowerCase() as LicenseLevel
       const number = cleanLicenseNumber(String(args.number ?? ''))
       if (trade === 'plumbing') {
-        // 0.127.0 (punch list #411): the plumbing board publishes every license as free files, so a number is read
+        // 0.128.0 (punch list #411): the plumbing board publishes every license as free files, so a number is read
         // off the file of its level. A master is on either master file. Nothing read is kept.
         const files = tsbpeFilesForLevel(level)
         if (files.length === 0) return refused(`check_license reads a plumbing license at one of four levels: level is ${TSBPE_CHECK_LEVELS.join(', ')}.`, { target: number || null })
