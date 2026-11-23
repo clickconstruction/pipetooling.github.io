@@ -91,6 +91,22 @@ describe('the grid', () => {
     expect(g[2]!.affidavit).toBe('filed Jul 14')
     expect(g[2]!.notices).toBe('')
   })
+  it('fills Paid out to GC and 10 % reserved from the owner’s call once it is recorded (v2.8315)', () => {
+    const call = { at: '2026-09-20T15:00:00Z', name: 'Taunya', owesGc: 'yes', owesAmount: 14_000, reserved: 'released', releasedOn: '2026-09-03', originalContractCompletedOn: null, note: 'private' }
+    // The office's own book: the items carry the call in `fields`.
+    const office = buildLienTimelineBook({ ...input(), items: [{ id: 'i9', job_id: 'j891', kind: 'notice_53_056', status: 'sent', months: ['2026-07'], voided_at: null, fields: { notice: {}, ownerCall: call } } as never] })
+    const g = lienGridRows(filterLienTimelineBook(office, { gcId: 'gc1', show: 'all' }), TODAY)
+    expect(g[0]!).toMatchObject({ job: '891 · Job j891', paidOut: 'no · $14,000 owed', reserved: 'released Sep 3' })
+    expect(g[1]!).toMatchObject({ paidOut: '', reserved: '' })
+    expect(office.rows.find((r) => r.jobId === 'j891')?.ownerFacts).toEqual({ paidOut: 'no', owesAmount: 14_000, reserved: 'released', releasedOn: '2026-09-03' })
+    expect(office.rows.find((r) => r.jobId === 'j912')?.ownerFacts).toBeNull()
+    // The firm's book: items travel without `fields`, and the function hands the facts.
+    const firm = buildLienTimelineBook({ ...input(), ownerFactsByJob: { j912: { paidOut: 'yes', owesAmount: null, reserved: 'held', releasedOn: null } } })
+    const f = lienGridRows(filterLienTimelineBook(firm, { gcId: 'gc1', show: 'all' }), TODAY)
+    expect(f[1]!).toMatchObject({ job: '912 · Job j912', paidOut: 'yes', reserved: 'yes · held' })
+    expect(f[0]!).toMatchObject({ paidOut: '', reserved: '' })
+    expect(lienGridHtml(firm.rows, { title: 'All', todayYmd: TODAY, companyName: 'Click Plumbing' })).toContain('fill from the owner’s call once the office records it')
+  })
   it('prints as one landscape page per GC with the footnote on the blanks', () => {
     const html = lienGridHtml(filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' }), { title: 'Lowbeck Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })
     expect(html).toContain('<title>Lien grid — Lowbeck Contracting</title>')
