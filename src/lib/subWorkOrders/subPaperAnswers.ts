@@ -28,9 +28,15 @@ export type SubPaperAckRow = {
   created_at: string
   answered_at?: string | null
   answered_by_name?: string | null
+  /** A confirm's own: the revision the sub saw, what the statement came to, and the address the press came from. */
+  revision?: number | string | null
+  amount?: number | string | null
+  said_from?: string | null
 }
 
 export const SUB_PAPER_ACK_COLUMNS = 'id, kind, person_id, labor_job_id, sending_id, payment_id, note, said_by_name, created_at, answered_at, answered_by_name'
+/** What the papers window reads: the marks, and the three columns a confirm is read by. All are the table's first columns. */
+export const SUB_PAPER_ACK_COLUMNS_FOR_PAPERS = 'id, kind, person_id, labor_job_id, sending_id, payment_id, note, said_by_name, created_at, revision, amount, said_from'
 /** The columns before `20261117190000_sub_paper_ack_answered`: a database it has not reached still shows the chips and the notes. */
 export const SUB_PAPER_ACK_COLUMNS_BEFORE_ANSWERED = 'id, kind, person_id, labor_job_id, sending_id, payment_id, note, said_by_name, created_at'
 

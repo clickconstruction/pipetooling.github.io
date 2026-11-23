@@ -29,6 +29,7 @@
  */
 import { joinList, formatYmdLong, formatYmdShort, money, paymentLabelWords, type PaidByPayment } from './billPaidBy.ts'
 import type { GcCheck } from './gcChecksApplied.ts'
+import { inKindApartWords, type InKindApart } from './inKindApart.ts'
 import { portalAccountCardHtml } from './portalAccountCard.ts'
 import { normalizeAddressKey, splitAddress } from './portalProperties.ts'
 
@@ -394,6 +395,22 @@ export type StatementRenderInput = {
    */
   received?: readonly StatementReceivedIn[] | null
   receivedSinceYmd?: string | null
+  /**
+   * The payer's bills an in kind deal pays (v2.8309, punch list #301). They are not in `bills` and not
+   * in the total. One line under the total says how much is scheduled. Omit or a count of 0 for no line.
+   */
+  inKind?: InKindApart | null
+}
+
+/**
+ * The statement's one line on the bills it left out because a deal pays them: "$1,200 on 2 bills is
+ * scheduled in kind, not money owed." The same words the office reads (the owner's call of 2026-11-22),
+ * so a call about the bill uses one name for it. '' when no bill is set apart. Every lane says it: the
+ * statement for one payer here, and the whole report on the client and in the dispatcher.
+ */
+export function statementInKindLine(inKind: InKindApart | null | undefined): string {
+  const words = inKind ? inKindApartWords(inKind, 'money owed') : null
+  return words ? `${words}.` : ''
 }
 
 /** The sentence under the block's heading. */
@@ -411,6 +428,7 @@ const modelOf = (input: StatementRenderInput): StatementModel =>
 /** The statement as an HTML fragment: tables and inline styles, so Gmail, Outlook and Apple Mail draw it alike. */
 export function renderStatementByPropertyHtml(input: StatementRenderInput): string {
   const model = modelOf(input)
+  const inKindLine = statementInKindLine(input.inKind)
   const cell = `padding:7px 8px;border-bottom:1px solid ${RULE};font-size:14px;line-height:1.35`
   const head = (label: string, align: 'left' | 'right') =>
     `<th style="padding:0 8px 5px;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${MUTED};text-align:${align}">${label}</th>`
@@ -451,7 +469,8 @@ export function renderStatementByPropertyHtml(input: StatementRenderInput): stri
         <td colspan="2" style="padding:10px 8px 0;border-top:2px solid ${INK};font-size:16px;font-weight:700;color:${INK}">Total owed</td>
         <td style="padding:10px 8px 0;border-top:2px solid ${INK};font-size:16px;font-weight:700;color:${INK};text-align:right;white-space:nowrap">${money(model.owed)}</td>
       </tr>
-    </table>${receivedHtml(input)}${card ? `
+    </table>${inKindLine ? `
+    <div style="padding:6px 8px 0;font-size:12.5px;color:${MUTED}">${escapeHtml(inKindLine)}</div>` : ''}${receivedHtml(input)}${card ? `
     <div style="padding-top:22px">${card}</div>` : ''}
     <p style="margin:${card ? '0' : '18px 0 0'};padding-top:12px;border-top:1px solid ${RULE};font-size:13px;color:#6b7280">${gcStatementFooterHtml(input.officePhone)}</p>
   </div>
@@ -484,6 +503,7 @@ function receivedHtml(input: StatementRenderInput): string {
 /** The same statement for a text-only mail client. */
 export function renderStatementByPropertyText(input: StatementRenderInput): string {
   const model = modelOf(input)
+  const inKindLine = statementInKindLine(input.inKind)
   const intro = (input.introText ?? '').trim()
   const blocks = model.properties.flatMap((p) => [
     `${[p.street, p.city ?? ''].filter(Boolean).join(', ')} — ${money(p.owed)}`,
@@ -504,6 +524,7 @@ export function renderStatementByPropertyText(input: StatementRenderInput): stri
     '',
     ...blocks,
     `Total owed: ${money(model.owed)}`,
+    ...(inKindLine ? [inKindLine] : []),
     '',
     ...(input.received != null
       ? [

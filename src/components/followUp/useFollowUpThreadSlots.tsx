@@ -32,11 +32,29 @@ import { NO_PUSH_HOURS, type PushHoursByUser } from '../../lib/messages/pushHour
 import { newestLineIn, SEND_AS_TASK, threadTaskPreset } from '../../lib/messages/threadTask'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
-import { heardDayOnLine, heardDaySheetLine, heardDayTip, heardDayWords, jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
+import {
+  dayKeptWords,
+  dayStillPromised,
+  heardDayOnLine,
+  heardDaySheetLine,
+  heardDayTip,
+  heardDayWords,
+  jobLabelOf,
+  lineNotMarkedWords,
+  linesMarkedFor,
+  lineStillMarkedWords,
+  lineTakesWord,
+  markNotThereYet,
+  wordChannel,
+  wordLanding,
+  WORD_PICK_WORDS,
+  WORD_PRESS,
+  type WordLanding,
+} from '../../lib/messages/wordFromLine'
 import { loadCustomerMoneyLines } from '../../lib/messages/wordFromLineIo'
 import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
+import SetPromisedPayDateModal, { type PromiseSheetWord } from '../jobs/SetPromisedPayDateModal'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { Chip } from '../gc/gcUi'
 import type { ThreadMenuRow, ThreadSlots } from '../gc/messages/threadSlots'
@@ -164,6 +182,35 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
       setPressing(null)
     }
   }
+  /**
+   * The mark a word leaves on its line (v2.8271): the sheet saved the Pipeline's promise, and the line it opened under
+   * takes the day as a payment promise of its own, which the job's summary and the move chip read. *Never said that*
+   * takes the day off every line of the thread that carries it, unless another promise of the customer's still names
+   * that day (v2.8307): a customer has one thread, so the day stays for the job that still holds it, and a line says
+   * so. A refusal is said in words and undoes nothing: the Pipeline's record stands either way.
+   */
+  const markLine = async (messageId: string, said: PromiseSheetWord, customerId: string | null) => {
+    const write = io.writeDownPayment
+    if (!write || (said.kind === 'never' && said.claim)) return
+    try {
+      if (said.kind === 'promise') await write(messageId, said.ymd)
+      else {
+        const marked = linesMarkedFor(rows.promises, said.ymd)
+        // Read after the void, so the word taken off is gone and what is left is what still stands.
+        if (marked.length > 0 && customerId && dayStillPromised(await loadLines(customerId), said.ymd)) {
+          showToast(dayKeptWords(said.ymd), 'info')
+          return
+        }
+        for (const id of marked) await write(id, null)
+      }
+      reread()
+      await load()
+    } catch (e) {
+      const reason = pressProblem(e)
+      if (markNotThereYet(reason)) return
+      showToast(said.kind === 'promise' ? lineNotMarkedWords(reason) : lineStillMarkedWords(reason), 'error')
+    }
+  }
   const todayYmd = todayYmdInAppTz()
   const nowIso = new Date().toISOString()
   // A slot draws only for the person the rows were read for.
@@ -245,6 +292,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
                 initialChannel={wordChannel(m.channel)}
                 onClose={() => setWord(null)}
                 onSaved={() => reread()}
+                onWord={(said) => void markLine(m.id, said, c.customerId ?? null)}
               />
             ) : null}
           </span>
@@ -268,10 +316,12 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
         </span>
       )
     },
-    headerRight: (c) =>
+    // A folded header draws the pill as a face alone (punch list #348): the name beside it needs the room.
+    headerRight: (c, look) =>
       mine(c.id) ? (
         <WhoHasItPill
           bare
+          face={look?.folded}
           contact={followUpContactOf(c, rows.contact, userNames)}
           me={me}
           team={team}

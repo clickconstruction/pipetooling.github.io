@@ -75,6 +75,33 @@ export function materialsPressesFor(role: string | null | undefined): MaterialsP
   return canMintStickers(role) ? ['scan-label', 'print-labels', 'print-stickers'] : ['scan-label', 'print-labels']
 }
 
+/**
+ * A group that holds exactly one tab (Track holds On site): on the phone's row of names a press on its name opens that
+ * tab at once, and the group draws no tab row (v2.8282). Null for a group with several tabs, whose name opens its row.
+ */
+export function groupOnlyTab(group: Pick<MaterialsGroup, 'tabs'>): MaterialsTab | null {
+  return group.tabs.length === 1 ? group.tabs[0]! : null
+}
+
+/** The phone's two icon presses beside the names (v2.8282): scan, then one print press that opens the Print sheet. */
+export type MaterialsPhonePress = 'scan' | 'print'
+
+export const MATERIALS_PHONE_PRESS_LABELS: Record<MaterialsPhonePress, string> = {
+  scan: MATERIALS_PRESS_LABELS['scan-label'],
+  print: 'Print',
+}
+
+/**
+ * The phone's icon presses for a role's presses, in order: scan while the role may scan, print while it has any print
+ * press. A role with no press on On site's row has none here, so `materialsPressesFor`'s rule stands.
+ */
+export function materialsPhonePresses(presses: ReadonlyArray<MaterialsPress>): MaterialsPhonePress[] {
+  const out: MaterialsPhonePress[] = []
+  if (presses.includes('scan-label')) out.push('scan')
+  if (presses.some((p) => p !== 'scan-label')) out.push('print')
+  return out
+}
+
 export type MaterialsBadge = { text: string; tone: 'amber' | 'red' }
 
 /**

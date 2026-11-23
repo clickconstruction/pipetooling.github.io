@@ -1481,6 +1481,40 @@ button:focus-visible {
    whose test holds this rule: one line, set nowhere else. */
 @media (max-width: 640px) { :root { --phone-press-min: 44px; } }
 
+/* The Job Mode press bar on one row (the new phone layout, `lib/phoneLayout`): the buttons stay on one line, and
+   the compact ones fold a two-word label before the day's press gives up room. A row that wraps would never fold
+   them, since an item moves to the next line before it shrinks. Under 350 px the five do not fit on one line with
+   their words whole, so there the row may wrap and the bar grows by a line. */
+.jobModePressBarOneRow {
+  flex-wrap: nowrap;
+}
+@media (max-width: 349px) {
+  .jobModePressBarOneRow {
+    flex-wrap: wrap;
+  }
+}
+
+/* The Job Mode card under the new phone layout (`lib/phoneLayout/jobCard.ts`): a floor under everything drawn on
+   it. No press under 40 px tall and no words under 12 px, whichever piece of the card draws them and in whichever
+   state. The card is many pieces, each with its own inline sizes, so the floor is held here, once, and reads the
+   size a piece wrote: a press with no height of its own stands 40 px, a height written under 40 px is raised to it,
+   and words written from 0.6rem to under 0.75rem, or at 10 or 11 px, read at 0.75rem. A tagged name is written at
+   0.92em, 11.96 px in a note, so it is held to 12 px too. A size at or over the floor is left as written.
+   A window a press on the card opens is not the card. Every window is a dialog (`check:dialog-role`), and the
+   floor stops at it. The class is on the card only while the switch is on, so nothing here reaches any other screen. */
+.jobModeCardPhone :is(button, a[href], summary):not([role='dialog'] *) {
+  min-height: 40px;
+}
+.jobModeCardPhone :is([style*='min-height: 30px'], [style*='min-height: 32px'], [style*='min-height: 34px'], [style*='min-height: 36px']):not([role='dialog'] *) {
+  min-height: 40px !important;
+}
+.jobModeCardPhone :is([style*='font-size: 0.6'], [style*='font-size: 0.7rem'], [style*='font-size: 0.70'], [style*='font-size: 0.71'], [style*='font-size: 0.72'], [style*='font-size: 0.73'], [style*='font-size: 0.74'], [style*='font-size: 10px'], [style*='font-size: 11px']):not([role='dialog'] *) {
+  font-size: 0.75rem !important;
+}
+.jobModeCardPhone [style*='font-size: 0.92em']:not([role='dialog'] *) {
+  font-size: max(0.92em, 0.75rem) !important;
+}
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {
@@ -6685,6 +6719,13 @@ button.vipChange:focus-visible { outline: 2px solid var(--text-link); outline-of
 .vipLines { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr); gap: 8px 16px; align-items: baseline; line-height: 1.6; }
 .vipLineLabel { color: var(--text-muted); }
 .vipLineValues { min-width: 0; }
+/* The last day of work's open field (punch list #399) takes the row to itself. The line under a field is as wide as
+   the field, and a date box with Keep and Cancel is narrow, so the line ran to three short lines beside empty room. */
+.lienLastWorkDay:has(> .vipField) { flex: 1 1 100%; }
+.lienLastWorkDay > .vipField { display: flex; }
+/* The retainage pane's facts (punch list #399): an open field takes its line, so the words under it run across it, and a dollar figure has room to be read. */
+[data-lien-retainage-facts] .vipField { display: flex; flex: 1 1 100%; }
+[data-lien-retainage-facts] .vipInput[data-type='number'] { width: 8rem; }
 .vipLegend { margin: 8px 0 0; color: var(--text-muted); font-size: 0.78125rem; }
 /* Before we start (punch list #382): a stage's list (`StartCheckStage.tsx`). `.scBox` is a bullet's tick box,
    `.scChip` a small choice, `.scWord` a press that is words alone. Their hover, focus and phone sizes need a class. */
@@ -7487,7 +7528,8 @@ button.developmentCountChip:focus-visible {
    one figure, amber when something in it waits on the leader, the look you are in underlined in blue. Pinned like
    the desk's bar, a third of its height. The row names no column count: each cell starts as wide as its words
    and the cells share what is left, so a look added to the strip stays in the row (a five-column grid dropped
-   v2.6371's Photos to a second row). On a screen too narrow for every name, the names give way with an ellipsis. */
+   v2.6371's Photos to a second row). Since v2.8293 a name never gives way: a cell grows to share the row and never
+   shrinks under its words, and when the cells are wider than the screen the row slides inside the strip. */
 .developmentPhoneStrip {
   position: sticky;
   top: 0;
@@ -7499,14 +7541,19 @@ button.developmentCountChip:focus-visible {
   border-radius: 8px;
   overflow: hidden;
 }
-.developmentPhoneLook {
+/* The strip's one child is the sliding row (`ScrollableTabStrip`): it takes the strip's whole width. */
+.developmentPhoneStrip > div {
   flex: 1 1 auto;
   min-width: 0;
+}
+.developmentPhoneLook {
+  flex: 1 0 auto;
+  min-width: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 6px 2px 5px;
+  padding: 6px 8px 5px;
   border: none;
   border-bottom: 3px solid transparent;
   background: transparent;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bytesWords, fitWithin, nextPassEdge, PHOTO_HEAVY_BYTES, PHOTO_MAX_EDGE, PHOTO_SECOND_PASS_EDGE } from './photoShrink'
+import { bytesWords, fitWithin, nextPassEdge, PHOTO_HEAVY_BYTES, PHOTO_MAX_EDGE, PHOTO_SECOND_PASS_EDGE, thumbSize } from './photoShrink'
 
 describe('fitWithin', () => {
   it('brings a phone shot down to the long edge and keeps its shape', () => {
@@ -27,5 +27,19 @@ describe('bytesWords', () => {
     expect(bytesWords(312_400)).toBe('312 KB')
     expect(bytesWords(2_400_000)).toBe('2.4 MB')
     expect(bytesWords(70)).toBe('1 KB')
+  })
+})
+
+describe('thumbSize', () => {
+  it('covers the square at twice its CSS size on the short side and keeps the shape', () => {
+    expect(thumbSize(1200, 1600, 44)).toEqual({ width: 88, height: 117 })
+    expect(thumbSize(1600, 1200, 44)).toEqual({ width: 117, height: 88 })
+    expect(thumbSize(1200, 1600, 72)).toEqual({ width: 144, height: 192 })
+    expect(thumbSize(1200, 1600, 210)).toEqual({ width: 420, height: 560 })
+  })
+
+  it('never scales a small picture up', () => {
+    expect(thumbSize(80, 60, 44)).toEqual({ width: 80, height: 60 })
+    expect(thumbSize(0, 0, 44)).toEqual({ width: 0, height: 0 })
   })
 })

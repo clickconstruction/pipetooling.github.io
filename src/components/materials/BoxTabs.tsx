@@ -21,6 +21,7 @@ import { boxLineFromParts } from '../../lib/materials/boxLine'
 import EditBoxForm from './EditBoxForm'
 import type { SiteBox } from '../../lib/materials/boxName'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { ADD_PART_PRESS } from '../../lib/materials/addPart'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { linesOf, type Container, type ContainerLine, type Place } from '../../lib/materials/onSite'
@@ -74,13 +75,15 @@ type Props = {
   byUserId: string | null
   touch?: boolean
   onSaved: (words: string) => void
+  /** Add a part (v2.8282): the host closes this window and opens the Add a part sheet on this box. With none the empty Contents tab only says where a part is added. */
+  onAddPart?: () => void
   /** The job's map facts, for the Where is it? tab (punch list #372). With none the tab is not drawn. */
   where?: { jobCenter: LatLng | null; jobAddress: string; photos: ReadonlyArray<PhotoNote>; painted?: ReadonlyArray<PaintedLayerMap>; /** Opens the painted way to the box's place; the host closes this window first. */ onOpenWay?: (mapId: string) => void; /** Opens the New task window on *Find A7*; the host closes this window first. */ onSendSomeone?: (task: FindBoxTask) => void }
   /** The tab the window opens on; Cage by default. */
   startTab?: 'cage' | 'contents' | 'where'
 }
 
-export default function BoxTabs({ container, containers, siteBoxes, places, lines, byName, byUserId, touch = false, onSaved, where, startTab = 'cage' }: Props) {
+export default function BoxTabs({ container, containers, siteBoxes, places, lines, byName, byUserId, touch = false, onSaved, onAddPart, where, startTab = 'cage' }: Props) {
   const [tab, setTab] = useState<'cage' | 'contents' | 'where'>(startTab === 'where' && !where ? 'cage' : startTab)
   const [names, setNames] = useState<BoxNameChange[]>([])
   const [failed, setFailed] = useState<unknown>(null)
@@ -164,7 +167,7 @@ export default function BoxTabs({ container, containers, siteBoxes, places, line
         </div>
       ) : (
         <div role="tabpanel" aria-label="Contents" style={{ display: 'grid', gap: '0.6rem' }}>
-          {mine.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} tail="Add a part on the box itself." /> : null}
+          {mine.length === 0 ? (onAddPart ? <EmptyState compact finger={touch} main={`Nothing in ${container.label} yet.`} next={{ label: ADD_PART_PRESS, onPress: onAddPart }} tail="puts the first one in." /> : <EmptyState compact main={`Nothing in ${container.label} yet.`} tail="Add a part on the box itself." />) : null}
           {jobLedgerCapped(container.jobId) ? <p style={{ ...muted, margin: 0 }}>This job’s ledger is long, so a history here may start part way.</p> : null}
           {last ? (
             <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="box-tabs-renamed">

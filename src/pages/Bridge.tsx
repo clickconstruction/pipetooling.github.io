@@ -502,7 +502,7 @@ export default function Bridge() {
       try {
         const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
-        const v = await loadDemandInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds })
+        const v = await loadDemandInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds, hideZzEstimates: hideZz })
         if (!cancelled) setDemandInputs(v)
       } catch (e) {
         if (!cancelled) setDemandError(formatErrorMessage(e))
@@ -511,7 +511,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, readZzTestJobIds])
+  }, [data, readZzTestJobIds, hideZz])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
 
   // Estimates through their won rate (punch list #318): every estimate ever sent, read once the page's data is in.
@@ -629,7 +629,7 @@ export default function Bridge() {
       try {
         const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
-        const reads = await loadMarketDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds })
+        const reads = await loadMarketDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds, hideZzEstimates: hideZz })
         if (!cancelled) setMarketReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setMarketError(formatErrorMessage(e))
@@ -638,7 +638,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [marketOpen, data, marketReads, marketReadKey, readZzTestJobIds])
+  }, [marketOpen, data, marketReads, marketReadKey, readZzTestJobIds, hideZz])
 
   // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
   const [salesOpen, setSalesOpen] = useState(false)
@@ -655,7 +655,7 @@ export default function Bridge() {
       try {
         const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
-        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds })
+        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds, hideZzEstimates: hideZz })
         if (!cancelled) setSalesReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setSalesError(formatErrorMessage(e))
@@ -664,7 +664,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [salesOpen, data, demand, salesReads, salesReadKey, readZzTestJobIds])
+  }, [salesOpen, data, demand, salesReads, salesReadKey, readZzTestJobIds, hideZz])
   const salesDesk = useMemo(() => {
     if (!data || !demand || !salesReads || salesReads.forKey !== salesReadKey) return null
     // An asker with few marked bids is read at the won rate for bids the size of each ask, and the estimates at their own won rate (punch list #318).

@@ -10,7 +10,7 @@
  * jobs, with no money; an estimator gets no site row.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useOnSiteDeskJobs, type OnSiteDeskJobRow } from '../../hooks/useOnSiteDeskJobs'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -20,6 +20,12 @@ import { onSiteJobHref } from '../../lib/materials/materialsGroups'
 import { groupDeskBySite } from '../../lib/materials/siteRollup'
 import { useOnSiteSites } from '../../hooks/useOnSiteSites'
 import SiteMaterialsView from './SiteMaterialsView'
+import MaterialsDeskPhone from './MaterialsDeskPhone'
+import OnSiteFindPhoneList from './OnSiteFindPhoneList'
+import { findPhoneRow } from '../../lib/materials/onSiteFindPhone'
+import { boxScreenFromMaterials } from '../../lib/materials/boxRow'
+import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
+import { staleWords } from '../../lib/materials/onSiteSummary'
 import { isMaterialsOfficeRole } from '../../lib/materials/materialsTabs'
 import { countIsDue, lastCountedAt, lastCountWords } from '../../lib/materials/onSite'
 import { findOnSite, findOnSiteWords, type OnSiteFindJob } from '../../lib/materials/onSiteFind'
@@ -30,7 +36,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import OnSiteJobsNotLoaded from './OnSiteJobsNotLoaded'
-import JobsMaterialsTab, { type MaterialsJob } from '../jobs/JobsMaterialsTab'
+import JobsMaterialsTab, { type MaterialsJob, type MaterialsPrintSheetDoor } from '../jobs/JobsMaterialsTab'
 
 type Props = {
   active: boolean
@@ -39,6 +45,10 @@ type Props = {
   userName: string
   /** A row's Labels press: the page opens the labels window on that job. */
   onLabels: (jobId: string) => void
+  /** A phone (v2.8282): the office's job section is drawn for one. */
+  phone?: boolean
+  /** The page's Print sheet, which the office's job section draws while a job is open. */
+  printSheet?: MaterialsPrintSheetDoor
 }
 
 const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflowX: 'auto', overflowY: 'hidden', minWidth: 0 }
@@ -55,7 +65,7 @@ function dueBoxes(job: OnSiteFindJob, now: Date): number {
   return job.containers.filter((c) => !c.retiredAt && c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now)).length
 }
 
-export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels }: Props) {
+export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels, phone = false, printSheet }: Props) {
   const office = isMaterialsOfficeRole(role)
   const [params, setParams] = useSearchParams()
   const jobId = params.get('job')
@@ -63,6 +73,9 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
   const jobDetailModal = useJobDetailModal()
   const desk = useOnSiteDeskJobs(active)
   const [query, setQuery] = useState('')
+  const navigate = useNavigate()
+  /** A field role's list on a phone (v2.8291): whether its *Due a count* figure is narrowing it. A visit's state. */
+  const [deskFilter, setDeskFilter] = useState<DeskPhoneFilter>('all')
   /** Every job, for the desk's Open a job list: the office starts a job's first container from here. */
   const [allJobs, setAllJobs] = useState<MaterialsJob[]>([])
   useEffect(() => {
@@ -124,7 +137,24 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
 
       {!office || searching ? <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The boxes did not load.') : null} onRetry={desk.retry} surface="materials-on-site-tab" idempotent /> : null}
 
-      {showSearch && searching ? (
+      {showSearch && searching && phone ? (
+        // A phone (v2.8291): a hit is one row that reads down, where the table under this needs six columns. The row
+        // opens the box. For a field role that is the table's own Open the box. For the office the table opens the
+        // job, and a phone opens the box on the Tally's screen as a row of the job's page does, with the job one
+        // Back away.
+        found.hits.length === 0 ? (
+          desk.loading && !desk.loaded
+            ? <span style={muted}>Loading the boxes…</span>
+            : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on site', query: query.trim() }), { onPress: () => setQuery('') })} />
+        ) : (
+          <OnSiteFindPhoneList
+            rows={found.hits.map((h) => {
+              const last = lastCountedAt(listMovements(h.jobId), h.container.id)
+              return { ...findPhoneRow(h, { words: lastCountWords(last, now), due: countIsDue(last, now) }), href: office ? boxScreenFromMaterials(h.jobId, h.container.id) : boxOnSiteLink(h.jobId, h.container.id) }
+            })}
+          />
+        )
+      ) : showSearch && searching ? (
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={{ ...th, minWidth: 200 }}>Part</th><th style={th}>Box</th><th style={th}>Job</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last counted</th><th style={th} aria-label="Door"></th></tr></thead>
@@ -174,7 +204,32 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           driveBackfill={false}
           rowDoors={{ onLabels }}
           role={role}
+          phone={phone}
+          printSheet={printSheet}
         />
+      ) : phone && withBoxes.length > 0 ? (
+        // A phone (v2.8291): the same jobs as the table under this, drawn by the office's phone desk with no money.
+        // A row opens the job's boxes on the Tally's On site tab, where the table's Open the boxes leads, and a
+        // site's Whole site opens the site's screen, as Open the site does. An estimator reads no site, so no heading.
+        <section aria-label="Your jobs with boxes" style={{ minWidth: 0 }}>
+          <MaterialsDeskPhone
+            model={buildDeskPhone({
+              jobs: withBoxes.map((j) => {
+                const live = j.containers.filter((c) => !c.retiredAt)
+                const movements = listMovements(j.jobId)
+                const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now))
+                return { id: j.jobId, number: j.number ?? '', name: j.name ?? (j.number ? '' : j.label), boxes: live.length, places: 0, due: stale.length, dueWords: staleWords(stale), missingLines: 0, missingUnpricedLines: 0, missingMoney: 0, credits: 0, failed: null }
+              }),
+              groups: groupDeskBySite(withBoxes.map((j) => j.jobId), fieldSites ? sites.siteOfJob : new Map(), fieldSites ? sites.siteNames : new Map()),
+              filter: deskFilter,
+              money: false,
+            })}
+            onFilter={setDeskFilter}
+            onOpenJob={(id) => navigate(onSiteJobHref(role, id))}
+            onOpenSite={setSite}
+            onReadAgain={() => {}}
+          />
+        </section>
       ) : (
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>

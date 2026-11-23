@@ -64,8 +64,28 @@ The email lists money owed only. Its totals and its aging chips leave the bill o
 A residential customer is not reminded to pay that bill. Their **Paid** step waits with no due day. **Remind now** still sends one if you want it.
 :::
 
+:::card The customer's page
+The bill is not on the customer's statement and not in their balance. It sits in a card named **Scheduled in kind**, with no pay button. The card says what the credits have paid and what is still to come.
+:::
+
+:::card The Pipeline's map
+The job keeps its pin. Its money is not counted as money to collect. The job is not on the list to ask. A line on the rail says how much is scheduled in kind.
+:::
+
+:::card A development's Money
+The job reads **Scheduled in kind** where another job shows the day its money is expected. It is never counted as past due.
+:::
+
+:::card The aging chart and the printed report
+The chart does not plot the bill. The printed **Billed awaiting payment** report leaves it out of every list and total. Each says how much it left out.
+:::
+
 :::card A customer's profile and bills
 The job reads **billed · scheduled in kind** in the customer's profile window. It shows no day count and no red. The **Invoices** tab on the customer's page reads **Billed · in kind** for that bill.
+:::
+
+:::card A GC's statement and GC Review
+**GC Review** leaves the bill out of the GC's bills and totals. A line at the foot says how much is scheduled in kind. The statement the GC gets says the same line under its total.
 :::
 
 :::

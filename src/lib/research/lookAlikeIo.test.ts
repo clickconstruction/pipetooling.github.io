@@ -6,7 +6,7 @@ import type { BuilderRow } from './permitBuilders'
  * The Needs you line's count (punch list #307): every city's chip added up, and what the Dashboard
  * does not read twice. Every name and address here is made up.
  */
-const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn() }))
+const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadAllNameContactMatches: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn() }))
 vi.mock('./bidSiteIo', () => siteIo)
 const io = vi.hoisted(() => ({ loadBuilders: vi.fn() }))
 vi.mock('./permitResearchIo', () => io)
@@ -16,7 +16,7 @@ import { forgetLookAlikeCounts, readLookAlikeCounts, rememberLookAlikeCount } fr
 import { LOOK_ALIKE_COUNT_FRESH_MS } from './lookAlikeWorklist'
 import { RESEARCH_CITIES } from './permitResearch'
 
-const builder = (key: string, contact: string): BuilderRow => ({ key, name: null, sample_contact: contact, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 2, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
+const builder = (key: string, contact: string): BuilderRow => ({ key, name: null, sample_contact: contact, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 2, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
 const BY_CITY: Record<string, BuilderRow[]> = {
   'San Antonio': [builder('tallpinedevelopmentgroup', 'Tall Pine Development Group LLC'), builder('danawhitlow', 'Dana Whitlow'), builder('copperlinemechanical', 'Copperline Mechanical')],
   Austin: [builder('larkspurdentalpartners', 'Larkspur Dental Partners')],
@@ -26,6 +26,7 @@ const NOW = 1_800_000_000_000
 beforeEach(() => {
   window.localStorage.clear()
   siteIo.loadAllNameAnswers.mockReset().mockResolvedValue({ rows: [], me: 'u1' })
+  siteIo.loadAllNameContactMatches.mockReset().mockResolvedValue([])
   siteIo.loadCustomerNames.mockReset().mockResolvedValue([{ id: 'c7', name: 'Tall Pine Development' }, { id: 'c8', name: 'Larkspur Dental' }])
   siteIo.loadRecentBidsWithCustomer.mockReset().mockResolvedValue([{ id: 'b1', bid_number: null, project_name: 'Sample Clinic', address: '100 Sample St, San Antonio, TX 78201', outcome: null, bid_date_sent: null, customer_id: 'c7' }])
   siteIo.loadPermitsByHouseNumber.mockReset().mockImplementation(async (city: string) => (city === 'San Antonio' ? [{ id: 'p1', address: '100 SAMPLE ST', builder_key: 'danawhitlow', permit_number: 'COM-1', permit_type: 'Comm New Building Permit', stage: 'issued' }] : []))
@@ -51,6 +52,22 @@ describe('countCityLookAlikes', () => {
     expect(await countCityLookAlikes('San Antonio', shared)).toBeNull()
   })
 
+  it('counts a name that shares a phone with a customer, however unlike the two names read', async () => {
+    siteIo.loadAllNameContactMatches.mockResolvedValue([{ customer_id: 'c8', builder_key: 'copperlinemechanical', reason: 'phone', value: '2105550142', heard_from: 'permit' }])
+    const shared = (await loadLookAlikeShared())!
+    expect(shared.contacts.get('c8')?.get('copperlinemechanical')).toEqual([{ reason: 'phone', value: '2105550142' }])
+    expect(await countCityLookAlikes('San Antonio', shared)).toBe(3)
+    // Austin's list does not carry that name, so its count is as it was.
+    expect(await countCityLookAlikes('Austin', shared)).toBe(1)
+  })
+
+  it('counts as before when the read of shared phones is not on the database yet', async () => {
+    siteIo.loadAllNameContactMatches.mockResolvedValue(null)
+    const shared = (await loadLookAlikeShared())!
+    expect(shared.contacts.size).toBe(0)
+    expect(await countCityLookAlikes('San Antonio', shared)).toBe(2)
+  })
+
   it('leaves out a name a customer has already been answered on', async () => {
     siteIo.loadAllNameAnswers.mockResolvedValue({ rows: [{ id: 'a1', builder_key: 'tallpinedevelopmentgroup', customer_id: 'c7', answer: 'someone_else', scope: null, permit_id: null, name: 'Tall Pine Development Group LLC', answered_by: 'u1', answered_at: '2026-11-10T15:00:00Z' }], me: 'u1' })
     expect(await countCityLookAlikes('San Antonio', (await loadLookAlikeShared())!)).toBe(1)
@@ -63,6 +80,7 @@ describe('loadLookAlikeNeed', () => {
     expect(io.loadBuilders.mock.calls.map((c) => c[0])).toEqual([...RESEARCH_CITIES])
     // What every city stands on is read once, not once a city.
     expect(siteIo.loadAllNameAnswers).toHaveBeenCalledTimes(1)
+    expect(siteIo.loadAllNameContactMatches).toHaveBeenCalledTimes(1)
     expect(siteIo.loadCustomerNames).toHaveBeenCalledTimes(1)
     expect(siteIo.loadRecentBidsWithCustomer).toHaveBeenCalledTimes(1)
   })

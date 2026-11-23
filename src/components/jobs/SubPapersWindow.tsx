@@ -46,14 +46,17 @@ import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { paymentRecordReceived, type SubPaperAnswers } from '../../lib/subWorkOrders/subPaperAnswers'
 import { subPaperPlace, subPaperSaidHeld, subPaperSaidShown } from '../../lib/subWorkOrders/subPaperSaid'
 import { paymentRecordHtml, statementOfAccountHtml, SUB_PAPER_CSS, workStatementHtml } from '../../lib/subWorkOrders/subPapersHtml'
+import { rosterEmailCheck, rosterEmailOffer, rosterEmailText } from '../../lib/subWorkOrders/subPaperRosterEmail'
 import { subPaperSendParts, subPaperSendPlan, SUB_PAPER_SEND_BY, subPaperAttachmentName, type SubPaper, type SubPaperSendBy, type SubPaperSendPlan } from '../../lib/subWorkOrders/subPaperSend'
 import { ledgerPeriodRange } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { SCHEDULE_SHEET_Z } from '../schedule/ScheduleBlockSheet'
+import { ChangeableValue } from '../valuesInPlace/ValuesInPlace'
 
 export type SubPapersOpen = { kind: 'statement' } | { kind: 'work'; sheetId: string } | { kind: 'payment'; sendingKey: string }
 
 /** `emailUnread`: the roster could not be read just now, so the address is not known here. The function reads it itself. */
-export type SubPaperContact = { email: string | null; phone: string | null; portalUrl: string | null; emailUnread?: boolean }
+export type SubPaperContact = { email: string | null; phone: string | null; portalUrl: string | null; emailUnread?: boolean; /** The address on the login tied to their roster row. It is offered for a sub with none on the roster, never sent to unasked. */ loginEmail?: string | null }
 
 type PeriodKey = 'since' | 'month' | 'year' | 'all' | 'custom'
 
@@ -69,7 +72,7 @@ export type SubPapersWindowViewProps = {
   ctx: PaperContext
   contact: SubPaperContact
   /** The last statement of account sent to this person, from the register; null before one has gone. Absent while no register records one: the period offers no *Since the last statement* then. */
-  lastStatement?: { number: string; endedOn: string } | null
+  lastStatement?: { number: string; endedOn: string; /** When it was made. With it, a line typed since and dated inside that statement is carried into *Since the last statement*. */ madeAt?: string } | null
   /** A statement that ended today, from the register. It is said beside the period and does not move it. */
   statementToday?: { number: string } | null
   /** Offer a payment record beside the other two papers. */
@@ -83,6 +86,12 @@ export type SubPapersWindowViewProps = {
   sendBy?: readonly SubPaperSendBy[]
   /** Where an email is added for a sub who has none, drawn under the reason the press is dead. */
   emailDoor?: SubPaperEmailDoor | null
+  /**
+   * Saves an address onto the person's roster row. With it the To line's address is changed in place, and a sub
+   * with none has their door right there. Absent for a viewer who may not send. It throws with the reason when the
+   * row does not take it.
+   */
+  onKeepEmail?: (email: string) => Promise<void>
   /** Start on the send step (the window after Record payment does). */
   startOnSend?: boolean
   busy?: string | null
@@ -105,7 +114,7 @@ const thumb: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, display: 'inli
 /** A tick box's row on a phone: the whole line is the press, a fingertip tall. */
 const thumbTick: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, display: 'flex', alignItems: 'center', gap: 6 }
 
-export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, answers, marksUnread = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
+export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement: lastStatementNow, statementToday: statementTodayNow = null, paymentRecords = false, answers, marksUnread = false, canSend: maySend, sendBy = EMAIL_ALONE, emailDoor = null, onKeepEmail, startOnSend = false, busy = null, said = null, onDownload, onPrint, onSend, onClose }: SubPapersWindowViewProps) {
   const canSend = maySend && !!onSend
   const phone = useNarrowViewport640()
   const quiet: CSSProperties = phone ? { ...quietAtDesk, ...thumb } : quietAtDesk
@@ -117,6 +126,9 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const [step, setStep] = useState<'paper' | 'send'>(startOnSend && canSend ? 'send' : 'paper')
   /** The papers went on this visit to the send step: it offers Done, never a second Send by mistake. */
   const [went, setWent] = useState(false)
+  /** Why the sign-in address did not go onto the roster row, said beside its press. */
+  const [offerWhy, setOfferWhy] = useState<string | null>(null)
+  const [offerBusy, setOfferBusy] = useState(false)
   /** Which email of the send is open, from 0. A pick past one email's limit goes in several, and each has its own send. */
   const [email, setEmail] = useState(0)
   // The last statement as it stood when the window opened. A paper made here is registered at once, and it must
@@ -138,7 +150,7 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
 
   const range: StatementRange = useMemo(() => {
     // A period never starts after it ends: a last statement that ended today or later leaves the statement to date.
-    if (period === 'since') return lastStatement && nextDay(lastStatement.endedOn) <= ctx.today ? { from: nextDay(lastStatement.endedOn), to: ctx.today } : { from: null, to: null }
+    if (period === 'since') return lastStatement && nextDay(lastStatement.endedOn) <= ctx.today ? { from: nextDay(lastStatement.endedOn), to: ctx.today, lateAfter: lastStatement.madeAt ?? null } : { from: null, to: null }
     if (period === 'all') return { from: null, to: null }
     if (period === 'custom') return { from: custom.from || null, to: custom.to || null }
     // The ledger's month and year run to the period's last day as a filter. A paper closes on a real day, today at the latest.
@@ -174,6 +186,10 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
   const last = built.sendings[built.sendings.length - 1]
   const plan = lead ? subPaperSendPlan({ company: ctx.company.name, subName: ctx.sub.name, lead, attached, held, part: { n: emailAt + 1, of: parts.length }, by, email: contact.email, emailUnread: contact.emailUnread, phone: contact.phone, portalUrl: contact.portalUrl, lastPayment: last ? { amount: last.amount, day: paperDay(last.ymd) || 'a day not recorded' } : null }) : null
   const texts = ways.some((o) => o.key === 'text')
+  // The To line takes an address only from a viewer who may send: the same people the function sends for.
+  const keepEmail = canSend ? onKeepEmail : undefined
+  // A roster that could not be read may hold an address, so nothing is offered over it.
+  const offer = contact.emailUnread ? null : rosterEmailOffer({ rosterEmail: contact.email, loginEmail: contact.loginEmail })
   // A press under way keeps the window: its answer is said here, and a window closed and opened again could send twice.
   const closeUnlessBusy = () => {
     if (!busy) onClose()
@@ -329,7 +345,46 @@ export function SubPapersWindowView({ open, sheets, ctx, contact, lastStatement:
           <>
             <div style={field}>
               <div style={k}>To</div>
-              <div data-testid="sub-papers-to" style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>{[ctx.sub.name, contact.email ?? (contact.emailUnread ? 'the address on their roster row' : 'no email on the roster'), ...(texts ? [contact.phone ?? 'no phone on the roster'] : [])].join(' · ')}</div>
+              <div data-testid="sub-papers-to" style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>
+                {ctx.sub.name}
+                {' · '}
+                {/* The address is the roster's own, changed where it sits. One that could not be read is not offered: what it holds is not known here. */}
+                {keepEmail && !contact.emailUnread ? (
+                  <ChangeableValue text={rosterEmailText(contact.email)} label={`${ctx.sub.name}’s email`} type="text" value={contact.email ?? ''} check={rosterEmailCheck} hint="Their papers go to this address. It is saved on their roster row." off={!!busy} onKeep={(typed) => keepEmail(typed)} />
+                ) : (
+                  (contact.email ?? (contact.emailUnread ? 'the address on their roster row' : 'no email on the roster'))
+                )}
+                {texts ? ` · ${contact.phone ?? 'no phone on the roster'}` : ''}
+              </div>
+              {keepEmail && offer ? (
+                <div data-testid="sub-papers-login-email" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  {offer.words}{' '}
+                  <button
+                    type="button"
+                    disabled={offerBusy || !!busy}
+                    onClick={() => {
+                      setOfferBusy(true)
+                      setOfferWhy(null)
+                      keepEmail(offer.email).then(
+                        () => setOfferBusy(false),
+                        (err: unknown) => {
+                          setOfferBusy(false)
+                          setOfferWhy(formatErrorMessage(err))
+                        },
+                      )
+                    }}
+                    style={{ fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-blue-700)', textDecoration: 'underline', cursor: offerBusy || busy ? 'default' : 'pointer', ...(phone ? { minHeight: PHONE_PRESS_MIN_HEIGHT } : {}) }}
+                  >
+                    {offer.label}
+                  </button>
+                  {offerWhy ? (
+                    <span role="alert" style={{ color: 'var(--text-red-700)' }}>
+                      {' '}
+                      {offerWhy}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             {ways.length > 1 ? (
               <div style={field}>

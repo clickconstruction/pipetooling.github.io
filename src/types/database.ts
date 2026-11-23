@@ -5986,7 +5986,6 @@ export type Database = {
       builders: {
         Row: {
           created_at: string
-          customer_id: string | null
           key: string
           kind: string | null
           name: string
@@ -5995,7 +5994,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          customer_id?: string | null
           key: string
           kind?: string | null
           name: string
@@ -6004,7 +6002,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          customer_id?: string | null
           key?: string
           kind?: string | null
           name?: string
@@ -6012,13 +6009,6 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "builders_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "builders_updated_by_fkey"
             columns: ["updated_by"]
@@ -33153,6 +33143,7 @@ export type Database = {
           builder_key: string | null
           city: string
           contact: string | null
+          contact_phone: string | null
           declared_value: number | null
           first_seen_at: string
           id: string
@@ -33180,6 +33171,7 @@ export type Database = {
           builder_key?: string | null
           city: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -33207,6 +33199,7 @@ export type Database = {
           builder_key?: string | null
           city?: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -33510,6 +33503,13 @@ export type Database = {
           reminder_count: number
           reminders_enabled: boolean
           sent_at: string | null
+          sheet_asks: string[] | null
+          sheet_checked_at: string | null
+          sheet_checked_by: string | null
+          sheet_missing: string[] | null
+          sheet_project_id: string | null
+          sheet_revision: number | null
+          sheet_sent_back_at: string | null
           sign_by: string | null
           signed_at: string | null
           signed_copy_sent_at: string | null
@@ -33573,6 +33573,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -33636,6 +33643,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -33726,6 +33740,20 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_checked_by_fkey"
+            columns: ["sheet_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_project_id_fkey"
+            columns: ["sheet_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -47380,6 +47408,19 @@ export type Database = {
           request_id: string
         }[]
       }
+      document_builder_coi_mark_good: {
+        Args: {
+          p_asks: string[]
+          p_good_until: string
+          p_paper_id: string
+          p_sheet_id: string
+        }
+        Returns: undefined
+      }
+      document_builder_coi_send_back: {
+        Args: { p_missing: string[]; p_paper_id: string; p_sheet_id: string }
+        Returns: undefined
+      }
       draft_estimate_line_from_message: {
         Args: {
           p_estimate_id: string
@@ -51661,10 +51702,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      permit_contact_domain: { Args: { p_value: string }; Returns: string }
       permit_funnel: {
         Args: { p_city: string; p_since: string }
         Returns: Json
       }
+      permit_is_building_plumbing: {
+        Args: { p_permit_type: string }
+        Returns: boolean
+      }
+      permit_name_contact_matches: {
+        Args: { p_customer_ids?: string[] }
+        Returns: {
+          builder_key: string
+          customer_id: string
+          heard_from: string
+          reason: string
+          value: string
+        }[]
+      }
+      permit_phone_digits: { Args: { p_value: string }; Returns: string }
       permit_set_builder_keys: { Args: { p_pairs: Json }; Returns: number }
       permit_skim_wait: {
         Args: { p_city: string; p_floor?: number }
@@ -52278,7 +52335,6 @@ export type Database = {
         Args: { p_city: string }
         Returns: {
           bids: number
-          customer_id: string
           key: string
           kind: string
           last_bid_on: string
@@ -52411,6 +52467,57 @@ export type Database = {
           permit_number: string
           permit_type: string
           plumber: string
+          plumber_permit_on: string
+          plumbing_nearby: number
+          plumbing_nearby_by: string
+          plumbing_nearby_on: string
+          plumbing_nearby_what: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_for_name: string
+          verdict_for_user: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_pursue_for: string
+          verdict_reason: string
+          verdict_reason_code: string
+          work_type: string
+          zip: string
+        }[]
+      }
+      research_permits_v4: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          builder_key: string
+          builder_kind: string
+          builder_mark: string
+          builder_mark_at: string
+          builder_mark_by_name: string
+          builder_mark_reason: string
+          builder_name: string
+          builder_open: number
+          builder_permits: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_first_permit_on: string
           plumber_permit_on: string
           plumbing_nearby: number
           plumbing_nearby_by: string
@@ -53325,6 +53432,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_check_to_look: { Args: { p_fixture_id: string }; Returns: string[] }
       start_check_windows: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -53928,6 +54036,10 @@ export type Database = {
       }
       write_down: {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
+        Returns: undefined
+      }
+      write_down_payment: {
+        Args: { p_day?: string; p_message_id: string }
         Returns: undefined
       }
       write_up_people: { Args: never; Returns: Json }

@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 6, a certificate held against a job's sheet, and step 10, a GC's picks, each wait on the owner's call. Steps 1 to 5 and 7 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21), the sheet's link under its own secret (2026-11-21), and who opened a link and where a link stands (v2.8194, 2026-11-21, its three functions deployed that day). The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) were read on the live site in the same walk. Not seen on prod: a lost or closed job, and a sent copy with a job. How long an open's address is kept waits on Taunya's call.
+next: Step 10, a GC's picks, waits on Taunya's call. Steps 1 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151, and step 6 in v2.8253 and v2.8264). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21), the sheet's link under its own secret (2026-11-21), and who opened a link and where a link stands (v2.8194, 2026-11-21, its three functions deployed that day). The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) were read on the live site in the same walk. Not seen on prod: a lost or closed job, and a sent copy with a job. How long an open's address is kept waits on Taunya's call.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -22,6 +22,7 @@ blocker: None for the build. An attorney's read of the Sub NDA's words and an in
 This card is written for someone who was not in the room. Everything needed is here, in
 [mockup.html](mockup.html), and in the code on `main` under `src/lib/documentBuilder/` and
 `src/components/documentBuilder/`. *Where it stands*, at the foot, says which steps are built.
+What is left to build, and every walk still owed on prod, is listed on card #416 in the order to do it.
 
 **The mock-up works.** One state drives its five drawn screens, so a press on one shows on the others.
 Open it and press things before reading on. It is the reference for every state and every word.
@@ -45,7 +46,7 @@ To run the spike: check the branch out, `npm install`, `npm run dev`, sign in as
 `/paper-builder`. No link in the app opens it. It reads and writes nothing in the database. On `main`
 that address is gone, and the flow opens from Documents → Document builder.
 
-**Eight of the ten steps are built.** The certificate check and a GC's picks exist as the mock-up and
+**Nine of the ten steps are built.** A GC's picks exist as the mock-up and
 this card, and nowhere else.
 
 ## Not legal advice, not insurance advice, and no legal text here
@@ -546,10 +547,10 @@ of it. The same day he said to build it.
 | 3 · The standing sheet and a job's sheet | **Built**, v2.8007. A second builder, **Insurance requirements for subs**: the usual sheet and one sheet a job, typed on in place, a job holding only what differs, and a publish of the usual that goes to each job that is ready and names the ones it held. Every amount is the placeholder *An amount*. Nothing leaves the building yet. |
 | 4 · The sheet's link | **Built**, v2.8008. A published sheet has one live link, `/d/<code>`, that opens it with no login, made, copied, replaced and switched off from a card on the sheet. Only the code's hash is kept. The function is `document-builder-link`. Nothing is sent: a person copies the link. |
 | 5 · Send it to a job's trades | **Built**, v2.8009. A card on a published sheet lists the job's trades, each with where its send stands. A box sends to one person at one trade, and one press sends to every trade that is ready and lists the ones it held. A send never turns a page back on, and a trade with no page gets one only from a send to that trade alone. The trade reads the sheet on its own page. The function is `document-builder-send`. |
-| 6 · A certificate for each job | Not built. It waits on the owner's call on *A certificate for each job, or one for each company*, in *Calls still open*. Its migration adds columns to `person_contract_documents`, and no other card's migration holds it. Card 403's `20261120010000_paper_party.sql` is on prod since 2026-11-20, and card 376's two unpushed migrations (`20261120060000`, `20261120061000`) add columns only. Stamp it from `origin/main` as usual, and leave the columns those cards add alone. |
+| 6 · A certificate for each job | **Built**, v2.8253 (the columns and the two functions) and v2.8264 (the screens). Taunya's call of 2026-11-21: one certificate for each job. Under the send, **Certificates for this job** has a row a trade, saying where its certificate stands: none yet, came in, good to a day, the sheet changed, ran out, or sent back with what was missing. **Check it against the sheet** opens one line to tick for each thing the published sheet asks. **Mark it good** needs every line and a day that has not passed. **Send it back** names the unticked lines and emails them to the trade. A certificate is outdated when a name, the place, the holder or an amount on the published sheet changes, and not when the other words do. Not built: the trade's own page does not say its certificate was sent back, a trade's upload still files one waiting certificate with no job on it, and GC mode's start gate still reads the company's own certificate. |
 | 7 · Edit on the GC's view, and Publish | **Built**, v2.8024. The words on the Sub NDA's flow are fields: the disclaimer, a level's meaning, the breach lines, the site lines. The review of 2026-11-20 found that not every piece is one yet, and names section names, fact labels, some of the flow's own words and the title, the job, the company and the party. The map opens a page at a level. The pages changed since the published revision are listed with the way back. **Publish revision N** makes the draft what everyone outside sees, and an attorney's read is marked on a revision. The levels' names are not fields. |
-| 8 · The link | **Built**, v2.8150. A published Sub NDA has one live link, made, copied, replaced and switched off from a card under the map. Anyone who holds it walks the published revision at `/d/<code>`, named *Secrecy on your jobs*, look only: no field, no press on the last step, nothing saved or sent. No function changed. Not walked on prod: the Sub NDA there was never published, and a live walk needs a published revision. |
-| 9 · Send it to a GC | **Built**, v2.8151. The Sub NDA's editor has a card under its link, **Send it to a GC**: a row for each customer who is the GC on a job with us, a box to find one, and a send to one person about one job or all their jobs. The GC gets an email with one press to their own page, where the builder sits under that job to open and walk, look only. The row says the day it went and the day they opened it. Two things the drawing does not have: the one press asks first by its count, and the list shows the first twelve GCs until someone types. Its two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21. No send to a GC has been made on prod. Not on Settings → What customers see yet. |
+| 8 · The link | **Built**, v2.8150. A published Sub NDA has one live link, made, copied, replaced and switched off from a card under the map. Anyone who holds it walks the published revision at `/d/<code>`, named *Secrecy on your jobs*, look only: no field, no press on the last step, nothing saved or sent. No function changed. Its walk on prod is #416's 1h, once the Sub NDA is published. |
+| 9 · Send it to a GC | **Built**, v2.8151. The Sub NDA's editor has a card under its link, **Send it to a GC**: a row for each customer who is the GC on a job with us, a box to find one, and a send to one person about one job or all their jobs. The GC gets an email with one press to their own page, where the builder sits under that job to open and walk, look only. The row says the day it went and the day they opened it. Two things the drawing does not have: the one press asks first by its count, and the list shows the first twelve GCs until someone types. Its two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21. Its walk on prod is #416's 1i, and its page on Settings → What customers see is in #416's part 3. |
 | 10 · Send their picks | Not built. The default for *What a GC can do with the Sub NDA at first* is look only, so it waits on the owner's yes. |
 
 ### What the review of 2026-11-20 left
@@ -563,8 +564,7 @@ Two more faults were found outside the review, and each is fixed. v2.8152 (PR #9
 filed copy held the trade's page link, found while reading the send for step 9. v2.8180 (PR #9224):
 the jobs card under the usual said every job was on it while one was held, found on the walk below.
 
-Not walked on prod: the one press with more than one trade, *Tell them it changed*, a trade with no
-page, a page that is off, and the Sub NDA's **Publish** and its attorney's mark. On prod the Sub NDA
+The walks still owed on prod are #416's part 1, each with its page, its role and its test rows. On prod the Sub NDA
 is a draft that was never published, and the usual sheet is at revision 3 with no agent's check.
 Revision 3 reads as revision 1 did. On 2026-11-21 the walk of the four saving fixes below published
 it twice: once with a test line at its foot, then again to take that line out.
@@ -604,8 +604,7 @@ with no mark is still open, and no PR holds it.
   copy now sorts under *Contracts and estimates*, a sheet's copy names the job its project bills through when it
   has one, and a builder's copy names the job it is about and the customer. No migration. **On prod:**
   `document-builder-send` went out in the same deploy. Read on the live site on 2026-11-21: the test project's
-  copies are listed under *Contracts and estimates*. Not seen there: a copy with a job, since neither test
-  project has a billing job and a copy from them is under no job.
+  copies are listed under *Contracts and estimates*. A copy with a job is #416's walk 1f.
 - **Fixed, v2.8192 (PR #9251).** The job list was every `gc_projects` row, a bid pursuit and a lost job among
   them, and the one press counted a trade that was asked and not awarded. Taunya's answers on 2026-11-21: keep a
   job that is being bid, leave out a lost or closed one, and send to an asked trade one at a time only. A lost or
@@ -613,7 +612,7 @@ with no mark is still open, and no PR holds it.
   counts awarded trades, and lists an asked one as held. No migration and no function. **On prod:** the page
   alone. Read on the live site on 2026-11-21: the job list holds the two test projects, one being bid and one
   being built, and on the test project the one press reads *Nothing to send* with the asked trade listed as
-  held. Not seen there: a lost or closed job, since prod has none.
+  held. A lost or closed job is #416's walk 1e.
 
 Against the mock-up, the built steps still lack:
 
@@ -622,7 +621,7 @@ Against the mock-up, the built steps still lack:
 - On a phone the map's column heads run together and its cells are bars, not the small squares.
   **Fixed**, v2.8144: there a head is the level's bars and a cell is a 44 px square.
 - The card of changed pages has no counts and no legend, and the open cell has no outline.
-- A trade's row does not say where its certificate stands. That is step 6.
+- A trade's certificate stands in a card of its own under the send, not on the send's row (step 6, v2.8264).
 - Most presses in the tab are under 44 px tall on a phone. **Fixed**, v2.8146: one rule makes every
   press in the tab 44 px there. The step bar's dashes stay 24 px.
 
@@ -647,12 +646,16 @@ came from and what the browser tells of the device.
   the line under the trades said a take-off would close it. The take-off closed it, and the card gave the day
   and the reason. The next send made a new link. A link switched off by hand read as switched off, and its
   address then read *This link is no longer open.*
-- **What the walk left on prod.** The test sheet has eight links, all ended. Two rows of
-  `document_builder_sends` to `delivered+zz404opens@resend.dev`, both taken off, which a dev cannot delete.
-  Three rows of `document_builder_link_opens` on two of those ended links: an open of a link that is off is
-  not kept. The walk's contact and its two Sent copies were deleted.
+- **What the walk left on prod** is listed by id on #416, part 2. An open of a link that is off is not kept.
+- **The dev seat loads a paper's words as a draft, walked on prod.** v2.8257 (PR #9330), with `dev-mcp`
+  0.125.0 deployed on 2026-11-22 at 06:13 UTC. Walked at about 06:45 UTC with made-up words. The plan refused
+  the title *Master Services Agreement* and wrote nothing. A changed title loaded into the Sub NDA's draft, a
+  second apply wrote nothing, and the first draft was loaded back and read the same. Revision 0 was never
+  touched. One test entry went into a test packet of the Contract Book, read back and was deleted. Left on
+  prod: the Sub NDA's draft number moved from 3 to 5, which is never put back.
 - **Left for Taunya's call.** Nothing clears an open: how long an address is kept is not set. No script reads a
-  device to tell it from another. The page sends only what a browser tells every site.
+  device to tell it from another. The page sends only what a browser tells every site. #416 lists both, with a way to tell
+  one visitor from another that Taunya has not picked yet.
 
 One thing step 1 changed from the spike: the frame's height. Inside the tab on a phone the tab row
 pushed the frame down and the **Next** press under the fold, so the frame is now sized to the screen from

@@ -8764,6 +8764,7 @@ export type Database = {
           builder_key: string | null
           city: string
           contact: string | null
+          contact_phone: string | null
           declared_value: number | null
           first_seen_at: string
           id: string
@@ -8791,6 +8792,7 @@ export type Database = {
           builder_key?: string | null
           city: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -8818,6 +8820,7 @@ export type Database = {
           builder_key?: string | null
           city?: string
           contact?: string | null
+          contact_phone?: string | null
           declared_value?: number | null
           first_seen_at?: string
           id?: string
@@ -8882,6 +8885,13 @@ export type Database = {
           reminder_count: number
           reminders_enabled: boolean
           sent_at: string | null
+          sheet_asks: string[] | null
+          sheet_checked_at: string | null
+          sheet_checked_by: string | null
+          sheet_missing: string[] | null
+          sheet_project_id: string | null
+          sheet_revision: number | null
+          sheet_sent_back_at: string | null
           sign_by: string | null
           signed_at: string | null
           signed_copy_sent_at: string | null
@@ -8945,6 +8955,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -9008,6 +9025,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -9098,6 +9122,20 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_checked_by_fkey"
+            columns: ["sheet_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_project_id_fkey"
+            columns: ["sheet_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {

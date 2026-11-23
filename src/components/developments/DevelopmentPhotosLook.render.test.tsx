@@ -210,7 +210,23 @@ describe('DevelopmentPhotosLook', () => {
     await draw(io, { phone: true })
     const tiles = await screen.findAllByTestId('site-photos-tile')
     expect((within(tiles[0]!).getByRole('button') as HTMLElement).style.width).toBe('96px')
-    expect((screen.getByTestId('site-photos-jobs') as HTMLElement).style.overflowX).toBe('auto')
+    // Each chip row slides inside the shared strip (v2.8293), and its box is a grid item that may be narrower than its chips.
+    for (const id of ['site-photos-jobs', 'site-photos-sources']) {
+      const box = screen.getByTestId(id) as HTMLElement
+      expect((box.querySelector('.tab-strip-scroll') as HTMLElement).style.overflowX, id).toBe('auto')
+      expect(box.style.minWidth, id).toBe('0')
+    }
+    expect(screen.getByTestId('site-photos-jobs').textContent).toMatch(/^Job/)
+    expect(screen.getByTestId('site-photos-sources').textContent).toMatch(/^Source/)
+  })
+
+  it('at a desk the chip rows wrap and do not slide', async () => {
+    const { io } = fakeIo(ROWS)
+    await draw(io, { phone: false })
+    await screen.findAllByTestId('site-photos-tile')
+    const box = screen.getByTestId('site-photos-jobs') as HTMLElement
+    expect(box.style.flexWrap).toBe('wrap')
+    expect(box.querySelector('.tab-strip-scroll')).toBeNull()
   })
 
   it('an estimator: the text and email pictures with no source chips, since the view hands an estimator nothing else', async () => {

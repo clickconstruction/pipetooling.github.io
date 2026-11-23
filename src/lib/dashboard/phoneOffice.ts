@@ -15,9 +15,13 @@ export function isPhoneOfficeRole(role: string | null | undefined): boolean {
  * Cards or Walk when the card opens. A choice the person made on this device
  * always wins; with none, an office role on a phone gets Walk (one card at a
  * time — the deck), everyone else Cards as before.
+ *
+ * Under the new phone layout (`newPhoneLayout`, which is true at a phone's width alone) every role with
+ * no choice gets Walk: the stack is one chip away, and a phone opens on one line at a time.
  */
-export function needsYouInitialMode(input: { stored: NeedsYouMode | null; isPhone: boolean; role: string | null | undefined }): NeedsYouMode {
+export function needsYouInitialMode(input: { stored: NeedsYouMode | null; isPhone: boolean; role: string | null | undefined; newPhoneLayout?: boolean }): NeedsYouMode {
   if (input.stored) return input.stored
+  if (input.newPhoneLayout) return 'walk'
   return input.isPhone && isPhoneOfficeRole(input.role) ? 'walk' : 'cards'
 }
 

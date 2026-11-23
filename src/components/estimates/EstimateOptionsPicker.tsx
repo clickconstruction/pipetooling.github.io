@@ -155,8 +155,10 @@ export default function EstimateOptionsPicker({ options, selectedKeys, onToggle,
           <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2, maxWidth: '48ch' }}>{o.description}</span>
         ) : null}
         {o.line_items.length > 0 ? (
-          <details style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.4rem' }} onClick={(e) => e.stopPropagation()}>
-            <summary style={{ cursor: 'pointer', color: '#b3541e', fontWeight: 600 }}>What&rsquo;s included</summary>
+          <details style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
+            {/* A thumb's height (v2.8294): the words stood 18 px. The padding is the press, and the margin under it
+                takes most of the lower half back, so the card is no taller at its foot than it was. */}
+            <summary style={{ cursor: 'pointer', color: '#b3541e', fontWeight: 600, padding: '0.75rem 0', marginBottom: '-0.5rem' }}>What&rsquo;s included</summary>
             <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
               {o.line_items.map((l, i) => (
                 <li key={i}>

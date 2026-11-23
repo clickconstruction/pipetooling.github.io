@@ -12,6 +12,7 @@ import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatur
 import { SignerNameInput } from './SignerNameInput'
 import { resolveSignerName } from '../../lib/signerNameField'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
+import { SIGN_TICK_BOX, SIGN_TICK_ROW } from './signatureFormStyles'
 
 const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
 
@@ -108,12 +109,19 @@ export function ContractAcceptSignatureForm({
     })
   }
 
+  // The press that signs is the form's largest (v2.8294): as wide as the name box over it and 48 px tall. It stood
+  // 34 px, as wide as its words, under two 13 px boxes.
   const primaryBtnStyle: CSSProperties = {
     marginTop: '1rem',
     marginLeft: 'auto',
     marginRight: 'auto',
     display: 'block',
-    padding: '0.5rem 1.25rem',
+    width: '100%',
+    maxWidth: 400,
+    minHeight: 48,
+    boxSizing: 'border-box',
+    padding: '0.6rem 1.25rem',
+    fontSize: '1rem',
     fontWeight: 600,
     background: '#ea580c',
     color: 'white',
@@ -199,6 +207,9 @@ export function ContractAcceptSignatureForm({
           lead={disclosure}
           disabled={submitting}
           checkbox={{ checked: consented, onChange: (v) => { setConsented(v); setFieldHint(null) } }}
+          // Both boxes start at the form's left edge (v2.8294), one over the other. Each row was centred on its
+          // own words, so a short line's box sat 30 px right of a long line's.
+          checkboxAlign="start"
         />
       ) : (
         <p
@@ -216,24 +227,17 @@ export function ContractAcceptSignatureForm({
       <div
         style={{
           display: 'flex',
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
           width: '100%',
         }}
       >
-        <label
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'flex-start',
-            marginTop: 0,
-            textAlign: 'left',
-          }}
-        >
+        <label style={SIGN_TICK_ROW} data-sign-tick="agree">
           <input
             type="checkbox"
             checked={agreed}
             onChange={(e) => onAgreedChange(e.target.checked)}
             disabled={submitting}
+            style={SIGN_TICK_BOX}
           />
           <span>{agreeLabel}</span>
         </label>

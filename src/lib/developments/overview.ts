@@ -69,6 +69,8 @@ export type MemberJob = {
   first_work_date?: string | null
   last_work_date: string | null
   last_bill_date: string | null
+  /** The in kind deal that pays this job (punch list #301); absent on a read that does not carry it. */
+  in_kind_arrangement_id?: string | null
   job_plans_link: string | null
   /** The part of the site the job builds from (punch list #239); absent on an older read. */
   plan_part_id?: string | null

@@ -34,8 +34,20 @@ const DESK_LINES = 6
 
 type Loaded = { state: 'loading' } | { state: 'done'; bids: GcBid[]; permits: Map<string, SitePermitRow[]> } | { state: 'waiting'; bids: GcBid[] } | { state: 'failed'; message: string }
 
-export function BidGcPermits({ customerIds, customerName, currentBidId }: { customerIds: readonly string[]; customerName: string; currentBidId: string | null }) {
-  const isMobile = useIsMobile()
+export function BidGcPermits({
+  customerIds,
+  customerName,
+  currentBidId,
+  onItsOwnPage = false,
+}: {
+  customerIds: readonly string[]
+  customerName: string
+  currentBidId: string | null
+  /** The customer page's Permits tab: the panel is the page, so a phone shows the first jobs as a desk does. In a bid's window a phone folds them behind a press. */
+  onItsOwnPage?: boolean
+}) {
+  const isPhone = useIsMobile()
+  const isMobile = isPhone && !onItsOwnPage
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
   const [open, setOpen] = useState(false)
   const idsKey = [...customerIds].sort().join(',')

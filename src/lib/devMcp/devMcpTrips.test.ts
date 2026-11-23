@@ -143,7 +143,7 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     expect(SERVER).toContain('its number on its site (trip_number, since v2.7886')
     // The note a version carries lives in the notes file since v2.7999, not in the function's upload.
     expect(readFileSync('docs/dev-mcp/SERVER_NOTES.md', 'utf8')).toContain('0.106.0 (v2.7886, punch list #379')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.125.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('plan_trip → apply_trip (a trip to a site away from home')
     expect(SERVER).toContain('read_trips reads a site’s or a job’s trips'.replace(/’/g, "'"))

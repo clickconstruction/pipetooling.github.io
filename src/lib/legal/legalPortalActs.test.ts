@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalPlanDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
+import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalLinkPerson, legalPlanDateProblem, legalRateLimitMessage, officeCanVoid, recordedByForLink, recordedByOf, recordedHowWords, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
 import { buildFirmActivity, type LegalMatterRow } from './legalMatters'
 import { conversationRows, conversationWho, entryRecordedByWords } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
@@ -87,5 +87,85 @@ describe('undo with a reason (#85 item 18, PR 2)', () => {
     expect(voidIsRetry(done, 'Wrong matter')).toBe(false)
     expect(voidIsRetry({ ...done, voided_via_portal: false }, 'Entered twice')).toBe(false)
     expect(voidIsRetry({ voided_at: null }, 'Entered twice')).toBe(false)
+  })
+})
+
+/**
+ * v2.8312 (punch list #85, a review residual): *Recorded by* was the firm's own claim, since anyone holding
+ * the link could pick any name. A firm now has one person's links beside its shared one (v2.4750), so the link
+ * decides: on one person's link the act is that person's, whatever the page sent.
+ */
+describe('who an act is recorded by follows the link', () => {
+  const own = { id: 'L1', purpose: 'person', label: ' Dana Reyes ' }
+  const shared = { id: 'L0', purpose: 'firm', label: null }
+
+  it('names the person a link belongs to, and nobody on the shared link', () => {
+    expect(legalLinkPerson(own)).toBe('Dana Reyes')
+    expect(legalLinkPerson(shared)).toBeNull()
+    expect(legalLinkPerson({ id: 'L2', purpose: 'person', label: '  ' })).toBeNull()
+    expect(legalLinkPerson({ id: 'L3', purpose: 'firm', label: 'Dana Reyes' })).toBeNull()
+    expect(legalLinkPerson(null)).toBeNull()
+  })
+
+  it('on one person’s link it is that person, and a pick the page sent is not read', () => {
+    expect(recordedByForLink(own, null)).toEqual({ id: 'link:L1', name: 'Dana Reyes', how: 'own_link' })
+    expect(recordedByForLink(own, { id: 'r9', name: 'Somebody Else' })).toEqual({ id: 'link:L1', name: 'Dana Reyes', how: 'own_link' })
+  })
+
+  it('on the shared link it is the pick, marked as a pick, or nobody', () => {
+    expect(recordedByForLink(shared, { id: 'r1', name: 'Lee Paralegal' })).toEqual({ id: 'r1', name: 'Lee Paralegal', how: 'shared_link' })
+    expect(recordedByForLink(shared, null)).toBeNull()
+    expect(recordedByForLink(null, { id: 'r1', name: 'Lee Paralegal' })).toEqual({ id: 'r1', name: 'Lee Paralegal', how: 'shared_link' })
+  })
+
+  it('reads how the name got there, and nothing on an act saved before the record kept it', () => {
+    expect(recordedByOf({ recordedBy: { id: 'link:L1', name: 'Dana Reyes', how: 'own_link' } })).toEqual({ id: 'link:L1', name: 'Dana Reyes', how: 'own_link' })
+    expect(recordedByOf({ recordedBy: { id: 'r1', name: 'Lee Paralegal', how: 'shared_link' } })?.how).toBe('shared_link')
+    expect(recordedByOf({ recordedBy: { id: 'r1', name: 'Lee Paralegal', how: 'made up' } })).toEqual({ id: 'r1', name: 'Lee Paralegal' })
+    expect(recordedHowWords({ how: 'own_link' })).toBe('own link')
+    expect(recordedHowWords({ how: 'shared_link' })).toBe('name picked')
+    expect(recordedHowWords({})).toBe('')
+    expect(recordedHowWords(null)).toBe('')
+  })
+
+  it('the office reads which; the firm reads the name alone', () => {
+    const base = { id: 'e', matter_id: 'm', kind: 'fee', amount: 450, body: '', occurred_on: '2026-11-22', via_portal: true, created_by: null, acknowledged_at: null, created_at: '' } as LegalEntryRow
+    const pinned = { ...base, meta: { recordedBy: { id: 'link:L1', name: 'Dana Reyes', how: 'own_link' } } }
+    const picked = { ...base, meta: { recordedBy: { id: 'r1', name: 'Lee Paralegal', how: 'shared_link' } } }
+    expect(entryRecordedByWords(pinned, 'office')).toBe('Dana Reyes · firm · own link')
+    expect(entryRecordedByWords(picked, 'office')).toBe('Lee Paralegal · firm · name picked')
+    expect(entryRecordedByWords(pinned, 'firm')).toBe('Dana Reyes')
+    expect(entryRecordedByWords(picked, 'firm')).toBe('Lee Paralegal')
+    const [q] = conversationRows([{ ...pinned, kind: 'question', created_at: '2026-11-22T15:00:00Z' }])
+    expect(conversationWho(q!, 'office')).toBe('Dana Reyes at the firm asked (own link)')
+    expect(conversationWho(q!, 'firm')).toBe('Dana Reyes asked')
+    const [q2] = conversationRows([{ ...picked, kind: 'question', created_at: '2026-11-22T15:00:00Z' }])
+    expect(conversationWho(q2!, 'office')).toBe('Lee Paralegal at the firm asked (name picked)')
+  })
+})
+
+describe('the functions read the link, never the page, on one person’s link', () => {
+  const submit = readFileSync('supabase/functions/submit-legal-portal/index.ts', 'utf8')
+  const portal = readFileSync('supabase/functions/legal-portal/index.ts', 'utf8')
+
+  it('submit-legal-portal reads the link’s purpose and label with the key', () => {
+    expect(submit.match(/select\('id, firm_id, revoked_at, purpose, label'\)/g)).toHaveLength(2)
+  })
+
+  it('a matter act: no pick is read on one person’s link, and the link decides the name', () => {
+    expect(submit).toContain("const recordedById = legalLinkPerson(link) ? '' : str(body.recordedById, 64)")
+    expect(submit).toContain('const recordedBy = recordedByForLink(link, picked)')
+    expect(submit).toContain('if (recordedBy) meta.recordedBy = recordedBy')
+    // Nothing else writes the name onto an act.
+    expect(submit.match(/meta\.recordedBy = /g)).toHaveLength(1)
+  })
+
+  it('Start here’s answers: the link’s person before the name the page sent', () => {
+    expect(submit).toContain('const by = legalLinkPerson(link) ?? str(body.by, 120)')
+  })
+
+  it('legal-portal tells the page whose link it is, in both answers', () => {
+    expect(portal).toContain('const linkPerson = legalLinkPerson(link)')
+    expect(portal.match(/recipients, linkPerson, firmPaused,/g)).toHaveLength(2)
   })
 })

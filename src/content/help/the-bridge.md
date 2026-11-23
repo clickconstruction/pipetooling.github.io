@@ -131,6 +131,8 @@ The page reads again at once, and the list is saved. The company has one list, s
 
 While you hide ZZ test jobs, the list offers no ZZ test development or customer. Their jobs have already left the page.
 
+A dev who shows ZZ test jobs keeps them on the page beside the list. The list takes out only what it names.
+
 ## What Market is worth
 
 Market is one amount, in dollars a week. It is what the bids win a week plus what the estimates sell a week. The pipe, the Market card, the dial and the weekly email all read it. It is on the same scale as the other four steps.

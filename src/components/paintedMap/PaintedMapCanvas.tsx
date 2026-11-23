@@ -31,8 +31,9 @@
  * may get Google's map under the painted map in place of this one. `paintedMapProvider.ts` decides,
  * and this file mounts the answer: its own Leaflet map, or `PaintedMapGoogleCanvas`. The view, the
  * two presses and Time are held here, above both, so a change of map keeps them. Today Google draws
- * a map that is being read and a walk that is being painted. A caller that hands no `google` gets
- * the Leaflet map, as before.
+ * everything but Time and a picture of the map: a map being read, a walk being painted, a place's
+ * dot being put down and a line being drawn by hand. A caller that hands no `google` gets the
+ * Leaflet map, as before.
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -40,8 +41,9 @@ import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useS
 import { createPortal } from 'react-dom'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { legMiddles } from '../../lib/paintedMap/draftLine'
+import { GLASS_SIZE, GLASS_ZOOM_IN, HOLD_MS, HOLD_SLOP_PX, glassSpot, settlePoint, withLive, type PaintedLive } from '../../lib/paintedMap/handPlacing'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
-import { PAINTED_SNAP_METERS, type NumberedPlace, type PaintedLineHow } from '../../lib/paintedMap/paintedMap'
+import type { NumberedPlace, PaintedLineHow } from '../../lib/paintedMap/paintedMap'
 import { PAINT_COLOR, PAINT_INK, PAINT_ME_BLUE, PAINT_PAPER } from './paintedMapLook'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useMapTime } from '../../hooks/useMapTime'
@@ -52,7 +54,7 @@ import { GoogleCanvasBoundary } from '../map/GoogleCanvasBoundary'
 import { MapTimeRow } from '../map/MapTimeRow'
 import { MapViewControl } from '../map/MapViewControl'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
-import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
+import { boundsOfPoints, lineRuns, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 import { notePaintedGoogleFailed, paintedGoogleFailedOnPage } from '../../lib/paintedMap/paintedGooglePage'
 import { paintedMapKeepsLeaflet, resolvePaintedMapProvider, type PaintedMapProvider, type PaintedMapScreen, type PaintedMapUse } from '../../lib/paintedMap/paintedMapProvider'
 import { clampView, type PaintedMapView } from '../../lib/paintedMap/paintedMapView'
@@ -148,14 +150,7 @@ const PICKED = '#7c3aed'
 const CAUGHT = '#16a34a'
 const ME_BLUE = PAINT_ME_BLUE
 
-const GLASS_SIZE = 132
-const GLASS_ZOOM_IN = 2
-/** How long a press is held still before it becomes a placing press. */
-const HOLD_MS = 380
-/** A press that moves this far before then is a drag of the map. */
-const HOLD_SLOP_PX = 10
-/** A dragged corner catches a target this near on the screen. */
-const SNAP_PX = 14
+// The glass's size, the held press and the catch are `handPlacing.ts`'s, which Google's canvas reads too.
 
 /** What the Time row says is not from the photograph's day. */
 const TIME_LINES_WORDS = 'The lines are today’s.'
@@ -420,19 +415,8 @@ function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: 
   )
 }
 
-type Live =
-  | { kind: 'move'; index: number; point: PaintedPoint; caught: SnapTarget | null }
-  | { kind: 'insert'; after: number; point: PaintedPoint; caught: SnapTarget | null }
-  | { kind: 'add'; point: PaintedPoint; caught: SnapTarget | null }
-  | { kind: 'dot'; point: PaintedPoint; caught: SnapTarget | null }
-
-/** The draft's corners with the move a finger is making right now laid over them. */
-function withLive(points: ReadonlyArray<PaintedPoint>, live: Live | null): PaintedPoint[] {
-  if (!live || live.kind === 'dot') return points.slice()
-  if (live.kind === 'move') return points.map((p, i) => (i === live.index ? live.point : p))
-  if (live.kind === 'insert') return [...points.slice(0, live.after + 1), live.point, ...points.slice(live.after + 1)]
-  return [...points, live.point]
-}
+/** What a finger is doing right now, and the corners with it laid over them: `handPlacing.ts`. */
+type Live = PaintedLive
 
 /** The corners, the middles of the legs and the presses that draw a line by hand. */
 function DraftLayer({ draft, setLive, coarse }: { draft: PaintedCanvasDraft; setLive: (live: Live | null) => void; coarse: MutableRefObject<boolean> }) {
@@ -442,11 +426,7 @@ function DraftLayer({ draft, setLive, coarse }: { draft: PaintedCanvasDraft; set
   const quietUntil = useRef(0)
 
   /** Where a dragged point lands: on the target it is near on the screen, or where the finger is. */
-  const settle = (p: PaintedPoint): { point: PaintedPoint; caught: SnapTarget | null } => {
-    const reach = Math.min(15, Math.max(PAINTED_SNAP_METERS, SNAP_PX * metersPerPixel(map.getZoom(), p.lat)))
-    const caught = snapTarget(p, draftRef.current.targets, reach)
-    return { point: caught ? { lat: caught.lat, lng: caught.lng } : p, caught }
-  }
+  const settle = (p: PaintedPoint): { point: PaintedPoint; caught: SnapTarget | null } => settlePoint(p, draftRef.current.targets, map.getZoom())
 
   useMapEvents({
     click: (e) => {
@@ -597,11 +577,7 @@ function DotLayer({ dot, setLive, coarse }: { dot: PaintedCanvasDot; setLive: (l
   const map = useMap()
   const dotRef = useRef(dot)
   dotRef.current = dot
-  const settle = (p: PaintedPoint): { point: PaintedPoint; caught: SnapTarget | null } => {
-    const reach = Math.min(15, Math.max(PAINTED_SNAP_METERS, SNAP_PX * metersPerPixel(map.getZoom(), p.lat)))
-    const caught = snapTarget(p, dotRef.current.targets ?? [], reach)
-    return { point: caught ? { lat: caught.lat, lng: caught.lng } : p, caught }
-  }
+  const settle = (p: PaintedPoint): { point: PaintedPoint; caught: SnapTarget | null } => settlePoint(p, dotRef.current.targets ?? [], map.getZoom())
   useEffect(() => {
     const el = map.getContainer()
     const onDown = (e: PointerEvent) => {
@@ -654,16 +630,8 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   const size = map.getSize()
   const finger = map.latLngToContainerPoint([live.point.lat, live.point.lng])
   const half = GLASS_SIZE / 2
-  const gap = 34
-  let x = finger.x
-  let y = finger.y - gap - half
-  if (y - half < 4) {
-    // No room above: the glass moves to whichever side has more of the map.
-    y = Math.max(half + 4, finger.y - 10)
-    x = finger.x > size.x / 2 ? finger.x - gap - half - 24 : finger.x + gap + half + 24
-  }
-  x = Math.min(size.x - half - 4, Math.max(half + 4, x))
-  y = Math.min(size.y - half - 4, Math.max(half + 4, y))
+  // Above the finger, or to a side when there is no room above: `glassSpot`.
+  const { x, y } = glassSpot(finger, { width: size.x, height: size.y })
   const zoom = Math.min(MAX_ZOOM + 1, map.getZoom() + GLASS_ZOOM_IN)
   return createPortal(
     <div
@@ -770,7 +738,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         // The boundary is out here as well as in the canvas: a file that does not arrive on a weak signal falls back too.
         <GoogleCanvasBoundary onUnavailable={googleUnavailable}>
           <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} follow={follow} frameMargin={frameMargin} frameMe={frameMe} light={googleAsk?.screen === 'way'} refit={refit} onPlaceTap={onPlaceTap} onView={onView} onCamera={onCamera} />
+            <PaintedMapGoogleCanvasLazy apiKey={googleKey} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} lines={lines} places={places} framed={framed} start={start ?? null} openOn={camera.current} flyTo={flyTo} me={me} follow={follow} frameMargin={frameMargin} frameMe={frameMe} light={googleAsk?.screen === 'way'} refit={refit} onPlaceTap={draft || dot ? undefined : onPlaceTap} draft={draft} dot={dot} onLive={setLive} onView={onView} onCamera={onCamera} />
           </Suspense>
         </GoogleCanvasBoundary>
       ) : (

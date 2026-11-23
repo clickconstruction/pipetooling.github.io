@@ -20,6 +20,25 @@ export function hidesZzTestJobs(role: string | null | undefined, devShowsZz = fa
   return role !== 'dev' || !devShowsZz
 }
 
+/**
+ * Job ids to leave out by the ids alone (punch list #334, v2.8281): the jobs the Bridge's left-out list names, for a
+ * dev who shows ZZ tests. Every Bridge read takes one set of ids and reads any set as *the viewer hides ZZ tests*, so
+ * it also drops the rows whose names say ZZ. This set says the other thing: these jobs go, and a ZZ name is no reason
+ * to drop a row. It is a `Set` to every read that only asks `has`, so a read keyed by id needs no change. A plain set
+ * and null read as they always did.
+ */
+class JobIdsAlone extends Set<string> {}
+
+/** The ids as a set that leaves out those jobs and no other: a ZZ name drops nothing under it. */
+export function jobIdsAlone(ids: Iterable<string>): ReadonlySet<string> {
+  return new JobIdsAlone(ids)
+}
+
+/** True for a set made by `jobIdsAlone`: the rows' ZZ names are not read. False for a plain set, and for none. */
+export function leavesOutByIdAlone(ids: Iterable<string> | null | undefined): boolean {
+  return ids instanceof JobIdsAlone
+}
+
 /** The rows without ZZ test jobs; the same array when there is none, so a memo stays put. */
 export function withoutZzTestJobs<T extends NamedJob>(rows: T[]): T[] {
   return rows.some(isZzTestJob) ? rows.filter((r) => !isZzTestJob(r)) : rows
@@ -28,16 +47,18 @@ export function withoutZzTestJobs<T extends NamedJob>(rows: T[]): T[] {
 /**
  * Rows that point at a job (a bill, an RPC's job row): drop the ones whose job is a ZZ test job, by the
  * row's own names when it carries them, or by the shared ids (`zzTestJobRows.ts`) when it carries only
- * an id or no customer name. The same array when nothing is dropped, so a memo stays put.
+ * an id or no customer name. The same array when nothing is dropped, so a memo stays put. Under ids made by
+ * `jobIdsAlone` a row leaves by its id and never by its names.
  */
 export function withoutZzTestJobRows<T extends NamedJob>(
   rows: T[],
   jobIdOf: (row: T) => string | null | undefined,
   zzJobIds: ReadonlySet<string> | null,
 ): T[] {
+  const byName = !leavesOutByIdAlone(zzJobIds)
   const isZz = (r: T) => {
     const id = jobIdOf(r)
-    return isZzTestJob(r) || (id != null && zzJobIds != null && zzJobIds.has(id))
+    return (byName && isZzTestJob(r)) || (id != null && zzJobIds != null && zzJobIds.has(id))
   }
   return rows.some(isZz) ? rows.filter((r) => !isZz(r)) : rows
 }
@@ -55,7 +76,8 @@ export type ZzTestJobMoney<J, I, P> = { jobs: J[]; invoices: I[]; payments: P[] 
  * Drops ZZ test jobs together with their bills and payments. Dropping the job alone would leave its
  * bills behind for `computeBillTruth` to file as orphans. `extraZzJobIds` names ZZ jobs the rows do
  * not carry, such as a paid one, or every one when the rows carry no names (the shared id read). A
- * payment goes with its job, or with its bill when the read selected no job id.
+ * payment goes with its job, or with its bill when the read selected no job id. Under ids made by
+ * `jobIdsAlone` the jobs' own names are not read: those jobs go with their money, and no other.
  */
 export function withoutZzTestJobMoney<
   J extends NamedJob & { id: string },
@@ -65,7 +87,7 @@ export function withoutZzTestJobMoney<
   input: ZzTestJobMoney<J, I, P>,
   extraZzJobIds: Iterable<string> = [],
 ): ZzTestJobMoney<J, I, P> & { zzJobIds: Set<string> } {
-  const zzJobIds = zzTestJobIds(input.jobs)
+  const zzJobIds = leavesOutByIdAlone(extraZzJobIds) ? new Set<string>() : zzTestJobIds(input.jobs)
   for (const id of extraZzJobIds) zzJobIds.add(id)
   if (zzJobIds.size === 0) return { ...input, zzJobIds }
   const droppedInvoiceIds = new Set(input.invoices.filter((i) => zzJobIds.has(i.job_id)).map((i) => i.id))

@@ -254,6 +254,41 @@ describe('ChecklistAddModal closing', () => {
     cleanup()
   })
 
+  it('closes on Escape as the × does, and the key goes no further (v2.8278)', async () => {
+    const under = vi.fn()
+    window.addEventListener('keydown', under)
+    try {
+      const title = await renderOpenModal()
+      fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
+      // Any other key leaves the window and goes on to the page.
+      fireEvent.keyDown(title, { key: 'a' })
+      expect(screen.getByPlaceholderText('What needs to be done?')).toBeTruthy()
+      expect(under).toHaveBeenCalledTimes(1)
+      // Escape closes it, and a window under it that listens for Escape never hears the key.
+      const went = fireEvent.keyDown(title, { key: 'Escape' })
+      expect(went).toBe(false)
+      expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
+      expect(under).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', under)
+      cleanup()
+    }
+  })
+
+  it('leaves Escape to a list in the form that has taken it, and closes on the next one (v2.8278)', async () => {
+    const title = await renderOpenModal()
+    fireEvent.click(addPress('tellOther'))
+    const panel = screen.getByTestId('new-task-panel-tell')
+    // The list of people to tell is open, and its search box takes Escape to shut the list.
+    fireEvent.click(panel.querySelector<HTMLElement>('[role="combobox"], button')!)
+    const search = panel.querySelector<HTMLInputElement>('input')!
+    fireEvent.keyDown(search, { key: 'Escape' })
+    expect(screen.getByPlaceholderText('What needs to be done?')).toBeTruthy()
+    fireEvent.keyDown(title, { key: 'Escape' })
+    expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
+    cleanup()
+  })
+
   it('opens over a thread window, so Ask a tech… and Send as a task show it (v2.7069)', async () => {
     await renderOpenModal()
     expect(Number(screen.getByRole('dialog').style.zIndex)).toBeGreaterThan(THREAD_WINDOW_Z)

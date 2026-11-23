@@ -132,6 +132,10 @@ SELECT sca.same('and it kept nothing: one arrival, and the No stands with no yes
 -- 3c · A later No is kept (migration *_start_check_arrive_again). Hector saw the trench open. Dana gets there after
 -- him and says No to it: a No is the dearer answer, so it is its own arrival, with its line to Dispatch. A No that
 -- already stands and a later Yes, all as told are still refused by name.
+-- The bed is one transaction, so every arrival's created_at is the same instant, and the first to answer is then
+-- picked by the rows' random ids: a coin's toss between Hector and Dana for the name in the refusal. Out of the bed
+-- each arrival is its own transaction with its own time. Hector got there ten minutes before Dana, so say so.
+UPDATE public.start_check_arrivals SET created_at = created_at - interval '10 minutes' WHERE fixture_id = '00000000-0000-0000-0000-0000003821c1';
 SET LOCAL ROLE authenticated;
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
 CREATE TEMP TABLE sca_later ON COMMIT DROP AS SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c1', ARRAY['00000000-0000-0000-0000-000000382103']::uuid[]) AS r;
@@ -177,6 +181,23 @@ SELECT sca.same('a stage whose days have passed unfinished is still asked about'
 SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
 SELECT sca.refused('nothing left to look at keeps no arrival', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c4')$$, 'nothing left to look at');
 SELECT sca.same('the desk may answer for a stage', (public.start_check_arrive('00000000-0000-0000-0000-0000003821c2') ->> 'as_told'), '1');
+RESET ROLE;
+
+-- 5 · The crew is who is on the job now (migration *_crew_days_start_checks). Hank is on no team. A clock-in on the
+-- job fifteen days ago does not make him its crew, and one fourteen days ago does.
+-- The last sign-in was Dana's, and it outlives RESET ROLE: clock_sessions' window fence reads it, and an assistant
+-- may not write a day before her hours window, which on a Sunday starts fourteen days back. The setup signs out first.
+SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+INSERT INTO public.clock_sessions (id, user_id, job_ledger_id, clocked_in_at, clocked_out_at, work_date) VALUES
+  ('00000000-0000-0000-0000-0000003821d1', '00000000-0000-0000-0000-0000003821ab', '00000000-0000-0000-0000-0000003821b1', now() - interval '15 days', now() - interval '15 days' + interval '8 hours', public.app_today() - 15);
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821ab');
+SELECT sca.same('a clock-in on the job fifteen days ago does not make its crew', public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1')::text, '{"ok": false}');
+RESET ROLE;
+UPDATE public.clock_sessions SET work_date = public.app_today() - 14 WHERE id = '00000000-0000-0000-0000-0000003821d1';
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821ab');
+SELECT sca.same('one fourteen days ago does', public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') ->> 'ok', 'true');
 RESET ROLE;
 SELECT sca.same('anon may call neither', (SELECT count(*) FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name IN ('start_check_arrive', 'start_check_arrival_state') AND grantee IN ('anon', 'PUBLIC'))::text, '0');
 

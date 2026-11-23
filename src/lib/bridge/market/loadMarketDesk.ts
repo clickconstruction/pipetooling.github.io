@@ -19,12 +19,14 @@ import type { Database } from '../../../types/database'
  *
  * A ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no bid on the strip or in the book, and makes
  * no asker's first bid (v2.6823), for the viewer who leaves ZZ test jobs out: the caller passes the ZZ ids, or null
- * to keep them (`../zzTestJobs.ts`). The estimates are not touched: they have no ZZ rule.
+ * to keep them (`../zzTestJobs.ts`). Since v2.8280 a ZZ test estimate (`isZzEstimate`) is no ask on the strip and none
+ * in the book's row of customers' estimates, for the viewer who hides ZZ tests: `hideZzEstimates` is that viewer's
+ * switch by itself, since `zzTestJobIds` also carries the jobs the Bridge leaves out.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
-import { withoutZzBridgeBids, type BridgeZzTestJobIds } from '../zzTestJobs'
+import { ZZ_ESTIMATE_FIELDS, withoutZzBridgeBids, withoutZzBridgeEstimates, type BridgeZzTestJobIds, type ZzEstimateRow } from '../zzTestJobs'
 import { MARKET_DESK_WEEKS, foldMarketRecord, marketAskerId, type MarketDeskBid, type MarketDeskEstimate, type MarketLifetime } from './marketDesk'
 
 /** The read starts this many days before the span: the answered bids behind each GC's answer pace, the way the demand read widens for the awaiting window. */
@@ -45,11 +47,11 @@ type BidRow = { id: string; created_at: string | null; bid_date_sent: string | n
 type FirstBidRow = { project_name: string | null; customer_id: string | null; gc_builder_id: string | null; created_at: string | null; outcome: string | null }
 type GcRow = { id: string; name: string }
 type CustomerRow = { id: string; name: string }
-type EstimateRow = { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
+type EstimateRow = ZzEstimateRow & { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
 
 const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slice(0, 10) : null)
 
-export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<MarketDeskReads> {
+export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds; /** The viewer's ZZ switch by itself: true leaves the ZZ test estimates out. */ hideZzEstimates: boolean }): Promise<MarketDeskReads> {
   const sinceYmd = ymdAddDays(opts.todayYmd, -(MARKET_DESK_WEEKS * 7 + MARKET_READ_LEAD_DAYS))
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const [bidRead, firstRead, gcRows, estimateRows] = await Promise.all([
@@ -77,7 +79,7 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
     ),
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => db.from('estimates').select('id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind').gte('created_at', sinceIso).order('id').range(from, to), 'market desk estimates')) as EstimateRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('estimates').select(`id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind, ${ZZ_ESTIMATE_FIELDS}`).gte('created_at', sinceIso).order('id').range(from, to), 'market desk estimates')) as EstimateRow[] | null,
         error: null,
       }),
       'market desk estimates',
@@ -112,7 +114,7 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
   const gcNames = new Map<string, string>()
   for (const g of gcRows) gcNames.set(g.id, g.name)
   for (const c of customerRows) gcNames.set(c.id, c.name)
-  const estimates: MarketDeskEstimate[] = estimateRows
+  const estimates: MarketDeskEstimate[] = withoutZzBridgeEstimates(estimateRows, opts.hideZzEstimates)
     .filter((e) => !e.doc_kind || e.doc_kind === 'estimate')
     .map((e) => ({ id: e.id, createdYmd: e.created_at.slice(0, 10), sentYmd: ymdOf(e.sent_at), status: e.status, usd: (e.total_cents ?? 0) / 100, acceptedYmd: ymdOf(e.acceptor_consented_at), updatedYmd: ymdOf(e.updated_at) }))
   return { bids, estimates, gcNames, firstBidYmdByGc, lifetimeByGc }

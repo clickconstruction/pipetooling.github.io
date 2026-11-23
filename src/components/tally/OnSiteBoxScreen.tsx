@@ -64,6 +64,8 @@ export type OnSiteBoxScreenProps = {
   /** The tab's own bottom bar: Take from this box. */
   footer?: ReactNode
   onBack: () => void
+  /** What the back press is called: the containers, or the page the person came from (v2.8284). */
+  backLabel?: string
   onMore: () => void
   onCount: () => void
   onAddPart: () => void
@@ -71,7 +73,7 @@ export type OnSiteBoxScreenProps = {
   onPart: (press: PartPress, line: ContainerLine) => void
 }
 
-export default function OnSiteBoxScreen({ container, lines, stickers, said, now, lastCount, place, pin, photos, after, narrow, strips, photoTile, filed, takes, footer, onBack, onMore, onCount, onAddPart, onWhere, onPart }: OnSiteBoxScreenProps) {
+export default function OnSiteBoxScreen({ container, lines, stickers, said, now, lastCount, place, pin, photos, after, narrow, strips, photoTile, filed, takes, footer, onBack, backLabel = 'Back to the containers', onMore, onCount, onAddPart, onWhere, onPart }: OnSiteBoxScreenProps) {
   const unsorted = container.kind === 'unsorted'
   const openAll = partsOpenByThemselves(container.kind)
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -83,7 +85,7 @@ export default function OnSiteBoxScreen({ container, lines, stickers, said, now,
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem' }} data-testid="on-site-box-screen">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <button type="button" aria-label="Back to the containers" onClick={onBack} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem', flex: 'none' }}>‹</button>
+        <button type="button" aria-label={backLabel} onClick={onBack} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem', flex: 'none' }}>‹</button>
         <div style={{ minWidth: 0, display: 'grid' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.01em', lineHeight: 1.1 }}>{container.label}</span>

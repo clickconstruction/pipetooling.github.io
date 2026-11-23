@@ -59,6 +59,7 @@ A held row says why under the text and has no Send button.
 - A text for this step already went to the customer after this one was prepared. The row says the day. Press **Not this one**.
 - A newer text for the same step is on the list. Press **Not this one** on the older one.
 - The text names a visit on a day that has passed. Press **Not this one**. The app puts it away on its own the next morning.
+- An in kind arrangement pays the job's bills. The app holds its own pay reminder for that job. Press **Not this one**. See [work paid in kind](/help/keep-track-of-work-paid-in-kind).
 - The step's line still has a blank the app cannot fill. The app fills {amount} and {bill} from the job's newest open bill. The hold shows when the customer has no open bill on the job. It also shows when that bill has no pay page. Send it from the customer's thread, or change the step's line.
 - Quo turned the text away. The row holds Quo's words.
 

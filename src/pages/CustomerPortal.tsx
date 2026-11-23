@@ -6,6 +6,7 @@ import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalGcJobs } from '../components/portal/PortalGcJobs'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
+import { PortalScheduledBillsCard } from '../components/portal/PortalScheduledBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
 import { PortalOwnerRecordsCard } from '../components/portal/PortalOwnerRecordsCard'
 import { PortalCardBillPanel, PortalCardBillPress } from '../components/portal/PortalCardBill'
@@ -455,7 +456,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 color: INK,
                 fontSize: 12,
                 fontWeight: 600,
-                padding: '6px 14px',
+                minHeight: 40,
+                padding: '0 14px',
                 letterSpacing: '0.02em',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -484,6 +486,12 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
             <>
               <b>Nothing is billed to you directly.</b>{' '}
               <span style={{ color: MUTED }}>Work on your property is billed to your builder — see below.</span>
+            </>
+          ) : payload.scheduledBills.length > 0 ? (
+            // v2.8314: "no open bills" is wrong beside a card that lists bills an in kind arrangement pays.
+            <>
+              <b>Your open bills are scheduled in kind.</b>{' '}
+              <span style={{ color: MUTED }}>They are not money owed, and they are listed below.</span>
             </>
           ) : (
             <>
@@ -545,6 +553,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       ))}
       {/* Records for an owner (punch list #86): sign for the records the office offered here; nothing shows until the office sends. */}
       {payload.ownerRecords ? <PortalOwnerRecordsCard records={payload.ownerRecords} token={requestToken} companyName={payload.company.name} phone={payload.company.phone} todayYmd={todayYmd} /> : null}
+      {/* Scheduled in kind (v2.8314): the viewer's bills an in kind arrangement pays. Never in the balance, never payable here. */}
+      <PortalScheduledBillsCard bills={payload.scheduledBills} />
       {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} phone={payload.company.phone} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
@@ -1083,12 +1093,16 @@ function firstWord(name: string): string | null {
   return w ? w : null
 }
 
+// A thumb's height, and 16 px words (v2.8294): a phone zooms the whole page when a box with smaller words is
+// pressed. The boxes stood 29 px with 13 px words.
 const fieldStyle: CSSProperties = {
   border: 'none',
   borderBottom: '1px solid #b9c2cc',
   background: 'transparent',
-  padding: '4px 1px',
-  fontSize: 13,
+  minHeight: 44,
+  boxSizing: 'border-box',
+  padding: '10px 1px',
+  fontSize: 16,
   color: INK,
   fontFamily: 'inherit',
   outline: 'none',
@@ -1276,7 +1290,7 @@ function RequestCard({
             <button
               type="button"
               onClick={() => setShowAllProperties(true)}
-              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '9px 2px 0', textAlign: 'left' }}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: '0 2px', textAlign: 'left' }}
             >
               Show all {properties.length} properties
             </button>
@@ -1316,7 +1330,7 @@ function RequestCard({
                 setPhone(phoneOnFile)
                 setUseOtherNumber(false)
               }}
-              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '4px 0 0' }}
+              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: 0 }}
             >
               Use {displayPhone(phoneOnFile)} instead
             </button>
@@ -1325,7 +1339,7 @@ function RequestCard({
       ) : (
         <div style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
           We&#8217;ll call you at
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}`, padding: '6px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}` }}>
             <b style={{ color: INK, fontSize: 14 }}>{displayPhone(phone)}</b>
             <button
               type="button"
@@ -1333,7 +1347,7 @@ function RequestCard({
                 setPhone('')
                 setUseOtherNumber(true)
               }}
-              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: 0 }}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 13, fontWeight: 700, minHeight: 44, padding: '0 0 0 12px' }}
             >
               use a different number
             </button>
@@ -1364,8 +1378,9 @@ function RequestCard({
           background: COPPER,
           color: CARD,
           border: 'none',
-          padding: '8px 20px',
-          fontSize: 12.5,
+          minHeight: 44,
+          padding: '0 22px',
+          fontSize: 13,
           fontWeight: 700,
           letterSpacing: '0.03em',
           textTransform: 'uppercase',

@@ -7,8 +7,8 @@
  */
 export type MaterialsPressKind = 'print-labels' | 'scan-label' | 'add' | 'manifest' | 'print-stickers'
 
-export function MaterialsPressGlyph({ kind, dead = false }: { kind: MaterialsPressKind; dead?: boolean }) {
-  const common = { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, style: { display: 'block', color: dead ? 'currentColor' : 'var(--text-muted)' } }
+export function MaterialsPressGlyph({ kind, dead = false, size = 14 }: { kind: MaterialsPressKind; dead?: boolean; /** 14 beside a press's words; larger where the glyph is the whole press (the phone's icon presses, v2.8282). */ size?: number }) {
+  const common = { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, style: { display: 'block', color: dead ? 'currentColor' : 'var(--text-muted)' } }
   if (kind === 'print-labels') {
     return (
       <svg {...common}>

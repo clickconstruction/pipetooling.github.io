@@ -13,7 +13,7 @@
  */
 import { calendarYmdInAppTzFromIso } from './appTimeZone.ts'
 import { subPaperFingerprint } from './subPaperMarks.ts'
-import { buildStatementOfAccount, statementAddsWords, subPaperAddsUp, type PaperCompany, type StatementOfAccount, type StatementRange } from './subPapers.ts'
+import { buildStatementOfAccount, statementAddsWords, statementLateWords, subPaperAddsUp, type PaperCompany, type StatementOfAccount, type StatementRange } from './subPapers.ts'
 import type { StatementRegisterRow, SubPapersRowsRead } from './subPapersRows.ts'
 import { portalPaperSet, type PortalPaperSet } from './subPortalPapers.ts'
 
@@ -68,16 +68,32 @@ export function pickStatementPerson(asked: string, people: readonly StatementPer
 
 // ── the period ───────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The last statement of account made for this person, by the day it ended (the office's `subPaperRegister`). */
-export function lastStatementOf(register: readonly StatementRegisterRow[]): { number: string; endedOn: string } | null {
+/**
+ * The last statement of account made for this person, by the day it ended, and the newest one that ended today
+ * (the office's `subPaperRegister`, one rule for both). With `today` handed in a statement that ended today is
+ * set apart: the day is not over, so nothing can start after it yet, and *since the last statement* runs from
+ * the one before. `madeAt` is when the last one was made: a line typed after it and dated inside it is carried.
+ */
+export function statementsOf(register: readonly StatementRegisterRow[], today?: string): { last: { number: string; endedOn: string; madeAt: string } | null; madeToday: { number: string } | null } {
   let last: { number: string; endedOn: string; at: string } | null = null
+  let madeToday: { number: string; at: string } | null = null
   for (const r of register) {
     if (r.voided_at || r.kind !== 'statement_of_account' || !(r.number ?? '').trim()) continue
     const at = r.issued_at ?? ''
+    const number = (r.number ?? '').trim()
     const endedOn = (r.period_to ?? '').slice(0, 10) || (at ? calendarYmdInAppTzFromIso(at).slice(0, 10) : '')
-    if (endedOn && (!last || endedOn > last.endedOn || (endedOn === last.endedOn && at > last.at))) last = { number: (r.number ?? '').trim(), endedOn, at }
+    if (today && endedOn >= today) {
+      if (!madeToday || at > madeToday.at) madeToday = { number, at }
+      continue
+    }
+    if (endedOn && (!last || endedOn > last.endedOn || (endedOn === last.endedOn && at > last.at))) last = { number, endedOn, at }
   }
-  return last ? { number: last.number, endedOn: last.endedOn } : null
+  return { last: last ? { number: last.number, endedOn: last.endedOn, madeAt: last.at } : null, madeToday: madeToday ? { number: madeToday.number } : null }
+}
+
+/** The last statement alone. See `statementsOf`. */
+export function lastStatementOf(register: readonly StatementRegisterRow[], today?: string): { number: string; endedOn: string; madeAt: string } | null {
+  return statementsOf(register, today).last
 }
 
 function nextDay(ymd: string): string {
@@ -86,15 +102,16 @@ function nextDay(ymd: string): string {
 }
 
 /** The dates a chip means, as the window reads them: a month or a year runs from its first day to today. */
-export function statementRangeFor(period: StatementPeriod, today: string, last: { endedOn: string } | null): { ok: true; range: StatementRange } | { ok: false; refused: string } {
+export function statementRangeFor(period: StatementPeriod, today: string, last: { endedOn: string; madeAt?: string } | null, madeToday: { number: string } | null = null): { ok: true; range: StatementRange } | { ok: false; refused: string } {
   if (period.key === 'to_date') return { ok: true, range: { from: null, to: null } }
   if (period.key === 'dates') return { ok: true, range: { from: period.from, to: period.to } }
   if (period.key === 'this_month') return { ok: true, range: { from: `${today.slice(0, 7)}-01`, to: today } }
   if (period.key === 'this_year') return { ok: true, range: { from: `${today.slice(0, 4)}-01-01`, to: today } }
-  if (!last) return { ok: false, refused: "No statement of account has been made for them yet, so there is nothing to start after. Ask for period 'to_date'." }
+  if (!last) return { ok: false, refused: madeToday ? `Their first statement, ${madeToday.number}, was made today, so there is no statement before today to start after. Ask for period 'to_date'.` : "No statement of account has been made for them yet, so there is nothing to start after. Ask for period 'to_date'." }
   const from = nextDay(last.endedOn)
   if (from > today) return { ok: false, refused: `Their last statement ended ${last.endedOn}, so a statement since then has no day in it yet. Ask for period 'to_date'.` }
-  return { ok: true, range: { from, to: today } }
+  // The window's rule (the owner, 2026-11-21): cut by the date, and a line typed after the last statement was made is carried.
+  return { ok: true, range: { from, to: today, lateAfter: last.madeAt || null } }
 }
 
 // ── the plan ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -126,11 +143,14 @@ export function planStatement(
     const shared = rows.sheets.length
     return { ok: false, refused: shared > 0 ? `${name} is named on ${shared} ${shared === 1 ? 'sheet' : 'sheets'}, and none is theirs alone. A paper is made from a person's own sheets: Whose is it… on People → Subs settles a shared one.` : `${name} has no sub labor sheet, so there is no statement to make.` }
   }
-  const last = lastStatementOf(rows.register)
-  const ranged = statementRangeFor(period, set.ctx.today, last)
+  const { last, madeToday } = statementsOf(rows.register, set.ctx.today)
+  const ranged = statementRangeFor(period, set.ctx.today, last, madeToday)
   if (!ranged.ok) return ranged
   const range = ranged.range
-  const statement = buildStatementOfAccount(set.sheets, range, set.ctx)
+  // When each sheet was typed, as the office's builder hands it: a statement since the last one counts a sheet typed after it as new work.
+  const typed = new Map(rows.sheets.map((s) => [s.id, s.created_at ?? '']))
+  const sheets = set.sheets.map((s) => ({ ...s, at: typed.get(s.id) ?? '' }))
+  const statement = buildStatementOfAccount(sheets, range, set.ctx)
   // The window's check: the three papers against each other over every date (`portalPaperSet`), then this period's own arithmetic.
   const problems = [...new Set([...set.problems, ...subPaperAddsUp(statement).problems])]
   if (problems.length > 0) return { ok: false, refused: `${name}'s papers do not add up, so none is made: ${problems.slice(0, 6).join(' ')} Open the sheet it names on Jobs → Subs → Pay and check its payments.` }
@@ -147,7 +167,7 @@ export function planStatement(
     range,
     jobIds,
     fingerprint,
-    numbered: (number) => buildStatementOfAccount(set.sheets, range, set.ctx, { number }),
+    numbered: (number) => buildStatementOfAccount(sheets, range, set.ctx, { number }),
     reply: {
       paper: 'Statement of account',
       person: { people_id: who.person.id, name },
@@ -155,14 +175,16 @@ export function planStatement(
       still_open: statement.stillOpen,
       sheets: statement.rows.map((r) => ({ section: r.section === 'forward' ? 'Brought forward' : 'Work in this period', statement: r.sheetName, job: r.job, reads: r.words, comes_to: r.comesTo, paid: r.paid, open: r.open })),
       totals: { comes_to: statement.totals.comesTo, paid: statement.totals.paid, open: statement.totals.open },
-      last_payments: statement.lastPayments.map((p) => ({ day: p.day, how: p.how, number: p.number || null, amount: p.amount })),
+      last_payments: statement.lastPayments.map((p) => ({ day: p.day, how: p.how, number: p.number || null, amount: p.amount, ...(p.late ? { recorded_after_the_last_statement: true } : {}) })),
       paid_in_period: statement.paidInPeriod,
       how_it_adds_up: statementAddsWords(statement, range),
+      ...(statementLateWords(statement) ? { carried: statementLateWords(statement) } : {}),
       ...(statement.credit > 0 ? { held_as_credit: statement.credit } : {}),
       ...(statement.paidThisYear ? { paid_this_year: statement.paidThisYear } : {}),
       counts: { sheets_of_their_own: set.sheets.length, on_this_paper: statement.rows.length, payments_in_period: statement.lastPayments.length, shared_sheets_left_off: shared },
       register: {
         last_statement: last ? { number: last.number, ended_on: last.endedOn } : null,
+        ...(madeToday ? { made_today: madeToday.number } : {}),
         this_would_be: 'a new paper under the next SA number',
       },
       letterhead: who.company.name,

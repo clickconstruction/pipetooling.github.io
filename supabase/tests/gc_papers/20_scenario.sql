@@ -76,7 +76,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gpt TO authenticated;
 SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d2');
 SET LOCAL ROLE authenticated;
 SELECT gpt.refused('an estimator makes no company paper', $q$SELECT public.gc_company_paper('00000000-0000-0000-0000-000000000711', '00000000-0000-0000-0000-0000000007b1')$q$,
-  'Only a dev sends a trade its papers while GC mode is built.');
+  'Only the office sends a company its papers.');
 SELECT gpt.refused('an estimator sends no paper', $q$SELECT public.gc_send_paper('{"companyId": "00000000-0000-0000-0000-000000000711", "paper": "msa", "dueOn": "2026-10-16", "what": "the signed master agreement"}')$q$,
   'Only a dev sends a trade its papers while GC mode is built.');
 SELECT gpt.same('an estimator reads no send', (SELECT count(*)::text FROM public.gc_paper_sends), '0');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { foldedGroupLabel, stripFit, type StripFitInput } from './materialsStripFit'
+import { foldedGroupLabel, oneTabGroupLabel, stripFit, type StripFitInput } from './materialsStripFit'
 
 /** The office's strip, in round numbers near the real ones: open 380 / 590 / 320, folded 90 / 120 / 170, 21 between. */
 const office = (over: Partial<StripFitInput>): StripFitInput => ({
@@ -67,5 +67,23 @@ describe('foldedGroupLabel', () => {
     expect(foldedGroupLabel('Track', 'On site', ['3 due a count'])).toBe('Track, on On site, 3 due a count. Show its tabs.')
     // an open name on the phone's row is its name and its badges: there is nothing left to show
     expect(foldedGroupLabel('Track', null, ['3 due a count'], false)).toBe('Track, 3 due a count')
+  })
+})
+
+describe('a phone (v2.8282)', () => {
+  it('draws the row of names whatever fits, open on the pressed group or the one with the open tab', () => {
+    // wide enough for everything, and still the names take a row
+    expect(stripFit(office({ available: 1400, rows: true }))).toEqual({ shape: 'rows', open: ['track'] })
+    expect(stripFit(office({ available: 0, rows: true, here: 'plan' }))).toEqual({ shape: 'rows', open: ['plan'] })
+    expect(stripFit(office({ available: 343, rows: true, opened: 'purchase' }))).toEqual({ shape: 'rows', open: ['purchase'] })
+    // a role with Track alone, whose strip fits one row of a phone
+    expect(stripFit({ groups: ['track'], here: 'track', opened: null, openWidths: { track: 300 }, foldWidths: { track: 90 }, gap: 21, available: 343, rows: true })).toEqual({ shape: 'rows', open: ['track'] })
+    expect(stripFit(office({ groups: [], rows: true }))).toEqual({ shape: 'row', open: [] })
+  })
+
+  it('a one-tab group’s name says what its press opens while the page is elsewhere', () => {
+    expect(oneTabGroupLabel('Track', 'On site', ['3 due a count'], false)).toBe('Track, 3 due a count. Open On site.')
+    expect(oneTabGroupLabel('Track', 'On site', [], false)).toBe('Track. Open On site.')
+    expect(oneTabGroupLabel('Track', 'On site', ['3 due a count'], true)).toBe('Track, 3 due a count')
   })
 })

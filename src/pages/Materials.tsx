@@ -15,6 +15,9 @@ import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
 import MaterialsOnSiteTab from '../components/materials/MaterialsOnSiteTab'
 import PrintLabelsWindow from '../components/materials/PrintLabelsWindow'
 import PrintStickersWindow from '../components/materials/PrintStickersWindow'
+import MaterialsPrintSheet from '../components/materials/MaterialsPrintSheet'
+import { pagePrintSheet } from '../lib/materials/printSheet'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import ScanLabelWindow from '../components/materials/ScanLabelWindow'
 import { useMaterialsOnSiteNeeds } from '../hooks/useMaterialsOnSiteNeeds'
 import { useOnSiteDeskJobs } from '../hooks/useOnSiteDeskJobs'
@@ -89,6 +92,10 @@ export default function Materials() {
   const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
   /** Print future stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
   const [printStickers, setPrintStickers] = useState(false)
+  /** The phone's Print sheet (v2.8282): opened by the print icon on the strip's row of names. */
+  const [printSheetOpen, setPrintSheetOpen] = useState(false)
+  /** A phone: the strip keeps its row of names, and a job's On site section is drawn for a phone. */
+  const isPhone = useNarrowViewport640()
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
@@ -1426,6 +1433,8 @@ export default function Materials() {
       return next
     })
   }
+  // With a job open the office's job section draws the sheet, since the job's boxes and reserved runs are read there.
+  const printSheetOnJob = activeTab === 'on-site' && isMaterialsOfficeRole(myRole) && !!searchParams.get('job')
   const onStripPress = (press: MaterialsPress) => {
     if (press === 'scan-label') setScanLabelOpen(true)
     else if (press === 'print-stickers') setPrintStickers(true)
@@ -1480,6 +1489,8 @@ export default function Materials() {
         onTab={openTab}
         presses={stripPresses}
         onPress={onStripPress}
+        onPrint={() => setPrintSheetOpen(true)}
+        phone={isPhone}
         badges={{ track: trackBadges(onSiteNeeds, myRole) }}
       />
 
@@ -1490,7 +1501,20 @@ export default function Materials() {
         userId={authUser?.id ?? null}
         userName={authProfileName ?? 'the office'}
         onLabels={(jobId) => setPrintLabels({ jobId })}
+        phone={isPhone}
+        printSheet={{ open: printSheetOpen && printSheetOnJob, onClose: () => setPrintSheetOpen(false), onAnotherJob: () => { setPrintSheetOpen(false); setPrintLabels({ jobId: null }) } }}
       />
+      {printSheetOpen && !printSheetOnJob ? (
+        <MaterialsPrintSheet
+          sheet={pagePrintSheet(stripPresses)}
+          onClose={() => setPrintSheetOpen(false)}
+          onRow={(row) => {
+            setPrintSheetOpen(false)
+            if (row.act.kind === 'page-stickers') setPrintStickers(true)
+            else setPrintLabels({ jobId: null })
+          }}
+        />
+      ) : null}
       {scanLabelOpen ? <ScanLabelWindow onClose={() => setScanLabelOpen(false)} onOpen={(code) => { setScanLabelOpen(false); navigate(boxPagePath(code)) }} /> : null}
       {printLabels ? (
         <PrintLabelsWindow

@@ -241,3 +241,16 @@ describe('JobContractSign — the warranty in place of a contract (2026-11-02)',
     expect(within(inits).queryByTestId('contract-initial-0')).toBeNull()
   })
 })
+
+describe('JobContractSign — the number to call dials (v2.8294)', () => {
+  it('the phone number under the signing form is a link that dials, and the sentence reads as it did', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(contract({ co_signer_name: null })), { status: 200 })))
+    mount()
+    const number = await screen.findByRole('link', { name: '512-360-0599' })
+    expect(number.getAttribute('href')).toBe('tel:+15123600599')
+    expect(number.closest('p')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Questions first? Call 512-360-0599 or reply to our email.')
+    // Room for a thumb above and below, with the line left where it is.
+    expect((number as HTMLElement).style.paddingTop).toBe('12px')
+    expect((number as HTMLElement).style.marginTop).toBe('-12px')
+  })
+})

@@ -129,6 +129,11 @@ export type PermitRow = {
   contact: string | null
   /** The company (else the person) on the contact line, keyed: every permit of one builder shares it. */
   builder_key: string | null
+  /**
+   * The phone the feed lists for whoever `contact` names, as ten digits. Only a feed that gives one sets the
+   * key at all: one request writes one set of columns, so a city's rows carry it or none of them does.
+   */
+  contact_phone?: string | null
   raw: Record<string, unknown>
 }
 

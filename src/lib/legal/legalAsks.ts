@@ -1,7 +1,7 @@
 import type { LegalEntryRow } from './legalMatters'
 import { offerKindWords, offerMetaOf } from './legalOffers'
 import { statementKindWords, statementMetaOf } from './affidavitPaper'
-import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
+import { recordedByOf, recordedHowWords, type LegalRecordedBy } from '../../../supabase/functions/_shared/legalPortalActs'
 
 /**
  * Asks and answers between the office and the law firm (punch list #41, PR 3).
@@ -264,14 +264,26 @@ export function conversationRows(entries: ReadonlyArray<LegalEntryRow>): LegalCo
   return buildLegalConversation(entries).flatMap((t) => (t.orphan ? [{ entry: t.question, thread: t, isAnswer: true }] : [{ entry: t.question, thread: t, isAnswer: false }, ...t.answers.map((a) => ({ entry: a, thread: t, isAnswer: true }))]))
 }
 
+/**
+ * A firm person's name as the office reads it (v2.8312): *Dana Reyes · firm · own link* when the
+ * act came in on that person's own link, *· name picked* when the name was picked on the firm's
+ * shared link, and the name alone on an act saved before the record kept which.
+ */
+export function firmPersonForOffice(by: LegalRecordedBy): string {
+  const how = recordedHowWords(by)
+  return `${by.name} · firm${how ? ` · ${how}` : ''}`
+}
+
 /** Who said it, from the reader's side — the firm reads *You asked*, the office reads *The firm asked*. */
 export function conversationWho(row: LegalConversationRow, reader: 'firm' | 'office'): string {
   const fromFirm = row.entry.via_portal
   // #85 item 18: a firm act names the person the firm picked.
   const by = fromFirm ? recordedByOf(row.entry.meta) : null
-  if (row.isAnswer) return fromFirm ? (reader === 'firm' ? (by?.name ?? 'You') : by ? `${by.name} · firm` : 'The firm') : 'The office'
+  if (row.isAnswer) return fromFirm ? (reader === 'firm' ? (by?.name ?? 'You') : by ? firmPersonForOffice(by) : 'The firm') : 'The office'
   const settle = row.thread.flavor === 'settlement' ? ` to settle at ${settlementAmountWords(row.entry)}` : ''
-  if (fromFirm) return `${reader === 'firm' ? (by ? `${by.name} asked` : 'You asked') : by ? `${by.name} at the firm asked` : 'The firm asked'}${settle}`
+  // The office reads how the name got there after the ask: *Dana Reyes at the firm asked (own link)*.
+  const how = reader === 'office' && recordedHowWords(by) ? ` (${recordedHowWords(by)})` : ''
+  if (fromFirm) return `${reader === 'firm' ? (by ? `${by.name} asked` : 'You asked') : by ? `${by.name} at the firm asked` : 'The firm asked'}${settle}${how}`
   const asker = row.thread.askerName || (reader === 'firm' ? 'The office' : 'We')
   const job = row.thread.flavor === 'signoff' && row.thread.jobLabel ? ` · ${row.thread.jobLabel}` : ''
   return `${asker} ${row.thread.flavor === 'signoff' ? 'asked for a sign-off' : 'asked'}${job}`
@@ -315,13 +327,14 @@ export function officeAnswerMeta(questionId: string): Record<string, unknown> {
 
 /**
  * Who recorded an entry, from the reader's side (#85 item 18). A firm act names
- * the person the firm picked (`meta.recordedBy`), else *your firm* / *the firm*;
+ * the person on the record (`meta.recordedBy`: pinned by one person's link, or picked on the
+ * shared one, and the office reads which), else *your firm* / *the firm*;
  * an office entry is *the office* to the firm and its author to the office.
  */
 export function entryRecordedByWords(e: Pick<LegalEntryRow, 'via_portal' | 'meta' | 'created_by'>, reader: 'firm' | 'office', userNameOf: (id: string | null) => string | null = () => null): string {
   if (e.via_portal) {
     const by = recordedByOf(e.meta)
-    if (by) return reader === 'firm' ? by.name : `${by.name} · firm`
+    if (by) return reader === 'firm' ? by.name : firmPersonForOffice(by)
     return reader === 'firm' ? 'your firm' : 'the firm'
   }
   return reader === 'firm' ? 'the office' : (userNameOf(e.created_by) ?? 'the office')

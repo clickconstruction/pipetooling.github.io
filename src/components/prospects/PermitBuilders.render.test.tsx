@@ -13,7 +13,7 @@ import type { BuilderRow } from '../../lib/research/permitBuilders'
  * any other through a search. Every name here is made up.
  */
 const research = vi.hoisted(() => ({ loadBuilders: vi.fn(), loadPermitsOfBuilder: vi.fn(), markBuilder: vi.fn(), saveBuilder: vi.fn(), pullPermitsBack: vi.fn(), loadRecordsStart: vi.fn() }))
-const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
+const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadAllNameContactMatches: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
 const answersIo = vi.hoisted(() => ({ loadBuilderAnswersGround: vi.fn() }))
 vi.mock('../../lib/research/permitResearchIo', () => research)
 vi.mock('../../lib/research/bidSiteIo', () => siteIo)
@@ -30,7 +30,7 @@ const CUSTOMERS: CustomerName[] = [
 const TEXAS = 'ridgewaybuildersoftexas'
 
 function builder(over: Partial<BuilderRow> = {}): BuilderRow {
-  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
+  return { key: TEXAS, name: null, sample_contact: 'Ridgeway Builders of Texas LLC', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 7, open: 2, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
 }
 const copperline = builder({ key: 'copperlinemechanical', sample_contact: 'Copperline Mechanical', permits: 3, open: 0 })
 
@@ -60,6 +60,7 @@ beforeEach(() => {
   research.loadRecordsStart.mockReset().mockResolvedValue(null)
   // The worklist's own reads: the table is absent for it unless a test says so, so no chip.
   siteIo.loadAllNameAnswers.mockReset().mockResolvedValue(null)
+  siteIo.loadAllNameContactMatches.mockReset().mockResolvedValue([])
   siteIo.loadCustomerNames.mockReset().mockResolvedValue(CUSTOMERS)
   siteIo.loadRecentBidsWithCustomer.mockReset().mockResolvedValue([])
   siteIo.loadPermitsByHouseNumber.mockReset().mockResolvedValue([])

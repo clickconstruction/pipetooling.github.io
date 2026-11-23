@@ -45,7 +45,7 @@ export default function PortalPaymentsSection({ checks, formatUsd }: { checks: P
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Check number, amount or date"
         aria-label="Find a payment by check number, amount or date"
-        style={{ width: '100%', boxSizing: 'border-box', font: 'inherit', fontSize: 14, padding: '7px 10px', border: `1px solid ${HAIR}`, background: PAPER, color: INK }}
+        style={{ width: '100%', minHeight: 44, boxSizing: 'border-box', font: 'inherit', fontSize: 16, padding: '0 10px', border: `1px solid ${HAIR}`, background: PAPER, color: INK }}
       />
       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {trimmed && results.length === 0 ? (

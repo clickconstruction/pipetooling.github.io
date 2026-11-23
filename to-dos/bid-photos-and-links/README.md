@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133 · both walked live on clicktooling.com on 2026-11-13 in headless Chrome at phone width, each test photo taken back, two filed copies left in the ZZ Test bid's Drive folder · PR 9 (a bid's photos after the win) built as v2.8215 on 2026-11-21: the view's `bid` branch, the job's photo window and Documents → Photos; its migration goes up with `supabase db push` after the merge
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133 · both walked live on clicktooling.com on 2026-11-13 in headless Chrome at phone width, each test photo taken back, two filed copies left in the ZZ Test bid's Drive folder · PR 9 (a bid's photos after the win) built as v2.8215 on 2026-11-21: the view's `bid` branch, the job's photo window and Documents → Photos; its migration was pushed with `supabase db push` right after the merge, 2026-11-22 01:43 UTC, and read back · walked live on clicktooling.com the same night: the ZZ Test bid's six photos on Documents → Photos and in a ZZ Test job's photo window · the walk found **Open the bid** leaving the Bid Board at its top, fixed as v2.8259 and walked on the shipped build · the walk also found the Documents → Photos list timing out on its texts and email branch, older than PR 9 and not this card's, fixed as v2.8301 and walked live on 2026-11-23 UTC
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -499,8 +499,26 @@ v2.6929 (2026-11-11):
   `security_invoker`, so `bid_photos`' own policy decides every row; the SQL bed `bid-photos` asserts who reads one.
 - *Not in it*: a crew member sees no bid photo on the job (call 12); the Job Mode card's **Photos · N** counts the
   job's own photos; a bid's photo is not renamed or removed from the job's window (PR 4 does that on the bid).
-- *To walk once the migration is pushed*: the ZZ Test bid (BP398) has six standing photos and two ZZ Test jobs made
-  from it. Open either job's photos as the office and see six tiles read *From the bid*.
+- *Pushed*: 2026-11-22 01:43 UTC, right after #9279 merged. The drift check read 1,438 files against 1,438 applied.
+  Read back on prod: seven branches, thirty columns, `security_invoker`, no `anon` select, six `bid` rows. The sample
+  estimator reads the six, and the sample superintendent, helper and subcontractor read none.
+- *Walked live*, clicktooling.com, 2026-11-22 UTC, signed in as a dev. Documents → Photos: the **Bid photos** chip
+  lists the ZZ Test bid's six photos, and the viewer draws the picture with **Open the bid**. Job 9309, made from the
+  bid: the photo window reads **All · 18**, **Job photos · 12** and **Bid photos · 6**, six tiles read *From the bid*,
+  and the line under the grid counts them. The window was opened from the job's Documents tab.
+- *Not walked*: the Stages row's camera press. The walking account hides ZZ test jobs, and showing them is a setting
+  on that account.
+- *Found on the walk, fixed*: **Open the bid** opened the Bid Board at its top with the bid's row 16,600 px down.
+  Fixed as v2.8259 (#9329, `src/lib/scrollToRowAndHold.ts`). Walked on the shipped build: the row came to rest in
+  the middle of the view in about five seconds and rang again.
+- *Found on the walk, not this card's*: on Documents → Photos, the **All** and **Texts & email** lists answer
+  *canceling statement due to statement timeout*. The view's `message` branch joins `jobs_ledger` by a scan under
+  its row policies, once per picture: 14 seconds alone as a dev, against the 8 second limit. The `bid` branch reads
+  in 8 ms. PR 9 left the `message` branch word for word, and the gateway's log shows the same read failing on
+  2026-11-17 and 2026-11-18. The other chips read. Fixed as v2.8301: the join is a `CASE`, which Postgres can use as
+  an index condition where it cannot use a `COALESCE` (`docs/migrations/20261122063000_uploaded_photos_message_job_join.md`).
+  Pushed 2026-11-23 00:13 UTC and walked live the same hour: **All** and **Texts & email** both read, in under half
+  a second on the server.
 
 ## How to verify
 

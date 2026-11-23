@@ -11,6 +11,7 @@
  * `/pay` and `/b` are.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
+import { INLINE_THUMB_PAD } from '../components/contracts/signatureFormStyles'
 import {
   FIRST_LOOK_COMPANY,
   firstLookLangOf,
@@ -92,10 +93,10 @@ const small: CSSProperties = { minHeight: 40, borderRadius: 9, border: `1px soli
 
 function Brand({ phone }: { phone: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <strong style={{ fontSize: 17 }}>{FIRST_LOOK_COMPANY}</strong>
       {phone ? (
-        <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`} style={{ marginLeft: 'auto', color: COPPER, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+        <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`} style={{ marginLeft: 'auto', marginTop: -10, marginBottom: -10, display: 'inline-flex', alignItems: 'center', minHeight: 44, color: COPPER, fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>
           {phone}
         </a>
       ) : null}
@@ -396,7 +397,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
     <p style={{ margin: '14px 0 0', paddingTop: 12, borderTop: `1px solid ${HAIR}`, fontSize: 13, color: FAINT }}>
       <strong style={{ color: INK }}>{W.only}</strong> {W.emergency}{' '}
       {phone ? (
-        <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`} style={{ color: COPPER, fontWeight: 700 }}>
+        <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`} style={{ color: COPPER, fontWeight: 700, ...INLINE_THUMB_PAD }}>
           {phone}
         </a>
       ) : (
@@ -440,7 +441,9 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
     <div data-theme="light" style={page}>
       <div style={column}>
         <Brand phone={phone} />
-        <div style={{ textAlign: 'right', marginTop: 6 }}>
+        {/* The number over it reaches 10 px under its row, so this press starts there and the two never share a
+            spot. The margin under it takes back the room its own height added (v2.8294). */}
+        <div style={{ textAlign: 'right', marginTop: 10, marginBottom: -10 }}>
           <button
             type="button"
             lang={lang === 'es' ? 'en' : 'es'}
@@ -452,7 +455,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
               setPlace(at < 0 ? place : (firstLookWords(next).places[at] ?? null))
               setLang(next)
             }}
-            style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontSize: 14, color: COPPER, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'none', padding: '0 0 0 12px', minHeight: 44, font: 'inherit', fontSize: 14, color: COPPER, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
           >
             {W.switchTo}
           </button>

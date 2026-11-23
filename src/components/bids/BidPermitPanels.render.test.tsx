@@ -4,7 +4,19 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { GcBid, SitePermitRow } from '../../lib/research/bidSitePanel'
 
-const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), recordNameAnswer: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(), loadPermitsOfName: vi.fn() }))
+const io = vi.hoisted(() => ({
+  loadPermitsByHouseNumber: vi.fn(),
+  loadBidsOfCustomers: vi.fn(),
+  loadNameAnswers: vi.fn(),
+  recordNameAnswer: vi.fn(),
+  loadBuilderKinds: vi.fn(),
+  onNameAnswered: vi.fn(),
+  loadPermitsOfName: vi.fn(),
+  loadNameContactMatches: vi.fn(),
+  loadNameByKey: vi.fn(),
+  loadOurContactRows: vi.fn(),
+  loadCompanyLookupFacts: vi.fn(),
+}))
 const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn(), loadPermitsOfBuilder: vi.fn(), loadResearchers: vi.fn(), saveBuilder: vi.fn(), loadBuilders: vi.fn() }))
 const mobile = vi.hoisted(() => ({ value: false }))
 // The names that are us on a plumbing permit (Settings → Company): none unless a test says so.
@@ -47,6 +59,11 @@ beforeEach(() => {
   research.saveBuilder.mockReset().mockResolvedValue(undefined)
   research.loadBuilders.mockReset().mockResolvedValue([])
   io.loadPermitsOfName.mockReset().mockResolvedValue([])
+  // No name shares a phone or a web domain with the customer, and neither side holds one, unless a test says so.
+  io.loadNameContactMatches.mockReset().mockResolvedValue([])
+  io.loadNameByKey.mockReset().mockResolvedValue(null)
+  io.loadOurContactRows.mockReset().mockResolvedValue({ customers: [], persons: [] })
+  io.loadCompanyLookupFacts.mockReset().mockResolvedValue([])
   names.loadOurNames.mockReset().mockResolvedValue({ names: [], companyName: null })
   names.onOurNamesChanged.mockReset().mockReturnValue(() => {})
 })
@@ -308,7 +325,7 @@ describe('the answer on a name', () => {
 })
 
 describe('Find their names on permits', () => {
-  const builder = (key: string, name: string, permits: number) => ({ key, name: null, sample_contact: name, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 0, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
+  const builder = (key: string, name: string, permits: number) => ({ key, name: null, sample_contact: name, kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 0, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
 
   async function openSheet() {
     io.loadBidsOfCustomers.mockResolvedValue([bid()])

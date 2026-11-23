@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { PAID_METHODS, parsePaymentPromisesRpc, promisesOnJob, voidTakesDateOffBoard, type PaidMethod, type PaymentPromise, type PromiseChannel } from '../../lib/jobs/paymentPromises'
@@ -32,6 +33,13 @@ const CHANNELS: ReadonlyArray<{ key: PromiseChannel; label: string }> = [
 
 export type PromiseSheetMode = 'promise' | 'paid'
 
+/**
+ * What the sheet just wrote, for a caller that keeps a mark of its own (the line a word was written from in Messages,
+ * v2.8271): a promise saved with its day, or a word taken off with *Never said that*. Clear date and a paid claim say
+ * nothing here, since the promise stays on record and a claim names no day they owe by.
+ */
+export type PromiseSheetWord = { kind: 'promise'; ymd: string } | { kind: 'never'; ymd: string; claim: boolean }
+
 /** PostgREST's "no such function" — the migration hasn't been pushed yet; fall back to the old writer. */
 function isMissingRpc(e: unknown): boolean {
   const msg = formatErrorMessage(e, '')
@@ -58,6 +66,7 @@ export default function SetPromisedPayDateModal({
   contextLine,
   onClose,
   onSaved,
+  onWord,
 }: {
   jobId: string
   jobLabel: string
@@ -80,6 +89,8 @@ export default function SetPromisedPayDateModal({
   onClose: () => void
   /** Fired after a successful save/clear so the board can refresh its promise map. */
   onSaved: () => void
+  /** Fired with what was written, before `onSaved`: a promise's day, or the word *Never said that* took off. */
+  onWord?: (word: PromiseSheetWord) => void
 }) {
   const { showToast } = useToastContext()
   const [mode, setMode] = useState<PromiseSheetMode>(initialMode)
@@ -96,6 +107,20 @@ export default function SetPromisedPayDateModal({
   const [voidingId, setVoidingId] = useState<string | null>(null)
   /** The date the board shows now: the one the modal opened with, until a void takes it off. */
   const [boardYmd, setBoardYmd] = useState<string | null>(initialYmd)
+
+  // Escape closes the sheet as Cancel does (v2.8278), unless a save is on its way or a window opened over it is on top.
+  // The key stops here, so a window under the sheet that listens for Escape too stays open.
+  const isTopmost = useModalStackEntry()
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || e.defaultPrevented || saving || !isTopmost()) return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isTopmost, onClose, saving])
 
   const loadOnRecord = useCallback(async () => {
     try {
@@ -132,6 +157,7 @@ export default function SetPromisedPayDateModal({
         setYmd('')
       }
       showToast(offBoard ? `${day} is off the record and off the board.` : `${day} is off the record.`, 'success')
+      onWord?.({ kind: 'never', ymd: promise.promisedYmd, claim })
       onSaved()
       await loadOnRecord()
     } catch (e) {
@@ -164,6 +190,7 @@ export default function SetPromisedPayDateModal({
         if (error) throw error
       }
       showToast(dateOrNull ? 'Promise saved.' : 'Promised date cleared — the promise stays on record.', 'success')
+      if (dateOrNull) onWord?.({ kind: 'promise', ymd: dateOrNull })
       onSaved()
       onClose()
     } catch (e) {

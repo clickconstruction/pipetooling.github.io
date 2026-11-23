@@ -41,6 +41,8 @@ import {
   buildSubPortalPapers,
   planPortalAnswer,
   portalAnswers,
+  portalConfirmKept,
+  portalConfirms,
   portalPaperSet,
   portalPaymentKeyOf,
   PORTAL_WRONG_NOTES_A_DAY,
@@ -87,6 +89,9 @@ import {
  * given here. A POST with the same token writes one of two answers to
  * `sub_paper_acks`: `got_it` on a payment, `something_wrong` on a statement or a
  * payment. Shaping and the rules live in `_shared/subPortalPapers.ts`.
+ * A third answer, `confirm` on a work statement, is built and switched off
+ * (`SUB_PAPER_CONFIRM_LIVE`, punch list #350's PR 7): while it is off the plan
+ * refuses it as an unknown action, and nothing here writes a `confirmed` row.
  * A note that something is wrong also tells the office (v2.7609): a line in the
  * dispatch inbox and a push, as `submit-sub-portal` tells it of a sub's other notes.
  *
@@ -159,7 +164,7 @@ async function readPapersRows(admin: Admin, personId: string, laborJobIds: reado
   // What the sub answered is not a figure: a database the answers' migration has not reached reads as no answer yet.
   let acks: PapersAckRow[] = []
   try {
-    acks = await readEvery<PapersAckRow>(admin, 'sub_paper_acks', 'id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at', ['id'], { column: 'person_id', eq: personId })
+    acks = await readEvery<PapersAckRow>(admin, 'sub_paper_acks', 'id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at, revision, amount, said_from', ['id'], { column: 'person_id', eq: personId })
   } catch (e) {
     console.error('sub-portal papers: answers not read', e)
   }
@@ -261,6 +266,8 @@ async function answerFromPage(req: Request, admin: Admin, link: { id?: string | 
   const key = portalPaymentKeyOf(plan.row) || plan.row.labor_job_id || ''
   // A payment is marked received once. A second press changes nothing and reads the first day back.
   if (plan.row.kind === 'received' && plan.already) return jsonResponse({ ok: true, already: true, received: { [key]: plan.already } })
+  // A statement is confirmed once per revision. A second press changes nothing and reads the first one back.
+  if (plan.row.kind === 'confirmed' && plan.already) return jsonResponse({ ok: true, already: true, confirmed: Object.fromEntries(portalConfirms(rows.acks)) })
   if (plan.row.kind === 'something_wrong') {
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
     const { data: recent } = await admin.from('sub_paper_acks').select('id').eq('person_id', person.id).eq('kind', 'something_wrong').gte('created_at', since).limit(PORTAL_WRONG_NOTES_A_DAY + 1)
@@ -270,16 +277,26 @@ async function answerFromPage(req: Request, admin: Admin, link: { id?: string | 
   const { data: saved, error } = await admin
     .from('sub_paper_acks')
     .insert({ ...plan.row, said_by_name: person.name, said_from: fwd || req.headers.get('cf-connecting-ip') || null })
-    .select('id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at')
+    .select('id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at, revision, amount, said_from')
     .single()
   if (error) {
     // Two presses at the same moment: the table keeps one *received* per payment, and the second reads as done.
     if ((error as { code?: string }).code === '23505' && plan.row.kind === 'received') {
       return jsonResponse({ ok: true, already: true, received: portalAnswers([{ kind: 'received', paper_id: null, labor_job_id: null, sending_id: plan.row.sending_id, payment_id: plan.row.payment_id, note: null, created_at: new Date().toISOString() }]).received })
     }
+    // Two presses of one copy at the same moment: the table keeps one confirm per copy, and the second reads the first back.
+    if ((error as { code?: string }).code === '23505' && plan.row.kind === 'confirmed' && plan.row.paper_id) {
+      const { data: kept } = await admin
+        .from('sub_paper_acks')
+        .select('id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at, revision, amount, said_from')
+        .eq('kind', 'confirmed')
+        .eq('paper_id', plan.row.paper_id)
+      return jsonResponse({ ok: true, already: true, confirmed: Object.fromEntries(portalConfirmKept(plan.row, (kept ?? []) as PapersAckRow[], new Date().toISOString())) })
+    }
     console.error('sub-portal answer not saved', error)
     return jsonResponse({ error: 'That could not be saved. Please try again, or call the office.' }, 500)
   }
+  if (plan.row.kind === 'confirmed') return jsonResponse({ ok: true, already: false, confirmed: Object.fromEntries(portalConfirms([saved as PapersAckRow])) })
   const said = portalAnswers([saved as PapersAckRow])
   if (plan.row.kind === 'something_wrong') await tellOfficeSomethingIsWrong(admin, link, person, plan.what, plan.row, (saved as { id?: string | null }).id ?? null)
   return plan.row.kind === 'received' ? jsonResponse({ ok: true, already: false, received: said.received }) : jsonResponse({ ok: true, wrong: said.wrong[0] ?? null })

@@ -36,4 +36,15 @@ describe('LegalPortalIntakeForm (v2.4821)', () => {
     expect((screen.getByRole('combobox', { name: 'Answered by' }) as HTMLSelectElement).value).toBe('Lee Paralegal')
     expect(screen.getByText('Nothing sent yet.')).toBeTruthy()
   })
+  it('on one person’s link the answers are that person’s: shown, not picked, and sent under that name (v2.8312)', async () => {
+    const onSend = vi.fn(async () => true)
+    render(<LegalPortalIntakeForm {...base} linkPerson="Dana Reyes" recordedById="r2" recipients={[{ id: 'r2', name: 'Lee Paralegal', role: 'paralegal' }] as never} intake={{ answers: { ...EMPTY_LEGAL_FIRM_INTAKE }, sentAt: null, sentBy: 'Ann Sample' }} onSend={onSend} />)
+    const by = document.querySelector('[data-legal-intake-by="pinned"]') as HTMLElement
+    expect(by.textContent).toBe('Dana Reyes This link is yours alone, so the answers are sent under your name.')
+    expect(by.querySelector('[data-value="worked-out"]')?.textContent).toBe('Dana Reyes')
+    expect(screen.queryByRole('combobox', { name: 'Answered by' })).toBeNull()
+    expect(screen.queryByRole('textbox', { name: 'Answered by' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Acme' }))
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith({ ...EMPTY_LEGAL_FIRM_INTAKE }, 'Dana Reyes'))
+  })
 })

@@ -3,7 +3,8 @@
  * Render smoke for the Materials strip's three groups (punch list #304): a caption over each group, the tabs under
  * it, a badge only where one is handed in, Scan a label and Print labels as presses at the right end of On site's row. And the folds
  * (v2.6871): a strip too wide for its row folds the groups that do not fit to their name, a folded name opens its
- * group without changing the page, and on a phone the names take a row with the open group's tabs under them. A test's
+ * group without changing the page, and on a phone the names take a row with the open group's tabs under them. Since
+ * v2.8282 a one-tab group (Track) is opened by its name, and its presses are two icons on that row. A test's
  * DOM has no layout, so the widths are handed in (`measured`); with none the strip draws every group open.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -16,9 +17,10 @@ import MaterialsGroupStrip, { type StripMeasured } from './MaterialsGroupStrip'
 /** The office strip's widths, near what a browser measures. All open is 380 + 590 + 320 + 2 gaps of 21 = 1,332. */
 const widths = (available: number): StripMeasured => ({ available, openWidths: { plan: 380, purchase: 590, track: 320 }, foldWidths: { plan: 90, purchase: 120, track: 170 } })
 
-function setup(role: string, activeTab: MaterialsTab, measured?: StripMeasured) {
+function setup(role: string, activeTab: MaterialsTab, measured?: StripMeasured, phone = false) {
   const onTab = vi.fn()
   const onPress = vi.fn()
+  const onPrint = vi.fn()
   renderWithProviders(
     <MaterialsGroupStrip
       groups={materialsGroupsFor(role)}
@@ -26,11 +28,13 @@ function setup(role: string, activeTab: MaterialsTab, measured?: StripMeasured) 
       onTab={onTab}
       presses={materialsPressesFor(role)}
       onPress={onPress}
+      onPrint={onPrint}
+      phone={phone}
       badges={{ track: [{ text: '3 due a count', tone: 'amber' }] }}
       measured={measured}
     />,
   )
-  return { onTab, onPress }
+  return { onTab, onPress, onPrint }
 }
 const groupNames = () => screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))
 
@@ -120,22 +124,69 @@ describe('MaterialsGroupStrip', () => {
     expect(screen.getByTestId('materials-group-folded-plan').getAttribute('aria-label')).toBe('Plan, on Parts Book. Show its tabs.')
   })
 
-  it('on a phone the names take a row, the open group shows its tabs, and a name opens its group without changing the page', () => {
-    const { onTab } = setup('dev', 'on-site', widths(343))
+  it('on a phone the names take a row, Track is On site with no tab row, and its presses are two icons (v2.8282)', () => {
+    const { onTab, onPress, onPrint } = setup('dev', 'on-site', widths(343))
     expect(screen.getByTestId('materials-group-strip').getAttribute('data-strip-shape')).toBe('rows')
+    // Track holds one tab: its name is the page, and there is no row of tabs under the names
     const track = screen.getByRole('button', { name: 'Track, 3 due a count' })
-    expect(track.getAttribute('aria-expanded')).toBe('true')
-    expect(within(screen.getByRole('group', { name: 'Track' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Scan a label', 'Print labels', 'Print future stickers'])
+    expect(track.getAttribute('aria-current')).toBe('page')
+    expect(track.getAttribute('aria-expanded')).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Track' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'On site' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Print labels' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Parts Book' })).toBeNull()
 
+    // scan, then print, each an icon with its name, after the three names
+    const row = screen.getByTestId('materials-group-name-track').parentElement!
+    expect(within(row).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Plan. Show its tabs.', 'Purchase. Show its tabs.', 'Track, 3 due a count', 'Scan a label', 'Print'])
+    const scan = screen.getByRole('button', { name: 'Scan a label' })
+    expect(scan.getAttribute('title')).toBe('Scan a label')
+    expect(scan.textContent).toBe('')
+    expect(scan.style.width).toBe('40px')
+    expect(scan.style.height).toBe('40px')
+    fireEvent.click(scan)
+    expect(onPress.mock.calls.map((c) => c[0])).toEqual(['scan-label'])
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }))
+    expect(onPrint).toHaveBeenCalledTimes(1)
+    expect(onPress).toHaveBeenCalledTimes(1)
+
+    // Purchase holds several tabs: its name opens its row and changes no page, and the icons leave with Track
     const purchase = screen.getByRole('button', { name: 'Purchase. Show its tabs.' })
     expect(purchase.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(purchase)
     expect(onTab).not.toHaveBeenCalled()
     expect(within(screen.getByRole('group', { name: 'Purchase' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers', 'What we buy'])
-    // Track is where the page still is, and its name says so
-    expect(screen.getByRole('button', { name: 'Track, on On site, 3 due a count. Show its tabs.' }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Print' })).toBeNull()
+    // Track is where the page still is: one press on its name goes back to On site
+    fireEvent.click(screen.getByRole('button', { name: 'Track, 3 due a count' }))
+    expect(onTab).toHaveBeenCalledWith('on-site')
+    expect(screen.queryByRole('group', { name: 'Purchase' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Print' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Purchase. Show its tabs.' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supply houses' }))
     expect(onTab).toHaveBeenCalledWith('supply-houses')
+  })
+
+  it('from another tab one press on Track opens On site (v2.8282)', () => {
+    const { onTab } = setup('dev', 'parts-book', widths(343))
+    // Plan is open with its tabs, and no icon is drawn while Track is not the open group
+    expect(within(screen.getByRole('group', { name: 'Plan' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Parts Book', 'Assembly Book', 'PO Builder'])
+    expect(screen.queryByRole('button', { name: 'Scan a label' })).toBeNull()
+    const track = screen.getByRole('button', { name: 'Track, 3 due a count. Open On site.' })
+    expect(track.getAttribute('aria-current')).toBeNull()
+    fireEvent.click(track)
+    expect(onTab).toHaveBeenCalledWith('on-site')
+  })
+
+  it('a phone draws the row of names even where one row would fit, and a role with no print press of its own still has Print', () => {
+    // nothing measured reads as everything fits; the phone still gets its names and icons
+    setup('estimator', 'on-site', undefined, true)
+    expect(screen.getByTestId('materials-group-strip').getAttribute('data-strip-shape')).toBe('rows')
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Plan. Show its tabs.', 'Purchase. Show its tabs.', 'Track, 3 due a count', 'Scan a label', 'Print'])
+  })
+
+  it('a role with no press on On site’s row has no icon on the row of names', () => {
+    renderWithProviders(<MaterialsGroupStrip groups={materialsGroupsFor('dev')} activeTab="on-site" onTab={() => {}} presses={[]} onPress={() => {}} phone />)
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Plan. Show its tabs.', 'Purchase. Show its tabs.', 'Track'])
   })
 })

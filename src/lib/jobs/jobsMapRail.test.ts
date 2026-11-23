@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobsMapPin } from './jobsMap'
-import { DEFAULT_DISTANCE_BUCKETS, bucketAskLine, jobsMapAskLabel, jobsMapPinAsks, jobsMapPinMiles, jobsMapPinsInBuckets, jobsMapRail } from './jobsMapRail'
+import { DEFAULT_DISTANCE_BUCKETS, bucketAskLine, jobsMapAskLabel, jobsMapPinAsks, jobsMapPinMiles, jobsMapInKindLine, jobsMapPinsInBuckets, jobsMapRail } from './jobsMapRail'
 
 const OFFICE = { lat: 29.65, lng: -97.81 }
 
@@ -100,5 +100,28 @@ describe('jobsMapRail', () => {
     expect(rail.ask.map((r) => r.pin.id)).not.toContain('given')
     expect(jobsMapPinAsks(given)).toBe(false)
     expect(jobsMapPinAsks({ section: 'billed' })).toBe(true)
+  })
+})
+
+describe('the rail and a job an in kind deal pays (punch list #301)', () => {
+  const covered = pin({ id: 'kind', section: 'billed', inKind: true, inKindDollars: 1700, owedDollars: 0, billedAgeDays: null, ...north(5) })
+  const late = pin({ id: 'late', section: 'billed', billedAgeDays: 166, owedDollars: 4000, ...north(6) })
+
+  it('a covered job is in its bucket count, in no dollars to collect and on no ask list', () => {
+    const rail = jobsMapRail([covered, late], OFFICE)
+    const near = rail.buckets[0]!
+    expect(near.count).toBe(2)
+    expect(near.toCollectDollars).toBe(4000)
+    expect(near.toAsk).toBe(1)
+    expect(rail.ask.map((r) => r.pin.id)).toEqual(['late'])
+    expect(rail.toCollectDollars).toBe(4000)
+    expect(rail.inKind).toEqual({ count: 1, dollars: 1700 })
+    expect(jobsMapPinAsks(covered)).toBe(false)
+  })
+
+  it('the rail says one line for what it left out, and nothing when no job is on a deal', () => {
+    expect(jobsMapInKindLine({ count: 1, dollars: 1700 })).toBe('$1,700 on 1 job is scheduled in kind, not money to collect')
+    expect(jobsMapInKindLine({ count: 8, dollars: 13858.46 })).toBe('$13,858 on 8 jobs is scheduled in kind, not money to collect')
+    expect(jobsMapInKindLine(jobsMapRail([late], OFFICE).inKind)).toBeNull()
   })
 })

@@ -31,6 +31,7 @@ import {
   clockDaysWords,
   clockMiddleNearStart,
   clockNote,
+  clockWaitingNote,
   clockScaleDays,
   clockTile,
   clockTitle,
@@ -406,6 +407,7 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
   // A middle close to the bar's start is said beside the first word: under its mark the two run together on a phone.
   const near = clockMiddleNearStart(mid)
   const days = { whiteSpace: 'nowrap', color: 'var(--text-strong)' } as const
+  const waiting = clockWaitingNote(clock)
   return (
     <div data-market-clock={clock.kind}>
       <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{clockTitle(clock)}</div>
@@ -424,6 +426,11 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
       <div data-clock-note style={{ ...muted, marginTop: 4 }}>
         <ValueSentence text={clockNote(clock)} />
       </div>
+      {waiting && (
+        <div data-clock-waiting style={{ ...muted, marginTop: 4 }}>
+          <ValueSentence text={waiting} />
+        </div>
+      )}
     </div>
   )
 }

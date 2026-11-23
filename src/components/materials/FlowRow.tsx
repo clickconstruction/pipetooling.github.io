@@ -5,6 +5,7 @@
  * draws four as its tabs; the phone draws three as filters. The figures come from `src/lib/materials/flowRow.ts`.
  */
 import type { CSSProperties, ReactNode } from 'react'
+import { flowTileWord } from '../../lib/materials/flowRow'
 
 export type FlowTone = 'in' | 'here' | 'out' | 'gap'
 
@@ -81,6 +82,47 @@ export function FlowRow({ pills, trailing, role, label, size = 'desk', wordFirst
         )
       })}
       {trailing ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4, alignItems: 'center' }}>{trailing}</span> : null}
+    </div>
+  )
+}
+
+/**
+ * The same figures as tiles (v2.8282): the Materials page's phone screen, where four pills and their arrows wrapped
+ * to two rows. One row of equal columns, the number on top in its colour and its word under it, no arrows. A tile
+ * keeps its pill's badge at its top corner, its outline when it is the open section, its sentence and its press.
+ * As `filters` (v2.8291, the Materials desk on a phone) the tiles narrow a list: a group of pressed presses, where
+ * the job page's are tabs.
+ */
+export function FlowTiles({ pills, label, role = 'tabs' }: { pills: FlowPill[]; label: string; role?: 'tabs' | 'filters' }) {
+  const tabs = role === 'tabs'
+  return (
+    <div role={tabs ? 'tablist' : 'group'} aria-label={label} style={{ display: 'grid', gridTemplateColumns: `repeat(${pills.length}, minmax(0, 1fr))`, gap: 6, minWidth: 0, paddingTop: 6 }} data-testid="flow-tiles">
+      {pills.map((p) => {
+        const tone = TONE[p.tone]
+        return (
+          <button
+            key={p.key}
+            type="button"
+            role={tabs ? 'tab' : undefined}
+            aria-selected={tabs ? Boolean(p.on) : undefined}
+            aria-pressed={tabs ? undefined : Boolean(p.on)}
+            aria-disabled={p.off || undefined}
+            aria-label={p.title}
+            title={p.title}
+            onClick={p.off ? undefined : p.onPress}
+            style={{
+              position: 'relative', display: 'grid', justifyItems: 'center', alignContent: 'center', gap: 2, minWidth: 0, minHeight: 56, padding: '6px 2px', borderRadius: 12,
+              borderWidth: 1, borderStyle: 'solid', borderColor: p.on ? tone : 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', lineHeight: 1.1, cursor: p.off ? 'default' : 'pointer',
+              ...(p.on ? { boxShadow: `inset 0 0 0 2px ${tone}` } : {}), ...(p.off ? { opacity: 0.5 } : {}),
+            }}
+          >
+            <b style={{ color: tone, fontSize: '1.05rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{p.figure}</b>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{flowTileWord(p.word)}</span>
+            {p.badge && p.badge !== 'dot' ? <span style={{ position: 'absolute', top: -7, right: -2, fontSize: '0.66rem', fontWeight: 800, color: '#fff', background: p.badge.red ? RED : AMBER, borderRadius: 999, padding: '2px 6px', minWidth: 18, textAlign: 'center', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{p.badge.text}</span> : null}
+            {p.badge === 'dot' ? <span aria-hidden style={{ position: 'absolute', top: -3, right: -1, width: 8, height: 8, borderRadius: 999, background: AMBER }} /> : null}
+          </button>
+        )
+      })}
     </div>
   )
 }

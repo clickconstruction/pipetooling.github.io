@@ -7,7 +7,7 @@
  * final.", as the HTML print does.
  */
 import type { PdfLibLike } from './jobContractPdf.ts'
-import { paperMoney, statementAddsWords, type CounselSentence, type PaperCompany, type PaperParty, type PaymentRecord, type StatementOfAccount, type StatementRange, type WorkStatement } from './subPapers.ts'
+import { paperMoney, statementAddsWords, statementLateWords, STATEMENT_LATE_PAYMENT_WORDS, type CounselSentence, type PaperCompany, type PaperParty, type PaymentRecord, type StatementOfAccount, type StatementRange, type WorkStatement } from './subPapers.ts'
 
 type Font = { widthOfTextAtSize(text: string, size: number): number }
 type Page = {
@@ -322,6 +322,12 @@ export async function buildStatementOfAccountPdf(lib: PdfLibLike, s: StatementOf
       w.text(p.number || '—', M + 330, 9)
       w.text(paperMoney(p.amount), 0, 9, { right: RIGHT - 8, color: c.green })
       w.y -= 13
+      // A payment carried from before the period says so under its day.
+      if (p.late) {
+        w.need(11)
+        w.text(STATEMENT_LATE_PAYMENT_WORDS, M + 8, 7.5, { color: c.muted })
+        w.y -= 11
+      }
     }
     if (s.lastPayments.length) {
       w.need(14)
@@ -331,6 +337,7 @@ export async function buildStatementOfAccountPdf(lib: PdfLibLike, s: StatementOf
     }
   })
   w.boxed('How it adds up', () => w.para(statementAddsWords(s, range), 9, { x: M + 8, width: RIGHT - M - 16 }))
+  if (statementLateWords(s)) w.para(statementLateWords(s), 9, { color: c.muted })
   if (s.undated > 0) w.para(`${s.undated} ${s.undated === 1 ? 'line has' : 'lines have'} no date and ${s.undated === 1 ? 'is' : 'are'} left off a statement for a period.`, 9, { color: c.muted })
   if (s.paidThisYear) {
     w.para(`Paid to ${s.sub.name} in ${s.paidThisYear.year} so far: ${paperMoney(s.paidThisYear.amount)}.`, 9)

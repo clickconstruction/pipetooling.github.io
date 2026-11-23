@@ -18,6 +18,9 @@ const tile: CSSProperties = { width: '100%', aspectRatio: '4 / 3', borderRadius:
 const pill = (on: boolean): CSSProperties => ({ minHeight: 36, padding: '0 0.75rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: on ? 'var(--text-strong)' : 'var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--bg-page)' : 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' })
 const chipStyle = (tone: 'green' | 'amber'): CSSProperties => ({ fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', ...(tone === 'green' ? { borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)', background: 'var(--bg-green-tint)' } : { borderColor: 'var(--text-amber-800)', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)' }) })
 
+/** A take's tile is at most this wide, in CSS pixels: the small copy of a shot this phone holds is sized for it. */
+const TAKE_TILE_CSS_EDGE = 210
+
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
@@ -37,12 +40,13 @@ function TakeTile({ photo, caption, none }: { photo: PhotoNote | null; caption: 
     let made: string | null = null
     setUrl(null)
     setMissing(false)
-    void readBoxPhotoBytes(photo, 'thumb').then(
+    void readBoxPhotoBytes(photo, 'thumb', TAKE_TILE_CSS_EDGE).then(
       (got) => {
-        if (!got) { if (live) setMissing(true); return }
-        if (!live) { URL.revokeObjectURL(got.url); return }
-        made = got.url
-        setUrl(got.url)
+        const u = got?.url
+        if (!u) { if (live) setMissing(true); return }
+        if (!live) { URL.revokeObjectURL(u); return }
+        made = u
+        setUrl(u)
       },
       () => { if (live) setMissing(true) },
     )

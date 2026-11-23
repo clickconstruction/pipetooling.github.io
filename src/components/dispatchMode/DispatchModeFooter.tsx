@@ -10,6 +10,7 @@ import { activeDockKey, phoneDockPage, type PhoneDockPageKey } from '../../lib/p
 import { SHORT_DASHBOARD_HOME_STATE, SHORT_DASHBOARD_PATH } from '../../lib/dashboard/shortDashboard'
 import { PhoneDockGlyph } from './PhoneDockGlyph'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import { PHONE_TABS_MIN_HEIGHT_PX } from '../../lib/phoneLayout/phoneBar'
 import {
   addDispatchBadgeCounts,
   dispatchBadgeAriaLabel,
@@ -159,6 +160,7 @@ export function DispatchModeFooter({
   slots = null,
   onOpenMore,
   shortHome = false,
+  compact = false,
 }: {
   inboxBadgeCount?: number
   /** Customers waiting (open high-priority requests, v2.3247): the badge pulses and says so. */
@@ -181,12 +183,19 @@ export function DispatchModeFooter({
    * page) the tab is `/dashboard` already, and the press carries the mark that leaves Everything else.
    */
   shortHome?: boolean
+  /**
+   * The new phone layout (`lib/phoneLayout`): the same tabs with their words, each `PHONE_TABS_MIN_HEIGHT_PX`
+   * tall, where the bar's own minimum was 60 px. The phone's inset at the foot is added under them as before.
+   */
+  compact?: boolean
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const keyboardOpen = useOnScreenKeyboardOpen()
   const { user: authUser, role } = useAuth()
   const navRef = useRef<HTMLElement>(null)
+  // A tab's own height, so the words and the icon keep their room on a phone whose inset the bar's minimum counts.
+  const tabBtn: CSSProperties = compact ? { ...tabBtnBase, minHeight: PHONE_TABS_MIN_HEIGHT_PX, padding: '0.2rem 0.15rem' } : tabBtnBase
 
   // The bar's real height, published while it is mounted (v2.8035): the press bar, the page's padding
   // and every window that stops above the bar sit on it, so none floats over a strip of the page.
@@ -227,6 +236,7 @@ export function DispatchModeFooter({
       ref={navRef}
       aria-label={variant === 'job' ? 'Job Mode tabs' : 'Dispatch Mode tabs'}
       data-app-bottom-chrome=""
+      data-compact={compact || undefined}
       aria-hidden={keyboardOpen || undefined}
       style={{
         position: 'fixed',
@@ -236,7 +246,8 @@ export function DispatchModeFooter({
         zIndex: DISPATCH_MODE_FOOTER_Z_INDEX,
         display: 'flex',
         alignItems: 'stretch',
-        minHeight: DISPATCH_MODE_FOOTER_HEIGHT_PX,
+        // Compact: the tabs hold the height themselves, so the bar is their 52 px, its line and the inset.
+        minHeight: compact ? undefined : DISPATCH_MODE_FOOTER_HEIGHT_PX,
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: 'var(--chrome-bg)',
         borderTop: '1px solid var(--chrome-border)',
@@ -255,6 +266,7 @@ export function DispatchModeFooter({
             return (
               <DockSlotButton
                 key={key}
+                base={tabBtn}
                 label={page.label}
                 to={page.to}
                 icon={<PhoneDockGlyph icon={page.icon} />}
@@ -269,6 +281,7 @@ export function DispatchModeFooter({
             )
           })}
           <DockSlotButton
+            base={tabBtn}
             label="More"
             to="#more"
             icon={<PhoneDockGlyph icon="more" />}
@@ -298,7 +311,7 @@ export function DispatchModeFooter({
                 navigate(to, home ? { state: SHORT_DASHBOARD_HOME_STATE } : undefined)
               }}
               style={{
-                ...tabBtnBase,
+                ...tabBtn,
                 color: isActive ? 'var(--text-link)' : 'var(--text-muted)',
               }}
             >
@@ -379,6 +392,7 @@ function DockBadge({ count, waiting, crew }: { count: number; waiting: number; c
  * finger, and `consumeLongPress` keeps the trailing click from also navigating).
  */
 function DockSlotButton({
+  base,
   label,
   isActive,
   icon,
@@ -386,6 +400,8 @@ function DockSlotButton({
   onGo,
   onLongPress,
 }: {
+  /** The tab's look: the bar's, or its compact one under the new phone layout. */
+  base: CSSProperties
   label: string
   to: string
   isActive: boolean
@@ -406,7 +422,7 @@ function DockSlotButton({
         onGo()
       }}
       style={{
-        ...tabBtnBase,
+        ...base,
         color: isActive ? 'var(--text-link)' : 'var(--text-muted)',
         WebkitTouchCallout: 'none',
         userSelect: 'none',
@@ -438,11 +454,13 @@ export function DispatchModeFooterLive({
   slots = null,
   onOpenMore,
   shortHome = false,
+  compact = false,
 }: {
   showPoTab?: boolean
   slots?: PhoneDockPageKey[] | null
   onOpenMore?: (swapIndex: number | null) => void
   shortHome?: boolean
+  compact?: boolean
 }) {
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
@@ -474,6 +492,7 @@ export function DispatchModeFooterLive({
       slots={slots}
       onOpenMore={onOpenMore}
       shortHome={shortHome}
+      compact={compact}
     />
   )
 }

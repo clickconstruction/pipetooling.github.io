@@ -33,7 +33,7 @@ const io = vi.hoisted(() => ({
   loadNewestPermitDay: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
-const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
+const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadAllNameContactMatches: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
 vi.mock('../../lib/research/bidSiteIo', () => siteIo)
 // Market's own reads (punch list #405): its render test holds what it draws; here it only has to open.
 const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), recordLookupCheck: vi.fn() }))
@@ -124,6 +124,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.pullPermitsBack.mockReset().mockResolvedValue(6412)
     // The answers table is not on the database unless a test says so: no look-alike chip.
     siteIo.loadAllNameAnswers.mockReset().mockResolvedValue(null)
+    siteIo.loadAllNameContactMatches.mockReset().mockResolvedValue([])
     siteIo.loadCustomerNames.mockReset().mockResolvedValue([])
     siteIo.loadRecentBidsWithCustomer.mockReset().mockResolvedValue([])
     siteIo.loadPermitsByHouseNumber.mockReset().mockResolvedValue([])
@@ -702,8 +703,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
 
     it('Builders lists who is building, and a mark needs its reason', async () => {
       io.loadBuilders.mockResolvedValue([
-        { key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: 'Copperline Mechanical', plumber_jobs: 4, bids: 0, won: 0, last_bid_on: null },
-        { key: 'ridgewaybuilders', name: null, sample_contact: 'Dana Whitlock, Ridgeway Builders', kind: 'gc', customer_id: null, mark: 'good', mark_reason: 'Pays on time.', mark_by_name: 'Eve', mark_at: '2026-03-03T15:00:00Z', permits: 4, open: 2, last_permit_on: '2026-11-06', plumber: 'Blue Heron Plumbing', plumber_jobs: 2, bids: 5, won: 3, last_bid_on: '2026-06-01' },
+        { key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: 'Copperline Mechanical', plumber_jobs: 4, bids: 0, won: 0, last_bid_on: null },
+        { key: 'ridgewaybuilders', name: null, sample_contact: 'Dana Whitlock, Ridgeway Builders', kind: 'gc', mark: 'good', mark_reason: 'Pays on time.', mark_by_name: 'Eve', mark_at: '2026-03-03T15:00:00Z', permits: 4, open: 2, last_permit_on: '2026-11-06', plumber: 'Blue Heron Plumbing', plumber_jobs: 2, bids: 5, won: 3, last_bid_on: '2026-06-01' },
       ])
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
@@ -729,8 +730,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
 
     it('lists the names that look like a customer behind a chip, and ties one on the press', async () => {
       io.loadBuilders.mockResolvedValue([
-        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
-        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
       ])
       siteIo.loadAllNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
       siteIo.loadCustomerNames.mockResolvedValue([{ id: 'c7', name: 'Tall Pine Development' }, { id: 'c8', name: 'Larkspur Dental' }])
@@ -746,7 +747,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     describe('Market, beside Builders (punch list #405)', () => {
       beforeEach(() => {
         marketIo.loadMarketBids.mockReset().mockResolvedValue([{ id: 'b1', customerId: 'c7', customerName: 'Tall Pine Development', gcName: null, outcome: 'won', bidOn: todayYmdInAppTz(), projectName: 'Millrace Row' }])
-        marketIo.loadBuildersOfCities.mockReset().mockResolvedValue([{ city: 'San Antonio', rows: [{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 1, won: 1, last_bid_on: null }] }])
+        marketIo.loadBuildersOfCities.mockReset().mockResolvedValue([{ city: 'San Antonio', rows: [{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 1, won: 1, last_bid_on: null }] }])
         marketIo.loadMarketPermits.mockReset().mockResolvedValue([])
         marketIo.loadCallAnswers.mockReset().mockResolvedValue([])
         marketIo.loadBuilderLookups.mockReset().mockResolvedValue({ rows: [], checks: [] })
@@ -789,8 +790,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
 
     describe('opened from the Needs you line (punch list #307)', () => {
       const lookAlikeBuilders = [
-        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
-        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
       ]
       beforeEach(() => {
         window.localStorage.removeItem('permits.lastCity')
@@ -888,7 +889,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     })
 
     it('draws no look-alike chip before the answers table is on the database', async () => {
-      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
+      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Tall Pine Development' })).toBeTruthy())
@@ -896,7 +897,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     })
 
     it('reads one step further back on the press, and reads where the records start again', async () => {
-      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
+      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
       const since = ymdPlusDays(RECORDS_START, -92)

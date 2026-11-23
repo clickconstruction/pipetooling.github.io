@@ -18,14 +18,17 @@ import type { Database } from '../../../types/database'
  * ZZ ids, or null to keep them, and the job rows carry their names
  * (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid
  * (`isZzBidName`: the robots' and the office's test bids) is in neither the
- * open pile nor the decided set, for the same viewer. The estimates are not
- * touched: they have no ZZ rule.
+ * open pile nor the decided set, for the same viewer. Since v2.8280 a ZZ test
+ * estimate (`isZzEstimate`) is in neither the open estimates nor the estimates'
+ * history, for the viewer who hides ZZ tests: `hideZzEstimates` is that viewer's
+ * switch by itself, since `zzTestJobIds` also carries the jobs the Bridge leaves
+ * out.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
 import { AWAITING_DAYS } from '../demandPace'
-import { withoutZzBridgeBids, withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
+import { ZZ_ESTIMATE_FIELDS, withoutZzBridgeBids, withoutZzBridgeEstimates, withoutZzBridgeJobs, type BridgeZzTestJobIds, type ZzEstimateRow } from '../zzTestJobs'
 import { SALES_DECIDED_DAYS, type SalesDecidedBid, type SalesEstimateHistory, type SalesOpenBid, type SalesOpenEstimate } from './salesDesk'
 
 export type SalesDeskReads = {
@@ -42,13 +45,13 @@ type OpenBidRow = { id: string; bid_number: string | null; project_name: string 
 type DecidedBidRow = { id: string; bid_number: string | null; project_name: string | null; gc_builder_id: string | null; customer_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null; outcome: string | null; outcome_at: string | null; loss_category: string | null; loss_reason: string | null }
 type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; billing_only: boolean | null }
 type NameRow = { id: string; name: string }
-type EstimateRow = { id: string; title: string; sent_at: string | null; total_cents: number | null; doc_kind: string | null; customer_id: string | null }
-type EstimateHistoryRow = { id: string; created_at: string; sent_at: string | null; status: string; acceptor_consented_at: string | null; updated_at: string | null; total_cents: number | null; doc_kind: string | null }
+type EstimateRow = { id: string; title: string; customers?: { name: string | null } | null; sent_at: string | null; total_cents: number | null; doc_kind: string | null; customer_id: string | null }
+type EstimateHistoryRow = ZzEstimateRow & { id: string; created_at: string; sent_at: string | null; status: string; acceptor_consented_at: string | null; updated_at: string | null; total_cents: number | null; doc_kind: string | null }
 
 const OPEN_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, bid_value, agreed_value, bid_date_sent, created_at, next_followup_on, next_followup_reason, last_contact, outcome'
 const DECIDED_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, bid_value, agreed_value, bid_date_sent, outcome, outcome_at, loss_category, loss_reason'
 const JOB_SELECT = 'id, job_name, customer_name, bid_id, created_at, billing_only'
-const HISTORY_SELECT = 'id, created_at, sent_at, status, acceptor_consented_at, updated_at, total_cents, doc_kind'
+const HISTORY_SELECT = `id, created_at, sent_at, status, acceptor_consented_at, updated_at, total_cents, doc_kind, ${ZZ_ESTIMATE_FIELDS}`
 /** A bid with one of these outcomes is decided; anything else, or none, is open. */
 const DECIDED_OUTCOME_LIST = ['won', 'lost', 'started_or_complete'] as const
 const DECIDED_OUTCOMES = `(${DECIDED_OUTCOME_LIST.join(',')})`
@@ -57,7 +60,7 @@ const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slic
 const usdOf = (r: { agreed_value: number | null; bid_value: number | null }): number => Number(r.agreed_value ?? r.bid_value ?? 0)
 const decidedOutcomeOf = (o: string | null): SalesDecidedBid['outcome'] => (o === 'won' || o === 'lost' || o === 'started_or_complete' ? o : null)
 
-export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<SalesDeskReads> {
+export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds; /** The viewer's ZZ switch by itself: true leaves the ZZ test estimates out. */ hideZzEstimates: boolean }): Promise<SalesDeskReads> {
   const decidedSinceIso = `${ymdAddDays(opts.todayYmd, -SALES_DECIDED_DAYS)}T00:00:00Z`
   const awaitingSinceIso = `${ymdAddDays(opts.todayYmd, -AWAITING_DAYS)}T00:00:00Z`
   // Two reads make the open set exactly: an outcome of null, and an outcome outside the decided three (NOT IN drops nulls).
@@ -80,7 +83,7 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
       'sales desk jobs of the span',
     ),
     fetchAllRows(
-      async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('estimates').select('id, title, sent_at, total_cents, doc_kind, customer_id').eq('status', 'sent').gte('sent_at', awaitingSinceIso).order('id').range(from, to), 'sales desk open estimates')) as EstimateRow[] | null, error: null }),
+      async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('estimates').select('id, title, customers(name), sent_at, total_cents, doc_kind, customer_id').eq('status', 'sent').gte('sent_at', awaitingSinceIso).order('id').range(from, to), 'sales desk open estimates')) as EstimateRow[] | null, error: null }),
       'sales desk open estimates',
     ),
     fetchAllRows(
@@ -173,11 +176,11 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
   for (const g of gcRows) gcNames.set(g.id, g.name)
   for (const c of customerRows) gcNames.set(c.id, c.name)
 
-  const openEstimates: SalesOpenEstimate[] = estimateRows
+  const openEstimates: SalesOpenEstimate[] = withoutZzBridgeEstimates(estimateRows, opts.hideZzEstimates)
     .filter((e) => (!e.doc_kind || e.doc_kind === 'estimate') && !!e.sent_at)
     .map((e) => ({ id: e.id, title: e.title, sentYmd: (e.sent_at as string).slice(0, 10), usd: (e.total_cents ?? 0) / 100, customerId: e.customer_id }))
   // The estimates' own history: every status, so the accepted ones give the pace and the decided ones the same-day split.
-  const estimateHistory: SalesEstimateHistory[] = historyRows
+  const estimateHistory: SalesEstimateHistory[] = withoutZzBridgeEstimates(historyRows, opts.hideZzEstimates)
     .filter((e) => (!e.doc_kind || e.doc_kind === 'estimate') && !!e.created_at)
     .map((e) => ({ id: e.id, createdYmd: e.created_at.slice(0, 10), sentYmd: ymdOf(e.sent_at), status: e.status, acceptedYmd: ymdOf(e.acceptor_consented_at), updatedYmd: ymdOf(e.updated_at), usd: (e.total_cents ?? 0) / 100 }))
   return { openBids, decidedBids, gcNames, openEstimates, estimateHistory }

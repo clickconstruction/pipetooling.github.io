@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { chartPanelFrame } from '../../lib/bridge/chartPanelFrame'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { BridgePanelSources } from './BridgePanelSources'
 import type { OwedPanel } from '../../lib/bridge/owedPanel'
 
 /**
@@ -71,8 +73,10 @@ function Waterfall({ bars }: { bars: OwedPanel['waterfall'] }) {
 }
 
 export function BridgeOwedPanel({ panel, onClose }: { panel: OwedPanel; onClose: () => void }) {
+  // On a phone every grid of the panel is one column (v2.8279): the desk frame is wider than a phone.
+  const frame = chartPanelFrame(useIsMobile())
   return (
-    <section style={{ background: 'var(--surface)', border: '2px solid #2563eb', borderRadius: 10, padding: '0.8rem 1rem', marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: '0.6rem 1.4rem', alignItems: 'start' }} data-testid="bridge-owed-panel">
+    <section style={{ background: 'var(--surface)', border: '2px solid #2563eb', borderRadius: 10, padding: '0.8rem 1rem', marginTop: '0.6rem', display: 'grid', gridTemplateColumns: frame.section, gap: '0.6rem 1.4rem', alignItems: 'start' }} data-testid="bridge-owed-panel">
       <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
         <span style={label}>Money owed, both ways</span>
         <span style={det}>owed to you by how late it is; owed by you by when it falls due</span>
@@ -80,7 +84,7 @@ export function BridgeOwedPanel({ panel, onClose }: { panel: OwedPanel; onClose:
           ×
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.5rem 1.4rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '0.5rem 1.4rem' }}>
         <div>
           <div style={{ ...cap, marginBottom: 4 }}>Owed to you · by how late</div>
           <Bars rows={panel.aging} testId="bridge-owed-aging" />
@@ -95,7 +99,7 @@ export function BridgeOwedPanel({ panel, onClose }: { panel: OwedPanel; onClose:
         <div>{panel.netLine}</div>
         <div style={{ padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid var(--text-amber-800)', color: 'var(--text-amber-800)' }}>{panel.closing}</div>
       </div>
-      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)', gap: '0.6rem 1.4rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: frame.foot, gap: '0.6rem 1.4rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
         <div>
           <div style={label}>Where the money sits</div>
           <div style={{ ...det, marginBottom: 4 }}>cash, plus what is owed to you, less what you owe, is the net position; the finished work not yet billed is the money behind it</div>
@@ -103,22 +107,7 @@ export function BridgeOwedPanel({ panel, onClose }: { panel: OwedPanel; onClose:
         </div>
         <div>
           <div style={label}>Where each number comes from, and what can make it wrong</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1.1fr) minmax(0, 1fr) auto', gap: '0.2rem 0.6rem', fontSize: '0.78rem', alignItems: 'baseline', marginTop: 4 }}>
-            <span style={cap}>input</span>
-            <span style={cap}>read from</span>
-            <span style={cap}>what can be wrong</span>
-            <span />
-            {panel.sources.map((r) => (
-              <span key={r.input} style={{ display: 'contents' }}>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, fontWeight: 700 }}>{r.input}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>{r.from}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: r.tone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>{r.risk}</span>
-                <Link to={r.door.to} style={{ borderTop: '1px solid var(--border)', paddingTop: 4, whiteSpace: 'nowrap' }}>
-                  {r.door.label}
-                </Link>
-              </span>
-            ))}
-          </div>
+          <BridgePanelSources rows={panel.sources} frame={frame} testId="bridge-owed-sources" />
         </div>
       </div>
     </section>

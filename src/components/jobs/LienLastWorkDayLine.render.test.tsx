@@ -4,6 +4,8 @@
  * columns through the window and the caller re-reads, Back clears them. Since punch list #399 the day is a value in
  * place: no Change › and no editor box.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
@@ -194,14 +196,44 @@ describe('LienLastWorkDayLine', () => {
       expect(screen.getByTestId('lien-last-work-day').textContent).toContain('Keep shows what moves with the day and asks why before anything is saved.')
     })
 
-    it('a job with no hours offers Back to the job’s creation day, and a default offers no way back', () => {
-      const first = renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ created_at: '2026-07-01T15:00:00Z', lien_last_work_on: '2026-08-14' }} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+    it('the way back names where the day goes: the bill’s day, the creation day, or neither where the line holds no bills; a default offers none', async () => {
+      const hand = { created_at: '2026-07-01T15:00:00Z', lien_last_work_on: '2026-08-14' }
+      const bill = { status: 'billed', billed_at: '2026-08-20T15:00:00Z', sent_to_customer_at: '2026-08-21T15:00:00Z' }
+      const draw = (job: Parameters<typeof LienLastWorkDayLine>[0]['job']) => renderWithProviders(<LienLastWorkDayLine jobId="j1" job={job} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+      // No hours and a sent, unpaid bill: the bill dates the job since v2.7224, so the press does not say the creation day.
+      let view = draw({ ...hand, invoices: [bill] })
+      openField()
+      expect(screen.getByRole('button', { name: "Back to the bill's day" })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: "Back to the job's creation day" })).toBeNull()
+      view.unmount()
+      // No hours and no bill: the creation day.
+      view = draw({ ...hand, invoices: [] })
       openField()
       expect(screen.getByRole('button', { name: "Back to the job's creation day" })).toBeTruthy()
-      first.unmount()
-      renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+      view.unmount()
+      // Edit Job's row holds no bills, so it cannot say which: the press names neither, and the message after it says the same.
+      view = draw(hand)
+      openField()
+      fireEvent.click(screen.getByRole('button', { name: 'Back to the day the app works out' }))
+      await settle()
+      expect((update.mock.calls[0] as unknown as [Record<string, unknown>])[0]).toEqual({ lien_last_work_on: null, lien_last_work_note: '', lien_last_work_set_at: null, lien_last_work_set_by: null })
+      expect(document.body.textContent).toContain('Back to the day the app works out.')
+      view.unmount()
+      draw({ last_work_date: '2026-09-24' })
       openField()
       expect(screen.queryByRole('button', { name: /^Back to/ })).toBeNull()
+    })
+
+    it('the open field takes the row, so the line under it is not held to the date box’s width', () => {
+      renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-10-06" canEdit userId="u1" onSaved={() => {}} />)
+      const day = screen.getByTestId('lien-last-work-day')
+      expect(day.classList.contains('lienLastWorkDay')).toBe(true)
+      openField()
+      // The rule reads this shape: the field is the wrapper's own child.
+      expect(day.querySelector(':scope > [data-value="field"].vipField')).toBeTruthy()
+      const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+      expect(css).toMatch(/\.lienLastWorkDay:has\(> \.vipField\) \{ flex: 1 1 100%; \}/)
+      expect(css).toMatch(/\.lienLastWorkDay > \.vipField \{ display: flex; \}/)
     })
 
     it('a stand-in is no day anyone said, so its field opens empty; a day from clock hours opens on that day', () => {

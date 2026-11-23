@@ -431,3 +431,35 @@ describe('LienTimelineStrip — the late notice (v2.4708): job 890 read Oct 6, t
     })
   })
 })
+
+describe('LienTimelineStrip — a caption stays inside its column on a narrow strip', () => {
+  it('the lead before a caption gives way first, and a late bar’s caption ends at the column’s end', () => {
+    setLienTimelineView('windows')
+    const { container } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
+    const rows = [...container.querySelectorAll<HTMLElement>('[data-lien-timeline-caption-row]')]
+    expect(rows.length).toBeGreaterThan(1)
+    expect(rows.some((r) => r.dataset.lienTimelineCaptionRow === 'start')).toBe(true)
+    for (const row of rows) {
+      // The row spans the column, so a caption can never begin past the room it has.
+      expect(row.style.position).toBe('absolute')
+      expect(row.style.display).toBe('flex')
+      const caption = row.querySelector('[data-lien-timeline-caption]') as HTMLElement
+      // The caption keeps the width of its words, and is cut only when it is wider than the whole column.
+      expect(caption.style.flexShrink).toBe('0')
+      expect(caption.style.maxWidth).toBe('100%')
+      expect(caption.style.textOverflow).toBe('ellipsis')
+      const lead = row.querySelector<HTMLElement>('[data-lien-timeline-caption-lead]')
+      if (row.dataset.lienTimelineCaptionRow === 'start') {
+        // Where its bar starts, as a share of the column, and the first thing to give way.
+        expect(lead).toBeTruthy()
+        expect(lead!.style.flexGrow).toBe('0')
+        expect(lead!.style.flexShrink).toBe('1')
+        expect(parseFloat(lead!.style.flexBasis)).toBeLessThanOrEqual(55)
+        expect(row.firstElementChild).toBe(lead)
+      } else {
+        expect(lead).toBeNull()
+        expect(row.style.justifyContent).toBe('flex-end')
+      }
+    }
+  })
+})

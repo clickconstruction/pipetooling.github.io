@@ -9,10 +9,16 @@
  * The day they said (the leftovers, v2.8255): when a customer's own text or voicemail names a day that has not gone
  * by, the day is drawn beside the press, and the sheet opens on *They'll pay by…* with that day filled in
  * (`heardDayOnLine`, over the voicemail reader's `daySaidIn`). The day is an offer: nothing is written until Save.
+ *
+ * The mark on the line (v2.8271): a promise saved from a line also marks that line's own promise as a payment by the
+ * day (`write_down_payment` on `message_promises`), which the job's thread summary and the thread's move chip read.
+ * *Never said that* takes the mark off every line of the thread that carries the day (`linesMarkedFor`), unless
+ * another promise of the customer's still names that day (`dayStillPromised`, v2.8307).
  */
 import type { PromiseChannel } from '../jobs/paymentPromises'
 import type { BidMoneyLine } from '../bids/bidMoneyLine'
 import { val } from '../valuesInPlace'
+import { dayLabel } from './owed'
 import { daySaidIn } from './voicemailRead'
 
 /** The channels a customer's own word comes on. A note or an event is ours. */
@@ -104,4 +110,55 @@ export function heardDayTip(offer: Pick<HeardDayOffer, 'label'>): string {
 /** The sheet's line under the job, saying where its date came from. */
 export function heardDaySheetLine(offer: Pick<HeardDayOffer, 'label' | 'from'>): string {
   return `${offer.label} is read from their ${offer.from}. Change it if they meant another day.`
+}
+
+// ---------- the mark a word leaves on its line ----------
+
+/** A written promise on a line of the thread, in the fields the mark reads (`message_promises`). */
+export interface LinePromiseMark {
+  message_id: string
+  kind: string | null
+  state: string
+  day: string | null
+}
+
+/**
+ * The lines to take a payment mark off when a promise of `ymd` is voided (*Never said that*): every line of the
+ * thread whose written promise is a payment by that day. The sheet may be open under another line than the one the
+ * word was written from, so the day is the tie, not the line.
+ */
+export function linesMarkedFor(promises: readonly LinePromiseMark[], ymd: string): string[] {
+  return promises.filter((p) => p.state === 'written' && p.kind === 'payment' && p.day === ymd).map((p) => p.message_id)
+}
+
+/**
+ * A promise to pay by `ymd` still stands on one of the customer's jobs (v2.8307). A customer has one thread, so a
+ * line's mark speaks for every job of theirs: *Never said that* on one job leaves the day on the thread while another
+ * promise names it. `lines` is read after the void, so the word taken off is not among them. A paid claim names the day
+ * they say they paid, never a day to wait for.
+ */
+export function dayStillPromised(lines: readonly Pick<BidMoneyLine, 'words'>[], ymd: string): boolean {
+  return lines.some((l) => l.words.some((w) => w.kind !== 'paid_claim' && w.promisedYmd === ymd))
+}
+
+/** Said when a word came off one job and the thread keeps its day for another promise. */
+export function dayKeptWords(ymd: string): string {
+  return `Their line still shows ${dayLabel(ymd)}. Another promise of theirs names that day.`
+}
+
+/** The database has no such function yet: the client is ahead of the push, and the mark is skipped without a word. */
+export function markNotThereYet(reason: string): boolean {
+  return /could not find the function|PGRST202/i.test(reason)
+}
+
+/** Said when the job took the word and the line refused its mark. The reason is the database's own sentence. */
+export function lineNotMarkedWords(reason: string): string {
+  const why = reason.trim()
+  return `The promise is saved on the job. Their line was not marked.${why ? ` ${why}` : ''}`
+}
+
+/** Said when the word came off the job and the line kept its mark. */
+export function lineStillMarkedWords(reason: string): string {
+  const why = reason.trim()
+  return `The word is off the job. Their line still shows the day.${why ? ` ${why}` : ''}`
 }

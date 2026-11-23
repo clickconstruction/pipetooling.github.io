@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { chartPanelFrame } from '../../lib/bridge/chartPanelFrame'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { BridgePanelSources } from './BridgePanelSources'
 import type { HoursPanel } from '../../lib/bridge/hoursPanel'
 
 /**
@@ -10,7 +12,6 @@ import type { HoursPanel } from '../../lib/bridge/hoursPanel'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-const cap: CSSProperties = { fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const hrs = (h: number): string => `${Math.round(h).toLocaleString('en-US')}h`
 
 function Stack({ weeks }: { weeks: HoursPanel['weeks'] }) {
@@ -112,8 +113,10 @@ function Waterfall({ bars }: { bars: HoursPanel['waterfall'] }) {
 }
 
 export function BridgeHoursPanel({ panel, onClose }: { panel: HoursPanel; onClose: () => void }) {
+  // On a phone every grid of the panel is one column (v2.8279): the desk frame is wider than a phone.
+  const frame = chartPanelFrame(useIsMobile())
   return (
-    <section style={{ background: 'var(--surface)', border: '2px solid #2563eb', borderRadius: 10, padding: '0.8rem 1rem', marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: '0.6rem 1.4rem', alignItems: 'start' }} data-testid="bridge-hours-panel">
+    <section style={{ background: 'var(--surface)', border: '2px solid #2563eb', borderRadius: 10, padding: '0.8rem 1rem', marginTop: '0.6rem', display: 'grid', gridTemplateColumns: frame.section, gap: '0.6rem 1.4rem', alignItems: 'start' }} data-testid="bridge-hours-panel">
       <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
         <span style={label}>Hours by week, by what the app has read</span>
         <span style={det}>approved field hours, hours waiting for approval, office and bids</span>
@@ -137,7 +140,7 @@ export function BridgeHoursPanel({ panel, onClose }: { panel: HoursPanel; onClos
         <div data-testid="bridge-hours-eight">{panel.eightWeeks}</div>
         <div style={{ padding: '0.45rem 0.6rem', borderRadius: 6, border: `1px solid ${panel.noteTone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)'}`, color: panel.noteTone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>{panel.note}</div>
       </div>
-      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)', gap: '0.6rem 1.4rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: frame.foot, gap: '0.6rem 1.4rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
         <div>
           <div style={label}>Where this week's hours went</div>
           <div style={{ ...det, marginBottom: 4 }}>every hour clocked this pay week, less what still waits for approval, is what the page can read</div>
@@ -145,22 +148,7 @@ export function BridgeHoursPanel({ panel, onClose }: { panel: HoursPanel; onClos
         </div>
         <div>
           <div style={label}>Where each number comes from, and what can make it wrong</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1.1fr) minmax(0, 1fr) auto', gap: '0.2rem 0.6rem', fontSize: '0.78rem', alignItems: 'baseline', marginTop: 4 }}>
-            <span style={cap}>input</span>
-            <span style={cap}>read from</span>
-            <span style={cap}>what can be wrong</span>
-            <span />
-            {panel.sources.map((r) => (
-              <span key={r.input} style={{ display: 'contents' }}>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, fontWeight: 700 }}>{r.input}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>{r.from}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: r.tone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>{r.risk}</span>
-                <Link to={r.door.to} style={{ borderTop: '1px solid var(--border)', paddingTop: 4, whiteSpace: 'nowrap' }}>
-                  {r.door.label}
-                </Link>
-              </span>
-            ))}
-          </div>
+          <BridgePanelSources rows={panel.sources} frame={frame} testId="bridge-hours-sources" />
         </div>
         <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)' }} data-testid="bridge-hours-rule">
           {panel.rule}

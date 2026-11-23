@@ -25,6 +25,7 @@ import { normalizeAddressForGeocodeKey } from '../map/normalizeAddressForGeocode
 import { effectiveInvoiceParty } from './billToParty'
 import { milesBetween } from '../bids/bidBoardMap'
 import { calendarDaysSinceDateUtc, formatCurrencyNoCents } from './jobFormatting'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 import { effectiveInvoiceEstBillDate } from './invoiceBilling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -84,6 +85,13 @@ export type JobsMapJob = {
   owedDollars: number
   /** Whole days since the oldest open bill went out (the board's own reference: the hand-set bill date, else `billed_at`); null on other jobs. */
   billedAgeDays: number | null
+  /**
+   * An in kind deal pays this job (punch list #301). Its open bills are scheduled, not money to collect: `owedDollars`
+   * is 0, `billedAgeDays` is null, the job is never on the ask list, and what is open sits in `inKindDollars`.
+   */
+  inKind?: boolean
+  /** What is still open on a job a deal pays; 0 or absent on every other job. */
+  inKindDollars?: number
   /** The board row this job came from; null for a rewound (As of) job, which the openers reach by id. */
   row: JobWithDetails | null
 }
@@ -134,6 +142,9 @@ export function jobsMapJobs(rows: readonly JobWithDetails[], now: Date = new Dat
     const bucket = sectionOf(row)
     if (!bucket) continue
     const uncollectible = bucket.inCollections && jobUncollectible(row)
+    // A job is on a deal or off it, whole: its open bills are scheduled, so the map has nothing to collect on it.
+    const inKind = !uncollectible && jobIsScheduledInKind(row)
+    const open = !uncollectible && (bucket.section === 'billed' || bucket.section === 'readyToBill') ? jobOpenBillingRemainderDollars(row) : 0
     const address = (row.job_address ?? '').trim()
     const addressKey = normalizeAddressForGeocodeKey(address)
     const numberLabel = effectiveJobLedgerNumber(row.hcp_number, row.click_number) || '—'
@@ -150,8 +161,10 @@ export function jobsMapJobs(rows: readonly JobWithDetails[], now: Date = new Dat
       inCollections: bucket.inCollections,
       uncollectible,
       pctComplete: row.pct_complete != null && Number.isFinite(Number(row.pct_complete)) ? Number(row.pct_complete) : null,
-      owedDollars: !uncollectible && (bucket.section === 'billed' || bucket.section === 'readyToBill') ? jobOpenBillingRemainderDollars(row) : 0,
-      billedAgeDays: bucket.section === 'billed' ? jobBilledAgeDays(row, now) : null,
+      owedDollars: inKind ? 0 : open,
+      billedAgeDays: bucket.section === 'billed' && !inKind ? jobBilledAgeDays(row, now) : null,
+      inKind,
+      inKindDollars: inKind ? open : 0,
       row,
     }
     if (addressKey.length < 3) noAddress.push(job)
@@ -187,11 +200,12 @@ export function jobsMapVisiblePins(pins: readonly JobsMapPin[], show: JobsMapSec
   return pins.filter((p) => show[p.section])
 }
 
-/** `Working · 60%` · `Billed · Collections` · `Billed · Collections · Uncollectible` · `Waiting`. */
-export function jobsMapStatusLine(job: Pick<JobsMapJob, 'section' | 'inCollections' | 'pctComplete'> & { uncollectible?: boolean }): string {
+/** `Working · 60%` · `Billed · Collections` · `Billed · Collections · Uncollectible` · `Billed · In kind` · `Waiting`. */
+export function jobsMapStatusLine(job: Pick<JobsMapJob, 'section' | 'inCollections' | 'pctComplete'> & { uncollectible?: boolean; inKind?: boolean }): string {
   const parts: string[] = [JOBS_MAP_SECTION_LABEL[job.section]]
   if (job.inCollections) parts.push('Collections')
   if (job.uncollectible) parts.push('Uncollectible')
+  if (job.inKind && (job.section === 'billed' || job.section === 'readyToBill')) parts.push('In kind')
   if (job.pctComplete != null && (job.section === 'working' || job.section === 'waiting')) parts.push(`${Math.round(job.pctComplete)}%`)
   return parts.join(' · ')
 }
@@ -204,8 +218,9 @@ export function jobsMapDistanceLine(pin: Pick<JobsMapPin, 'lat' | 'lng'>, anchor
   return `${mi} mi from the office`
 }
 
-/** `$18,400 owed` on a billed or ready-to-bill job with an open balance; null otherwise. */
-export function jobsMapOwedLine(job: Pick<JobsMapJob, 'owedDollars'>): string | null {
+/** `$18,400 owed` on a billed or ready-to-bill job with an open balance; `$1,700 scheduled in kind` on one a deal pays; null otherwise. */
+export function jobsMapOwedLine(job: Pick<JobsMapJob, 'owedDollars' | 'inKindDollars'>): string | null {
+  if ((job.inKindDollars ?? 0) > 0) return `$${formatCurrencyNoCents(job.inKindDollars ?? 0)} scheduled in kind`
   return job.owedDollars > 0 ? `$${formatCurrencyNoCents(job.owedDollars)} owed` : null
 }
 

@@ -12,7 +12,7 @@ import { loadEstimatesSent } from './loadEstimateWins'
  * ids the email handed them. The list, its jobs, the bids sent and the estimates sent are read for real, off one made-up
  * database, and held against the page's own calls.
  */
-const seen = vi.hoisted(() => ({ ids: {} as Record<string, unknown> }))
+const seen = vi.hoisted(() => ({ ids: {} as Record<string, unknown>, /** What the asks' read was told about the ZZ test estimates (v2.8280). */ hidesZzEstimates: undefined as unknown }))
 const takes = (name: string) => (opts: { zzTestJobIds: unknown }) => {
   seen.ids[name] = opts.zzTestJobIds
   return Promise.resolve(null)
@@ -30,7 +30,13 @@ vi.mock('./loadBridgeVectors', async (original) => ({ ...(await original<typeof 
 vi.mock('./loadVectorDays', async (original) => ({ ...(await original<typeof import('./loadVectorDays')>()), loadVectorDaysInputs: (_db: unknown, opts: { zzTestJobIds: unknown }) => takes('weeks')(opts) }))
 vi.mock('./loadBuildPace', async (original) => ({ ...(await original<typeof import('./loadBuildPace')>()), loadBuildPaceInputs: (_db: unknown, opts: { zzTestJobIds: unknown }) => takes('build')(opts) }))
 vi.mock('./loadBillPile', async (original) => ({ ...(await original<typeof import('./loadBillPile')>()), loadBillPileJobs: (_db: unknown, opts: { zzTestJobIds: unknown }) => takes('bill')(opts) }))
-vi.mock('./loadDemandPace', async (original) => ({ ...(await original<typeof import('./loadDemandPace')>()), loadDemandInputs: (_db: unknown, opts: { zzTestJobIds: unknown }) => takes('demand')(opts) }))
+vi.mock('./loadDemandPace', async (original) => ({
+  ...(await original<typeof import('./loadDemandPace')>()),
+  loadDemandInputs: (_db: unknown, opts: { zzTestJobIds: unknown; hideZzEstimates: unknown }) => {
+    seen.hidesZzEstimates = opts.hideZzEstimates
+    return takes('demand')(opts)
+  },
+}))
 
 import { LEFT_OUT_GAP, loadMondaySheetReads } from './sheetReads'
 
@@ -90,6 +96,7 @@ const sorted = (ids: unknown) => [...(ids as ReadonlySet<string>)].sort()
 
 beforeEach(() => {
   seen.ids = {}
+  seen.hidesZzEstimates = undefined
 })
 
 describe('the Monday email leaves out what the page leaves out', () => {
@@ -124,6 +131,18 @@ describe('the Monday email leaves out what the page leaves out', () => {
     const reads = await read(db, null)
     for (const name of JOB_KEYED) expect([name, sorted(seen.ids[name])]).toEqual([name, ['job-oak']])
     expect(reads.bidsSent).toEqual(await loadBidsSent(db, { zzTestJobIds: null, leftOut: [development] }))
+  })
+
+  it('tells the asks’ read to leave the ZZ test estimates out by the reader’s switch, not by the set of ids (v2.8280)', async () => {
+    // The mail hides ZZ tests: the estimates leave the asks, with a list or without one.
+    await read(fakeDb(leftOutText(RULES)))
+    expect(seen.hidesZzEstimates).toBe(true)
+    await read(fakeDb(null))
+    expect(seen.hidesZzEstimates).toBe(true)
+    // A reader who keeps ZZ tests keeps the estimates, though the list makes the ids a set.
+    await read(fakeDb(leftOutText([development])), null)
+    expect(sorted(seen.ids.demand)).toEqual(['job-oak'])
+    expect(seen.hidesZzEstimates).toBe(false)
   })
 })
 

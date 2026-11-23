@@ -30,7 +30,8 @@ describe('subPaperRegister: what the window reads back', () => {
       ],
       dayOf,
     )
-    expect(r.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10' })
+    // `madeAt` is when it was made: a line typed after it and dated inside it is carried to the next statement.
+    expect(r.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10', madeAt: '2026-11-10T15:00:00Z' })
     expect(subPaperRegister([], dayOf)).toEqual({ bySheet: new Map(), lastStatement: null, statementToday: null })
   })
 
@@ -43,11 +44,11 @@ describe('subPaperRegister: what the window reads back', () => {
     ]
     // On the day they were made, the two of today do not count: the period would start tomorrow, after its own end.
     const today = subPaperRegister(rows, dayOf, '2026-11-20')
-    expect(today.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10' })
+    expect(today.lastStatement).toEqual({ number: 'SA-0002', endedOn: '2026-11-10', madeAt: '2026-11-10T15:00:00Z' })
     expect(today.statementToday).toEqual({ number: 'SA-0005' })
     // The next day they are the last statement, as before.
     const tomorrow = subPaperRegister(rows, dayOf, '2026-11-21')
-    expect(tomorrow.lastStatement).toEqual({ number: 'SA-0005', endedOn: '2026-11-20' })
+    expect(tomorrow.lastStatement).toEqual({ number: 'SA-0005', endedOn: '2026-11-20', madeAt: '2026-11-20T19:00:00Z' })
     expect(tomorrow.statementToday).toBeNull()
     // A first statement made today leaves no last statement: the next one runs to date as well.
     const first = subPaperRegister(rows.slice(3), dayOf, '2026-11-20')

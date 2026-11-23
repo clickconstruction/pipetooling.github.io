@@ -3,7 +3,8 @@
  * files, what the press does and the press's own label with its count. One window sends all three papers.
  *
  * Email carries the PDFs. A text carries a link to the same papers on the sub's page, never a file. A sub with no
- * email on the roster gets a line that says so and a door to add one: the press is dead, never silent.
+ * email on the roster gets a line that says so and a door to add one: the press is dead, never silent. The door is
+ * the To line itself (`subPaperRosterEmail.ts`).
  *
  * Email is the one way built (`send-sub-paper-email`). The texted link and the copied link keep their words here
  * for the day they are, and a window offers only the ways it is handed.
@@ -172,10 +173,11 @@ export function subPaperSendPlan(i: { company: string; subName: string; lead: Su
 
 /**
  * The door for a sub with no email on the roster, in the window's words. The function sends to the roster's own
- * address and nowhere else, so the press waits on that row. The paper itself does not: Print and Download work.
+ * address and nowhere else, so the press waits on that row. `canAdd` is a viewer whose To line takes the address
+ * in place: the door is then that line. The paper itself never waits: Print and Download work.
  */
-export function subPaperEmailDoor(): { words: string } {
-  return { words: 'Print or download the paper for now. A dev can add an email to their roster row.' }
+export function subPaperEmailDoor(canAdd: boolean = false): { words: string } {
+  return { words: canAdd ? 'Press the To line above and type their email. You can also print or download the paper.' : 'Print or download the paper for now. A dev can add an email to their roster row.' }
 }
 
 /** What the window says once the email went: how many, to whom and where, and where the copies are. */

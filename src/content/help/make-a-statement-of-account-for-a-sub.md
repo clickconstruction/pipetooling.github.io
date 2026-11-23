@@ -19,8 +19,9 @@ The press sits where the sub's row already is.
 - On People → Subs, open a sheet in the block. Then press {{button:outline|Work statement…}} under it.
 - For one payment, open the sheet's row in the Pay view. Then press **Payment record…** beside the payment.
 - Right after you record a payment, press {{button:blue|Send the payment record…}} in the window that follows.
+- On a phone, press a sheet's row in the Pay view. Then press **Work statement…** or **Statement of account…**.
 
-The window opens on the paper you asked for. The chips at the top switch to another paper for the same person.
+The window opens on the paper you asked for. The chips at the top switch to another paper for the same person. On a phone, the chips are how you reach a payment record.
 
 **Work statement…** takes the place of **Print** on a sheet that is one person's. A sheet two people share keeps **Print**, and so does a crew sheet.
 
@@ -37,6 +38,16 @@ A statement of account covers a period. Five chips set it.
 - {{chip:gray|Pick dates}} shows two date boxes.
 
 **What it will show** counts the work statements, the payments and the back-charges in the period. The last figure is what is still open.
+
+### A payment typed late
+
+A period is cut by the date on the payment. Sometimes a payment is typed after a statement was made, with a date inside that statement.
+
+{{chip:gray|Since the last statement}} carries that payment into the new statement. The payment is listed under its own date, with the words **recorded after the last statement**. A line under **How it adds up** says so too.
+
+The new statement then opens on the figure the last one closed on. A back-charge or a sheet typed late is carried the same way.
+
+The other four chips do not carry. They list a payment only when its date is in the period.
 
 A work statement has no period. A work statement always shows the whole sheet.
 
@@ -120,7 +131,13 @@ The same press sits in the yellow line before you send. There it opens the next 
 
 A sub with no email on their roster row cannot be sent a paper. The press goes grey, and a yellow line says so.
 
-Press {{button:outline|Back to the paper}}, then print or download the paper for them. A dev can add an email to the sub's roster row.
+Add their email right there. On the **To** line, press the underlined words **no email on the roster**. Type their email, then press {{button:blue|Keep}}. The address is saved on their roster row, and the send press comes back.
+
+Some subs sign in with an email. A line under **To** then shows that address. The press beside it puts the address on their roster row.
+
+A wrong address is put right the same way. Press the address on the **To** line and type the right one.
+
+You can also press {{button:outline|Back to the paper}}, then print or download the paper for them.
 
 ### Who can send
 

@@ -6,7 +6,8 @@
  * `lienDesk`). `compact` tightens the padding for a list inside a window. `main` alone is for a
  * sub-list whose next step is the row above it. `orNext` is a second way out, drawn after *or*:
  * *No bids match ‘Ridgway’. Clear the search or Show every bid* (v2.5986). `check:empty-words`
- * fails a PR that writes a bare *No …* sentence outside this element.
+ * fails a PR that writes a bare *No …* sentence outside this element. `finger` is for a list whose
+ * only way in is this press: the press is then 44 px tall, where it is otherwise the height of its words.
  *
  * The sentence is two units (v2.6113): `main` is one, the press with its `tail` and the *or* press
  * the other, each an inline block. When the two fit on one line nothing shows; when they do not,
@@ -30,10 +31,13 @@ const PRESS: CSSProperties = {
   textDecoration: 'none',
 }
 
+/** A press that is the only way in takes a finger. Its words stay on the sentence's own line. */
+const FINGER: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 0.35rem' }
+
 /** One unit of the sentence: it moves to the next line whole, and wraps inside only when it is longer than the line. */
 const UNIT: CSSProperties = { display: 'inline-block' }
 
-export function EmptyState({ main, next, tail, orNext, compact = false }: EmptyStateWords & { compact?: boolean }) {
+export function EmptyState({ main, next, tail, orNext, compact = false, finger = false }: EmptyStateWords & { compact?: boolean; finger?: boolean }) {
   const hasRest = Boolean(next || tail || orNext)
   return (
     <p
@@ -53,12 +57,12 @@ export function EmptyState({ main, next, tail, orNext, compact = false }: EmptyS
         <>
           {' '}
           <span data-empty-unit="next" style={UNIT}>
-            {next ? <EmptyPress next={next} /> : null}
+            {next ? <EmptyPress next={next} finger={finger} /> : null}
             {tail ? (next ? ` ${tail}` : tail) : null}
             {orNext ? (
               <>
                 {next || tail ? ' or ' : 'or '}
-                <EmptyPress next={orNext} />
+                <EmptyPress next={orNext} finger={finger} />
               </>
             ) : null}
           </span>
@@ -68,13 +72,14 @@ export function EmptyState({ main, next, tail, orNext, compact = false }: EmptyS
   )
 }
 
-function EmptyPress({ next }: { next: EmptyNext }) {
+function EmptyPress({ next, finger }: { next: EmptyNext; finger: boolean }) {
+  const style = finger ? { ...PRESS, ...FINGER } : PRESS
   return 'to' in next ? (
-    <Link to={next.to} style={PRESS}>
+    <Link to={next.to} style={style}>
       {next.label}
     </Link>
   ) : (
-    <button type="button" onClick={next.onPress} style={PRESS}>
+    <button type="button" onClick={next.onPress} style={style}>
       {next.label}
     </button>
   )

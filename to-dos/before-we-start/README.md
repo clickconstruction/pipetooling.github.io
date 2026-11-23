@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · left: the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · left: a live walk on the ZZ job, the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,9 +11,9 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: The dev seat's verb, once the seat has room and the owner says what it reads. Every call stands on its default until the owner flips it.
+next: Walk Is it as told? on production as two people on the ZZ job, at phone width. The steps and what to see are under Left to do and to walk, in the Audited section.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
-blocker: none for the screens. The dev seat's verb waits for room under the seat's upload limit. The calls left each have a default.
+blocker: none for the walk. The dev seat's verb waits for room under the seat's upload limit and the owner's word on what it reads. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
 ---
 
@@ -398,7 +398,8 @@ all eleven PRs were on main by 2026-11-21.
     is on, so the database asks about the stage whose days of ours have come.
   - A stage with no days of ours is not asked about.
   - The bullet's press is the word **No**, as in the mock-up.
-  - A read that fails is silent and tries again by itself when the signal is back.
+  - A first read lost to the signal is silent and tries again by itself when the signal is back. Since v2.8245 a
+    first read the app refuses says so on the card, with its reason and no Retry.
 
   Three things it leaves: the trip's own record is not fed by a No (the arrival keeps its trip), the office's sentence
   does not name who told us (Dispatch's line does), and the superintendent's Go still has no screen.
@@ -420,14 +421,16 @@ all eleven PRs were on main by 2026-11-21.
   - Two jobs on one part of a site read alike on the Schedule look, since a card names the part and not the job.
   - The Needs you line takes its contact job by job. A site whose GC is named only on the development reads *The
     customer owes us…* there, while the Schedule look names the GC.
-- **Next:** the dev seat's verb, once the seat has room and the owner says what it reads.
+- **Next:** the live walk under *Left to do and to walk*, in the Audited section below. Then the dev seat's verb, once
+  the seat has room and the owner says what it reads.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
 
 ## Audited 2026-11-20
 
 Taunya asked for PR 10 (v2.8110) and PR 11 (v2.8111) to be audited by a session on Fable 5.2. The findings, the
 method and the screenshots are in the lead session's shared notes (`review-382-pr10-11.md` and the
-`review-382-pr10-11` folder), outside the repo. What the audit left open is there and not on this card.
+`review-382-pr10-11` folder), outside the repo. Since 2026-11-22, on Taunya's ask, what is left to do and to walk is
+also here, below.
 
 **Six fixes, all on main.**
 
@@ -441,3 +444,82 @@ method and the screenshots are in the lead session's shared notes (`review-382-p
 - **v2.8178 (#9167).** A stage is answered once by the door as well as by the read. A second answer is refused in
   words that name who answered first, so a later **Yes, all as told** cannot replace a No. Its migration,
   `20261121150500_start_check_arrive_once.sql`, was pushed on 2026-11-21.
+
+**Built after the audit, on Taunya's word of 2026-11-21.** She picked the audit's own answer to its calls A to E
+and its findings 6 and 8.
+
+- **v2.8237 (#9306).** A new Dispatch request on a ZZ test job or a ZZ bid rings no phone. Its line still shows in
+  the inbox. `notify-dispatch-request` was deployed on 2026-11-22.
+- **v2.8238 (#9310), calls A and B.** A bullet with a No is asked about again once the office or the customer gives
+  a new yes on it. A No sent after someone else's yes is kept as an arrival of its own. A second **Yes, all as
+  told** is still refused. Migration `20261122030000_start_check_arrive_again.sql`, pushed on 2026-11-22. Its types
+  are #9356.
+- **v2.8243 (#9313), call C.** A clock-in on a job makes its crew for 14 days, not for ever. It merged on
+  2026-11-22. Migration `20261122031000_crew_days_start_checks.sql`, pushed the same evening after a dry run that
+  listed it alone, and read back from production. It changes no types.
+- **v2.8245 (#9316), call D.** A first read the app refuses says so on the card. A lost signal still shows nothing.
+- **v2.8247 (#9319), call E.** The stage on the card, and who said No and the day on the office's line, are drawn
+  as worked-out values.
+- **v2.8248 (#9320), finding 8.** On a 320 or 360 px phone the two word presses over the Schedule look's cards no
+  longer share a tap. The line of time's rows have air between them at desk width.
+
+### Left to do and to walk (2026-11-22)
+
+**Walks owed.** None of these has been done on the live site.
+
+1. **Two people on arrival.**
+   - Where: `/dashboard` with Job Mode on, on the job *ZZ Test Stages Walk 2026-11-18*. It is the only job on
+     production with a list.
+   - As whom: two accounts on that job's team, at once. One can be a dev. The other can be View as a helper, on a
+     second origin of the dev server, since View as saves as the person it shows.
+   - Rows: that ZZ job alone. Give one of its stage lines days that hold today and two bullets on them. Its first
+     stage already has an arrival (below), so use another stage, or have a dev delete that arrival first.
+   - Widths: 390 px, light and dark.
+   - What to see, in order:
+     - The first person says **No** on one bullet and sends. On the job window's Documents tab, **Before we
+       start** turns the stage red. The line under the bullet names who and the day in red bold.
+     - Dispatch's inbox has one line. Its window reads *sent on arrival*. No dispatcher's phone rings.
+     - The second person, whose card was already open, presses **Yes, all as told**. It is refused, and the words
+       name the first person.
+     - The second person says **No** on a bullet the first one saw as a yes. It is kept, with a second line to
+       Dispatch.
+     - The office gives a new yes on the first No's bullet. The card comes back and asks about that bullet alone.
+       **Yes, all as told** there is kept.
+   - Why not yet: it needs two sign-ins at once on production. Until 06:14 UTC on 2026-11-22 a No on a ZZ job also
+     rang every dispatcher's phone.
+   - After: delete every row the walk made, the arrivals, their marks and the Dispatch lines, and name them here.
+2. **The short Job Mode page as a real superintendent.**
+   - Where: `/dashboard` on the Short view with Job Mode on, View as a superintendent on the ZZ job's team.
+   - Widths: 390 px, light and dark.
+   - What to see: **Is it as told?** above **Open this job**, and one card, not two, with the row open.
+   - Why not yet: the dev login never gets the Short page. It was seen on the dev server with the role answered in
+     the browser alone.
+3. **The Schedule look on a narrow phone.**
+   - Where: the Development page of the ZZ job's site, the Schedule look, as a dev.
+   - Widths: 320 and 360 px, then 1280 px, light and dark.
+   - What to see: **Show it on a line of time** and **Print the days they gave** on two lines, each tap opening its
+     own. At 1280 px the line of time's rows have air between them.
+   - Why not yet: it was measured on a page that loads the app's stylesheet, not in the app.
+
+Not walkable on purpose: a first read the app refuses, and call C's 14 days. Their render tests and the SQL bed are
+the proof.
+
+**Loose ends.**
+
+- **One test row on production.** Arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on the ZZ job, from the build's walk
+  on 2026-11-20. It has no Dispatch line. A dev deletes it when the ZZ job is done with.
+- **Faults seen and not fixed.**
+  - The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
+    card left open while the office adds a bullet, or a new yes, can mark one it never showed. The pick: a third
+    argument on `start_check_arrive` and a change to the card. Not built.
+  - The office reads a stage's newest arrival. With two arrivals the earlier one's *said No on site* line is not
+    drawn, though its bullet stays open.
+  - A stage with a No reads *Not as told* until one of ours answers again, also after the office has a new yes.
+  - The Schedule look draws nothing while its reads are out. A push that fails after a No is dropped without a
+    word. Both were left as they are on the audit's pick.
+- **Call F is not built.** An arrival keeps a trip only when it is on the job's site, not a trip made on the job
+  itself. The pick waits on #379's tie from a No to a wasted trip, which is not built.
+- **The four app-wide things the audit met** (a pale green, a toast over a heading, two small presses) are card
+  #414.
+- **Calls.** The nine calls above, and PR 10's defaults, stand on their defaults until the owner flips them. The
+  four notes for Grace under *Where it stands* are not built. The dev seat's verb waits as *Next* says.

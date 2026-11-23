@@ -60,6 +60,18 @@ describe('BoxPhotoRefileStrip', () => {
     await waitFor(() => expect(io.runBoxPhotoRefile).toHaveBeenCalledWith('job-1'))
   })
 
+  it('on a phone the held notice is one line that opens it (v2.8284)', () => {
+    io.state = { marks: [mark(4, 'That file is in Drive’s trash. Restore it there, then ask again.')], seenMost: 12, asking: false }
+    render(<BoxPhotoRefileStrip jobId="job-1" onToast={vi.fn()} fold />)
+    const line = screen.getByTestId('box-photo-refile-fold')
+    expect(line.textContent).toContain('11 of 12 box photos are in this job’s Drive folder')
+    expect(line.textContent).not.toContain('A4 after Count.jpg')
+    expect(screen.queryByRole('button', { name: 'Try 1 held file again' })).toBeNull()
+    fireEvent.click(line)
+    expect(screen.getByRole('status').textContent).toContain('A4 after Count.jpg: That file is in Drive’s trash.')
+    expect(screen.getByRole('button', { name: 'Try 1 held file again' })).toBeTruthy()
+  })
+
   it('a refusal is said in its own words', async () => {
     io.state = { marks: [mark(4, 'held')], seenMost: 1, asking: false }
     io.runBoxPhotoRefile.mockRejectedValueOnce(new Error('Drive did not let the app in: timeout'))

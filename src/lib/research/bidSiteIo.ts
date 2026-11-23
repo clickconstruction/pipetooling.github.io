@@ -8,7 +8,8 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
 import { fetchAllRows, warnIfRowCapHit } from '../supabasePaging'
 import { sitePermitOrder, type GcBid, type SitePermitRow } from './bidSitePanel'
-import type { AnswerScope, NameAnswer, NameAnswerRow } from './nameAnswers'
+import { listedName, type AnswerScope, type NameAnswer, type NameAnswerRow } from './nameAnswers'
+import type { ContactMatchRow, OurContactRows, PermitName, TheirContactRows } from './nameLikeness'
 import { forgetLookAlikeCounts } from './lookAlikeCountMemory'
 
 /** PostgREST's "function not found": the window after the client deploys and before the migration is pushed. */
@@ -172,25 +173,119 @@ export function onNameAnswered(fn: () => void): () => void {
 
 // --- Linking a customer to its names on permits (punch list #307, PR 9 and 10) ---------------
 
-/** A permit as the name's own list and Compare read it. */
-export type NamePermit = { id: string; city: string; address: string | null; zip: string | null; contact: string | null; work_type: string | null; permit_type: string; kind: string; stage: string; issued_on: string | null; submitted_on: string | null }
+/** A permit as the name's own list and Compare read it. `contact_phone` is the feed's phone for the contact, where it gives one. */
+export type NamePermit = { id: string; city: string; address: string | null; zip: string | null; contact: string | null; contact_phone?: string | null; work_type: string | null; permit_type: string; kind: string; stage: string; issued_on: string | null; submitted_on: string | null }
+
+const NAME_PERMIT_COLUMNS = 'id, city, address, zip, contact, work_type, permit_type, kind, stage, issued_on, submitted_on'
+
+/** PostgREST's "column not found": the window before migration *_permit_contact_phone is pushed. */
+function missingColumn(error: unknown): boolean {
+  const e = error as { message?: string; code?: string } | null
+  return e != null && (e.code === '42703' || e.code === 'PGRST204' || /column .* does not exist|could not find the .* column/i.test(e.message ?? ''))
+}
+
+/** Whether `permits.contact_phone` answered the last time it was asked. False after one refusal, so it is asked once. */
+let phoneColumnThere = true
 
 /**
  * Every permit on hand under one name key, in every city, newest first. Paged: a busy name is on
- * thousands once the records reach back a year, and Compare counts where all of them are.
+ * thousands once the records reach back a year, and Compare counts where all of them are. The
+ * phone is asked with them, and left out when the column is not on the database yet.
  */
 export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[]> {
-  return await fetchAllRows<NamePermit>(
-    (from, to) =>
-      supabase
-        .from('permits' as never)
-        .select('id, city, address, zip, contact, work_type, permit_type, kind, stage, issued_on, submitted_on')
-        .eq('builder_key', builderKey)
-        .order('issued_on', { ascending: false, nullsFirst: false })
-        .order('id')
-        .range(from, to) as unknown as PromiseLike<SupabaseClientResult<NamePermit[]>>,
-    'read the permits under this name',
-  )
+  const read = (columns: string) =>
+    fetchAllRows<NamePermit>(
+      (from, to) =>
+        supabase
+          .from('permits' as never)
+          .select(columns)
+          .eq('builder_key', builderKey)
+          .order('issued_on', { ascending: false, nullsFirst: false })
+          .order('id')
+          .range(from, to) as unknown as PromiseLike<SupabaseClientResult<NamePermit[]>>,
+      'read the permits under this name',
+    )
+  if (!phoneColumnThere) return await read(NAME_PERMIT_COLUMNS)
+  try {
+    return await read(`${NAME_PERMIT_COLUMNS}, contact_phone`)
+  } catch (e) {
+    if (!missingColumn(e)) throw e
+    phoneColumnThere = false
+    return await read(NAME_PERMIT_COLUMNS)
+  }
+}
+
+// --- A phone or a web domain the two share (v2.8308) ------------------------------------------
+
+const CONTACT_MATCHES_DOING = 'read the phones and web domains shared with names on permits'
+
+/**
+ * `permit_name_contact_matches` (migration 20261122233000) for these customer rows, or for all of
+ * them (`null`), a page at a time in the function's own order. Null before the function is on
+ * the database: no phone or web domain is then offered as a reason, and nothing else changes.
+ */
+async function readContactMatches(customerIds: readonly string[] | null): Promise<ContactMatchRow[] | null> {
+  const ask = (from: number, to: number) =>
+    supabase
+      .rpc('permit_name_contact_matches' as never, { p_customer_ids: customerIds ? [...customerIds] : null } as never)
+      .order('customer_id')
+      .order('builder_key')
+      .order('reason')
+      .order('value')
+      .range(from, to) as unknown as Page<ContactMatchRow>
+  try {
+    return await fetchAllRows<ContactMatchRow>(async (from, to) => {
+      // Asked bare first: a missing function is the push not made yet, and retrying it only waits.
+      const first = await ask(from, to)
+      if (!first.error || missingFunction(first.error)) return first
+      return { data: await withSupabaseRetry(() => ask(from, to), CONTACT_MATCHES_DOING), error: null }
+    }, CONTACT_MATCHES_DOING)
+  } catch (e) {
+    if (missingFunction(e)) return null
+    throw e
+  }
+}
+
+/** The names on permits that share a phone or a web domain with one GC's customer rows. Null before the function is on the database. */
+export async function loadNameContactMatches(customerIds: readonly string[]): Promise<ContactMatchRow[] | null> {
+  if (customerIds.length === 0) return []
+  return await readContactMatches(customerIds)
+}
+
+/**
+ * A name by its key alone, for one a shared phone or web domain brought in and Builders does not
+ * carry: the name as its newest permit lists it, and how many permits it is on. Null when no
+ * permit on hand is under the key, as for a lookup kept after its permits were dropped.
+ */
+export async function loadNameByKey(builderKey: string): Promise<PermitName | null> {
+  const res = await supabase
+    .from('permits' as never)
+    .select('contact, issued_on, submitted_on', { count: 'exact' })
+    .eq('builder_key', builderKey)
+    .order('issued_on', { ascending: false, nullsFirst: false })
+    .order('id')
+    .limit(1)
+  if (res.error) throw res.error
+  const row = (((res.data ?? []) as unknown) as Array<{ contact: string | null; issued_on: string | null; submitted_on: string | null }>)[0]
+  const name = row ? listedName(row.contact) : null
+  if (!row || !name) return null
+  return { key: builderKey, name, permits: 0, lastOn: row.issued_on ?? row.submitted_on, kind: null, allPermits: res.count ?? 1 }
+}
+
+/** What we hold to reach these customer rows by: each row's own phone and emails, and its people's. */
+export async function loadOurContactRows(customerIds: readonly string[]): Promise<OurContactRows> {
+  if (customerIds.length === 0) return { customers: [], persons: [] }
+  const [customers, persons] = await Promise.all([
+    withSupabaseRetry(async () => await supabase.from('customers').select('contact_info, billing_email').in('id', [...customerIds]), 'read what we hold for the customer'),
+    withSupabaseRetry(async () => await supabase.from('customer_contact_persons').select('phone, email').in('customer_id', [...customerIds]).limit(500), 'read what we hold for the customer'),
+  ])
+  return { customers: (customers ?? []) as OurContactRows['customers'], persons: (persons ?? []) as OurContactRows['persons'] }
+}
+
+/** What a company lookup found for a name: its facts, which hold a phone and a website. Empty when none was made. */
+export async function loadCompanyLookupFacts(builderKey: string): Promise<TheirContactRows['lookups']> {
+  const rows = await withSupabaseRetry(async () => await supabase.from('permit_lookups').select('facts').eq('kind', 'company').eq('lookup_key', builderKey).eq('found', true).limit(20), 'read what was looked up about this name')
+  return ((rows ?? []) as Array<{ facts: unknown }>).map((r) => r.facts)
 }
 
 /**
@@ -210,6 +305,12 @@ function whileInFlight<T>(flight: Flight<T>, read: () => Promise<T>): Promise<T>
 
 const everyAnswerFlight: Flight<NameAnswerRow[] | null> = { flying: null }
 const customerNamesFlight: Flight<Array<{ id: string; name: string }>> = { flying: null }
+const everyContactMatchFlight: Flight<ContactMatchRow[] | null> = { flying: null }
+
+/** Every customer and name on permits that share a phone or a web domain, for the worklist. Null before the function is on the database. */
+export function loadAllNameContactMatches(): Promise<ContactMatchRow[] | null> {
+  return whileInFlight(everyContactMatchFlight, () => readContactMatches(null))
+}
 
 /** Every answer on a name, for the worklist over all customers. Null before the table is on the database. */
 export async function loadAllNameAnswers(): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {

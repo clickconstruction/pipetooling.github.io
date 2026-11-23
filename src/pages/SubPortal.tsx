@@ -217,6 +217,8 @@ export default function SubPortal() {
   const answerFromPage = async (a: SubPortalAnswer): Promise<SubPortalAnswerResult> => {
     if (demoMode || sample) {
       const day = paperDay(state.kind === 'ready' && state.payload.papers?.ok ? state.payload.papers.ctx.today : '')
+      // A sample page has no office copy to confirm, so a confirm answers as done and keeps nothing.
+      if (a.action === 'confirm') return { ok: true }
       return a.action === 'got_it' ? { ok: true, received: { [a.key]: day } } : { ok: true, wrong: { about: a.about, key: a.key, day, note: a.note } }
     }
     try {

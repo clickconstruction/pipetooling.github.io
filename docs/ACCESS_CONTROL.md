@@ -429,7 +429,8 @@ Each lane adds to its own line below, never to the paragraph above, so two lanes
   Building's door widens it to the schedule's team;
   the board's loader reads it since v2.5192, so an estimator's board has the papers too);
   since v2.7977 an estimator also reads a company's agreement row itself, and still only the states of its W-9 and its certificate (punch list #403, under *Agreements* below);
-  `gc_paper_sends`, `gc_send_paper`, `gc_company_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
+  `gc_paper_sends`, `gc_send_paper` and `gc_record_company_coi` are a dev's until award's door, and a company's signed agreement, W-9 or certificate keeps its promise through the `gc_company_paper_kept` trigger.
+  Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) `gc_company_paper` is the office's four roles' (`is_office_staff()`: a dev, a leader, an assistant, the controller), where it was a dev's, so each of them makes a company's copy of a Contract Book entry, and an estimator is still refused.
   The company window's **Documents** tab (B6-b-ii) lists the papers for anyone who opens the window, under those policies, and its **Send a paper** and **Record their insurance** are the Board's writes (`canUseGcBoardWrites`, a dev today), as the four functions are.
   Start (B6-c-i, `20261010061000_gc_start_project.sql`): `gc_start_project` refuses anyone but a dev in words before any write until award's door, though `gc_projects` is the office's table, and refuses a training account and a digital twin first.
   Its window, **Get started** on a won job's card (B6-c-ii), shows to a dev only (`role === 'dev'` in `GcProjects.tsx`, as the schedule it reads is), and so does Start's email to each company awarded on the job (`canSendGcTradeEmail`);
@@ -966,6 +967,10 @@ Every function that reads a paper as its caller and then acts with the service r
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
 Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 Since v2.7998 **Add to a list** says what such a contact is through `name_contact`, as the caller: a new customer is made in the app's own New customer form, a new supply house and a person kept with a company are written under their own tables' policies, and the paper follows through `contacts_fold_papers` when the contact folds.
+Since v2.8313 (punch list #403, step 5, the owner's calls 3 and 7, `20261123020000_sub_company_ground.sql`) `person_trade_companies` says which trade company a roster person works for, and it is the four roles' to read and to write under one policy (`is_office_staff()`).
+Nobody else reads a row of it, an estimator and the person themself among them, and a training account, a digital twin and an archived account write nothing.
+Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
+A person's paper takes `signing_for` from that link through definer triggers, so no read policy on a paper changes: an estimator reads no person's paper, whether or not it names a company.
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
 `remind-person-papers` runs as the service role behind the cron secret and has no caller.
@@ -1288,6 +1293,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The desk **reads and writes** a job's bullets, yeses, asks and days, and reads its decisions and arrivals.
   A primary reads no job's list beyond `is_job_people`.
   The crew is **`start_checks_crew(job)`**: on the job's team, clocked in on it, or a sub who reads it, and never a primary.
+  Since v2.8243 a clock-in counts for 14 days, today and the fourteen before it by the session's work day (`docs/migrations/20261122031000_crew_days_start_checks.md`).
   The crew **reads** the bullets on them that are still on the list and their live yeses, and writes through one door alone, `start_check_arrive`.
   A helper on no job, a superintendent on no job, and an estimator or a primary with no claim read nothing.
   A job shut by its papers is shut here too (`job_shut_to_me` in each gate).
@@ -1554,6 +1560,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A row is written only by `mint_sub_paper` and voided only by `void_sub_paper`, both definer functions that refuse a caller outside the office, a training account, a digital twin and an archived account.
   A sub reads their own papers through the portal's function, which holds the service key.
   Since v2.7569 (punch list #371) that function also writes what a sub answers into `sub_paper_acks`, each row naming its person and its sheet, sending or payment (`docs/migrations/20261117150000_sub_paper_ack_targets.md`).
+  Since v2.8273 it can also write a `confirmed` row, a sub's confirm of a work statement, and does not while `SUB_PAPER_CONFIRM_LIVE` is false: the answer is refused as an unknown action, and the office looking at a sub's page is refused as for the other two.
   It reads `sub_papers` and never writes it, so a number is given only by the office.
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
   Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.
@@ -1561,6 +1568,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.7983 the papers window sends a paper by email: its **Send to** press shows for the same office roles (`isOfficeRole`) and not for an account in training, so a superintendent gets none.
   Since v2.8025 the Pay view's and People → Subs' paper presses (*Statement of account…*, *Work statement…*, *Payment record…*) show for the same office roles only, so a superintendent who reaches the Pay view keeps **Print**.
   `send-sub-paper-email` holds the gate itself (the office roles, no training account, no archived account) and sends only to the roster's own address for the person, read under the caller's policies.
+  Since v2.8265 the same office roles add or change that address on the send step's To line, a write to `people.email` under the standing *Users can update own people* policy (`is_office_staff()`), so no policy changed.
+  A sub's sign-in address stays a dev's on the desk: the To line offers it and never changes it.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;
@@ -2655,7 +2664,8 @@ A training-mode account cannot sign, since starting a paper is a write.
   `permit_set_builder_keys` runs as the service role alone.
   Since v2.6866 (punch list #307) the same people see two blocks in a bid's Edit window, drawn only for `canResearchPermits` roles and read through `bid_site_permits` under the same row security: **This site** under the address and **What we can see about** the GC under its card.
   Since v2.6872 the same people may answer who a permit's name is, under a bid's site permit and since v2.6963 on a builder's sheet on Builders, where a take-back is one more insert: `builder_customer_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete.
-  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
+  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Permits** tab, with the **Names on permits** line on Profile that opens it (v2.8302, where the names were a card on Profile from v2.6886).
+  Any other role's strip has no such tab, and `?tab=permits` reads as Profile for it (`parseCustomerTab`).
   Since v2.7941 the same roles read the news on **Followup → Permit news** (`?tab=permit-news`), where the red count and the first list are the reader's own bids (`isMyBid`) and **Everyone's** lists the rest.
   A superintendent is turned away from that lens with the other office lenses, and a primary by its own allowlist.
   Since v2.7940 the same people may say whether a permit on a bid's address is that bid's job: `bid_permit_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and a take-back is one more insert.

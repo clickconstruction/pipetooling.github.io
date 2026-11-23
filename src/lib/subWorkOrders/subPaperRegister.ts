@@ -40,7 +40,7 @@ export type SubPaperRegister = {
    * `today` handed in it is the last one that ended before today: *Since the last statement* starts the day after
    * it, and a statement that ended today would start that period tomorrow, after its own end.
    */
-  lastStatement: { number: string; endedOn: string } | null
+  lastStatement: { number: string; endedOn: string; /** When it was made, an ISO instant: a line typed after it and dated inside it is carried to the next statement. */ madeAt: string } | null
   /** The newest statement that ended today, when `today` is handed in. It does not move the period. Null when none. */
   statementToday: { number: string } | null
 }
@@ -69,7 +69,7 @@ export function subPaperRegister(rows: readonly SubPaperRow[], dayOf: (iso: stri
       if (endedOn && (!last || endedOn > last.endedOn || (endedOn === last.endedOn && r.issued_at > last.at))) last = { number: r.number, endedOn, at: r.issued_at }
     }
   }
-  return { bySheet, lastStatement: last ? { number: last.number, endedOn: last.endedOn } : null, statementToday: madeToday ? { number: madeToday.number } : null }
+  return { bySheet, lastStatement: last ? { number: last.number, endedOn: last.endedOn, madeAt: last.at } : null, statementToday: madeToday ? { number: madeToday.number } : null }
 }
 
 /** The arguments `mint_sub_paper` takes for one paper. The snapshot is the paper as drawn, before its number. */

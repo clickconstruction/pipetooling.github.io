@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: close
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · the Monday email shows the page's two balances since v2.7214, on the owner's word, and `bridge-weekly-sheet` is redeployed with it · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · the Monday email shows the page's two balances since v2.7214, on the owner's word, and `bridge-weekly-sheet` is redeployed with it · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too · the five faults found while building are fixed, v2.8278 to v2.8281, all merged 2026-11-22, and `bridge-weekly-sheet` and `team-scores` are redeployed with them · four of the five are walked on clicktooling.com that day, read only, and the fifth is looked at that evening on `localhost` on live data, read only, by a dev who shows ZZ tests
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -254,7 +254,8 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
 
 Two faults turned up while PRs 2 and 3 were built, two more on the final walk of the live site, and two
 more on the walk of PRs 9 to 12 and the email's dry runs. Each is bigger than a fix on the way or belongs to another part of the
-app, so each waits here.
+app, so each waited here. They are being built from 2026-11-21, one small PR at a time, and each line says
+where its fault stands.
 
 - **A dev who shows ZZ test jobs loses some of them once the left-out list names anything.** Every read on
   the page takes one set of job ids. With no list, this dev's reads get no set, and every ZZ job stays. With
@@ -262,20 +263,57 @@ app, so each waits here.
   ZZ jobs and bids leave the pipe, the step windows and the people tables. The won rates are already right.
   The fix gives each read two things in place of one: the ZZ switch, and the ids to leave out. It touches
   every loader the page has. A dev who hides ZZ jobs, the default, sees none of this. Nobody else does
-  either.
+  either. **Fixed in v2.8281**, another way: for this dev the list's jobs reach every read as ids alone, a
+  set that drops those jobs and reads no ZZ name. No loader changed, and a viewer who hides ZZ tests reads
+  through the same lines as before. A ZZ job on something the list names is still left out, by the list.
 - **ZZ test estimates still count in the asks and in the Market and Sales lists.** PR 3 took them out of the
   won rate alone, which was the ask. Market's count of asks and the two windows' own lists of estimates
   still count a test estimate for a viewer who hides tests. The bids follow the switch everywhere already.
-  The rule PR 3 added would bring the estimates in line.
+  The rule PR 3 added would bring the estimates in line. **Fixed in v2.8280**: every estimates read on the
+  page and the Monday email's count of asks drop a test estimate by that rule, for a viewer who hides tests.
+  A dev who shows tests keeps every estimate, with or without a left-out list. `bridge-weekly-sheet` is owed
+  a redeploy after the merge.
 - **On a phone the page scrolls sideways once Money owed is open.** At 375 px wide the page grows to 404 px
   once the accrual balance's press opens Money owed behind the Money door. It did the same before the train,
-  so it belongs to Money owed. A layout fix there would end it.
+  so it belongs to Money owed. A layout fix there would end it. **Fixed in v2.8279**: on a phone the panel
+  is one column and a source reads as three lines. Crew hours behind the People door had the same fault, to
+  395 px, and is fixed with it.
 - **The pay date window does not close with Escape.** *Write down their word* closes by its own *Cancel*
   alone. The other windows on the Bridge close with Escape. It is the app's own window and is used beyond
-  the Bridge, so the fix belongs to it.
+  the Bridge, so the fix belongs to it. **Fixed in v2.8278**: Escape closes it as *Cancel* does, wherever it
+  is opened, and a window under it stays open.
 - **New task did not close on one press of Escape when a grey check opened it.** Its own *Cancel* closed
   it. The *Done when…* box holds the focus when the window opens this way, which may be why. It is the
-  app's own window, from #331, so the fix belongs to it.
+  app's own window, from #331, so the fix belongs to it. **Fixed in v2.8278**: the window had no Escape at
+  all, from any door, and the focus was in the title box as always. Escape now closes it as its × does. A
+  list or a sheet open over it takes Escape first.
+
+All five were fixed by 2026-11-22, and four were walked on the live site that day, read only, at 375 px:
+
+- Money owed opens behind the Money door and the page stays 375 px wide. Crew hours opens behind the People
+  door and the page stays 375 px wide. Its week chart scrolls inside its own box.
+- Escape closes *Write down their word*, opened from a project's *Set a pay date*. Escape closes New task,
+  opened from a grey check. Nothing was saved in either.
+- No ZZ test estimate is drawn in Market's list of estimates or in Sales' pile, for a viewer who hides
+  tests. The one test estimate on file is a declined one, so this look shows none drawn. It does not prove
+  one was dropped.
+- The v2.8281 fix was not walked there. It needs a dev who shows ZZ tests, and the walk's account hides them.
+
+The fifth was looked at that evening on `localhost` against live data, on `main`, read only. The dev's switch
+is a line in the browser's own storage. It was set for the look and taken off after. The left-out list named
+two things. Each read was taken with the switch on and again with it off:
+
+- **The pipe.** Sales reads higher with the switch on, as v2.8281's own walk found. The other four steps and
+  both balances read the same.
+- **The step windows.** Sales has one more decided bid, a won one. Build has one more open job, a ZZ test job
+  by name. Bill has one more job marked ready to bill. Market has eight more sources. Collect reads the same.
+- **What to do now.** The cash move counts one more late invoice.
+- **The people tables.** They read the same with the switch on and off. So this look shows no ZZ job in them.
+  It does not prove one stayed, since a ZZ job needs hours in the window to be drawn there.
+  `zzTestsShownWithAList.test.ts` holds the rule for them.
+
+The same look read the other fixes again on `main`, at 375 px. The page stays 375 px wide with Money owed
+open. One Escape closes *Write down their word*, and one closes New task from a grey check. Nothing was saved.
 
 ## Where it stands
 

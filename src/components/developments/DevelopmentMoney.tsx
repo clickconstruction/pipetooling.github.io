@@ -8,7 +8,7 @@
  * sort. The words and sums come from `siteMoney.ts`; the device memory from `devicePrefs.ts`.
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { MONEY_SORT_COLUMN, MONEY_SORT_LABELS, MONEY_SORT_MODES, sortMoneyRows, type MoneyRow, type MoneySection, type MoneySortMode, type SiteMoneyModel } from '../../lib/developments/siteMoney'
+import { MONEY_SORT_COLUMN, MONEY_SORT_LABELS, MONEY_SORT_MODES, moneyInKindLine, sortMoneyRows, type MoneyRow, type MoneySection, type MoneySortMode, type SiteMoneyModel } from '../../lib/developments/siteMoney'
 import { capStyle, LinkButton, money, shortDay } from './developmentPageBits'
 import { JobChip } from './JobChip'
 
@@ -95,7 +95,13 @@ function Dates({ row, stacked }: { row: MoneyRow; stacked: boolean }) {
         </span>
         <strong style={{ color: 'var(--text-strong)', textAlign: stacked ? 'right' : undefined }}>{d.billedAgoDays != null ? `${d.billedAgoDays}d ago` : ''}</strong>
       </div>
-      {exp && d.due ? (
+      {d.inKind ? (
+        // A job an in kind deal pays (punch list #301): scheduled, with no day to be late against.
+        <div style={line} data-money-in-kind>
+          <span style={{ color: 'var(--text-muted)' }}>{dot('var(--text-faint)')} Scheduled in kind</span>
+          <span />
+        </div>
+      ) : exp && d.due ? (
         // A payer on a Pay calendar (punch list #323): the day the contract makes the bill due, in place of the guess.
         <div style={line} data-money-due={d.due.daysPast > 0 ? 'past' : 'ahead'}>
           <span style={{ color: d.due.daysPast > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }} title={exp.title}>
@@ -239,6 +245,11 @@ function Band({ model, folded, onToggle, onShowNoPct }: { model: SiteMoneyModel;
         <span>Left on the site</span>
         <span>{money(b.left)}</span>
       </div>
+      {moneyInKindLine(b) ? (
+        <p data-testid="money-band-in-kind" style={{ margin: '4px 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+          {moneyInKindLine(b)}
+        </p>
+      ) : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
         {b.stages.map((s) => (
           <span key={s.key} style={{ padding: '1px 8px', borderRadius: 9999, border: '1px solid var(--border)' }}>

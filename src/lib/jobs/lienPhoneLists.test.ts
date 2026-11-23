@@ -35,6 +35,8 @@ describe('the Notices list’s pile titles', () => {
 
 describe('a phone’s tab', () => {
   it('is a thumb tall, may shrink and wraps its words, so a row of tabs never slides', () => {
-    expect(LIEN_PHONE_TAB).toMatchObject({ flex: '1 1 auto', minWidth: 0, minHeight: 44, whiteSpace: 'normal' })
+    expect(LIEN_PHONE_TAB).toMatchObject({ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, minHeight: 44, whiteSpace: 'normal' })
+    // The three longhands and never the shorthand: a computer's tab sets the same three, and the two swap on one button when a window crosses the phone's width.
+    expect(LIEN_PHONE_TAB).not.toHaveProperty('flex')
   })
 })

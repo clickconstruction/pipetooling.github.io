@@ -18,7 +18,7 @@
 // The payload's shape and the payment rule live in `_shared/gcStatementPayload.ts` (v2.5022), where
 // send-gc-statement-email's gate reads them too; re-exported for this file's importers.
 export type { GcStatementPayload, GcStatementPayloadGroup, GcStatementPayloadRow } from '../_shared/gcStatementPayload.ts'
-export { applyPaymentRule, attachJobTotals, payloadJobIds } from '../_shared/gcStatementPayload.ts'
+export { applyPaymentRule, attachJobTotals, payloadJobIds, setInKindApart } from '../_shared/gcStatementPayload.ts'
 
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { billPaidByWords } from '../_shared/billPaidBy.ts'
@@ -33,6 +33,7 @@ import {
   gcStatementIntroHtml,
   renderStatementByPropertyHtml,
   renderStatementByPropertyText,
+  statementInKindLine,
   type StatementBillIn,
   type StatementReceivedIn,
 } from '../_shared/gcStatementByProperty.ts'
@@ -192,6 +193,7 @@ export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: s
     receivedSinceYmd: extras?.receivedSinceYmd,
     qrImgSrc: extras?.qrImgSrc,
     introText,
+    inKind: group.in_kind,
   })
 }
 
@@ -205,6 +207,7 @@ export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: s
     received: extras?.received,
     receivedSinceYmd: extras?.receivedSinceYmd,
     introText,
+    inKind: group.in_kind,
   })
 }
 
@@ -214,6 +217,8 @@ export type GcReportHeld = ReadonlyArray<{ name: string; why: GcStatementHeldWhy
 
 export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null, held?: GcReportHeld): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
+  // The bills a deal pays, left out of every section and the total (v2.8309) — mirror of the client's report.
+  const inKindLine = statementInKindLine(payload.in_kind)
   const sectionsHtml = payload.groups
     .map(
       (g) => `<p style="margin:16px 0 4px;font-size:14px;font-weight:bold;color:#111827">${escapeHtml(g.entity_name)} <span style="font-weight:normal;font-size:12px;color:#6b7280">· ${g.job_count} job${g.job_count === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}</span></p>
@@ -234,13 +239,15 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
         <td style="padding:9px 6px;border-top:2px solid #9ca3af;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(payload.grand_total)}</td>
       </tr>
     </tbody>
-  </table>
+  </table>${inKindLine ? `
+  <p style="margin:6px 6px 0;font-size:12px;color:#6b7280">${escapeHtml(inKindLine)}</p>` : ''}
   <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(officePhone)}</p>
 </div>`
 }
 
 export function renderGcShareAllText(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null, held?: GcReportHeld): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
+  const inKindLine = statementInKindLine(payload.in_kind)
   const sections = payload.groups.flatMap((g) => [
     `${g.entity_name} · ${g.job_count} job${g.job_count === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}`,
     ...g.rows.map(rowText),
@@ -254,6 +261,7 @@ export function renderGcShareAllText(payload: GcStatementPayload, dateStr: strin
     '',
     ...sections,
     `Total owed: $${formatCurrency(payload.grand_total)}`,
+    ...(inKindLine ? [inKindLine] : []),
     '',
     gcStatementFooterLine(officePhone),
   ].join('\n')

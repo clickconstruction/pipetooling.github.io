@@ -91,7 +91,8 @@ const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125
 const amberBox: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.55rem 0.7rem' }
 /** A place's other photo, small beside the first. */
 const moreThumb: CSSProperties = { width: 72, height: 54, objectFit: 'cover', borderRadius: 6, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-muted)', display: 'block' }
-const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32 }
+/** A press that reads as a link: Take another, Remove the photo, Remove, Remove this place. 44 px tall, a thumb's height (#413's walk). */
+const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 44 }
 
 export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, noFix = null, movedOffReading, finding, busy, canRemove, startShot = null, note = null, morePhotoUrls, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')

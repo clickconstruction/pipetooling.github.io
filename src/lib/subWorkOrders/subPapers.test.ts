@@ -5,6 +5,7 @@ import {
   buildWorkStatement,
   paperSendings,
   statementAddsWords,
+  statementLateWords,
   subPaperAddsUp,
   subPapersAddUp,
   SUB_PAPER_COUNSEL_SENTENCES,
@@ -19,6 +20,7 @@ import type { NeedsWorkOrderRosterPerson } from './rosterSub'
 import { buildSheetPartiesLookup, sheetParties } from './sheetParties'
 import { paperSheetFrom, paperSheetsFor } from './subPapersInputs'
 import { buildSubStatement, type LedgerSheet } from './subPaymentsLedger'
+import { statementOfAccountHtml } from './subPapersHtml'
 
 // Made-up people, jobs and money: the mock-up's own figures (to-dos/sub-papers-statement-of-account/mockup.html).
 const ROSTER: NeedsWorkOrderRosterPerson[] = [
@@ -237,5 +239,92 @@ describe('the names on the papers', () => {
     const a = buildWorkStatement(byId('cedar-1'), CTX)
     expect(a.sentences.every((s) => s.pending)).toBe(true)
     expect(a.sentences[0]!.text).toBe('Your Company Name prepared this statement from its own records. It is not an invoice from Harlan Mechanical.')
+  })
+})
+
+describe('a period is cut by the date on a payment, and a late one is carried (the owner, 2026-11-21)', () => {
+  // The audit's own case, on made-up rows. A $1,000 sheet of Oct 20. The last statement, to Nov 15, was made on
+  // Nov 16 at 10:00 and closed on $750 after a $250 payment. A $200 check dated Nov 12 was typed on Nov 18.
+  const MADE = '2026-11-16T16:00:00Z'
+  const late = (over: Pay[] = [], sheets: LaborJob[] = []) => {
+    const jobs = [sheet('late-1', 'cedar', '2026-10-20', [['Rough-in', 1000]], [{ id: 'p1', amount: 250, payment_date: '2026-11-05' }, { id: 'p2', amount: 200, payment_date: '2026-11-12', created_at: '2026-11-18T15:00:00Z' }, ...over]), ...sheets]
+    return paperSheetsFor('id:harlan', jobs, new Map(jobs.map((j) => [j.id, [{ personId: 'harlan', personName: 'Harlan Mechanical' }]])), NAMES, ROSTER)
+  }
+  const ctx: PaperContext = { ...CTX, today: '2026-11-20' }
+  const since = { from: '2026-11-16', to: '2026-11-20', lateAfter: MADE }
+
+  it('the last statement, as it was made, closed on $750 without the late payment', () => {
+    const then = paperSheetsFor('id:harlan', [sheet('late-1', 'cedar', '2026-10-20', [['Rough-in', 1000]], [{ id: 'p1', amount: 250, payment_date: '2026-11-05' }])], new Map([['late-1', [{ personId: 'harlan', personName: 'Harlan Mechanical' }]]]), NAMES, ROSTER)
+    expect(buildStatementOfAccount(then, { from: null, to: '2026-11-15' }, { ...CTX, today: '2026-11-16' }).adds.closing).toBe(750)
+  })
+
+  it('cut by the date alone, the next statement opened on $550 and listed no payment: the fault', () => {
+    const c = buildStatementOfAccount(late(), { from: '2026-11-16', to: '2026-11-20' }, ctx)
+    expect(c.adds.opening).toBe(550)
+    expect(c.lastPayments).toEqual([])
+    expect(c.late).toBeUndefined()
+  })
+
+  it('carried, it opens on the $750 the last one closed on, lists the payment under its own date and closes on $550', () => {
+    const c = buildStatementOfAccount(late(), since, ctx)
+    expect(c.adds).toEqual({ opening: 750, newWork: 0, backcharges: 0, payments: 200, closing: 550 })
+    expect(c.lastPayments.map((p) => [p.day, p.amount, p.late])).toEqual([['Nov 12, 2026', 200, true]])
+    expect(c.paidInPeriod).toBe(200)
+    expect(c.stillOpen).toBe(550)
+    expect(c.late).toEqual({ payments: 1, backcharges: 0, sheets: 0 })
+    expect(statementLateWords(c)).toBe('1 payment dated before this period was recorded after the last statement was made, so it is counted in this one.')
+    expect(subPaperAddsUp(c).ok).toBe(true)
+    // The period's own words do not move: it is still cut by the date.
+    expect(c.period).toBe('Nov 16, 2026 to Nov 20, 2026')
+  })
+
+  it('a payment the last statement already had is not listed twice, and one dated in the period is not called late', () => {
+    const c = buildStatementOfAccount(late([{ id: 'p3', amount: 100, payment_date: '2026-11-19' }]), since, ctx)
+    expect(c.lastPayments.map((p) => [p.day, p.amount, p.late ?? false])).toEqual([['Nov 19, 2026', 100, false], ['Nov 12, 2026', 200, true]])
+    expect(c.adds).toEqual({ opening: 750, newWork: 0, backcharges: 0, payments: 300, closing: 450 })
+    expect(c.late).toEqual({ payments: 1, backcharges: 0, sheets: 0 })
+  })
+
+  it('a back-charge typed late and dated inside the last statement is carried the same way', () => {
+    const c = buildStatementOfAccount(late([{ id: 'b1', amount: -50, payment_date: '2026-11-10', created_at: '2026-11-19T15:00:00Z', memo: 'Patch at unit 4' }]), since, ctx)
+    expect(c.adds).toEqual({ opening: 750, newWork: 0, backcharges: 50, payments: 200, closing: 500 })
+    expect(c.late).toEqual({ payments: 1, backcharges: 1, sheets: 0 })
+    expect(statementLateWords(c)).toBe('1 payment and 1 back-charge dated before this period were recorded after the last statement was made, so they are counted in this one.')
+    expect(subPaperAddsUp(c).ok).toBe(true)
+  })
+
+  it('a sheet typed after the last statement and dated inside it is new work on this one, not brought forward', () => {
+    const typedLate = { ...sheet('late-2', 'ridge', '2026-11-08', [['Trim', 400]]), created_at: '2026-11-17T15:00:00Z' }
+    const c = buildStatementOfAccount(late([], [typedLate]), since, ctx)
+    expect(c.adds).toEqual({ opening: 750, newWork: 400, backcharges: 0, payments: 200, closing: 950 })
+    expect(c.rows.map((r) => [r.sheetId, r.section])).toEqual([['late-1', 'forward'], ['late-2', 'period']])
+    expect(c.late).toEqual({ payments: 1, backcharges: 0, sheets: 1 })
+    expect(statementLateWords(c)).toBe('1 payment and 1 work statement dated before this period were recorded after the last statement was made, so they are counted in this one.')
+    expect(subPaperAddsUp(c).ok).toBe(true)
+    // Without the carry the same sheet is brought forward, and the opening is not what the last one closed on.
+    expect(buildStatementOfAccount(late([], [typedLate]), { from: '2026-11-16', to: '2026-11-20' }, ctx).adds.opening).toBe(950)
+  })
+
+  it('only a statement since the last one carries: a month, a year, picked dates and to date are cut by the date alone', () => {
+    expect(buildStatementOfAccount(late(), { from: '2026-11-16', to: '2026-11-20', lateAfter: null }, ctx).late).toBeUndefined()
+    // A statement of every date has no start to carry over.
+    const all = buildStatementOfAccount(late(), { from: null, to: null, lateAfter: MADE }, ctx)
+    expect(all.late).toBeUndefined()
+    expect(all.lastPayments.every((p) => !p.late)).toBe(true)
+    expect(statementLateWords(all)).toBe('')
+  })
+
+  it('a line with no time typed, or a time that cannot be read, is never carried', () => {
+    const sheets = late().map((s) => ({ ...s, money: s.money.map((m) => (m.id === 'p2' ? { ...m, at: '' } : m)) }))
+    expect(buildStatementOfAccount(sheets, since, ctx).adds.opening).toBe(550)
+    expect(buildStatementOfAccount(late(), { ...since, lateAfter: 'not a time' }, ctx).adds.opening).toBe(550)
+  })
+
+  it('the paper says so beside the payment and under How it adds up', () => {
+    const html = statementOfAccountHtml(buildStatementOfAccount(late(), since, ctx), since)
+    expect(html).toContain('Nov 12, 2026<br><span class="mut">recorded after the last statement</span>')
+    expect(html).toContain('1 payment dated before this period was recorded after the last statement was made, so it is counted in this one.')
+    const plain = statementOfAccountHtml(buildStatementOfAccount(late(), { from: '2026-11-16', to: '2026-11-20' }, ctx), { from: '2026-11-16', to: '2026-11-20' })
+    expect(plain).not.toContain('recorded after the last statement')
   })
 })

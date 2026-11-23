@@ -2,7 +2,24 @@ import { describe, expect, it } from 'vitest'
 import type { BidMoneyLine } from '../bids/bidMoneyLine'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { heardDayOnLine, heardDaySheetLine, heardDayTip, heardDayWords, jobLabelOf, lineTakesWord, NO_JOB_WORDS, NO_STANDING_WORDS, wordChannel, wordLanding } from './wordFromLine'
+import {
+  dayKeptWords,
+  dayStillPromised,
+  heardDayOnLine,
+  heardDaySheetLine,
+  heardDayTip,
+  heardDayWords,
+  jobLabelOf,
+  lineNotMarkedWords,
+  linesMarkedFor,
+  lineStillMarkedWords,
+  lineTakesWord,
+  markNotThereYet,
+  NO_JOB_WORDS,
+  NO_STANDING_WORDS,
+  wordChannel,
+  wordLanding,
+} from './wordFromLine'
 
 const line = (id: string, open: number | null, number = '1032', name = 'Whitfield repipe'): BidMoneyLine => ({
   bidId: null,
@@ -102,5 +119,47 @@ describe('heardDayOnLine', () => {
     expect(heardDaySheetLine(offer)).toBe('Fri Oct 9 is read from their text. Change it if they meant another day.')
     expect(heardDaySheetLine({ ...offer, from: 'voicemail' })).toBe('Fri Oct 9 is read from their voicemail. Change it if they meant another day.')
     expect([plainSentence(heardDayWords(offer)), heardDayTip(offer), heardDaySheetLine(offer)].flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+/** The mark a word leaves on its line (`write_down_payment`). */
+describe('the mark on the line', () => {
+  const mark = (message_id: string, kind: string | null, state: string, day: string | null) => ({ message_id, kind, state, day })
+  it('Never said that takes the day off every line that carries it as a payment, and no other', () => {
+    const promises = [
+      mark('m1', 'payment', 'written', '2026-10-09'),
+      mark('m2', 'payment', 'written', '2026-10-09'),
+      mark('m3', 'payment', 'written', '2026-10-16'),
+      mark('m4', 'decision', 'written', '2026-10-09'),
+      mark('m5', null, 'offered', '2026-10-09'),
+      mark('m6', null, 'no', '2026-10-09'),
+      mark('m7', 'said', 'written', '2026-10-09'),
+    ]
+    expect(linesMarkedFor(promises, '2026-10-09')).toEqual(['m1', 'm2'])
+    expect(linesMarkedFor(promises, '2026-10-10')).toEqual([])
+    expect(linesMarkedFor([], '2026-10-09')).toEqual([])
+  })
+  it('the day stays on the thread while another promise of theirs still names it (v2.8307)', () => {
+    const word = (kind: 'promise' | 'paid_claim', promisedYmd: string) => ({ kind, promisedYmd }) as BidMoneyLine['words'][number]
+    const other = { ...line('j2', 900, '1040'), words: [word('promise', '2026-10-16'), word('promise', '2026-10-09')] }
+    expect(dayStillPromised([line('j1', 4200), other], '2026-10-09')).toBe(true)
+    expect(dayStillPromised([line('j1', 4200), other], '2026-10-10')).toBe(false)
+    // A paid claim names the day they say they paid: nothing to wait for.
+    expect(dayStillPromised([{ ...line('j2', 900), words: [word('paid_claim', '2026-10-09')] }], '2026-10-09')).toBe(false)
+    expect(dayStillPromised([line('j1', 4200)], '2026-10-09')).toBe(false)
+    expect(dayStillPromised([], '2026-10-09')).toBe(false)
+    expect(dayKeptWords('2026-10-09')).toBe('Their line still shows Fri Oct 9. Another promise of theirs names that day.')
+    expect(plainWordsFailures(dayKeptWords('2026-10-09'))).toEqual([])
+  })
+  it('a client ahead of the push skips the mark without a word', () => {
+    expect(markNotThereYet('Could not find the function public.write_down_payment(p_day, p_message_id) in the schema cache')).toBe(true)
+    expect(markNotThereYet('PGRST202')).toBe(true)
+    expect(markNotThereYet('Someone has said what that day is already.')).toBe(false)
+  })
+  it('a refusal says the job took the word, and gives the database’s own reason', () => {
+    expect(lineNotMarkedWords('Someone has said what that day is already.')).toBe('The promise is saved on the job. Their line was not marked. Someone has said what that day is already.')
+    expect(lineNotMarkedWords('  ')).toBe('The promise is saved on the job. Their line was not marked.')
+    expect(lineStillMarkedWords('Only the office team can write down a promise.')).toBe('The word is off the job. Their line still shows the day. Only the office team can write down a promise.')
+    expect([lineNotMarkedWords(''), lineStillMarkedWords('')].flatMap(plainWordsFailures)).toEqual([])
   })
 })

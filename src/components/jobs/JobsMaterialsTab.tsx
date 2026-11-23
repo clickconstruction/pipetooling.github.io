@@ -8,6 +8,7 @@
  * Drive-folder backfill to Jobs.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -38,7 +39,12 @@ import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHea
 import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
-import { onSiteJobHead, onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { onSiteJobHead, onSiteJobNumber, onSiteJobWords, type OnSiteJobNamed } from '../../lib/materials/onSiteJobWords'
+import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
+import MaterialsDeskPhone from '../materials/MaterialsDeskPhone'
+import { SectionPhoneFoot, SectionPhoneMore, SectionPhoneRow } from '../materials/SectionPhoneRow'
+import { sectionPhoneLine } from '../materials/sectionPhoneStyles'
+import { SECTION_PHONE_PAGE, cannotFindPhoneRow, comparisonPhoneRow, countDiffPhoneRow, deliveryPhoneRow, historyPhoneRow, movementSign, movementWhereWords, pagePhoneRows, quietPartsLabel, splitComparison } from '../../lib/materials/jobSectionsPhone'
 import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
 import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -54,7 +60,16 @@ import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import TakesPanel from '../materials/TakesPanel'
 import { takesBefore, takesBeforeLabel, takesOf } from '../../lib/materials/takes'
-import { FlowRow } from '../materials/FlowRow'
+import { FlowRow, FlowTiles, type FlowPill } from '../materials/FlowRow'
+import MaterialsPrintSheet from '../materials/MaterialsPrintSheet'
+import { jobPrintSheet } from '../../lib/materials/printSheet'
+import { notPrintedRunToPrint, reservedRunToPrint } from '../../lib/materials/reservedPrint'
+import { Sheet } from '../tally/OnSiteSheet'
+import { AddPartSheet } from '../tally/AddPartSheet'
+import { ADD_PART_FAILED, ADD_PART_PRESS, FIRST_PART_COUNT_LABEL, FIRST_PART_NEEDS_WORDS, addBoxWithPartLabel, addPartDoneWords, addPartPressLabel, addPartRows, boxKeptPartHeldWords, boxWithPartDoneWords, firstPartCount, firstPartOf, type AddPartPick } from '../../lib/materials/addPart'
+import OnSiteBoxRow from '../tally/OnSiteBoxRow'
+import { boxScreenFromMaterials } from '../../lib/materials/boxRow'
+import { searchPartsBook } from '../../lib/materials/addPartIo'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
@@ -73,16 +88,19 @@ import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS, PLACE_WAY_TAKE_OFF_PRESS }
 import { openPlaceWay, paintPlaceWay, takeOffPlaceWay } from '../materials/placeWayPaint'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor } from '../../lib/materials/boxName'
-import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote } from '../../lib/materials/boxLine'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { useJobStickers } from '../../hooks/useJobStickers'
-import { reservedLineWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
+import { reservedLineWords, reservedShortWords, stickerMarksWords } from '../../lib/materials/stickerPlace'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
 export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
+
+/** The Materials page's Print sheet as a job's section takes it (v2.8282): the page says when it is open, the section draws it on the job. */
+export type MaterialsPrintSheetDoor = { open: boolean; onClose: () => void; /** Print for another job: the page opens what its Print labels press opens. */ onAnotherJob: () => void }
 
 type Props = {
   jobs: MaterialsJob[]
@@ -95,9 +113,16 @@ type Props = {
   rowDoors?: { onLabels: (jobId: string) => void }
   /** The signed-in role (punch list #329, v2.7272): Print future stickers is live for the roles `sticker_can_mint` allows and dead with its reason for the rest. */
   role?: string | null
+  /** A phone on the Materials page (v2.8282): a job's section is drawn for one, and its print presses live in the page's Print sheet. Off on Jobs → Materials, which has no such sheet. */
+  phone?: boolean
+  printSheet?: MaterialsPrintSheetDoor
 }
 
 const BLUE = '#2563eb'
+/** The green pill's views: the list of boxes, the parts across them, the map. */
+const ON_SITE_VIEWS = ['list', 'parts', 'map'] as const
+/** Unsorted has no line of its own: its row reads its parts. */
+const NO_BOX_LINE: BoxLine = { text: '', by: 'none' }
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
@@ -106,6 +131,8 @@ const headPress: CSSProperties = { font: 'inherit', color: 'var(--text-strong)',
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '0.2em', textAlign: 'left' }
 const quietPressDead: CSSProperties = { ...quietPress, color: 'var(--text-muted)', cursor: 'default', textDecoration: 'none' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
+/** History's two filters on a phone (v2.8292): a thumb's height, side by side on a row of their own under the heading. */
+const HISTORY_FILTER_PHONE: CSSProperties = { minHeight: 40, flex: '1 1 45%', minWidth: 0, marginLeft: 0, fontSize: '0.875rem' }
 /** A delivery line on the table with the id its Delivered row lands under (v2.7267). */
 type DeliveryLine = ParsedLine & { id: string }
 const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflowX: 'auto', overflowY: 'hidden', minWidth: 0 }
@@ -179,7 +206,7 @@ function BookPricesLine() {
   )
 }
 
-export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
+export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null, phone = false, printSheet }: Props) {
   /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
   const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -228,6 +255,8 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const [madeLinks, setMadeLinks] = useState<Record<string, JobDriveLinksPatch>>({})
   /** The desk's whole-job move (v2.7305): opened from a site row that holds more than one job with boxes, the source picked from that site's jobs. */
   const [deskMove, setDeskMove] = useState<{ sources: MoveJobChoice[] } | null>(null)
+  /** The phone's desk (v2.8291): which of its three figures is narrowing the list. A visit's state, never kept. */
+  const [deskFilter, setDeskFilter] = useState<DeskPhoneFilter>('all')
   const canMove = canMoveOnSite(role)
   const onFoldersMade = (id: string, patch: JobDriveLinksPatch) => setMadeLinks((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   const withLinks = (j: MaterialsJob): MaterialsJob => (madeLinks[j.id] ? { ...j, ...madeLinks[j.id] } : j)
@@ -283,6 +312,63 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     const anySite = groups.some((g) => g.kind === 'site')
     const rowOf = (id: string) => rows.find((r) => r.id === id)!
     const cols = rowDoors ? 7 : 6
+    /** Open a job (v2.7310): the searchable list, the jobs with a box first. On a phone it is a full-width press that says its own name. */
+    const openJobPick = (
+      <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: phone ? '100%' : 'min(100%, 420px)' }}>
+        <SearchableSelect
+          value=""
+          onChange={(v) => { if (v) setJob(v) }}
+          options={deskPickOptions(jobs, rows.map((r) => r.id))}
+          placeholder={phone ? 'Open a job' : 'Choose…'}
+          listAriaLabel="Open a job"
+          searchPlaceholder={DESK_PICK_PLACEHOLDER}
+          listMaxHeightPx={360}
+          fillViewportHeight
+          listMinWidthPx={320}
+          listOptionPadding={phone ? '0.6rem 0.7rem' : '0.4rem 0.6rem'}
+          listOptionFontSize={phone ? '0.9rem' : '0.85rem'}
+          triggerMinHeightPx={phone ? 44 : 36}
+          triggerStyle={phone ? { font: 'inherit', padding: '0 0.75rem', fontWeight: 600, color: 'var(--text-link)', borderRadius: 10 } : { font: 'inherit', padding: '0 0.5rem' }}
+        />
+      </div>
+    )
+    if (phone) {
+      // A phone (v2.8291): the desk's own figures, laid out for a thumb by `buildDeskPhone`. Three tiles stand where
+      // the heading's sentence was, and a row is one press that opens its job. A row's Labels press is in the job's
+      // Print sheet, and the whole-job move is under the job's boxes, so neither is drawn here.
+      const model = buildDeskPhone({
+        jobs: rows.map((r) => {
+          const named: OnSiteJobNamed | undefined = r.job
+          return {
+            id: r.id,
+            number: onSiteJobNumber(r.job),
+            name: r.job ? (named?.job_name ?? '').trim() || (named?.customer_name ?? '').trim() : `job ${r.id.slice(0, 8)}`,
+            boxes: r.sum.containers,
+            places: listPlaces(r.id).length,
+            due: r.sum.stale.length,
+            dueWords: staleWords(r.sum.stale),
+            missingLines: r.sum.missingLines,
+            missingUnpricedLines: r.sum.missingUnpricedLines,
+            missingMoney: r.sum.missingMoneyWeek,
+            credits: r.sum.credits,
+            failed: r.failed,
+          }
+        }),
+        groups,
+        filter: deskFilter,
+      })
+      return (
+        <div style={{ display: 'grid', gap: '0.9rem', minWidth: 0 }} aria-label="Materials desk">
+          {desk.loading && !desk.loaded ? <span style={muted}>Loading…</span> : null}
+          <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-desk" idempotent />
+          <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITES_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-desk-sites" offlineMessage={SITES_NOT_LOADED_WORDS} idempotent />
+          {rows.length === 0
+            ? <EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.querySelector('button')?.focus() }} tail="below, then add its first container." />
+            : <MaterialsDeskPhone model={model} onFilter={setDeskFilter} onOpenJob={setJob} onOpenSite={setSite} onReadAgain={(id) => void loadJob(id, { force: true })} />}
+          {openJobPick}
+        </div>
+      )
+    }
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -375,29 +461,13 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* v2.7310: a searchable list in place of the native select, which could only scroll; the jobs with a box first. */}
           <span style={muted}>Open a job</span>
-          <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: 'min(100%, 420px)' }}>
-            <SearchableSelect
-              value=""
-              onChange={(v) => { if (v) setJob(v) }}
-              options={deskPickOptions(jobs, rows.map((r) => r.id))}
-              placeholder="Choose…"
-              listAriaLabel="Open a job"
-              searchPlaceholder={DESK_PICK_PLACEHOLDER}
-              listMaxHeightPx={360}
-              fillViewportHeight
-              listMinWidthPx={320}
-              listOptionPadding="0.4rem 0.6rem"
-              listOptionFontSize="0.85rem"
-              triggerMinHeightPx={36}
-              triggerStyle={{ font: 'inherit', padding: '0 0.5rem' }}
-            />
-          </div>
+          {openJobPick}
         </div>
       </div>
     )
   }
 
-  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} phone={phone} printSheet={printSheet} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -478,7 +548,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob, phone, printSheet }: { phone: boolean; printSheet: MaterialsPrintSheetDoor | undefined; jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -660,6 +730,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
   const [sinceDays, setSinceDays] = useState<7 | 30>(7)
+  /** A phone draws History a page at a time (v2.8292): a job can hold thousands of presses. */
+  const [historyShown, setHistoryShown] = useState(SECTION_PHONE_PAGE)
+  /** A phone's Missing leads with the parts that have a gap (v2.8292). How many of the rest are drawn: none until their press. */
+  const [quietPartsShown, setQuietPartsShown] = useState(0)
   /** The labels window: every box, or one (`only`) from a panel's Label button or the phone's link (`?label=<id>`). */
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
@@ -697,6 +771,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   useEffect(() => { if (runsKey > 0) refreshStickers() }, [runsKey, refreshStickers])
   /** Ticks when the *not yet on a box* line is pressed: the Runs fold opens and comes into view. */
   const [runsOpenKey, setRunsOpenKey] = useState(0)
+  /** The phone's reserved line (v2.8282): one press over the boxes, opening a sheet with the whole of it. */
+  const [reservedOpen, setReservedOpen] = useState(false)
   const nameVerdict = boxNameVerdict(newTyped ?? '', siteBoxes)
   const newShown = newTyped ?? nextFreeName(siteBoxes) ?? ''
   const [newWhere, setNewWhere] = useState('')
@@ -704,19 +780,67 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [newLineTyped, setNewLineTyped] = useState<string | null>(null)
   const newLine = addedLineVerdict(newLineTyped, nameVerdict.words)
   const newWordsNote = nameVerdict.ok ? nameWordsNote(nameVerdict.words, newLineTyped) : null
-  const addDead = !nameVerdict.ok || !newLine.ok
+  /** How many (v2.8284): empty is the box alone; filled, the new box takes that many of what **What is in it** names in the same press. */
+  const [newHowMany, setNewHowMany] = useState('')
+  const newCount = firstPartCount(newHowMany)
+  const newFirst = newLine.ok ? firstPartOf(knownNames, newLine.said, newCount) : null
+  const newNeedsWords = newCount.kind === 'count' && newLine.ok && !newLine.said
+  const addDead = !nameVerdict.ok || !newLine.ok || newCount.kind === 'bad' || newNeedsWords
+  /** Add a part's rows (v2.8284): the delivery into the box, and the line's count when the line held none (`addPartRows`). */
+  const addPartTo = (box: Pick<Container, 'id'>, part: AddPartPick, n: number) => { for (const row of addPartRows({ jobId, containerId: box.id, part, quantity: n, byUserId, byName, lines, now: new Date() })) addMovement(row) }
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
   const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
+  /** Add a part (v2.8282): the box whose sheet is open, from its card's press or the Edit window's empty Contents tab. */
+  const [addPartBoxId, setAddPartBoxId] = useState<string | null>(null)
+  /** A box just added here: its card is brought into view once it is drawn, wherever its place puts it in the list. */
+  const [newBoxId, setNewBoxId] = useState<string | null>(null)
+  const boxIdsKey = containers.map((c) => c.id).join('|')
+  useEffect(() => {
+    if (!newBoxId) return
+    const card = document.querySelector(`[data-box-card="${newBoxId}"]`)
+    if (!card) return
+    card.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    setNewBoxId(null)
+  }, [newBoxId, boxIdsKey])
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const takes = takesOf(movements, photos)
   const people = [...new Set(movements.map((m) => m.byName))].sort()
   const since = new Date(now.getTime() - sinceDays * 86_400_000).toISOString()
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
+  /** What the reported rows come to, priced: the table's last line and the phone's. */
+  const reportedMoney = missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0)
+  /** History's rows: every press, newest first, narrowed by the two filters. */
+  const historyRows = [...movements].sort((a, b) => (a.at < b.at ? 1 : -1)).filter((m) => (!reasonFilter || m.reason === reasonFilter) && (!whoFilter || m.byName === whoFilter))
 
   const head = onSiteJobHead(job, jobLabel(job, jobId))
+  /** The flow row's four figures, as the desk's pills and the phone's tiles both draw them. */
+  const flowPills: FlowPill[] = [
+          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
+          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
+          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
+          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
+        ]
+  const viewWords = (v: (typeof ON_SITE_VIEWS)[number]) => (v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map')
+  const dayWords = (iso: string) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso))
+  /**
+   * The job's reserved stickers in full: the sentence, These are on boxes, Runs and the presses that print them. The
+   * desk draws it over the boxes; the phone draws it in a sheet, and `done` closes that sheet as a press is taken.
+   */
+  const reservedBlock = (done: () => void) => (
+            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? dayWords(jobStickers.reserved.printedAt) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
+              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
+              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => { done(); setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) }) }} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
+              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { done(); setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
+            </p>
+            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
+            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => { done(); setStickersOpen({ run }) }} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
+            </div>
+  )
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -736,25 +860,37 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
       {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move, and any held with its reason. */}
-      <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} />
+      <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} fold={phone} />
       {/* The flow row (#209): the material's path left to right at the pills' height — came in → on site → used → missing — each figure in its colour, a badge where a hand is needed. */}
       {jobLedgerCapped(jobId) ? (
         /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */
         <p style={{ ...muted, margin: 0 }} data-testid="materials-capped">This job has more than {MOVEMENTS_LIMIT.toLocaleString('en-US')} ledger rows. History and the boxes show the newest {MOVEMENTS_LIMIT.toLocaleString('en-US')}; the totals come from the database.</p>
       ) : null}
+      {phone ? (
+        <>
+          {/* A phone (v2.8282): the four figures as equal tiles, then the view switch and Add on one row. */}
+          <FlowTiles label="Materials on site" pills={flowPills} />
+          {section === 'onsite' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }} data-testid="materials-phone-view-row">
+              <div role="group" aria-label="How the boxes are shown" style={{ display: 'inline-flex', flex: '0 1 auto', minWidth: 0, borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', overflow: 'hidden' }}>
+                {ON_SITE_VIEWS.map((v, i) => (
+                  <button key={v} type="button" aria-pressed={onSiteView === v} style={{ minHeight: 36, padding: '0 0.7rem', borderWidth: 0, borderRadius: 0, boxShadow: i > 0 ? 'inset 1px 0 0 var(--border-strong)' : 'none', background: onSiteView === v ? 'var(--text-strong)' : 'var(--surface)', color: onSiteView === v ? 'var(--bg-page)' : 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
+                ))}
+              </div>
+              {onSiteView === 'list' ? <button type="button" aria-label="Add a container" aria-expanded={adding} style={{ ...materialsPressStyle(36), marginLeft: 'auto' }} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container">+ Container</button> : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
       <FlowRow
         role="tabs"
         label="Materials on site"
-        pills={[
-          { key: 'deliveries', word: 'came in', figure: flowFigure(flow.cameIn), tone: 'in', badge: flow.unsorted > 0 ? { text: flowFigure(flow.unsorted) } : null, on: section === 'deliveries', title: `${flowFigure(flow.cameIn)} pieces came in on ${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'}${flow.unsorted > 0 ? ` · ${flowFigure(flow.unsorted)} waiting in Unsorted` : ''}`, onPress: () => setSection('deliveries') },
-          { key: 'onsite', word: 'on site', figure: flowFigure(flow.onSite), tone: 'here', badge: flow.due > 0 ? { text: flowFigure(flow.due) } : null, on: section === 'onsite', title: `${flowFigure(flow.onSite)} pieces on site in ${flow.boxes} ${flow.boxes === 1 ? 'box' : 'boxes'}${flow.due > 0 ? ` · ${flow.due} need a hand` : ''}`, onPress: () => setSection('onsite') },
-          { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
-          { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
-        ]}
-        trailing={section === 'onsite' ? (['list', 'parts', 'map'] as const).map((v) => (
-          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map'}</button>
+        pills={flowPills}
+        trailing={section === 'onsite' ? ON_SITE_VIEWS.map((v) => (
+          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{viewWords(v)}</button>
         )) : null}
       />
+      )}
 
       {section === 'onsite' && onSiteView === 'list' ? (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -765,6 +901,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             ))}
             </div>
             {/* What the desk does to this site's boxes (v2.6890): pills at the filter chips' height, each with a glyph, as the Materials strip draws Scan a label and Print labels. A chip filters; a glyph acts. */}
+            {phone ? null : (
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
               <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
@@ -772,19 +909,17 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               <button type="button" style={{ ...materialsPressStyle(32), ...(canMint ? {} : materialsPressDead) }} disabled={!canMint} aria-disabled={!canMint} title={canMint ? 'Print stickers before their boxes are in the app. Each one reserves a name and its own link.' : STICKER_MINT_WHO} aria-label={canMint ? undefined : `${PRINT_STICKERS_LABEL}. ${STICKER_MINT_WHO}`} onClick={() => setStickersOpen({ run: null })} data-testid="materials-print-stickers"><MaterialsPressGlyph kind="print-stickers" dead={!canMint} />{PRINT_STICKERS_LABEL}</button>
               <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
+            )}
           </div>
           {/* The job's reserved stickers (punch list #329, PR 3; v2.7487 the names, who and when, and the press that fills them in; v2.7567 what printed, punch list #373): on no box yet, with the Runs fold one press away. */}
           {jobStickers.blank > 0 ? (
-            <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="materials-stickers-blank">
-            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span>{[reservedLineWords(jobStickers.reserved, jobStickers.reserved.printedAt ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(jobStickers.reserved.printedAt)) : ''), 'Scan one on the phone to say which box it is on.'].filter(Boolean).join(' ')}</span>
-              {/* A named sticker needs no scan: These are on boxes opens on the reserved names when one run holds them, as the fold's own press does. */}
-              {jobStickers.reserved.anyNamed ? <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} title="Put a range of the reserved stickers on their boxes in one press, with no scan" onClick={() => setOnBoxesOpen({ initial: onBoxesPrefill(jobStickers.reserved.names) })} data-testid="materials-stickers-on-boxes">{ON_BOXES_LABEL}</button> : null}
-              <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => { setRunsOpenKey((k) => k + 1); window.setTimeout(() => document.querySelector('[data-testid="sticker-runs-fold"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0) }} data-testid="materials-stickers-runs">Runs</button>
-            </p>
-            {/* The press that prints them, right where they are named (v2.7523, the owner's ask): one a run, the same stickers and links, nothing minted. Dead with its reason for a role that may not print a run. */}
-            <ReservedPrintPresses runs={jobStickers.toPrint} role={role} onPrint={(run) => setStickersOpen({ run })} tid="materials-stickers-print" pressStyle={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0.15rem 0.55rem', fontWeight: 500 }} />
-            </div>
+            phone ? (
+              /* A phone (v2.8282): one line that opens the whole of it, where the sentence and its presses took five rows. */
+              <button type="button" aria-haspopup="dialog" style={{ ...btn, width: '100%', minHeight: 44, justifyContent: 'space-between', textAlign: 'left', fontWeight: 600 }} onClick={() => setReservedOpen(true)} data-testid="materials-stickers-reserved-line">
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{reservedShortWords(jobStickers.reserved)}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block', flex: '0 0 auto', color: 'var(--text-muted)' }}><path d="M4 1.5 8.5 6 4 10.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            ) : reservedBlock(() => {})
           ) : null}
       {adding ? (
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap' }}>
@@ -794,8 +929,9 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>{BOX_LINE_FIELD_LABEL}<input value={lineFieldValue(newLineTyped, nameVerdict.words)} onChange={(e) => setNewLineTyped(e.target.value)} maxLength={BOX_LINE_MAX + 20} placeholder="You can say later" aria-label={BOX_LINE_FIELD_LABEL} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 220, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid="materials-add-line" /></label>
-          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} onClick={() => { if (!nameVerdict.ok || !newLine.ok) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewPlaceName(''); setAdding(false); showToast(`${nameVerdict.name} added.`, 'success') }}>{addPressLabel(nameVerdict)}</button>
-          <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{newWordsNote ? ` ${newWordsNote}` : ''}{newLine.ok ? '' : ` ${newLine.words}`}</span>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>{FIRST_PART_COUNT_LABEL}<input value={newHowMany} onChange={(e) => setNewHowMany(e.target.value)} inputMode="numeric" placeholder="None yet" aria-label={FIRST_PART_COUNT_LABEL} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 96, background: 'var(--surface)', color: 'var(--text-strong)' }} data-testid="materials-add-how-many" /></label>
+          <button type="button" style={{ ...btnPrimary, ...(addDead ? { opacity: 0.45, cursor: 'default' } : {}) }} disabled={addDead} data-testid="materials-add-press" onClick={() => { if (!nameVerdict.ok || !newLine.ok || addDead) return; const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; rememberBoxKind(newKind); const made = addContainer({ jobId, label: nameVerdict.name, kind: newKind, where: newWhere, said: newLine.said, locationId: loc }); /* The new box stays in sight (v2.8282): every box is listed again, and its card is scrolled to. */ setOnSiteFilter('all'); setNewBoxId(made.id); setNewTyped(null); setNewWhere(''); setNewLineTyped(null); setNewHowMany(''); setNewPlaceName(''); setAdding(false); if (!newFirst) { showToast(`${nameVerdict.name} added.`, 'success'); return } /* The first part goes in with the same press (v2.8284). A part that fails leaves the box, with the reason. */ try { addPartTo(made, newFirst.part, newFirst.n); showToast(boxWithPartDoneWords(nameVerdict.name, newFirst.n, newFirst.part.partName), 'success') } catch (e) { showToast(boxKeptPartHeldWords(nameVerdict.name, newFirst.n, newFirst.part.partName, formatErrorMessage(e, 'It did not save.')), 'warning') } }}>{newFirst && nameVerdict.ok ? addBoxWithPartLabel(nameVerdict.name, newFirst.n, newFirst.part.partName) : addPressLabel(nameVerdict)}</button>
+          <span data-testid="materials-add-say" role={nameVerdict.ok ? undefined : 'alert'} style={{ ...muted, flex: '1 1 100%', ...(nameVerdict.ok ? (nameVerdict.tone === 'wait' ? { color: 'var(--text-amber-800)' } : {}) : { color: 'var(--text-red-700)' }) }}>{nameVerdict.say}{newWordsNote ? ` ${newWordsNote}` : ''}{newLine.ok ? '' : ` ${newLine.words}`}{newCount.kind === 'bad' ? ` ${newCount.words}` : newNeedsWords ? ` ${FIRST_PART_NEEDS_WORDS}` : ''}</span>
         </div>
       ) : null}
           {(
@@ -808,16 +944,22 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             {groupByPlace(shownContainers, places).map((g) => (
               <div key={g.place?.id ?? (g.containers[0]?.kind === 'unsorted' ? 'unsorted' : 'none')} style={{ display: 'grid', gap: '0.5rem' }}>
                 {places.length > 0 && g.containers[0]?.kind !== 'unsorted' ? <h3 style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-strong)' }}>{g.place?.name ?? 'No place yet'} <span style={{ ...muted, fontWeight: 400 }}>· {g.containers.length} {g.containers.length === 1 ? 'container' : 'containers'}</span>{/* The way to a place (punch list #372, step 4): painted once, it serves every box that stands there. */}{g.place ? (() => { const place = g.place; return place.wayMapId ? <span style={{ marginLeft: '0.6rem', display: 'inline-flex', gap: '0.6rem', fontWeight: 400 }}><button type="button" style={quietPress} aria-label={`${PLACE_WAY_OPEN_PRESS} to ${place.name}`} onClick={() => openPlaceWay(place, addr || null, showToast)}>{PLACE_WAY_OPEN_PRESS}</button><button type="button" style={{ ...quietPress, color: 'var(--text-muted)' }} aria-label={`${PLACE_WAY_TAKE_OFF_PRESS} ${place.name}`} title="The place keeps no way. The map itself is kept." onClick={() => void takeOffPlaceWay(place, jobId, showToast)}>{PLACE_WAY_TAKE_OFF_PRESS}</button></span> : <button type="button" style={{ ...quietPress, marginLeft: '0.6rem' }} aria-label={`Paint the way to ${place.name}`} title="Draw the way from the gate to this place once. Anyone who looks for a box here can open it." onClick={() => paintPlaceWay(place, { jobId, label: jobLabel(job, jobId), address: addr || null, center: jobCenter }, showToast)}>{PLACE_WAY_PAINT_PRESS}</button> })() : null}</h3> : null}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(480px, 100%), 1fr))', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(480px, 100%), 1fr))', gap: phone ? '0.5rem' : '0.75rem' }}>
             {g.containers.map((c) => {
               const ls = linesOf(lines, c.id)
               const last = lastCountedAt(movements, c.id)
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts. The name opens Edit, which holds the same line.
               const boxLineNow = c.kind === 'unsorted' ? null : boxLineOf(c, lines)
+              if (phone) {
+                // A phone (v2.8284): one row a box, as the Tally lists them. The row opens the Tally's box screen, which comes back here; a box with no part is pressed to add its first.
+                const parts = ls.filter((l) => l.onHand > 0).length
+                const cannot = ls.reduce((n, l) => n + l.cannotFindSinceCount, 0)
+                return <OnSiteBoxRow key={c.id} box={c} line={boxLineNow ?? NO_BOX_LINE} parts={parts} cannot={cannot} last={last} now={now} stickers={stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])} testId="materials-box-row" {...(c.kind !== 'unsorted' && parts === 0 ? { onPress: () => setAddPartBoxId(c.id), action: ADD_PART_PRESS } : { to: boxScreenFromMaterials(jobId, c.id) })} />
+              }
               return (
-                <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
+                <div key={c.id} data-box-card={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{/* Add a part (v2.8282): the sheet the phone's box screen opens, so the desk is not a dead end for whoever stands at the box. */}{c.kind !== 'unsorted' ? <button type="button" aria-label={addPartPressLabel(c.label)} title={`${addPartPressLabel(c.label)}: pick it from this job, the parts book or type its name`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setAddPartBoxId(c.id)} data-testid="materials-box-add-part">{ADD_PART_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -883,6 +1025,42 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <div style={sec}>
             <h5 style={secH}>Bought · reported · left · walked away<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>per part across the job, at the parts book’s price with the day it was checked, or the invoice’s where the book’s is older than {BOOK_PRICE_FRESH_DAYS} days or missing</span></h5>
             <BookPricesLine />
+{phone ? (
+              // A phone (v2.8292): a row a part. What walked away is the figure, the table's two bold columns are the first line, and what was reported is said only where there is something to say.
+              comparison.length === 0 ? (
+                <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main="No deliveries or presses on this job yet." next={{ label: 'Deliveries', onPress: () => setSection('deliveries') }} tail="lands the first invoice as a delivery, and the crew’s presses fill the rest." /></div>
+              ) : (
+                <div data-testid="materials-phone-comparison">
+                  {(() => {
+                    // The parts with a gap lead, and the rest wait behind one press: the reports under this list were a hundred rows down.
+                    const { gap, quiet } = splitComparison(comparison)
+                    const more = quietPartsShown > 0 ? pagePhoneRows(quiet, quietPartsShown) : null
+                    const drawn = more ? [...gap, ...more.rows] : gap
+                    return (
+                      <>
+                        {gap.length === 0 ? <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main="Nothing has walked away on this job." /></div> : null}
+                        {drawn.map((r, i) => {
+                    const p = comparisonPhoneRow(r)
+                    return (
+                      <SectionPhoneRow key={p.key} first={i === 0 && gap.length > 0} title={p.title} maker={p.maker} figure={p.figure} edge={p.marked ? 'amber' : null}>
+                        <span style={sectionPhoneLine}>{p.held}</span>
+                        {p.reported ? <span style={sectionPhoneLine}>{p.reported}</span> : null}
+                        <span style={sectionPhoneLine}>
+                          {p.money != null ? <><Money n={p.money} /> <PriceChip jobId={jobId} partKey={r.partKey} /> · </> : p.noPrice ? 'no price · ' : null}
+                          {p.lastCountAt ? <>last count <Stamp iso={p.lastCountAt} inline /></> : <span style={chip('amber')}>never counted</span>}
+                        </span>
+                      </SectionPhoneRow>
+                    )
+                  })}
+                        {!more && quiet.length > 0 ? <SectionPhoneMore label={quietPartsLabel(quiet.length)} onPress={() => setQuietPartsShown(SECTION_PHONE_PAGE)} /> : null}
+                        {more?.moreLabel ? <SectionPhoneMore label={more.moreLabel} onPress={() => setQuietPartsShown(more.next)} /> : null}
+                      </>
+                    )
+                  })()}
+                  <SectionPhoneFoot words="Walked away, priced"><Money n={walkedMoney} /></SectionPhoneFoot>
+                </div>
+              )
+) : (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={{ ...th, minWidth: 180 }}>Part</th><th style={{ ...th, ...num }}>Bought</th><th style={{ ...th, ...num }}>Added on site</th><th style={{ ...th, ...num }}>Used</th><th style={{ ...th, ...num }}>Returned</th><th style={{ ...th, ...num }}>Taken, damaged</th><th style={{ ...th, ...num }}>Can’t find</th><th style={{ ...th, ...num }}>Left</th><th style={{ ...th, ...num }}>Walked away</th><th style={{ ...th, ...num }}>Money</th><th style={{ ...th, ...num }}>Last count</th></tr></thead>
               <tbody>
@@ -905,10 +1083,31 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 {comparison.length ? <tr><td style={{ ...td, fontWeight: 700 }} colSpan={9}>Walked away, priced</td><td style={{ ...td, ...num, fontWeight: 700 }}><Money n={walkedMoney} /></td><td style={td}></td></tr> : null}
               </tbody>
             </table>
+)}
             <p style={{ ...muted, margin: 0, padding: '0.5rem 0.9rem 0.75rem' }}>Walked away is bought plus added, minus used, returned, taken and left. It is only as true as the Used presses and the last count: a box nobody counted can hide a gap, and an honest count shows it.</p>
           </div>
         <div style={sec}>
-          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
+          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: phone ? 36 : 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
+{phone ? (
+            // A phone (v2.8292): a row a report. A short count's figure is what is missing, a Can't find's is its count, and the press to the takes before a short count is in its row.
+            <div data-testid="materials-phone-reported">
+              {missingRows.length === 0 && cannotRows.length === 0 ? <div style={{ padding: '0.5rem 0.9rem' }}><EmptyState compact main={`Nothing missing in the last ${sinceDays} days.`} /></div> : null}
+              {[...missingRows.map((d) => countDiffPhoneRow(d, byLabel(d.containerId))), ...cannotRows.map((m) => cannotFindPhoneRow(m, byLabel(m.fromContainerId), partKey(m.partId, m.partName)))].map((p, i) => {
+                const price = unitPrice(jobId, { partKey: p.partKey })
+                const m = missingMoney(p.moneyQty, price)
+                const before = p.kind === 'short' && p.boxId ? takesBefore(takes, p.boxId, p.at).length : 0
+                return (
+                  <SectionPhoneRow key={p.key} first={i === 0} title={p.title} maker={p.maker} figure={p.figure} edge={p.kind === 'short' ? 'amber' : p.kind === 'cannot' ? 'red' : null}>
+                    {p.facts ? <span style={sectionPhoneLine}>{p.facts}</span> : null}
+                    {m != null ? <span style={sectionPhoneLine}><Money n={m} /> <PriceChip jobId={jobId} partKey={p.partKey} /></span> : price == null ? <span style={sectionPhoneLine}>no price</span> : null}
+                    <span style={sectionPhoneLine}>{p.byName} <Stamp iso={p.at} inline />{p.note ? ` · ${p.note}` : ''}</span>
+                    {before > 0 && p.boxId ? <button type="button" style={{ display: 'block', minHeight: 36, marginTop: 2, background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left' }} onClick={() => { setTakesBox(p.boxId); setSection('history') }} data-testid="missing-takes-door">{takesBeforeLabel(before)}</button> : null}
+                  </SectionPhoneRow>
+                )
+              })}
+              <SectionPhoneFoot words={`In the last ${sinceDays} days`}>{money(reportedMoney)}</SectionPhoneFoot>
+            </div>
+) : (
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>Part</th><th style={th}>Container</th><th style={{ ...th, ...num }}>Expected</th><th style={{ ...th, ...num }}>Counted</th><th style={{ ...th, ...num }}>Missing</th><th style={{ ...th, ...num }}>Money</th><th style={th}>Who, when</th></tr></thead>
             <tbody>
@@ -948,9 +1147,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(reportedMoney)}</td><td style={td}></td></tr>
             </tbody>
           </table>
+)}
         </div>
         </div>
       ) : null}
@@ -1055,6 +1255,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
           <div style={sec}>
             <h5 style={secH}>Deliveries so far<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>one row per invoice or PO that landed</span></h5>
+{phone ? (
+              // A phone (v2.8292): a row an invoice or a PO that landed, its pieces as the figure.
+              deliveries.length === 0
+                ? <p style={{ ...muted, margin: 0, padding: '0.6rem 0.9rem' }}>No delivery has landed yet. Paste an invoice above, or add a part on the phone from the box it went in.</p>
+                : <div data-testid="materials-phone-deliveries">{deliveries.map((d, i) => { const p = deliveryPhoneRow(d, when(d.at)); return <SectionPhoneRow key={p.key} first={i === 0} title={p.title} figure={p.figure}><span style={sectionPhoneLine}>{p.facts}</span></SectionPhoneRow> })}</div>
+) : (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={th}>Source</th><th style={th}>When</th><th style={th}>By</th><th style={{ ...th, ...num }}>Lines</th><th style={{ ...th, ...num }}>Pieces</th></tr></thead>
               <tbody>
@@ -1064,6 +1270,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 ))}
               </tbody>
             </table>
+)}
           </div>
         </div>
       ) : null}
@@ -1082,21 +1289,41 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {section === 'history' ? (
         <div style={sec}>
           <h3 style={secH}>History · every press, newest first
-            <select aria-label="Filter by reason" value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} style={{ marginLeft: 'auto', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500 }}>
+            <select aria-label="Filter by reason" value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} style={{ marginLeft: 'auto', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500, ...(phone ? HISTORY_FILTER_PHONE : {}) }}>
               <option value="">Every reason</option>
               {Object.entries(REASON_WORDS).map(([k, w]) => <option key={k} value={k}>{w.past}</option>)}
             </select>
-            <select aria-label="Filter by person" value={whoFilter} onChange={(e) => setWhoFilter(e.target.value)} style={{ minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500 }}>
+            <select aria-label="Filter by person" value={whoFilter} onChange={(e) => setWhoFilter(e.target.value)} style={{ minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 500, ...(phone ? HISTORY_FILTER_PHONE : {}) }}>
               <option value="">Everyone</option>
               {people.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </h3>
+{phone ? (
+            // A phone (v2.8292): a row a press, newest first, a page at a time. A job can hold thousands, and a phone should not draw them all at once.
+            (() => {
+              const page = pagePhoneRows(historyRows, historyShown)
+              return (
+                <div data-testid="materials-phone-history">
+                  {page.rows.map((m, i) => {
+                    const p = historyPhoneRow(m, byLabel)
+                    return (
+                      <SectionPhoneRow key={p.key} first={i === 0} title={p.title} figure={p.figure}>
+                        <span style={sectionPhoneLine}>{p.what}{p.creditDue ? <> <span style={chip('blue')}>credit due</span></> : null}{p.where ? (p.where.startsWith('→') ? ` ${p.where}` : ` · ${p.where}`) : ''}</span>
+                        <span style={sectionPhoneLine}>{p.byName} · {when(p.at)}{p.note ? ` · ${p.note}` : ''}</span>
+                      </SectionPhoneRow>
+                    )
+                  })}
+                  {page.moreLabel ? <SectionPhoneMore label={page.moreLabel} onPress={() => setHistoryShown(page.next)} /> : null}
+                </div>
+              )
+            })()
+) : (
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>When</th><th style={th}>What</th><th style={th}>Part</th><th style={{ ...th, ...num }}>Qty</th><th style={th}>Where</th><th style={th}>Who</th><th style={th}>Note</th></tr></thead>
             <tbody>
-              {[...movements].sort((a, b) => (a.at < b.at ? 1 : -1)).filter((m) => (!reasonFilter || m.reason === reasonFilter) && (!whoFilter || m.byName === whoFilter)).map((m) => {
-                const sign = m.reason === 'counted' ? '' : m.reason === 'delivered' ? '+' : m.reason === 'moved' ? '' : '−'
-                const where = m.reason === 'delivered' ? `→ ${byLabel(m.toContainerId)}${m.source ? ` · ${m.source}` : ''}` : m.reason === 'moved' ? `${byLabel(m.fromContainerId)} → ${byLabel(m.toContainerId)}` : m.reason === 'returned' ? `${byLabel(m.fromContainerId)} → the supply house` : m.reason === 'taken' ? `${byLabel(m.fromContainerId)} → ${m.note || 'off site'}` : byLabel(m.fromContainerId)
+              {historyRows.map((m) => {
+                const sign = movementSign(m.reason)
+                const where = movementWhereWords(m, byLabel)
                 return (
                   <tr key={m.id}>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{when(m.at)}</td>
@@ -1111,6 +1338,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               })}
             </tbody>
           </table>
+)}
         </div>
       ) : null}
 
@@ -1177,11 +1405,67 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
         </div>
       ) : null}
+      {phone && reservedOpen && jobStickers.blank > 0 ? createPortal(<Sheet title="Reserved stickers" onClose={() => setReservedOpen(false)}>{reservedBlock(() => setReservedOpen(false))}</Sheet>, document.body) : null}
+      {/* The page's Print sheet on this job (v2.8282): a door to the windows below, and to another job's labels. */}
+      {printSheet?.open ? (
+        <MaterialsPrintSheet
+          sheet={jobPrintSheet({ job, boxCount, runs: jobStickers.toPrint, role, dayWords })}
+          onClose={printSheet.onClose}
+          onRow={(row) => {
+            const act = row.act
+            if (act.kind === 'another-job') {
+              printSheet.onAnotherJob()
+              return
+            }
+            printSheet.onClose()
+            if (act.kind === 'labels') setLabelsOpen({ only: null })
+            else if (act.kind === 'manifest') setManifestOpen({ only: null })
+            else if (act.kind === 'stickers') setStickersOpen({ run: null })
+            else if (act.kind === 'reserved') {
+              const r = jobStickers.toPrint.find((x) => x.run.id === act.runId)
+              if (r) setStickersOpen({ run: act.waiting ? notPrintedRunToPrint(r) : reservedRunToPrint(r) })
+            }
+          }}
+        />
+      ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} onPrinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onAddPart={() => { setEditingBoxId(null); setWhereBoxId(null); setAddPartBoxId(box.id) }} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => {
+        const box = addPartBoxId ? containers.find((c) => c.id === addPartBoxId) : null
+        if (!box) return null
+        // The same sheet and the same row as the phone's box screen: delivered into the box, added on site, in this person's name.
+        return createPortal(
+          <AddPartSheet
+            container={box}
+            names={knownNames}
+            searchParts={searchPartsBook}
+            onClose={() => setAddPartBoxId(null)}
+            onAdd={(part, n) => {
+              try {
+                addPartTo(box, part, n)
+                setAddPartBoxId(null)
+                showToast(addPartDoneWords(n, part.partName, box.label), 'success')
+              } catch (e) {
+                showToast(formatErrorMessage(e, ADD_PART_FAILED), 'error')
+              }
+            }}
+            onAddAnother={(part, n) => {
+              // The sheet stays for the next part and says what went in; a write that fails says why and the part stays picked.
+              try {
+                addPartTo(box, part, n)
+                return true
+              } catch (e) {
+                showToast(formatErrorMessage(e, ADD_PART_FAILED), 'error')
+                return false
+              }
+            }}
+          />,
+          document.body,
+        )
+      })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

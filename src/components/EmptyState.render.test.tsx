@@ -35,6 +35,15 @@ describe('EmptyState', () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
+  it('finger makes the press 44 px tall, for a list whose only way in is the press', () => {
+    const { unmount } = render(<EmptyState main="No bids yet." next={{ label: 'New Bid', onPress: () => undefined }} tail="adds the first." />)
+    expect(screen.getByRole('button', { name: 'New Bid' }).style.minHeight).toBe('')
+    unmount()
+    render(<EmptyState finger main="No bids yet." next={{ label: 'New Bid', onPress: () => undefined }} tail="adds the first." />)
+    expect(screen.getByRole('button', { name: 'New Bid' }).style.minHeight).toBe('44px')
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No bids yet. New Bid adds the first.')
+  })
+
   it('draws a page press as a link with the same look', () => {
     render(<EmptyState main="No sessions yet." next={{ label: 'Clock in', to: '/clock' }} tail="starts the first." />)
     const link = screen.getByRole('link', { name: 'Clock in' })

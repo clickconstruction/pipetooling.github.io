@@ -133,11 +133,11 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. Older permits never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. Each row also shows our bids with them and the plumber they use. Our bids are the ones made in the last two years. A practice bid does not count. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. San Antonio's permits never name a plumber. So the list leaves the plumber out there. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
+Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it while a city's records start after January 2025. The press reads about three more months of that city. Every city has it. Older permits count for a builder. Older permits never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. Each row also shows our bids with them and the plumber they use. Our bids are the ones made in the last two years. A practice bid does not count. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. San Antonio's permits never name a plumber. So the list leaves the plumber out there. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
-Press **Looks like a customer** to see names that may be one of our customers. Each row says why. Press **Same company** or **Not them**. Nothing is tied until you press.
+Press **Looks like a customer** to see names that may be one of our customers. Each row says why. A name that shares a phone or a web domain with a customer is on the list too. Press **Same company** or **Not them**. Nothing is tied until you press.
 
 The Dashboard's **Needs you** card says how many names wait on that answer. The line adds up the number on the chip in every city. Press **Answer them** there to open this list. That line goes away once every name is answered.
 
@@ -230,7 +230,9 @@ The clock sits under the table on **Market**. The clock's bar shows how long you
 
 In San Antonio the clock runs from an application to its permit. The wait is weeks long. Call while the application waits.
 
-In Austin the clock runs from the building permit to the plumber's permit. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
+That clock counts only applications that have their permit. An application still waiting has no second day, so the clock reads short. The line under the clock says how many still wait. The same line says how many of those were filed over six months ago. The city does not say whether a long wait is a slow review or a job that stopped.
+
+In Austin the clock runs from the building permit to the plumber's permit. A job with two plumbing permits is measured to its first. The wait is short there. The job is taken by the time the city shows it. Read Austin to learn who builds.
 
 A city with too few dated permits draws no clock.
 
@@ -275,6 +277,8 @@ Each row is one permit. The columns say when it was filed, where, what work, who
 The **Plumber** column is the signal. **none yet** means no plumbing permit is tied to that job. A plumber's name means the job is taken. **on file, no plumber named** means a plumbing permit sits there under the applicant's own name. That job is taken too.
 
 A plumbing permit is tied to a job by its permit number or by its street address. San Antonio is the exception. There a job's plumbing permit carries the job's own number and the applicant's name. So in San Antonio a permit at the address counts only when the same applicant filed it. Another tenant's permit in the same centre never closes a job there.
+
+Only the building's own plumbing permit counts. A city files lawn sprinklers, gas lines and sewer taps under plumbing too. Those do not say a plumber has the job. They close nothing, and the row does not list them.
 
 A permit that does not count is still shown. Under **none yet** a line reads **at this address, not counted**. It names who the permit lists and the day. The skim card says the same under **Who**, with the work the permit names. Read it and judge. If it is this job's plumber, press **Decide…** on the row and pick **Has a plumber**.
 
