@@ -22,7 +22,8 @@ import {
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { jobSummaryJobsTileWords } from '../../lib/jobs/jobSummarySearchWins'
 import { jobSummaryTileWords, jobSummaryWindowChipsFold } from '../../lib/jobs/jobSummaryHeaderWords'
-import { SignedAmountSmallCents } from '../AmountSmallCents'
+import { Money, MoneyText } from '../Money'
+import { moneyWords } from '../../lib/moneyParts'
 import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 
@@ -96,7 +97,7 @@ function DeltaLine({ d, fmt, higherIsGood = true, vs, loading, priorEmpty }: { d
   const color = flat ? 'var(--text-muted)' : good ? 'var(--text-green-700)' : 'var(--text-red-700)'
   return (
     <span style={{ color }} title={`${vs}: ${fmt(Math.abs(d.prior ?? 0))}`}>
-      {flat ? '•' : d.delta > 0 ? '▲' : '▼'} {fmt(Math.abs(d.delta))} vs {vs}
+      {flat ? '•' : d.delta > 0 ? '▲' : '▼'} <MoneyText text={fmt(Math.abs(d.delta))} /> vs {vs}
     </span>
   )
 }
@@ -115,7 +116,7 @@ const money = (v: number | null | undefined): string => (v == null ? '—' : `${
  * available". The delta lines and chips keep the rounded `money()` form.
  */
 export function JobSummaryTileMoney({ value }: { value: number | null | undefined }) {
-  return <SignedAmountSmallCents value={value} />
+  return <Money amount={value} />
 }
 const pts = (v: number): string => `${v.toFixed(1)} pts`
 
@@ -265,7 +266,7 @@ export default function JobSummaryLedgerToolbar({
                 tone={tw.headingFor.usd < 0 || (prefs.targetTrueMarginPct > 0 && tw.headingFor.pct != null && tw.headingFor.pct < prefs.targetTrueMarginPct) ? 'red' : 'green'}
               />
             ) : null}
-            <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={tw.perHour.sub} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
+            <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={tw.perHour.sub} d={dl(c?.truePerHourUsd, (a) => moneyWords(a))} />
           </>
         ) : (
           <Tile k="Field hours" v={totals.hours.toFixed(1)} s="recorded, in the window" d={dl(c?.hours, (a) => `${a.toFixed(1)} h`)} />
