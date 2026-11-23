@@ -5,7 +5,9 @@
  * and its day, and a press opens the window that kind already has; the list says so when nothing matches or nothing is
  * on file; a read that fails says so with Retry; under the Search tab it asks only for the words it is handed. A paper
  * that waits acts where it sits: a job's contract opens its Contract window, and a staff, sub or partner paper carries
- * Send again and Copy the signing link, both through the one sender, and the list reads again after.
+ * Send again and Copy the signing link, both through the one sender, and the list reads again after. An outside
+ * party's paper that is not signed also carries Take back: it asks first, deletes through the one guarded delete, says
+ * what came of it, and reads again. A signed paper carries none.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -30,6 +32,18 @@ const io = vi.hoisted(() => ({
   reminderReads: [] as string[][],
   reminderWrites: [] as Array<{ id: string; turnOn: boolean }>,
   reminderFail: null as null | Error,
+  /** Who is signed in. The office's assistant unless a test says otherwise. */
+  role: 'assistant' as string,
+  takeBacks: [] as string[],
+  takeBackOutcome: { kind: 'taken' } as { kind: string },
+  takeBackFail: null as null | Error,
+}))
+vi.mock('../../lib/documents/paperTakeBackIo', () => ({
+  takeBackPartyPaper: async (documentId: string) => {
+    io.takeBacks.push(documentId)
+    if (io.takeBackFail) throw io.takeBackFail
+    return io.takeBackOutcome
+  },
 }))
 vi.mock('../../lib/contracts/personPaperReminderIo', () => ({
   NO_PAPER_REMINDERS: { switchOn: false, byId: new Map() },
@@ -43,7 +57,7 @@ vi.mock('../../lib/contracts/personPaperReminderIo', () => ({
   },
 }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
+  const auth = () => ({ role: io.role, user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/documents/agreementsLedgerIo', () => ({
@@ -162,6 +176,10 @@ beforeEach(() => {
   io.reminderReads = []
   io.reminderWrites = []
   io.reminderFail = null
+  io.role = 'assistant'
+  io.takeBacks = []
+  io.takeBackOutcome = { kind: 'taken' }
+  io.takeBackFail = null
 })
 afterEach(() => {
   cleanup()
@@ -306,6 +324,23 @@ describe('DocumentsAgreementsTab', () => {
     row({ id: 'partner_agreement:d2', kind: 'partner_agreement', source_id: 'd2', state: 'waiting', paper_name: 'Referral partner agreement', with_name: 'Bryce Tolland', job_id: null, job_name: null, job_hcp_number: null, facts: { status: 'sent' } })
   const signedPaper = () =>
     row({ id: 'person_agreement:d1', kind: 'person_agreement', source_id: 'd1', paper_name: 'Employee handbook', with_name: 'Priya Nair', job_id: null, job_name: null, job_hcp_number: null, facts: { status: 'signed' } })
+  /** A supply house's paper that is out and not signed. */
+  const partyPaper = (over: Partial<AgreementRow> = {}) =>
+    row({
+      id: 'supply_house_agreement:p1',
+      kind: 'supply_house_agreement',
+      source_id: 'p1',
+      state: 'waiting',
+      paper_name: 'Mutual secrecy agreement',
+      with_name: 'Tallgrass Supply Co',
+      job_id: null,
+      job_name: null,
+      job_hcp_number: null,
+      job_click_number: null,
+      job_address: null,
+      facts: { status: 'sent', party_kind: 'supply_house', signer_name: 'Lena Park' },
+      ...over,
+    })
 
   it('an outside party’s paper says what the party is and who signs, and one that waits acts on its line', async () => {
     const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
@@ -456,6 +491,96 @@ describe('DocumentsAgreementsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy the signing link' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Make and copy the link' }))
     expect(await screen.findByText('This document is already signed')).toBeTruthy()
+  })
+
+  it('Take back asks first, deletes the paper, says its link no longer works, and reads again', async () => {
+    io.role = 'master_technician'
+    io.rows = [partyPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const before = io.asks.length
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    expect(
+      await screen.findByText('This deletes the copy of Mutual secrecy agreement that is with Tallgrass Supply Co. The signing link sent to Lena Park stops working. Nobody is emailed. It cannot be undone.'),
+    ).toBeTruthy()
+    // Nothing is deleted until the confirm's own press, which names the act.
+    expect(io.takeBacks).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Mutual secrecy agreement was taken back from Tallgrass Supply Co. Its signing link no longer works.')).toBeTruthy()
+    expect(io.takeBacks).toEqual(['p1'])
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+  })
+
+  it('Cancel on the confirm deletes nothing', async () => {
+    io.role = 'master_technician'
+    io.rows = [partyPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Take back the paper' })).toBeNull())
+    expect(io.takeBacks).toEqual([])
+  })
+
+  it('a paper signed a moment before the press is kept, and the office is told why', async () => {
+    io.role = 'master_technician'
+    io.rows = [partyPaper()]
+    io.takeBackOutcome = { kind: 'signed-since' }
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const before = io.asks.length
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Mutual secrecy agreement was signed before it could be taken back. A signed paper is kept.')).toBeTruthy()
+    // The list reads again, so the line says signed.
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+  })
+
+  it('a take-back the database refuses says its reason, and one the account may not make says so', async () => {
+    io.role = 'master_technician'
+    io.rows = [partyPaper()]
+    io.takeBackFail = new Error('This account is in training and cannot change anything.')
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('This account is in training and cannot change anything.')).toBeTruthy()
+    io.takeBackFail = null
+    io.takeBackOutcome = { kind: 'refused' }
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Mutual secrecy agreement was not taken back. Your account cannot delete a paper.')).toBeTruthy()
+  })
+
+  it('only an outside party’s unsigned paper carries Take back: not a signed one, a job’s, a teammate’s or a trade company’s GC paper', async () => {
+    const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
+    io.role = 'dev'
+    io.rows = [
+      partyPaper(),
+      partyPaper({ id: 'customer_agreement:p2', kind: 'customer_agreement', source_id: 'p2', state: 'signed', facts: { status: 'signed', party_kind: 'customer', signer_name: 'Dana Ruiz' } }),
+      partyPaper({ id: 'customer_agreement:p3', kind: 'customer_agreement', source_id: 'p3', job_id: 'j9', job_name: 'Ridgeway tower', facts: { status: 'sent', party_kind: 'customer', signer_name: 'Dana Ruiz' } }),
+      waitingPaper(),
+      row({ id: 'company_agreement:g1', kind: 'company_agreement', source_id: 'g1', state: 'waiting', paper_name: 'Trade agreement', with_name: 'Juniper Mechanical LLC', ...off, facts: { status: 'sent' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    const hasTakeBack = rows.map((r) => within(r).queryByRole('button', { name: 'Take back' }) != null)
+    expect(hasTakeBack).toEqual([true, false, false, false, false])
+  })
+
+  it('Take back is the leader’s and a dev’s: an assistant and the controller send again and copy a link, and delete nothing', async () => {
+    io.rows = [partyPaper()]
+    for (const role of ['assistant', 'controller']) {
+      io.role = role
+      renderWithProviders(<DocumentsAgreementsTab />)
+      const rows = await lines()
+      expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link'])
+      cleanup()
+    }
+    io.role = 'master_technician'
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link', 'Take back'])
   })
 
   it('a work order opens its window on the job, and one with no job is not a press', async () => {
