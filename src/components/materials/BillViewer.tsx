@@ -333,11 +333,13 @@ export function BillViewer({ items, openId, onOpen, onClose, jobId = null, searc
   return createPortal(
     <div
       data-testid="bill-viewer"
-      onMouseDown={(e) => {
+      // A click outside the window closes it, on the release and not the press, as every window does (the page-wide
+      // guard drops a click whose press or release was elsewhere). The list this opened from sits inside rows that open
+      // on a press or a key: neither should hear this window, so the click stops here either way.
+      onClick={(e) => {
+        e.stopPropagation()
         if (!standalone && e.target === e.currentTarget) onClose()
       }}
-      // The list this opened from sits inside rows that open on a press or a key. Neither should hear this window.
-      onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       style={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', background: 'rgba(0,0,0,0.45)', padding: narrow ? 0 : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}
     >
