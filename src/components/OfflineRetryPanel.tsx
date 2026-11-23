@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { offlineRecoveryState, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
@@ -51,6 +52,8 @@ export default function OfflineRetryPanel({
 }: Props) {
   const { user, role } = useAuth()
   const online = useOnlineStatus()
+  // Retry is a thumb's press on a phone (punch list #414, v2.8361): 44 px tall, as the other presses of the crew screens are.
+  const phone = useIsMobile()
   const [attempts, setAttempts] = useState(0)
   /** Count of `online` events since the failure — each one is one chance to auto-retry. */
   const [onlineEvents, setOnlineEvents] = useState(0)
@@ -143,7 +146,7 @@ export default function OfflineRetryPanel({
           type="button"
           onClick={() => retry(false)}
           style={{
-            padding: '0.4rem 0.9rem',
+            padding: phone ? '0.5rem 1.1rem' : '0.4rem 0.9rem',
             border: '1px solid var(--border-strong)',
             borderRadius: 6,
             background: 'var(--surface)',
@@ -151,7 +154,7 @@ export default function OfflineRetryPanel({
             fontWeight: 600,
             fontSize: '0.875rem',
             cursor: 'pointer',
-            minHeight: 36,
+            minHeight: phone ? 44 : 36,
           }}
         >
           {state.retryLabel}

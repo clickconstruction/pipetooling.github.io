@@ -51,7 +51,8 @@ describe('the lines above the header', () => {
 
   it('Layout draws nothing above the header but these lines and the View-as strip', () => {
     const src = read('components/Layout.tsx')
-    const from = src.indexOf('<AddTaskShortcutBanner')
+    // The mode row (punch list #425) is the first line of all.
+    const from = src.indexOf('<ModeRow')
     const to = src.indexOf('<div className="appNavChrome">')
     expect(from).toBeGreaterThan(-1)
     expect(to).toBeGreaterThan(from)
@@ -61,13 +62,14 @@ describe('the lines above the header', () => {
     const mounts = opened.filter((name) => name !== 'strong')
     expect(mounts.length).toBeGreaterThan(3)
     for (const name of mounts) {
-      expect(['AddTaskShortcutBanner', 'AppTopBanner', 'CustomerWaitingBanner', 'ViewAsExitStrip']).toContain(name)
+      expect(['ModeRow', 'AddTaskShortcutBanner', 'AppTopBanner', 'CustomerWaitingBanner', 'ViewAsExitStrip']).toContain(name)
     }
   })
 
   it.each([
     ['components/AddTaskShortcutBanner.tsx', 1],
     ['components/CustomerWaitingBanner.tsx', 2],
+    ['components/layout/ModeRow.tsx', 2],
   ])('%s draws its line through the component, with no padding of its own', (file, lines) => {
     // The opening tag ends at the first `>` that closes a line.
     const tags = read(file).match(/<AppTopBanner\b[\s\S]*?>\n/g) ?? []

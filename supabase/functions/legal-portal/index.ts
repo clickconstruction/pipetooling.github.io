@@ -12,7 +12,10 @@ import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleLegal.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
-import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
+import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_OWNER_CALL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
+// v2.8315: a job's GC by name when the GC is not the matter's payer.
+import { gcCustomerFor, gcIdsToRead } from '../_shared/legalGcName.ts'
+import { withSampleOwnerFacts } from '../_shared/lienOwnerFacts.ts'
 import { portalThemesForMatter, type LegalTheme, type LegalThemeMark } from '../_shared/legalThemes.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
@@ -140,8 +143,8 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
     const rows = (monthsRes.data ?? []) as Row[]
     const affidavitRows = (affRes.error ? [] : (affRes.data ?? [])) as Row[]
     const jobIds = [...new Set([...rows.map((r) => r.job_id as string), ...affidavitRows.map((r) => r.job_id as string)])]
-    if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [] }
-    const [jobsRes, itemsRes, filingsRes, ownersRes] = await Promise.all([
+    if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [], ownerFacts: {} }
+    const [jobsRes, itemsRes, filingsRes, ownersRes, ownerCallRes] = await Promise.all([
       // The same columns as the app's LIEN_BOOK_JOB_COLUMNS (src/lib/jobs/lienTimelineBookAssemble.ts). customer_name and
       // in_kind_arrangement_id are read for a rule only: shapeLienBookForCounsel drops the ZZ test jobs (v2.5124) and the
       // jobs paid in kind (the Lien desk's lienInKind.ts), and cuts both columns before the book is sent.
@@ -149,6 +152,9 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
       admin.from('job_lien_desk_items').select(LIEN_BOOK_COUNSEL_SELECT.deskItems).in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
       admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
       admin.from('job_property_owners').select(LIEN_BOOK_COUNSEL_SELECT.owners).in('job_id', jobIds),
+      // v2.8315: the owner's call behind the grid's Paid out to GC and 10 % reserved. The one read that takes `fields`;
+      // the rows stay here and shapeLienBookForCounsel sends four values a job.
+      admin.from('job_lien_desk_items').select(LIEN_BOOK_OWNER_CALL_SELECT).in('job_id', jobIds).eq('kind', 'notice_53_056').is('voided_at', null),
     ])
     // Without the jobs no ZZ test job and no job paid in kind can be told apart, so the book is not sent (v2.5124).
     if (jobsRes.error) throw jobsRes.error
@@ -168,6 +174,8 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
       gcs: gcRes.data ?? [],
       addresses: addrRes.data ?? [],
       owners: ownersRes.data ?? [],
+      // A failed read leaves the two columns blank; it never stops the book.
+      ownerCallItems: ownerCallRes.error ? [] : (ownerCallRes.data ?? []),
     })
   } catch (e) {
     console.error('legal-portal: lien book unreadable', e)
@@ -247,7 +255,8 @@ serve(async (req) => {
     const url = new URL(req.url)
     const rawToken = url.searchParams.get('token')?.trim()
     // What customers see (v2.3512): the sample token answers with the sample firm's empty portal — no link lookup, no view row, never a real matter.
-    if (sampleStateFromToken(rawToken)) return jsonResponse(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz()))
+    // v2.8315: the sample's grid reads its two owner columns off the sample matter's own notice item.
+    if (sampleStateFromToken(rawToken)) return jsonResponse(withSampleOwnerFacts(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz())))
     // The office's preview by firm id (item 22): `?firm=<id>&preview=1`, a signed-in office session, no key.
     const firmParam = (url.searchParams.get('firm') ?? '').trim()
     const officeFirmId = !rawToken && /^[0-9a-f-]{36}$/i.test(firmParam) ? await officePreviewFirm(req, firmParam) : null
@@ -429,6 +438,12 @@ serve(async (req) => {
       : { data: [] }
     const payerJobs = (payerJobRows ?? []) as Row[]
 
+    // v2.8315: a job's GC is not always the matter's payer, and `customers` holds the payers alone. The other GCs'
+    // names are read here, the name and no more, so the packet's account reads the GC by name and not the word GC.
+    const otherGcIds = gcIdsToRead(jobs, customers)
+    const { data: otherGcRows } = otherGcIds.length ? await admin.from('customers').select('id, name').in('id', otherGcIds) : { data: [] }
+    const otherGcs = (otherGcRows ?? []) as Row[]
+
     // Property per job (#85 item 6): the record each job names, whichever customer holds it (on a GC-paid
     // job the payer's addresses are the GC's offices), and the job's owner override, shaped without the
     // owner's email. The packet kernel resolves one property per job and runs each job's lien clock from it.
@@ -552,7 +567,7 @@ serve(async (req) => {
         ...j,
         invoices: mInvoices.filter((i) => i.job_id === j.id),
         payments: mPayments.filter((p) => p.job_id === j.id),
-        gcCustomer: j.gc_customer_id ? { id: j.gc_customer_id, name: customers.find((c) => c.id === j.gc_customer_id)?.name ?? null } : null,
+        gcCustomer: gcCustomerFor(j, customers, otherGcs),
         collections_by_name: userName.get(j.collections_by as string) ?? null,
       }))
       const contactNumbers = contactScopeNumbers(mJobs, payerJobs.filter((j) => customerId != null && (j.customer_id === customerId || j.gc_customer_id === customerId)))

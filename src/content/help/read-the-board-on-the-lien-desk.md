@@ -9,11 +9,11 @@ The Lien desk opens on its To do view. The Board sits across the top of that vie
 
 ## The four tiles
 
-The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers. The line ends in *Show them ›*. With no paper at risk, the red line counts the papers past their day. It reads like *6 are past their day. Show them ›*. Press it and the list shows only the rows with a late paper. The line then ends in *Show every row ›*. Press it again and the list is whole. The line about papers at risk does the same.
+The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. On a phone the day is on one line and the two counts are on the next. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers. The line ends in *Show them ›*. With no paper at risk, the red line counts the papers past their day. It reads like *6 are past their day. Show them ›*. Press it and the list shows only the rows with a late paper. The line then ends in *Show every row ›*. Press it again and the list is whole. The line about papers at risk does the same.
 
-The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. The tile says *Show them ›* at its top right. Press the tile and the list shows only those rows. The tile then says *Show every row ›*. Press it again and the list is whole.
+The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. On a computer the tile says *Show them ›* at its top right. On a phone those words end the tile's small line. Press the tile and the list shows only those rows. The tile then says *Show every row ›*. Press it again and the list is whole.
 
-The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. The tile says *Open the run ›* at its top right. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
+The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. On a computer the tile says *Open the run ›* at its top right. On a phone those words end the tile's small line. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
@@ -25,7 +25,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 **Needs the property facts** holds an affidavit that still needs a fact. The fact is on the property record or on the GC's customer record. **Waiting on its notice** holds an affidavit that needs nothing but its notice. A job with a GC needs a notice mailed and on record before its affidavit can go. An affidavit that needs both a fact and a notice stays in **Needs the property facts**.
 
-One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
+One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the flow is drawn as counts and keeps that arrow. Read [The flow on a phone](#the-flow-on-a-phone).
 
 A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey. The two column headings are grey too. Red on the Board always means a late day.
 
@@ -96,13 +96,44 @@ On *Filed · copies to mail* the press reads like {{button:outline|Print 10 lien
 
 A press with nothing ready is grey. The line under it still says what waits. A bin with no paper and nothing ready has no press. On a narrow window the press drops to its own line, under the bin's name.
 
-Scroll down and the two prints stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the bins are folded, so the two prints stand side by side above them.
+Scroll down and the two prints stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the two prints stand side by side under the tiles. They stand under the flow too.
 
 ## Press a bin
 
 Press a bin's name and the list under the Board shows only that bin's rows. A line under the bins says how many it is showing. Press {{button:outline|Show every row}} to see every row again. Pressing the same bin a second time does the same. A pressed bin also brings the list up to you, on a phone and on a computer.
 
 The Board never sends, files or moves anything. Every press on a row below still does what it did.
+
+## The flow on a phone
+
+A phone has a switch at the top of the Board. Its two presses are {{button:outline|By day}} and {{button:outline|The flow}}.
+
+**By day** shows the four tiles over the list. **The flow** shows the two columns side by side. The phone opens on the one you used last.
+
+In the flow each stage is one press. It shows the stage's name and how many papers are in it. A phone draws no chips, so the whole flow fits one screen.
+
+:::example the flow on a phone
+*14 by Dec 15. 3 are past their day.* **Show them ›**
+Monthly notices: *Approved · to sign* **6**, *Approved · to print* **1**, *Sent* **2**
+Lien affidavits: *Waiting on its notice* **1**, *Filed · copies to mail* **8**
+:::
+
+A count is red when a paper in that stage is late, at risk or due within a day. It is amber when one is due this week. It is purple when one waits on the leader.
+
+Tap a stage and its papers are the screen. The flow shrinks to one line that stays at the top while you scroll.
+
+:::example the pinned line
+**‹ The flow** *Monthly notices, stage 4 of 8* **Approved · to sign · 6**
+0 · 1 · 0 · **6** · 1 · 4 · 2 · 1
+:::
+
+The squares on the line are the stages of that column, in order. The lit square is the stage you are in. Tap another square to move to that stage.
+
+A stage's own press sits on the line too. It is the press that stood beside the bin's name, like **Enter mail numbers**.
+
+Tap **‹ The flow** to go back to the flow. Your stage is still lit there. The phone's own Back does the same.
+
+Open a job from a stage and then go back. You return to that stage's papers, with the line still at the top.
 
 ## Scroll down to the list
 
@@ -132,7 +163,7 @@ The leader's own rows stay on top, under **Only you can sign** and **Only you ca
 
 Everything due later than a week waits under **Later**. One line says which bins hold how many. Press **Show the 8** to read the rows. A find or a pressed bin opens them for you.
 
-On a phone the list is drawn by day. The papers at risk lead their day. The waiting rows follow the days that need you.
+On a phone the list is drawn by day. The papers at risk lead their day. The waiting rows follow the days that need you. Rows with no day set are one group at the end. Each row has its words at the left and one button at the right.
 
 ## What a row says
 
@@ -256,7 +287,21 @@ The office sees no press to approve. A dev sees one only on the jobs he leads. T
 
 ## On the Dashboard
 
-The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 to print and mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
+The Dashboard has a small **Lien desk** card beside the Needs you list. It shows three of the Board's counts side by side.
+
+:::example the Lien desk card on the Dashboard
+*Lien desk* **The Board ›**
+**14** by Dec 15 · **6** wait on you · **5** to print and mail
+*3 are past their day.*
+:::
+
+The first count is the papers due by the next lien day. The second is what waits on the leader. A leader reads *wait on you* there. The third is what waits to print and mail.
+
+A red line shows only while a paper is past its day or will not make it. The line uses the Board's own words.
+
+Press the card and the Lien desk opens at the Board. The unpaid amount is on the Board and not on the Dashboard.
+
+The card shows for the office while the desk holds a paper. It is never a line of the Needs you list. That list holds only things to press.
 
 ## The first tab is the way back
 

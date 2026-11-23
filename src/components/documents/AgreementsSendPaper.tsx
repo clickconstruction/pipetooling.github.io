@@ -3,16 +3,18 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
 import { readAgreementsSendBook, type AgreementsSendBook } from '../../lib/documents/agreementsSendIo'
-import { quickSendNoContentWords, quickSendPickPlan, quickSendPlanWrites, quickSendRosterSplit, type QuickSendPlan } from '../../lib/contractsQuickSend'
+import { quickSendNoContentWords, quickSendPickPlan, quickSendPlan, quickSendPlanWrites, quickSendRosterSplit, resolveQuickSendSource, type QuickSendPlan } from '../../lib/contractsQuickSend'
 import { materializeQuickSendRow, readPersonSendFactsByName, readSenderFacts, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { partyPaperName } from '../../lib/contracts/paperParty'
 import { partyNameToKeep, sendWindowPartyOfPick, type PartyPick, type PartyRecordTable, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
-import { keepSignerWithBusiness, makeContactForAddress, readPartyContact } from '../../lib/documents/paperPartyIo'
+import { findPartyContact, keepSignerWithBusiness, makeContactForAddress, readCopiesOut, readPartyContact } from '../../lib/documents/paperPartyIo'
+import { SECOND_COPY_HINT, SECOND_COPY_LABEL, SEND_AGAIN_HINT, copiesOutLead, copiesOutTitle, copyOutSentence, partyPapersOut, sendAgainLabel, type PartyCopyOut } from '../../lib/documents/partyPaperOut'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { PaperPartyPicker } from './PaperPartyPicker'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
  * Documents → Agreements, **Send a paper** (punch list #376, the second train): one press that picks a paper from the
@@ -33,13 +35,22 @@ const primary: CSSProperties = { padding: '0.5rem 0.9rem', borderRadius: 6, bord
 const primaryBusy: CSSProperties = { ...primary, background: DEAD_PRESS_FILL, border: '1px solid var(--border-strong)', color: DEAD_PRESS_TEXT, cursor: 'wait' }
 const paperRow: CSSProperties = { display: 'block', width: '100%', padding: '0.5rem 0.6rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', color: 'var(--text-strong)' }
 const paperFrom: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.1rem' }
+const closeX: CSSProperties = { minWidth: 44, minHeight: 44, margin: '-0.6rem -0.6rem 0 0', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.15rem', lineHeight: 1, color: 'var(--text-muted)', flexShrink: 0 }
+const choice: CSSProperties = { display: 'block', width: '100%', minHeight: 44, padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', boxSizing: 'border-box' }
+const choiceHint: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }
 
 type Step =
   | { at: 'paper' }
   | { at: 'person'; documentName: string }
   | { at: 'send'; documentName: string; docId: string | null; plan: QuickSendPlan; again: boolean; facts: PersonPaperSendFacts }
-  /** An outside party's paper: nothing is decided until Send email, when its contact is found and its row written. */
-  | { at: 'send-party'; documentName: string; pick: Exclude<PartyPick, { kind: 'roster' }>; party: SendWindowParty; facts: PersonPaperSendFacts }
+  /**
+   * An outside party's paper: nothing is decided until Send email, when its contact is found and its row written.
+   * `again` is a copy that is already out, sent to the same person again. `second` is a second copy for someone else
+   * at a company that already has the paper out: it never lands on the first person's copy.
+   */
+  | { at: 'send-party'; documentName: string; pick: Exclude<PartyPick, { kind: 'roster' }>; party: SendWindowParty; facts: PersonPaperSendFacts; again?: PartyCopyOut; second?: boolean }
+  /** The company already has this paper out: the office says whether it goes to the same person again or to another. */
+  | { at: 'party-out'; documentName: string; pick: Extract<PartyPick, { kind: 'record' }>; party: SendWindowParty; sender: PersonPaperSendFacts['sender']; copies: PartyCopyOut[] }
 
 export function AgreementsSendPaper({
   onSent,
@@ -118,6 +129,16 @@ export function AgreementsSendPaper({
     try {
       const sender = await readSenderFacts(user?.id)
       const signer = pick.kind === 'record' ? pick.signer : null
+      // A company that already has this paper out: say who has it, and ask before anything is written (the owner's
+      // third decision of 2026-11-22). The look is a read alone, and a record with no contact has no paper.
+      if (pick.kind === 'record') {
+        const contactId = await findPartyContact(pick.record)
+        const copies = await readCopiesOut(partyPapersOut(data.personDocuments, contactId, documentName).map((d) => d.id))
+        if (copies.length > 0) {
+          setStep({ at: 'party-out', documentName, pick, party: sendWindowPartyOfPick(pick), sender, copies })
+          return
+        }
+      }
       setStep({
         at: 'send-party',
         documentName,
@@ -134,9 +155,10 @@ export function AgreementsSendPaper({
 
   /**
    * What a party's first send writes, right before the email goes: a person kept with the company, the party's contact,
-   * and the paper's row under the party's stored name. A party that already has this paper out gets the same copy again.
+   * and the paper's row under the party's stored name. A party that already has this paper out gets the same copy again,
+   * unless the office asked for a second copy for someone else there.
    */
-  const preparePartyPaper = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>, party: SendWindowParty, input: PartySendInput): Promise<string> => {
+  const preparePartyPaper = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>, party: SendWindowParty, input: PartySendInput, second = false): Promise<string> => {
     if (!data) throw new Error('The Contract Book did not read.')
     let contactId: string
     if (pick.kind === 'unlisted') {
@@ -155,7 +177,10 @@ export function AgreementsSendPaper({
       contactId = await readPartyContact(record)
     }
     const storedName = partyPaperName(contactId)
-    const { plan } = quickSendPickPlan({ documentName, personName: storedName, templateDocuments: data.book, personDocuments: data.personDocuments })
+    // A second copy is a row of its own, written from the Book: the copy that is out is never reused for it.
+    const { plan } = second
+      ? { plan: quickSendPlan({ existing: null, source: resolveQuickSendSource({ documentName, templateDocuments: data.book, personDocuments: data.personDocuments }) }) }
+      : quickSendPickPlan({ documentName, personName: storedName, templateDocuments: data.book, personDocuments: data.personDocuments })
     if (plan.kind === 'no-content') throw new Error(quickSendNoContentWords(documentName))
     if (!quickSendPlanWrites(plan)) return plan.docId
     return materializeQuickSendRow({ personName: storedName, documentName, plan, party: { contactId, name: partyNameToKeep(party, input.typedCompany, input.signerName) } })
@@ -264,13 +289,78 @@ export function AgreementsSendPaper({
           onClose={close}
         />
       ) : null}
+      {step?.at === 'party-out' ? (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={close}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={copiesOutTitle(step.documentName)}
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1rem 1.1rem', width: 'min(92vw, 440px)', maxHeight: 'min(80vh, 100%)', overflow: 'auto', boxSizing: 'border-box', boxShadow: '0 10px 30px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', lineHeight: 1.35, overflowWrap: 'anywhere' }}>{copiesOutTitle(step.documentName)}</h3>
+              <button type="button" onClick={close} aria-label="Close" style={closeX}>
+                ×
+              </button>
+            </div>
+            <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{copiesOutLead(step.party.name, step.copies.length)}</p>
+            {step.copies.map((copy) => (
+              <div key={copy.docId} style={{ marginBottom: '0.7rem' }}>
+                <p style={{ margin: '0 0 0.35rem', fontSize: '0.875rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }} data-testid="party-copy-out">
+                  <ValueSentence text={copyOutSentence(copy)} values={{ day: (day) => <WorkedOutValue><span style={{ whiteSpace: 'nowrap' }}>{day}</span></WorkedOutValue> }} />
+                </p>
+                <button
+                  type="button"
+                  style={choice}
+                  onClick={() =>
+                    setStep({
+                      at: 'send-party',
+                      documentName: step.documentName,
+                      pick: step.pick,
+                      party: step.party,
+                      again: copy,
+                      facts: { target: { personName: copy.signerName, documentName: step.documentName }, initialEmail: copy.signerEmail, signerName: copy.signerName, signerTitle: copy.signerTitle, personId: null, sender: step.sender },
+                    })
+                  }
+                >
+                  {sendAgainLabel(copy)}
+                  <span style={choiceHint}>{SEND_AGAIN_HINT}</span>
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              style={choice}
+              onClick={() => {
+                // Someone else signs the second copy, so it is the company's and the boxes open empty: the office names
+                // them, and the tick keeps them with the company as on a first send.
+                const business = step.pick.business
+                const pick: Extract<PartyPick, { kind: 'record' }> = { kind: 'record', business, record: { table: business.table, id: business.id }, signer: null }
+                setStep({
+                  at: 'send-party',
+                  documentName: step.documentName,
+                  pick,
+                  party: sendWindowPartyOfPick(pick),
+                  second: true,
+                  facts: { target: { personName: '', documentName: step.documentName }, initialEmail: '', signerName: '', signerTitle: '', personId: null, sender: step.sender },
+                })
+              }}
+            >
+              {SECOND_COPY_LABEL}
+              <span style={choiceHint}>{SECOND_COPY_HINT}</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
       {step?.at === 'send-party' ? (
         <Suspense fallback={null}>
           <ContractSendWindow
+            again={step.again != null}
             target={step.facts.target}
-            docId={null}
+            docId={step.again?.docId ?? null}
             party={step.party}
-            preparePartyPaper={(input) => preparePartyPaper(step.documentName, step.pick, step.party, input)}
+            preparePartyPaper={step.again ? undefined : (input) => preparePartyPaper(step.documentName, step.pick, step.party, input, step.second === true)}
             initialEmail={step.facts.initialEmail}
             initialSignerName={step.facts.signerName}
             initialSignerTitle={step.facts.signerTitle}

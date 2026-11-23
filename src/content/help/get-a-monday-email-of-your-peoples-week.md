@@ -1,8 +1,8 @@
 ---
-title: get a Monday email of your people's week
+title: get a Monday email of the team's week
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: people week, monday email, weekly report, task cards, progress, percent, photos, roadmap, jobs, subscribe, your people, email me their week
+keywords: people week, monday email, weekly report, task cards, progress, percent, photos, roadmap, jobs, subscribe, the team's week, your people, your people's week, team's open tasks, email me their week
 where: /checklist?tab=review
 order: 42
 ---
@@ -12,7 +12,7 @@ Get one email each week about the people you pick. It says what each person move
 
 Open **Checklist → Review** and press {{button:outline|✉ Email me their week}}. The people on the board are already picked.
 
-On the **Dashboard**, the **Your people** card has {{button:outline|✉ Get this every Monday}}. Its people are picked the same way.
+On the **Dashboard**, the **Team's open tasks** card has {{button:outline|✉ Get this every Monday}}. Its people are picked the same way.
 
 ## Pick the people, the days and the time
 
@@ -31,6 +31,8 @@ The top of the sheet shows a small sample of the email. The person in it is made
 The first email comes on the next day you picked. After that it comes every week.
 
 ## What the email says
+
+The email is named **The team's week**. Its subject reads like *The team's week · Nov 2 to 8*.
 
 Each person gets their own part. The headline counts the people, the cards done, the cards moved and the cards stuck.
 

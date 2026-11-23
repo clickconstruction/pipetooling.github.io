@@ -1,5 +1,6 @@
 import { getSubmissionSectionKey } from './bids/submissionSections'
 import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from './compareBidsForBidBoardDueDate'
+import { bidBoardDueCellParts, bidBoardNoDueDateParts } from './bids/bidBoardDateCells'
 
 /**
  * Pure kernel for the Dashboard "My Bids" section (extracted from
@@ -405,4 +406,157 @@ export function buildMyBidRows(params: {
       othersCustomerUpdates,
     }
   })
+}
+
+// ---------------------------------------------------------------------------
+// The grouped card (punch list #426, step 2): the bids by state, one box a bid.
+// ---------------------------------------------------------------------------
+
+/** One line under each state's heading, shown while the group is open, for someone who has not seen the card in a while. */
+export const MY_BID_STATE_GLOSS: Record<MyBidState, string> = {
+  unsent: 'Still to price and send.',
+  pending: 'Sent. Waiting on an answer.',
+  won: 'The customer said yes.',
+  startedOrComplete: 'The work is under way or done.',
+}
+
+/** The last group: the bids the person hid, in any state. */
+export const MY_BIDS_HIDDEN_HEADING = 'Hidden'
+export const MY_BIDS_HIDDEN_GLOSS = 'You hid these. Show again puts one back.'
+
+/** The toast after a bid is hidden, with Undo beside it. */
+export function myBidHiddenWords(name: string): string {
+  return `Hidden: ${name}.`
+}
+
+/** The line under the groups when the read came back full (`myBidsReadIsCut`). */
+export const MY_BIDS_CUT_WORDS = `Showing your newest ${MY_BIDS_DASHBOARD_ROW_LIMIT} bids. The Bid Board has every bid.`
+
+/** The edge of a bid's box: red asks for a look now, amber soon, grey is the rest. The colours are the Needs you rows' (`NEEDS_YOU_RAIL`). */
+export type MyBidTone = 'red' | 'amber' | 'gray'
+
+/**
+ * The value line of a bid: a label, the value, and the words after it.
+ * *Due* **Wed 4/8** *229 days past due* · **No due date** *19 days on the board* · *Sent* **Fri 11/20** *3 days ago*.
+ */
+export type MyBidWhen = {
+  /** `Due`, `Sent`, or null when the value says it all (*No due date*). */
+  label: 'Due' | 'Sent' | null
+  value: string
+  /** The words after the value, or null when there is nothing to add. */
+  tail: string | null
+  /** True when the tail is itself the warning, so it draws in red. */
+  late: boolean
+  tone: MyBidTone
+}
+
+const daysWords = (n: number, tail: string): string => `${n} ${n === 1 ? 'day' : 'days'} ${tail}`
+
+/**
+ * When a bid is due or was sent, in the Bid Board's own rules. An unsent bid reads its due date:
+ * red once it has passed, amber within `DUE_SOON_WINDOW_DAYS` (`bidBoardDueCellParts`). With no due
+ * date it reads its days on the board, red after `UNSENT_NO_DUE_DATE_RED_AFTER_DAYS`
+ * (`bidBoardNoDueDateParts`). Every other state reads its sent date and is never red: the deadline was
+ * met. `today` is injectable for tests.
+ */
+export function myBidWhen(
+  bid: { bid_due_date: string | null; bid_date_sent: string | null; outcome: string | null; created_at?: string | null },
+  today: Date = new Date(),
+): MyBidWhen {
+  if (myBidState(bid) === 'unsent') {
+    const due = bidBoardDueCellParts(bid.bid_due_date, today, bid.outcome, bid.bid_date_sent)
+    if (due) {
+      if (due.deltaDays > 0) return { label: 'Due', value: due.dateLabel, tail: daysWords(due.deltaDays, 'past due'), late: true, tone: 'red' }
+      const tail = due.deltaDays === 0 ? 'today' : `in ${daysWords(-due.deltaDays, '').trim()}`
+      return { label: 'Due', value: due.dateLabel, tail, late: false, tone: due.urgency === 'soon' ? 'amber' : 'gray' }
+    }
+    const none = bidBoardNoDueDateParts(bid, today)
+    const late = none?.urgency === 'overdue'
+    return {
+      label: null,
+      value: none?.label ?? 'No due date',
+      tail: none?.ageDays != null ? daysWords(Math.max(0, none.ageDays), 'on the board') : null,
+      late,
+      tone: late ? 'red' : 'gray',
+    }
+  }
+  const sent = bidBoardDueCellParts(bid.bid_date_sent, today)
+  if (!sent) return { label: null, value: 'No sent date', tail: null, late: false, tone: 'gray' }
+  const tail = sent.deltaDays <= 0 ? 'today' : daysWords(sent.deltaDays, 'ago')
+  return { label: 'Sent', value: sent.dateLabel, tail, late: false, tone: 'gray' }
+}
+
+/** True while someone else's note on the bid has not been marked read. */
+export function myBidHasUnread(bid: Pick<MyBidRow, 'unreadBidNotes' | 'unreadCustomerNotes'>): boolean {
+  return bid.unreadBidNotes || bid.unreadCustomerNotes
+}
+
+/**
+ * True when the bid is put away. A hidden bid with unread updates is drawn in its group until
+ * **Mark read** (the owner's pick of 2026-11-23): before, the note on a hidden bid was never seen.
+ */
+export function myBidIsPutAway(bid: Pick<MyBidRow, 'id' | 'unreadBidNotes' | 'unreadCustomerNotes'>, hiddenIds: ReadonlySet<string>): boolean {
+  return hiddenIds.has(bid.id) && !myBidHasUnread(bid)
+}
+
+export type MyBidGroup = {
+  state: MyBidState
+  heading: string
+  gloss: string
+  bids: MyBidRow[]
+  /** Unsent bids whose due date has passed: *1 past due* on the heading. */
+  pastDue: number
+  /** Bids with unread updates: *1 unread* on the heading, and the bids a folded group still draws. */
+  unread: MyBidRow[]
+}
+
+export type MyBidsCard = {
+  /** The groups to draw, in order. A state with no bid is left out, except Unsent, which is always drawn. */
+  groups: MyBidGroup[]
+  /** The bids put away, in the order of the groups. */
+  hidden: MyBidRow[]
+  /** The number in the card's title: every bid not put away. The groups' counts add up to it. */
+  shown: number
+  /** True when the bids span more than one trade. While they share one, no row says it. */
+  showTrade: boolean
+}
+
+/**
+ * The card as it is drawn: the bids by state in the Bid Board's order, the ones put away last.
+ * A stored hidden id that the read no longer holds counts for nothing, so the Hidden count is the
+ * list under it.
+ */
+export function buildMyBidsCard(bids: readonly MyBidRow[], hiddenIds: ReadonlySet<string>, today: Date = new Date()): MyBidsCard {
+  const shownBids = bids.filter((b) => !myBidIsPutAway(b, hiddenIds))
+  const hiddenBids = bids.filter((b) => myBidIsPutAway(b, hiddenIds))
+  const byState = groupMyBids(shownBids)
+  const groups: MyBidGroup[] = []
+  for (const state of MY_BID_STATES) {
+    const list = byState[state]
+    if (list.length === 0 && state !== 'unsent') continue
+    groups.push({
+      state,
+      heading: MY_BID_STATE_WORDS[state],
+      gloss: MY_BID_STATE_GLOSS[state],
+      bids: list,
+      pastDue: state === 'unsent' ? list.filter((b) => b.bid_due_date && myBidWhen(b, today).late).length : 0,
+      unread: list.filter(myBidHasUnread),
+    })
+  }
+  const hiddenByState = groupMyBids(hiddenBids)
+  const trades = new Set(bids.map((b) => b.service_type_name).filter((t) => t !== ''))
+  return {
+    groups,
+    hidden: MY_BID_STATES.flatMap((s) => hiddenByState[s]),
+    shown: shownBids.length,
+    showTrade: trades.size > 1,
+  }
+}
+
+/** A group's heading for a screen reader: *Unsent, 3 bids, 1 past due, 1 unread*. */
+export function myBidGroupLabel(g: Pick<MyBidGroup, 'heading' | 'bids' | 'pastDue' | 'unread'>): string {
+  const parts = [g.heading, `${g.bids.length} ${g.bids.length === 1 ? 'bid' : 'bids'}`]
+  if (g.pastDue > 0) parts.push(`${g.pastDue} past due`)
+  if (g.unread.length > 0) parts.push(`${g.unread.length} unread`)
+  return parts.join(', ')
 }

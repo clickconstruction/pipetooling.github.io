@@ -21,6 +21,11 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Kestrin Contracting signed — $56,343 · Hunter Road Sound Studio')).toBe('signed_agreements')
   })
 
+  it('the Monday people email under its name and the name it had until v2.8329, so older sends still link', () => {
+    expect(emailLogStreamForSubject('The team’s week · Nov 2 to 8')).toBe('people_week')
+    expect(emailLogStreamForSubject('Your people’s week · Nov 2 to 8')).toBe('people_week')
+  })
+
   it('strips the [TEST] prefix from test sends', () => {
     expect(emailLogStreamForSubject('[TEST] Billed awaiting payment — Mon, Aug 17, 2026 — $500 due')).toBe('billed')
   })

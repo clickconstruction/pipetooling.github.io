@@ -15,20 +15,49 @@ A leader and the office see every report.
 
 A primary sees the reports on their own jobs. A job is yours when you are its account manager. A job is also yours when its project lists you as the superintendent. You also see every report you wrote, on any job.
 
-The badge counts only the reports you can see. So does {{button:outline|Mark all opened}}. A line over the list says whose reports it holds.
+The badge counts only the reports you can see. A line over the list says whose reports it holds.
 
-## The three states
+## New and opened
 
-- **New** shows a blue dot and a bold job name. You haven't opened it. A report you wrote yourself is never new to you. Your own report waits with the opened ones.
-- **Opened** means you tapped a report to expand it. The answers show right in place, with {{button:outline|Job detail}} and {{button:outline|Map}} buttons. The report's photos show under the answers. A folded row with photos carries a badge like 📷 2. When you collapse it, it stays in the list, dimmed with a green ✓. Nothing disappears until you say so.
-- **Done** means you tapped {{button:outline-blue|✓ Done}} on an expanded report. That clears it from the dashboard on all your devices. It's not deleted. **View all →** still shows every report ever filed.
+- **New** shows a blue dot and a bold job name. You have not opened it. A report you wrote yourself is never new to you. Your own report waits with the opened ones.
+- **Opened** shows a green ✓. An opened report waits in the **Opened** group at the bottom of the card.
 
-## Handy extras
+There is no other state. Nothing is deleted. **View all ›** still shows every report ever filed.
 
-- {{button:outline|Mark all opened}} in the header quiets the badge in one tap.
-- **Mark unread** on an expanded report puts the blue dot back. It also undoes Done.
-- If you've opened reports in earlier sessions, a **Show N opened reports** link at the bottom reveals them.
+## Read a report
+
+Press the report. The answers open in place, with the report's photos under them. A folded row with photos carries a badge like 📷 2.
+
+The opened report has {{button:outline|Job detail}} and {{button:outline|Map}}. Job detail opens the job's window.
+
+Reading a report marks it opened. The report stays in the list, dimmed, until you leave the page. So nothing moves under your finger.
+
+## Clear a report off the list
+
+Press {{button:outline|Mark opened}} on a report. The report moves to **Opened** at once.
+
+A note at the bottom of the screen says which report you marked. Press **Undo** on the note within ten seconds to put it back.
+
+To clear every new report in the list, press {{button:outline|Mark 8 opened}} at the bottom of the card. The press says how many it will mark.
+
+## The list refills
+
+The list shows eight reports at a time, newest first. When you clear one, the next new report comes up. The badge counts every new report, so it can read more than eight.
+
+The card holds the reports of the last 14 days. An older report is under **View all ›**.
+
+When nothing is new the list says *Nothing new to read.*
+
+## Bring a report back
+
+Open **Opened** at the bottom of the card. Press {{button:outline|Mark unread}} on the report. The blue dot comes back and the report returns to the list.
+
+## The bottom of the card
+
+- {{button:outline|Mark 8 opened}} clears every new report in the list.
+- **Email reports** sets who gets each report by email as it is filed. A dev, a leader, an assistant and a controller see this press. See [email reports to people](/help/email-reports-to-people).
+- **View all ›** opens Jobs, Reports, with every report.
 
 :::example a normal morning
-Three new reports overnight. You tap each one, skim the answers, hit ✓ Done on the two that need nothing, and leave the third dimmed in the list as a reminder to call the customer. The badge reads 0 — on your phone too.
+Three new reports overnight. You press each one and skim the answers. You press Mark opened on the two that need nothing. You leave the third in the list as a reminder to call the customer. The badge reads 1, on your phone too.
 :::

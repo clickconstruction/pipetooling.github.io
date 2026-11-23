@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Working hours</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:#e9edf3; color:#111827; font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h2.sec { font-size:18px; margin:30px 0 2px; }
+  p.lead { margin:2px 0 0; max-width:860px; color:#374151; }
+  .strip { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; padding:14px 0 6px; max-width:1700px; }
+  .strip.dark-page { background:#0b1220; padding:18px; border-radius:16px; margin-top:10px; }
+  .strip.dark-page figcaption { color:#e5e7eb; }
+  figure { margin:0; flex:none; width:380px; max-width:100%; }
+  figure.wide { width:780px; }
+  .try2 figure.wide { width:620px; }
+  figcaption { font-weight:700; font-size:14px; margin:0 0 8px; }
+  figcaption span { display:block; font-weight:400; color:#6b7280; }
+  .dark-page figcaption span { color:#9ca3af; }
+
+  /* The app's own tokens, light then dark (src/index.css). */
+  .app { --page:#f0f2f5; --surface:#ffffff; --subtle:#f9fafb; --strong:#111827; --base:#374151; --muted:#6b7280; --border:#cfd4db; --border-strong:#aab2bd;
+         --link:#2563eb; --tint:#eff6ff; --tint-hover:#bfdbfe; --amber:#92400e; --amber-bg:#fffbeb; --green:#15803d; --red:#b91c1c; --dead-bg:#e5e7eb; --dead-tx:#374151;
+         background:var(--page); color:var(--base); border:1px solid #9aa3af; border-radius:14px; overflow:hidden; }
+  .dark .app { --page:#111827; --surface:#1f2937; --subtle:#18212f; --strong:#f9fafb; --base:#d1d5db; --muted:#9ca3af; --border:#374151; --border-strong:#4b5563;
+         --link:#60a5fa; --tint:#1e3358; --tint-hover:#1e40af; --amber:#fcd34d; --amber-bg:#3a2f11; --green:#4ade80; --red:#fca5a5; --dead-bg:#374151; --dead-tx:#d1d5db; border-color:#4b5563; }
+  .app.phone { width:380px; max-width:100%; border-radius:26px; }
+  .app .pad { padding:14px; }
+  .app.phone .pad { padding:12px; }
+  .who-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--surface); border-bottom:1px solid var(--border); font-size:13px; color:var(--muted); }
+  .who-bar b { color:var(--strong); }
+  .who-bar .role { margin-left:auto; padding:1px 8px; border:1px solid var(--border-strong); border-radius:999px; font-weight:700; font-size:12px; color:var(--base); white-space:nowrap; }
+
+  /* A desk section, as the person's sheet draws one. */
+  .sect { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .sect > h3 { display:flex; align-items:center; gap:8px; margin:0; padding:10px 14px; border-bottom:1px solid var(--border); font-size:16px; color:var(--strong); }
+  .sect > h3 small { margin-left:auto; font-weight:600; font-size:11px; color:var(--muted); border:1px solid var(--border); border-radius:4px; padding:0 6px; }
+  .row { display:grid; grid-template-columns:128px minmax(0,1fr); gap:6px 14px; padding:11px 14px; border-top:1px solid var(--border); align-items:start; }
+  .row:first-of-type { border-top:none; }
+  .row > .k { color:var(--muted); font-size:13px; font-weight:600; padding-top:2px; }
+  .row.new { box-shadow:inset 3px 0 0 #2563eb; }
+  .phone .row { grid-template-columns:1fr; }
+  .phone .row > .k { padding-top:0; }
+
+  /* Values in place: one fact a line, the values in a column. */
+  .lines { display:grid; grid-template-columns:max-content minmax(0,1fr) max-content; gap:8px 14px; align-items:baseline; line-height:1.6; }
+  .lines .d { color:var(--muted); }
+  .lines .h { text-align:right; white-space:nowrap; }
+  .lines .full { grid-column:1 / -1; }
+  .lines .rule { grid-column:1 / -1; border-top:1px solid var(--border); margin:2px 0; }
+  .phone .lines { grid-template-columns:minmax(0,1fr) max-content; row-gap:18px; column-gap:8px; }
+  .phone .lines .d { grid-column:1 / -1; margin-bottom:-16px; font-size:13px; }
+  .phone .lines .cv, .phone .lines .lk { white-space:normal; }
+  .phone .lines .cancel { display:inline-flex; align-items:center; }
+  .phone .lines .rule { margin:-6px 0; }
+  .cv { display:inline-block; position:relative; padding:0 3px; border:none; border-bottom:2px dotted var(--link); border-radius:4px 4px 0 0; background:var(--tint); color:var(--strong); font:inherit; font-weight:700; white-space:nowrap; cursor:pointer; }
+  .cv:hover { background:var(--tint-hover); }
+  .phone .cv::after { content:''; position:absolute; left:-4px; right:-4px; top:50%; height:44px; transform:translateY(-50%); }
+  .wv { font-weight:700; color:var(--strong); }
+  .lk { font-weight:600; color:var(--base); border-bottom:1px dashed var(--border-strong); white-space:nowrap; }
+  .tag { display:inline-block; padding:0 6px; border:1px dashed var(--border-strong); border-radius:3px; color:var(--muted); font-size:10.5px; font-weight:700; line-height:1.6; white-space:nowrap; vertical-align:middle; }
+  .to { color:var(--muted); }
+  .note { color:var(--muted); font-size:12.5px; line-height:1.45; }
+  .legend { margin:10px 0 0; color:var(--muted); font-size:12.5px; }
+  .warn { color:var(--amber); background:var(--amber-bg); border-radius:8px; padding:7px 10px; font-size:13px; }
+
+  /* A value's own field, open where the value sat. */
+  .field { grid-column:1 / -1; min-width:0; contain:inline-size; display:grid; gap:8px; padding:10px 12px; border:1px solid var(--border-strong); border-radius:10px; background:var(--subtle); }
+  .field .line1 { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+  .field label { font-size:12.5px; color:var(--muted); font-weight:600; }
+  .inp, select.inp { min-width:0; padding:3px 8px; border:1px solid var(--border-strong); border-radius:8px; background:var(--surface); color:var(--base); font:inherit; font-size:14px; }
+  .inp.grow { flex:1 1 10rem; }
+  .keep { padding:3px 12px; border:1px solid #2563eb; border-radius:8px; background:#2563eb; color:#fff; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .keep.dead { background:var(--dead-bg); border-color:var(--dead-bg); color:var(--dead-tx); cursor:default; }
+  .cancel { border:none; background:none; padding:0 4px; color:var(--link); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .seg { display:inline-flex; }
+  .seg span { padding:3px 10px; border:1px solid var(--border-strong); background:var(--surface); font-size:13px; font-weight:600; color:var(--base); }
+  .seg span:first-child { border-radius:8px 0 0 8px; }
+  .seg span:last-child { border-radius:0 8px 8px 0; margin-left:-1px; }
+  .seg span.on { background:var(--tint); border-color:var(--link); color:var(--link); position:relative; }
+  .phone .inp, .phone .keep, .phone .cancel { min-height:44px; }
+  .phone .inp { font-size:16px; }
+  .phone .keep { padding:3px 16px; }
+  .phone .seg span { min-height:44px; display:flex; align-items:center; }
+
+  .btn { display:inline-flex; align-items:center; padding:4px 11px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface); color:var(--base); font-size:13px; font-weight:600; white-space:nowrap; }
+  .btn.blue { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .phone .btn { min-height:44px; padding:4px 14px; }
+  .rowhead { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .rowhead .sp { flex:1; }
+
+  /* The person's own Dashboard card. */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .card > h3 { margin:0; padding:11px 14px; border-bottom:1px solid var(--border); font-size:17px; color:var(--strong); }
+  .card > .in { padding:12px 14px; display:grid; gap:10px; }
+  .big { font-size:17px; font-weight:700; color:var(--strong); }
+  .meter { height:8px; border-radius:4px; background:var(--subtle); border:1px solid var(--border); overflow:hidden; }
+  .meter i { display:block; height:100%; background:#2563eb; }
+
+  /* A Utilization line. */
+  .util { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) max-content; gap:6px 14px; align-items:baseline; padding:10px 14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .util + .util { margin-top:6px; }
+  .util .n { font-weight:700; color:var(--strong); }
+  .util .n small { font-weight:400; color:var(--muted); margin-left:6px; }
+  .pill { display:inline-block; padding:0 8px; border-radius:999px; font-size:12px; font-weight:700; line-height:1.7; white-space:nowrap; }
+  .pill.set { background:var(--tint); color:var(--link); }
+  .pill.ans { border:1px solid var(--border-strong); color:var(--base); }
+  .pill.grey { background:var(--dead-bg); color:var(--dead-tx); }
+
+  /* The live editor and the small extras. */
+  .chips { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .chipb { padding:2px 10px; border:1px solid var(--border-strong); border-radius:999px; background:var(--surface); color:var(--base); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .quiet { border:none; background:none; padding:0; color:var(--link); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .ok { color:var(--green); font-size:13px; font-weight:600; }
+  .hist { display:grid; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:13px; }
+  .hist .hr { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:2px 12px; }
+  .hist .hr .w { color:var(--muted); }
+  .hist .hr .y { grid-column:2; color:var(--muted); font-size:12.5px; }
+  .newchip { display:inline-block; padding:0 8px; border-radius:999px; background:var(--tint); color:var(--link); font-size:12px; font-weight:700; line-height:1.7; white-space:nowrap; }
+  .foot1 { font-size:13px; color:var(--base); border-top:1px solid var(--border); padding-top:10px; }
+  @media (max-width:640px) {
+    body { padding:16px; }
+    figure.wide { width:100%; }
+    .util { grid-template-columns:1fr; }
+    /* A desk screen read on a real phone takes the phone's rules. */
+    .app .row { grid-template-columns:1fr; }
+    .app .row > .k { padding-top:0; }
+    .app .lines { grid-template-columns:minmax(0,1fr) max-content; row-gap:18px; column-gap:8px; }
+    .app .lines .d { grid-column:1 / -1; margin-bottom:-16px; font-size:13px; }
+    .app .lines .cv, .app .lines .lk { white-space:normal; }
+    .app .lines .cancel, .app .quiet { display:inline-flex; align-items:center; }
+    .app .lines .rule { margin:-6px 0; }
+    .app .cv::after { content:''; position:absolute; left:-4px; right:-4px; top:50%; height:44px; transform:translateY(-50%); }
+    .app .inp, .app .keep, .app .cancel, .app .btn, .app .quiet, .app .chipb { min-height:44px; }
+    .app .inp { font-size:16px; }
+    .app .seg span { min-height:44px; display:flex; align-items:center; }
+  }
+  .phone .quiet, .phone .chipb { min-height:44px; display:inline-flex; align-items:center; }
+  table.t { border-collapse:collapse; background:#fff; border:1px solid #cfd5dd; margin-top:8px; max-width:860px; }
+  table.t td, table.t th { border-top:1px solid #e5e7eb; padding:7px 12px; text-align:left; vertical-align:top; font-size:14px; }
+  table.t tr:first-child th { border-top:none; background:#f3f4f6; }
+</style>
+</head>
+<body>
+
+<h1>Working hours</h1>
+<p class="lead">A mock-up, second pass, 2026-11-23. A dev or the controller sets a person's hours, a start and an end, in 15-minute blocks. Every name and figure here is made up. No wage or pay is drawn. Each screen is shown in light, then in dark.</p>
+
+<h2 class="sec">Try it: the row itself</h2>
+<p class="lead">These two rows work. Days that share their hours are one line. Press the underlined hours to change the whole line at once. On the second row, make Wednesday a half day: press the hours, then <i>Give one day its own hours</i>, then <i>Wed</i>, then <i>Half day</i>, then <i>Keep</i>.</p>
+<div class="strip try2">
+  <figure class="wide">
+    <figcaption>The helper's week <span>30 h, 6:00 AM to 12:00 PM.</span></figcaption>
+    <div class="app">
+      <div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Controller</span></div>
+      <div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3>
+        <div class="row new"><span class="k">Working hours</span><div><div class="lines" id="liveLines"></div><p class="legend">Underlined values can be changed here. Bold ones are worked out.</p></div></div>
+      </div></div>
+    </div>
+  </figure>
+  <figure class="wide">
+    <figcaption>Five full days <span>40 h, 7:00 AM to 3:00 PM. Give Wednesday a half day here.</span></figcaption>
+    <div class="app">
+      <div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div>
+      <div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3>
+        <div class="row new"><span class="k">Working hours</span><div><div class="lines" id="liveLines2"></div><p class="legend">Underlined values can be changed here. Bold ones are worked out.</p></div></div>
+      </div></div>
+    </div>
+  </figure>
+</div>
+
+<div id="frames">
+
+<h2 class="sec">1. A half day on Wednesday, press by press</h2>
+<p class="lead">Tobin works five full days, 7:00 AM to 3:00 PM. From now on Wednesday is a half day. This is the standing week. A half day on one Wednesday only is not this: that is one day's move, or time off.</p>
+<div class="strip">
+<figure class="wide"><figcaption>Start: five full days <span>One line says the working week.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Fri</span><span><span class="cv">7:00 AM to 3:00 PM</span></span><b class="wv h">8 h a day</b><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">40 h</b></div></div></div></div></div></div></figure><figure class="wide"><figcaption>Presses 1 and 2: the hours, then <i>Give one day its own hours</i> <span>The line opens. The quiet press asks which day.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Fri</span><span></span><b class="wv h">8 h a day</b><div class="field"><div class="line1"><label>Mon to Fri from</label><select class="inp" aria-label="Start"><option>6:45 AM</option><option selected>7:00 AM</option><option>7:15 AM</option></select><label>to</label><select class="inp" aria-label="End"><option>2:45 PM</option><option selected>3:00 PM</option><option>3:15 PM</option></select></div><div class="chips"><label>Which day?</label><span class="chipb">Mon</span><span class="chipb">Tue</span><span class="chipb" style="border-color:var(--link);color:var(--link);background:var(--tint)">Wed</span><span class="chipb">Thu</span><span class="chipb">Fri</span></div><div class="line1"><button class="keep dead" type="button">Keep</button><button class="cancel" type="button">Cancel</button><span class="note">Nothing has changed yet.</span></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">40 h</b></div></div></div></div></div></div></figure><figure class="wide"><figcaption>Presses 3 and 4: <i>Wed</i>, then <i>Half day</i> <span>Wednesday leaves the line and gets its own. <i>Half day</i> halves it. The start and the end can still be picked by hand, so the half can be the afternoon.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon, Tue, Thu, Fri</span><span><span class="cv">7:00 AM to 3:00 PM</span></span><b class="wv h">8 h a day</b><span class="d">Wed</span><span></span><b class="wv h">4 h</b><div class="field"><div class="line1"><label>Wed from</label><select class="inp" aria-label="Start"><option>6:45 AM</option><option selected>7:00 AM</option><option>7:15 AM</option></select><label>to</label><select class="inp" aria-label="End"><option>10:45 AM</option><option selected>11:00 AM</option><option>11:15 AM</option></select><label>Starts</label><span class="seg"><span>This week</span><span class="on">Next week</span></span></div><div class="note">Wed would be <b class="wv">7:00 AM</b> to <b class="wv">11:00 AM</b>, <b class="wv">4 h</b>, from <b class="wv">Sun Nov 29</b>. The week would be <b class="wv">36 h</b>.</div><div class="warn">Tobin is on a set week. Pay follows the hours, so the set week becomes 36 h. No week waits on a pay report, so no past week is priced again.</div><div class="line1"><label>Why</label><input class="inp grow" value="Half days on Wednesdays from December" aria-label="Why"><button class="keep" type="button">Keep</button><button class="cancel" type="button">Cancel</button></div><div class="line1"><span class="quiet">Half day</span><span class="quiet">Same as the other days</span><span class="quiet">Make it a day off</span><span class="quiet">Add a break</span></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">36 h</b></div></div></div></div></div></div></figure><figure class="wide"><figcaption>Press 5: Keep <span>Two lines say the week. The four full days stay together, though Wednesday sits between them.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon, Tue, Thu, Fri</span><span><span class="cv">7:00 AM to 3:00 PM</span></span><b class="wv h">8 h a day</b><span class="d">Wed</span><span><span class="cv">7:00 AM to 11:00 AM</span></span><b class="wv h">4 h</b><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">36 h</b><span class="d">Since</span><span><b class="wv">Sun Nov 29</b> <span class="to">set by</span> <b class="wv">Renee Alder</b></span><span></span></div></div></div></div></div></div></figure></div>
+<p class="lead" style="margin-top:14px"><b>Afterwards.</b> The two lines are edited on their own.</p>
+<div class="strip">
+<figure class="wide"><figcaption>Move the four full days at once <span>A press on their hours opens one field for all four. Wednesday is left alone.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon, Tue, Thu, Fri</span><span></span><b class="wv h">8 h a day</b><div class="field"><div class="line1"><label>Mon, Tue, Thu, Fri from</label><select class="inp" aria-label="Start"><option>6:15 AM</option><option selected>6:30 AM</option><option>6:45 AM</option></select><label>to</label><select class="inp" aria-label="End"><option>2:15 PM</option><option selected>2:30 PM</option><option>2:45 PM</option></select><label>Starts</label><span class="seg"><span>This week</span><span class="on">Next week</span></span></div><div class="note">Mon, Tue, Thu, Fri would be <b class="wv">6:30 AM</b> to <b class="wv">2:30 PM</b>, <b class="wv">8 h</b> a day. The week stays <b class="wv">36 h</b>.</div><div class="ok">Each day keeps its length, so pay does not move.</div><div class="line1"><button class="keep" type="button">Keep</button><button class="cancel" type="button">Cancel</button><span class="quiet">Give one day its own hours</span></div></div><span class="d">Wed</span><span><span class="cv">7:00 AM to 11:00 AM</span></span><b class="wv h">4 h</b><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">36 h</b></div></div></div></div></div></div></figure><figure class="wide"><figcaption>Put Wednesday back <span><i>Same as the other days</i> gives it their hours. On Keep it joins their line again.</span></figcaption><div class="app"><div class="who-bar"><b>Tobin Ashe</b> Leader <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon, Tue, Thu, Fri</span><span><span class="cv">7:00 AM to 3:00 PM</span></span><b class="wv h">8 h a day</b><span class="d">Wed</span><span></span><b class="wv h">8 h</b><div class="field"><div class="line1"><label>Wed from</label><select class="inp" aria-label="Start"><option selected>7:00 AM</option></select><label>to</label><select class="inp" aria-label="End"><option selected>3:00 PM</option></select><label>Starts</label><span class="seg"><span class="on">This week</span><span>Next week</span></span></div><div class="note">Wed would be <b class="wv">7:00 AM</b> to <b class="wv">3:00 PM</b>, <b class="wv">8 h</b>. The week would be <b class="wv">40 h</b>.</div><div class="warn">Pay follows the hours, so the set week becomes 40 h.</div><div class="line1"><label>Why</label><input class="inp grow" placeholder="Why" aria-label="Why"><button class="keep dead" type="button">Keep</button><button class="cancel" type="button">Cancel</button></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">40 h</b></div></div></div></div></div></div></figure><figure><figcaption>What Tobin reads <span>His own Dashboard, one line at the foot of My Time.</span></figcaption><div class="app phone"><div class="who-bar"><b>Dashboard</b> <span class="role">Tobin, a leader</span></div><div class="pad"><div class="card"><h3>My Time</h3><div class="in"><div class="foot1" style="border-top:none;padding-top:0">Your hours are <b class="wv">7:00 AM</b> to <b class="wv">3:00 PM</b> on <b class="wv">Mon, Tue, Thu and Fri</b>. Wed is <b class="wv">7:00 AM</b> to <b class="wv">11:00 AM</b>.<div class="note" style="margin-top:4px">The office sets these hours. Ask Renee Alder to change them.</div></div></div></div></div></div></figure></div>
+
+<h2 class="sec">2. Where a dev or the controller sets them</h2>
+<p class="lead">People, the person's sheet, <b>Pay &amp; schedule</b>. One new row, <b>Working hours</b>.</p>
+<div class="strip">
+<figure class="wide"><figcaption>The first time, for a person on a set week <span>The days and their lengths are already known from pay. So the row asks one thing, the start.</span></figcaption><div class="app"><div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Dev</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="full">No working hours yet. Wes is on a set week of <b class="wv">6 h</b>, <b class="wv">Mon to Fri</b>.</span><div class="field"><div class="line1"><label>Each day starts at</label><select class="inp" aria-label="Start"><option>5:45 AM</option><option selected>6:00 AM</option><option>6:15 AM</option></select><label>Starts</label><span class="seg"><span class="on">This week</span><span>Next week</span></span></div><div class="note">Each day would be <b class="wv">6:00 AM</b> to <b class="wv">12:00 PM</b>. The end is worked out from the 6 h.</div><div class="ok">Each day keeps its length, so pay does not move.</div><div class="line1"><button class="keep" type="button">Set these hours</button><button class="cancel" type="button">Cancel</button><button class="quiet" type="button">Set other hours</button></div></div></div></div></div><div class="row"><span class="k">Clock</span><div><div class="rowhead"><span>Still clocks in and out</span></div></div></div></div></div></div></figure><figure class="wide"><figcaption>The row, with hours set <span>Two lines say the whole week. Days that share their hours read together, as they do everywhere else in the app.</span></figcaption><div class="app"><div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row"><span class="k">Paid</span><div><div class="rowhead"><span><b class="wv">A set week</b> <span class="to">of</span> <b class="wv">30 h</b></span><span class="sp"></span><span class="btn">Edit pay setup</span></div></div></div><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Fri</span><span><span class="cv">6:00 AM to 12:00 PM</span></span><b class="wv h">6 h a day</b><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">30 h</b><span class="d">Since</span><span><b class="wv">Sun Nov 22</b> <span class="to">set by</span> <b class="wv">Renee Alder</b></span><span></span></div><p class="legend">Underlined values can be changed here. Bold ones are worked out.</p></div></div><div class="row"><span class="k">Clock</span><div><div class="rowhead"><span>Still clocks in and out</span></div></div></div></div></div></div></figure><figure class="wide"><figcaption>A press on the hours <span>The start and the end change together, with one Keep. A half-changed day is never saved. No reason is asked, since pay does not move.</span></figcaption><div class="app"><div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Fri</span><span></span><b class="wv h">6 h a day</b><div class="field"><div class="line1"><label>Mon to Fri from</label><select class="inp" aria-label="Start"><option>6:45 AM</option><option selected>7:00 AM</option><option>7:15 AM</option></select><label>to</label><select class="inp" aria-label="End"><option>12:45 PM</option><option selected>1:00 PM</option><option>1:15 PM</option></select><label>Starts</label><span class="seg"><span>This week</span><span class="on">Next week</span></span></div><div class="note">Mon to Fri would be <b class="wv">7:00 AM</b> to <b class="wv">1:00 PM</b>, <b class="wv">6 h</b> a day, from <b class="wv">Sun Nov 29</b>. The week stays <b class="wv">30 h</b>.</div><div class="ok">Each day keeps its length, so pay does not move.</div><div class="line1"><button class="keep" type="button">Keep</button><button class="cancel" type="button">Cancel</button><button class="quiet" type="button">Give one day its own hours</button></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">30 h</b></div></div></div></div></div></div></figure><figure class="wide"><figcaption>One day given its own hours <span>Friday leaves the line and gets its own. This change moves pay, so the row says so and asks why. The reason goes on the pay log.</span></figcaption><div class="app"><div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Thu</span><span><span class="cv">6:00 AM to 12:00 PM</span></span><b class="wv h">6 h a day</b><span class="d">Fri</span><span></span><b class="wv h">4.25 h</b><div class="field"><div class="line1"><label>Fri from</label><select class="inp" aria-label="Start"><option selected>6:00 AM</option><option>6:15 AM</option></select><label>to</label><select class="inp" aria-label="End"><option>10:00 AM</option><option selected>10:15 AM</option><option>10:30 AM</option></select><label>Starts</label><span class="seg"><span class="on">This week</span><span>Next week</span></span></div><div class="note">Fri would be <b class="wv">6:00 AM</b> to <b class="wv">10:15 AM</b>, <b class="wv">4.25 h</b>. The week would be <b class="wv">28.25 h</b>.</div><div class="warn">Wes is on a set week. Pay follows the hours, so the set week becomes 28.25 h. No week waits on a pay report, so no past week is priced again.</div><div class="line1"><label>Why</label><input class="inp grow" value="Leaves early on Fridays for a class" aria-label="Why"><button class="keep" type="button">Keep</button><button class="cancel" type="button">Cancel</button></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">28.25 h</b></div></div></div></div></div></div></figure><figure><figcaption>The same on a phone <span>Each press is 44 px tall. The field stacks.</span></figcaption><div class="app phone"><div class="who-bar"><b>Wes Calloway</b>  <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule</h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Fri</span><span></span><b class="wv h">6 h a day</b><div class="field"><div class="line1"><label>From</label><select class="inp" aria-label="Start"><option selected>7:00 AM</option></select><label>to</label><select class="inp" aria-label="End"><option selected>1:00 PM</option></select></div><div class="line1"><label>Starts</label><span class="seg"><span>This week</span><span class="on">Next week</span></span></div><div class="note">Mon to Fri would be <b class="wv">6 h</b> a day. The week stays <b class="wv">30 h</b>.</div><div class="ok">Pay does not move.</div><div class="line1"><button class="keep" type="button">Keep</button><button class="cancel" type="button">Cancel</button></div></div><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">30 h</b></div></div></div></div></div></div></figure></div>
+
+<h2 class="sec">3. What the week reads as afterwards</h2>
+<p class="lead">The same hours, on the screens that read them. No pay figure is on any of them.</p>
+<div class="strip">
+<figure><figcaption>The person's own Dashboard <span>One quiet line at the foot of My Time. The hours are a fact to read. Nothing is measured against them here.</span></figcaption><div class="app phone"><div class="who-bar"><b>Dashboard</b> <span class="role">Wes, a helper</span></div><div class="pad"><div class="card"><h3>My Time</h3><div class="in"><div class="note">The week's time and its days are drawn here, as in the My Time card's own mock-up.</div><div class="foot1">Your hours are <b class="wv">6:00 AM</b> to <b class="wv">12:00 PM</b>, <b class="wv">Mon to Fri</b>.<div class="note" style="margin-top:4px">The office sets these hours. Ask Renee Alder to change them.</div></div></div></div></div></div></figure><figure><figcaption>When the hours are about to change <span>The person is told before the week it starts, on the same line.</span></figcaption><div class="app phone"><div class="who-bar"><b>Dashboard</b> <span class="role">Wes, a helper</span></div><div class="pad"><div class="card"><h3>My Time</h3><div class="in"><div class="note">The week's time and its days are drawn here, as in the My Time card's own mock-up.</div><div class="foot1">Your hours are <b class="wv">6:00 AM</b> to <b class="wv">12:00 PM</b>, <b class="wv">Mon to Fri</b>.<div style="margin-top:6px"><span class="newchip">New from Sun Nov 29</span> <b class="wv">7:00 AM</b> to <b class="wv">1:00 PM</b>, <b class="wv">Mon to Fri</b>.</div></div></div></div></div></div></figure>
+  <figure class="wide">
+    <figcaption>People, Utilization <span>The office's screen keeps its hours and its counts. Working hours win over a person's own answer, and a punch outside them is counted.</span></figcaption>
+    <div class="app">
+      <div class="who-bar"><b>People</b> Utilization <span class="role">Assistant</span></div>
+      <div class="pad">
+        <div class="util"><span class="n">Wes Calloway <small>helper</small></span><span><b class="wv">30 h</b> <span class="pill set">working hours</span> <span class="to">6:00 AM to 12:00 PM, Mon to Fri</span></span><span class="tag">dev or controller</span><span class="note">This week</span><span class="note"><b class="wv">6.25</b> of 30 h so far. <b class="wv">15 min</b> outside their hours.</span><span></span></div>
+        <div class="util"><span class="n">Odalys Brandt <small>helper</small></span><span><b class="wv">38 h</b> <span class="pill ans">their answer</span> <span class="to">7:00 AM to 3:00 PM, Mon to Thu. 7:00 AM to 1:00 PM Fri</span></span><span class="btn">Change</span><span class="note">This week</span><span class="note"><b class="wv">8</b> of 38 h so far.</span><span></span></div>
+        <div class="util"><span class="n">Tobin Ashe <small>leader</small></span><span><b class="wv">40 h</b> <span class="pill grey">assumed, not asked</span></span><span class="btn">Set hours</span><span class="note">This week</span><span class="note"><b class="wv">8.5</b> of 40 h so far.</span><span></span></div>
+      </div>
+    </div>
+  </figure>
+<figure class="wide"><figcaption>A week that differs day to day, with a lunch <span>A day holds two ranges at most. The break is not counted. Three lines say the week.</span></figcaption><div class="app"><div class="who-bar"><b>Marguerite Sole</b> Office <span class="role">Controller</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours</span><div><div class="lines"><span class="d">Mon to Thu</span><span><span class="cv">7:00 AM to 11:30 AM</span><span class="to">, then</span> <span class="cv">12:00 PM to 3:30 PM</span></span><b class="wv h">8 h a day</b><span class="d">Fri</span><span><span class="cv">7:00 AM to 11:00 AM</span> <span class="quiet">Add a break</span></span><b class="wv h">4 h</b><span class="d">Sat, Sun</span><span><span class="cv">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">36 h</b></div></div></div><div class="row"><span class="k">Clock</span><div><div class="rowhead"><span>On the schedule alone. The sessions open and close at these times.</span></div></div></div></div></div></div></figure></div>
+
+<h2 class="sec">4. What someone who cannot set them sees</h2>
+<p class="lead">The owner reads the same lines with no press, and can open what the hours were before. The office has no Pay &amp; schedule section, as today.</p>
+<div class="strip">
+<figure class="wide"><figcaption>The owner, on the person's sheet <span>The values are plain. A tag and one sentence say who can change them. Every change is kept with who made it and why.</span></figcaption><div class="app"><div class="who-bar"><b>Wes Calloway</b> Helper <span class="role">Owner</span></div><div class="pad"><div class="sect"><h3>Pay &amp; schedule <small>pay roles</small></h3><div class="row new"><span class="k">Working hours <span class="tag">dev or controller</span></span><div><div class="lines"><span class="d">Mon to Fri</span><span><span class="lk">6:00 AM to 12:00 PM</span></span><b class="wv h">6 h a day</b><span class="d">Sat, Sun</span><span><span class="lk">Off</span></span><span class="h to">0 h</span><span class="rule"></span><span class="d">Week</span><span class="to">five days</span><b class="wv h">30 h</b><span class="d">Since</span><span><b class="wv">Sun Nov 22</b> <span class="to">set by</span> <b class="wv">Renee Alder</b></span><span></span></div><p class="legend">A dev or the controller sets working hours.</p><div class="hist"><span class="note"><b class="wv">Earlier hours</b></span><div class="hr"><span class="w">Since Sun Nov 22</span><span>6:00 AM to 12:00 PM, Mon to Fri. 30 h.</span><span class="y">Set by Renee Alder on Nov 23. His hours from the day he started.</span></div><div class="hr"><span class="w">Before that</span><span>No working hours. A set week of 6 h, Mon to Fri.</span></div></div></div></div><div class="row"><span class="k">Clock</span><div><div class="rowhead"><span>Still clocks in and out</span></div></div></div></div></div></div></figure>
+  <figure>
+    <figcaption>A person nobody set hours for <span>Unchanged. Their own answer still stands.</span></figcaption>
+    <div class="app phone"><div class="who-bar"><b>Dashboard</b> <span class="role">Tobin, a leader</span></div><div class="pad"><div class="card"><h3>My Time</h3><div class="in"><div class="foot1" style="border-top:none;padding-top:0">How many hours a week can you work? <span class="btn" style="margin-left:6px">Set hours</span></div></div></div></div></div>
+  </figure>
+</div>
+
+</div><!-- /frames -->
+
+<h2 class="sec">The same screens in dark</h2>
+<div id="dark" class="dark"></div>
+
+<h2 class="sec">What the second pass changed</h2>
+<table class="t">
+  <tr><th>First pass</th><th>Now</th><th>Why</th></tr>
+  <tr><td>One line a day, and each time its own value</td><td>Days that share their hours are one line, and a line changes whole</td><td>Moving a week by an hour was ten presses and ten saved rows. It is one of each.</td></tr>
+  <tr><td>A start and an end kept one after the other</td><td>The start and the end are kept together</td><td>Between the two keeps, a day was saved an hour short, and pay could read it.</td></tr>
+  <tr><td>The first time asked for days, a start and an end</td><td>For a person on a set week it asks for the start alone</td><td>The lengths are already on pay. The end is worked out, so pay cannot move by accident.</td></tr>
+  <tr><td>A reason with every change</td><td>A reason only when pay moves</td><td>A reason is for the pay log. A change of times alone has nothing to log there.</td></tr>
+  <tr><td>The person's card showed hours of a quota</td><td>One quiet line of their hours, and a line when they are about to change</td><td>The Dashboard counts time and does not grade it.</td></tr>
+  <tr><td>No way to see what the hours were</td><td><b>Earlier hours</b>, with who set each and why</td><td>The rows are kept anyway. The pay desk can answer why a week changed.</td></tr>
+  <tr><td>The database lock came last, as its own step</td><td>Each old door is locked in the same step that replaces it</td><td>There is no stretch where the screen says one rule and the database allows another.</td></tr>
+</table>
+
+<script>
+(function () {
+  var frames = document.getElementById('frames'), dark = document.getElementById('dark');
+  if (frames && dark) frames.querySelectorAll('.strip').forEach(function (s) { var c = s.cloneNode(true); c.classList.add('dark-page'); dark.appendChild(c); });
+
+  // A live row. A week is seven days, Sunday first, each off or [start, end] in minutes on a 15-minute block.
+  var NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], ORDER = [1, 2, 3, 4, 5, 6, 0], NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+  function clock(min) { var h24 = Math.floor(min / 60), m = min % 60, h12 = h24 % 12 === 0 ? 12 : h24 % 12; return h12 + ':' + (m < 10 ? '0' : '') + m + (h24 >= 12 && h24 < 24 ? ' PM' : ' AM'); }
+  function hrs(n) { return String(Math.round(n * 100) / 100); }
+  function len(seg) { return seg ? (seg[1] - seg[0]) / 60 : 0; }
+  function same(a, b) { return (!a && !b) || (a && b && a[0] === b[0] && a[1] === b[1]); }
+  // "Mon to Fri", "Sat, Sun", "Mon, Tue, Thu, Fri": a run of three or more reads as a range.
+  function label(days) {
+    var runs = [];
+    days.forEach(function (d) { var last = runs[runs.length - 1]; if (last && ORDER.indexOf(d) === ORDER.indexOf(last[last.length - 1]) + 1) last.push(d); else runs.push([d]); });
+    return runs.map(function (r) { return r.length > 2 ? NAMES[r[0]] + ' to ' + NAMES[r[r.length - 1]] : r.map(function (d) { return NAMES[d]; }).join(', '); }).join(', ');
+  }
+  // Days that share their hours are one line, even when another day sits between them.
+  function groups(w) { var out = []; ORDER.forEach(function (d) { var hit = out.filter(function (g) { return same(g.seg, w[d]); })[0]; if (hit) hit.days.push(d); else out.push({ days: [d], seg: w[d] }); }); return out; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function total(w) { return w.reduce(function (a, s) { return a + len(s); }, 0); }
+
+  function makeLive(boxId, startWeek, who) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    var week = startWeek, paid = week.map(len), open = null;
+    function draft() { var w = week.slice(); open.days.forEach(function (d) { w[d] = open.seg ? open.seg.slice() : null; }); return w; }
+    function others() { var rest = week.map(function (sg, d) { return open.days.indexOf(d) >= 0 ? null : sg; }), best = null; groups(rest).forEach(function (g) { if (g.seg && (!best || g.days.length > best.days.length)) best = g; }); return best; }
+    function quiet(text, fn) { var b = el('button', 'quiet', text); b.type = 'button'; b.addEventListener('click', function () { fn(); draw(); }); return b; }
+    function picker(which, value) {
+      var sel = el('select', 'inp'); sel.setAttribute('aria-label', which === 0 ? 'Start' : 'End');
+      for (var t = which === 0 ? 240 : 300; t <= (which === 0 ? 1380 : 1440); t += 15) { var o = el('option', '', clock(t)); o.value = String(t); if (t === value) o.selected = true; sel.appendChild(o); }
+      sel.addEventListener('change', function () {
+        open.seg[which] = Number(sel.value);
+        if (open.seg[1] <= open.seg[0]) { if (which === 0) open.seg[1] = Math.min(1440, open.seg[0] + 15); else open.seg[0] = Math.max(0, open.seg[1] - 15); }
+        draw();
+      });
+      return sel;
+    }
+    function field() {
+      var f = el('div', 'field'), w = draft(), l1 = el('div', 'line1');
+      l1.appendChild(el('label', '', label(open.days) + ' from'));
+      if (open.seg) { l1.appendChild(picker(0, open.seg[0])); l1.appendChild(el('label', '', 'to')); l1.appendChild(picker(1, open.seg[1])); }
+      else l1.appendChild(el('span', 'wv', 'Off'));
+      f.appendChild(l1);
+      var changed = w.some(function (sg, d) { return !same(sg, week[d]); });
+      var moved = w.some(function (sg, d) { return Math.abs(len(sg) - paid[d]) > 0.001; });
+      f.appendChild(el('div', 'note', open.seg ? label(open.days) + ' would be ' + clock(open.seg[0]) + ' to ' + clock(open.seg[1]) + ', ' + hrs(len(open.seg)) + ' h' + (open.days.length > 1 ? ' a day' : '') + '. The week would be ' + hrs(total(w)) + ' h.' : label(open.days) + ' would be off. The week would be ' + hrs(total(w)) + ' h.'));
+      if (moved) f.appendChild(el('div', 'warn', who + ' is on a set week. Pay follows the hours, so the set week becomes ' + hrs(total(w)) + ' h. A reason would be asked for here.'));
+      else if (changed) f.appendChild(el('div', 'ok', 'Each day keeps its length, so pay does not move.'));
+      if (open.picking) {
+        var ch = el('div', 'chips'); ch.appendChild(el('label', '', 'Which day?'));
+        open.from.forEach(function (d) { var b = el('button', 'chipb', NAMES[d]); b.type = 'button'; b.addEventListener('click', function () { open = { days: [d], seg: open.seg ? open.seg.slice() : [420, 900] }; draw(); }); ch.appendChild(b); });
+        f.appendChild(ch);
+      }
+      var l2 = el('div', 'line1'), keep = el('button', 'keep' + (changed ? '' : ' dead'), 'Keep'), cancel = el('button', 'cancel', 'Cancel');
+      keep.type = 'button'; cancel.type = 'button';
+      keep.addEventListener('click', function () { if (!changed) return; week = draft(); paid = week.map(len); open = null; draw(); });
+      cancel.addEventListener('click', function () { open = null; draw(); });
+      l2.appendChild(keep); l2.appendChild(cancel);
+      f.appendChild(l2);
+      var l3 = el('div', 'line1');
+      if (open.days.length > 1 && !open.picking) l3.appendChild(quiet('Give one day its own hours', function () { open.picking = true; open.from = open.days.slice(); }));
+      if (open.days.length === 1 && open.seg) l3.appendChild(quiet('Half day', function () { var half = Math.max(15, Math.round((open.seg[1] - open.seg[0]) / 2 / 15) * 15); open.seg = [open.seg[0], open.seg[0] + half]; }));
+      if (open.days.length === 1 && others()) l3.appendChild(quiet('Same as the other days', function () { open.seg = others().seg.slice(); }));
+      l3.appendChild(quiet(open.seg ? 'Make it a day off' : 'Give it hours', function () { open.seg = open.seg ? null : (others() ? others().seg.slice() : [420, 900]); }));
+      f.appendChild(l3);
+      return f;
+    }
+    function draw() {
+      box.textContent = '';
+      var on = 0, shown = [];
+      groups(week).forEach(function (g) {
+        if (open && g.days.indexOf(open.days[0]) >= 0 && open.days.length < g.days.length) {
+          shown.push({ days: g.days.filter(function (d) { return open.days.indexOf(d) < 0; }), seg: g.seg });
+          shown.push({ days: open.days.slice(), seg: g.seg });
+        } else shown.push(g);
+      });
+      shown.forEach(function (g) {
+        var isOpen = open && g.days.length === open.days.length && g.days[0] === open.days[0];
+        box.appendChild(el('span', 'd', label(g.days)));
+        var mid = el('span');
+        if (!isOpen) {
+          var b = el('button', 'cv', g.seg ? clock(g.seg[0]) + ' to ' + clock(g.seg[1]) : 'Off'); b.type = 'button';
+          b.addEventListener('click', function () { open = { days: g.days.slice(), seg: g.seg ? g.seg.slice() : null }; draw(); });
+          mid.appendChild(b);
+        }
+        box.appendChild(mid);
+        var shownSeg = isOpen ? open.seg : g.seg;
+        box.appendChild(el(shownSeg ? 'b' : 'span', shownSeg ? 'wv h' : 'h to', hrs(len(shownSeg)) + ' h' + (shownSeg && g.days.length > 1 ? ' a day' : '')));
+        if (g.seg) on += g.days.length;
+        if (isOpen) box.appendChild(field());
+      });
+      box.appendChild(el('span', 'rule'));
+      box.appendChild(el('span', 'd', 'Week')); box.appendChild(el('span', 'to', NUM[on] + (on === 1 ? ' day' : ' days'))); box.appendChild(el('b', 'wv h', hrs(total(week)) + ' h'));
+    }
+    draw();
+  }
+  makeLive('liveLines', [null, [360, 720], [360, 720], [360, 720], [360, 720], [360, 720], null], 'Wes');
+  makeLive('liveLines2', [null, [420, 900], [420, 900], [420, 900], [420, 900], [420, 900], null], 'Tobin');
+})();
+</script>
+</body>
+</html>

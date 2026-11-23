@@ -66,6 +66,32 @@ describe('DashboardNeedsYouCard · the new phone layout', () => {
     expect(onWalk()).toBe(false)
   })
 
+  it('switch on or off, a phone\'s Cards rows are the words across the row and a small press at the bottom right (v2.8329)', () => {
+    for (const stored of [true, false]) {
+      scenario.stored = stored
+      localStorage.setItem(KEY, 'cards')
+      const { unmount } = draw('assistant')
+      const rows = Array.from(document.querySelectorAll('[data-needs-you-row]')) as HTMLElement[]
+      expect(rows.length, String(stored)).toBe(ITEMS.length)
+      for (const row of rows) {
+        expect(row.getAttribute('data-needs-you-layout'), String(stored)).toBe('phone')
+        expect(row.style.flexDirection, String(stored)).toBe('column')
+        const [words, foot] = Array.from(row.children) as [HTMLElement, HTMLElement]
+        expect(words.hasAttribute('data-needs-you-words'), String(stored)).toBe(true)
+        expect(words.querySelector('button'), String(stored)).toBeNull()
+        const end = foot.lastElementChild as HTMLElement
+        expect(end.style.marginLeft, String(stored)).toBe('auto')
+        const press = end.querySelector('button') as HTMLElement
+        expect(press.style.minHeight, String(stored)).toBe('44px')
+        expect(press.style.width, String(stored)).toBe('')
+        // Each fixture's title says its own count, so no row draws it a second time.
+        expect(end.querySelector('[data-needs-you-figure]'), String(stored)).toBeNull()
+      }
+      unmount()
+      localStorage.clear()
+    }
+  })
+
   it('switch on: a choice saved before the switch still wins', () => {
     scenario.stored = true
     localStorage.setItem(KEY, 'cards')

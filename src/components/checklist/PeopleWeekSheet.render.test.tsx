@@ -22,7 +22,7 @@ function makeIo(rows: PeopleWeekRequestRow[] = []): PeopleWeekIo {
   return {
     list: vi.fn().mockResolvedValue(rows),
     apply: vi.fn().mockResolvedValue(undefined),
-    preview: vi.fn().mockResolvedValue({ subject: 'Your people’s week · Nov 2 to 8', html: '<p>hi</p>' }),
+    preview: vi.fn().mockResolvedValue({ subject: 'The team’s week · Nov 2 to 8', html: '<p>hi</p>' }),
     test: vi.fn().mockResolvedValue(undefined),
     people: vi.fn().mockResolvedValue(PEOPLE),
   }
@@ -33,10 +33,10 @@ describe('PeopleWeekSheet', () => {
     const io = makeIo()
     // 'sub-co' is a subcontractor on the board: the picker does not list it, so it is never picked out of sight (v2.6644).
     render(<PeopleWeekSheet open onClose={() => {}} meId="me" canPickOthers suggested={['a', 'b', 'sub-co']} io={io} />)
-    expect(screen.getByRole('dialog', { name: 'Your people’s week' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'The team’s week' })).toBeTruthy()
     // The top shows the email, it does not describe it.
     const glance = screen.getByTestId('people-week-glance')
-    expect(glance.textContent).toContain('Your people’s week · ')
+    expect(glance.textContent).toContain('The team’s week · ')
     expect(glance.textContent).toContain('Sample')
     expect(glance.textContent).toContain('Mateo · 2 cards done · 1 moved · 4 photos')
     expect(screen.queryByText(/One email each week about the people you pick/)).toBeNull()
@@ -76,11 +76,11 @@ describe('PeopleWeekSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'See yours now' }))
     await waitFor(() => expect(io.preview).toHaveBeenCalledWith(['me']))
     // The real email takes the sample's place, and one press brings the sample back.
-    await waitFor(() => expect(screen.getByTitle('Your people’s week · Nov 2 to 8')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTitle('The team’s week · Nov 2 to 8')).toBeTruthy())
     expect(screen.queryByTestId('people-week-glance')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Back to the sample' }))
     expect(screen.getByTestId('people-week-glance')).toBeTruthy()
-    expect(screen.queryByTitle('Your people’s week · Nov 2 to 8')).toBeNull()
+    expect(screen.queryByTitle('The team’s week · Nov 2 to 8')).toBeNull()
   })
 
   it('leads a long list with the people picked and folds the rest behind a count', async () => {

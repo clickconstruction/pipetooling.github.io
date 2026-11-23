@@ -108,7 +108,7 @@ Amber in **Month** needs to know that work was waiting. For approvals, the app k
 
 ## Who sees what
 
-- **Devs and controllers** see everyone, with dollar amounts. Nobody else can open the Day book for now. The tab, the line on Crew Day and the door on Bids are hidden for every other role. The server also refuses to send them the data.
+- **Devs and controllers** see everyone, with dollar amounts. Nobody else can open the Day book for now. The tab, the line on the **Who worked** card and the door on Bids are hidden for every other role. The server also refuses to send them the data.
 
 The address bar carries the range and the person. So a manager can send a link to one person's week. You switch to another tab and the range leaves the address bar with the Day book. You come back and it opens on the week you left.
 

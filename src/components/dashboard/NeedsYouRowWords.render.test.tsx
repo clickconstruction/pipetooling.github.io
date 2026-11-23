@@ -49,6 +49,12 @@ describe('NeedsYouRowWords', () => {
     expect(shown.textContent).not.toMatch(/[⟪⟫]/)
     expect(shown.textContent).toContain('2 texts to send')
     expect(valuesIn(shown.querySelector('[data-needs-you-names]'))).toEqual(['Dana Whitfield', 'Sam Ortiz'])
+    // Each name is one piece with its dot, and holds to a line: a narrow row breaks after a dot and not inside a name.
+    const line = shown.querySelector('[data-needs-you-names]')!
+    const pieces = [...line.querySelectorAll<HTMLElement>('[data-needs-you-piece]')]
+    expect(pieces.map((n) => n.textContent)).toEqual(['Dana Whitfield ·', 'Sam Ortiz'])
+    expect(pieces.every((n) => n.style.display === 'inline-block' && n.style.maxWidth === '100%')).toBe(true)
+    expect(line.textContent).toBe('Dana Whitfield · Sam Ortiz')
     const chips = [...shown.querySelectorAll('[data-needs-you-chip]')]
     expect(chips.map((c) => `${c.getAttribute('data-needs-you-chip')}: ${c.textContent}`)).toEqual(['timed: 1 · Tue 9:00 AM', 'held: 1 held · no number'])
     expect(valuesIn(chips[1]!)).toEqual(['1', 'no number'])

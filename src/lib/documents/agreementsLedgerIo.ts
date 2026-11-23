@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, agreementFindWords, kindsOfPick, statesOfPick, type AgreementRow, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
+import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, agreementFindWords, kindsOfPick, statesOfPick, type AgreementRow, type AgreementState, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -41,8 +41,17 @@ export async function readAgreements(query: AgreementsQuery): Promise<Agreements
 
 /** How many agreements wait on a signature under a kind chip, for the chip's count; null when it cannot be read. */
 export async function countAgreementsWaiting(kind: KindPick, reader?: AgreementsReader): Promise<number | null> {
+  return countAgreementsInState('waiting', kind, reader)
+}
+
+/** How many papers were made and never sent under a kind chip, for the **Not sent** chip; null when it cannot be read. */
+export async function countAgreementsNotSent(kind: KindPick, reader?: AgreementsReader): Promise<number | null> {
+  return countAgreementsInState('not_sent', kind, reader)
+}
+
+async function countAgreementsInState(state: AgreementState, kind: KindPick, reader?: AgreementsReader): Promise<number | null> {
   try {
-    let q = db.from(AGREEMENTS_VIEW).select('id', { count: 'exact', head: true }).eq('state', 'waiting')
+    let q = db.from(AGREEMENTS_VIEW).select('id', { count: 'exact', head: true }).eq('state', state)
     const kinds = kindsOfPick(kind, reader)
     if (kinds) q = q.in('kind', kinds)
     const { count, error } = await q

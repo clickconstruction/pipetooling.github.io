@@ -687,7 +687,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
               { type: 'money_waiting' as const, label: 'Money waiting digest', description: 'Scheduled money-waiting report' },
               { type: 'billed_awaiting' as const, label: 'Billed awaiting payment digest', description: 'Scheduled billed report' },
               { type: 'payment_forecast' as const, label: 'Payment forecast digest', description: 'Scheduled forecast report' },
-              { type: 'crew_day' as const, label: 'Crew day digest', description: 'Superintendent crew-day email' },
+              { type: 'crew_day' as const, label: 'Who worked digest', description: 'The end-of-day Who worked email' },
               { type: 'weekly_money' as const, label: 'Weekly money movement', description: 'Monday money digest' },
               { type: 'weekly_movement' as const, label: 'Weekly movement', description: 'Weekly movement summary' },
               { type: 'schedule_day' as const, label: 'Dispatch schedule (one day)', description: 'Morning schedule email' },

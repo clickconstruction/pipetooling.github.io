@@ -18,6 +18,8 @@ import {
   agreementDayWords,
   agreementDoor,
   agreementNeedsAList,
+  agreementPaperKindWords,
+  agreementStateChips,
   agreementSignerWords,
   agreementSigningForWords,
   agreementFindWords,
@@ -121,7 +123,7 @@ describe('an estimator’s chips', () => {
 describe('the chips', () => {
   it('opens on every kind and on sent and signed', () => {
     expect(AGREEMENT_KIND_CHIPS.map((c) => c.label)).toEqual(['All', 'Job contracts', 'Warranties', 'Staff and subs', 'Outside companies', 'Partners', 'Work orders', 'GC projects'])
-    expect(AGREEMENT_STATE_CHIPS.map((c) => c.label)).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Voided or ended'])
+    expect(AGREEMENT_STATE_CHIPS.map((c) => c.label)).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Not sent', 'Voided or ended'])
     expect(AGREEMENT_KIND_CHIPS[0]?.key).toBe('all')
     expect(AGREEMENT_STATE_CHIPS[0]?.key).toBe('live')
   })
@@ -148,6 +150,9 @@ describe('the chips', () => {
     expect(statesOfPick('waiting')).toEqual(['waiting'])
     expect(statesOfPick('signed')).toEqual(['signed'])
     expect(statesOfPick('ended')).toEqual(['ended'])
+    // A paper that was made and never sent is asked for by its own chip, and is not in the default.
+    expect(statesOfPick('not_sent')).toEqual(['not_sent'])
+    expect(statesOfPick('live')).not.toContain('not_sent')
     // Under the Search tab every state is asked for, so a voided paper is found too.
     expect(statesOfPick('any')).toBeNull()
   })
@@ -168,6 +173,17 @@ describe('the chips', () => {
       expect(pair.background).toMatch(/^var\(--[a-z0-9-]+\)$/)
       expect(pair.color).toMatch(/^var\(--[a-z0-9-]+\)$/)
     }
+  })
+
+  it('the Not sent chip is drawn only while a paper is not sent, or while it is the chip picked', () => {
+    const labels = (notSent: number | null, picked: Parameters<typeof agreementStateChips>[1]) => agreementStateChips(notSent, picked).map((c) => c.label)
+    expect(labels(0, 'live')).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Voided or ended'])
+    expect(labels(2, 'live')).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Not sent', 'Voided or ended'])
+    // The last unsent paper was sent while its chip is pressed: the chip stays, so the list is not left on a chip that is gone.
+    expect(labels(0, 'not_sent')).toContain('Not sent')
+    // A count that could not be read hides it, as none does.
+    expect(labels(null, 'waiting')).not.toContain('Not sent')
+    expect(labels(null, 'not_sent')).toContain('Not sent')
   })
 
   it('the waiting chip carries its count only when something waits', () => {
@@ -280,6 +296,21 @@ describe('a line', () => {
     // A paper that kept no signer says nothing, and one that only has what was typed at signing says so once signed.
     expect(agreementSignerWords(row({ kind: 'person_agreement', state: 'waiting', with_name: 'Priya Nair', facts: { status: 'sent' } }))).toBe('')
     expect(agreementSignerWords(row({ kind: 'customer_agreement', state: 'signed', with_name: 'Ridgeway Builders', facts: { status: 'signed', signer_printed_name: 'Dana Ruiz' } }))).toBe('signed by Dana Ruiz')
+  })
+
+  it('says what kind of paper a party’s line is when it is not an agreement', () => {
+    const party = (doc_type: unknown) => row({ kind: 'supply_house_agreement', facts: { status: 'unsent', doc_type } })
+    expect(agreementPaperKindWords(party('w9'))).toBe('W-9')
+    expect(agreementPaperKindWords(party('coi'))).toBe('Insurance certificate')
+    expect(agreementPaperKindWords(party('license'))).toBe('License')
+    expect(agreementPaperKindWords(party('other'))).toBe('Paper')
+    // An agreement needs no second tag, and neither does a row that says no kind: the view before its restatement.
+    expect(agreementPaperKindWords(party('agreement'))).toBe('')
+    expect(agreementPaperKindWords(party(undefined))).toBe('')
+    expect(agreementPaperKindWords(row({ kind: 'supply_house_agreement', facts: null }))).toBe('')
+    // Only a party's line: every other kind on the tab is an agreement.
+    expect(agreementPaperKindWords(row({ kind: 'person_agreement', facts: { doc_type: 'w9' } }))).toBe('')
+    expect(agreementPaperKindWords(row({ kind: 'company_agreement', facts: { doc_type: 'coi' } }))).toBe('')
   })
 
   it('offers Add to a list only on a party with no record, signed or not', () => {
@@ -441,6 +472,15 @@ describe('the state chip says what the kind’s own window says', () => {
     expect(company('ended', { status: 'signed', replaced: true }).words).toBe('replaced by a newer one')
   })
 
+  it('an outside party’s paper that was made and never sent reads not sent, in the quiet pair', () => {
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'outside_agreement']) {
+      expect(agreementStateChip(row({ kind, state: 'not_sent', facts: { status: 'unsent' } }), TODAY), kind).toEqual({ words: 'not sent', tone: 'not_sent' })
+    }
+    expect(AGREEMENT_STATE_COLORS.not_sent).toEqual({ background: 'var(--bg-muted)', color: 'var(--text-muted)' })
+    // A kind the kernel does not know reads the state too, and never as ended.
+    expect(agreementStateChip(row({ kind: 'something_new', state: 'not_sent', facts: null }), TODAY)).toEqual({ words: 'not sent', tone: 'not_sent' })
+  })
+
   it('a kind it does not know still reads, and a state it does not know reads as ended', () => {
     expect(agreementStateChip(row({ kind: 'something_new', state: 'waiting', facts: null }), TODAY)).toEqual({ words: 'waiting on a signature', tone: 'waiting' })
     expect(agreementStateChip(row({ kind: 'something_new', state: 'signed', facts: null }), TODAY)).toEqual({ words: 'signed ✓', tone: 'signed' })
@@ -460,6 +500,11 @@ describe('the day', () => {
     // A cancelled statement of work keeps no cancel day, so its line shows the day it was sent.
     expect(agreementDayWords(row({ kind: 'sow', state: 'ended', at_day: '2026-09-24', facts: { status: 'cancelled' } }), TODAY)).toBe('Sent Sep 24')
     expect(agreementDayWords(row({ kind: 'owner_contract', state: 'waiting', at_day: '2026-09-25', facts: { sign_by: '2026-10-02' } }), TODAY)).toBe('Sent Sep 25')
+  })
+
+  it('a paper that was never sent shows the day it was made', () => {
+    expect(agreementDayWords(row({ kind: 'supply_house_agreement', state: 'not_sent', at_day: '2026-11-12', facts: { status: 'unsent' } }), TODAY)).toBe('Made Nov 12')
+    expect(agreementDayWords(row({ kind: 'supply_house_agreement', state: 'not_sent', at_day: '2025-12-30', facts: { status: 'unsent' } }), TODAY)).toBe('Made Dec 30, 2025')
   })
 
   it('carries the year once it is not this one, and says nothing with no day', () => {
@@ -518,6 +563,10 @@ describe('what a press opens', () => {
     expect(agreementDoor(row({ kind: 'sow', source_id: 's1', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
     expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm1', job_id: null, facts: { status: 'signed' } }))).toEqual({ kind: 'person-signed', documentId: 'm1' })
     expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
+  })
+
+  it('a paper that was never sent opens nothing: its acts are on its line', () => {
+    expect(agreementDoor(row({ kind: 'supply_house_agreement', source_id: 'p7', state: 'not_sent', job_id: null, facts: { status: 'unsent' } }))).toEqual({ kind: 'none' })
   })
 
   it('an outside party’s paper opens its signed record, and waits with its acts on the line', () => {

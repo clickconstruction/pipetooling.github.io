@@ -2,7 +2,7 @@
 name: "Today's sends and The office's round: two Dashboard cards that say what is wanted"
 number: 424
 group: close
-status: asked 2026-11-23 on the owner's phone · read and drawn twice the same day · the owner picked A for both cards · the office's round built as v2.8331 · left: the Today's sends row, then the window, the name and the Customers row on his word
+status: asked 2026-11-23 on the owner's phone · read and drawn twice the same day · the owner picked A for both cards · the office's round built as v2.8331 and the Today's sends row as v2.8336, both live and looked at the same day · v2.8365 keeps a name whole on a phone · left, on his word: the window, the name and the Customers row
 summary: >
   The Dashboard's Needs you list has a row called Today's sends. Its title is a place, its press
   says Open, and its count adds texts that can go to texts that cannot. The owner could not tell
@@ -11,10 +11,10 @@ summary: >
   before and after of the row and of the window behind it. It also weighs a new name. The same day
   the owner added The office's round, the card under the list, for the same fault. It is drawn
   before and after on the same page.
-next: Build the Today's sends row as picked (A), once the Needs you row's layout has settled in its own PR. Then ask the owner about the window, the name and the Customers row.
-size: M as a train of five (S · M · S · XS · S); left: the row (S), the window (M), the name (S), the Customers row (XS)
-blocker: The row waits on the Needs you layout PR. The window, the name and the Customers row wait on the owner's word.
-ver: v2.8331
+next: Ask the owner about the window, the name and the Customers row. The row's small press at the bottom right lands with the Needs you layout PR.
+size: M as a train of five (S · M · S · XS · S); left: the window (M), the name (S), the Customers row (XS)
+blocker: The window, the name and the Customers row wait on the owner's word.
+ver: v2.8331 · v2.8336 · v2.8365
 opinion: build — the row is picked and small; the window is client-only; the rename is the owner's call
 ---
 
@@ -111,7 +111,7 @@ The mock-up draws the window before and after.
 
 ## The three options for the row
 
-- **A · The row shows the texts (recommended).** Second drawing, after the owner's word on 2026-11-23:
+- **A · The row shows the texts (picked, built as v2.8336).** Second drawing, after the owner's word on 2026-11-23:
   *show instead of tell*, and *clearly distinguish the values and variables that can change so a user knows
   what is syntax and what is signal*. The title is **3** texts to send. Under it are the names the texts go
   to. A clock chip carries a timed text and its time. An amber chip carries a held text and its cause, such
@@ -221,10 +221,10 @@ says. A press that small needs a 44 px touch area around it, which is that sessi
 
 ## The plan
 
-Nothing is claimed, branched or built. Each PR ships its release note, its `docs/recent-features/` fragment
+Step 1 is built and live. Steps 2 to 4 are not claimed, branched or built. Each PR ships its release note, its `docs/recent-features/` fragment
 and the guides and docs named.
 
-1. **The row's words (S, client only).** A pure `todaysSendsNeed(rows, now)` in `src/lib/offers/offers.ts`
+1. **The row's words (S, client only; built as v2.8336, and v2.8365 keeps a name on one line).** Not built with it: Quickfill's quiet line, and the guide `needs-you-card.md`. A pure `todaysSendsNeed(rows, now)` in `src/lib/offers/offers.ts`
    returns the count, the names, the timed chip, the held chip with its cause, the press and the severity for
    each state, as marked parts and not as one finished sentence, with tests. `TodaysSend` gains `preparedAt`. `useTodaysSends` returns it, and
    `dashboardNeedsYou.ts` reads all four from it. Quickfill's quiet line says *N texts the app wrote wait on a
@@ -343,5 +343,6 @@ Today's sends:
 - The kernel's tests cover each state: one ready, several ready, ready with a timed and a held one, held only, timed only.
 - `DashboardNeedsYouCard.render.test.tsx` and `TodaysSendsWindow.render.test.tsx` cover the wiring. The window
   takes an `io` prop, so a smoke hands it made-up rows and never sends.
+- Looked at live on 2026-11-23, on a desktop and at a phone's width, with nothing pressed: the row drew its count, its names and its chips, and the round drew its week.
 - A live look follows `docs/DB_FREEZE_RUNBOOK.md` → Standing protections: one page at a time, by hand. Never
   press Send or Send all on a real customer's text. A ZZ Test customer with a made-up number makes a held row to look at.
