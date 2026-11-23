@@ -15,7 +15,7 @@ Open the Lien desk. The desk opens on **To do**. A sent notice with nothing paid
 
 - Day 7 is counted the way the attorney’s letter counts it. The desk uses the delivery day when the mail piece knows it.
 - Before reminders week the footer says when the reminder goes, like *The reminder goes Dec 1 to 5*. The footer still sends one earlier by hand.
-- Past reminders week an unsent reminder stays due until the affidavit's week. On the Dashboard, **The lien month** counts it as slipped.
+- Past reminders week an unsent reminder stays due until the affidavit's week. The Lien desk lists it under **Reminders** until then.
 - The attorney’s letter keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
 - The desk sends one courtesy notice. After a week of silence it offers the attorney's letter. The footer still lets you send the courtesy again by hand when an email or a text bounced.
 

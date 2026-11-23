@@ -190,10 +190,15 @@ export function feedPageSql(feed: PermitFeed, sinceDay: string, limit: number, o
   )
 }
 
-/** The day a pull starts from: ten days before the newest row it has, so late rows land; `firstRunDays` back when it has none. */
+/**
+ * The day a pull starts from: `lookbackDays` before the newest row it has, so late rows land;
+ * `firstRunDays` back when it has none. A newest day after today counts as today: a day a clerk
+ * typed a year ahead would otherwise put the start past every row still to be read, for good.
+ */
 export function pullSinceDay(newestFiledOn: string | null, todayYmd: string, firstRunDays = 75, lookbackDays = 10): string {
-  const base = newestFiledOn ?? todayYmd
-  const back = newestFiledOn ? lookbackDays : firstRunDays
+  const held = newestFiledOn != null && newestFiledOn > todayYmd ? todayYmd : newestFiledOn
+  const base = held ?? todayYmd
+  const back = held ? lookbackDays : firstRunDays
   const d = new Date(`${base}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - back)
   return d.toISOString().slice(0, 10)

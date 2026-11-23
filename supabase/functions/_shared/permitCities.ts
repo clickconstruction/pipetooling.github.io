@@ -6,7 +6,7 @@
  * `permits` row one record makes. `permit-pull` runs the readers; the app reads the city list and
  * each city's doors. No I/O here; `src/lib/research/permitCities.test.ts` holds it.
  */
-import { addressKeyOf, dayOf, feedPageSql, numberOf, permitRowFromSanAntonio, SA_APPLIED_FEED, SA_ISSUED_FEED, SAN_ANTONIO_CKAN, textOf, type PermitFeed, type PermitRow, type PermitStage, type PermitTypeClass } from './permitFeed.ts'
+import { addressKeyOf, dayOf, feedPageSql, numberOf, permitRowFromSanAntonio, pullSinceDay, SA_APPLIED_FEED, SA_ISSUED_FEED, SAN_ANTONIO_CKAN, textOf, type PermitFeed, type PermitRow, type PermitStage, type PermitTypeClass } from './permitFeed.ts'
 import { builderKeyOf, phoneDigitsOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
 import { TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS, type ParcelPointSource } from './permitParcelPoints.ts'
 
@@ -643,13 +643,24 @@ export function permitCity(name: string | null | undefined): PermitCity | null {
   return PERMIT_CITIES.find((c) => c.name.toLowerCase() === want) ?? null
 }
 
+/** How far back a reading starts from the newest day held: the days a city may take to post a row. */
+export const PULL_LOOKBACK_DAYS = 10
+/**
+ * The second reading's days back. Longer than the first's: on a night the second reading does not
+ * finish the first still moves the newest issued day on, and a city can post a permit days after
+ * the day it dates it.
+ */
+export const ISSUED_AGAIN_LOOKBACK_DAYS = 30
+
 /** One reading of a feed in a run: the door's page, and the `permits` day column the reading starts from. */
 export type FeedPass = {
   pageUrl: FeedReader['pageUrl']
-  /** The column whose newest held day sets where the reading starts: ten days before it. */
+  /** The column whose newest held day sets where the reading starts: `lookbackDays` before it. */
   dayColumn: 'issued_on' | 'submitted_on'
   /** The second reading, by issued day, of a feed the first reads by filing day. */
   issuedAgain: boolean
+  /** How many days before the newest held day of `dayColumn` the reading starts. */
+  lookbackDays: number
 }
 
 /**
@@ -659,9 +670,29 @@ export type FeedPass = {
  * city posts it. A read back as history makes the one reading: it touches nothing already held.
  */
 export function feedPasses(feed: FeedReader, history: boolean): FeedPass[] {
-  const passes: FeedPass[] = [{ pageUrl: feed.pageUrl, dayColumn: feed.stage === 'issued' ? 'issued_on' : 'submitted_on', issuedAgain: false }]
-  if (feed.issuedPageUrl && !history) passes.push({ pageUrl: feed.issuedPageUrl, dayColumn: 'issued_on', issuedAgain: true })
+  const passes: FeedPass[] = [{ pageUrl: feed.pageUrl, dayColumn: feed.stage === 'issued' ? 'issued_on' : 'submitted_on', issuedAgain: false, lookbackDays: PULL_LOOKBACK_DAYS }]
+  if (feed.issuedPageUrl && !history) passes.push({ pageUrl: feed.issuedPageUrl, dayColumn: 'issued_on', issuedAgain: true, lookbackDays: ISSUED_AGAIN_LOOKBACK_DAYS })
   return passes
+}
+
+/** The newest day held in each day column of one feed's rows, as it stood before the run wrote a row. A column with no day held is null or left out. */
+export type NewestHeldDays = Partial<Record<FeedPass['dayColumn'], string | null>>
+
+/** The day columns a feed's readings start from, each once: what a run reads of `permits` before it writes to it. */
+export function passDayColumns(passes: readonly FeedPass[]): FeedPass['dayColumn'][] {
+  return [...new Set(passes.map((p) => p.dayColumn))]
+}
+
+/**
+ * The day each reading of a feed starts from, in the readings' own order (punch list #405,
+ * v2.8328). All of them are worked out together, from the days held before the run wrote a row,
+ * because one reading writes the column the next starts from: San Antonio's first reading
+ * upserts fresh issued days, and a second reading that counted back from those skipped the
+ * permits the city had dated before its new start. `sinceOverride` (the body's `since`) starts
+ * every reading on that day. A column with no day held is a first run for its reading.
+ */
+export function passStarts(passes: readonly FeedPass[], newestHeld: NewestHeldDays, todayYmd: string, sinceOverride: string | null = null): string[] {
+  return passes.map((pass) => sinceOverride ?? pullSinceDay(newestHeld[pass.dayColumn] ?? null, todayYmd, undefined, pass.lookbackDays))
 }
 
 /** The feeds a pull runs: one city's when it is named and known, every city's otherwise, in the list's order. */

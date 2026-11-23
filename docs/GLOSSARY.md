@@ -1434,7 +1434,7 @@ an offer pressed for a job already answered mints a fresh ask).
 Since v2.6386 the window holds an offer whose step and job got a text after it was prepared (`nudge_sent` read since the oldest open offer;
 the run's own text, Remind now, another offer pressed — the roads an office-made offer, a moved visit's or Send later's, never took, since `sentLately` and `offeredAlready` are the run's) with the day and the door, and the older of two open offers on one step and job (a visit moved twice), `offers.ts`'s `withSentHolds`.
 Since v2.6387 a moved visit's text expires with its visit: the row carries the day its words are about (`nudge_offers.about_on`, written by the schedule's move through `nudge_offer_make`'s `p_about_on`), the window holds it once that day has passed (`heldStaleWords`, over every other hold) and the 9 AM run puts it away before planning (`dismissed_why` `stale`, counted in the run's summary as *expired*).
-The line counts *ready*, *goes in the morning* (*go later* once a waiting row has a time, v2.6774) and *held*;
+Since v2.8336 (punch list #424) the row shows the texts in place of a line of counts: *3 texts to send* counts the ones a person can send, the names they go to sit under it, a clock chip carries a timed text's time and an amber chip a held text's cause in a word or two (`todaysSendsNeed` and `heldCause` in `offers.ts`, every value marked with `val` and drawn apart from the fixed words by `NeedsYouRowWords`), and the press reads **Read them**;
 the GC office team sees it.
 Kernel `src/lib/offers/`;
 window `src/components/dashboard/TodaysSendsWindow.tsx`;
@@ -1974,8 +1974,9 @@ the **office** lists under it with a line of its own.
 Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
-a person draws their own from My Time's **Your hours** block, which reads their last eight pay weeks against it, or from the same block as a card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
+a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), or from the **Your hours** card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
 guide *draw the hours you can work each week*).
+My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
 Kernels: [`utilization.ts`](../src/lib/people/utilization.ts), [`weekAvailability.ts`](../src/lib/people/weekAvailability.ts);
 reads `fetchUtilizationBoard.ts`;
@@ -5414,7 +5415,7 @@ Since v2.8219 the Billed awaiting payment email leaves them out of its rows, tot
 Since v2.8266 the customer's profile window reads such a bill as *billed · scheduled in kind* with no day and no red (`profileJobRowMoney`'s `scheduledInKind`, `profileJobRowMeta`), the customer page's Invoices tab reads *Billed · in kind* with no days, and the dev seat's `get_customer` and `get_job` carry the column.
 Since v2.8272 the Pipeline's map keeps such a job's pin with nothing to collect, no age and no place on the ask list (`JobsMapJob.inKind`, `jobsMapInKindLine`), a development's Money look reads *Scheduled in kind* in place of Expected and never past due (`MoneyDates.inKind`, `moneyInKindLine`), and the aging chart and the printed Billed awaiting payment report leave the bill out with one line each.
 Since v2.8309 a GC's statement, GC Review, its whole report and its prints leave such a bill out of every row, total and age and say one line under the total, *$1,200 on 2 bills is scheduled in kind, not money owed* (`in_kind_rows` in `get_gc_statement_email_payload`, `setInKindApart`, `GcReviewGroup.inKind`, `statementInKindLine`), the owner's call of 2026-11-22.
-The office's statement week reads that payload, so its amounts leave them out too, and it does not yet say the line.
+The office's statement week reads that payload, so its amounts leave them out too, and since v2.8320 its email says the line under its summary (`in_kind` in `get_statement_week_for_office`, `officeWeekInKindLine`).
 A deal with a **monthly credit** has months: each is settled by one line (a line of zero is *no credit this month*), a month with none is **due** once it is over or its bill has left the bank, and the card and the Dashboard's Needs you line (`in-kind-credit-due`, v2.6831) offer the press that enters it with the amount read from the bank.
 Nothing is entered by itself.
 A line's amount is a **cost**: overhead on the day it was given (the overhead pool's materials, source `in_kind`), or the material of the job it is put on (the Costs tab's 🤝 *Given in kind* stream and row, the profit band).
@@ -6642,7 +6643,7 @@ Kernel [`lienBoard.ts`](../src/lib/jobs/lienBoard.ts), component `LienBoard.tsx`
 guide *read the Board on the Lien desk*.
 
 **The lien month** (**v2.6645** · 6648, punch list #235): the office's rhythm for lien work, the owner's policy of 2026-11-01 refined 2026-11-07 — reminders on days 1 to 5, notices on days 6 to 9, liens on days 10 to 13, catch-up on the 14th and 15th, nothing scheduled from the 16th — as the five-zone bar across the top of To do until the Board took its place in v2.7332 (`LienMonthBar`, deleted then;
-the Dashboard's lien month card still draws the zones through `useLienMonth`), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
+the Dashboard's lien month card drew the zones through `useLienMonth` until v2.8342, punch list #423, when it was dropped and its hook with it), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
 the rule is `LIEN_MONTH_RULE` in `lib/jobs/lienMonthRhythm.ts` and reads under § Rules.
 A policy, not an app rule: the bar sends, files and moves nothing.
 
