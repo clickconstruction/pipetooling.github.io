@@ -60,9 +60,12 @@ The toast's place is the app's. Every screen with a card at the top of a phone h
 - **To check first:** what sits at the foot on each kind of screen, the outbox bar and Job Mode's strip
   among them.
 
-### 3. The shared Retry press is small
+### 3. ~~The shared Retry press is small~~ Shipped v2.8361
 
-**Retry** on a lost signal is 67 by 36 px at 390 px. A thumb needs 44.
+Built 2026-11-23 on the owner's word: `OfflineRetryPanel` draws **Retry** 44 px tall on a phone, with a little more
+room each side, and keeps its 36 px on a desktop.
+
+**Retry** on a lost signal was 67 by 36 px at 390 px. A thumb needs 44.
 
 It is drawn by `OfflineRetryPanel`, which every crew screen uses for a read that fails.
 
