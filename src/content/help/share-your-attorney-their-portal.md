@@ -71,6 +71,8 @@ The lien grid is a third panel beside **Matters** and **Notifications**. The gri
 - the 10 % reserved
 - the owner's contract completion
 
+**Paid out to GC** and **10 % reserved** fill from the owner's call. Record the call when an owner phones about a lien letter, and both columns read the answers. The firm sees the two answers and the dollars the owner still owes the GC. The firm does not see your note on the call or who took it. See [answer an owner who calls about a lien letter](/help/answer-an-owner-who-calls-about-a-lien-letter).
+
 On a phone, each job is a card with its address on top. The facts the office has not entered show as one red line at the foot of the card. By court, each chip names its county.
 
 ## Who covers what

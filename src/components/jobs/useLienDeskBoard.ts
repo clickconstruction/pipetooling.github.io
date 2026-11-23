@@ -269,6 +269,25 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
     setBoardLeader(false)
     if (bins) setPickBringsRows((n) => n + 1)
   }, [])
+  // A phone's flow (punch list #428): a stage is set, never toggled, since the page keeps it in the history entry and
+  // hands it back on every visit to that entry. Null puts the list back. A set stage brings the page to its top, where
+  // the pinned line is, so the stage's rows start right under it.
+  const [stageBringsTop, setStageBringsTop] = useState(0)
+  const setBoardStage = useCallback((key: LienBoardBinKey | null) => {
+    setBoardBins(key ? [key] : null)
+    if (!key) return
+    setBoardRisk(false)
+    setBoardLate(false)
+    setBoardLeader(false)
+    setStageBringsTop((n) => n + 1)
+  }, [])
+  useEffect(() => {
+    if (stageBringsTop === 0) return
+    const scroller = doNowRef.current
+    if (!scroller) return
+    if (typeof scroller.scrollTo === 'function') scroller.scrollTo({ top: 0 })
+    else scroller.scrollTop = 0
+  }, [stageBringsTop])
   const pickBoardRisk = () => {
     setBoardBins(null)
     setBoardLeader(false)
@@ -420,6 +439,7 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
     doNowBarPins,
     doNowBarParts,
     pickBoardBins,
+    setBoardStage,
     openBoardTile,
     bringBoard,
     nextUpWaitingOn,

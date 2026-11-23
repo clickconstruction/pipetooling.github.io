@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import LienDeskNextUp, { lienKindTagStyle, lienNextUpDueWords, lienPaperDoorStyle } from './LienDeskNextUp'
 import type { LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { LIEN_PHONE_PRESS_MIN_HEIGHT, LIEN_PHONE_QUIET_MIN_HEIGHT, lienPhoneRowColumns } from '../../lib/jobs/lienPhonePress'
 
 afterEach(cleanup)
 
@@ -63,14 +64,60 @@ describe('LienDeskNextUp', () => {
     expect(onAct).toHaveBeenCalledTimes(1)
   })
 
-  it('nothing to do reads calm and points at the Calendar; a phone row’s press is as wide as its words and a thumb tall (punch list #352, PR 3)', () => {
+  it('nothing to do reads calm and points at the Calendar; a phone row’s press fills its one column and is a fingertip tall', () => {
     const view = render(<LienDeskNextUp rows={[]} loading={false} isMobile={false} onAct={() => {}} />)
     expect((document.querySelector('[data-lien-next-up="empty"]') as HTMLElement).textContent).toContain('Nothing needs you right now.')
     view.unmount()
     render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} />)
     const press = screen.getByRole('button', { name: 'Open the notice' }) as HTMLButtonElement
-    expect(press.style.width).toBe('')
-    expect(press.style.minHeight).toBe('40px')
+    // Until 2026-11-23 the press was as wide as its words and 40 px tall, on a line of its own (punch list #352, PR 3).
+    expect(press.style.width).toBe('100%')
+    expect(press.style.minHeight).toBe(`${LIEN_PHONE_PRESS_MIN_HEIGHT}px`)
+    expect(press.style.whiteSpace).toBe('normal')
+  })
+
+  it('a phone’s row is two columns: the words at the left, one press at the right, the second way out a quiet line under the words', () => {
+    const held = row({ key: 'affidavit:h', kind: 'affidavit', jobId: 'h', title: '2051 · Lakeside Remodel', sub: 'Affidavit · nobody has answered whether this home is a homestead', action: 'fix_property', button: 'Answer the homestead question', doors: [{ words: 'Not lienable…', target: { open: 'affidavits', jobId: 'h' } }] })
+    const plain = row({ key: 'notice:p', jobId: 'p', title: '2041 · Ridgeway Builders' })
+    const onAct = vi.fn()
+    render(<LienDeskNextUp rows={[held, plain]} loading={false} isMobile onAct={onAct} amountFor={() => 450} />)
+    const heldRow = document.querySelector('[data-lien-next-up-row="affidavit:h"]') as HTMLElement
+    const plainRow = document.querySelector('[data-lien-next-up-row="notice:p"]') as HTMLElement
+    for (const el of [heldRow, plainRow]) {
+      expect(el.getAttribute('data-layout')).toBe('columns')
+      expect(el.className).toContain('lienPhoneRow')
+      expect(el.style.gridTemplateColumns).toBe(lienPhoneRowColumns())
+      // The press column holds one press, the row's own, and it is the same on every row.
+      const direct = Array.from(el.children).filter((c) => c.tagName === 'BUTTON') as HTMLButtonElement[]
+      expect(direct).toHaveLength(1)
+      expect(direct[0]!.hasAttribute('data-lien-next-up-act')).toBe(true)
+      expect(direct[0]!.style.width).toBe('100%')
+      expect(direct[0]!.style.minHeight).toBe(`${LIEN_PHONE_PRESS_MIN_HEIGHT}px`)
+    }
+    // The words: the amount stands on their last line, after the paper's chip and the dots.
+    const words = heldRow.querySelector('[data-lien-next-up-words]') as HTMLElement
+    const meta = words.querySelector('[data-lien-next-up-meta]') as HTMLElement
+    expect(meta.querySelector('[data-lien-next-up-amount]')!.textContent).toBe('$450')
+    expect(within(meta).getByTestId('lien-step-mark')).toBeTruthy()
+    // The second way out is under the words, never in the press column, and still acts.
+    const quiet = words.querySelector('[data-lien-next-up-quiet] [data-lien-next-up-door]') as HTMLButtonElement
+    expect(quiet.textContent).toBe('Not lienable…')
+    expect(quiet.style.minHeight).toBe(`${LIEN_PHONE_QUIET_MIN_HEIGHT}px`)
+    expect(quiet.style.color).toBe('var(--text-link)')
+    fireEvent.click(quiet)
+    expect(onAct).toHaveBeenCalledTimes(1)
+    expect(plainRow.querySelector('[data-lien-next-up-quiet]')).toBeNull()
+    // A long press takes its short form on a phone, and keeps its whole name for a reader and a hover.
+    const press = heldRow.querySelector(':scope > button') as HTMLButtonElement
+    expect(press.textContent).toBe('Answer it')
+    expect(press.getAttribute('aria-label')).toBe('Answer the homestead question')
+    expect(press.title).toBe('Answer the homestead question')
+    cleanup()
+    // A computer keeps the whole words and its own two buttons.
+    render(<LienDeskNextUp rows={[held]} loading={false} isMobile={false} onAct={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Answer the homestead question' }).textContent).toBe('Answer the homestead question')
+    expect(document.querySelector('[data-lien-next-up-quiet]')).toBeNull()
+    expect(document.querySelector('.lienPhoneRow')).toBeNull()
   })
 
   it('the list is its own scroller unless the desk scrolls it with the month as one page (punch list #352, PR 0)', () => {
@@ -116,7 +163,7 @@ describe('LienDeskNextUp', () => {
     expect(heads).toEqual(['Due Mon Nov 16 · 23 days$14,525', 'Due Tue Dec 15 · 132 days'])
     expect(Array.from(document.querySelectorAll('[data-lien-phone-group]')).map((el) => el.getAttribute('data-lien-phone-group'))).toEqual(['day:2026-11-16', 'day:2026-12-15'])
     const first = document.querySelector('[data-lien-next-up-row="notice:a"]') as HTMLElement
-    expect(first.getAttribute('data-layout')).toBe('lines')
+    expect(first.getAttribute('data-layout')).toBe('columns')
     expect(first.querySelector('[data-lien-next-up-amount]')!.textContent).toBe('$8,400')
     // The day is on the head, so the row does not say it again.
     expect(first.querySelector('[data-lien-next-up-sub]')!.textContent).not.toMatch(/Nov 16|days left/)
@@ -189,6 +236,12 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} onOpenJob={onOpenJob} />)
     fireEvent.click(screen.getByTestId('lien-next-up-job-j1'))
     expect(onOpenJob).toHaveBeenCalledWith('j1')
+  })
+
+  it('a phone’s day heading sticks under the flow’s pinned line (punch list #428): its top is the height the desk sets on the scroller, and the top itself with nothing pinned', () => {
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} onOpenJob={() => {}} />)
+    const head = document.querySelector('[data-lien-phone-group] h3') as HTMLElement
+    expect([head.style.position, head.style.top, head.style.zIndex]).toEqual(['sticky', 'var(--lien-pinned-top, 0px)', '1'])
   })
 
   it('on a phone with a job screen to open (punch list #352, PR 4): the row, its name and its dots open the job’s own screen; the press and the chip keep their own doors', () => {
@@ -346,10 +399,16 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
     expect(onOpenJob).toHaveBeenCalledWith('j3')
     expect(onAct).toHaveBeenCalledTimes(2)
   })
-  it('the find opens the fold; a phone draws both buttons a thumb tall at the row’s end', () => {
+  it('the find opens the fold; a phone draws the run’s second press as a quiet line under the words, and its jobs across the whole row', () => {
     render(<LienDeskNextUp rows={[run]} loading={false} isMobile onAct={() => {}} foldsOpen />)
-    expect(document.querySelector('[data-lien-next-up-fold-body="run:printed"]')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement).style.minHeight).toBe('40px')
+    const body = document.querySelector('[data-lien-next-up-fold-body="run:printed"]') as HTMLElement
+    expect(body).toBeTruthy()
+    const back = screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement
+    expect(back.style.minHeight).toBe(`${LIEN_PHONE_QUIET_MIN_HEIGHT}px`)
+    expect(back.closest('[data-lien-next-up-quiet]')).toBeTruthy()
+    // The fold is the row's own last line, across both columns, so the jobs have the row's whole width.
+    expect((body.parentElement as HTMLElement).style.gridColumn).toBe('1 / -1')
+    expect(body.closest('[data-lien-next-up-words]')).toBeNull()
   })
 })
 
@@ -585,10 +644,10 @@ describe('LienDeskNextUp · a computer’s row in two lines (v2.7372, punch list
     expect(document.querySelector('[data-lien-next-up-track-press]')).toBeNull()
   })
 
-  it('a phone’s row is untouched: its own lines, its dots, no bin name', () => {
+  it('a phone’s row is not the computer’s two lines: its own columns, its dots, no bin name', () => {
     render(<LienDeskNextUp rows={[ready]} loading={false} isMobile onAct={() => {}} stageFor={stageFor} noticeFor={noticeFor} />)
     const phone = document.querySelector('[data-lien-next-up-row="affidavit:j3"]') as HTMLElement
-    expect(phone.getAttribute('data-layout')).toBe('lines')
+    expect(phone.getAttribute('data-layout')).toBe('columns')
     expect(phone.querySelector('[data-lien-next-up-stage]')).toBeNull()
     expect(within(phone).getByTestId('lien-step-mark')).toBeTruthy()
   })

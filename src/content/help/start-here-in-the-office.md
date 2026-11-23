@@ -23,6 +23,8 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 4. **Quickfill** is the office's daily round. The page holds review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
 5. **People** holds accounts, hours, contracts, and [your subs](/help/review-your-subs).
 
+A row at the top of your Dashboard reads **Task Mode**, **Dashboard** and **Job Mode**. The blue part is the page you are on. Tap another part to switch. See [the row at the top](/help/job-mode-clocking#the-row-at-the-top).
+
 ## Money
 
 [Bill a customer and get paid](/help/ready-to-bill-pipeline) is the main flow. Split billing is covered in [bill part of a job to someone else](/help/bill-part-of-a-job-to-someone-else). What you owe subs lives in [sub labor outstanding](/help/sub-labor-outstanding). Per-step work orders are in [pay a sub per step](/help/pay-a-sub-per-step).

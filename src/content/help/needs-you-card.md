@@ -98,6 +98,14 @@ A controller or a dev sees this one.
 
 Every item's count is read by the same code as the page it opens. Or the page repeats the card's figure in the card's words, like the Tally header above. If a card says 12 and the page says 12, that is by design, not luck. If they ever differ, tell a dev. The click is recorded with both numbers so it can be traced.
 
+## The Lien desk card beside the list
+
+A small **Lien desk** card sits right above the Needs you card. On a phone with the new layout it sits under the Needs you line.
+
+It is not part of the list. The list holds things to press. The card says how the Lien desk stands, and it never clears.
+
+Press the card to open **The Board** on the Lien desk. The guide [read the Board on the Lien desk](/help/read-the-board-on-the-lien-desk#on-the-dashboard) says what its counts mean.
+
 ## Snooze and Dismiss
 
 Work queues clear themselves when the work is done. The red **alert** items do not. Those are bulk deletions and admin-code attempts. An alert never knows you have dealt with it. So they carry small **Snooze 24h** and **Dismiss** links. Dismissing hides the alert until the count goes up, or until it happens again. Both are remembered **on this device only**. Dismiss an alert on your desk computer and it still shows on your phone.

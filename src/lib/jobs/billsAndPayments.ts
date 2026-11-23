@@ -63,21 +63,40 @@ function cap(word: string): string {
   return word === 'ach' ? 'ACH' : word.charAt(0).toUpperCase() + word.slice(1)
 }
 
-/** Where a payment row came from, and the chip that says so. */
-export function paymentSource(row: PaymentRow, job: JobWithDetails | null, bank?: MercuryDepositFacts | null): PaymentSource {
-  if (mercuryLinkedPaymentRow(row)) {
-    const word = (bank?.kind && BANK_KIND_WORDS[bank.kind]) || instrumentWord(row.payment_type) || null
+/** A recorded Stripe payment: the webhook writes the row with this note (`mark_invoice_paid_from_stripe`). */
+export function isStripePayment(p: { note?: string | null }): boolean {
+  return (p.note ?? '').trim().toLowerCase() === 'stripe'
+}
+
+/** What `paymentSource` sorts a row by, for a screen that holds a payment and its bill and no whole job (Bills sent). */
+export type PaymentSourceFacts = {
+  /** The row is matched to a bank deposit. */
+  bankLinked: boolean
+  /** Stripe holds a record of the row: the bill is paid in Stripe, or the row carries a credit note. */
+  stripeOwned: boolean
+  paymentType: string | null | undefined
+}
+
+/** Where a payment came from, from the facts alone. `paymentSource` reads them off a job's row; one sort, one set of words. */
+export function paymentSourceFromFacts(facts: PaymentSourceFacts, bank?: MercuryDepositFacts | null): PaymentSource {
+  if (facts.bankLinked) {
+    const word = (bank?.kind && BANK_KIND_WORDS[bank.kind]) || instrumentWord(facts.paymentType) || null
     return { kind: 'bank', chip: word ? `${cap(word)} · bank deposit` : 'Bank deposit', instrument: word ?? 'deposit' }
   }
   // v2.4801: only a row Stripe holds a record of is Stripe's; a check Mark Paid holds until it
   // clears sits on a Stripe bill as a hand-typed row.
-  if (stripeOwnsPaymentRow(row, job)) {
-    const word = instrumentWord(row.payment_type)
+  if (facts.stripeOwned) {
+    const word = instrumentWord(facts.paymentType)
     if (word && word !== 'card') return { kind: 'stripe-recorded', chip: `${cap(word)} · recorded in Stripe`, instrument: word }
     return { kind: 'stripe-card', chip: 'Card · Stripe', instrument: 'card' }
   }
-  const word = instrumentWord(row.payment_type)
+  const word = instrumentWord(facts.paymentType)
   return { kind: 'hand', chip: word ? `${cap(word)} · typed by hand` : 'Typed by hand', instrument: word ?? 'payment' }
+}
+
+/** Where a payment row came from, and the chip that says so. */
+export function paymentSource(row: PaymentRow, job: JobWithDetails | null, bank?: MercuryDepositFacts | null): PaymentSource {
+  return paymentSourceFromFacts({ bankLinked: mercuryLinkedPaymentRow(row), stripeOwned: stripeOwnsPaymentRow(row, job), paymentType: row.payment_type }, bank)
 }
 
 /**
