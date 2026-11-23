@@ -596,7 +596,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         ))}
         {r.state === 'overpaid' ? (
           <li style={{ color: 'var(--text-link)', padding: '0.2rem 0' }}>
-            Paid <MoneyText text={money(-r.balance)} /> past net. {pickableWeeks.some((x) => x.stubId !== r.stubId) ? `Move extra puts it on the week of ${shortDate(pickableWeeks.find((x) => x.stubId !== r.stubId)!.periodStart, nowYear)}.` : 'Nothing is open to move it to — Move extra files it as a credit.'}
+            Paid {money(-r.balance)} past net. {pickableWeeks.some((x) => x.stubId !== r.stubId) ? `Move extra puts it on the week of ${shortDate(pickableWeeks.find((x) => x.stubId !== r.stubId)!.periodStart, nowYear)}.` : 'Nothing is open to move it to — Move extra files it as a credit.'}
           </li>
         ) : null}
         {r.state === 'residue' ? <li style={{ color: 'var(--text-muted)', padding: '0.2rem 0' }}><MoneyText text={money(r.balance)} /> short of net, under the residue line — fees or rounding, not debt. Mark settled closes it with a Less line of that amount.</li> : null}
