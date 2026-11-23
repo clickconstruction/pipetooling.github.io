@@ -448,4 +448,22 @@ describe('the Schedule look', () => {
     await waitFor(() => expect(cards().length).toBe(4))
     expect((card('top').querySelector('[data-schedule-sentence]') as HTMLElement).textContent).toBe('Waiting on Ray for 1 thing. We decide by Sun Nov 29, in 12 days.')
   })
+
+  // Last in the file on purpose: `at()` counts, and the seeded rows' order leans on the count the tests before it leave.
+  it('says it is reading while the first read is out, then draws the look or leaves', async () => {
+    // A desk reader on a slow signal could not tell a site with no stage lines from one still being read.
+    renderWithProviders(<Harness db={seeded()} />)
+    expect(screen.getByText('Reading the schedule…')).toBeTruthy()
+    expect(document.querySelector('[data-development-schedule]')).toBeNull()
+    await waitFor(() => expect(cards().length).toBe(4))
+    expect(screen.queryByText('Reading the schedule…')).toBeNull()
+    cleanup()
+    // A site where this person is on no desk reads the same line, then nothing: the look has nothing to show.
+    renderWithProviders(<Harness db={seeded({ onDesk: false })} />)
+    expect(screen.getByText('Reading the schedule…')).toBeTruthy()
+    await settle()
+    await settle()
+    expect(screen.queryByText('Reading the schedule…')).toBeNull()
+    expect(document.querySelector('[data-development-schedule]')).toBeNull()
+  })
 })

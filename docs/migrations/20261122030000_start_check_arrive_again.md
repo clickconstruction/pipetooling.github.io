@@ -62,3 +62,5 @@ No client change needs it. The card already draws the list the read gives it and
 - Nobody signed in may call `start_check_to_look`.
 
 `scripts/pgtest-start-checks.sh` applies this migration twice, after the three before it. Docker does not run on the Mac this was written on, so the SQL beds workflow is the bed's first run.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9356.

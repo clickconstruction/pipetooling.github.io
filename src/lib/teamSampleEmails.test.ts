@@ -34,9 +34,9 @@ describe('team sample emails (What the team sees)', () => {
     expect(m.html).toContain('https://clicktooling.com/jobs?jobDetail=job-1')
     expect(m.text).toContain('slowest first')
   })
-  it('Crew day is the digest\u2019s own renderer over a busy sample day (v2.4163)', () => {
+  it('Who worked is the digest\u2019s own renderer over a busy sample day (v2.4163)', () => {
     const m = buildTeamSampleEmail('crew_day', ctx)
-    expect(m.subject).toMatch(/^Crew Day — .* · 6 people · /)
+    expect(m.subject).toMatch(/^Who worked — .* · 6 people · /)
     expect(m.html).toContain('Cedar Bend Apartments')
     expect(m.text).toContain('Subs on site today')
     expect(m.text).toContain("Sam's Plumbing LLC")

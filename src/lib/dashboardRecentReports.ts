@@ -1,13 +1,12 @@
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 /**
- * Dashboard Recent Reports inbox kernel (v2.1469). States per report, from
- * the viewer's report_reads row:
+ * Dashboard Recent Reports inbox kernel (v2.1469; one put-away state since punch list #426).
+ * A report is the viewer's own to mark, from their `report_reads` row:
  *   new    — no row (bold, blue dot)
- *   opened — read_at set, done_at null (stays listed, dimmed)
- *   done   — done_at set (cleared from the dashboard; View all still shows it)
- * Opened rows show inline when opened this session (nothing vanishes as you
- * collapse) or when the "Show opened" footer toggle is on.
+ *   opened — a row (a tick). The older `done_at` reads as opened: there is one put-away state.
+ * The list holds the new reports and the ones opened in place this session, so nothing vanishes
+ * under a finger. A report marked opened leaves the list for the Opened group at the card's foot.
  */
 
 export type RecentReportRow = {
@@ -27,8 +26,6 @@ export type RecentReportRow = {
   job_pictures_link?: string | null
   job_address?: string | null
 }
-
-export type ReportRowState = 'new' | 'opened' | 'done'
 
 /**
  * Roles that see the Recent Reports section (v2 gate lived inline in
@@ -59,16 +56,6 @@ export function reportsScopeLine(role: string | null | undefined): string | null
   return role === 'primary' ? PRIMARY_REPORTS_SCOPE_LINE : null
 }
 
-export function reportRowState(
-  id: string,
-  readIds: ReadonlySet<string>,
-  doneIds: ReadonlySet<string>,
-): ReportRowState {
-  if (doneIds.has(id)) return 'done'
-  if (readIds.has(id)) return 'opened'
-  return 'new'
-}
-
 /**
  * The read ids with the viewer's own reports added (punch list #384). The count reads `report_reads`, and nothing
  * writes a row when a person saves their own report, so each one counted as new and opened the section on them.
@@ -82,44 +69,86 @@ export function readIdsWithOwnReports(readIds: ReadonlySet<string>, reports: Rea
   return out
 }
 
-/** Blue "N new" badge count: not read and not done. */
-export function recentReportsNewCount(
-  reports: readonly RecentReportRow[],
-  readIds: ReadonlySet<string>,
-  doneIds: ReadonlySet<string>,
-): number {
-  return reports.filter((r) => reportRowState(r.id, readIds, doneIds) === 'new').length
+/** How far back the card reads. An older report is behind View all. */
+export const RECENT_REPORTS_WINDOW_DAYS = 14
+
+/** How many reports the list draws at a time, and how many the Opened group draws. */
+export const RECENT_REPORTS_LIST_LIMIT = 8
+
+/** The instant the window opens: `nowMs` less the window. A read of the marks from here on covers every report in it. */
+export function recentReportsWindowStartIso(nowMs: number): string {
+  return new Date(nowMs - RECENT_REPORTS_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
 }
 
-/**
- * Rows in the list: done rows never show; new rows always show; opened rows
- * show when opened this session or when the footer toggle is on.
- */
-export function visibleRecentReports(
-  reports: readonly RecentReportRow[],
-  readIds: ReadonlySet<string>,
-  doneIds: ReadonlySet<string>,
-  sessionOpenedIds: ReadonlySet<string>,
-  showOpened: boolean,
-): RecentReportRow[] {
+/** The reports filed inside the window, in the order given (the database answers newest first). */
+export function reportsInWindow<T extends Pick<RecentReportRow, 'created_at'>>(reports: readonly T[], nowMs: number): T[] {
+  const start = nowMs - RECENT_REPORTS_WINDOW_DAYS * 24 * 60 * 60 * 1000
   return reports.filter((r) => {
-    const state = reportRowState(r.id, readIds, doneIds)
-    if (state === 'done') return false
-    if (state === 'new') return true
-    return showOpened || sessionOpenedIds.has(r.id)
+    const t = Date.parse(r.created_at)
+    return !Number.isNaN(t) && t >= start
   })
 }
 
-/** Count for the "Show N opened reports" footer link (opened rows currently hidden). */
-export function openedNotShownCount(
+export type RecentReportsCard = {
+  /** The list: the new reports and the ones opened in place this session, newest first, eight at a time. */
+  listed: RecentReportRow[]
+  /** Every new report in the window: the badge. Until punch list #426 it could never read more than 8. */
+  fresh: number
+  /** The new reports the list is drawing now: the count on **Mark N opened**. */
+  freshListed: number
+  /** The reports put away, newest first, eight at most. */
+  opened: RecentReportRow[]
+  /** Every report put away in the window: the Opened heading's count. */
+  openedCount: number
+  /** Every report in the window, for a host that draws the card folded. */
+  inWindow: number
+}
+
+/**
+ * The card as it is drawn. Until punch list #426 the list was the newest eight reports, cut before
+ * anything else: a ninth new report was never shown, and was not shown after the eight were cleared
+ * either. Now the list is the new reports of the window, eight at a time, so it refills as it is cleared.
+ * `readIds` holds every report the viewer has a mark on (opened or the older done) and their own.
+ */
+export function buildRecentReportsCard(
   reports: readonly RecentReportRow[],
   readIds: ReadonlySet<string>,
-  doneIds: ReadonlySet<string>,
   sessionOpenedIds: ReadonlySet<string>,
-): number {
-  return reports.filter(
-    (r) => reportRowState(r.id, readIds, doneIds) === 'opened' && !sessionOpenedIds.has(r.id),
-  ).length
+  nowMs: number,
+): RecentReportsCard {
+  const windowed = reportsInWindow(reports, nowMs)
+  const inList = windowed.filter((r) => !readIds.has(r.id) || sessionOpenedIds.has(r.id))
+  const putAway = windowed.filter((r) => readIds.has(r.id) && !sessionOpenedIds.has(r.id))
+  const listed = inList.slice(0, RECENT_REPORTS_LIST_LIMIT)
+  return {
+    listed,
+    fresh: windowed.filter((r) => !readIds.has(r.id)).length,
+    freshListed: listed.filter((r) => !readIds.has(r.id)).length,
+    opened: putAway.slice(0, RECENT_REPORTS_LIST_LIMIT),
+    openedCount: putAway.length,
+    inWindow: windowed.length,
+  }
+}
+
+/** The group at the card's foot that holds what was put away. */
+export const RECENT_REPORTS_OPENED_HEADING = 'Opened'
+export const RECENT_REPORTS_OPENED_GLOSS = 'You marked these opened. Mark unread puts one back.'
+
+/** Under the Opened group when it holds more than it draws. */
+export function recentReportsOpenedMoreWords(shown: number, total: number): string | null {
+  return total > shown ? `Showing the newest ${shown}. View all has every report.` : null
+}
+
+/** The words on the left of the foot's first row, beside **Mark N opened**. */
+export function recentReportsNewWords(fresh: number): string {
+  if (fresh <= 0) return 'Every report here is opened.'
+  return `${fresh} new ${fresh === 1 ? 'report' : 'reports'}`
+}
+
+/** The toast after a put-away, with Undo: one report by its job's name, more by their count. */
+export function markedOpenedWords(jobNames: readonly string[]): string {
+  if (jobNames.length === 1) return `Marked opened: ${jobNames[0] || 'report'}.`
+  return `${jobNames.length} reports marked opened.`
 }
 
 const clockFmt = new Intl.DateTimeFormat('en-US', {
@@ -157,4 +186,13 @@ export function formatReportRowTime(createdAtIso: string, nowMs: number): { cloc
   if (dayYmd === yesterdayYmd) return { clock, day: 'yesterday' }
   const sameYear = dayYmd.slice(0, 4) === todayYmd.slice(0, 4)
   return { clock, day: sameYear ? monthDayFmt.format(d) : monthDayYearFmt.format(d) }
+}
+
+/**
+ * When a report was filed, as one value: *yesterday 1:02 PM*, *Nov 21 4:08 PM*. The row drew the clock
+ * at its right and the day under its name until punch list #426, one moment in two places.
+ */
+export function formatReportRowWhen(createdAtIso: string, nowMs: number): string {
+  const t = formatReportRowTime(createdAtIso, nowMs)
+  return `${t.day} ${t.clock}`.trim()
 }

@@ -23,3 +23,5 @@ In each, `agreed_write_down_previous_amount = v_old` becomes `GREATEST(COALESCE(
 Read-only on prod after the push: `select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('apply_agreed_write_down_to_billed_invoice', 'service_apply_agreed_write_down_from_stripe') and p.prosrc like '%GREATEST(COALESCE(agreed_write_down_previous_amount, v_old), v_old)%'` reads 2. The SQL bed `npm run test:pg:write-down-first-amount` (`supabase/tests/write_down_first_amount/20_scenario.sql`) writes a bill down three times on each writer and runs the fee case on each. CI runs it from `scripts/sql-beds.txt`.
 
 No data fix: on 2026-11-22 prod held four written-down bills and none written down more than once.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

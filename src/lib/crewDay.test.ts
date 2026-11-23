@@ -186,8 +186,8 @@ describe('buildCrewDayView', () => {
 
 describe('crewDayRefusalSentence (v2.5962)', () => {
   it('a refused role reads that it has no access; any other refusal that the day did not load', () => {
-    expect(crewDayRefusalSentence('forbidden')).toBe("You don't have access to this crew day.")
-    expect(crewDayRefusalSentence('not_authenticated')).toBe("You don't have access to this crew day.")
+    expect(crewDayRefusalSentence('forbidden')).toBe("You don't have access to this day.")
+    expect(crewDayRefusalSentence('not_authenticated')).toBe("You don't have access to this day.")
     expect(crewDayRefusalSentence('day_required')).toBe("Couldn't load this day.")
     expect(crewDayRefusalSentence(null)).toBe("Couldn't load this day.")
   })

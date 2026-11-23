@@ -11,7 +11,7 @@ Their role was on Manage accounts. Their sessions were on Hours. Their portal wa
 
 ## Open it
 
-You tap a person's **name** anywhere it is underlined with dots. That is People → Users and Subs, the Hours grid, and the clock sessions tables. It is also the Dashboard clock strip, My Team, Crew Day cards, the Contracts list, and the approvals queue. The drawer slides in from the right. On a phone it fills the screen. You press **Esc** or tap outside to close. A link like `/people?tab=users&person=u:<id>` opens it directly.
+You tap a person's **name** anywhere it is underlined with dots. That is People → Users and Subs, the Hours grid, and the clock sessions tables. It is also the Dashboard clock strip, My Team, the **Who worked** card, the Contracts list, and the approvals queue. The drawer slides in from the right. On a phone it fills the screen. You press **Esc** or tap outside to close. A link like `/people?tab=users&person=u:<id>` opens it directly.
 
 Or you press **/** on any page, type a name, and press **Enter**.
 

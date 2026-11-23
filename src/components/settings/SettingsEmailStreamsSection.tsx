@@ -861,7 +861,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         noun="scheduled send"
         open={!!openCards['people_week']}
         onToggle={() => toggleCard('people_week')}
-        title="Your people’s week (the Monday people email)"
+        title="The team’s week (the Monday email)"
         cadence="weekly chains — each reader about the people they picked"
         manage="schedule more → Checklist → Review → ✉ Email me their week"
       >

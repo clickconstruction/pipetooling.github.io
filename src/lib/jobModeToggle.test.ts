@@ -5,11 +5,8 @@ import {
   jobModeActiveSource,
   jobModeDefaultForRole,
   parseJobModeStoredValue,
-  readJobModeCardDismissed,
   readJobModeEnabled,
   readJobModeStoredValue,
-  showJobModeFirstRunCard,
-  writeJobModeCardDismissed,
   writeJobModeEnabled,
 } from './jobModeToggle'
 
@@ -83,27 +80,6 @@ describe('jobModeActiveSource', () => {
   })
 })
 
-describe('showJobModeFirstRunCard', () => {
-  it('shows only for master_technician and superintendent with nothing stored and not dismissed', () => {
-    expect(showJobModeFirstRunCard('master_technician', null, false)).toBe(true)
-    expect(showJobModeFirstRunCard('superintendent', null, false)).toBe(true)
-  })
-
-  it('never shows for sub-like roles (already on) or office roles', () => {
-    for (const r of ['subcontractor', 'helpers', 'dev', 'assistant', 'controller', 'estimator', 'primary'] as UserRole[]) {
-      expect(showJobModeFirstRunCard(r, null, false), r).toBe(false)
-    }
-    expect(showJobModeFirstRunCard(null, null, false)).toBe(false)
-  })
-
-  it('hides once the user has decided either way, or dismissed it', () => {
-    expect(showJobModeFirstRunCard('master_technician', '1', false)).toBe(false)
-    expect(showJobModeFirstRunCard('master_technician', 'card', false)).toBe(false)
-    expect(showJobModeFirstRunCard('master_technician', '0', false)).toBe(false)
-    expect(showJobModeFirstRunCard('master_technician', null, true)).toBe(false)
-  })
-})
-
 describe('storage round-trips (fake localStorage)', () => {
   const store = new Map<string, string>()
   const fake = {
@@ -149,10 +125,11 @@ describe('storage round-trips (fake localStorage)', () => {
     expect(readJobModeEnabled('u2', 'helpers')).toBe(true)
   })
 
-  it('card dismissal is per user and sticky', () => {
-    expect(readJobModeCardDismissed('u1')).toBe(false)
-    writeJobModeCardDismissed('u1')
-    expect(readJobModeCardDismissed('u1')).toBe(true)
-    expect(readJobModeCardDismissed('u2')).toBe(false)
+  it('the mode row turns it on as the gear menu does, and a device that stored the old card value still reads on', () => {
+    writeJobModeEnabled('u1', true, 'row')
+    expect(readJobModeStoredValue('u1')).toBe('1')
+    writeJobModeEnabled('u2', true, 'card')
+    expect(readJobModeStoredValue('u2')).toBe('card')
+    expect(readJobModeEnabled('u2', 'master_technician')).toBe(true)
   })
 })

@@ -3,10 +3,11 @@
  * instruments the tech's day today").
  *
  * One `ui_nav_clicks` row per session with control `job_mode_enabled` and
- * target `#default` / `#card` / `#gear`, written by whichever happens first:
+ * target `#default` / `#card` / `#gear` / `#row`, written by whichever happens first:
  * the Dashboard's first render with Job Mode active (source = what the device
- * stored, see `jobModeActiveSource`), the first-run card tap (`card`), or the
- * gear-menu turn-on (`gear`). A sessionStorage guard keeps it to one row per
+ * stored, see `jobModeActiveSource`; `card` is a device that turned it on from
+ * the first-run card the mode row replaced), the mode row's Job Mode third
+ * (`row`), or the gear-menu turn-on (`gear`). A sessionStorage guard keeps it to one row per
  * user per browser session so a tap followed by the Dashboard remount is not
  * counted twice. Fire-and-forget like every other nav click.
  */

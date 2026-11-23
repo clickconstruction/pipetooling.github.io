@@ -15,6 +15,9 @@ vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
   return useAuthModuleMock({ role: 'helpers' })
 })
+// Phone width (punch list #414, v2.8361): flip to true to measure the press as a thumb meets it.
+const viewport = { phone: false }
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => viewport.phone }))
 const recordNavClick = vi.fn()
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: (...a: unknown[]) => recordNavClick(...a) }))
 
@@ -34,6 +37,7 @@ describe('OfflineRetryPanel', () => {
   beforeEach(() => {
     recordNavClick.mockReset()
     setOnLine(false)
+    viewport.phone = false
   })
   afterEach(() => {
     setOnLine(true)
@@ -110,6 +114,20 @@ describe('OfflineRetryPanel', () => {
       window.dispatchEvent(new Event('online'))
     })
     expect(onRetry).toHaveBeenCalledTimes(2)
+  })
+
+  it('Retry is 44 px tall on a phone and keeps its desk height on a desktop (punch list #414, v2.8361)', async () => {
+    viewport.phone = true
+    const { unmount } = renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="crew-day" idempotent />)
+    await settle()
+    const phonePress = screen.getByRole('button', { name: 'Retry' })
+    expect(phonePress.style.minHeight).toBe('44px')
+    expect(phonePress.style.padding).toBe('0.5rem 1.1rem')
+    unmount()
+    viewport.phone = false
+    renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="crew-day" idempotent />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Retry' }).style.minHeight).toBe('36px')
   })
 
   it('a server refusal renders its sentence with no Retry button', async () => {

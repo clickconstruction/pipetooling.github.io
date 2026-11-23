@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 ---
 
 ## What it is, in one paragraph
@@ -116,7 +116,7 @@ The header's second row says what the person is to us (*Customer: Acme*); for a 
 them*), and the blue **Who is this?** under it is the header's only one (the lanes' rows — **Went out**, **Waiting on them**, **Lines that match** — name an unnamed person by the way the line went, `unnamedOnLine` beside it, v2.5994: an email *An address nobody has named*, any other channel or none *A number nobody has named*; the week strip's waits and Quickfill's texts ledger keep *a number*; v2.5541; since v2.5811 it sits on the sort card while the card asks who, and the header drops it meanwhile). Its ☎ link, the dim *No number to
 call*, the ⋯ button and the who-has-it pill (`WhoHasItPill` `bare`, through `headerRight`) wear one class,
 `.thread-head-control` in `src/index.css`: 28 px, no border, a hover on the pressable ones; Follow up's rows keep the
-bordered pill (v2.5542). On a folded header the slot reads the look the window hands it and the pill is a face alone
+bordered pill (v2.5542). On a folded header the slot reads the look the window hands it and the pill is a face alone (v2.8300, punch list #348)
 (`face`): the holder's initials or **?**, 28 px, its words kept as its name to a screen reader and its hover, and the
 menu saying who is off under its head, since a phone has no hover. The person's name needs the room: the whole pill is
 171 px of a phone's row. The pill's menu is placed by `followUp/whoMenuPlace.ts`: from the pill's right edge where that
