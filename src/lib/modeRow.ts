@@ -66,9 +66,10 @@ export const MODE_ROW_SHOWN_CONTROL = 'mode_row_shown'
 
 /**
  * Every role whose first page is the Dashboard, the page the row sits on (the owner, 2026-11-23: *give
- * it to everyone*). That is eight of the nine. The estimator's first page is Bids (`roleHomePath`) and
- * its header has no Home press, so the row would be on a page the estimator does not open: the
- * estimator keeps the gear menu's Modes rows. A role nobody knows gets nothing.
+ * it to everyone*). That is eight of the nine. An estimator who opens the app lands on Bids: `/` is not
+ * on the estimator's list, so `Layout`'s route guard sends it to `roleHomePath`, and only a fresh sign-in
+ * lands on the Dashboard. The owner saw the row drawn on top of Bids the same day and left the estimator
+ * out, so the estimator keeps the gear menu's Modes rows. A role nobody knows gets nothing.
  */
 export function modeRowOfferedToRole(role: Role): boolean {
   return canLeaveJobFieldReport(role) && roleHomePath(role) === '/dashboard'
