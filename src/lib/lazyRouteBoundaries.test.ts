@@ -233,7 +233,7 @@ const Preview = lazy(() => import('./pages/Preview'))
     expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/rate', '/rate2'])
   })
 
-  it('names a public page held with plain lazy, which has no loading look and no customer words', () => {
+  it('names a public page held with plain lazy: in a bare Suspense it has no loading look, and in PublicPage no place on ON_DEMAND_PAGES', () => {
     const routes = '<Route path="/look" element={<Suspense fallback={null}><Preview /></Suspense>} />'
     expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/look'])
     expect(publicRoutesNotOnDemand(publicApp('<Route path="/look" element={<PublicPage><Preview /></PublicPage>} />'), kept)).toEqual(['/look'])

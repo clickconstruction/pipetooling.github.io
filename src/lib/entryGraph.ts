@@ -194,7 +194,7 @@ export const ON_DEMAND_PAGES: ReadonlyArray<string> = [
 /**
  * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
  * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. On 2026-11-23
- * the public pages moved out (v2.8327) and the entry reaches 7.6 MB. Lower this as more moves out; raise
- * it only with the reason beside it, as the precache cap's comment asks.
+ * the public pages moved out (v2.8327): 7.6 MB of source built a main chunk of 2,915,266. Lower this as
+ * more moves out; raise it only with the reason beside it, as the precache cap's comment asks.
  */
 export const ENTRY_SOURCE_BUDGET_BYTES = 8.5 * 1024 * 1024
