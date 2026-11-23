@@ -319,7 +319,9 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
     const busy = pressing === `heard ${m.id}` || pressing === `word ${m.id}`
     return (
       <span key={`heard-${m.id}`} data-heard-choice={heard.ymd} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        <ValueSentence text={heardChoiceWords(heard.label)} />
+        <span>
+          <ValueSentence text={heardChoiceWords(heard.label)} />
+        </span>
         {heard.choices.map((h) => (
           <button key={h.kind} type="button" style={quiet} disabled={busy} title={h.tip} onClick={() => (h.opens === 'sheet' ? void wordPress(m, c) : writeHeard(m, h, heard.ymd))}>
             {h.label}
