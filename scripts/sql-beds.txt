@@ -169,3 +169,4 @@ imitated-session
 write-down-first-amount
 working-hours
 stripe-paid-day
+people-hours-recorded
