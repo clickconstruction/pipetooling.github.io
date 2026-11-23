@@ -90,7 +90,7 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 {{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
 
-The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in. The Dashboard shows the same sheet in two lines, under Needs you, as **The office's round**. The morning after a missed round that card names the station today's round starts on. {{button:outline|Start today's round}} opens it.
+The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in. The Dashboard shows the round as a week, under Needs you, as **The office's round**. Each of the last five workdays is a bar, with the stations looked at and who ran it. A workday with no round is an empty cell that reads *missed*. One missed workday is amber, and three in a row turn the card red. {{button:outline|Start the round}} opens the station today's round starts on.
 
 ## When the app is slow
 
